@@ -1,0 +1,264 @@
+'================ basOneShotTMP_Mod (usar 1 sola vez) ================
+Option Compare Database
+Option Explicit
+
+'---- CONFIG ----
+Private Const TARGET_TABLE As String = "TMP_AsigInsumo_Cultivo"
+Private Const IDORDEN_COL  As String = "IdOrden"
+Private Const IDORDEN_EXPR As String = "Forms![Frm OrdenTrabajo]![TxtOrden]"
+Private Const THIS_MODULE  As String = "basOneShotTMP_Mod" ' <- nombre de este módulo
+
+'==== ENTRADA PRINCIPAL (Inmediato) ====
+Public Sub OneShot_Modules_FixTMP_IdOrden()
+    On Error GoTo EH
+
+    Debug.Print "== OneShot FIX TMP (Módulos): inicio =="
+    CreateLogTableIfNotExists
+
+    Dim tmpFolder As String
+    tmpFolder = CurrentProject.path & "\_oneshot_tmp"
+    EnsureFolder tmpFolder
+
+    Dim m As AccessObject
+    Dim fixed As Long, skipped As Long, scanned As Long
+
+    For Each m In CurrentProject.AllModules
+        scanned = scanned + 1
+        If StrComp(m.name, THIS_MODULE, vbTextCompare) = 0 Then
+            ' No me reescribo a mí mismo
+        Else
+            Dim txtPath As String, txt As String, newTxt As String
+            txtPath = tmpFolder & "\" & m.name & ".txt"
+
+            Application.SaveAsText acModule, m.name, txtPath
+            txt = ReadAllText(txtPath)
+
+            Dim changed As Long, ok As Boolean
+            newTxt = TransformModuleText(txt, changed, ok)
+
+            If ok And changed > 0 Then
+                WriteAllText txtPath, newTxt
+                ' Reimportar reemplazando el módulo
+                DoCmd.DeleteObject acModule, m.name
+                Application.LoadFromText acModule, m.name, txtPath
+                fixed = fixed + 1
+                LogAction "MODULE", m.name, "REWRITE", "...", "Cambios: " & CStr(changed), "OK"
+                Debug.Print "  ? " & m.name & " (reescrito, cambios=" & changed & ")"
+            ElseIf ok And changed = 0 Then
+                ' nada que cambiar
+            Else
+                skipped = skipped + 1
+                LogAction "MODULE", m.name, "SKIP", "", "", "NO_MATCH"
+            End If
+        End If
+    Next
+
+    Debug.Print "== OneShot FIX TMP (Módulos): fin =="
+    Debug.Print "   Escaneados: "; scanned; " | Reescritos: "; fixed; " | Sin coincidencias: "; skipped
+    MsgBox "Listo." & vbCrLf & _
+           "Escaneados: " & scanned & vbCrLf & _
+           "Reescritos: " & fixed & vbCrLf & _
+           "Sin coincidencias: " & skipped & vbCrLf & _
+           "Revisá LOG_OneShotTMP_Modules.", vbInformation
+    Exit Sub
+EH:
+    MsgBox "OneShot_Modules_FixTMP_IdOrden: " & Err.Number & " - " & Err.Description, vbCritical
+End Sub
+
+'==== Transformación del texto de un módulo ====
+' Busca en el TEXTO EXPORTADO del módulo los patrones de SQL dentro de strings
+' y aplica dos cambios por cada INSERT encontrado:
+'  (A) Agrega "IdOrden, " después del "(" de columnas.
+'  (B) Agrega "Forms![Frm OrdenTrabajo]![TxtOrden], " tras SELECT (respetando DISTINCT/TOP).
+Private Function TransformModuleText(ByVal src As String, ByRef changes As Long, ByRef ok As Boolean) As String
+    Dim i As Long, j As Long, pIns As Long, pInto As Long, pTok As Long
+    Dim pTable As Long, pOpen As Long, pClose As Long, pSel As Long
+    Dim s As String: s = src
+    Dim lower As String: lower = LCase$(s)
+
+    ok = False: changes = 0
+
+    i = 1
+    Do
+        pIns = InStr(i, lower, "insert", vbTextCompare)
+        If pIns = 0 Then Exit Do
+
+        pInto = InStr(pIns, lower, "into", vbTextCompare)
+        If pInto = 0 Then Exit Do
+
+        pTok = SkipWSAll(s, pInto + 4)
+        ' ¿Coincide la tabla?
+        If TokenMatchesTarget(Mid$(s, pTok)) Then
+            ok = True
+
+            ' Debe haber lista de columnas
+            pOpen = InStr(pTok, s, "(", vbTextCompare)
+            If pOpen = 0 Then i = pTok + 1: GoTo NextLoop
+
+            pClose = InStr(pOpen + 1, s, ")", vbTextCompare)
+            If pClose = 0 Then i = pTok + 1: GoTo NextLoop
+
+            ' Extraer lista de columnas para evitar doble inyección
+            Dim colList As String
+            colList = Mid$(s, pOpen + 1, pClose - pOpen - 1)
+            If InList(colList, IDORDEN_COL) Then
+                ' Ya tiene IdOrden; sólo asegurar SELECT
+            Else
+                ' (A) Inyectar IdOrden,
+                s = Left$(s, pOpen) & IDORDEN_COL & ", " & Mid$(s, pOpen + 1)
+                lower = LCase$(s)
+                changes = changes + 1
+                pClose = pClose + Len(IDORDEN_COL) + 2 ' mover cierre por inserción
+            End If
+
+            ' (B) Inyectar IdOrden expr tras SELECT (+ DISTINCT/TOP)
+            pSel = InStr(pClose + 1, lower, "select", vbTextCompare)
+            If pSel > 0 Then
+                Dim pAfterSel As Long
+                pAfterSel = AfterSelectModifiersText(s, pSel)
+                ' Evitar doble inyección si ya está puesta
+                Dim ahead As String
+                ahead = Mid$(s, pSel, pAfterSel - pSel + 100)
+                If InStr(1, LCase$(ahead), LCase$(IDORDEN_EXPR), vbTextCompare) = 0 Then
+                    s = Left$(s, pAfterSel - 1) & IDORDEN_EXPR & ", " & Mid$(s, pAfterSel)
+                    lower = LCase$(s)
+                    changes = changes + 1
+                End If
+            End If
+
+            ' avanzar el cursor más allá para evitar bucles
+            i = pClose + 1
+        Else
+            i = pTok + 1
+        End If
+NextLoop:
+    Loop
+
+    If ok Then
+        TransformModuleText = s
+    Else
+        TransformModuleText = src
+    End If
+End Function
+
+'==== utilidades de parseo sobre texto plano exportado ====
+Private Function AfterSelectModifiersText(ByVal s As String, ByVal pSelect As Long) As Long
+    Dim i As Long: i = pSelect + Len("SELECT")
+    Dim u As String: u = UCase$(s)
+    i = SkipWSAll(u, i)
+    If Mid$(u, i, 8) = "DISTINCT" Then i = i + 8: i = SkipWSAll(u, i)
+    If Mid$(u, i, 3) = "TOP" Then
+        i = i + 3: i = SkipWSAll(u, i)
+        Do While i <= Len(u) And (Mid$(u, i, 1) Like "[0-9]" Or Mid$(u, i, 1) = ".")
+            i = i + 1
+        Loop
+        i = SkipWSAll(u, i)
+        If Mid$(u, i, 7) = "PERCENT" Then i = i + 7
+        i = SkipWSAll(u, i)
+    End If
+    AfterSelectModifiersText = i + 1
+End Function
+
+Private Function SkipWSAll(ByVal s As String, ByVal i As Long) As Long
+    Do While i <= Len(s)
+        Select Case Mid$(s, i, 1)
+            Case " ", vbTab, vbCr, vbLf
+                i = i + 1
+            Case Else
+                Exit Do
+        End Select
+    Loop
+    SkipWSAll = i
+End Function
+
+Private Function TokenMatchesTarget(ByVal s As String) As Boolean
+    Dim t As String, c As String, i As Long
+    t = ""
+    For i = 1 To Len(s)
+        c = Mid$(s, i, 1)
+        If c Like "[A-Za-z0-9_]" Or c = "[" Or c = "]" Then
+            t = t & c
+        Else
+            Exit For
+        End If
+    Next i
+    t = Replace(Replace(t, "[", ""), "]", "")
+    TokenMatchesTarget = (StrComp(t, TARGET_TABLE, vbTextCompare) = 0)
+End Function
+
+Private Function InList(ByVal csv As String, ByVal colName As String) As Boolean
+    Dim t As String: t = "," & Replace(Replace(LCase$(csv), "[", ""), "]", "") & ","
+    InList = (InStr(t, "," & LCase$(colName) & ",") > 0)
+End Function
+
+'==== IO helpers ====
+Private Sub EnsureFolder(ByVal path As String)
+    On Error Resume Next
+    If Dir(path, vbDirectory) = "" Then MkDir path
+End Sub
+
+Private Function ReadAllText(ByVal path As String) As String
+    Dim f As Integer: f = FreeFile
+    Dim s As String
+    Open path For Binary Access Read As #f
+    s = Space$(LOF(f))
+    Get #f, , s
+    Close #f
+    ReadAllText = s
+End Function
+
+Private Sub WriteAllText(ByVal path As String, ByVal s As String)
+    Dim f As Integer: f = FreeFile
+    Open path For Output As #f
+    Print #f, s
+    Close #f
+End Sub
+
+'==== LOG ====
+Private Sub CreateLogTableIfNotExists()
+    On Error Resume Next
+    If TableExists(CurrentDb, "LOG_OneShotTMP_Modules") Then Exit Sub
+    CurrentDb.Execute _
+        "CREATE TABLE LOG_OneShotTMP_Modules (" & _
+        "  [WhenTS] DATETIME," & _
+        "  [ObjType] TEXT(20)," & _
+        "  [ObjName] TEXT(128)," & _
+        "  [ActionName] TEXT(20)," & _
+        "  [Detail] TEXT(255)," & _
+        "  [StatusName] TEXT(64)" & _
+        ");", dbFailOnError
+    On Error GoTo 0
+End Sub
+
+Private Sub LogAction(ByVal objType As String, ByVal objName As String, _
+                      ByVal action As String, ByVal oldFrag As String, _
+                      ByVal newFrag As String, ByVal status As String)
+    On Error Resume Next
+    Dim q As String
+    q = "INSERT INTO LOG_OneShotTMP_Modules " & _
+        "([WhenTS],[ObjType],[ObjName],[ActionName],[Detail],[StatusName]) VALUES (" & _
+        "Now()," & _
+        SqlLit(objType) & "," & _
+        SqlLit(objName) & "," & _
+        SqlLit(action) & "," & _
+        SqlLit(newFrag) & "," & _
+        SqlLit(status) & ");"
+    CurrentDb.Execute q
+    On Error GoTo 0
+End Sub
+
+Private Function SqlLit(ByVal v As Variant) As String
+    If IsNull(v) Then
+        SqlLit = "Null"
+    Else
+        SqlLit = "'" & Replace(CStr(v), "'", "''") & "'"
+    End If
+End Function
+
+Private Function TableExists(ByVal db As DAO.Database, ByVal tName As String) As Boolean
+    Dim td As DAO.TableDef
+    For Each td In db.TableDefs
+        If StrComp(td.name, tName, vbTextCompare) = 0 Then TableExists = True: Exit Function
+    Next td
+End Function
+'=====================================================================

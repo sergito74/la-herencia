@@ -1,0 +1,8 @@
+Option Compare Database
+Option Explicit
+
+Public Function SuperfAfectada(ByVal idO As Long, ByVal idC As Long, ByVal idCa As Long) As Double
+    SuperfAfectada = Nz(DLookup("SuperficieAfectada", _
+                                 "CnsSuperficieAplicada", _
+                                 "IdOrden=" & idO & " AND IdCultivo=" & idC & " AND IdCampaña=" & idCa), 0)
+End Function

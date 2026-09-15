@@ -1,0 +1,220 @@
+Option Compare Database
+Option Explicit
+
+'==================== Helpers ====================
+
+Private Sub TVSet(ByVal nm As String, ByVal v As Variant)
+    On Error Resume Next
+    TempVars.Remove nm
+    On Error GoTo 0
+    TempVars.Add nm, v
+End Sub
+
+Private Function TableHasField(ByVal tbl As String, ByVal fld As String) As Boolean
+    Dim t As DAO.TableDef, f As DAO.Field
+    On Error GoTo EH
+
+    Set t = CurrentDb.TableDefs(tbl)
+    For Each f In t.Fields
+        If StrComp(f.name, fld, vbTextCompare) = 0 Then
+            TableHasField = True
+            Exit Function
+        End If
+    Next
+
+    TableHasField = False
+    Exit Function
+
+EH:
+    TableHasField = False
+End Function
+
+' Convierte número a literal SQL con punto decimal (independiente de configuración regional)
+Private Function SqlNum(ByVal n As Double) As String
+    SqlNum = Replace(CStr(n), ",", ".")
+End Function
+
+'==================== PREPARAR TMP ====================
+
+' Prepara TMP a partir de un IdDetalleOrden:
+' - Borra TMP del contexto (IdOrden + IdFormulado)
+' - Inserta 1 fila por CULTIVO (sumatoria de superficies de Ordenes_Lotes con Aplicar=TRUE)
+'   restringiendo por IdCultivo/IdLote del detalle si están definidos
+' - Inicializa DosisHa y CantidadAsignada con la Dosis Teórica del detalle
+' - Copia EnvasePreferido->RedondeoEnvase y PasoMinimo desde Ordenes_Detalles hacia la TMP
+' - Deja TempVars: IdOrden, IdFormulado, IdDetalleOrden
+Public Sub SIA_PrepararTMP_DesdeDetalle(ByVal vIdDetalleOrden As Long)
+    On Error GoTo ErrH
+
+    Dim db As DAO.Database: Set db = CurrentDb
+    Dim rs As DAO.Recordset
+
+    Dim vIdOrden As Long, vIdForm As Long
+    Dim vIdCult As Variant, vIdLote As Variant
+    Dim vDosis As Double, vUni As String
+
+    ' 1) Datos del detalle (alias cambiado a UnidadTxt para evitar conflicto)
+    Set rs = db.OpenRecordset( _
+        "SELECT IdOrden, IdFormulado, IdCultivo, IdLote, " & _
+        " Nz([Dosis Teorica],0) AS DosisT, Nz([Unidad],'') AS UnidadTxt " & _
+        "FROM Ordenes_Detalles WHERE IdDetalleOrden=" & vIdDetalleOrden & ";", dbOpenSnapshot, dbSeeChanges)
+
+    If rs.EOF Then
+        MsgBox "No se encontró el detalle de la orden (IdDetalleOrden=" & vIdDetalleOrden & ").", vbCritical
+        Exit Sub
+    End If
+
+    vIdOrden = Nz(rs!IdOrden, 0)
+    vIdForm = Nz(rs!IdFormulado, 0)
+    vIdCult = rs!IdCultivo
+
+    vIdLote = Null
+    On Error Resume Next
+    vIdLote = rs!IdLote
+    On Error GoTo ErrH
+
+    vDosis = Nz(rs!DosisT, 0)
+    vUni = Nz(rs!UnidadTxt, "")
+
+    rs.Close
+
+    If vIdOrden = 0 Or vIdForm = 0 Then
+        MsgBox "Detalle sin IdOrden/IdFormulado.", vbCritical
+        Exit Sub
+    End If
+
+    ' 2) Limpiar TMP para este contexto
+    db.Execute _
+        "DELETE FROM TMP_AsigInsumo_Cultivo " & _
+        "WHERE IdOrden=" & vIdOrden & " AND IdFormulado=" & vIdForm & ";", _
+        dbFailOnError
+
+    ' 3) Insertar TMP: una fila por CULTIVO (sumatoria de superficies)
+    Dim sql As String
+
+    sql = "INSERT INTO TMP_AsigInsumo_Cultivo " & _
+          "([IdOrden],[IdFormulado],[IdCampaña],[IdCultivo],[SupAfectada],[DosisHa],[CantidadAsignada],[Unidad],[RedondeoEnvase],[PasoMinimo]) " & _
+          "SELECT " & vIdOrden & " AS IdOrden, " & vIdForm & " AS IdFormulado, OL.[IdCampaña], OL.[IdCultivo], " & _
+          " Sum(Nz(OL.Superficie,0)) AS SupAfectada, " & _
+          " " & SqlNum(vDosis) & " AS DosisHa, " & _
+          " Sum(Nz(OL.Superficie,0)) * " & SqlNum(vDosis) & " AS CantidadAsignada, " & _
+          " '" & Replace(vUni, "'", "''") & "' , " & _
+          " 0 AS RedondeoEnvase, 0 AS PasoMinimo " & _
+          "FROM Ordenes_Lotes AS OL " & _
+          "WHERE OL.IdOrden=" & vIdOrden & " AND Nz(OL.Aplicar,0)<>0 "
+
+    ' Restringir por CUL/LOTE si el detalle lo tiene definido
+    If Not IsNull(vIdCult) And Nz(vIdCult, 0) <> 0 Then
+        sql = sql & " AND OL.IdCultivo=" & CLng(vIdCult)
+    End If
+
+    On Error Resume Next
+    If Not IsNull(vIdLote) And Nz(vIdLote, 0) <> 0 Then
+        sql = sql & " AND OL.IdLote=" & CLng(vIdLote)
+    End If
+    On Error GoTo ErrH
+
+    sql = sql & " GROUP BY OL.[IdCampaña], OL.[IdCultivo];"
+
+    db.Execute sql, dbFailOnError
+
+    ' 4) Copiar parámetros de redondeo desde el DETALLE hacia la TMP
+    On Error Resume Next
+    db.Execute _
+        "UPDATE TMP_AsigInsumo_Cultivo AS T " & _
+        "INNER JOIN Ordenes_Detalles AS D " & _
+        " ON T.IdOrden=D.IdOrden AND T.IdFormulado=D.IdFormulado " & _
+        "SET T.RedondeoEnvase = Nz(D.EnvasePreferido,0), " & _
+        " T.PasoMinimo = Nz(D.PasoMinimo,0) " & _
+        "WHERE T.IdOrden=" & vIdOrden & _
+        " AND T.IdFormulado=" & vIdForm & _
+        " AND D.IdDetalleOrden=" & vIdDetalleOrden & ";", dbFailOnError
+    On Error GoTo ErrH
+
+    ' 5) Contexto en TempVars
+    TVSet "IdOrden", vIdOrden
+    TVSet "IdFormulado", vIdForm
+    TVSet "IdDetalleOrden", vIdDetalleOrden
+
+    ' Sanidad
+    If DCount("*", "TMP_AsigInsumo_Cultivo", "IdOrden=" & vIdOrden & " AND IdFormulado=" & vIdForm) = 0 Then
+        MsgBox "No hay cultivos/lotes marcados con 'Aplicar=Sí' para esta orden/insumo.", vbInformation
+    End If
+
+    Exit Sub
+
+ErrH:
+    MsgBox "SIA_PrepararTMP_DesdeDetalle: " & Err.Description, vbCritical
+End Sub
+
+'==================== RECALC TMP ====================
+
+' Recalcula: CantidadAsignada = SupAfectada * DosisHa (opcionalmente filtrado)
+Public Sub SIA_RecalcularTMP_Cantidad(Optional ByVal vIdOrden As Long = 0, Optional ByVal vIdForm As Long = 0)
+    Dim f As String: f = ""
+
+    If vIdOrden <> 0 Then f = f & IIf(f <> "", " AND ", "") & "IdOrden=" & vIdOrden
+    If vIdForm <> 0 Then f = f & IIf(f <> "", " AND ", "") & "IdFormulado=" & vIdForm
+    If f <> "" Then f = " WHERE " & f
+
+    CurrentDb.Execute _
+        "UPDATE TMP_AsigInsumo_Cultivo " & _
+        "SET CantidadAsignada = Nz(DosisHa,0) * Nz(SupAfectada,0) " & f & ";", dbFailOnError
+End Sub
+
+'==================== CONFIRMAR DISTRIBUCIÓN ====================
+
+' Borra distribución previa del detalle, inserta nueva distribución por LOTE
+' y actualiza [Total Aplicado] en Ordenes_Detalles.
+Public Sub SIA_ConfirmarDistribucion(ByVal vIdDetalleOrden As Long)
+    On Error GoTo ErrH
+
+    Dim db As DAO.Database: Set db = CurrentDb
+    Dim rs As DAO.Recordset
+    Dim vIdOrden As Long, vIdForm As Long
+
+    Set rs = db.OpenRecordset( _
+        "SELECT IdOrden, IdFormulado FROM Ordenes_Detalles WHERE IdDetalleOrden=" & vIdDetalleOrden & ";", dbOpenSnapshot, dbSeeChanges)
+
+    If rs.EOF Then
+        MsgBox "No se encontró el detalle de la orden.", vbCritical
+        Exit Sub
+    End If
+
+    vIdOrden = rs!IdOrden
+    vIdForm = rs!IdFormulado
+    rs.Close
+
+    ' Asegurar que TMP esté consistente
+    Call SIA_RecalcularTMP_Cantidad(vIdOrden, vIdForm)
+
+    ' 1) Borrar distribución previa
+    db.Execute "DELETE FROM Ordenes_Detalles_Distrib WHERE IdDetalleOrden=" & vIdDetalleOrden & ";", dbFailOnError
+
+    ' 2) Insertar distribución prorrateada por LOTE
+    db.Execute _
+        "INSERT INTO Ordenes_Detalles_Distrib " & _
+        " (IdDetalleOrden, IdOrden, IdCampaña, IdCultivo, IdLote, CantidadAsignada, Unidad, Observaciones) " & _
+        "SELECT " & vIdDetalleOrden & " AS IdDetalleOrden, " & _
+        " OL.IdOrden, OL.IdCampaña, OL.IdCultivo, OL.IdLote, " & _
+        " IIf(Nz(T.SupAfectada,0)>0, Nz(OL.Superficie,0)/Nz(T.SupAfectada,0) * Nz(T.CantidadAsignada,0), 0) AS CantidadAsignada, " & _
+        " T.Unidad, Null AS Observaciones " & _
+        "FROM (Ordenes_Lotes AS OL " & _
+        "INNER JOIN TMP_AsigInsumo_Cultivo AS T " & _
+        " ON (OL.IdOrden = T.IdOrden) AND (OL.IdCampaña = T.IdCampaña) AND (OL.IdCultivo = T.IdCultivo)) " & _
+        "WHERE OL.IdOrden=" & vIdOrden & " AND Nz(OL.Aplicar,0)<>0;", dbFailOnError
+
+    ' 3) Actualizar Total Aplicado
+    Dim sTot As Double
+    sTot = Nz(DSum("CantidadAsignada", "Ordenes_Detalles_Distrib", "IdDetalleOrden=" & vIdDetalleOrden), 0)
+
+    db.Execute _
+        "UPDATE Ordenes_Detalles " & _
+        "SET [Total Aplicado]=" & SqlNum(sTot) & " " & _
+        "WHERE IdDetalleOrden=" & vIdDetalleOrden & ";", dbFailOnError
+
+    Exit Sub
+
+ErrH:
+    MsgBox "SIA_ConfirmarDistribucion: " & Err.Description, vbCritical
+End Sub

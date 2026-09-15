@@ -1,0 +1,51 @@
+
+Attribute VB_Name = "basImportarConsultasSQL"
+Option Compare Database
+Option Explicit
+
+Public Sub ImportarConsultasSQL_SeleccionarCarpeta()
+    Dim carpeta As String
+    carpeta = ElegirCarpetaSQL()
+    If Len(carpeta) = 0 Then Exit Sub
+    ImportarConsultasSQL carpeta
+    MsgBox "Consultas importadas desde: " & carpeta, vbInformation
+End Sub
+
+Public Sub ImportarConsultasSQL(ByVal carpeta As String)
+    Dim f As String, nm As String, ruta As String, sql As String
+    f = Dir(carpeta & "\query_*.sql")
+    Do While Len(f) > 0
+        nm = Mid$(f, 7, Len(f) - 10)
+        ruta = carpeta & "\" & f
+        sql = LeerArchivoTextoSQL(ruta)
+        ReemplazarQueryDefSQL nm, sql
+        f = Dir()
+    Loop
+End Sub
+
+Private Sub ReemplazarQueryDefSQL(ByVal nombre As String, ByVal sql As String)
+    On Error Resume Next
+    CurrentDb.QueryDefs.Delete nombre
+    On Error GoTo 0
+    CurrentDb.CreateQueryDef nombre, sql
+End Sub
+
+Private Function LeerArchivoTextoSQL(ByVal ruta As String) As String
+    Dim f As Integer, s As String
+    f = FreeFile
+    Open ruta For Input As #f
+    s = Input$(LOF(f), f)
+    Close #f
+    LeerArchivoTextoSQL = s
+End Function
+
+Private Function ElegirCarpetaSQL() As String
+    On Error GoTo FallBack
+    With Application.FileDialog(4)
+        .Title = "Seleccione la carpeta con query_*.sql"
+        If .Show = -1 Then ElegirCarpetaSQL = .SelectedItems(1)
+    End With
+    Exit Function
+FallBack:
+    ElegirCarpetaSQL = InputBox("Ruta de carpeta con query_*.sql:", "Carpeta")
+End Function

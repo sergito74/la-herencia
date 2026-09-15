@@ -1,0 +1,56 @@
+Option Compare Database
+
+Public Function PesosMN(tyCantidad As Currency) As String
+Dim lyCantidad As Currency, lyCentavos As Currency, lnDigito As Byte, lnPrimerDigito As Byte, lnSegundoDigito As Byte, lnTercerDigito As Byte, lcBloque As String, lnNumeroBloques As Byte, lnBloqueCero
+Dim laUnidades As Variant, laDecenas As Variant, laCentenas As Variant, i As Variant 'Si esta como Option Explicit
+tyCantidad = Round(tyCantidad, 2)
+lyCantidad = Int(tyCantidad)
+lyCentavos = (tyCantidad - lyCantidad) * 100
+laUnidades = Array("Un", "Dos", "Tres", "Cuatro", "Cinco", "Seis", "Siete", "Ocho", "Nueve", "Diez", "Once", "Doce", "Trece", "Catorce", "Quince", "Dieciseís", "Diecisiete", "Dieciocho", "Diecinueve", "Veinte", "Veintiún", "Veintidós", "Veintitrés", "Veinticuatro", "Veinticinco", "Veintiseis", "Veintisiete", "Veintiocho", "Veintinueve")
+laDecenas = Array("Diez", "Veinte", "Treinta", "Cuarenta", "Cincuenta", "Sesenta", "Setenta", "Ochenta", "Noventa")
+laCentenas = Array("Ciento", "Doscientos", "Trescientos", "Cuatrocientos", "Quinientos", "Seiscientos", "Setecientos", "Ochocientos", "Novecientos")
+lnNumeroBloques = 1
+Do
+lnPrimerDigito = 0
+lnSegundoDigito = 0
+lnTercerDigito = 0
+lcBloque = ""
+lnBloqueCero = 0
+For i = 1 To 3
+lnDigito = lyCantidad Mod 10
+If lnDigito <> 0 Then
+Select Case i
+Case 1
+lcBloque = " " & laUnidades(lnDigito - 1)
+lnPrimerDigito = lnDigito
+Case 2
+If lnDigito <= 2 Then
+lcBloque = " " & laUnidades((lnDigito * 10) + lnPrimerDigito - 1)
+Else
+lcBloque = " " & laDecenas(lnDigito - 1) & IIf(lnPrimerDigito <> 0, " y", Null) & lcBloque
+End If
+lnSegundoDigito = lnDigito
+Case 3
+lcBloque = " " & IIf(lnDigito = 1 And lnPrimerDigito = 0 And lnSegundoDigito = 0, "CIEN", laCentenas(lnDigito - 1)) & lcBloque
+lnTercerDigito = lnDigito
+End Select
+Else
+lnBloqueCero = lnBloqueCero + 1
+End If
+lyCantidad = Int(lyCantidad / 10)
+If lyCantidad = 0 Then
+Exit For
+End If
+Next i
+Select Case lnNumeroBloques
+Case 1
+PesosMN = lcBloque
+Case 2
+PesosMN = lcBloque & IIf(lnBloqueCero = 3, Null, " mil") & PesosMN
+Case 3
+PesosMN = lcBloque & IIf(lnPrimerDigito = 1 And lnSegundoDigito = 0 And lnTercerDigito = 0, " millón", " millones") & PesosMN
+End Select
+lnNumeroBloques = lnNumeroBloques + 1
+Loop Until lyCantidad = 0
+PesosMN = " " & PesosMN & IIf(tyCantidad > 1, " pesos ", " peso ") & Format(Str(lyCentavos), "00") & "/100 M.N."
+End Function

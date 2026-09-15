@@ -1,0 +1,2 @@
+SELECT OD.*, OD.[[APLICA_CAMPO]] AS AplicaCompat
+FROM Ordenes_Detalles AS OD;

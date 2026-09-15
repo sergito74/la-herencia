@@ -1,0 +1,94 @@
+Public Sub VincularRemitosFacturas_FIFO_Desde20151009_ConDescrDirecta()
+    On Error GoTo ErrHandler
+    Dim db      As DAO.Database
+    Dim rsRem   As DAO.Recordset
+    Dim rsRow   As DAO.Recordset
+    Dim rsLink  As DAO.Recordset
+    Dim qtyPend As Double
+    Dim qtyAsig As Double
+    Dim sqlRem  As String
+    Dim sqlRow  As String
+    Dim remDesc As String
+
+    Set db = CurrentDb
+
+    ' 1) Remitos con su descripción de formulado obtenida desde CnsU producto
+    sqlRem = _
+      "SELECT " & _
+      "  RD.IdDetalleRemito, " & _
+      "  RD.IdFormulado, " & _
+      "  RD.Cantidad     AS CantRem, " & _
+      "  P.[MARCA COMERCIAL] AS RemMarca, " & _
+      "  P.[TIPO INSUMO]     AS RemTipo " & _
+      "FROM (Remitos AS R " & _
+      "  INNER JOIN Remitos_Detalles AS RD ON R.IdRemito = RD.IdRemito) " & _
+      "  LEFT JOIN [CnsU producto] AS P ON RD.IdFormulado = P.[Nº REG] " & _
+      "WHERE R.Fecha >= #2015-10-09# " & _
+      "  AND RD.IdFormulado IS NOT NULL " & _
+      "ORDER BY R.Fecha;"
+    Set rsRem = db.OpenRecordset(sqlRem, dbOpenSnapshot)
+
+    ' 2) Abrir tabla junction para AddNew
+    Set rsLink = db.OpenRecordset("tblRemitoCompra", dbOpenDynaset)
+
+    ' 3) Loop por cada detalle de remito
+    Do While Not rsRem.EOF
+        qtyPend = rsRem!CantRem
+        ' arma la descripción combinando marca y tipo de insumo
+        remDesc = Nz(rsRem!RemMarca, "") & " – " & Nz(rsRem!RemTipo, "")
+
+        Do While qtyPend > 0
+            ' 3.a) Traer la factura FIFO con saldo > 0
+            sqlRow = _
+              "SELECT TOP 1 " & _
+              "  DC.IdDetalleCompra AS DocID, " & _
+              "  DC.[Producto/Servicio] AS FacDesc, " & _
+              "  DC.Cantidad - Nz((SELECT SUM(CantidadRemitida) " & _
+              "                    FROM tblRemitoCompra " & _
+              "                    WHERE IdDetalleCompra=DC.IdDetalleCompra),0) AS Saldo " & _
+              "FROM Det_Compras AS DC " & _
+              "WHERE DC.IdFormulado=" & rsRem!IdFormulado & " " & _
+              "  AND DC.Cantidad - Nz((SELECT SUM(CantidadRemitida) " & _
+              "                        FROM tblRemitoCompra " & _
+              "                        WHERE IdDetalleCompra=DC.IdDetalleCompra),0) > 0 " & _
+              "ORDER BY DC.IdDetalleCompra;"
+            Set rsRow = db.OpenRecordset(sqlRow, dbOpenSnapshot)
+
+            If rsRow.EOF Then
+                rsRow.Close
+                Exit Do
+            End If
+
+            qtyAsig = IIf(rsRow!saldo >= qtyPend, qtyPend, rsRow!saldo)
+
+            ' 3.b) Insertar vínculo + descripciones en tblRemitoCompra
+            With rsLink
+                .AddNew
+                !IdDetalleRemito = rsRem!IdDetalleRemito
+                !IdDetalleCompra = rsRow!DocID
+                !CantidadRemitida = qtyAsig
+                !DescripFormuladoRemito = remDesc               ' <-- descripción desde CnsU producto
+                !DescripProductoFactura = rsRow!FacDesc
+                .Update
+            End With
+
+            qtyPend = qtyPend - qtyAsig
+            rsRow.Close
+        Loop
+
+        rsRem.MoveNext
+    Loop
+
+CleanUp:
+    On Error Resume Next
+    rsRem.Close:  Set rsRem = Nothing
+    rsRow.Close:  Set rsRow = Nothing
+    rsLink.Close: Set rsLink = Nothing
+    Set db = Nothing
+    MsgBox "Vinculación FIFO con descripciones completada.", vbInformation
+    Exit Sub
+
+ErrHandler:
+    MsgBox "Error " & Err.Number & ": " & Err.Description, vbCritical
+    Resume CleanUp
+End Sub

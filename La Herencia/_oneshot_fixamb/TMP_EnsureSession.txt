@@ -1,0 +1,118 @@
+'================ basOneShotFixAmbiguous (usar 1 vez) ================
+Option Compare Database
+Option Explicit
+
+' Nombre del módulo que contiene la versión "buena"
+Private Const CANON_MODULE As String = "basTMP"
+' Cómo se va a renombrar la versión duplicada
+Private Const NEW_NAME As String = "TMP_EnsureSession_Ref"
+
+' --------- ENTRADA PRINCIPAL (Ctrl+G ? OneShot_Fix_Ambiguous_TMP_EnsureSession) ---------
+Public Sub OneShot_Fix_Ambiguous_TMP_EnsureSession_Ref()
+    On Error GoTo EH
+
+    Debug.Print "== OneShot Fix Ambiguous TMP_EnsureSession: inicio =="
+
+    Dim m As AccessObject
+    Dim fixed As Long, scanned As Long, skipped As Long
+    Dim folder As String: folder = CurrentProject.path & "\_oneshot_fixamb"
+    EnsureFolder folder
+
+    For Each m In CurrentProject.AllModules
+        scanned = scanned + 1
+        If StrComp(m.name, CANON_MODULE, vbTextCompare) = 0 Then
+            ' este es el bueno: no tocar
+        Else
+            Dim p As String, txt As String, newTxt As String
+            p = folder & "\" & m.name & ".txt"
+            Application.SaveAsText acModule, m.name, p
+            txt = ReadAllText(p)
+
+            If HasDupEnsureSession(txt) Then
+                newTxt = RenameEnsureSessionInText(txt)
+                WriteAllText p, newTxt
+                DoCmd.DeleteObject acModule, m.name
+                Application.LoadFromText acModule, m.name, p
+                fixed = fixed + 1
+                Debug.Print "  ? " & m.name & " (renombrado a " & NEW_NAME & ")"
+            Else
+                skipped = skipped + 1
+            End If
+        End If
+    Next
+
+    Debug.Print "== OneShot Fix Ambiguous TMP_EnsureSession: fin =="
+    Debug.Print "   Escaneados: "; scanned; " | Arreglados: "; fixed; " | Sin duplicado: "; skipped
+    MsgBox "Listo." & vbCrLf & _
+           "Escaneados: " & scanned & vbCrLf & _
+           "Arreglados: " & fixed & vbCrLf & _
+           "Sin duplicado: " & skipped, vbInformation
+    Exit Sub
+EH:
+    MsgBox "OneShot_Fix_Ambiguous_TMP_EnsureSession: " & Err.Number & " - " & Err.Description, vbCritical
+End Sub
+
+' ------------------------ Helpers de detección/renombrado ------------------------
+Private Function HasDupEnsureSession(ByVal s As String) As Boolean
+    Dim ls As String: ls = LCase$(s)
+    ' detecta una DEFINICIÓN de Sub TMP_EnsureSession en el texto exportado
+    HasDupEnsureSession = (InStr(ls, "Private Sub TMP_EnsureSession_Ref(") > 0 Or _
+                           InStr(ls, "Private Sub TMP_EnsureSession_Ref(") > 0 Or _
+                           InStr(ls, "Private Sub TMP_EnsureSession_Ref(") > 0)
+End Function
+
+Private Function RenameEnsureSessionInText(ByVal s As String) As String
+    Dim t As String: t = s
+
+    ' 1) Renombrar la definición (Public/Private/Sub)
+    t = ReplaceCI(t, "Private Sub TMP_EnsureSession_Ref(", "Private Sub " & NEW_NAME & "(")
+    t = ReplaceCI(t, "Private Sub TMP_EnsureSession_Ref(", "Private Sub " & NEW_NAME & "(")
+    t = ReplaceCI(t, "Private Sub TMP_EnsureSession_Ref(", "Private Sub " & NEW_NAME & "(")
+
+    ' 2) Renombrar llamadas dentro del mismo módulo
+    t = ReplaceCI(t, "Call TMP_EnsureSession_Ref(", "Call " & NEW_NAME & "(")
+    t = ReplaceCI(t, "TMP_EnsureSession_Ref(", NEW_NAME & "(")
+    ' Llamadas sin paréntesis en una línea
+    t = ReplaceCI(t, vbCrLf & "TMP_EnsureSession" & vbCrLf, vbCrLf & NEW_NAME & vbCrLf)
+    t = ReplaceCI(t, ":" & " TMP_EnsureSession" & vbCrLf, ":" & " " & NEW_NAME & vbCrLf)
+
+    RenameEnsureSessionInText = t
+End Function
+
+' ------------------------------- Utilitarios --------------------------------
+Private Sub EnsureFolder(ByVal path As String)
+    On Error Resume Next
+    If Dir(path, vbDirectory) = "" Then MkDir path
+End Sub
+
+Private Function ReadAllText(ByVal path As String) As String
+    Dim f As Integer: f = FreeFile
+    Dim s As String
+    Open path For Binary Access Read As #f
+    s = Space$(LOF(f))
+    Get #f, , s
+    Close #f
+    ReadAllText = s
+End Function
+
+Private Sub WriteAllText(ByVal path As String, ByVal s As String)
+    Dim f As Integer: f = FreeFile
+    Open path For Output As #f
+    Print #f, s
+    Close #f
+End Sub
+
+' Reemplazo case-insensitive sencillo
+Private Function ReplaceCI(ByVal text As String, ByVal find As String, ByVal repl As String) As String
+    Dim pos As Long, startAt As Long, out As String, src As String, fLen As Long
+    src = text: fLen = Len(find): startAt = 1
+    Do
+        pos = InStr(startAt, src, find, vbTextCompare)
+        If pos = 0 Then Exit Do
+        out = out & Mid$(src, 1, pos - 1) & repl
+        src = Mid$(src, pos + fLen)
+        startAt = 1
+    Loop
+    ReplaceCI = out & src
+End Function
+'====================================================================

@@ -1,0 +1,6 @@
+== PerfFix aplicado 27/05/2026 11:21:06 ==
+OK  - basUIHelpers reemplazado
+OK  - basAsignaInsumos reemplazado
+ERR - Frm OrdenTrabajo: 32584 - En la base de datos no existe actual ningún objeto con el nombre y tipo indicados.
+SKIP - sfDistribDetalle: IrASiguienteDosis no encontrada
+

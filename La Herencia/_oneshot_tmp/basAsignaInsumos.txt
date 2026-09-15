@@ -1,0 +1,101 @@
+Option Compare Database
+Option Explicit
+
+' === Prepara TMP agrupado por CULTIVO desde un IdDetalleOrden ===
+Public Sub SIA_PrepararTMP_DesdeDetalle(ByVal vIdDetalleOrden As Long)
+    Dim db As DAO.Database: Set db = CurrentDb
+    Dim rs As DAO.Recordset
+    Dim vIdOrden As Long, vIdForm As Long, vDosis As Double, vUni As String, vIdCamp As Variant
+
+    ' 1) Datos del detalle (Orden, Formulado, Dosis, Unidad)
+    Set rs = db.OpenRecordset( _
+        "SELECT OD.IdOrden, OD.IdFormulado, OD.[Dosis Teorica] AS DosisT, OD.Unidad, First(OL.IdCampaña) AS IdCamp " & _
+        "FROM (Ordenes_Detalles AS OD LEFT JOIN Ordenes_Lotes AS OL ON OD.IdOrden = OL.IdOrden) " & _
+        "WHERE OD.IdDetalleOrden=" & vIdDetalleOrden & " " & _
+        "GROUP BY OD.IdOrden, OD.IdFormulado, OD.[Dosis Teorica], OD.Unidad;")
+    If rs.EOF Then
+        MsgBox "No se encontró el detalle de la orden.", vbCritical
+        Exit Sub
+    End If
+    vIdOrden = Nz(rs!IdOrden, 0)
+    vIdForm = Nz(rs!IdFormulado, 0)
+    vDosis = Nz(rs!DosisT, 0)
+    vUni = Nz(rs!Unidad, "")
+    vIdCamp = rs!idCamp
+    rs.Close
+
+    ' 2) Limpiar TMP para este contexto
+    db.Execute "DELETE FROM TMP_AsigInsumo_Cultivo WHERE IdOrden=" & vIdOrden & " AND IdFormulado=" & vIdForm & ";", dbFailOnError
+
+    ' 3) Insertar TMP: una fila por CULTIVO, sumando superficie de lotes Aplicar=Sí
+    db.Execute _
+      "INSERT INTO TMP_AsigInsumo_Cultivo " & _
+      " (IdOrden, IdFormulado, IdCampaña, IdCultivo, SupAfectada, DosisHa, CantidadAsignada, Unidad, RedondeoEnvase, PasoMinimo) " & _
+      "SELECT OForms![Frm OrdenTrabajo]![TxtOrden], L.IdOrden, " & vIdForm & " AS IdFormulado, OL.IdCampaña, OL.IdCultivo, " & _
+      "       Sum(Nz(OL.Superficie,0)) AS SupAfectada, " & _
+      "       " & Replace(CStr(vDosis), ",", ".") & " AS DosisHa, " & _
+      "       Sum(Nz(OL.Superficie,0)) * " & Replace(CStr(vDosis), ",", ".") & " AS CantidadAsignada, " & _
+      "       '" & Replace(vUni, "'", "''") & "' AS Unidad, 0 AS RedondeoEnvase, 0 AS PasoMinimo " & _
+      "FROM Ordenes_Lotes AS OL " & _
+      "WHERE OL.IdOrden=" & vIdOrden & " AND OL.Aplicar=TRUE " & _
+      "GROUP BY OL.IdOrden, OL.IdCampaña, OL.IdCultivo;", dbFailOnError
+
+    If DCount("*", "TMP_AsigInsumo_Cultivo", "IdOrden=" & vIdOrden & " AND IdFormulado=" & vIdForm) = 0 Then
+        MsgBox "No hay cultivos/lotes marcados para aplicar en esta orden.", vbInformation
+    End If
+
+    ' 4) Contexto en TempVars (ASCII para evitar glitches)
+    TVSet "IdOrden", vIdOrden
+    If Not IsNull(vIdCamp) Then TVSet "IdCampania", vIdCamp
+    TVSet "IdFormulado", vIdForm
+    TVSet "IdDetalleOrden", vIdDetalleOrden
+End Sub
+
+' === Recalcula TMP: CantidadAsignada = SupAfectada * DosisHa ===
+Public Sub SIA_RecalcularTMP_Cantidad(Optional ByVal vIdOrden As Long = 0, Optional ByVal vIdForm As Long = 0)
+    Dim f As String
+    f = ""
+    If vIdOrden <> 0 Then f = f & IIf(f <> "", " AND ", "") & "IdOrden=" & vIdOrden
+    If vIdForm <> 0 Then f = f & IIf(f <> "", " AND ", "") & "IdFormulado=" & vIdForm
+    If f <> "" Then f = " WHERE " & f
+    CurrentDb.Execute "UPDATE TMP_AsigInsumo_Cultivo SET CantidadAsignada = Nz(DosisHa,0) * Nz(SupAfectada,0)" & f & ";", dbFailOnError
+End Sub
+
+' === Graba en Ordenes_Detalles_Distrib por lote y actualiza Total Aplicado ===
+Public Sub SIA_ConfirmarDistribucion(ByVal vIdDetalleOrden As Long)
+    Dim db As DAO.Database: Set db = CurrentDb
+    Dim rs As DAO.Recordset
+    Dim vIdOrden As Long, vIdForm As Long
+
+    Set rs = db.OpenRecordset("SELECT IdOrden, IdFormulado FROM Ordenes_Detalles WHERE IdDetalleOrden=" & vIdDetalleOrden & ";")
+    If rs.EOF Then
+        MsgBox "No se encontró el detalle de la orden.", vbCritical
+        Exit Sub
+    End If
+    vIdOrden = rs!IdOrden: vIdForm = rs!IdFormulado
+    rs.Close
+
+    Call SIA_RecalcularTMP_Cantidad(vIdOrden, vIdForm)
+
+    ' 1) Borrar distribución previa
+    db.Execute "DELETE FROM Ordenes_Detalles_Distrib WHERE IdDetalleOrden=" & vIdDetalleOrden & ";", dbFailOnError
+
+    ' 2) Insertar distribución prorrateada por LOTE
+    db.Execute _
+      "INSERT INTO Ordenes_Detalles_Distrib " & _
+      " (IdDetalleOrden, IdOrden, IdCampaña, IdCultivo, IdLote, CantidadAsignada, Unidad, Observaciones) " & _
+      "SELECT " & vIdDetalleOrden & " AS IdDetalleOrden, " & _
+      "       OL.IdOrden, OL.IdCampaña, OL.IdCultivo, OL.IdLote, " & _
+      "       IIf(Nz(T.SupAfectada,0)>0, Nz(OL.Superficie,0)/Nz(T.SupAfectada,0) * Nz(T.CantidadAsignada,0), 0) AS CantidadAsignada, " & _
+      "       T.Unidad, Null AS Observaciones " & _
+      "FROM (Ordenes_Lotes AS OL " & _
+      "INNER JOIN TMP_AsigInsumo_Cultivo AS T " & _
+      "   ON (OL.IdOrden = T.IdOrden) AND (OL.IdCampaña = T.IdCampaña) AND (OL.IdCultivo = T.IdCultivo)) " & _
+      "WHERE OL.IdOrden=" & vIdOrden & " AND OL.Aplicar=TRUE;", dbFailOnError
+
+    ' 3) Actualizar Total Aplicado en Ordenes_Detalles
+    Dim sTot As Double
+    sTot = Nz(DSum("CantidadAsignada", "Ordenes_Detalles_Distrib", "IdDetalleOrden=" & vIdDetalleOrden), 0)
+    db.Execute "UPDATE Ordenes_Detalles SET [Total Aplicado]=" & Replace(CStr(sTot), ",", ".") & _
+               " WHERE IdDetalleOrden=" & vIdDetalleOrden & ";", dbFailOnError
+End Sub

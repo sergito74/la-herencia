@@ -1,0 +1,55 @@
+' modDistribucionInsumos
+Public Function PrePoblarDetCultivo(ByVal idDet As Long, ByVal IdOrden As Long, _
+                                    Optional ByVal DosisDefault As Double = 0) As Long
+    Dim db As DAO.Database
+    Dim sql As String, n As Long
+
+    Set db = CurrentDb
+
+    ' 1) INSERT: una fila por cada (Campaña,Cultivo) con lotes Aplicar=True
+    '    (se agrupa para no duplicar si hay varios lotes del mismo par)
+    sql = _
+      "INSERT INTO Ordenes_Detalles_Cultivo " & _
+      "       (IdDetalleOrden, IdOrden, [IdCampaña], IdCultivo, Aplicar, DosisPorHa) " & _
+      "SELECT " & idDet & ", G.IdOrden, G.[IdCampaña], G.IdCultivo, True, " & _
+      Replace(CStr(Nz(DosisDefault, 0)), ",", ".") & " " & _
+      "FROM (" & _
+      "   SELECT IdOrden, [IdCampaña], IdCultivo " & _
+      "   FROM Ordenes_Lotes " & _
+      "   WHERE IdOrden=" & IdOrden & " AND Nz(Aplicar,False)<>0 " & _
+      "   GROUP BY IdOrden, [IdCampaña], IdCultivo" & _
+      ") AS G " & _
+      "WHERE NOT EXISTS (" & _
+      "   SELECT 1 FROM Ordenes_Detalles_Cultivo AS DC " & _
+      "   WHERE DC.IdDetalleOrden=" & idDet & _
+      "     AND DC.[IdCampaña]=G.[IdCampaña] " & _
+      "     AND DC.IdCultivo=G.IdCultivo);"
+
+    db.Execute sql, dbFailOnError
+    n = db.RecordsAffected            ' cantidad realmente insertada
+
+    ' 2) (Opcional) completar Superficie si el campo existe en DC
+    On Error Resume Next
+    sql = _
+      "UPDATE Ordenes_Detalles_Cultivo AS DC " & _
+      "INNER JOIN (" & _
+      "   SELECT IdOrden, [IdCampaña], IdCultivo, Sum(Superficie) AS Sup " & _
+      "   FROM Ordenes_Lotes " & _
+      "   WHERE IdOrden=" & IdOrden & " AND Nz(Aplicar,False)<>0 " & _
+      "   GROUP BY IdOrden, [IdCampaña], IdCultivo" & _
+      ") AS S ON DC.IdOrden=S.IdOrden AND DC.[IdCampaña]=S.[IdCampaña] AND DC.IdCultivo=S.IdCultivo " & _
+      "SET DC.Superficie = S.Sup " & _
+      "WHERE DC.IdDetalleOrden=" & idDet & ";"
+    db.Execute sql                    ' si el campo no existe, no pasa nada por el Resume Next
+
+    ' 3) (Opcional) calcular Cantidad = Superficie * DosisPorHa si existe el campo
+    sql = _
+      "UPDATE Ordenes_Detalles_Cultivo " & _
+      "SET Cantidad = Nz(Superficie,0) * Nz(DosisPorHa,0) " & _
+      "WHERE IdDetalleOrden=" & idDet & ";"
+    db.Execute sql                    ' idem: ignora si el campo no existe
+    On Error GoTo 0
+
+    Set db = Nothing
+    PrePoblarDetCultivo = n
+End Function

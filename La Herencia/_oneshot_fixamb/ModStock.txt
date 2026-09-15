@@ -1,0 +1,19 @@
+' ===============================
+' Funciones de ayuda para stock
+' ===============================
+Option Compare Database
+Option Explicit
+
+' ?? Devuelve el stock disponible de un producto (IdProducto = Nº REG)
+Public Function StockDispDe(idProd As Long) As Double
+    StockDispDe = Nz(DLookup("StockDisponible", _
+                              "CnsStockDisponible", _
+                              "IdProducto=" & idProd), 0)
+End Function
+
+' ?? Devuelve la descripción del producto (Marca Comercial)
+Public Function ProductoDe(idProd As Long) As String
+    ProductoDe = Nz(DLookup("Producto", _
+                             "CnsStockDisponible", _
+                             "IdProducto=" & idProd), "")
+End Function

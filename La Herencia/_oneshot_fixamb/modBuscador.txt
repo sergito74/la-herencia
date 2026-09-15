@@ -1,0 +1,107 @@
+Option Compare Database
+Option Explicit
+
+' ====== Lanzador ======
+Public Sub BuscarUsoDe(ByVal nombre As String)
+    Debug.Print "===== Buscando: " & nombre & " ====="
+    BuscarEnConsultas nombre
+    BuscarEnObjetos nombre                 ' Formularios/Reportes/Macros/Módulos
+    Debug.Print "===== Fin ====="
+End Sub
+
+' ====== Consultas (SQL de QueryDefs) ======
+Private Sub BuscarEnConsultas(ByVal needle As String)
+    Dim q As DAO.QueryDef
+    Debug.Print "== Consultas =="
+    For Each q In CurrentDb.QueryDefs
+        If InStr(1, q.sql, needle, vbTextCompare) > 0 Then
+            Debug.Print "Consulta: "; q.name
+        End If
+    Next q
+End Sub
+
+' ====== Formularios, reportes, macros y módulos guardados ======
+Private Sub BuscarEnObjetos(ByVal needle As String)
+    Dim ao As AccessObject
+    Debug.Print "== Formularios/Reportes/Macros/Módulos =="
+
+    ' Formularios
+    For Each ao In CurrentProject.AllForms
+        If ContieneObjetoTexto(acForm, ao.name, needle) Then Debug.Print "Formulario: "; ao.name
+    Next
+
+    ' Reportes
+    For Each ao In CurrentProject.AllReports
+        If ContieneObjetoTexto(acReport, ao.name, needle) Then Debug.Print "Reporte: "; ao.name
+    Next
+
+    ' Macros
+    For Each ao In CurrentProject.AllMacros
+        If ContieneObjetoTexto(acMacro, ao.name, needle) Then Debug.Print "Macro: "; ao.name
+    Next
+
+    ' Módulos (sin VBIDE): MSysObjects Type=-32761
+    Dim rs As DAO.Recordset
+    Set rs = CurrentDb.OpenRecordset("SELECT Name FROM MSysObjects WHERE Type=-32761 AND Flags=0")
+    Do While Not rs.EOF
+        If ContieneObjetoTexto(acModule, rs!name, needle) Then Debug.Print "Módulo: "; rs!name
+        rs.MoveNext
+    Loop
+    rs.Close
+End Sub
+
+' Exporta a texto temporal y busca el patrón
+Private Function ContieneObjetoTexto(ByVal objType As AcObjectType, _
+                                     ByVal objName As String, _
+                                     ByVal needle As String) As Boolean
+    Dim tmp As String, s As String
+    tmp = BuildTempPath(objType, objName)      ' << nombre sanitizado y único
+    On Error GoTo Fin
+    Application.SaveAsText objType, objName, tmp
+    s = LeerArchivoTexto(tmp)
+    If InStr(1, s, needle, vbTextCompare) > 0 Then ContieneObjetoTexto = True
+Fin:
+    On Error Resume Next
+    If Len(Dir$(tmp)) > 0 Then Kill tmp
+End Function
+
+' ====== Helpers ======
+
+' Devuelve un path temporal válido (sin \ / : * ? " < > |)
+Private Function BuildTempPath(ByVal objType As AcObjectType, ByVal objName As String) As String
+    Dim base As String
+    base = "scan_" & SanitizeFileName(objName) & "_" & CStr(objType) & "_" & Format$(Now, "yyyymmddhhnnss") & "_" & CStr(Int(Rnd * 100000)) & ".txt"
+    BuildTempPath = Environ$("TEMP") & "\" & base
+End Function
+
+Private Function SanitizeFileName(ByVal s As String) As String
+    Dim bad As Variant, i As Long
+    bad = Array("\", "/", ":", "*", "?", """", "<", ">", "|")
+    For i = LBound(bad) To UBound(bad)
+        s = Replace$(s, CStr(bad(i)), "_")
+    Next
+    ' Evitar nombres excesivos
+    If Len(s) > 60 Then s = Left$(s, 60)
+    ' Evitar nombre vacío
+    If Len(s) = 0 Then s = "obj"
+    SanitizeFileName = s
+End Function
+
+' Lectura segura (línea por línea) para evitar error 62 en archivos Unicode
+Private Function LeerArchivoTexto(ByVal path As String) As String
+    Dim f As Integer, linea As String, buf As String
+    On Error GoTo Limpia
+    f = FreeFile
+    Open path For Input Access Read As #f
+    Do While Not EOF(f)
+        Line Input #f, linea
+        buf = buf & linea & vbCrLf
+    Loop
+    Close #f
+    LeerArchivoTexto = buf
+    Exit Function
+Limpia:
+    On Error Resume Next
+    If f <> 0 Then Close #f
+    LeerArchivoTexto = ""
+End Function

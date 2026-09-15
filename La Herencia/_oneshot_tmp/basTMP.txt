@@ -1,0 +1,83 @@
+Option Compare Database
+Option Explicit
+Public Const TMP_TABLE As String = "TMP_AsigInsumo_Cultivo"
+
+
+#If VBA7 Then
+    Private Declare PtrSafe Function CoCreateGuid Lib "ole32.dll" (ByRef pguid As GUID) As Long
+#Else
+    Private Declare Function CoCreateGuid Lib "ole32.dll" (ByRef pguid As GUID) As Long
+#End If
+
+Private Type GUID
+    Data1 As Long
+    Data2 As Integer
+    Data3 As Integer
+    Data4(0 To 7) As Byte
+End Type
+
+Private Function NewSessionId() As String
+    Dim g As GUID, s As String, i As Integer
+    If CoCreateGuid(g) = 0 Then
+        s = Right$("00000000" & Hex$(g.Data1), 8) & "-" & _
+            Right$("0000" & Hex$(CUInt(g.Data2)), 4) & "-" & _
+            Right$("0000" & Hex$(CUInt(g.Data3)), 4) & "-"
+        For i = 0 To 1: s = s & Right$("00" & Hex$(g.Data4(i)), 2): Next i
+        s = s & "-"
+        For i = 2 To 7: s = s & Right$("00" & Hex$(g.Data4(i)), 2): Next i
+        NewSessionId = LCase$(s)
+    Else
+        ' Fallback simple si algo raro falla
+        Randomize
+        NewSessionId = "sid-" & Format(Now, "yyyymmddhhnnss") & "-" & Right$("000000" & Int(Rnd * 1000000#), 6)
+    End If
+End Function
+
+
+Public Sub TMP_Reset(Optional ByVal forOrden As Variant, Optional ByVal tableName As String = TMP_TABLE)
+    On Error GoTo ErrH
+    Dim db As DAO.Database: Set db = CurrentDb
+    If Not TableExists(db, tableName) Then Exit Sub
+
+    Dim td As DAO.TableDef: Set td = GetTableDefByName(db, tableName)
+    Dim hasIdOrden As Boolean: hasIdOrden = FieldExists(td, "IdOrden")
+
+    If IsMissing(forOrden) Or IsNull(forOrden) Or Not hasIdOrden Then
+        db.Execute "DELETE * FROM " & Br(tableName) & ";", dbFailOnError
+    Else
+        db.Execute "DELETE * FROM " & Br(tableName) & " WHERE IdOrden=" & CLng(forOrden) & ";", dbFailOnError
+    End If
+    Exit Sub
+ErrH:
+    MsgBox "No se pudo limpiar " & tableName & ": " & Err.Description, vbExclamation
+End Sub
+
+Public Sub TMP_EnsureSession()
+    If Not TempVars.Exists("SessionId") Then
+        TempVars.Add "SessionId", Mid(CreateObject("Scriptlet.TypeLib").GUID, 2, 36)
+    End If
+End Sub
+
+' === helpers reutilizados ===
+Private Function TableExists(ByVal db As DAO.Database, ByVal tName As String) As Boolean
+    Dim td As DAO.TableDef
+    For Each td In db.TableDefs
+        If StrComp(td.name, tName, vbTextCompare) = 0 Then TableExists = True: Exit Function
+    Next td
+End Function
+Private Function GetTableDefByName(ByVal db As DAO.Database, ByVal tName As String) As DAO.TableDef
+    Dim td As DAO.TableDef
+    For Each td In db.TableDefs
+        If StrComp(td.name, tName, vbTextCompare) = 0 Then Set GetTableDefByName = td: Exit Function
+    Next td
+    Err.Raise 3265, , "No se encontró la tabla '" & tName & "'."
+End Function
+Private Function FieldExists(ByVal td As DAO.TableDef, ByVal fldName As String) As Boolean
+    Dim f As DAO.Field
+    For Each f In td.Fields
+        If StrComp(f.name, fldName, vbTextCompare) = 0 Then FieldExists = True: Exit Function
+    Next f
+End Function
+Private Function Br(ByVal s As String) As String
+    Br = "[" & s & "]"
+End Function

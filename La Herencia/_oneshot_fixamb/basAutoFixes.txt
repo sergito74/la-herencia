@@ -1,0 +1,20 @@
+Option Compare Database
+Option Explicit
+
+' Llamá a esto desde donde quieras setear el texto mostrado en el padre
+Public Sub SetInsumoSeleccionado(ByVal s As String)
+    On Error Resume Next
+    TempVars.Remove "TxtInsumoSeleccionado"
+    On Error GoTo 0
+    TempVars.Add "TxtInsumoSeleccionado", s
+End Sub
+
+' Selector de carpeta sin referencias (por si lo necesitás en otro fix)
+Public Function PickFolder(titleText As String) As String
+    Dim fd As Object  ' FileDialog (late binding)
+    Set fd = Application.FileDialog(4) ' 4 = msoFileDialogFolderPicker
+    With fd
+        .Title = titleText
+        If .Show = -1 Then PickFolder = .SelectedItems(1)
+    End With
+End Function

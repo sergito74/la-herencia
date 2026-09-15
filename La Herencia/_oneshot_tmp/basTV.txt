@@ -1,0 +1,33 @@
+Option Compare Database
+Option Explicit
+
+' Guarda una TempVar con valor ESCALAR (número, texto, fecha, booleano, Null)
+Public Sub TVSet(ByVal tvName As String, ByVal tvValue As Variant)
+    Dim v As Variant
+    If IsObject(tvValue) Then
+        On Error Resume Next
+        v = tvValue.Value         ' si te pasan un control/objeto, toma .Value
+        If Err.Number <> 0 Then
+            v = Null              ' si no tiene .Value, guarda Null
+            Err.Clear
+        End If
+        On Error GoTo 0
+    Else
+        v = tvValue
+    End If
+
+    On Error Resume Next
+    TempVars.Remove tvName        ' evita choque si ya existía
+    On Error GoTo 0
+    TempVars.Add tvName, v
+End Sub
+
+' ¿Existe la TempVar?
+Public Function TVExists(ByVal tvName As String) As Boolean
+    On Error GoTo EH
+    Dim tmp: tmp = TempVars(tvName).Value
+    TVExists = True
+    Exit Function
+EH:
+    TVExists = False
+End Function

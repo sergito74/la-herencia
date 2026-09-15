@@ -1,0 +1,36 @@
+# Visual Studio and .NET generated output
+.vs/
+**/bin/
+**/obj/
+*.user
+*.suo
+*.psess
+*.vsp
+*.pdb
+*.cache
+
+# Local runtime and temporary output
+*.laccdb
+*.tmp
+*.log
+C:\Temp/
+
+# Real database files and local backups
+*.accdb
+*.mdb
+*.bak
+
+# Python local environments and caches
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+
+# Node dependencies and frontend build output
+node_modules/
+dist/
+coverage/
+
+# OS/editor noise
+.DS_Store
+Thumbs.db

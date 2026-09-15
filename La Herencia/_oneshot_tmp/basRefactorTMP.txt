@@ -1,0 +1,294 @@
+Option Compare Database
+Option Explicit
+
+' ========= CONFIG =========
+Private Const TARGET_TABLE As String = "TMP_AsigInsumo_Cultivo"
+Private Const IDORDEN_COL  As String = "IdOrden"
+Private Const SESSION_COL  As String = "SessionId"
+' Expresiones a inyectar en el SELECT
+Private Const IDORDEN_EXPR As String = "Forms![Frm OrdenTrabajo]![TxtOrden]"
+Private Const SESSION_EXPR As String = "TempVars!SessionId"
+
+' ========= API PÚBLICA =========
+Public Sub RefactorTMP_RunAll()
+    On Error GoTo EH
+
+    Debug.Print "== Refactor TMP: INICIO =="
+    TMP_EnsureIsolationColumns
+    TMP_EnsureSession
+
+    CreateLogTableIfNotExists
+
+    Dim totalFixed As Long, totalSkipped As Long
+    Refactor_QueryDefs_InsertTMP totalFixed, totalSkipped
+
+    Debug.Print "== Refactor TMP: FIN =="
+    Debug.Print "   Corregidos: "; totalFixed; " | Revisión manual: "; totalSkipped
+    MsgBox "Refactor TMP finalizado." & vbCrLf & _
+           "Corregidos: " & totalFixed & vbCrLf & _
+           "Revisión manual: " & totalSkipped & vbCrLf & _
+           "Revisá la tabla LOG_RefactorTMP.", vbInformation
+    Exit Sub
+EH:
+    MsgBox "RefactorTMP_RunAll: " & Err.Number & " - " & Err.Description, vbCritical
+End Sub
+
+' ========= PASO 1: asegurar columnas (versión segura) =========
+Private Sub TMP_EnsureIsolationColumns()
+    On Error GoTo EH
+    Dim db As DAO.Database: Set db = CurrentDb
+
+    If Not TableExists(db, TARGET_TABLE) Then
+        MsgBox "No se encontró la TABLA '" & TARGET_TABLE & "'. Verificá que no sea una consulta con ese nombre.", vbExclamation
+        Exit Sub
+    End If
+
+    Dim td As DAO.TableDef: Set td = GetTableDefByName(db, TARGET_TABLE)
+    Dim hasId As Boolean, hasSess As Boolean
+    hasId = FieldExists(td, IDORDEN_COL)
+    hasSess = FieldExists(td, SESSION_COL)
+
+    If Not hasId Then
+        db.Execute "ALTER TABLE " & Br(TARGET_TABLE) & " ADD COLUMN " & Br(IDORDEN_COL) & " LONG;", dbFailOnError
+        LogAction "TABLE", TARGET_TABLE, "ADD COLUMN", "", IDORDEN_COL, "OK"
+    End If
+    If Not hasSess Then
+        db.Execute "ALTER TABLE " & Br(TARGET_TABLE) & " ADD COLUMN " & Br(SESSION_COL) & " TEXT(36);", dbFailOnError
+        LogAction "TABLE", TARGET_TABLE, "ADD COLUMN", "", SESSION_COL, "OK"
+    End If
+    Exit Sub
+EH:
+    MsgBox "TMP_EnsureIsolationColumns: " & Err.Number & " - " & Err.Description, vbCritical
+End Sub
+
+' Reemplazá TODO tu TMP_EnsureSession por esto
+Public Sub TMP_EnsureSession()
+    If Not TempVarExists("SessionId") Then
+        TempVars.Add "SessionId", NewSessionId()
+    End If
+End Sub
+
+Private Function TempVarExists(ByVal name As String) As Boolean
+    Dim tv As TempVar
+    For Each tv In TempVars
+        If StrComp(tv.name, name, vbTextCompare) = 0 Then
+            TempVarExists = True
+            Exit Function
+        End If
+    Next tv
+End Function
+
+' ========= PASO 2: reescribir QueryDefs =========
+Private Sub Refactor_QueryDefs_InsertTMP(ByRef fixedCount As Long, ByRef skipCount As Long)
+    On Error GoTo EH
+    Dim db As DAO.Database: Set db = CurrentDb
+    Dim q As DAO.QueryDef, oldSQL As String, newSQL As String
+    Dim changed As Boolean, ok As Boolean
+
+    For Each q In db.QueryDefs
+        oldSQL = q.sql
+
+        If InStr(1, oldSQL, "INSERT", vbTextCompare) > 0 And _
+           (InStr(1, oldSQL, " INTO " & Br(TARGET_TABLE), vbTextCompare) > 0 Or _
+            InStr(1, oldSQL, " INTO " & TARGET_TABLE, vbTextCompare) > 0) Then
+
+            changed = False: ok = False
+            newSQL = RefactorOneInsertTMP(oldSQL, changed, ok)
+
+            If ok And changed Then
+                q.sql = newSQL
+                fixedCount = fixedCount + 1
+                LogAction "QUERYDEF", q.name, "REWRITE", Left(oldSQL, 2000), Left(newSQL, 2000), "OK"
+                Debug.Print "  ? " & q.name & " (reescrita)"
+            ElseIf Not ok Then
+                skipCount = skipCount + 1
+                LogAction "QUERYDEF", q.name, "SKIP", Left(oldSQL, 2000), "", "SIN_LISTA_DE_COLUMNAS_O_NO_COMPATIBLE"
+                Debug.Print "  • " & q.name & " (requiere revisión manual)"
+            End If
+        End If
+    Next q
+    Exit Sub
+EH:
+    MsgBox "Refactor_QueryDefs_InsertTMP: " & Err.Number & " - " & Err.Description, vbCritical
+End Sub
+
+' ========= Núcleo: reescritura segura de un INSERT =========
+Private Function RefactorOneInsertTMP(ByVal sqlText As String, ByRef changed As Boolean, ByRef ok As Boolean) As String
+    Dim u As String: u = UCase$(sqlText)
+    Dim pInsert As Long, pInto As Long, pOpen As Long, pClose As Long, pSel As Long
+    Dim colList As String, newColList As String
+    Dim inject As String
+    Dim pAfterSelect As Long
+
+    ok = False: changed = False
+    RefactorOneInsertTMP = sqlText
+
+    pInsert = InStr(1, u, "INSERT", vbTextCompare)
+    If pInsert = 0 Then Exit Function
+
+    pInto = InStr(pInsert, u, " INTO ", vbTextCompare)
+    If pInto = 0 Then Exit Function
+
+    ' validar tabla destino
+    Dim afterInto As Long: afterInto = pInto + 6
+    If Not IsTargetTableToken(Mid$(sqlText, afterInto)) Then Exit Function
+
+    ' lista de columnas obligatoria
+    pOpen = InStr(afterInto, sqlText, "(", vbTextCompare)
+    If pOpen = 0 Then Exit Function
+
+    pClose = InStr(pOpen + 1, sqlText, ")", vbTextCompare)
+    If pClose = 0 Then Exit Function
+
+    pSel = InStr(pClose + 1, u, "SELECT", vbTextCompare)
+    If pSel = 0 Then Exit Function
+
+    colList = Trim$(Mid$(sqlText, pOpen + 1, pClose - pOpen - 1))
+
+    Dim hasId As Boolean, hasSess As Boolean
+    hasId = InList(colList, IDORDEN_COL)
+    hasSess = InList(colList, SESSION_COL)
+
+    newColList = colList
+    inject = ""
+
+    If Not hasId Then
+        newColList = IDORDEN_COL & IIf(Len(newColList) > 0, ", ", "") & newColList
+        inject = IDORDEN_EXPR
+        changed = True
+    Else
+        If InStr(1, Mid$(sqlText, pSel), IDORDEN_EXPR, vbTextCompare) = 0 Then
+            inject = IDORDEN_EXPR
+            changed = True
+        End If
+    End If
+
+    If Not hasSess Then
+        newColList = SESSION_COL & ", " & newColList
+        inject = IIf(Len(inject) > 0, inject & ", ", "") & SESSION_EXPR
+        changed = True
+    Else
+        If InStr(1, Mid$(sqlText, pSel), SESSION_EXPR, vbTextCompare) = 0 Then
+            inject = IIf(Len(inject) > 0, inject & ", ", "") & SESSION_EXPR
+            changed = True
+        End If
+    End If
+
+    If Not changed Then
+        ok = True
+        Exit Function
+    End If
+
+    pAfterSelect = AfterSelectModifiers(sqlText, pSel)
+
+    Dim leftCols As String, between As String, rightSel As String
+    leftCols = Left$(sqlText, pOpen + 1)
+    between = Mid$(sqlText, pClose, pSel - pClose)      ' ) ... SELECT
+    rightSel = Mid$(sqlText, pAfterSelect)              ' lo que sigue al SELECT [...]
+
+    RefactorOneInsertTMP = leftCols & newColList & between
+    RefactorOneInsertTMP = Left$(RefactorOneInsertTMP, pAfterSelect - 1) & _
+                           inject & ", " & rightSel
+
+    ok = True
+End Function
+
+' ========= Utilitarios de parseo =========
+Private Function AfterSelectModifiers(ByVal sqlText As String, ByVal pSelect As Long) As Long
+    Dim i As Long: i = pSelect + Len("SELECT")
+    Dim u As String: u = UCase$(sqlText)
+
+    i = SkipSpaces(u, i)
+    If Mid$(u, i, 8) = "DISTINCT" Then
+        i = i + 8: i = SkipSpaces(u, i)
+    End If
+    If Mid$(u, i, 3) = "TOP" Then
+        i = i + 3: i = SkipSpaces(u, i)
+        Do While i <= Len(u) And (Mid$(u, i, 1) Like "[0-9]" Or Mid$(u, i, 1) = ".")
+            i = i + 1
+        Loop
+        i = SkipSpaces(u, i)
+        If Mid$(u, i, 7) = "PERCENT" Then i = i + 7
+        i = SkipSpaces(u, i)
+    End If
+    AfterSelectModifiers = i + 1
+End Function
+
+Private Function SkipSpaces(ByVal s As String, ByVal i As Long) As Long
+    Do While i <= Len(s) And (Mid$(s, i, 1) = " " Or Mid$(s, i, 1) = vbTab Or Mid$(s, i, 1) = vbCr Or Mid$(s, i, 1) = vbLf)
+        i = i + 1
+    Loop
+    SkipSpaces = i
+End Function
+
+Private Function IsTargetTableToken(ByVal s As String) As Boolean
+    Dim t As String: t = LCase$(Trim$(s))
+    Dim plain As String: plain = LCase$(TARGET_TABLE)
+    If Left$(t, Len(plain)) = plain Then IsTargetTableToken = True: Exit Function
+    If Left$(t, Len("[" & plain & "]")) = "[" & plain & "]" Then IsTargetTableToken = True: Exit Function
+End Function
+
+Private Function InList(ByVal csv As String, ByVal colName As String) As Boolean
+    Dim t As String: t = "," & Replace(Replace(LCase$(csv), "[", ""), "]", "") & ","
+    InList = (InStr(t, "," & LCase$(colName) & ",") > 0)
+End Function
+
+Private Function FieldExists(ByVal td As DAO.TableDef, ByVal fldName As String) As Boolean
+    Dim f As DAO.Field
+    For Each f In td.Fields
+        If StrComp(f.name, fldName, vbTextCompare) = 0 Then FieldExists = True: Exit Function
+    Next f
+End Function
+
+Private Function TableExists(ByVal db As DAO.Database, ByVal tName As String) As Boolean
+    Dim td As DAO.TableDef
+    For Each td In db.TableDefs
+        If StrComp(td.name, tName, vbTextCompare) = 0 Then TableExists = True: Exit Function
+    Next td
+End Function
+
+Private Function GetTableDefByName(ByVal db As DAO.Database, ByVal tName As String) As DAO.TableDef
+    Dim td As DAO.TableDef
+    For Each td In db.TableDefs
+        If StrComp(td.name, tName, vbTextCompare) = 0 Then Set GetTableDefByName = td: Exit Function
+    Next td
+    Err.Raise 3265, , "No se encontró la tabla '" & tName & "' en TableDefs."
+End Function
+
+Private Function Br(ByVal s As String) As String
+    Br = "[" & s & "]"
+End Function
+
+' ========= LOG =========
+Private Sub CreateLogTableIfNotExists()
+    On Error Resume Next
+    CurrentDb.Execute _
+        "CREATE TABLE LOG_RefactorTMP (" & _
+        "  WhenTS DATETIME DEFAULT Now()," & _
+        "  ObjType TEXT(20)," & _
+        "  ObjName TEXT(128)," & _
+        "  Action  TEXT(20)," & _
+        "  OldFrag LONGTEXT," & _
+        "  NewFrag LONGTEXT," & _
+        "  Status  TEXT(64)" & _
+        ");"
+End Sub
+
+Private Sub LogAction(ByVal objType As String, ByVal objName As String, _
+                      ByVal action As String, ByVal oldFrag As String, _
+                      ByVal newFrag As String, ByVal status As String)
+    On Error Resume Next
+    Dim q As String
+    q = "INSERT INTO LOG_RefactorTMP (ObjType, ObjName, Action, OldFrag, NewFrag, Status) VALUES (" & _
+        SqlLit(objType) & "," & SqlLit(objName) & "," & SqlLit(action) & "," & SqlLit(oldFrag) & "," & SqlLit(newFrag) & "," & SqlLit(status) & ");"
+    CurrentDb.Execute q
+End Sub
+
+' ========= Helper simple para strings SQL =========
+Private Function SqlLit(ByVal v As Variant) As String
+    If IsNull(v) Then
+        SqlLit = "Null"
+    Else
+        SqlLit = "'" & Replace(CStr(v), "'", "''") & "'"
+    End If
+End Function

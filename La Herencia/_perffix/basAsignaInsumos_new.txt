@@ -1,0 +1,130 @@
+Option Compare Database
+Option Explicit
+
+' SIA_PrepararTMP_DesdeDetalle
+' FIX: RecordsAffected en vez de DCount
+Public Sub SIA_PrepararTMP_DesdeDetalle(ByVal vIdDetalleOrden As Long)
+    Dim db As DAO.Database: Set db = CurrentDb
+    Dim rs As DAO.Recordset
+    Dim vIdOrden As Long, vIdForm As Long, vDosis As Double
+    Dim vUni As String, vIdCamp As Variant
+
+    Set rs = db.OpenRecordset( _
+        "SELECT OD.IdOrden, OD.IdFormulado, OD.[Dosis Teorica] AS DosisT, OD.Unidad, " & _
+        "       First(OL.[IdCampaña]) AS IdCamp " & _
+        "FROM (Ordenes_Detalles AS OD " & _
+        "      LEFT JOIN Ordenes_Lotes AS OL ON OD.IdOrden = OL.IdOrden) " & _
+        "WHERE OD.IdDetalleOrden=" & vIdDetalleOrden & " " & _
+        "GROUP BY OD.IdOrden, OD.IdFormulado, OD.[Dosis Teorica], OD.Unidad;")
+
+    If rs.EOF Then
+        rs.Close: Set db = Nothing
+        MsgBox "No se encontró el detalle de la orden.", vbCritical
+        Exit Sub
+    End If
+    vIdOrden = Nz(rs!IdOrden, 0)
+    vIdForm  = Nz(rs!IdFormulado, 0)
+    vDosis   = Nz(rs!DosisT, 0)
+    vUni     = Nz(rs!Unidad, "")
+    vIdCamp  = rs!IdCamp
+    rs.Close
+
+    db.Execute "DELETE FROM TMP_AsigInsumo_Cultivo " & _
+               "WHERE IdOrden=" & vIdOrden & " AND IdFormulado=" & vIdForm & ";", _
+               dbFailOnError
+
+    Dim sDosis As String: sDosis = Replace(CStr(vDosis), ",", ".")
+    db.Execute _
+        "INSERT INTO TMP_AsigInsumo_Cultivo " & _
+        " (IdOrden, IdFormulado, [IdCampaña], IdCultivo, SupAfectada, " & _
+        "  DosisHa, CantidadAsignada, Unidad, RedondeoEnvase, PasoMinimo) " & _
+        "SELECT " & vIdOrden & ", " & vIdForm & ", OL.[IdCampaña], OL.IdCultivo, " & _
+        "       Sum(Nz(OL.Superficie,0)) AS SupAfectada, " & _
+        "       " & sDosis & " AS DosisHa, " & _
+        "       Sum(Nz(OL.Superficie,0)) * " & sDosis & " AS CantidadAsignada, " & _
+        "       '" & Replace(vUni, "'", "''") & "' AS Unidad, " & _
+        "       0 AS RedondeoEnvase, 0 AS PasoMinimo " & _
+        "FROM Ordenes_Lotes AS OL " & _
+        "WHERE OL.IdOrden=" & vIdOrden & " AND OL.Aplicar=TRUE " & _
+        "GROUP BY OL.[IdCampaña], OL.IdCultivo;", _
+        dbFailOnError
+
+    ' FIX: RecordsAffected en vez de DCount
+    If db.RecordsAffected = 0 Then
+        Set db = Nothing
+        MsgBox "No hay cultivos/lotes marcados para aplicar en esta orden.", vbInformation
+        Exit Sub
+    End If
+
+    TVSet "IdOrden", vIdOrden
+    If Not IsNull(vIdCamp) Then TVSet "IdCampania", vIdCamp
+    TVSet "IdFormulado", vIdForm
+    TVSet "IdDetalleOrden", vIdDetalleOrden
+    Set db = Nothing
+End Sub
+
+Public Sub SIA_RecalcularTMP_Cantidad( _
+        Optional ByVal vIdOrden As Long = 0, _
+        Optional ByVal vIdForm As Long = 0)
+    Dim f As String: f = ""
+    If vIdOrden <> 0 Then f = f & IIf(f <> "", " AND ", "") & "IdOrden=" & vIdOrden
+    If vIdForm  <> 0 Then f = f & IIf(f <> "", " AND ", "") & "IdFormulado=" & vIdForm
+    If f <> "" Then f = " WHERE " & f
+    CurrentDb.Execute _
+        "UPDATE TMP_AsigInsumo_Cultivo " & _
+        "SET CantidadAsignada = Nz(DosisHa,0) * Nz(SupAfectada,0)" & f & ";", _
+        dbFailOnError
+End Sub
+
+' SIA_ConfirmarDistribucion
+' FIX: DSum eliminado, UPDATE con subquery (3 viajes en vez de 4)
+Public Sub SIA_ConfirmarDistribucion(ByVal vIdDetalleOrden As Long)
+    Dim db As DAO.Database: Set db = CurrentDb
+    Dim rs As DAO.Recordset
+    Dim vIdOrden As Long, vIdForm As Long
+
+    Set rs = db.OpenRecordset( _
+        "SELECT IdOrden, IdFormulado FROM Ordenes_Detalles " & _
+        "WHERE IdDetalleOrden=" & vIdDetalleOrden & ";")
+    If rs.EOF Then
+        rs.Close: Set db = Nothing
+        MsgBox "No se encontró el detalle.", vbCritical
+        Exit Sub
+    End If
+    vIdOrden = rs!IdOrden: vIdForm = rs!IdFormulado
+    rs.Close
+
+    Call SIA_RecalcularTMP_Cantidad(vIdOrden, vIdForm)
+
+    db.Execute _
+        "DELETE FROM Ordenes_Detalles_Distrib " & _
+        "WHERE IdDetalleOrden=" & vIdDetalleOrden & ";", dbFailOnError
+
+    db.Execute _
+        "INSERT INTO Ordenes_Detalles_Distrib " & _
+        " (IdDetalleOrden, IdOrden, [IdCampaña], IdCultivo, IdLote, " & _
+        "  CantidadAsignada, Unidad, Observaciones) " & _
+        "SELECT " & vIdDetalleOrden & ", OL.IdOrden, OL.[IdCampaña], " & _
+        "       OL.IdCultivo, OL.IdLote, " & _
+        "       IIf(Nz(T.SupAfectada,0)>0, " & _
+        "           Nz(OL.Superficie,0)/T.SupAfectada * T.CantidadAsignada, 0), " & _
+        "       T.Unidad, Null " & _
+        "FROM Ordenes_Lotes AS OL " & _
+        "INNER JOIN TMP_AsigInsumo_Cultivo AS T " & _
+        "   ON OL.IdOrden = T.IdOrden " & _
+        "  AND OL.[IdCampaña] = T.[IdCampaña] " & _
+        "  AND OL.IdCultivo = T.IdCultivo " & _
+        "WHERE OL.IdOrden=" & vIdOrden & " AND OL.Aplicar=TRUE;", dbFailOnError
+
+    ' FIX: UPDATE con subquery (elimina DSum separado)
+    db.Execute _
+        "UPDATE Ordenes_Detalles " & _
+        "SET [Total Aplicado] = " & _
+        "    (SELECT Nz(Sum(D.CantidadAsignada),0) " & _
+        "     FROM Ordenes_Detalles_Distrib AS D " & _
+        "     WHERE D.IdDetalleOrden=" & vIdDetalleOrden & ") " & _
+        "WHERE IdDetalleOrden=" & vIdDetalleOrden & ";", dbFailOnError
+
+    Set db = Nothing
+End Sub
+

@@ -1,0 +1,47 @@
+Option Compare Database
+Option Explicit
+
+' SafeRequeryCtrl: refresca el CONTROL subform (metodo correcto).
+' .Requery sobre el control respeta Link Master/Child y evita eventos extra.
+Public Sub SafeRequeryCtrl(frmPadre As Form, ctrlName As String)
+    On Error Resume Next
+    frmPadre.Controls(ctrlName).Requery
+    If Err.Number <> 0 Then
+        Err.Clear
+        Debug.Print "SafeRequeryCtrl: control '" & ctrlName & "' no encontrado en " & frmPadre.Name
+    End If
+    On Error GoTo 0
+End Sub
+
+' SafeRequerySub: compatibilidad hacia atras.
+' Solo refresca el control pedido; NO hace fallback masivo.
+Public Sub SafeRequerySub(frmPadre As Form, subName As String)
+    Call SafeRequeryCtrl(frmPadre, subName)
+End Sub
+
+Public Sub EchoOff()
+    DoCmd.Echo False
+End Sub
+
+Public Sub EchoOn()
+    DoCmd.Echo True
+    Application.Screen.Repaint
+End Sub
+
+' SetInsumoSeleccionado / PickFolder: mantenidos para compatibilidad
+Public Sub SetInsumoSeleccionado(ByVal sv As String)
+    On Error Resume Next
+    TempVars.Remove "TxtInsumoSeleccionado"
+    On Error GoTo 0
+    TempVars.Add "TxtInsumoSeleccionado", sv
+End Sub
+
+Public Function PickFolder(titleText As String) As String
+    Dim fd As Object
+    Set fd = Application.FileDialog(4)
+    With fd
+        .Title = titleText
+        If .Show = -1 Then PickFolder = .SelectedItems(1)
+    End With
+End Function
+

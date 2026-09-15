@@ -1,0 +1,18 @@
+Option Compare Database
+Option Explicit
+
+Public Sub SafeRequerySub(frmPadre As Form, subName As String)
+    On Error GoTo TryName
+    frmPadre.Controls(subName).Form.Requery
+    Exit Sub
+TryName:
+    ' Si el nombre no coincide, reconsulta todos los subforms del padre
+    Dim ctl As Control
+    For Each ctl In frmPadre.Controls
+        If ctl.ControlType = acSubform Then
+            On Error Resume Next
+            ctl.Form.Requery
+            On Error GoTo 0
+        End If
+    Next ctl
+End Sub

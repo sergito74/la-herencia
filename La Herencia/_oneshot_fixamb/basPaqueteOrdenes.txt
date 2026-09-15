@@ -1,0 +1,200 @@
+Option Compare Database
+Option Explicit
+
+' ======== API PÚBLICA ========
+
+Public Sub ImportarPaqueteOrdenes()
+    On Error GoTo ErrHandler
+    Dim folder As String
+    folder = Compat_PickFolder("Seleccioná la carpeta que contiene los .txt de consultas")
+    If Len(folder) = 0 Then
+        MsgBox "Operación cancelada.", vbInformation
+        Exit Sub
+    End If
+    
+    Dim resumen As String
+    resumen = Compat_ImportTxtQueriesFromFolder(folder)
+    
+    MsgBox "Importación finalizada:" & vbCrLf & vbCrLf & resumen, vbInformation
+    Exit Sub
+ErrHandler:
+    MsgBox "Error en ImportarPaqueteOrdenes: " & Err.Number & " - " & Err.Description, vbCritical
+End Sub
+
+' Recorre TODOS los QueryDefs y normaliza [Aplica]/[Aplicar] al que exista en tu BD
+Public Sub Compat_AplicaAplicar_FixAll()
+    On Error GoTo ErrHandler
+    Dim pref As String: pref = Compat_GetPreferredAplicaName()
+    
+    Dim db As DAO.Database: Set db = CurrentDb
+    Dim qd As DAO.QueryDef
+    Dim okCount As Long, failCount As Long, changed As Long
+    
+    For Each qd In db.QueryDefs
+        ' Saltar consultas de sistema o de paso
+        If qd.name Like "~sq_*" Or qd.name Like "~TMPCLP*" Then
+            ' nada
+        Else
+            Dim oldSQL As String: oldSQL = qd.sql
+            Dim newSQL As String: newSQL = Compat_NormalizeAplicaNamesInSQL(oldSQL, pref)
+            If newSQL <> oldSQL Then
+                On Error Resume Next
+                qd.sql = newSQL
+                If Err.Number = 0 Then
+                    okCount = okCount + 1
+                    changed = changed + 1
+                Else
+                    failCount = failCount + 1
+                End If
+                On Error GoTo ErrHandler
+            Else
+                okCount = okCount + 1
+            End If
+        End If
+    Next
+    
+    MsgBox "Compat_AplicaAplicar_FixAll listo." & vbCrLf & _
+           "Consultas tocadas: " & changed & vbCrLf & _
+           "OK: " & okCount & "  |  Errores: " & failCount, vbInformation
+    Exit Sub
+ErrHandler:
+    MsgBox "Error en Compat_AplicaAplicar_FixAll: " & Err.Number & " - " & Err.Description, vbCritical
+End Sub
+
+' ======== IMPLEMENTACIÓN ========
+
+Private Function Compat_ImportTxtQueriesFromFolder(folder As String) As String
+    Dim f As String, path As String, nameNoExt As String
+    Dim okCount As Long, failCount As Long, skipped As Long
+    Dim details As String
+    
+    f = Dir(folder & "\*.txt")
+    If Len(f) = 0 Then
+        Compat_ImportTxtQueriesFromFolder = "No se encontraron archivos .txt en: " & folder
+        Exit Function
+    End If
+    
+    Dim pref As String: pref = Compat_GetPreferredAplicaName()
+    Dim db As DAO.Database: Set db = CurrentDb
+    Dim qd As DAO.QueryDef
+    
+    Do While Len(f) > 0
+        path = folder & "\" & f
+        nameNoExt = Left$(f, Len(f) - 4)
+        
+        On Error GoTo NextFile
+        Dim rawSQL As String: rawSQL = Compat_ReadAllText(path)
+        Dim finalSQL As String
+        finalSQL = Compat_ApplyCompatToSQL(rawSQL, pref)
+        
+        ' Crear o actualizar QueryDef
+        On Error Resume Next
+        Set qd = db.QueryDefs(nameNoExt)
+        If Err.Number <> 0 Then
+            Err.Clear
+            Set qd = db.CreateQueryDef(nameNoExt, finalSQL)
+        Else
+            qd.sql = finalSQL
+        End If
+        
+        If Err.Number = 0 Then
+            okCount = okCount + 1
+            details = details & "OK  - " & nameNoExt & vbCrLf
+        Else
+            failCount = failCount + 1
+            details = details & "ERR - " & nameNoExt & " -> " & Err.Number & " - " & Err.Description & vbCrLf
+            Err.Clear
+        End If
+        On Error GoTo 0
+        
+NextFile:
+        f = Dir()
+    Loop
+    
+    Compat_ImportTxtQueriesFromFolder = "Exitos: " & okCount & " | Errores: " & failCount & vbCrLf & vbCrLf & details
+End Function
+
+Private Function Compat_ApplyCompatToSQL(sqlText As String, preferred As String) As String
+    Dim s As String: s = sqlText
+    
+    ' 1) Reemplazar placeholder explícito si existe
+    s = Replace(s, "[[APLICA_CAMPO]]", "[" & preferred & "]")
+    s = Replace(s, "[[[APLICA_CAMPO]]]", "[" & preferred & "]") ' por si lo escribieron triple
+    
+    ' 2) Normalizar referencias directas por las dudas
+    s = Compat_NormalizeAplicaNamesInSQL(s, preferred)
+    
+    Compat_ApplyCompatToSQL = s
+End Function
+
+Private Function Compat_NormalizeAplicaNamesInSQL(sqlText As String, preferred As String) As String
+    Dim s As String: s = sqlText
+    If StrComp(preferred, "Aplica", vbTextCompare) = 0 Then
+        s = Replace(s, "[Aplicar]", "[Aplica]")
+        s = Replace(s, " Aplicar ", " Aplica ")
+    Else
+        s = Replace(s, "[Aplica]", "[Aplicar]")
+        s = Replace(s, " Aplica ", " Aplicar ")
+    End If
+    Compat_NormalizeAplicaNamesInSQL = s
+End Function
+
+Private Function Compat_GetPreferredAplicaName() As String
+    ' Detecta qué campo existe realmente en tablas comunes del proyecto.
+    If Compat_FieldExists("Ordenes_Detalles", "Aplica") Then
+        Compat_GetPreferredAplicaName = "Aplica"
+        Exit Function
+    End If
+    If Compat_FieldExists("Ordenes_Detalles", "Aplicar") Then
+        Compat_GetPreferredAplicaName = "Aplicar"
+        Exit Function
+    End If
+    If Compat_FieldExists("Ordenes", "Aplica") Then
+        Compat_GetPreferredAplicaName = "Aplica"
+        Exit Function
+    End If
+    If Compat_FieldExists("Ordenes", "Aplicar") Then
+        Compat_GetPreferredAplicaName = "Aplicar"
+        Exit Function
+    End If
+    ' Fallback
+    Compat_GetPreferredAplicaName = "Aplica"
+End Function
+
+Private Function Compat_FieldExists(tbl As String, fld As String) As Boolean
+    On Error GoTo Nope
+    Dim tdf As DAO.TableDef, fd As DAO.Field
+    Set tdf = CurrentDb.TableDefs(tbl)
+    Set fd = tdf.Fields(fld)
+    Compat_FieldExists = True
+    Exit Function
+Nope:
+    Compat_FieldExists = False
+End Function
+
+Private Function Compat_ReadAllText(path As String) As String
+    Dim fh As Integer: fh = FreeFile
+    Dim s As String
+    Open path For Input As #fh
+    s = Input$(LOF(fh), fh)
+    Close #fh
+    Compat_ReadAllText = s
+End Function
+
+Private Function Compat_PickFolder(prompt As String) As String
+    On Error GoTo Fallback
+    Dim fd As FileDialog
+    Set fd = Application.FileDialog(msoFileDialogFolderPicker)
+    With fd
+        .Title = prompt
+        .AllowMultiSelect = False
+        If .Show = -1 Then
+            Compat_PickFolder = .SelectedItems(1)
+        Else
+            Compat_PickFolder = ""
+        End If
+    End With
+    Exit Function
+Fallback:
+    Compat_PickFolder = InputBox(prompt & vbCrLf & vbCrLf & "Ingresá la ruta completa:", "Seleccionar carpeta")
+End Function

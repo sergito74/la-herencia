@@ -1,0 +1,963 @@
+'================== basUIHelpers ==================
+Option Compare Database
+Option Explicit
+
+' ------------------ Utilidades generales ------------------
+
+Public Function GetIdDetalleOrden(ByVal IdOrden As Long, ByVal IdFormulado As Long) As Long
+    GetIdDetalleOrden = Nz(DLookup("IdDetalleOrden", _
+                          "Ordenes_Detalles", _
+                          "IdOrden=" & IdOrden & " AND IdFormulado=" & IdFormulado), 0)
+End Function
+
+' Convierte Double a string SQL con punto decimal
+Private Function SqlNum(ByVal d As Variant) As String
+    If IsNull(d) Then
+        SqlNum = "Null"
+    Else
+        SqlNum = Replace(CStr(CDbl(d)), ",", ".")
+    End If
+End Function
+
+' Convierte texto a literal SQL (con comillas escapadas) o Null si vacío
+Private Function sqlTxt(ByVal s As Variant) As String
+    Dim t As String
+    t = Trim$(Nz(s, vbNullString))
+    If t = vbNullString Then
+        sqlTxt = "Null"
+    Else
+        sqlTxt = "'" & Replace(t, "'", "''") & "'"
+    End If
+End Function
+
+' ¿Existe un control con ese nombre?
+Public Function ControlExists(frm As Form, ctlName As String) As Boolean
+    On Error Resume Next
+    Dim c As Control: Set c = frm.Controls(ctlName)
+    ControlExists = (Err.Number = 0)
+    Err.Clear
+End Function
+
+' Devuelve un control por nombre (o Nothing si no existe)
+Public Function TryGetControl(frm As Access.Form, ctlName As String) As Access.Control
+    On Error Resume Next
+    Set TryGetControl = frm.Controls(ctlName)
+    Err.Clear
+End Function
+
+' Busca el subform embebido por nombre de CONTROL o por SourceObject (Form.XYZ)
+Public Function TryGetSubform(frm As Access.Form, subName As String) As Control
+    Dim ctl As Control, so As String
+    If frm Is Nothing Then Exit Function
+    If LenB(Nz(subName, "")) = 0 Then Exit Function
+
+    On Error Resume Next
+    Set TryGetSubform = frm.Controls(subName)
+    If Not TryGetSubform Is Nothing Then
+        Err.Clear
+        Exit Function
+    End If
+    Err.Clear
+
+    For Each ctl In frm.Controls
+        If ctl.ControlType = acSubform Then
+            so = ctl.SourceObject
+            If LCase$(Left$(so, 5)) = "form." Then so = Mid$(so, 6)
+            If StrComp(so, subName, vbTextCompare) = 0 Then
+                Set TryGetSubform = ctl
+                Exit Function
+            End If
+        End If
+    Next ctl
+End Function
+
+' Requery seguro de un subform (no rompe si no existe)
+Public Sub SafeRequerySub(frm As Object, subCtlName As String)
+    Dim s As Control
+    Set s = TryGetSubform(frm, subCtlName)
+    If Not s Is Nothing Then
+        On Error Resume Next
+        s.Requery
+        s.Form.Requery
+        Err.Clear
+    End If
+End Sub
+
+' ------------------ Helpers de navegación ------------------
+
+' Devuelve el nombre del próximo control editable según TabIndex
+Public Function NextEditableControlName(frm As Form, cur As Control) As String
+    Dim idx As Long: idx = cur.TabIndex
+    Dim nextIdx As Long: nextIdx = 99999
+    Dim firstIdx As Long: firstIdx = 99999
+    Dim nextName As String: nextName = vbNullString
+    Dim firstName As String: firstName = vbNullString
+    Dim ctl As Control
+
+    For Each ctl In frm.Controls
+        If ctl.TabStop And ctl.Visible And ctl.Enabled Then
+            If ctl.ControlType <> acLabel Then
+                On Error Resume Next
+                If Not ctl.Locked Then
+                    If ctl.TabIndex > idx And ctl.TabIndex < nextIdx Then
+                        nextIdx = ctl.TabIndex
+                        nextName = ctl.name
+                    End If
+                    If ctl.TabIndex < firstIdx Then
+                        firstIdx = ctl.TabIndex
+                        firstName = ctl.name
+                    End If
+                End If
+                On Error GoTo 0
+            End If
+        End If
+    Next ctl
+
+    If Len(nextName) = 0 Then nextName = firstName
+    NextEditableControlName = nextName
+End Function
+
+' Mueve el foco al próximo control editable (según TabIndex)
+Public Sub MoveToNextEditable(frm As Form, fromCtl As Control)
+    Dim tgt As String
+    tgt = NextEditableControlName(frm, fromCtl)
+    If Len(tgt) > 0 Then
+        DoCmd.GoToControl tgt
+    End If
+End Sub
+
+Public Sub MoveToNextRowSameColumn(frm As Form, ctlName As String, Optional wrap As Boolean = False)
+    On Error GoTo EH
+
+    If frm.Dirty Then frm.Dirty = False
+
+    DoCmd.GoToRecord , , acNext
+    frm.Controls(ctlName).SetFocus
+    Exit Sub
+
+EH:
+    Err.Clear
+    If wrap Then
+        On Error Resume Next
+        DoCmd.GoToRecord , , acFirst
+        frm.Controls(ctlName).SetFocus
+        Exit Sub
+    End If
+
+    On Error Resume Next
+    frm.Controls(ctlName).SetFocus
+End Sub
+' ------------------ Distribución / Totales ------------------
+' Borra TODAS las filas de Distrib para un lote de una orden
+Public Sub QuitarDistribDeLote(ByVal idDet As Long, _
+                               ByVal idCamp As Long, _
+                               ByVal idCult As Long, _
+                               ByVal IdLote As Long)
+    On Error GoTo ErrH
+
+    Dim sqlDel As String
+    sqlDel = "DELETE FROM Ordenes_Detalles_Distrib " & _
+             "WHERE IdDetalleOrden=" & idDet & _
+             " AND [IdCampaña]=" & idCamp & _
+             " AND IdCultivo=" & idCult & _
+             " AND IdLote=" & IdLote
+
+    CurrentDb.Execute sqlDel, dbFailOnError
+    Exit Sub
+ErrH:
+    MsgBox "QuitarDistribDeLote: " & Err.Number & " - " & Err.Description, vbExclamation
+End Sub
+
+Public Sub Recalc_TotalAplicado(ByVal idDet As Long)
+    On Error GoTo ErrH
+    Dim db As DAO.Database: Set db = CurrentDb
+    Dim Total As Double
+
+    Total = Nz(DSum("CantidadAsignada", "Ordenes_Detalles_Distrib", _
+                    "IdDetalleOrden=" & idDet), 0)
+
+    db.Execute _
+        "UPDATE Ordenes_Detalles " & _
+        "SET [Total Aplicado]=" & SqlNum(Total) & " " & _
+        "WHERE IdDetalleOrden=" & idDet & ";", _
+        dbFailOnError
+    Exit Sub
+ErrH:
+    MsgBox "Recalc_TotalAplicado: " & Err.Number & " - " & Err.Description, vbExclamation
+End Sub
+
+'=========================================================
+' RecalcTotalAplicado_SF
+'=========================================================
+Public Sub RecalcTotalAplicado_SF(ByVal idDet As Long)
+    On Error GoTo ErrH
+
+    If idDet <= 0 Then Exit Sub
+
+    Dim db As DAO.Database
+    Set db = CurrentDb
+
+    ' Asegura tabla TEMP local (Access) para el cálculo
+    EnsureTmpTotalesAplicado
+
+    ' Limpio e inserto el total calculado (solo 1 fila)
+    db.Execute "DELETE FROM TMP_TotalesAplicado;", dbFailOnError
+
+    db.Execute _
+        "INSERT INTO TMP_TotalesAplicado (IdDetalleOrden, TotalAplicado) " & _
+        "SELECT " & idDet & " AS IdDetalleOrden, Nz(Sum(CantidadAsignada),0) AS TotalAplicado " & _
+        "FROM Ordenes_Detalles_Distrib " & _
+        "WHERE IdDetalleOrden=" & idDet & ";", _
+        dbFailOnError
+
+    ' UPDATE con JOIN a tabla local => actualizable (aunque Ordenes_Detalles sea ODBC)
+    db.Execute _
+        "UPDATE Ordenes_Detalles AS D " & _
+        "INNER JOIN TMP_TotalesAplicado AS T ON D.IdDetalleOrden = T.IdDetalleOrden " & _
+        "SET D.[Total Aplicado] = Nz(T.TotalAplicado,0) " & _
+        "WHERE D.IdDetalleOrden=" & idDet & ";", _
+        dbFailOnError
+
+    Exit Sub
+
+ErrH:
+    MsgBox "RecalcTotalAplicado_SF: " & Err.Number & " - " & Err.Description, vbCritical
+End Sub
+' Redondeo uniforme a 1 decimal (si necesitás otro paso, cambialo)
+Private Function r1(ByVal v As Variant) As Double
+    r1 = Round(CDbl(Nz(v, 0)), 1)
+End Function
+
+Public Sub Distrib_Proporcional_PorDetalle( _
+        ByVal IdDetalleOrden As Long, _
+        ByVal totalReal As Double, _
+        Optional ByVal PasoRedondeo As Double = 0)
+
+    On Error GoTo ErrH
+
+    If IdDetalleOrden <= 0 Then Exit Sub
+
+    Dim db As DAO.Database
+    Dim qdf As DAO.QueryDef
+    Dim sql As String
+    Dim cn As String
+
+    Set db = CurrentDb
+
+    cn = CurrentDb.TableDefs("Ordenes_Detalles_Distrib").Connect
+
+    sql = "EXEC dbo.sp_Distrib_Proporcional_PorDetalle " & _
+          "@IdDetalleOrden = " & IdDetalleOrden & ", " & _
+          "@TotalReal = " & SqlNum(totalReal) & ", " & _
+          "@PasoRedondeo = " & SqlNum(PasoRedondeo) & ";"
+
+    Set qdf = db.CreateQueryDef("")
+    qdf.Connect = cn
+    qdf.sql = sql
+    qdf.ReturnsRecords = False
+    qdf.Execute dbFailOnError
+
+Salir:
+    On Error Resume Next
+    Set qdf = Nothing
+    Set db = Nothing
+    Exit Sub
+
+ErrH:
+    MsgBox "Distrib_Proporcional_PorDetalle - Error " & Err.Number & ": " & Err.Description, vbExclamation
+    Resume Salir
+End Sub
+' === Unidades: setear para todo el detalle ===
+Public Sub SetUnidadDetalle(ByVal idDet As Long, ByVal Unidad As String)
+    On Error GoTo ErrH
+
+    If idDet <= 0 Then Exit Sub
+    If Len(Trim$(Unidad)) = 0 Then Exit Sub
+
+    Dim db As DAO.Database
+    Set db = CurrentDb
+
+    db.Execute _
+        "UPDATE Ordenes_Detalles_Distrib " & _
+        "SET Unidad = " & sqlTxt(UCase$(Trim$(Unidad))) & " " & _
+        "WHERE IdDetalleOrden = " & idDet & ";", _
+        dbFailOnError Or dbSeeChanges
+
+    Set db = Nothing
+    Exit Sub
+
+ErrH:
+    MsgBox "SetUnidadDetalle: " & Err.Number & " - " & Err.Description, vbExclamation
+End Sub
+
+' Devuelve el nombre EXACTO del campo clave en Formulados (Nº REG / N° REG / NO REG).
+Private Function FU_KeyFieldName() As String
+    Dim tdf As DAO.TableDef, fld As DAO.Field
+    Dim nm As String, canon As String
+    On Error GoTo fin
+
+    Set tdf = CurrentDb.TableDefs("Formulados")
+    For Each fld In tdf.Fields
+        nm = fld.name
+        ' Normalizo para comparar: quito º y °, y espacios dobles
+        canon = Replace(Replace(UCase$(nm), "º", ""), "°", "")
+        canon = Replace(canon, "  ", " ")
+        If InStr(1, canon, "N REG", vbTextCompare) > 0 _
+           Or InStr(1, canon, "NO REG", vbTextCompare) > 0 _
+           Or InStr(1, canon, "N° REG", vbTextCompare) > 0 Then
+            FU_KeyFieldName = "[" & nm & "]"
+            Exit Function
+        End If
+    Next
+fin:
+End Function
+
+
+' Devuelve la UNIDAD para un IdFormulado (OD.IdFormulado), con fallback "KGS".
+Public Function GetUnidad(ByVal idForm As Variant) As String
+    Dim v As Variant, keyFld As String
+    GetUnidad = "KGS"                       ' default para Semillas/Fertilizantes/no hallado
+
+    If IsNull(idForm) Or Len(Trim$(Nz(idForm, ""))) = 0 Then Exit Function
+
+    keyFld = FU_KeyFieldName()
+    If Len(keyFld) = 0 Then keyFld = "[Nº REG]"  ' por si no lo detecta, usa el habitual
+
+    ' 1) Intento NUMÉRICO (sin comillas). Protegido ante 3464.
+    On Error Resume Next
+    If IsNumeric(idForm) Then
+        v = DLookup("UNIDAD", "Formulados", keyFld & "=" & CLng(idForm))
+        If Err.Number <> 0 Then
+            Err.Clear
+            v = Null
+        End If
+    End If
+    On Error GoTo 0
+
+    ' 2) Si no encontró, intento TEXTO (con comillas y escapando).
+    If IsNull(v) Or Len(Trim$(v & "")) = 0 Then
+        On Error Resume Next
+        v = DLookup("UNIDAD", "Formulados", _
+                    keyFld & "='" & Replace(CStr(idForm), "'", "''") & "'")
+        If Err.Number <> 0 Then
+            Err.Clear
+            v = Null
+        End If
+        On Error GoTo 0
+    End If
+
+    If Not IsNull(v) Then
+        v = UCase$(Trim$(v & ""))
+        If Len(v) > 0 Then GetUnidad = v
+    End If
+End Function
+
+' ================== UNIDADES - MOTOR UNIFICADO ==================
+' Usa:
+'   - Unidad_Rules(Patron, Destino) para sinónimos (kg, kgs, kilo -> KGS)
+'   - UnidadesMedida(Unidad, Nombre, Tipo) para códigos canónicos
+
+' Helper local de comillas (no choca con SqlTxt)
+Private Function QUM(ByVal s As String) As String
+    QUM = "'" & Replace(Nz(s, ""), "'", "''") & "'"
+End Function
+
+Public Function Unidad_ResolverCanon(ByVal uRaw As Variant) As String
+    On Error GoTo EH
+    
+    Dim t As String
+    Dim sql As String
+    Dim rs As DAO.Recordset
+    
+    t = UCase$(Trim$(Nz(uRaw, "")))
+    If t = "" Or t = "-" Or t = "–" Then Exit Function
+    
+    ' 1) Si ya existe como código directo en UnidadesMedida, usarlo
+    If DCount("*", "UnidadesMedida", "Unidad=" & QUM(t)) > 0 Then
+        Unidad_ResolverCanon = t
+        Exit Function
+    End If
+    
+    ' 2) Buscar regla en Unidad_Rules:  't' LIKE Patrón
+    sql = "SELECT TOP 1 Destino " & _
+          "FROM Unidad_Rules " & _
+          "WHERE " & QUM(t) & " LIKE Patron " & _
+          "ORDER BY Len(Patron) DESC, Patron;"
+    
+    ' FIX SQL Server IDENTITY: dbSeeChanges
+    Set rs = CurrentDb.OpenRecordset(sql, dbOpenSnapshot, dbSeeChanges)
+    If Not rs.EOF Then
+        Unidad_ResolverCanon = Nz(rs!Destino, "")
+        rs.Close
+        Exit Function
+    End If
+    rs.Close
+    
+    ' 3) Fallback
+    Unidad_ResolverCanon = t
+    Exit Function
+    
+EH:
+    On Error Resume Next
+    If Not rs Is Nothing Then rs.Close
+    Unidad_ResolverCanon = ""
+End Function
+' Inserta una unidad canónica en UnidadesMedida si no existe
+' uniCodigo: código corto (KGS, LTS, TON, BDN, etc.)
+' uniNombre: descripción legible (puede ser lo que escribió el usuario)
+' uniTipo  : "Masa", "Volumen", "Conteo", etc.
+Public Sub Unidad_AgregarSiNoExiste(ByVal uniCodigo As String, _
+                                    ByVal uniNombre As String, _
+                                    Optional ByVal uniTipo As String = "")
+    Dim existe As Long
+    Dim sql As String
+    
+    uniCodigo = UCase$(Trim$(Nz(uniCodigo, "")))
+    If uniCodigo = "" Then Exit Sub
+    
+    existe = DCount("*", "UnidadesMedida", "Unidad=" & QUM(uniCodigo))
+    If existe = 0 Then
+        sql = "INSERT INTO UnidadesMedida (Unidad, Nombre, Tipo) VALUES (" & _
+              QUM(uniCodigo) & ", " & _
+              QUM(IIf(uniNombre = "", uniCodigo, uniNombre)) & ", " & _
+              IIf(uniTipo = "", "Null", QUM(uniTipo)) & ");"
+        CurrentDb.Execute sql, dbFailOnError
+    End If
+End Sub
+
+' === Compatibilidad histórica: wrapper viejo que ahora usa Unidad_ResolverCanon ===
+Public Function MapUnidadCompat(ByVal uRaw As Variant) As String
+    Dim canon As String
+    canon = Unidad_ResolverCanon(uRaw)
+    
+    If canon = "" Then
+        MapUnidadCompat = "UN"   ' fallback definitivo
+    Else
+        MapUnidadCompat = canon
+    End If
+End Function
+
+' === Devuelve unidad canónica partiendo del IdFormulado (tabla Formulados) ===
+' Usa la UNIDAD del maestro y la pasa por MapUnidadCompat (-> Unidad_ResolverCanon)
+Public Function GetUnidadCompatById(ByVal idForm As Variant) As String
+    Dim keyFld As String, v As Variant
+    GetUnidadCompatById = "KGS"                         ' fallback si no existe el formulado
+
+    If IsNull(idForm) Or Len(Trim$(Nz(idForm, ""))) = 0 Then Exit Function
+
+    keyFld = FU_KeyFieldName()
+    If Len(keyFld) = 0 Then keyFld = "[Nº REG]"         ' por si no lo detecta
+
+    On Error Resume Next
+    ' Intento numérico
+    If IsNumeric(idForm) Then
+        v = DLookup("UNIDAD", "Formulados", keyFld & "=" & CLng(idForm))
+    Else
+        v = DLookup("UNIDAD", "Formulados", keyFld & "='" & Replace(CStr(idForm), "'", "''") & "'")
+    End If
+    If Err.Number <> 0 Then Err.Clear: v = Null
+    On Error GoTo 0
+
+    If Not IsNull(v) Then
+        GetUnidadCompatById = MapUnidadCompat(v)
+    End If
+End Function
+Public Sub ScanQueriesKardex()
+    Dim qd As DAO.QueryDef, s As String
+    Debug.Print String(120, "-")
+    Debug.Print "Candidatas para Kardex (Remitos / Ordenes / Distrib / Saldo / Consumo)"
+    Debug.Print String(120, "-")
+
+    For Each qd In CurrentDb.QueryDefs
+        If Left$(qd.name, 4) <> "~sq_" And Left$(qd.name, 4) <> "MSys" Then
+            s = qd.sql
+            If InStr(1, s, "Remitos", vbTextCompare) > 0 _
+            Or InStr(1, s, "Ordenes", vbTextCompare) > 0 _
+            Or InStr(1, s, "Ordenes_Detalles_Distrib", vbTextCompare) > 0 _
+            Or InStr(1, s, "Saldo", vbTextCompare) > 0 _
+            Or InStr(1, s, "Consumo", vbTextCompare) > 0 Then
+                Debug.Print qd.name
+            End If
+        End If
+    Next qd
+End Sub
+Public Function SqlListParams(ByVal sSQL As String) As String
+    On Error GoTo Salida
+
+    Dim qd As DAO.QueryDef
+    Dim p As DAO.Parameter
+    Dim s As String
+
+    Set qd = CurrentDb.CreateQueryDef("", sSQL)
+
+    For Each p In qd.Parameters
+        If Len(s) > 0 Then s = s & ", "
+        s = s & p.name
+    Next
+
+    SqlListParams = s
+
+Salida:
+    On Error Resume Next
+    Set qd = Nothing
+End Function
+Public Function CheckSQLParamsOrStop(ByVal sSQL As String, ByVal label As String) As Boolean
+    Dim p As String
+    p = Nz(SqlListParams(sSQL), "")
+
+    Debug.Print "----------------------------"
+    Debug.Print label
+    Debug.Print sSQL
+    Debug.Print "PARAMS: " & p
+
+    If Len(p) > 0 Then
+        MsgBox "SQL con parámetros NO resueltos (" & label & "): " & p, vbExclamation
+        CheckSQLParamsOrStop = False
+        Exit Function
+    End If
+
+    CheckSQLParamsOrStop = True
+End Function
+
+
+Public Function CheckQueryParamsOrStop(ByVal queryName As String, ByVal label As String) As Boolean
+    On Error GoTo EH
+
+    Dim qd As DAO.QueryDef
+    Set qd = CurrentDb.QueryDefs(queryName)
+
+    Dim p As DAO.Parameter
+    Dim s As String
+    Dim nm As String
+
+    For Each p In qd.Parameters
+        nm = Nz(p.name, "")
+
+        If InStr(1, nm, "TempVars!", vbTextCompare) > 0 _
+        Or InStr(1, nm, "Forms!", vbTextCompare) > 0 _
+        Or InStr(1, nm, "Reports!", vbTextCompare) > 0 Then
+            ' ignorar
+        Else
+            If Len(s) > 0 Then s = s & ", "
+            s = s & nm
+        End If
+    Next
+
+    Debug.Print "----------------------------"
+    Debug.Print label & " (QueryDef)"
+    Debug.Print "QUERY: " & queryName
+    Debug.Print "PARAMS (no ignorados): " & s
+
+    If Len(s) > 0 Then
+        MsgBox "Consulta guardada con parámetros NO resueltos (" & label & "): " & s, vbExclamation
+        CheckQueryParamsOrStop = False
+        Exit Function
+    End If
+
+    CheckQueryParamsOrStop = True
+    Exit Function
+
+EH:
+    MsgBox "Error leyendo parámetros de QueryDef (" & queryName & "): " & Err.Number & " - " & Err.Description, vbExclamation
+    CheckQueryParamsOrStop = False
+End Function
+
+Public Function OpenSnapSafe(ByVal sSQL As String, ByVal label As String) As DAO.Recordset
+    On Error GoTo EH
+
+    Dim p As String
+    p = Nz(SqlListParams(sSQL), "")
+
+    ' Si Access detecta "parámetros" acá, son NOMBRES mal escritos (campos/alias/tablas)
+    If Len(p) > 0 Then
+        MsgBox "SQL con parámetros NO resueltos (" & label & "): " & p, vbExclamation
+        Debug.Print "----------------------------"
+        Debug.Print label
+        Debug.Print sSQL
+        Debug.Print "PARAMS: " & p
+        Set OpenSnapSafe = Nothing
+        Exit Function
+    End If
+
+    ' FIX SQL Server IDENTITY: dbSeeChanges
+    Set OpenSnapSafe = CurrentDb.OpenRecordset(sSQL, dbOpenSnapshot, dbSeeChanges)
+    Exit Function
+
+EH:
+    MsgBox "Error en OpenSnapSafe (" & label & "): " & Err.Number & " - " & Err.Description, vbExclamation
+    Debug.Print "----------------------------"
+    Debug.Print "ERROR en " & label
+    Debug.Print sSQL
+    Debug.Print "PARAMS: " & Nz(SqlListParams(sSQL), "")
+    Set OpenSnapSafe = Nothing
+End Function
+Public Function OpenSnapQuerySafe(ByVal queryName As String, ByVal label As String) As DAO.Recordset
+    On Error GoTo EH
+
+    Debug.Print "----------------------------"
+    Debug.Print "OpenSnapQuerySafe: " & label & " | " & queryName
+
+    ' FIX SQL Server IDENTITY: dbSeeChanges
+    Set OpenSnapQuerySafe = CurrentDb.OpenRecordset(queryName, dbOpenSnapshot, dbSeeChanges)
+    Exit Function
+
+EH:
+    Dim qd As DAO.QueryDef
+    Dim prm As DAO.Parameter
+    Dim sAll As String
+    Dim nm As String
+
+    On Error Resume Next
+    Set qd = CurrentDb.QueryDefs(queryName)
+    On Error GoTo 0
+
+    If Not qd Is Nothing Then
+        For Each prm In qd.Parameters
+            nm = Nz(prm.name, "")
+            If Len(sAll) > 0 Then sAll = sAll & ", "
+            sAll = sAll & nm
+        Next prm
+    End If
+
+    Debug.Print "----------------------------"
+    Debug.Print "ERROR OpenSnapQuerySafe: " & label
+    Debug.Print "QUERY: " & queryName
+    If Not qd Is Nothing Then Debug.Print "QD.SQL: " & qd.sql
+    Debug.Print "PARAMS (TODOS): " & sAll
+    Debug.Print "TempVars tvIdDestino=" & Nz(TempVars("tvIdDestino"), "NULL")
+    Debug.Print "TempVars tvidDestino=" & Nz(TempVars("tvidDestino"), "NULL")
+    Debug.Print "TempVars tvIdCampana=" & Nz(TempVars("tvIdCampana"), "NULL")
+    Debug.Print "TempVars tvidCampana=" & Nz(TempVars("tvidCampana"), "NULL")
+    Debug.Print "TempVars tvSupHa=" & Nz(TempVars("tvSupHa"), "NULL")
+
+    MsgBox "Error abriendo consulta (" & label & "): " & Err.Number & " - " & Err.Description & vbCrLf & _
+           "Parámetros (todos): " & sAll, vbExclamation
+
+    Set OpenSnapQuerySafe = Nothing
+End Function
+Public Function OpenSnapQueryWithTempVarsSafe(ByVal queryName As String, ByVal label As String) As DAO.Recordset
+    On Error GoTo EH
+
+    Dim qd As DAO.QueryDef
+    Set qd = CurrentDb.QueryDefs(queryName)
+
+    ' En DAO estos TempVars aparecen como Parameters y hay que asignarlos
+    On Error Resume Next
+    qd.Parameters.Refresh
+    qd.Parameters("TempVars![tvIdDestino]").value = TempVars("tvIdDestino")
+    qd.Parameters("TempVars![tvIdCampana]").value = TempVars("tvIdCampana")
+    qd.Parameters("TempVars!tvSupHa").value = TempVars("tvSupHa")
+    On Error GoTo EH
+
+    ' FIX SQL Server IDENTITY: dbSeeChanges
+    Set OpenSnapQueryWithTempVarsSafe = qd.OpenRecordset(dbOpenSnapshot, dbSeeChanges)
+    Exit Function
+
+EH:
+    MsgBox "Error abriendo consulta (" & label & "): " & Err.Number & " - " & Err.Description & vbCrLf & _
+           "QUERY: " & queryName, vbExclamation
+    Set OpenSnapQueryWithTempVarsSafe = Nothing
+End Function
+Public Sub ListarReferenciasATabla(ByVal tableName As String)
+    Dim db As DAO.Database
+    Dim qd As DAO.QueryDef
+    Dim s As String
+
+    Set db = CurrentDb
+
+    Debug.Print "=============================="
+    Debug.Print "REFERENCIAS A TABLA: " & tableName
+    Debug.Print "=============================="
+
+    For Each qd In db.QueryDefs
+        ' Ignorar temporales / de sistema
+        If Left$(qd.name, 1) <> "~" And Left$(qd.name, 4) <> "MSys" Then
+            s = Nz(qd.sql, "")
+            If InStr(1, s, tableName, vbTextCompare) > 0 Then
+                Debug.Print qd.name
+            End If
+        End If
+    Next
+
+    Set db = Nothing
+End Sub
+
+Public Sub ListarReferenciasEnObjetos(ByVal tableName As String)
+    Dim ao As AccessObject
+    Dim obj As Object
+    Dim prop As Property
+    Dim s As String
+
+    Debug.Print "=============================="
+    Debug.Print "REFERENCIAS EN FORMS/REPORTS: " & tableName
+    Debug.Print "=============================="
+
+    ' Forms
+    For Each ao In CurrentProject.AllForms
+        DoCmd.OpenForm ao.name, acDesign, , , , acHidden
+        Set obj = Forms(ao.name)
+
+        s = Nz(obj.RecordSource, "")
+        If InStr(1, s, tableName, vbTextCompare) > 0 Then
+            Debug.Print "FORM RecordSource: "; ao.name
+        End If
+
+        ' Controles (combos/listas)
+        Dim ctl As Control
+        For Each ctl In obj.Controls
+            If ctl.ControlType = acComboBox Or ctl.ControlType = acListBox Then
+                s = Nz(ctl.RowSource, "")
+                If InStr(1, s, tableName, vbTextCompare) > 0 Then
+                    Debug.Print "FORM RowSource: "; ao.name; " -> "; ctl.name
+                End If
+            End If
+        Next ctl
+
+        DoCmd.Close acForm, ao.name, acSaveNo
+    Next ao
+
+    ' Reports (solo RecordSource; controles es más pesado)
+    For Each ao In CurrentProject.AllReports
+        DoCmd.OpenReport ao.name, acViewDesign, , , acHidden
+        Set obj = Reports(ao.name)
+
+        s = Nz(obj.RecordSource, "")
+        If InStr(1, s, tableName, vbTextCompare) > 0 Then
+            Debug.Print "REPORT RecordSource: "; ao.name
+        End If
+
+        DoCmd.Close acReport, ao.name, acSaveNo
+    Next ao
+End Sub
+Public Sub ReemplazarQuerySQL(ByVal qName As String, ByVal sqlText As String)
+    On Error GoTo EH
+
+    Dim db As DAO.Database
+    Set db = CurrentDb
+
+    ' Borra si existe
+    On Error Resume Next
+    db.QueryDefs.Delete qName
+    On Error GoTo EH
+
+    ' Crea de nuevo
+    db.CreateQueryDef qName, sqlText
+
+    MsgBox "OK. Consulta guardada: " & qName, vbInformation
+    Exit Sub
+
+EH:
+    MsgBox "ERROR " & Err.Number & vbCrLf & Err.Description, vbExclamation, "Guardar query por DAO"
+End Sub
+Public Sub EnsureTmpTotalesAplicado()
+    On Error GoTo EH
+
+    Dim db As DAO.Database
+    Dim tdf As DAO.TableDef
+
+    Set db = CurrentDb
+
+    On Error Resume Next
+    Set tdf = db.TableDefs("TMP_TotalesAplicado")
+    On Error GoTo EH
+
+    If tdf Is Nothing Then
+        db.Execute _
+            "CREATE TABLE TMP_TotalesAplicado (" & _
+            " IdDetalleOrden LONG CONSTRAINT PK_TMP_TotalesAplicado PRIMARY KEY, " & _
+            " TotalAplicado DOUBLE" & _
+            ");", _
+            dbFailOnError
+    End If
+
+    Exit Sub
+
+EH:
+    MsgBox "EnsureTmpTotalesAplicado: " & Err.Number & " - " & Err.Description, vbExclamation
+End Sub
+
+Public Function LookupLong_SF(ByVal fieldName As String, ByVal tableName As String, ByVal criteria As String, Optional ByVal defaultValue As Long = 0) As Long
+    On Error GoTo EH
+    Dim rs As DAO.Recordset
+    Dim sql As String
+
+    sql = "SELECT TOP 1 " & fieldName & " AS V FROM " & tableName & " WHERE " & criteria & ";"
+    Set rs = CurrentDb.OpenRecordset(sql, dbOpenSnapshot, dbSeeChanges)
+
+    If rs.EOF Then
+        LookupLong_SF = defaultValue
+    Else
+        LookupLong_SF = Nz(rs!v, defaultValue)
+    End If
+
+    rs.Close
+    Set rs = Nothing
+    Exit Function
+
+EH:
+    LookupLong_SF = defaultValue
+End Function
+
+
+Public Function LookupDbl_SF(ByVal fieldName As String, ByVal tableName As String, ByVal criteria As String, Optional ByVal defaultValue As Double = 0) As Double
+    On Error GoTo EH
+    Dim rs As DAO.Recordset
+    Dim sql As String
+
+    sql = "SELECT TOP 1 " & fieldName & " AS V FROM " & tableName & " WHERE " & criteria & ";"
+    Set rs = CurrentDb.OpenRecordset(sql, dbOpenSnapshot, dbSeeChanges)
+
+    If rs.EOF Then
+        LookupDbl_SF = defaultValue
+    Else
+        LookupDbl_SF = Nz(rs!v, defaultValue)
+    End If
+
+    rs.Close
+    Set rs = Nothing
+    Exit Function
+
+EH:
+    LookupDbl_SF = defaultValue
+End Function
+
+
+Public Function LookupTxt_SF(ByVal fieldName As String, ByVal tableName As String, ByVal criteria As String, Optional ByVal defaultValue As String = "") As String
+    On Error GoTo EH
+    Dim rs As DAO.Recordset
+    Dim sql As String
+
+    sql = "SELECT TOP 1 " & fieldName & " AS V FROM " & tableName & " WHERE " & criteria & ";"
+    Set rs = CurrentDb.OpenRecordset(sql, dbOpenSnapshot, dbSeeChanges)
+
+    If rs.EOF Then
+        LookupTxt_SF = defaultValue
+    Else
+        LookupTxt_SF = Nz(rs!v, defaultValue)
+    End If
+
+    rs.Close
+    Set rs = Nothing
+    Exit Function
+
+EH:
+    LookupTxt_SF = defaultValue
+End Function
+Public Sub BuscarContenedoresDeFormulario(ByVal formHijo As String)
+    Dim ao As AccessObject
+    Dim frm As Form
+    Dim ctl As Control
+    Dim hit As Long
+
+    For Each ao In CurrentProject.AllForms
+        DoCmd.OpenForm ao.name, acDesign, , , acFormReadOnly, acHidden
+        Set frm = Forms(ao.name)
+
+        For Each ctl In frm.Controls
+            If ctl.ControlType = acSubform Then
+                If InStr(1, Nz(ctl.SourceObject, ""), "Form." & formHijo, vbTextCompare) > 0 _
+                Or InStr(1, Nz(ctl.SourceObject, ""), "Formulario." & formHijo, vbTextCompare) > 0 _
+                Or InStr(1, Nz(ctl.SourceObject, ""), formHijo, vbTextCompare) > 0 Then
+                    Debug.Print "HIT | Padre:", ao.name, "| Control:", ctl.name, "| SourceObject:", ctl.SourceObject
+                    hit = hit + 1
+                End If
+            End If
+        Next ctl
+
+        DoCmd.Close acForm, ao.name, acSaveNo
+    Next ao
+
+    Debug.Print "TOTAL HITS:", hit
+End Sub
+Public Sub AuditarReferenciasEnFormulario(ByVal formName As String, ByVal needle As String)
+    Dim frm As Form
+    Dim ctl As Control
+    Dim hit As Long
+
+    DoCmd.OpenForm formName, acDesign, , , acFormReadOnly, acHidden
+    Set frm = Forms(formName)
+
+    If InStr(1, Nz(frm.RecordSource, ""), needle, vbTextCompare) > 0 Then
+        Debug.Print "FORM RecordSource HIT:", formName
+        Debug.Print frm.RecordSource
+        hit = hit + 1
+    End If
+    If InStr(1, Nz(frm.Filter, ""), needle, vbTextCompare) > 0 Then
+        Debug.Print "FORM Filter HIT:", formName, "|", frm.Filter
+        hit = hit + 1
+    End If
+    If InStr(1, Nz(frm.OrderBy, ""), needle, vbTextCompare) > 0 Then
+        Debug.Print "FORM OrderBy HIT:", formName, "|", frm.OrderBy
+        hit = hit + 1
+    End If
+
+    For Each ctl In frm.Controls
+        On Error Resume Next
+        If InStr(1, Nz(ctl.ControlSource, ""), needle, vbTextCompare) > 0 Then
+            Debug.Print "CTL ControlSource HIT:", ctl.name, "|", ctl.ControlSource
+            hit = hit + 1
+        End If
+        If InStr(1, Nz(ctl.RowSource, ""), needle, vbTextCompare) > 0 Then
+            Debug.Print "CTL RowSource HIT:", ctl.name
+            Debug.Print ctl.RowSource
+            hit = hit + 1
+        End If
+        On Error GoTo 0
+    Next ctl
+
+    DoCmd.Close acForm, formName, acSaveNo
+    Debug.Print "TOTAL HITS:", hit
+End Sub
+Public Function AgregarInsumoOrdenSQL( _
+    ByVal IdOrden As Long, _
+    ByVal IdFormulado As Long, _
+    ByVal UnidadElegida As String) As Long
+
+    On Error GoTo ErrH
+
+    Dim db As DAO.Database
+    Dim qdf As DAO.QueryDef
+    Dim rs As DAO.Recordset
+    Dim sql As String
+    Dim cn As String
+    Dim u As String
+
+    AgregarInsumoOrdenSQL = 0
+
+    If IdOrden <= 0 Then Exit Function
+    If IdFormulado <= 0 Then Exit Function
+
+    u = Replace(UCase$(Trim$(Nz(UnidadElegida, ""))), "'", "''")
+    If Len(u) = 0 Then u = "UN"
+
+    Set db = CurrentDb
+    cn = CurrentDb.TableDefs("Ordenes_Detalles").Connect
+
+    sql = "EXEC dbo.sp_Orden_AgregarInsumo " & _
+          "@IdOrden = " & IdOrden & ", " & _
+          "@IdFormulado = " & IdFormulado & ", " & _
+          "@Unidad = '" & u & "';"
+
+    Set qdf = db.CreateQueryDef("")
+    qdf.Connect = cn
+    qdf.sql = sql
+    qdf.ReturnsRecords = True
+
+    Set rs = qdf.OpenRecordset(dbOpenSnapshot)
+
+    If Not rs.EOF Then
+        AgregarInsumoOrdenSQL = Nz(rs!IdDetalleOrden, 0)
+    End If
+
+Salir:
+    On Error Resume Next
+    If Not rs Is Nothing Then rs.Close
+    Set rs = Nothing
+    Set qdf = Nothing
+    Set db = Nothing
+    Exit Function
+
+ErrH:
+    MsgBox "AgregarInsumoOrdenSQL: " & Err.Number & " - " & Err.Description, vbExclamation
+    Resume Salir
+End Function
