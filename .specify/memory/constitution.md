@@ -1,50 +1,58 @@
-# [PROJECT_NAME] Constitution
-<!-- Example: Spec Constitution, TaskFlow Constitution, etc. -->
+# La Herencia Constitution
 
 ## Core Principles
 
-### [PRINCIPLE_1_NAME]
-<!-- Example: I. Library-First -->
-[PRINCIPLE_1_DESCRIPTION]
-<!-- Example: Every feature starts as a standalone library; Libraries must be self-contained, independently testable, documented; Clear purpose required - no organizational-only libraries -->
+### I. SQL Server Is the System of Record
+SQL Server database `LaHerencia` is the only authoritative source for application data. New code MUST use the existing SQL Server connection and verified tables, views, and queries. Access databases, `.accdb` files, local queries, DataSets, TableAdapters, and duplicated data stores are obsolete and MUST NOT be used for new functionality.
 
-### [PRINCIPLE_2_NAME]
-<!-- Example: II. CLI Interface -->
-[PRINCIPLE_2_DESCRIPTION]
-<!-- Example: Every library exposes functionality via CLI; Text in/out protocol: stdin/args → stdout, errors → stderr; Support JSON + human-readable formats -->
+### II. Real Data Protection Is Non-Negotiable
+The database contains production data. The default mode is read-only. No feature, script, test, migration, or agent may execute `INSERT`, `UPDATE`, `DELETE`, `MERGE`, `TRUNCATE`, `ALTER`, `DROP`, or side-effecting procedures without explicit user authorization and a recent full backup verified with SQL Server. Tests MUST NOT write to the real database.
 
-### [PRINCIPLE_3_NAME]
-<!-- Example: III. Test-First (NON-NEGOTIABLE) -->
-[PRINCIPLE_3_DESCRIPTION]
-<!-- Example: TDD mandatory: Tests written → User approved → Tests fail → Then implement; Red-Green-Refactor cycle strictly enforced -->
+### III. Business Processes Before Raw Tables
+Every user-facing module MUST represent a business process, not merely expose database tables. Screens MUST support the user's path from context to result: entity or account selection, filters, summary, detail, origin, and relevant documents. The web navigation MUST reflect administration, production, livestock health, treasury, accounts, sales, purchases, and reporting workflows.
 
-### [PRINCIPLE_4_NAME]
-<!-- Example: IV. Integration Testing -->
-[PRINCIPLE_4_DESCRIPTION]
-<!-- Example: Focus areas requiring integration tests: New library contract tests, Contract changes, Inter-service communication, Shared schemas -->
+### IV. Traceability and Explicit Financial Meaning
+Financial and operational values MUST expose their meaning and origin. Interfaces and queries MUST distinguish debt, credit, balance, payment, collection, commitment, debit, credit, quantity, unit, date, currency, exchange rate, and due date. Records MUST remain traceable through real identifiers such as `IdContacto`, `IdOrigen`, document number, operation, account, campaign, lot, or establishment where available.
 
-### [PRINCIPLE_5_NAME]
-<!-- Example: V. Observability, VI. Versioning & Breaking Changes, VII. Simplicity -->
-[PRINCIPLE_5_DESCRIPTION]
-<!-- Example: Text I/O ensures debuggability; Structured logging required; Or: MAJOR.MINOR.BUILD format; Or: Start simple, YAGNI principles -->
+### V. Contract-First, Tested Integration
+Each module MUST define and verify its SQL/API contract before UI implementation. Queries MUST be parameterized, bounded, and validated against the live schema. Changes MUST include the narrowest useful automated check: SQL read validation, API contract test, UI behavior test, or compilation check. A feature is not complete until its original behavior and relevant empty/error states are verified.
 
-## [SECTION_2_NAME]
-<!-- Example: Additional Constraints, Security Requirements, Performance Standards, etc. -->
+### VI. Specialist Collaboration and Domain Accuracy
+SQL Server, web frontend, Python, integrated agro-management, agricultural production, livestock health, and financial direction agents MUST collaborate through explicit assumptions, schemas, formulas, and acceptance criteria. Domain agents define meaning and constraints; engineering agents implement and test them. Ambiguities MUST be recorded and resolved before they become hidden business rules.
 
-[SECTION_2_CONTENT]
-<!-- Example: Technology stack requirements, compliance standards, deployment policies, etc. -->
+### VII. Simplicity, Reviewability, and Reversible Change
+Prefer the smallest implementation that satisfies the process and existing architecture. Avoid speculative abstractions and unrelated refactors. Every change MUST be reviewable in Git, preserve a clean build path, and be reversible. Generated artifacts, binaries, local databases, credentials, and temporary files MUST remain out of version control.
 
-## [SECTION_3_NAME]
-<!-- Example: Development Workflow, Review Process, Quality Gates, etc. -->
+### VIII. Approved Migration Technology Stack
+The migrated system MUST use Python for backend services, integrations, automation, data analysis, and domain logic; SQL Server for persistence and authoritative data; Next.js with TypeScript for the web application; Tailwind CSS for styling; and TanStack Query for client-side server-state fetching, caching, synchronization, and invalidation. New web functionality MUST NOT introduce ASP.NET Core, JavaScript-only modules, another frontend framework, or another client-state data-fetching library without an approved amendment to this constitution.
 
-[SECTION_3_CONTENT]
-<!-- Example: Code review requirements, testing gates, deployment approval process, etc. -->
+## Data and Security Constraints
+
+- The backend uses Python and exposes documented, typed API contracts for the Next.js frontend.
+- The frontend uses Next.js, TypeScript, and Tailwind CSS; TanStack Query manages server state and API synchronization.
+- SQL Server remains the authoritative persistence layer and is accessed through the Python backend, not directly from the browser.
+- Read endpoints MUST use allowlisted objects, parameterized filters, row limits, and pagination where appropriate.
+- No endpoint may accept arbitrary SQL from the browser.
+- Credentials, tokens, connection secrets, and personal data MUST NOT be committed or logged.
+- Backups MUST be stored outside source control and their verification result recorded before authorized writes.
+- Production, financial, and health indicators MUST identify their period, units, currency, and calculation source.
+
+## Development Workflow and Quality Gates
+
+For each bounded migration slice:
+
+1. Releve the existing schema, data contract, and current behavior.
+2. Define the business outcome and acceptance criteria with the relevant domain agents.
+3. Specify, clarify, plan, and break down the work using Spec Kit.
+4. Implement the read path first and validate it against real data without writes.
+5. Add focused tests, compile checks, and UI/API verification.
+6. Review the diff and confirm no real database files, secrets, or generated outputs were added.
+7. Only after explicit authorization, create a verified backup and design the write path with rollback and auditability.
+
+The first implementation target for the migration is a read-only web module that integrates accounts current, treasury, purchases, operations, and financial navigation using existing SQL Server views and tables.
 
 ## Governance
-<!-- Example: Constitution supersedes all other practices; Amendments require documentation, approval, migration plan -->
 
-[GOVERNANCE_RULES]
-<!-- Example: All PRs/reviews must verify compliance; Complexity must be justified; Use [GUIDANCE_FILE] for runtime development guidance -->
+This constitution supersedes informal practices for the La Herencia migration. Every specification, plan, task list, implementation, and convergence review MUST check compliance with these principles. Any exception requires a written reason, explicit user approval, risk assessment, and rollback plan. Amendments MUST update this file, its version, and the affected workflow artifacts. The `.github/agents/README.md` and `.specify/README.md` provide supporting guidance but do not override this constitution.
 
-**Version**: [CONSTITUTION_VERSION] | **Ratified**: [RATIFICATION_DATE] | **Last Amended**: [LAST_AMENDED_DATE]
-<!-- Example: Version: 2.1.1 | Ratified: 2025-06-13 | Last Amended: 2025-07-16 -->
+**Version**: 1.1.0 | **Ratified**: 2026-09-15 | **Last Amended**: 2026-09-15
