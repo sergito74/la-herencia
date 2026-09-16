@@ -34,10 +34,18 @@ def search_compras(
     numero_documento: str | None,
     fecha_desde: date | None,
     fecha_hasta: date | None,
+    id_centro_costo: int | None,
+    id_rubro: int | None,
     page: int,
     page_size: int,
 ) -> tuple[list[dict], int]:
-    """Search/list compras with optional filters, ordered by fecha desc."""
+    """Search/list compras with optional filters, ordered by fecha desc.
+
+    `id_centro_costo`/`id_rubro` replican los filtros del formulario
+    Access real (`Frm Listado Compras`): una compra matchea si ALGUNA de
+    sus líneas en `Det_Compras` tiene ese centro de costo/rubro — se usa
+    `EXISTS` (no `JOIN`) para no duplicar filas de `Compras`.
+    """
     where_clauses: list[str] = []
     params: list = []
 
@@ -53,6 +61,18 @@ def search_compras(
     if fecha_hasta:
         where_clauses.append("cmp.Fecha <= ?")
         params.append(as_sql_datetime(fecha_hasta))
+    if id_centro_costo:
+        where_clauses.append(
+            "EXISTS (SELECT 1 FROM dbo.Det_Compras dc "
+            "WHERE dc.IdCompra = cmp.IdDeuda AND dc.IdCentroCostos = ?)"
+        )
+        params.append(id_centro_costo)
+    if id_rubro:
+        where_clauses.append(
+            "EXISTS (SELECT 1 FROM dbo.Det_Compras dc "
+            "WHERE dc.IdCompra = cmp.IdDeuda AND dc.IdRubro = ?)"
+        )
+        params.append(id_rubro)
 
     where_sql = f"WHERE {' AND '.join(where_clauses)}" if where_clauses else ""
 
@@ -201,3 +221,15 @@ def get_trazabilidad_compra(id_compra: int) -> list[dict]:
             }
         )
     return movimientos
+
+
+def get_filtros() -> dict:
+    """Catálogos de Centro de Costos y Rubro para el filtro de búsqueda —
+    replica los combos del formulario Access real `Frm Listado Compras`.
+    """
+    centros = fetch_all(
+        "SELECT IdCentro AS idCentroCosto, [Centro de costos] AS centroCosto "
+        "FROM dbo.[Centro de costos] ORDER BY [Centro de costos]"
+    )
+    rubros = fetch_all("SELECT IdRubro AS idRubro, Rubro AS rubro FROM dbo.Rubros ORDER BY Rubro")
+    return {"centrosCosto": centros, "rubros": rubros}

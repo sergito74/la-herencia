@@ -6,7 +6,10 @@ are registered anywhere under /api.
 
 from __future__ import annotations
 
+import os
+
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 from src.errors import register_error_handlers
 from src.features.arrendamientos.router import router as arrendamientos_router
@@ -24,6 +27,23 @@ app = FastAPI(
 )
 
 register_error_handlers(app)
+
+# El frontend Next.js corre en un origen distinto (localhost:3000/3001) en
+# desarrollo. Sin esto, el navegador bloquea toda llamada a /api/* por
+# CORS aunque el backend responda 200 — nunca se detectó porque las
+# verificaciones previas usaban curl (mismo origen que el servidor) en
+# vez de un fetch real desde el navegador. GET (lectura, mayoría de la
+# API) + PATCH (2026-09-17: primeras escrituras reales, siempre acotadas
+# a `WC` — ver `execute_write`/`_assert_target_is_wc` en `src/db/connection.py`).
+_allowed_origins = os.environ.get(
+    "LA_HERENCIA_CORS_ORIGINS", "http://localhost:3000,http://localhost:3001"
+).split(",")
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=_allowed_origins,
+    allow_methods=["GET", "PATCH"],
+    allow_headers=["*"],
+)
 
 app.include_router(arrendamientos_router)
 app.include_router(compras_router)

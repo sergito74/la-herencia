@@ -26,9 +26,14 @@ class Arrendamiento(BaseModel):
     fecha: date | None = None
     inicioPeriodo: date | None = None
     finPeriodo: date | None = None
+    # Label real en el formulario Access: "Arrendatario" (quien renta el
+    # campo), confirmado inspeccionando el formulario "Alquileres".
     contacto: str | None = None
     importeTotalContrato: float | None = None
     cantidadCuotas: int | None = None
+    tipoDePago: str | None = None
+    superficieTotal: float | None = None
+    retencionGanancias: float | None = None
     cobros: list[CobroAlquiler]
 
 

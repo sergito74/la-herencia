@@ -54,13 +54,26 @@ def search_contactos(q: str | None, tipo_contacto: str | None) -> list[dict]:
 
 
 def get_saldo(id_contacto: int) -> dict | None:
-    """Saldo actual del contacto (FR-003). Fuente de verdad, sin recalcular."""
+    """Saldo actual del contacto (FR-003). Fuente de verdad, sin recalcular.
+
+    BUG CORREGIDO 2026-09-17: `vw_MovimientosCuenta_Saldo` devuelve una
+    fila por movimiento con un saldo ACUMULADO corriente (`SaldoParcial`),
+    no una fila única por contacto — confirmado inspeccionando el
+    formulario Access real `SbfrmMovCuenta` (RecordSource ordena
+    `Fecha, Origen, IdOrigen`, mismo orden usado acá). La versión anterior
+    de esta función no tenía `ORDER BY` y devolvía el `SaldoParcial` de
+    una fila arbitraria (la primera que entregaba SQL Server sin orden
+    definido) en vez del saldo acumulado final. `TOP 1` con el mismo
+    orden invertido (`DESC`) da la última fila de la secuencia, que es el
+    saldo real vigente.
+    """
     sql = """
-        SELECT
+        SELECT TOP 1
             IdContacto AS idContacto,
             SaldoParcial AS saldoParcial
         FROM dbo.vw_MovimientosCuenta_Saldo
         WHERE IdContacto = ?
+        ORDER BY Fecha DESC, Origen DESC, IdOrigen DESC
     """
     row = fetch_one(sql, (id_contacto,))
     if row is None:
@@ -103,6 +116,11 @@ def get_movimientos(
     total_row = fetch_one(count_sql, tuple(params))
     total = total_row["total"] if total_row else 0
 
+    # Se consulta `vw_MovimientosCuenta_Saldo` (no `_Base`) para exponer el
+    # saldo acumulado por movimiento (`SaldoParcial`) — el formulario
+    # Access real (`SbfrmMovCuenta`) lo muestra por fila, no solo el total.
+    # Mismo orden canónico usado ahí (`Fecha, Origen, IdOrigen`), del que
+    # también depende que `SaldoParcial` sea correcto (es un acumulado).
     offset = offset_for(page, page_size)
     list_sql = f"""
         SELECT DISTINCT
@@ -112,10 +130,11 @@ def get_movimientos(
             Deuda AS deuda,
             Credito AS credito,
             Origen AS origenTipo,
-            IdOrigen AS idOrigen
-        FROM dbo.vw_MovimientosCuenta_Base
+            IdOrigen AS idOrigen,
+            SaldoParcial AS saldoParcial
+        FROM dbo.vw_MovimientosCuenta_Saldo
         {where_sql}
-        ORDER BY Fecha ASC
+        ORDER BY Fecha ASC, Origen ASC, IdOrigen ASC
         OFFSET ? ROWS FETCH NEXT ? ROWS ONLY
     """
     rows = fetch_all(list_sql, tuple(params) + (offset, page_size))
@@ -128,6 +147,7 @@ def get_movimientos(
             "credito": row.get("credito"),
             "origenTipo": row.get("origenTipo"),
             "idOrigen": row.get("idOrigen"),
+            "saldoParcial": row.get("saldoParcial"),
         }
         for row in rows
     ]

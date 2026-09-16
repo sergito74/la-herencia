@@ -65,6 +65,7 @@ async def list_movimientos(
                 numeroDocumento=row["numeroDocumento"],
                 deuda=row["deuda"],
                 credito=row["credito"],
+                saldoParcial=row.get("saldoParcial"),
                 origen=origen_resolver.resolve_origen(row["origenTipo"], row["idOrigen"]),
             )
             for row in rows

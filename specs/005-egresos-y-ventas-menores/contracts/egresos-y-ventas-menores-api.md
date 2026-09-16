@@ -152,7 +152,8 @@ Busca/lista ventas de hacienda con sus líneas de detalle por comprador (FR-004)
           "unidadMedida": "cabezas",
           "pesoTotal": 13620.0,
           "precioUnitarioA": 7.45,
-          "precioUnitarioB": 1.5930
+          "precioUnitarioB": 1.5930,
+          "importe": 61074.0
         }
       ]
     }
@@ -163,7 +164,7 @@ Busca/lista ventas de hacienda con sus líneas de detalle por comprador (FR-004)
 }
 ```
 
-`lineas` MUST tener al menos un elemento (una venta sin líneas no es un caso de negocio válido, per datos reales). Cada línea MUST mostrar su propio `comprador` — el sistema MUST NOT mezclar ni promediar entre compradores de una misma venta. Cada línea MUST exponer `precioUnitarioA` y `precioUnitarioB` tal cual están en el origen (`Det_Ventas Hacienda`) — el sistema MUST NOT calcular un "importe total" de línea combinándolos, porque no hay una regla confirmada contra datos reales sobre cómo se relacionan entre sí (ver `data-model.md`).
+`lineas` MUST tener al menos un elemento (una venta sin líneas no es un caso de negocio válido, per datos reales). Cada línea MUST mostrar su propio `comprador` — el sistema MUST NOT mezclar ni promediar entre compradores de una misma venta. Cada línea MUST exponer `precioUnitarioA`, `precioUnitarioB` e `importe` (`= cantidad * (precioUnitarioA + precioUnitarioB)`, fórmula confirmada contra el formulario Access real — ver `data-model.md`).
 
 ### GET /api/ventas-hacienda/retenciones
 

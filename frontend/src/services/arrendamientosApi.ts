@@ -8,7 +8,7 @@
  * though the field/type names below mirror the underlying SQL columns.
  */
 
-import { apiGet } from "@/services/apiClient";
+import { apiGet, apiPatch } from "@/services/apiClient";
 
 export interface CobroAlquiler {
   idCobroAlquiler: number;
@@ -23,9 +23,13 @@ export interface Arrendamiento {
   fecha: string | null;
   inicioPeriodo: string | null;
   finPeriodo: string | null;
+  /** Label real en el formulario Access: "Arrendatario". */
   contacto: string | null;
   importeTotalContrato: number | null;
   cantidadCuotas: number | null;
+  tipoDePago: string | null;
+  superficieTotal: number | null;
+  retencionGanancias: number | null;
   cobros: CobroAlquiler[];
 }
 
@@ -42,4 +46,15 @@ export function fetchArrendamientos(params: {
   pageSize?: number;
 }): Promise<ArrendamientosListResponse> {
   return apiGet<ArrendamientosListResponse>("/api/arrendamientos", { ...params });
+}
+
+/**
+ * Marca una cuota como Pendiente/Cobrado. Escribe contra `WC` únicamente
+ * (ver nota en `apiClient.ts` y `backend/src/features/arrendamientos/router.py`).
+ */
+export function actualizarEstadoCuota(
+  idCobroAlquiler: number,
+  estado: "Pendiente" | "Cobrado"
+): Promise<{ idCobroAlquiler: number; estado: string }> {
+  return apiPatch(`/api/arrendamientos/cuotas/${idCobroAlquiler}/estado`, { estado });
 }

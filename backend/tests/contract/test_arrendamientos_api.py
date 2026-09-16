@@ -86,6 +86,49 @@ async def test_arrendamientos_rejects_write_methods(client):
             assert resp.status_code in (404, 405)
 
 
+@pytest.mark.anyio
+async def test_actualizar_estado_cuota_marca_cobrada(client, monkeypatch):
+    captured = {}
+
+    def fake_set_estado(id_cobro_alquiler, estado):
+        captured["id"] = id_cobro_alquiler
+        captured["estado"] = estado
+        return True
+
+    monkeypatch.setattr(repository, "set_estado_cuota", fake_set_estado)
+
+    async with httpx.AsyncClient(transport=client, base_url="http://test") as ac:
+        response = await ac.patch(
+            "/api/arrendamientos/cuotas/3001/estado", json={"estado": "Cobrado"}
+        )
+
+    assert response.status_code == 200
+    assert response.json() == {"idCobroAlquiler": 3001, "estado": "Cobrado"}
+    assert captured == {"id": 3001, "estado": "Cobrado"}
+
+
+@pytest.mark.anyio
+async def test_actualizar_estado_cuota_no_encontrada(client, monkeypatch):
+    monkeypatch.setattr(repository, "set_estado_cuota", lambda id_cobro_alquiler, estado: False)
+
+    async with httpx.AsyncClient(transport=client, base_url="http://test") as ac:
+        response = await ac.patch(
+            "/api/arrendamientos/cuotas/999999/estado", json={"estado": "Cobrado"}
+        )
+
+    assert response.status_code == 404
+
+
+@pytest.mark.anyio
+async def test_actualizar_estado_cuota_rechaza_valor_invalido(client):
+    async with httpx.AsyncClient(transport=client, base_url="http://test") as ac:
+        response = await ac.patch(
+            "/api/arrendamientos/cuotas/3001/estado", json={"estado": "Vencido"}
+        )
+
+    assert response.status_code == 422
+
+
 @pytest.fixture
 def anyio_backend():
     return "asyncio"

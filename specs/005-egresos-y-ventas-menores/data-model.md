@@ -107,8 +107,9 @@ Origen: `dbo.[Det_Ventas Hacienda]`
 | cantidad | `Cantidad` | |
 | unidadMedida | `[Unidad de medida]` | |
 | pesoTotal | `[Peso Total]` | |
-| precioUnitarioA | `[Precio unitario (A)]` | Confirmado contra datos reales (2026-09-16): ambas columnas están pobladas en casi todas las filas (244/245 y 245/245) con escalas muy distintas entre sí (ej. 7.45 vs 1.59 en la misma línea) — no hay forma de inferir sin ambigüedad cuál es "el" importe de la línea ni cómo se relacionan entre sí (¿distinta unidad de medida? ¿moneda?). Se exponen ambos precios crudos tal cual están en el origen, sin calcular un total ni descartar ninguno (principio IV: no inventar un dato que la fuente no da con claridad) |
+| precioUnitarioA | `[Precio unitario (A)]` | Confirmado contra datos reales (2026-09-16): ambas columnas están pobladas en casi todas las filas (244/245 y 245/245) con escalas muy distintas entre sí (ej. 7.45 vs 1.59 en la misma línea) |
 | precioUnitarioB | `[Precio unitario (B)]` | Ver nota de `precioUnitarioA` |
+| importe | `Cantidad * (ISNULL([Precio unitario (A)],0) + ISNULL([Precio unitario (B)],0))` | **Corregido 2026-09-17**: se inspeccionó el formulario Access real (`Subformulario Detalle Venta Feria Hacienda`, control `TxtTotal`) y esa es la fórmula de negocio real — resuelve la ambigüedad que antes hacía exponer A y B sin combinarlos. Calculado en SQL, no en Python. |
 
 ## Retención de venta de hacienda
 

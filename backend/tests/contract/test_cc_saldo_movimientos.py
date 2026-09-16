@@ -16,6 +16,7 @@ FIXTURE_MOVIMIENTO = {
     "credito": 0,
     "origenTipo": "Compras",
     "idOrigen": 12345,
+    "saldoParcial": -60500.00,
 }
 
 

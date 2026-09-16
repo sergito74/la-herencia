@@ -1,11 +1,15 @@
 "use client";
 
 /**
- * Read-only fetch wrapper for the La Herencia backend API.
+ * Fetch wrapper for the La Herencia backend API.
  *
- * This module and every function built on top of it MUST only issue GET
- * requests: the compras module (and the backend behind it) is 100%
- * read-only (constitution principle II, FR-010).
+ * Most of this app is still GET-only against the original `LaHerencia`
+ * database — that read path is unaffected. `apiPatch` (added 2026-09-17)
+ * is the one exception: it's used only by features whose backend writes
+ * exclusively to `WC` ("Working Copy"), never to `LaHerencia` — enforced
+ * server-side in `backend/src/db/connection.py` (`execute_write`), not
+ * by this client. Do not add new mutation helpers here without a
+ * matching `WC`-only guard on the backend endpoint they call.
  */
 
 import { QueryClient } from "@tanstack/react-query";
@@ -38,6 +42,23 @@ export async function apiGet<T>(
   }
 
   const response = await fetch(url.toString(), { method: "GET" });
+
+  if (!response.ok) {
+    const detail = await response.text().catch(() => "");
+    throw new ApiError(response.status, detail || response.statusText);
+  }
+
+  return (await response.json()) as T;
+}
+
+/** PATCH helper — ver nota en el encabezado del módulo (solo para `WC`). */
+export async function apiPatch<T>(path: string, body: unknown): Promise<T> {
+  const url = new URL(path, API_BASE_URL);
+  const response = await fetch(url.toString(), {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
 
   if (!response.ok) {
     const detail = await response.text().catch(() => "");

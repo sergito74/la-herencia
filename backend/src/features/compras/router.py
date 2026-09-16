@@ -16,6 +16,7 @@ from src.features.compras.schemas import (
     Compra,
     CompraDetalle,
     ComprasListResponse,
+    FiltrosComprasResponse,
     TrazabilidadCompra,
 )
 
@@ -28,6 +29,8 @@ async def list_compras(
     numeroDocumento: str | None = Query(default=None),
     fechaDesde: date | None = Query(default=None),
     fechaHasta: date | None = Query(default=None),
+    idCentroCosto: int | None = Query(default=None),
+    idRubro: int | None = Query(default=None),
     page: int = Query(default=1, ge=1),
     pageSize: int = Query(default=50, ge=1, le=200),
 ) -> ComprasListResponse:
@@ -38,6 +41,8 @@ async def list_compras(
         numeroDocumento,
         fechaDesde,
         fechaHasta,
+        idCentroCosto,
+        idRubro,
         norm_page,
         norm_page_size,
     )
@@ -47,6 +52,11 @@ async def list_compras(
         pageSize=norm_page_size,
         total=total,
     )
+
+
+@router.get("/filtros", response_model=FiltrosComprasResponse)
+async def get_filtros_compras() -> FiltrosComprasResponse:
+    return FiltrosComprasResponse(**await run_in_threadpool(repository.get_filtros))
 
 
 @router.get("/{id_compra}", response_model=CompraDetalle)

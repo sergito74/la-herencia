@@ -45,7 +45,7 @@ def anyio_backend():
 
 @pytest.mark.anyio
 async def test_concurrent_list_requests_do_not_serialize(client, monkeypatch):
-    def slow_search(proveedor, numero_documento, fecha_desde, fecha_hasta, page, page_size):
+    def slow_search(proveedor, numero_documento, fecha_desde, fecha_hasta, id_centro_costo, id_rubro, page, page_size):
         time.sleep(DELAY_SECONDS)
         return [], 0
 

@@ -76,3 +76,20 @@ class MovimientoTrazabilidad(BaseModel):
 class TrazabilidadCompra(BaseModel):
     idCompra: int
     movimientos: list[MovimientoTrazabilidad]
+
+
+class CentroCosto(BaseModel):
+    idCentroCosto: int
+    centroCosto: str | None = None
+
+
+class Rubro(BaseModel):
+    idRubro: int
+    rubro: str | None = None
+
+
+class FiltrosComprasResponse(BaseModel):
+    """Catálogos para los filtros de búsqueda (replica Frm Listado Compras)."""
+
+    centrosCosto: list[CentroCosto]
+    rubros: list[Rubro]

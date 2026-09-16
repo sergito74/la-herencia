@@ -53,6 +53,17 @@ const COLUMNS: DataTableColumn<MovimientoCuentaCorriente>[] = [
       <span className="text-status-success">{m.credito ? m.credito.toLocaleString("es-AR") : "—"}</span>
     ),
   },
+  {
+    key: "saldoParcial",
+    header: "Saldo",
+    align: "right",
+    numeric: true,
+    render: (m) => (
+      <span className={m.saldoParcial != null && m.saldoParcial < 0 ? "text-status-danger" : "text-status-success"}>
+        {m.saldoParcial != null ? m.saldoParcial.toLocaleString("es-AR") : "—"}
+      </span>
+    ),
+  },
   { key: "origen", header: "Origen", render: (m) => <OrigenMovimiento origen={m.origen} /> },
 ];
 

@@ -71,6 +71,10 @@ class MovimientoCuentaCorriente(BaseModel):
     numeroDocumento: str | None = None
     deuda: float | None = None
     credito: float | None = None
+    # Saldo acumulado hasta este movimiento (vw_MovimientosCuenta_Saldo).
+    # Replica el formulario Access real SbfrmMovCuenta, que muestra esta
+    # columna por fila, no solo el total.
+    saldoParcial: float | None = None
     origen: Origen
 
 

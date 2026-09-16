@@ -19,6 +19,10 @@ export interface LineaVentaHacienda {
   pesoTotal: number | null;
   precioUnitarioA: number | null;
   precioUnitarioB: number | null;
+  /** = cantidad * (precioUnitarioA + precioUnitarioB), fórmula confirmada
+   * contra el formulario Access real (Subformulario Detalle Venta Feria
+   * Hacienda, control TxtTotal). */
+  importe: number | null;
 }
 
 export interface VentaHacienda {

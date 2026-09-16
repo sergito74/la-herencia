@@ -1,11 +1,19 @@
-"""Arrendamientos endpoints. GET only — 100% read-only (FR-008).
+"""Arrendamientos endpoints.
 
-Do not add POST/PUT/PATCH/DELETE routes to this router.
+Todos los endpoints son GET salvo `PATCH .../cuotas/{id}/estado`, la
+primera funcionalidad de escritura real de la app (2026-09-17, decisión
+explícita del usuario) — corre exclusivamente contra `WC` ("Working
+Copy"), nunca contra `LaHerencia` (ver `src/db/connection.py`,
+`execute_write`/`_assert_target_is_wc`). No agregar otras rutas de
+escritura sin el mismo mecanismo de protección.
 """
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Query
+from typing import Literal
+
+from fastapi import APIRouter, HTTPException, Query
+from pydantic import BaseModel
 from starlette.concurrency import run_in_threadpool
 
 from src.db.pagination import normalize_pagination
@@ -31,3 +39,24 @@ async def list_arrendamientos(
         pageSize=norm_page_size,
         total=total,
     )
+
+
+class ActualizarEstadoCuotaRequest(BaseModel):
+    estado: Literal["Pendiente", "Cobrado"]
+
+
+class ActualizarEstadoCuotaResponse(BaseModel):
+    idCobroAlquiler: int
+    estado: str
+
+
+@router.patch("/cuotas/{id_cobro_alquiler}/estado", response_model=ActualizarEstadoCuotaResponse)
+async def actualizar_estado_cuota(
+    id_cobro_alquiler: int, body: ActualizarEstadoCuotaRequest
+) -> ActualizarEstadoCuotaResponse:
+    updated = await run_in_threadpool(
+        repository.set_estado_cuota, id_cobro_alquiler, body.estado
+    )
+    if not updated:
+        raise HTTPException(status_code=404, detail="Cuota no encontrada")
+    return ActualizarEstadoCuotaResponse(idCobroAlquiler=id_cobro_alquiler, estado=body.estado)

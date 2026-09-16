@@ -115,6 +115,7 @@ export function VentasHaciendaListado() {
                   <th className="py-1 text-right" title="Datos de origen, unidades no siempre consistentes">
                     Precio (B)
                   </th>
+                  <th className="py-1 text-right">Importe</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
@@ -130,6 +131,9 @@ export function VentasHaciendaListado() {
                     </td>
                     <td className="py-1 text-right font-data">
                       {l.precioUnitarioB != null ? l.precioUnitarioB.toLocaleString("es-AR") : "—"}
+                    </td>
+                    <td className="py-1 text-right font-data font-medium">
+                      {l.importe != null ? l.importe.toLocaleString("es-AR") : "—"}
                     </td>
                   </tr>
                 ))}

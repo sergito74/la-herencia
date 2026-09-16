@@ -60,6 +60,9 @@ export interface MovimientoCuentaCorriente {
   numeroDocumento: string | null;
   deuda: number | null;
   credito: number | null;
+  /** Saldo acumulado hasta este movimiento — replica la columna que
+   * muestra el formulario Access real (SbfrmMovCuenta). */
+  saldoParcial: number | null;
   origen: Origen;
 }
 

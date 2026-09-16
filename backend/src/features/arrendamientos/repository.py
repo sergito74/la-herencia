@@ -6,8 +6,12 @@ naming, kept as-is per constitution principle I — no schema changes).
 
 from __future__ import annotations
 
-from src.db.connection import fetch_all, fetch_one
+from src.db.connection import execute_write, fetch_all, fetch_one
 from src.db.pagination import offset_for
+
+# Enum real confirmado en el combo del formulario Access
+# (`Subformulario Detalle Cobro Alquiler`): solo estos 2 valores.
+ESTADOS_CUOTA_VALIDOS = ("Pendiente", "Cobrado")
 
 
 def search_arrendamientos(
@@ -42,7 +46,10 @@ def search_arrendamientos(
             a.[Fin del periodo] AS finPeriodo,
             c.[Razon Social] AS contacto,
             a.[Importe total del contrato] AS importeTotalContrato,
-            a.[Cantidad de cuotas] AS cantidadCuotas
+            a.[Cantidad de cuotas] AS cantidadCuotas,
+            a.[Tipo de pago] AS tipoDePago,
+            a.[Superficie total] AS superficieTotal,
+            a.[Retencion Ganancias] AS retencionGanancias
         FROM dbo.Alquileres a
         LEFT JOIN dbo.Contactos c ON c.IdContacto = a.IdContacto
         {where_sql}
@@ -71,6 +78,23 @@ def get_cobros_alquiler(id_alquiler: int) -> list[dict]:
         ORDER BY [Numero Cuota] ASC
     """
     return fetch_all(sql, (id_alquiler,))
+
+
+def set_estado_cuota(id_cobro_alquiler: int, estado: str) -> bool:
+    """Marca una cuota de arrendamiento como Pendiente/Cobrado.
+
+    Primera funcionalidad de escritura real de la app (2026-09-17,
+    decisión explícita del usuario) — corre exclusivamente contra `WC`
+    (ver `execute_write`/`_assert_target_is_wc` en `src/db/connection.py`;
+    nunca contra `LaHerencia`).
+    """
+    if estado not in ESTADOS_CUOTA_VALIDOS:
+        raise ValueError(f"Estado inválido: {estado!r}. Valores válidos: {ESTADOS_CUOTA_VALIDOS}")
+    rows_affected = execute_write(
+        "UPDATE dbo.[Detalle Cobro Alquiler] SET Estado = ? WHERE IdCobroAlquiler = ?",
+        (estado, id_cobro_alquiler),
+    )
+    return rows_affected > 0
 
 
 def get_arrendamiento_referencia(id_alquiler: int) -> dict | None:

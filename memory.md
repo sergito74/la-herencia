@@ -672,3 +672,20 @@ Primer ciclo recomendado:
 - Antes de cualquier escritura autorizada, detenerse y exigir backup SQL Server verificado.
 - Si una consulta o columna no está confirmada, consultar `INFORMATION_SCHEMA.COLUMNS` y probar un SELECT limitado.
 - Si existe una contradicción entre código previo y esta memoria/constitución, esta memoria refleja el contexto actual, pero la constitución es la autoridad normativa.
+
+## 20. Regla de oro: base `WC` (Working Copy) — 2026-09-17
+
+**Decisión explícita del usuario, prioridad máxima, no reinterpretar.**
+
+La aplicación web (todo `backend/src/db/connection.py`) apunta ahora a una base SQL Server llamada **`WC`**, creada el 2026-09-17 vía `BACKUP DATABASE [LaHerencia] ... WITH COPY_ONLY` + `RESTORE DATABASE [WC] ... WITH MOVE ..., REPLACE` — una réplica binaria completa de `LaHerencia` en el momento de la copia (mismos row counts verificados: `Compras`=6436, `Contactos`=627).
+
+**Regla de oro**: de ahora en adelante, **todo el desarrollo, toda la funcionalidad de escritura y toda edición de datos ocurre exclusivamente sobre `WC`**. `LaHerencia` (la base original) queda intacta y **NUNCA** se vuelve a escribir desde este proyecto — se conserva como referencia/fuente de verdad histórica, no como base operativa.
+
+Enforcement en código (no solo convención):
+- `backend/src/db/connection.py`: `CONNECTION_STRING` usa `DATABASE=WC` por defecto (env var `LA_HERENCIA_DATABASE`, default `"WC"`).
+- Nueva función `execute_write()` (para INSERT/UPDATE/DELETE) llama a `_assert_target_is_wc()` que **lanza excepción y aborta** si `LA_HERENCIA_DATABASE` llegara a apuntar a `"LaHerencia"` — barrera de código, no solo documentación.
+- `fetch_all`/`fetch_one` (lectura) siguen con su guard existente de solo-SELECT, ahora corriendo contra `WC`.
+
+Implicaciones para migraciones futuras del roadmap (agricultura, bancos/tarjetas, etc.): toda spec nueva que necesite escritura se diseña asumiendo `WC` como destino, nunca `LaHerencia`. Si en algún momento se necesita resincronizar `WC` desde `LaHerencia` (por ejemplo, para traer datos nuevos cargados en el sistema Access real mientras tanto), repetir el mismo procedimiento BACKUP/RESTORE — pisa `WC` por completo, no hace merge.
+
+Archivos de backup usados para esta operación (fuera de Git, en `C:\Temp\`): `LaHerencia_for_WC_20260916_143240.bak`.

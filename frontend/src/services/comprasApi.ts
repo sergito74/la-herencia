@@ -63,6 +63,8 @@ export interface ComprasSearchParams {
   numeroDocumento?: string;
   fechaDesde?: string;
   fechaHasta?: string;
+  idCentroCosto?: number;
+  idRubro?: number;
   page?: number;
   pageSize?: number;
 }
@@ -71,6 +73,26 @@ export function fetchCompras(
   params: ComprasSearchParams
 ): Promise<ComprasListResponse> {
   return apiGet<ComprasListResponse>("/api/compras", { ...params });
+}
+
+export interface CentroCosto {
+  idCentroCosto: number;
+  centroCosto: string | null;
+}
+
+export interface Rubro {
+  idRubro: number;
+  rubro: string | null;
+}
+
+export interface FiltrosComprasResponse {
+  centrosCosto: CentroCosto[];
+  rubros: Rubro[];
+}
+
+/** Catálogos para los filtros — replica los combos del Frm Listado Compras real. */
+export function fetchFiltrosCompras(): Promise<FiltrosComprasResponse> {
+  return apiGet<FiltrosComprasResponse>("/api/compras/filtros");
 }
 
 export function fetchCompraDetalle(idCompra: number): Promise<CompraDetalle> {

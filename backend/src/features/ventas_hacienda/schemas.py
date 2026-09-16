@@ -5,11 +5,12 @@
 specs/005-egresos-y-ventas-menores/research.md), so it is modeled and
 queried as an independent entity, never nested under a venta.
 
-`Det_Ventas Hacienda` has two unrelated "Precio unitario" columns (A/B),
-both populated in almost every real row with very different scales.
-There is no confirmed rule for combining them into a single "importe", so
-both are exposed as-is (constitution principle IV: do not invent a
-derived figure the source data does not support).
+`Det_Ventas Hacienda` has two "Precio unitario" columns (A/B). CORRECTED
+2026-09-17: inspecting the real Access form (`Subformulario Detalle Venta
+Feria Hacienda`, control `TxtTotal`) revealed the actual business rule —
+`importe = cantidad * (precioUnitarioA + precioUnitarioB)` — which this
+schema now exposes as `importe`, matching the production system exactly
+instead of leaving the two prices uncombined.
 """
 
 from __future__ import annotations
@@ -28,6 +29,7 @@ class LineaVentaHacienda(BaseModel):
     pesoTotal: float | None = None
     precioUnitarioA: float | None = None
     precioUnitarioB: float | None = None
+    importe: float | None = None
 
 
 class VentaHacienda(BaseModel):

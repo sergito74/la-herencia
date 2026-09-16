@@ -1,18 +1,18 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 
-import { fetchArrendamientos } from "@/services/arrendamientosApi";
+import { actualizarEstadoCuota, fetchArrendamientos } from "@/services/arrendamientosApi";
 import { StatusBadge, type BadgeTone } from "@/components/ui/StatusBadge";
 import { FilterBar, FilterField, FilterSubmitButton, filterInputClass } from "@/components/ui/FilterBar";
 import { EmptyState, ErrorState, LoadingState } from "@/components/ui/States";
 
 /**
- * Único valor de `Estado` confirmado contra datos reales hoy: "Cobrado".
- * Cualquier otro valor (o vacío) se trata como pendiente, y se resalta
- * como vencido si su fecha de vencimiento ya pasó — no se asume un enum
- * cerrado que los datos no respaldan (design/agroux-frontend-redesign.md §4.2).
+ * Enum real confirmado en el formulario Access (`Subformulario Detalle
+ * Cobro Alquiler`, combo `Estado`): solo "Pendiente"/"Cobrado". "Vencido"
+ * es una capa de presentación propia (no un valor almacenado): se resalta
+ * cuando una cuota "Pendiente" ya pasó su fecha de vencimiento.
  */
 function estadoCuota(estado: string | null, fechaVencimiento: string | null): { label: string; tone: BadgeTone } {
   if (estado && estado.toLowerCase() === "cobrado") return { label: "Cobrado", tone: "success" };
@@ -24,18 +24,29 @@ function estadoCuota(estado: string | null, fechaVencimiento: string | null): { 
 /**
  * Listado de arrendamientos con sus cobros asociados (005 US3: FR-003).
  * Terminología: "Arrendamiento", nunca "Alquiler" (Nota UX de plan.md).
- * Read-only.
+ *
+ * Desde 2026-09-17 permite marcar una cuota como Cobrada/Pendiente
+ * (primera acción de escritura real de la app) — escribe exclusivamente
+ * contra `WC`, nunca contra `LaHerencia` (regla de oro, ver memory.md).
  */
 export function ArrendamientosListado() {
   const [contacto, setContacto] = useState("");
   const [appliedContacto, setAppliedContacto] = useState("");
   const [page, setPage] = useState(1);
   const pageSize = 50;
+  const queryClient = useQueryClient();
 
+  const queryKey = ["arrendamientos", appliedContacto, page];
   const { data, isLoading, isError } = useQuery({
-    queryKey: ["arrendamientos", appliedContacto, page],
+    queryKey,
     queryFn: () =>
       fetchArrendamientos({ contacto: appliedContacto || undefined, page, pageSize }),
+  });
+
+  const toggleEstadoMutation = useMutation({
+    mutationFn: ({ idCobroAlquiler, estado }: { idCobroAlquiler: number; estado: "Pendiente" | "Cobrado" }) =>
+      actualizarEstadoCuota(idCobroAlquiler, estado),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey }),
   });
 
   function handleSubmit(e: React.FormEvent) {
@@ -79,8 +90,11 @@ export function ArrendamientosListado() {
                       <h3 className="font-semibold text-ink-primary">
                         Arrendamiento — {a.contacto ?? "—"}
                       </h3>
-                      <p className="text-sm text-ink-secondary">
+                      <p className="text-xs text-ink-muted">Arrendatario</p>
+                      <p className="mt-1 text-sm text-ink-secondary">
                         {a.inicioPeriodo ?? "—"} a {a.finPeriodo ?? "—"}
+                        {a.tipoDePago ? ` · ${a.tipoDePago}` : ""}
+                        {a.superficieTotal != null ? ` · ${a.superficieTotal} ha` : ""}
                       </p>
                     </div>
                     <div className="text-right">
@@ -92,6 +106,11 @@ export function ArrendamientosListado() {
                             : "—"}
                         </span>
                       </p>
+                      {a.retencionGanancias != null && a.retencionGanancias !== 0 && (
+                        <p className="font-data text-xs text-ink-secondary">
+                          Ret. Ganancias: {a.retencionGanancias.toLocaleString("es-AR")}
+                        </p>
+                      )}
                       {a.cantidadCuotas != null && a.cantidadCuotas > 0 && (
                         <p className="text-xs text-ink-secondary">
                           {cobradas} de {a.cantidadCuotas} cuotas cobradas
@@ -110,11 +129,16 @@ export function ArrendamientosListado() {
                           <th className="px-2 py-1">Vencimiento</th>
                           <th className="px-2 py-1">Estado</th>
                           <th className="px-2 py-1 text-right">Importe</th>
+                          <th className="px-2 py-1" />
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-border">
                         {a.cobros.map((c) => {
                           const estado = estadoCuota(c.estado, c.fechaVencimiento);
+                          const yaCobrada = c.estado?.toLowerCase() === "cobrado";
+                          const isPending =
+                            toggleEstadoMutation.isPending &&
+                            toggleEstadoMutation.variables?.idCobroAlquiler === c.idCobroAlquiler;
                           return (
                             <tr key={c.idCobroAlquiler}>
                               <td className="px-2 py-1 font-data">{c.numeroCuota ?? "—"}</td>
@@ -124,6 +148,25 @@ export function ArrendamientosListado() {
                               </td>
                               <td className="px-2 py-1 text-right font-data">
                                 {c.importeCuota != null ? c.importeCuota.toLocaleString("es-AR") : "—"}
+                              </td>
+                              <td className="px-2 py-1 text-right">
+                                <button
+                                  type="button"
+                                  disabled={isPending}
+                                  className="rounded-sm border border-border px-2 py-0.5 text-xs text-ink-secondary hover:border-border-strong hover:text-ink-primary disabled:opacity-40"
+                                  onClick={() =>
+                                    toggleEstadoMutation.mutate({
+                                      idCobroAlquiler: c.idCobroAlquiler,
+                                      estado: yaCobrada ? "Pendiente" : "Cobrado",
+                                    })
+                                  }
+                                >
+                                  {isPending
+                                    ? "Guardando…"
+                                    : yaCobrada
+                                      ? "Marcar pendiente"
+                                      : "Marcar cobrada"}
+                                </button>
                               </td>
                             </tr>
                           );

@@ -77,7 +77,8 @@ def get_lineas_venta(id_venta: int) -> list[dict]:
             d.[Unidad de medida] AS unidadMedida,
             d.[Peso Total] AS pesoTotal,
             d.[Precio unitario (A)] AS precioUnitarioA,
-            d.[Precio unitario (B)] AS precioUnitarioB
+            d.[Precio unitario (B)] AS precioUnitarioB,
+            d.Cantidad * (ISNULL(d.[Precio unitario (A)], 0) + ISNULL(d.[Precio unitario (B)], 0)) AS importe
         FROM dbo.[Det_Ventas Hacienda] d
         LEFT JOIN dbo.Contactos c ON c.IdContacto = d.IdComprador
         LEFT JOIN dbo.[Tipo Hacienda] th ON th.IdTipoHacienda = d.IdTipoProducto
