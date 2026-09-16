@@ -14,6 +14,7 @@ class Impuesto(BaseModel):
     periodoLiquidado: str | None = None
     numeroDocumento: str | None = None
     importe: float | None = None
+    idOrganismo: int | None = None
     organismo: str | None = None
 
 
@@ -28,6 +29,7 @@ class Retencion(BaseModel):
     idRetencion: int
     numeroCertificado: str | None = None
     fecha: date | None = None
+    idContacto: int | None = None
     contacto: str | None = None
     importe: float | None = None
 

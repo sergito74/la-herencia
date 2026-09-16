@@ -7,13 +7,19 @@ import {
   fetchRetencionesVentaHacienda,
   type RetencionVentaHacienda,
 } from "@/services/ventasHaciendaApi";
+import { ContactoLink } from "@/components/ui/ContactoLink";
 import { DataTable, type DataTableColumn } from "@/components/ui/DataTable";
 import { FilterBar, FilterField, FilterSubmitButton, filterInputClass } from "@/components/ui/FilterBar";
 import { ErrorState, LoadingState } from "@/components/ui/States";
 
 const COLUMNS: DataTableColumn<RetencionVentaHacienda>[] = [
   { key: "fecha", header: "Fecha", numeric: true, sortValue: (r) => r.fecha, render: (r) => r.fecha ?? "—" },
-  { key: "contacto", header: "Contacto", sortValue: (r) => r.contacto, render: (r) => r.contacto ?? "—" },
+  {
+    key: "contacto",
+    header: "Contacto",
+    sortValue: (r) => r.contacto,
+    render: (r) => <ContactoLink idContacto={r.idContacto} razonSocial={r.contacto} />,
+  },
   {
     key: "documento",
     header: "Documento",

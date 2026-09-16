@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 
 import { fetchVentasHacienda, type VentaHacienda } from "@/services/ventasHaciendaApi";
+import { ContactoLink } from "@/components/ui/ContactoLink";
 import { DataTable, type DataTableColumn } from "@/components/ui/DataTable";
 import { FilterBar, FilterField, FilterSubmitButton, filterInputClass } from "@/components/ui/FilterBar";
 import { SideDrawer } from "@/components/ui/SideDrawer";
@@ -16,7 +17,9 @@ const COLUMNS: DataTableColumn<VentaHacienda>[] = [
     key: "consignatario",
     header: "Consignatario",
     sortValue: (v) => v.consignatario,
-    render: (v) => v.consignatario ?? "—",
+    render: (v) => (
+      <ContactoLink idContacto={v.idConsignatario} razonSocial={v.consignatario} tipoContacto="Consignatario" />
+    ),
   },
   { key: "lineas", header: "Líneas", numeric: true, render: (v) => v.lineas.length },
 ];
@@ -101,7 +104,12 @@ export function VentasHaciendaListado() {
         {selected && (
           <div className="space-y-3">
             <p className="text-sm text-ink-secondary">
-              {selected.fecha ?? "—"} · Consignatario: {selected.consignatario ?? "—"}
+              {selected.fecha ?? "—"} · Consignatario:{" "}
+              <ContactoLink
+                idContacto={selected.idConsignatario}
+                razonSocial={selected.consignatario}
+                tipoContacto="Consignatario"
+              />
             </p>
             <table className="min-w-full divide-y divide-border text-sm">
               <thead className="text-left text-ink-secondary">
@@ -121,7 +129,9 @@ export function VentasHaciendaListado() {
               <tbody className="divide-y divide-border">
                 {selected.lineas.map((l) => (
                   <tr key={l.idDetalleVenta}>
-                    <td className="py-1">{l.comprador ?? "—"}</td>
+                    <td className="py-1">
+                      <ContactoLink idContacto={l.idComprador} razonSocial={l.comprador} tipoContacto="Comprador" />
+                    </td>
                     <td className="py-1">{l.tipoHacienda ?? "—"}</td>
                     <td className="py-1 text-right font-data">
                       {l.cantidad ?? "—"} {l.unidadMedida ?? ""}

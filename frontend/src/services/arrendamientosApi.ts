@@ -24,6 +24,7 @@ export interface Arrendamiento {
   inicioPeriodo: string | null;
   finPeriodo: string | null;
   /** Label real en el formulario Access: "Arrendatario". */
+  idContacto: number | null;
   contacto: string | null;
   importeTotalContrato: number | null;
   cantidadCuotas: number | null;

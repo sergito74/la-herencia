@@ -63,8 +63,8 @@ def search_remuneraciones(
     list_sql = f"""
         SELECT
             r.IdSalario AS idSalario,
+            c.IdContacto AS idContacto,
             c.[Razon Social] AS empleado,
-            r.IdContacto AS idContacto,
             r.[Fecha de pago] AS fechaPago,
             r.[Periodo liquidado] AS periodoLiquidado,
             ({_IMPORTE_SQL}) AS importe

@@ -50,6 +50,7 @@ def search_ventas_hacienda(
         SELECT
             v.IdVenta AS idVenta,
             v.Fecha AS fecha,
+            c.IdContacto AS idConsignatario,
             c.[Razon Social] AS consignatario,
             v.[Nro documento] AS numeroDocumento
         FROM dbo.[Venta Hacienda] v
@@ -71,6 +72,7 @@ def get_lineas_venta(id_venta: int) -> list[dict]:
     sql = """
         SELECT
             d.IdDetalleVenta AS idDetalleVenta,
+            c.IdContacto AS idComprador,
             c.[Razon Social] AS comprador,
             th.[Tipo de Hacienda] AS tipoHacienda,
             d.Cantidad AS cantidad,
@@ -138,6 +140,7 @@ def search_retenciones_venta_hacienda(
         SELECT
             r.Id AS idRetencion,
             r.Fecha AS fecha,
+            c.IdContacto AS idContacto,
             c.[Razon Social] AS contacto,
             r.Documento AS documento,
             r.[Nro Documento] AS numeroDocumento,

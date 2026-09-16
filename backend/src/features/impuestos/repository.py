@@ -54,6 +54,7 @@ def search_impuestos(
             i.[Periodo liquidado] AS periodoLiquidado,
             i.[Numero de documento] AS numeroDocumento,
             i.Importe AS importe,
+            c.IdContacto AS idOrganismo,
             c.[Razon Social] AS organismo
         FROM dbo.Impuestos i
         LEFT JOIN dbo.[Tipo Impuesto] ti ON ti.IdTipoImpuesto = i.IdTipoImpuesto
@@ -117,6 +118,7 @@ def search_retenciones(
             r.IdRetencionSQL AS idRetencion,
             r.[Numero Certificado] AS numeroCertificado,
             r.Fecha AS fecha,
+            c.IdContacto AS idContacto,
             c.[Razon Social] AS contacto,
             r.Importe AS importe
         FROM dbo.Retenciones r

@@ -22,6 +22,7 @@ from pydantic import BaseModel, Field
 
 class LineaVentaHacienda(BaseModel):
     idDetalleVenta: int
+    idComprador: int | None = None
     comprador: str | None = None
     tipoHacienda: str | None = None
     cantidad: float | None = None
@@ -35,6 +36,7 @@ class LineaVentaHacienda(BaseModel):
 class VentaHacienda(BaseModel):
     idVenta: int
     fecha: date | None = None
+    idConsignatario: int | None = None
     consignatario: str | None = None
     numeroDocumento: str | None = None
     lineas: list[LineaVentaHacienda] = Field(min_length=1)
@@ -50,6 +52,7 @@ class VentasHaciendaListResponse(BaseModel):
 class RetencionVentaHacienda(BaseModel):
     idRetencion: int
     fecha: date | None = None
+    idContacto: int | None = None
     contacto: str | None = None
     documento: str | None = None
     numeroDocumento: str | None = None

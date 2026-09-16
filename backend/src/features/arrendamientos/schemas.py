@@ -28,6 +28,7 @@ class Arrendamiento(BaseModel):
     finPeriodo: date | None = None
     # Label real en el formulario Access: "Arrendatario" (quien renta el
     # campo), confirmado inspeccionando el formulario "Alquileres".
+    idContacto: int | None = None
     contacto: str | None = None
     importeTotalContrato: float | None = None
     cantidadCuotas: int | None = None

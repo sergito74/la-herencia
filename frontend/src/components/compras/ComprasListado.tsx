@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useState } from "react";
 
 import { fetchCompras, fetchFiltrosCompras, type Compra } from "@/services/comprasApi";
+import { ContactoLink } from "@/components/ui/ContactoLink";
 import { DataTable, type DataTableColumn } from "@/components/ui/DataTable";
 import { FilterBar, FilterField, FilterSubmitButton, filterInputClass } from "@/components/ui/FilterBar";
 import { ErrorState, LoadingState } from "@/components/ui/States";
@@ -25,7 +26,13 @@ const COLUMNS: DataTableColumn<Compra>[] = [
     key: "proveedor",
     header: "Proveedor",
     sortValue: (c) => c.proveedor?.razonSocial ?? null,
-    render: (c) => c.proveedor?.razonSocial ?? "—",
+    render: (c) => (
+      <ContactoLink
+        idContacto={c.proveedor?.idContacto}
+        razonSocial={c.proveedor?.razonSocial}
+        tipoContacto="Proveedor"
+      />
+    ),
   },
   { key: "tipoDocumento", header: "Tipo documento", render: (c) => c.tipoDocumento ?? "—" },
   { key: "numeroDocumento", header: "Nro. documento", render: (c) => c.numeroDocumento ?? "—" },

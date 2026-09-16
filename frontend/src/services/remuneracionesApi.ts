@@ -12,6 +12,7 @@ import { apiGet } from "@/services/apiClient";
 
 export interface Remuneracion {
   idSalario: number;
+  idContacto: number | null;
   empleado: string | null;
   fechaPago: string | null;
   periodoLiquidado: string | null;

@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 
 import { fetchImpuestos, type Impuesto } from "@/services/impuestosApi";
+import { ContactoLink } from "@/components/ui/ContactoLink";
 import { DataTable, type DataTableColumn } from "@/components/ui/DataTable";
 import { FilterBar, FilterField, FilterSubmitButton, filterInputClass } from "@/components/ui/FilterBar";
 import { ErrorState, LoadingState } from "@/components/ui/States";
@@ -12,7 +13,14 @@ const COLUMNS: DataTableColumn<Impuesto>[] = [
   { key: "fecha", header: "Fecha", numeric: true, sortValue: (i) => i.fecha, render: (i) => i.fecha ?? "—" },
   { key: "tipoImpuesto", header: "Tipo", sortValue: (i) => i.tipoImpuesto, render: (i) => i.tipoImpuesto ?? "—" },
   { key: "periodoLiquidado", header: "Período", render: (i) => i.periodoLiquidado ?? "—" },
-  { key: "organismo", header: "Organismo", sortValue: (i) => i.organismo, render: (i) => i.organismo ?? "—" },
+  {
+    key: "organismo",
+    header: "Organismo",
+    sortValue: (i) => i.organismo,
+    render: (i) => (
+      <ContactoLink idContacto={i.idOrganismo} razonSocial={i.organismo} tipoContacto="Organismo" />
+    ),
+  },
   {
     key: "importe",
     header: "Importe",

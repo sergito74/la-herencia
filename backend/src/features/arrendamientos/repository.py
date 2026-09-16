@@ -44,6 +44,7 @@ def search_arrendamientos(
             a.Fecha AS fecha,
             a.[Inicio del periodo] AS inicioPeriodo,
             a.[Fin del periodo] AS finPeriodo,
+            c.IdContacto AS idContacto,
             c.[Razon Social] AS contacto,
             a.[Importe total del contrato] AS importeTotalContrato,
             a.[Cantidad de cuotas] AS cantidadCuotas,

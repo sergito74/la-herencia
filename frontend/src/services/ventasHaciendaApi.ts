@@ -12,6 +12,7 @@ import { apiGet } from "@/services/apiClient";
 
 export interface LineaVentaHacienda {
   idDetalleVenta: number;
+  idComprador: number | null;
   comprador: string | null;
   tipoHacienda: string | null;
   cantidad: number | null;
@@ -28,6 +29,7 @@ export interface LineaVentaHacienda {
 export interface VentaHacienda {
   idVenta: number;
   fecha: string | null;
+  idConsignatario: number | null;
   consignatario: string | null;
   numeroDocumento: string | null;
   lineas: LineaVentaHacienda[];
@@ -43,6 +45,7 @@ export interface VentasHaciendaListResponse {
 export interface RetencionVentaHacienda {
   idRetencion: number;
   fecha: string | null;
+  idContacto: number | null;
   contacto: string | null;
   documento: string | null;
   numeroDocumento: string | null;

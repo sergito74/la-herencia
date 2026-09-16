@@ -6,41 +6,48 @@ import Link from "next/link";
 import { KpiCard } from "@/components/ui/KpiCard";
 import { fetchArrendamientos } from "@/services/arrendamientosApi";
 
-const PRINCIPALES = [
-  {
-    href: "/tesoreria",
-    label: "Tesorería",
-    description:
-      "Movimientos por banco, caja, valores y tarjetas. Carga y validación de resúmenes Excel.",
-  },
-  {
-    href: "/cuentas-corrientes",
-    label: "Cuentas corrientes",
-    description:
-      "Saldo y movimientos por contacto, con origen explícito hacia compras, tesorería y otros movimientos.",
-  },
-  {
-    href: "/compras",
-    label: "Compras",
-    description: "Buscar y listar compras, ver detalle y trazabilidad hacia cuentas corrientes.",
-  },
-];
+interface ProcessCardLink {
+  href: string;
+  label: string;
+}
 
-// Nota UX (consulta a 08-agro-erp-frontend-specialist, ver plan.md de
-// specs/005-egresos-y-ventas-menores): dominios de bajo volumen que se
-// consultan "cuando hace falta", no a diario — sección secundaria.
-const OTROS_MOVIMIENTOS = [
-  { href: "/impuestos", label: "Impuestos", description: "Impuestos y retenciones impositivas." },
+interface ProcessCard {
+  label: string;
+  description: string;
+  href?: string;
+  links?: ProcessCardLink[];
+}
+
+/**
+ * 4 procesos de negocio con contenido + 1 placeholder de Producción —
+ * ver design/erp-module-architecture.md §4.3 (reemplaza en autoridad la
+ * agrupación "3 principales + Otros movimientos" anterior).
+ */
+const PROCESOS: ProcessCard[] = [
   {
-    href: "/remuneraciones",
-    label: "Remuneraciones",
-    description: "Liquidaciones y pagos efectivos.",
+    label: "Compras",
+    href: "/compras",
+    description: "Compras a proveedores, con imputación por rubro/centro de costo/destino/campaña.",
   },
-  { href: "/arrendamientos", label: "Arrendamientos", description: "Contratos y cobros asociados." },
   {
-    href: "/ventas-hacienda",
-    label: "Ventas de hacienda",
-    description: "Ventas por comprador y retenciones asociadas.",
+    label: "Ventas",
+    href: "/ventas/hacienda",
+    description: "Ventas de hacienda por comprador, con retenciones asociadas.",
+  },
+  {
+    label: "Finanzas",
+    description: "Tesorería, cuentas corrientes, impuestos y arrendamientos.",
+    links: [
+      { href: "/finanzas/tesoreria", label: "Tesorería" },
+      { href: "/finanzas/cuentas-corrientes", label: "Cuentas corrientes" },
+      { href: "/finanzas/impuestos", label: "Impuestos y retenciones" },
+      { href: "/finanzas/arrendamientos", label: "Arrendamientos" },
+    ],
+  },
+  {
+    label: "Personal",
+    description: "Liquidaciones de remuneraciones y pagos efectivos.",
+    links: [{ href: "/personal/remuneraciones", label: "Remuneraciones" }],
   },
 ];
 
@@ -81,45 +88,63 @@ function CuotasArrendamientoKpis() {
   );
 }
 
+function ProcessCardView({ proceso }: { proceso: ProcessCard }) {
+  const content = (
+    <>
+      <h2 className="font-semibold text-ink-primary">{proceso.label}</h2>
+      <p className="mt-1 text-sm text-ink-secondary">{proceso.description}</p>
+      {proceso.links && (
+        <ul className="mt-3 space-y-1 border-t border-border pt-3">
+          {proceso.links.map((l) => (
+            <li key={l.href}>
+              <Link href={l.href} className="text-sm text-finance hover:underline">
+                {l.label} →
+              </Link>
+            </li>
+          ))}
+        </ul>
+      )}
+    </>
+  );
+
+  if (proceso.href) {
+    return (
+      <Link
+        href={proceso.href}
+        className="rounded-md border border-border bg-surface p-5 transition hover:border-border-strong hover:shadow-sm"
+      >
+        {content}
+      </Link>
+    );
+  }
+
+  return <div className="rounded-md border border-border bg-surface p-5">{content}</div>;
+}
+
 export default function Home() {
   return (
     <main className="mx-auto max-w-4xl p-8">
       <h1 className="text-2xl font-semibold text-ink-primary">La Herencia</h1>
       <p className="mt-2 text-ink-secondary">
-        Sistema administrativo — migración progresiva, módulo por módulo (solo lectura).
+        Sistema administrativo por proceso de negocio (solo lectura salvo donde se indique).
       </p>
 
       <div className="mt-6">
         <CuotasArrendamientoKpis />
       </div>
 
-      <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
-        {PRINCIPALES.map((m) => (
-          <Link
-            key={m.href}
-            href={m.href}
-            className="rounded-md border border-border bg-surface p-5 transition hover:border-border-strong hover:shadow-sm"
-          >
-            <h2 className="font-semibold text-ink-primary">{m.label}</h2>
-            <p className="mt-1 text-sm text-ink-secondary">{m.description}</p>
-          </Link>
+      <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
+        {PROCESOS.map((p) => (
+          <ProcessCardView key={p.label} proceso={p} />
         ))}
       </div>
 
-      <h2 className="mt-8 text-sm font-medium uppercase tracking-wide text-ink-secondary">
-        Otros movimientos
-      </h2>
-      <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        {OTROS_MOVIMIENTOS.map((m) => (
-          <Link
-            key={m.href}
-            href={m.href}
-            className="rounded-md border border-border bg-surface p-3 text-sm transition hover:border-border-strong hover:shadow-sm"
-          >
-            <h3 className="font-medium text-ink-primary">{m.label}</h3>
-            <p className="mt-1 text-ink-secondary">{m.description}</p>
-          </Link>
-        ))}
+      <div className="mt-4 rounded-md border border-dashed border-border bg-surface-sunken p-5 text-ink-muted">
+        <h2 className="font-semibold">Producción</h2>
+        <p className="mt-1 text-sm">
+          Órdenes de trabajo, cultivos y ganadería — próximamente. El sistema Access original
+          tiene estos procesos activos; todavía no fueron migrados.
+        </p>
       </div>
     </main>
   );

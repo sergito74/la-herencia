@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 
 import { actualizarEstadoCuota, fetchArrendamientos } from "@/services/arrendamientosApi";
+import { ContactoLink } from "@/components/ui/ContactoLink";
 import { StatusBadge, type BadgeTone } from "@/components/ui/StatusBadge";
 import { FilterBar, FilterField, FilterSubmitButton, filterInputClass } from "@/components/ui/FilterBar";
 import { EmptyState, ErrorState, LoadingState } from "@/components/ui/States";
@@ -88,7 +89,8 @@ export function ArrendamientosListado() {
                   <div className="flex flex-wrap items-baseline justify-between gap-2">
                     <div>
                       <h3 className="font-semibold text-ink-primary">
-                        Arrendamiento — {a.contacto ?? "—"}
+                        Arrendamiento —{" "}
+                        <ContactoLink idContacto={a.idContacto} razonSocial={a.contacto} />
                       </h3>
                       <p className="text-xs text-ink-muted">Arrendatario</p>
                       <p className="mt-1 text-sm text-ink-secondary">

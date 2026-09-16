@@ -1,7 +1,8 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { useEffect, useState } from "react";
 
 import {
   fetchContactos,
@@ -74,11 +75,28 @@ const COLUMNS: DataTableColumn<MovimientoCuentaCorriente>[] = [
  * system "Tierra & Cultivo" (design/agroux-frontend-redesign.md §5.3).
  */
 export function CuentaCorriente() {
+  const searchParams = useSearchParams();
   const [q, setQ] = useState("");
   const [tipoContacto, setTipoContacto] = useState("");
   const [appliedQ, setAppliedQ] = useState("");
   const [appliedTipoContacto, setAppliedTipoContacto] = useState("");
   const [selected, setSelected] = useState<Contacto | null>(null);
+
+  // Vínculo transversal (design/erp-module-architecture.md §3.5): un link
+  // "ver cuenta corriente" desde cualquier módulo (Compras, Arrendamientos,
+  // Ventas de Hacienda, Impuestos, Remuneraciones) llega acá con
+  // ?idContacto=&razonSocial=&tipoContacto= y selecciona el contacto de
+  // una, sin pasar por el buscador.
+  useEffect(() => {
+    const idContacto = searchParams.get("idContacto");
+    if (!idContacto) return;
+    setSelected({
+      idContacto: Number(idContacto),
+      razonSocial: searchParams.get("razonSocial"),
+      tipoContacto: searchParams.get("tipoContacto"),
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const [fechaDesde, setFechaDesde] = useState("");
   const [fechaHasta, setFechaHasta] = useState("");
   const [appliedDates, setAppliedDates] = useState({ fechaDesde: "", fechaHasta: "" });

@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 
 import { fetchRemuneraciones, type Remuneracion } from "@/services/remuneracionesApi";
+import { ContactoLink } from "@/components/ui/ContactoLink";
 import { DataTable, type DataTableColumn } from "@/components/ui/DataTable";
 import { FilterBar, FilterField, FilterSubmitButton, filterInputClass } from "@/components/ui/FilterBar";
 import { ErrorState, LoadingState } from "@/components/ui/States";
@@ -22,7 +23,11 @@ const COLUMNS: DataTableColumn<Remuneracion>[] = [
     header: "Empleado",
     sortValue: (r) => r.empleado,
     render: (r) =>
-      r.empleado ?? <span className="italic text-ink-muted">Contacto no disponible</span>,
+      r.idContacto != null ? (
+        <ContactoLink idContacto={r.idContacto} razonSocial={r.empleado} tipoContacto="Empleado" />
+      ) : (
+        <span className="italic text-ink-muted">Contacto no disponible</span>
+      ),
   },
   {
     key: "importe",

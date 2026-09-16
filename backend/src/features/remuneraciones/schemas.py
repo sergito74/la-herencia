@@ -19,6 +19,7 @@ from pydantic import BaseModel
 
 class Remuneracion(BaseModel):
     idSalario: int
+    idContacto: int | None = None
     empleado: str | None = None
     fechaPago: date | None = None
     periodoLiquidado: str | None = None

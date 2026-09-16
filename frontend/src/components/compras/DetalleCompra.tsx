@@ -5,6 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { fetchCompraDetalle, type LineaCompra } from "@/services/comprasApi";
 import { TrazabilidadCompra } from "@/components/compras/TrazabilidadCompra";
 import { Breadcrumb } from "@/components/ui/Breadcrumb";
+import { ContactoLink } from "@/components/ui/ContactoLink";
 import { EmptyState, ErrorState, LoadingState } from "@/components/ui/States";
 
 /**
@@ -47,7 +48,13 @@ export function DetalleCompra({ idCompra }: { idCompra: number }) {
           </div>
           <div>
             <dt className="text-ink-secondary">Proveedor</dt>
-            <dd>{data.proveedor?.razonSocial ?? "—"}</dd>
+            <dd>
+              <ContactoLink
+                idContacto={data.proveedor?.idContacto}
+                razonSocial={data.proveedor?.razonSocial}
+                tipoContacto="Proveedor"
+              />
+            </dd>
           </div>
           <div>
             <dt className="text-ink-secondary">Tipo documento</dt>

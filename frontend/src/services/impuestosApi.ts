@@ -13,6 +13,7 @@ export interface Impuesto {
   periodoLiquidado: string | null;
   numeroDocumento: string | null;
   importe: number | null;
+  idOrganismo: number | null;
   organismo: string | null;
 }
 
@@ -27,6 +28,7 @@ export interface Retencion {
   idRetencion: number;
   numeroCertificado: string | null;
   fecha: string | null;
+  idContacto: number | null;
   contacto: string | null;
   importe: number | null;
 }
