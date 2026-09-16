@@ -31,7 +31,7 @@ const COLUMNS: DataTableColumn<Retencion>[] = [
 /**
  * Listado de retenciones impositivas (005 US1: FR-001). Read-only.
  */
-export function RetencionesListado() {
+export function RetencionesListado({ highlightKey }: { highlightKey?: number }) {
   const [contacto, setContacto] = useState("");
   const [appliedContacto, setAppliedContacto] = useState("");
   const [page, setPage] = useState(1);
@@ -78,6 +78,7 @@ export function RetencionesListado() {
           pageSize={data.pageSize}
           total={data.total}
           onPageChange={setPage}
+          highlightKey={highlightKey}
         />
       )}
     </div>

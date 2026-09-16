@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { EmptyState } from "@/components/ui/States";
 
@@ -24,6 +24,12 @@ interface DataTableProps<T> {
   pageSize: number;
   total: number;
   onPageChange: (page: number) => void;
+  /**
+   * Resalta y hace scroll hacia la fila cuya `keyField()` coincida — usado
+   * para los links bidireccionales desde Cuenta Corriente hacia su
+   * módulo de origen (design/erp-module-architecture.md §3.3/§3.4).
+   */
+  highlightKey?: React.Key | null;
 }
 
 type SortState = { key: string; direction: "asc" | "desc" } | null;
@@ -44,9 +50,17 @@ export function DataTable<T>({
   pageSize,
   total,
   onPageChange,
+  highlightKey,
 }: DataTableProps<T>) {
   const [sort, setSort] = useState<SortState>(null);
+  const highlightRef = useRef<HTMLTableRowElement | null>(null);
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
+
+  useEffect(() => {
+    if (highlightKey != null && highlightRef.current) {
+      highlightRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  }, [highlightKey]);
 
   const sortedRows = useMemo(() => {
     if (!sort) return rows;
@@ -102,20 +116,28 @@ export function DataTable<T>({
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
-            {sortedRows.map((row) => (
-              <tr key={keyField(row)} className="hover:bg-surface-sunken">
-                {columns.map((col) => (
-                  <td
-                    key={col.key}
-                    className={`px-3 py-1.5 ${col.align === "right" ? "text-right" : ""} ${
-                      col.numeric ? "font-data" : ""
-                    }`}
-                  >
-                    {col.render(row)}
-                  </td>
-                ))}
-              </tr>
-            ))}
+            {sortedRows.map((row) => {
+              const key = keyField(row);
+              const isHighlighted = highlightKey != null && String(key) === String(highlightKey);
+              return (
+                <tr
+                  key={key}
+                  ref={isHighlighted ? highlightRef : undefined}
+                  className={isHighlighted ? "bg-status-warning-bg" : "hover:bg-surface-sunken"}
+                >
+                  {columns.map((col) => (
+                    <td
+                      key={col.key}
+                      className={`px-3 py-1.5 ${col.align === "right" ? "text-right" : ""} ${
+                        col.numeric ? "font-data" : ""
+                      }`}
+                    >
+                      {col.render(row)}
+                    </td>
+                  ))}
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>

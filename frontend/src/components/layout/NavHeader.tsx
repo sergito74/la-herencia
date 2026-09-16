@@ -12,22 +12,64 @@ interface NavLeaf {
 interface NavItem {
   href: string;
   label: string;
+  icon: JSX.Element;
   submenu?: NavLeaf[];
   disabled?: boolean;
   disabledTitle?: string;
+}
+
+/** Íconos SVG inline — sin agregar dependencia nueva (constitución, principio
+ * VII). Trazo simple 1.5px, 18x18, consistente con la densidad "administrativa"
+ * del design system (design/agroux-frontend-redesign.md §2.3). */
+const ICONS = {
+  compras: (
+    <path d="M4 6h16l-1.5 9.5a2 2 0 0 1-2 1.5H7.5a2 2 0 0 1-2-1.5L4 6Zm0 0-.5-2H2M9 10v3m6-3v3" />
+  ),
+  ventas: <path d="M4 18 10 12l4 4 6-7M14 8h6v6" />,
+  finanzas: <path d="M12 3v18M6 7h9a3 3 0 0 1 0 6H9a3 3 0 0 0 0 6h9" />,
+  personal: (
+    <path d="M17 20v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2M11 4a4 4 0 1 1 0 8 4 4 0 0 1 0-8Zm8 16v-2a4 4 0 0 0-3-3.87M16 4.13A4 4 0 0 1 16 11.87" />
+  ),
+  produccion: <path d="M12 3 4 9v12h16V9l-8-6Zm-4 18v-6h8v6" />,
+  bell: <path d="M6 8a6 6 0 1 1 12 0c0 4 1.5 5.5 1.5 5.5H4.5S6 12 6 8Zm4.5 9.5a1.5 1.5 0 0 0 3 0" />,
+  chevron: <path d="m6 9 6 6 6-6" />,
+};
+
+function Icon({ children, className = "h-4 w-4" }: { children: JSX.Element; className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.6}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+      aria-hidden="true"
+    >
+      {children}
+    </svg>
+  );
 }
 
 /**
  * Estructura de navegación por proceso de negocio, no por orden de
  * construcción — ver design/erp-module-architecture.md (reemplaza en
  * autoridad la agrupación anterior de design/agroux-frontend-redesign.md).
+ *
+ * Polish 2026-09-16: íconos por módulo + shell bar de dos franjas — patrón
+ * confirmado en SAP Fiori (shell bar superior fija con branding/búsqueda/
+ * notificaciones/usuario, franja de navegación separada) y en Odoo 17+
+ * (top bar con identidad de app + selector, ver design/agroux-frontend-redesign.md
+ * sección "2026-09-16 — Polish de navegación" para el detalle de research).
  */
 const NAV_ITEMS: NavItem[] = [
-  { href: "/compras", label: "Compras" },
-  { href: "/ventas/hacienda", label: "Ventas" },
+  { href: "/compras", label: "Compras", icon: ICONS.compras },
+  { href: "/ventas/hacienda", label: "Ventas", icon: ICONS.ventas },
   {
     href: "/finanzas",
     label: "Finanzas",
+    icon: ICONS.finanzas,
     submenu: [
       { href: "/finanzas/tesoreria", label: "Tesorería" },
       { href: "/finanzas/cuentas-corrientes", label: "Cuentas corrientes" },
@@ -38,11 +80,13 @@ const NAV_ITEMS: NavItem[] = [
   {
     href: "/personal",
     label: "Personal",
+    icon: ICONS.personal,
     submenu: [{ href: "/personal/remuneraciones", label: "Remuneraciones" }],
   },
   {
     href: "/produccion",
     label: "Producción",
+    icon: ICONS.produccion,
     disabled: true,
     disabledTitle: "Próximamente — Órdenes de trabajo, cultivos y ganadería",
   },
@@ -60,18 +104,20 @@ function NavDropdown({ item, active }: { item: NavItem; active: boolean }) {
     <div className="relative" onMouseEnter={() => setOpen(true)} onMouseLeave={() => setOpen(false)}>
       <button
         type="button"
-        className={`px-3 py-2.5 text-sm transition-colors ${
+        className={`flex items-center gap-2 rounded-md px-3 py-2 text-sm transition-colors ${
           active
-            ? "border-b-2 border-finance bg-finance-light font-medium text-finance"
-            : "border-b-2 border-transparent text-ink-secondary hover:text-ink-primary"
+            ? "bg-finance-light font-medium text-finance"
+            : "text-ink-secondary hover:bg-surface-sunken hover:text-ink-primary"
         }`}
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
       >
-        {item.label} ▾
+        <Icon>{item.icon}</Icon>
+        {item.label}
+        <Icon className={`h-3.5 w-3.5 transition-transform ${open ? "rotate-180" : ""}`}>{ICONS.chevron}</Icon>
       </button>
       {open && (
-        <div className="absolute left-0 top-full z-10 min-w-[14rem] rounded-md border border-border bg-surface py-1 shadow-lg">
+        <div className="absolute left-0 top-full z-10 min-w-[14rem] origin-top-left rounded-md border border-border bg-surface py-1 shadow-lg ring-1 ring-black/5 animate-[fadeIn_0.1s_ease-out]">
           {item.submenu!.map((leaf) => {
             const leafActive = isActive(pathname, leaf.href);
             return (
@@ -98,34 +144,56 @@ export function NavHeader() {
   const pathname = usePathname();
 
   return (
-    <header className="border-b border-border bg-surface">
-      {/* Franja superior: logo + slot reservado para el futuro selector de
-          contexto (Establecimiento/Campaña) — no hay datos de esa
-          jerarquía en SQL Server todavía. */}
-      <div className="mx-auto flex max-w-6xl items-center justify-between px-8 py-2">
-        <Link href="/" className="font-semibold text-ink-primary">
+    <header className="sticky top-0 z-20 border-b border-border bg-surface shadow-sm">
+      {/* Franja superior ("shell bar"): logo + slot para selector de contexto
+          futuro + placeholders de notificaciones/usuario — patrón SAP Fiori
+          (branding, búsqueda, notificaciones, menú de usuario siempre visibles). */}
+      <div className="mx-auto flex max-w-6xl items-center justify-between px-8 py-2.5">
+        <Link href="/" className="flex items-center gap-2 font-semibold text-ink-primary">
+          <span className="flex h-7 w-7 items-center justify-center rounded-md bg-agro text-sm text-white">
+            LH
+          </span>
           La Herencia
         </Link>
-        <button
-          type="button"
-          disabled
-          title="Selector de Establecimiento/Campaña — próximamente"
-          className="rounded-sm border border-border px-3 py-1 text-xs text-ink-muted disabled:cursor-not-allowed"
-        >
-          Establecimiento: todos
-        </button>
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            disabled
+            title="Selector de Establecimiento/Campaña — próximamente"
+            className="rounded-sm border border-border px-3 py-1 text-xs text-ink-muted disabled:cursor-not-allowed"
+          >
+            Establecimiento: todos
+          </button>
+          <button
+            type="button"
+            disabled
+            title="Notificaciones — próximamente"
+            className="rounded-full p-1.5 text-ink-muted hover:bg-surface-sunken disabled:cursor-not-allowed disabled:hover:bg-transparent"
+          >
+            <Icon>{ICONS.bell}</Icon>
+          </button>
+          <button
+            type="button"
+            disabled
+            title="Cuenta de usuario — autenticación pendiente de implementar"
+            className="flex h-7 w-7 items-center justify-center rounded-full bg-finance-light text-xs font-medium text-finance disabled:cursor-not-allowed"
+          >
+            ?
+          </button>
+        </div>
       </div>
 
       {/* Franja de navegación por proceso de negocio. */}
-      <div className="mx-auto flex max-w-6xl items-center gap-1 border-t border-border px-8">
+      <div className="mx-auto flex max-w-6xl items-center gap-1 border-t border-border px-8 py-1.5">
         {NAV_ITEMS.map((item) => {
           if (item.disabled) {
             return (
               <span
                 key={item.href}
                 title={item.disabledTitle}
-                className="cursor-not-allowed px-3 py-2.5 text-sm text-ink-muted"
+                className="flex cursor-not-allowed items-center gap-2 rounded-md px-3 py-2 text-sm text-ink-muted"
               >
+                <Icon>{item.icon}</Icon>
                 {item.label}
               </span>
             );
@@ -143,12 +211,13 @@ export function NavHeader() {
             <Link
               key={item.href}
               href={item.href}
-              className={`px-3 py-2.5 text-sm font-medium transition-colors ${
+              className={`flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors ${
                 active
-                  ? "border-b-2 border-finance bg-finance-light text-finance"
-                  : "border-b-2 border-transparent text-ink-secondary hover:text-ink-primary"
+                  ? "bg-finance-light text-finance"
+                  : "text-ink-secondary hover:bg-surface-sunken hover:text-ink-primary"
               }`}
             >
+              <Icon>{item.icon}</Icon>
               {item.label}
             </Link>
           );

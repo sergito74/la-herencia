@@ -44,7 +44,7 @@ const COLUMNS: DataTableColumn<Remuneracion>[] = [
  * "Importe (calculado)": suma de ~15 conceptos monetarios en SQL, no un
  * campo directo — Principio IV, ver data-model.md.
  */
-export function RemuneracionesListado() {
+export function RemuneracionesListado({ highlightKey }: { highlightKey?: number }) {
   const [empleado, setEmpleado] = useState("");
   const [appliedEmpleado, setAppliedEmpleado] = useState("");
   const [page, setPage] = useState(1);
@@ -91,6 +91,7 @@ export function RemuneracionesListado() {
           pageSize={data.pageSize}
           total={data.total}
           onPageChange={setPage}
+          highlightKey={highlightKey}
         />
       )}
     </div>

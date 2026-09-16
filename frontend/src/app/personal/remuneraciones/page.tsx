@@ -1,5 +1,6 @@
 "use client";
 
+import { useSearchParams } from "next/navigation";
 import { useState } from "react";
 
 import { PagosRemuneracionListado } from "@/components/remuneraciones/PagosRemuneracionListado";
@@ -8,7 +9,10 @@ import { RemuneracionesListado } from "@/components/remuneraciones/Remuneracione
 const TABS = ["Liquidaciones", "Pagos"] as const;
 
 export default function RemuneracionesPage() {
+  const searchParams = useSearchParams();
   const [tab, setTab] = useState<(typeof TABS)[number]>("Liquidaciones");
+  const highlight = searchParams.get("highlight");
+  const highlightKey = highlight ? Number(highlight) : undefined;
 
   return (
     <main className="mx-auto max-w-6xl p-8">
@@ -34,7 +38,11 @@ export default function RemuneracionesPage() {
       </div>
 
       <div className="mt-6">
-        {tab === "Liquidaciones" ? <RemuneracionesListado /> : <PagosRemuneracionListado />}
+        {tab === "Liquidaciones" ? (
+          <RemuneracionesListado highlightKey={highlightKey} />
+        ) : (
+          <PagosRemuneracionListado />
+        )}
       </div>
     </main>
   );

@@ -287,3 +287,39 @@ Riesgo de cambiar el "read path": **ninguno** — los 7 módulos son 100% lectur
 6. **Fase 5 — Reserva de futuro:** agregar el slot de selector de Establecimiento/Campaña en el header (oculto/deshabilitado hasta que existan datos), sin construir ninguna pantalla de agricultura/ganadería — eso queda bloqueado a que 01-sql-server-engineer confirme el schema real.
 
 Cada fase es demoable y reversible de forma independiente; no requiere un "big bang" de rewrite total.
+
+---
+
+## 8. 2026-09-16 — Polish de navegación (respuesta a feedback "no se ve moderno/profesional")
+
+**Contexto:** feedback directo del usuario de que la estructura de menús no se ve moderna/profesional y pedido explícito de investigar sistemas reales en la web antes de tocar el código. Se verificó primero (fuera de este documento) que los tokens de color de `tailwind.config.ts`/`globals.css` están intactos y sirviéndose correctamente — la percepción de "colores cambiados" fue muy probablemente caché de navegador, no una regresión real. El diagnóstico de este research confirma que el problema no es la paleta "Tierra & Cultivo" en sí (orgánica, cálida, coherente con el dominio agropecuario) sino la **falta de pulido de componente**: sin íconos, header de una sola densidad visual, dropdown sin transición, sin ningún elemento que señale "sistema real" (usuario, notificaciones).
+
+### Research (fuentes concretas)
+
+- **Odoo (v17+ Enterprise)**: migró de menú horizontal a barra superior con app switcher (grid de 9 puntos) + menú vertical dentro de cada app — confirma que un ERP moderno separa "cambiar de módulo" (franja superior) de "navegar dentro del módulo". Fuente: apps.odoo.com (`ui_app_switcher`), Medium "The Quiet Revolution... How Odoo Grew Up Between v14 and v19".
+- **SAP Fiori — Launchpad Shell Bar** (`sap.com/design-system/fiori-design-web`, "Shell Bar" usage guidelines): la shell bar es una franja *siempre visible* con branding, botón de back, búsqueda enterprise, notificaciones y menú de usuario — separada de la navegación de módulos/apps. Este es el patrón concreto que se adoptó: franja superior (branding + selector de contexto futuro + notificaciones + usuario) distinta de la franja de navegación por proceso de negocio.
+- **Xubio / Auravant** (referencias LatAm): Auravant es agricultura de precisión con foco geoespacial (fuera del alcance de este proyecto, principio explícito "sin GIS"); Xubio es gestión/contabilidad pyme genérica. Ninguno documenta públicamente su sistema de navegación en detalle accesible por búsqueda — no se encontró suficiente material concreto de sus pantallas como para citarlos como referencia de patrón específico; se usaron como validación de tono "profesional pyme argentina" más que como fuente de patrón de UI.
+- **shadcn/ui blocks** (`shadcn.io/blocks/navbar-*`): confirma como estándar de SaaS moderno 2026 la combinación breadcrumb + búsqueda + notificaciones + avatar de usuario en la barra de dashboard, y el patrón de command palette (Cmd+K). Se adoptaron breadcrumb (ya existía, ver §3.2, usado en Compras/Cuentas Corrientes) + notificaciones/usuario; **no** se agregó una búsqueda global falsa ni command palette porque hoy no hay un índice de contenido real que buscar y un input de búsqueda no funcional sería una funcionalidad fingida (viola Principio IV de la constitución) — queda para cuando exista una fuente real de datos a indexar.
+
+### Decisión de arquitectura
+
+Se mantiene **top nav de dos franjas** (no sidebar). Justificación: con 5 módulos (y Producción como 6to eventual) un top nav horizontal con dropdown por módulo sigue siendo legible sin sidebar; el patrón Fiori/Odoo confirma que la franja superior fija (shell bar) es el elemento que faltaba, no un cambio a sidebar. Se reserva la decisión de sidebar para si el árbol de navegación crece más allá de ~7-8 módulos de primer nivel.
+
+### Cambios implementados
+
+1. **`frontend/src/components/layout/NavHeader.tsx`** (reescrito):
+   - Ícono SVG inline por módulo (Compras/Ventas/Finanzas/Personal/Producción) — sin agregar dependencia de librería de íconos (no hay ninguna en `package.json`; se usan `<svg>` inline por reversibilidad, principio VII).
+   - Shell bar superior ahora incluye, además del selector de Establecimiento (placeholder ya existente): botón de notificaciones deshabilitado (`title="Notificaciones — próximamente"`) y placeholder de cuenta de usuario deshabilitado (`title="Cuenta de usuario — autenticación pendiente de implementar"`) — mismo patrón honesto ya usado en el selector de contexto (deshabilitado + `title` explicativo, nunca fingiendo una función que no existe).
+   - Header con `sticky top-0` y `shadow-sm` (visualmente "flota" sobre el contenido al scrollear, patrón shell bar).
+   - Ítems de nav y leafs de dropdown ahora usan fondo `bg-finance-light` + `rounded-md` como estado activo (antes solo `border-b-2` + subrayado) — más cercano al tratamiento de "pill" activo visto en Odoo/shadcn.
+   - Dropdown con `shadow-lg` + `ring-1 ring-black/5` + transición de entrada (`@keyframes fadeIn` agregado a `globals.css`) + chevron que rota al abrir.
+2. **`frontend/src/app/globals.css`**: se agregó `@keyframes fadeIn` (translateY + opacity) para la transición del dropdown — no se tocó ningún token de color.
+3. **`frontend/src/components/ui/Toast.tsx`** (nuevo): sistema de notificaciones toast sin dependencia nueva (contexto de React + `setTimeout`), con tonos `success`/`danger`/`neutral` mapeados a los tokens `status-*` existentes. Justificación: reemplaza el "éxito/error silencioso" en la primera acción de escritura real de la app (marcar cuota de arrendamiento como cobrada), siguiendo el estándar de feedback transitorio no bloqueante confirmado en los patrones de shadcn/ui.
+4. **`frontend/src/app/providers.tsx`**: envuelve la app en `<ToastProvider>`.
+5. **`frontend/src/components/arrendamientos/ArrendamientosListado.tsx`**: la mutación `actualizarEstadoCuota` ahora dispara `showToast(...)` en éxito ("Cuota marcada como cobrada/pendiente.") y en error ("No se pudo actualizar el estado de la cuota. Intentá de nuevo.") en vez de invalidar la query en silencio.
+
+### No implementado ahora (descartado explícitamente, no solo diferido)
+
+- Búsqueda global / command palette: requiere un índice real de contenido navegable; hoy sería una caja de búsqueda decorativa sin función — se descarta por Principio IV, no se difiere como TODO.
+- Sidebar colapsable: no se justifica con 5 módulos; revisar si el árbol crece.
+- Breadcrumb en la franja del header (además del ya existente por página en vistas de detalle): redundante con el breadcrumb de página actual (`Breadcrumb.tsx`, usado en Compras/Cuentas Corrientes) — no se duplica.

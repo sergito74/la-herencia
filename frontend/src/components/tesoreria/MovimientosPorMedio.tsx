@@ -100,11 +100,17 @@ function idFieldFor(medio: Medio): string {
   }
 }
 
-export function MovimientosPorMedio({ medio }: { medio: Medio }) {
+export function MovimientosPorMedio({
+  medio,
+  highlightKey,
+}: {
+  medio: Medio;
+  highlightKey?: number;
+}) {
   const [fechaDesde, setFechaDesde] = useState("");
   const [fechaHasta, setFechaHasta] = useState("");
   const [page, setPage] = useState(1);
-  const [expandedId, setExpandedId] = useState<number | null>(null);
+  const [expandedId, setExpandedId] = useState<number | null>(highlightKey ?? null);
   const pageSize = 50;
 
   const { data, isLoading, isError, refetch } = useQuery({
@@ -185,6 +191,7 @@ export function MovimientosPorMedio({ medio }: { medio: Medio }) {
           pageSize={data.pageSize}
           total={data.total}
           onPageChange={setPage}
+          highlightKey={highlightKey}
         />
       )}
     </div>

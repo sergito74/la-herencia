@@ -20,3 +20,16 @@ body {
   font-variant-numeric: tabular-nums;
   font-feature-settings: "tnum" 1;
 }
+
+/* Transición sutil de apertura para dropdowns del nav (NavHeader) — evita el
+   "pop" instantáneo, patrón visto en Fiori/Odoo para menús contextuales. */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-2px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

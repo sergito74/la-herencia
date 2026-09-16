@@ -1,13 +1,15 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
 
 import { actualizarEstadoCuota, fetchArrendamientos } from "@/services/arrendamientosApi";
 import { ContactoLink } from "@/components/ui/ContactoLink";
 import { StatusBadge, type BadgeTone } from "@/components/ui/StatusBadge";
 import { FilterBar, FilterField, FilterSubmitButton, filterInputClass } from "@/components/ui/FilterBar";
 import { EmptyState, ErrorState, LoadingState } from "@/components/ui/States";
+import { useToast } from "@/components/ui/Toast";
 
 /**
  * Enum real confirmado en el formulario Access (`Subformulario Detalle
@@ -31,11 +33,16 @@ function estadoCuota(estado: string | null, fechaVencimiento: string | null): { 
  * contra `WC`, nunca contra `LaHerencia` (regla de oro, ver memory.md).
  */
 export function ArrendamientosListado() {
+  const searchParams = useSearchParams();
+  const highlight = searchParams.get("highlight");
+  const highlightId = highlight ? Number(highlight) : null;
+  const highlightRef = useRef<HTMLDivElement | null>(null);
   const [contacto, setContacto] = useState("");
   const [appliedContacto, setAppliedContacto] = useState("");
   const [page, setPage] = useState(1);
   const pageSize = 50;
   const queryClient = useQueryClient();
+  const { showToast } = useToast();
 
   const queryKey = ["arrendamientos", appliedContacto, page];
   const { data, isLoading, isError } = useQuery({
@@ -47,7 +54,16 @@ export function ArrendamientosListado() {
   const toggleEstadoMutation = useMutation({
     mutationFn: ({ idCobroAlquiler, estado }: { idCobroAlquiler: number; estado: "Pendiente" | "Cobrado" }) =>
       actualizarEstadoCuota(idCobroAlquiler, estado),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey }),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey });
+      showToast(
+        variables.estado === "Cobrado" ? "Cuota marcada como cobrada." : "Cuota marcada como pendiente.",
+        "success",
+      );
+    },
+    onError: () => {
+      showToast("No se pudo actualizar el estado de la cuota. Intentá de nuevo.", "danger");
+    },
   });
 
   function handleSubmit(e: React.FormEvent) {
@@ -55,6 +71,12 @@ export function ArrendamientosListado() {
     setPage(1);
     setAppliedContacto(contacto);
   }
+
+  useEffect(() => {
+    if (highlightId != null && highlightRef.current) {
+      highlightRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  }, [highlightId, data]);
 
   const totalPages = data ? Math.max(1, Math.ceil(data.total / data.pageSize)) : 1;
 
@@ -84,8 +106,15 @@ export function ArrendamientosListado() {
           <div className="space-y-4">
             {data.items.map((a) => {
               const cobradas = a.cobros.filter((c) => c.estado?.toLowerCase() === "cobrado").length;
+              const isHighlighted = highlightId != null && a.idAlquiler === highlightId;
               return (
-                <div key={a.idAlquiler} className="rounded-md border border-border bg-surface p-4">
+                <div
+                  key={a.idAlquiler}
+                  ref={isHighlighted ? highlightRef : undefined}
+                  className={`rounded-md border p-4 ${
+                    isHighlighted ? "border-status-warning bg-status-warning-bg" : "border-border bg-surface"
+                  }`}
+                >
                   <div className="flex flex-wrap items-baseline justify-between gap-2">
                     <div>
                       <h3 className="font-semibold text-ink-primary">

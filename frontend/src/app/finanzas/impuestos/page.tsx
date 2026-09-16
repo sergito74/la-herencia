@@ -1,5 +1,6 @@
 "use client";
 
+import { useSearchParams } from "next/navigation";
 import { useState } from "react";
 
 import { ImpuestosListado } from "@/components/impuestos/ImpuestosListado";
@@ -8,7 +9,13 @@ import { RetencionesListado } from "@/components/impuestos/RetencionesListado";
 const TABS = ["Impuestos", "Retenciones"] as const;
 
 export default function ImpuestosPage() {
-  const [tab, setTab] = useState<(typeof TABS)[number]>("Impuestos");
+  const searchParams = useSearchParams();
+  const tabParam = searchParams.get("tab");
+  const [tab, setTab] = useState<(typeof TABS)[number]>(
+    tabParam === "retenciones" ? "Retenciones" : "Impuestos"
+  );
+  const highlight = searchParams.get("highlight");
+  const highlightKey = highlight ? Number(highlight) : undefined;
 
   return (
     <main className="mx-auto max-w-6xl p-8">
@@ -34,7 +41,11 @@ export default function ImpuestosPage() {
       </div>
 
       <div className="mt-6">
-        {tab === "Impuestos" ? <ImpuestosListado /> : <RetencionesListado />}
+        {tab === "Impuestos" ? (
+          <ImpuestosListado highlightKey={tab === "Impuestos" ? highlightKey : undefined} />
+        ) : (
+          <RetencionesListado highlightKey={tab === "Retenciones" ? highlightKey : undefined} />
+        )}
       </div>
     </main>
   );

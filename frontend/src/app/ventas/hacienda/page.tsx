@@ -1,5 +1,6 @@
 "use client";
 
+import { useSearchParams } from "next/navigation";
 import { useState } from "react";
 
 import { RetencionesVentaHaciendaListado } from "@/components/ventas-hacienda/RetencionesVentaHaciendaListado";
@@ -8,7 +9,13 @@ import { VentasHaciendaListado } from "@/components/ventas-hacienda/VentasHacien
 const TABS = ["Ventas", "Retenciones"] as const;
 
 export default function VentasHaciendaPage() {
-  const [tab, setTab] = useState<(typeof TABS)[number]>("Ventas");
+  const searchParams = useSearchParams();
+  const tabParam = searchParams.get("tab");
+  const [tab, setTab] = useState<(typeof TABS)[number]>(
+    tabParam === "retenciones" ? "Retenciones" : "Ventas"
+  );
+  const highlight = searchParams.get("highlight");
+  const highlightKey = highlight ? Number(highlight) : undefined;
 
   return (
     <main className="mx-auto max-w-6xl p-8">
@@ -34,7 +41,11 @@ export default function VentasHaciendaPage() {
       </div>
 
       <div className="mt-6">
-        {tab === "Ventas" ? <VentasHaciendaListado /> : <RetencionesVentaHaciendaListado />}
+        {tab === "Ventas" ? (
+          <VentasHaciendaListado />
+        ) : (
+          <RetencionesVentaHaciendaListado highlightKey={highlightKey} />
+        )}
       </div>
     </main>
   );

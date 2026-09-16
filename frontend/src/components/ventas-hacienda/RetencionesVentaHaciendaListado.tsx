@@ -41,7 +41,7 @@ const COLUMNS: DataTableColumn<RetencionVentaHacienda>[] = [
  * hacia una venta específica (confirmado contra datos reales, ver
  * research.md).
  */
-export function RetencionesVentaHaciendaListado() {
+export function RetencionesVentaHaciendaListado({ highlightKey }: { highlightKey?: number }) {
   const [contacto, setContacto] = useState("");
   const [appliedContacto, setAppliedContacto] = useState("");
   const [page, setPage] = useState(1);
@@ -97,6 +97,7 @@ export function RetencionesVentaHaciendaListado() {
           pageSize={data.pageSize}
           total={data.total}
           onPageChange={setPage}
+          highlightKey={highlightKey}
         />
       )}
     </div>

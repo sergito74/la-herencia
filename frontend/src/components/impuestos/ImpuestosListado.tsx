@@ -35,7 +35,7 @@ const COLUMNS: DataTableColumn<Impuesto>[] = [
  * Listado de impuestos (005 US1: FR-001). Read-only: no hay affordance de
  * crear/editar/eliminar (FR-008).
  */
-export function ImpuestosListado() {
+export function ImpuestosListado({ highlightKey }: { highlightKey?: number }) {
   const [organismo, setOrganismo] = useState("");
   const [appliedOrganismo, setAppliedOrganismo] = useState("");
   const [page, setPage] = useState(1);
@@ -82,6 +82,7 @@ export function ImpuestosListado() {
           pageSize={data.pageSize}
           total={data.total}
           onPageChange={setPage}
+          highlightKey={highlightKey}
         />
       )}
     </div>
