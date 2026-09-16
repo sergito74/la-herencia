@@ -79,6 +79,17 @@ Un usuario administrativo necesita subir un archivo Excel con el resumen de un b
 - ¿Qué sucede si un movimiento de tesorería coincide por `IdContacto`/fecha/importe con más de una compra del mismo contacto? El sistema debe mostrar todas las candidatas como referencias posibles y señalar explícitamente que la coincidencia es ambigua, sin asumir una por defecto.
 - ¿Qué sucede con los movimientos de `Valores propios`, que no tienen campo de contacto? El sistema debe mostrar siempre "sin coincidencia" para ese medio, sin intentar una búsqueda parcial solo por fecha/importe (clarificación 2026-09-16).
 
+## Limitaciones conocidas de la heurística de referencia de origen
+
+Revisado con el especialista de dirección financiera (2026-09-15) sobre `matching.py`. La heurística actual (`IdContacto` + fecha exacta + importe exacto contra `dbo.Compras`/`vw_MovimientosCuenta_Base`) es una decisión de diseño deliberadamente conservadora — nunca elige una candidata por defecto ante ambigüedad — pero tiene limitaciones de negocio conocidas que el usuario final MUST interpretar correctamente:
+
+1. **Igualdad exacta de importe**: no se aplica tolerancia de centavos. Diferencias de redondeo entre lo cargado como deuda y lo efectivamente pagado (tipo de cambio, retenciones descontadas en el pago pero no en la deuda original) pueden producir "sin_coincidencia" aunque el vínculo real exista. Esto es una decisión de diseño, no un bug — introducir tolerancia sin validar contra datos reales cuántos casos son solo diferencias de centavos podría generar falsos positivos.
+2. **Pagos parciales**: un pago que cubre solo una parte de una factura nunca coincidirá por importe con la deuda total de esa compra.
+3. **Pagos consolidados**: un único movimiento de tesorería que cubre varias facturas (pago consolidado a fin de mes, común en agro) tampoco coincidirá con ninguna compra individual.
+4. **Notas de crédito/débito posteriores**: si el importe neto de una deuda cambia después de la carga original de la compra, la comparación exacta contra el importe original de tesorería puede dejar de coincidir.
+
+**Interpretación correcta para el usuario**: "sin_coincidencia" MUST leerse como "la heurística no encontró una compra con estos datos exactos", no como "no existe ninguna relación real". No se implementa detección de estos casos en esta iteración; queda documentado como alcance futuro si el negocio lo prioriza.
+
 ## Requirements *(mandatory)*
 
 ### Functional Requirements

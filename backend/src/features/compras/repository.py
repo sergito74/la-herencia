@@ -11,6 +11,7 @@ from datetime import date
 
 from src.db.connection import fetch_all, fetch_one
 from src.db.pagination import offset_for
+from src.db.params import as_sql_datetime
 
 
 def _row_to_compra(row: dict) -> dict:
@@ -48,10 +49,10 @@ def search_compras(
         params.append(f"%{numero_documento}%")
     if fecha_desde:
         where_clauses.append("cmp.Fecha >= ?")
-        params.append(fecha_desde)
+        params.append(as_sql_datetime(fecha_desde))
     if fecha_hasta:
         where_clauses.append("cmp.Fecha <= ?")
-        params.append(fecha_hasta)
+        params.append(as_sql_datetime(fecha_hasta))
 
     where_sql = f"WHERE {' AND '.join(where_clauses)}" if where_clauses else ""
 
