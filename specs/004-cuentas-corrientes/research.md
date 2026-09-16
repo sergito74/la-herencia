@@ -18,6 +18,8 @@
 
 **Resuelto 2026-09-16**: se confirmaron contra datos reales 12 valores distintos de `Origen` (no un genérico "Tesorería"): `Compras`, `Banco Nacion`, `Galicia`, `Pagos efectivo`, `Cobros Valores Recibidos`, `Pagos Valores Recibidos`, `Alquileres`, `Impuestos`, `Remuneraciones`, `Ret. IVA Granos`, `Ret. Ventas Hacienda`, `Retenciones`. Los últimos 6 no corresponden a ningún módulo dentro del alcance de `002-compras`/`003-tesoreria` — por decisión del usuario (clarificación 2026-09-16), `origen_resolver.py` MUST devolver un tercer estado `"fuera_de_alcance"` para esos casos, distinto de `"no_disponible"`. Ver la tabla de mapeo completa en `data-model.md`.
 
+**Resuelto 2026-09-16 (medio de tesorería)**: `origen.medio` se fija como enum cerrado (`"bna"`, `"galicia"`, `"efectivo"`, `"valores_recibidos"`) en vez de exponer la columna `Origen` cruda, para no acoplar el contrato de API al nombre exacto de la tabla SQL. `Cobros Valores Recibidos` y `Pagos Valores Recibidos` colapsan al mismo `medio` porque el sentido (cobro/pago) ya lo dan `deuda`/`credito` del movimiento. Para `Pagos efectivo`: aunque en `specs/003-tesoreria` ese medio no tiene campo de contacto y por eso queda fuera de la referencia heurística hacia compras, acá no aplica esa limitación — la resolución en `004-cuentas-corrientes` es directa vía `IdOrigen` (no heurística), así que no hace falta confirmar el contacto para resolver la referencia.
+
 ## Cálculo de saldo
 
 **Decision**: Consumir `vw_MovimientosCuenta_Saldo` directamente para el saldo, sin reimplementar la fórmula en Python (Assumptions de la spec).

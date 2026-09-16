@@ -74,6 +74,27 @@ Movimientos de cuenta corriente del contacto (FR-004, FR-005, FR-012, FR-013, FR
 
 `origen.tipo` MUST ser uno de `"compra"`, `"tesoreria"`, `"fuera_de_alcance"`, `"no_disponible"` — nunca omitido (FR-008, FR-008b, SC-002). El frontend MUST NOT mostrar ni derivar imputación (rubro/centro de costo/destino) a partir de `origen` (FR-009, SC-004).
 
+Cuando `origen.tipo` es `"tesoreria"`, `origen.medio` MUST ser uno de `"bna"`, `"galicia"`, `"efectivo"`, `"valores_recibidos"` (ver mapeo cerrado en `data-model.md`) — nunca un valor libre derivado directamente de la columna SQL `Origen`.
+
+Ejemplo de movimiento con origen en tesorería (medio efectivo, sin contacto propio en `dbo.[Pagos efectivo]` — la resolución es directa por `idOrigen`, no heurística):
+
+```json
+{
+  "fecha": "2026-08-12",
+  "documento": "Pago",
+  "numeroDocumento": "EF-0007",
+  "deuda": 0,
+  "credito": 15000.00,
+  "origen": {
+    "tipo": "tesoreria",
+    "medio": "efectivo",
+    "idMovimiento": 987,
+    "fecha": "2026-08-12",
+    "importe": 15000.00
+  }
+}
+```
+
 Ejemplo de movimiento fuera de alcance:
 
 ```json

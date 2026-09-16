@@ -52,10 +52,24 @@ No es una tabla propia; construida por `origen_resolver.py` a partir de `origenT
 | Campo (API) | Descripción |
 |---|---|
 | tipo | `"tesoreria"` |
-| medio | derivado de `origenTipo` (ej. banco/caja específico) |
+| medio | derivado de `origenTipo` — ver mapeo cerrado abajo |
 | idMovimiento | = `idOrigen` |
 | fecha | del movimiento de tesorería correspondiente |
 | importe | del movimiento de tesorería correspondiente |
+
+Mapeo cerrado `origenTipo` → `medio` (enum, sin valores libres):
+
+| `origenTipo` | `medio` |
+|---|---|
+| `Banco Nacion` | `"bna"` |
+| `Galicia` | `"galicia"` |
+| `Pagos efectivo` | `"efectivo"` |
+| `Cobros Valores Recibidos` | `"valores_recibidos"` |
+| `Pagos Valores Recibidos` | `"valores_recibidos"` |
+
+Nota (`Pagos efectivo`): en `specs/003-tesoreria` este medio no participa de la referencia heurística hacia compras porque no tiene campo de contacto — pero eso solo afecta a la heurística de tesorería. Acá la resolución es directa vía `IdOrigen` (no heurística), así que la ausencia de contacto en `dbo.[Pagos efectivo]` no bloquea la resolución: alcanza con `idMovimiento`/`fecha`/`importe`. El resolver MUST NOT intentar confirmar que el movimiento de efectivo pertenece al mismo contacto de la cuenta corriente consultada — no hay campo para hacerlo y no es un requisito (FR-006).
+
+Nota (`Cobros`/`Pagos Valores Recibidos`): ambos comparten `medio: "valores_recibidos"`; el sentido (cobro vs. pago) ya se distingue por `deuda`/`credito` del movimiento de cuenta corriente y no requiere un valor de `medio` separado.
 
 **Caso fuera de alcance** (confirmado 2026-09-16 contra datos reales):
 

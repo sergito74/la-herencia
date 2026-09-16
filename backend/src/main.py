@@ -10,6 +10,7 @@ from fastapi import FastAPI
 
 from src.errors import register_error_handlers
 from src.features.compras.router import router as compras_router
+from src.features.cuentas_corrientes.router import router as cuentas_corrientes_router
 from src.features.tesoreria.router import router as tesoreria_router
 
 app = FastAPI(
@@ -21,6 +22,7 @@ app = FastAPI(
 register_error_handlers(app)
 
 app.include_router(compras_router)
+app.include_router(cuentas_corrientes_router)
 app.include_router(tesoreria_router)
 
 
