@@ -32,17 +32,36 @@ No hay tokens, passwords ni secretos almacenados en este archivo.
 
 ## 3. Rutas principales
 
-Workspace raíz:
+Workspace raíz (actual, desde 2026-09-15):
+
+`C:\dev\LaHerencia`
+
+Workspace raíz anterior (respaldo, NO usar para trabajo nuevo, no borrar todavía por decisión del usuario):
 
 `C:\Users\Sergio\Documents\La Herencia\Sistema La Herencia\La Herencia`
 
-Sistema VB.NET original y prototipo actual:
+### Por qué se migró de Documents a C:\dev
 
-`C:\Users\Sergio\Documents\La Herencia\Sistema La Herencia\La Herencia\La Herencia`
+Trabajando bajo `Documents\...` (carpeta sincronizada, probablemente por OneDrive), varias operaciones de escritura de archivos NUEVOS fallaban de forma intermitente y confusa:
 
-Proyecto web prototipo actual:
+- `mkdir`/`New-Item -ItemType Directory` a veces fallaban para crear carpetas nuevas bajo `specs/`.
+- `New-Item -ItemType File` / `Out-File` fallaban con `Could not find file '...'` (error engañoso: la carpeta existía, pero el archivo no se podía crear).
+- Archivos ya escritos por la herramienta `Write` quedaban bloqueados para `Remove-Item`/`rm` (no se podían borrar).
+- `npm install` del frontend quedó colgado más de 20 minutos sin avanzar (0 archivos en `node_modules`), mientras que la resolución de metadata de npm funcionaba perfecto (conectividad de red descartada como causa).
 
-`C:\Users\Sergio\Documents\La Herencia\Sistema La Herencia\La Herencia\La Herencia.Web`
+El usuario confirmó que esto ya le había pasado antes y que es un problema conocido de Windows/OneDrive con ciertas escrituras dentro de la carpeta de usuario. La migración a `C:\dev\LaHerencia` (fuera de Documents/OneDrive) resolvió todo de inmediato: `npm install` del frontend (383 paquetes) terminó en 2 minutos, y las escrituras de archivos/carpetas nuevas funcionaron sin problema.
+
+**Regla para el futuro**: si en algún momento reaparecen errores raros de "no se pudo encontrar el archivo" al crear archivos/carpetas nuevas, o instalaciones que se cuelgan sin avanzar, sospechar primero de la ubicación (Documents/OneDrive) antes de asumir que es un problema de permisos, red o del código.
+
+Sistema VB.NET original y prototipo actual (migrado junto con el resto del workspace):
+
+`C:\dev\LaHerencia\La Herencia`
+
+Proyecto web prototipo actual (migrado junto con el resto del workspace):
+
+`C:\dev\LaHerencia\La Herencia.Web`
+
+Nota: `Administracion y gestion` (carpeta documental con las bases Access de cuentas, sección 4) NO se migró — es una carpeta separada fuera del repositorio Git, y sigue en su ubicación original bajo Documents.
 
 Repositorio Git interno:
 
@@ -70,9 +89,9 @@ Get-FileHash 'C:\Temp\LaHerencia_full_20260915_184255.bak' -Algorithm SHA256
 
 El usuario tiene dos ubicaciones principales:
 
-1. Sistema productivo/administrativo original:
+1. Sistema productivo/administrativo original (migrado):
 
-`C:\Users\Sergio\Documents\La Herencia\Sistema La Herencia\La Herencia\La Herencia`
+`C:\dev\LaHerencia\La Herencia`
 
 2. Repositorio documental administrativo:
 
