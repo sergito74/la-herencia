@@ -8,8 +8,14 @@ import {
   fetchMovimientos,
   fetchSaldo,
   type Contacto,
+  type MovimientoCuentaCorriente,
 } from "@/services/cuentasCorrientesApi";
 import { OrigenMovimiento } from "@/components/cuentas-corrientes/OrigenMovimiento";
+import { Breadcrumb } from "@/components/ui/Breadcrumb";
+import { DataTable, type DataTableColumn } from "@/components/ui/DataTable";
+import { FilterBar, FilterField, FilterSubmitButton, filterInputClass } from "@/components/ui/FilterBar";
+import { KpiCard } from "@/components/ui/KpiCard";
+import { ErrorState, LoadingState } from "@/components/ui/States";
 
 // Valores confirmados de `Tipo Contacto` contra datos reales (data-model.md).
 const TIPOS_CONTACTO = [
@@ -23,10 +29,38 @@ const TIPOS_CONTACTO = [
   "Tarjeta de Credito",
 ];
 
+const COLUMNS: DataTableColumn<MovimientoCuentaCorriente>[] = [
+  { key: "fecha", header: "Fecha", numeric: true, sortValue: (m) => m.fecha, render: (m) => m.fecha ?? "—" },
+  { key: "documento", header: "Documento", render: (m) => m.documento ?? "—" },
+  { key: "numeroDocumento", header: "Nro. documento", render: (m) => m.numeroDocumento ?? "—" },
+  {
+    key: "deuda",
+    header: "Deuda (débito)",
+    align: "right",
+    numeric: true,
+    sortValue: (m) => m.deuda,
+    render: (m) => (
+      <span className="text-status-danger">{m.deuda ? m.deuda.toLocaleString("es-AR") : "—"}</span>
+    ),
+  },
+  {
+    key: "credito",
+    header: "Crédito (haber)",
+    align: "right",
+    numeric: true,
+    sortValue: (m) => m.credito,
+    render: (m) => (
+      <span className="text-status-success">{m.credito ? m.credito.toLocaleString("es-AR") : "—"}</span>
+    ),
+  },
+  { key: "origen", header: "Origen", render: (m) => <OrigenMovimiento origen={m.origen} /> },
+];
+
 /**
  * Búsqueda de contacto + saldo + movimientos (US1: FR-001, FR-002, FR-003,
  * FR-004, FR-005, FR-012, FR-013; US3: filtro por tipo, FR-002). Read-only:
- * no hay affordance de crear/editar/eliminar (FR-010).
+ * no hay affordance de crear/editar/eliminar (FR-010). Migrado al design
+ * system "Tierra & Cultivo" (design/agroux-frontend-redesign.md §5.3).
  */
 export function CuentaCorriente() {
   const [q, setQ] = useState("");
@@ -64,7 +98,6 @@ export function CuentaCorriente() {
     data: movimientos,
     isLoading: loadingMovimientos,
     isError: errorMovimientos,
-    error: movimientosError,
   } = useQuery({
     queryKey: ["cc-movimientos", selected?.idContacto, appliedDates, page, pageSize],
     queryFn: () =>
@@ -98,29 +131,29 @@ export function CuentaCorriente() {
     setAppliedDates({ fechaDesde, fechaHasta });
   }
 
-  const totalPages = movimientos
-    ? Math.max(1, Math.ceil(movimientos.total / movimientos.pageSize))
-    : 1;
-
   return (
     <div className="space-y-6">
-      <form
-        onSubmit={handleSearchSubmit}
-        className="flex flex-col gap-2 rounded-lg border border-slate-200 bg-white p-4 sm:flex-row sm:items-end"
-      >
-        <label className="flex flex-1 flex-col gap-1 text-sm">
-          Contacto
+      {selected && (
+        <Breadcrumb
+          items={[
+            { label: "Cuentas corrientes", href: undefined },
+            { label: selected.razonSocial ?? "—" },
+          ]}
+        />
+      )}
+
+      <FilterBar onSubmit={handleSearchSubmit}>
+        <FilterField label="Contacto">
           <input
-            className="rounded border border-slate-300 px-2 py-1"
+            className={filterInputClass}
             value={q}
             onChange={(e) => setQ(e.target.value)}
             placeholder="Razón social"
           />
-        </label>
-        <label className="flex flex-col gap-1 text-sm sm:w-48">
-          Tipo de contacto
+        </FilterField>
+        <FilterField label="Tipo de contacto">
           <select
-            className="rounded border border-slate-300 px-2 py-1"
+            className={filterInputClass}
             value={tipoContacto}
             onChange={(e) => setTipoContacto(e.target.value)}
           >
@@ -131,40 +164,31 @@ export function CuentaCorriente() {
               </option>
             ))}
           </select>
-        </label>
-        <button
-          type="submit"
-          className="rounded bg-slate-900 px-4 py-2 text-sm text-white hover:bg-slate-700"
-        >
-          Buscar
-        </button>
-      </form>
+        </FilterField>
+        <FilterSubmitButton />
+      </FilterBar>
 
-      {loadingContactos && <p className="text-slate-600">Buscando…</p>}
-      {errorContactos && (
-        <p className="text-red-700">Ocurrió un error al buscar contactos.</p>
-      )}
+      {loadingContactos && <LoadingState rows={3} />}
+      {errorContactos && <ErrorState message="Ocurrió un error al buscar contactos." />}
 
       {contactosData && !selected && (
         <>
           {contactosData.items.length === 0 && (
-            <p className="rounded border border-slate-200 bg-white p-6 text-center text-slate-600">
+            <div className="rounded-md border border-border bg-surface p-6 text-center text-sm text-ink-secondary">
               Sin resultados para esta búsqueda.
-            </p>
+            </div>
           )}
           {contactosData.items.length > 0 && (
-            <ul className="divide-y divide-slate-100 rounded-lg border border-slate-200 bg-white">
+            <ul className="divide-y divide-border rounded-md border border-border bg-surface">
               {contactosData.items.map((contacto) => (
                 <li key={contacto.idContacto}>
                   <button
                     type="button"
-                    className="w-full px-4 py-2 text-left text-sm hover:bg-slate-50"
+                    className="w-full px-4 py-2 text-left text-sm hover:bg-surface-sunken"
                     onClick={() => handleSelectContacto(contacto)}
                   >
                     {contacto.razonSocial ?? "—"}{" "}
-                    <span className="text-slate-500">
-                      ({contacto.tipoContacto ?? "sin tipo"})
-                    </span>
+                    <span className="text-ink-secondary">({contacto.tipoContacto ?? "sin tipo"})</span>
                   </button>
                 </li>
               ))}
@@ -175,141 +199,72 @@ export function CuentaCorriente() {
 
       {selected && (
         <div className="space-y-4">
-          <div className="flex items-center justify-between rounded-lg border border-slate-200 bg-white p-4">
+          <div className="flex items-center justify-between gap-4 rounded-md border border-border bg-surface p-4">
             <div>
-              <h2 className="text-lg font-semibold">
+              <h2 className="text-lg font-semibold text-ink-primary">
                 {selected.razonSocial ?? "—"}
               </h2>
-              <p className="text-sm text-slate-600">
-                {selected.tipoContacto ?? "sin tipo"}
-              </p>
+              <p className="text-sm text-ink-secondary">{selected.tipoContacto ?? "sin tipo"}</p>
             </div>
-            <div className="text-right">
-              <p className="text-sm text-slate-600">Saldo</p>
-              <p className="text-xl font-semibold">
-                {loadingSaldo
+            <KpiCard
+              label="Saldo"
+              value={
+                loadingSaldo
                   ? "…"
                   : saldo?.saldoParcial != null
                     ? saldo.saldoParcial.toLocaleString("es-AR", {
                         style: "currency",
                         currency: "ARS",
                       })
-                    : "—"}
-              </p>
-            </div>
+                    : "—"
+              }
+              tone={
+                saldo?.saldoParcial == null ? "neutral" : saldo.saldoParcial < 0 ? "danger" : "success"
+              }
+            />
             <button
               type="button"
-              className="text-sm text-blue-700 underline"
+              className="text-sm text-finance underline"
               onClick={() => setSelected(null)}
             >
               Cambiar contacto
             </button>
           </div>
 
-          <form
-            onSubmit={handleDateFilterSubmit}
-            className="grid grid-cols-1 gap-4 rounded-lg border border-slate-200 bg-white p-4 sm:grid-cols-3"
-          >
-            <label className="flex flex-col gap-1 text-sm">
-              Fecha desde
+          <FilterBar onSubmit={handleDateFilterSubmit}>
+            <FilterField label="Fecha desde">
               <input
                 type="date"
-                className="rounded border border-slate-300 px-2 py-1"
+                className={filterInputClass}
                 value={fechaDesde}
                 onChange={(e) => setFechaDesde(e.target.value)}
               />
-            </label>
-            <label className="flex flex-col gap-1 text-sm">
-              Fecha hasta
+            </FilterField>
+            <FilterField label="Fecha hasta">
               <input
                 type="date"
-                className="rounded border border-slate-300 px-2 py-1"
+                className={filterInputClass}
                 value={fechaHasta}
                 onChange={(e) => setFechaHasta(e.target.value)}
               />
-            </label>
-            <div className="flex items-end">
-              <button
-                type="submit"
-                className="rounded bg-slate-900 px-4 py-2 text-sm text-white hover:bg-slate-700"
-              >
-                Filtrar
-              </button>
-            </div>
-          </form>
+            </FilterField>
+            <FilterSubmitButton>Filtrar</FilterSubmitButton>
+          </FilterBar>
 
-          {loadingMovimientos && <p className="text-slate-600">Cargando…</p>}
-          {errorMovimientos && (
-            <p className="text-red-700">
-              Ocurrió un error al obtener movimientos:{" "}
-              {(movimientosError as Error)?.message}
-            </p>
-          )}
+          {loadingMovimientos && <LoadingState />}
+          {errorMovimientos && <ErrorState message="Ocurrió un error al obtener movimientos." />}
 
-          {movimientos && movimientos.items.length === 0 && (
-            <p className="rounded border border-slate-200 bg-white p-6 text-center text-slate-600">
-              Sin movimientos para el período seleccionado.
-            </p>
-          )}
-
-          {movimientos && movimientos.items.length > 0 && (
-            <>
-              <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white">
-                <table className="min-w-full divide-y divide-slate-200 text-sm">
-                  <thead className="bg-slate-100 text-left">
-                    <tr>
-                      <th className="px-3 py-2">Fecha</th>
-                      <th className="px-3 py-2">Documento</th>
-                      <th className="px-3 py-2">Nro. documento</th>
-                      <th className="px-3 py-2 text-right">Deuda (débito)</th>
-                      <th className="px-3 py-2 text-right">Crédito (haber)</th>
-                      <th className="px-3 py-2">Origen</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {movimientos.items.map((mov, idx) => (
-                      <tr key={idx} className="hover:bg-slate-50">
-                        <td className="px-3 py-2">{mov.fecha ?? "—"}</td>
-                        <td className="px-3 py-2">{mov.documento ?? "—"}</td>
-                        <td className="px-3 py-2">{mov.numeroDocumento ?? "—"}</td>
-                        <td className="px-3 py-2 text-right text-red-700">
-                          {mov.deuda ? mov.deuda.toLocaleString("es-AR") : "—"}
-                        </td>
-                        <td className="px-3 py-2 text-right text-green-700">
-                          {mov.credito ? mov.credito.toLocaleString("es-AR") : "—"}
-                        </td>
-                        <td className="px-3 py-2 text-sm">
-                          <OrigenMovimiento origen={mov.origen} />
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-
-              <div className="flex items-center justify-between text-sm text-slate-600">
-                <span>
-                  Página {movimientos.page} de {totalPages} — {movimientos.total}{" "}
-                  movimientos
-                </span>
-                <div className="flex gap-2">
-                  <button
-                    className="rounded border border-slate-300 px-3 py-1 disabled:opacity-40"
-                    disabled={page <= 1}
-                    onClick={() => setPage((p) => Math.max(1, p - 1))}
-                  >
-                    Anterior
-                  </button>
-                  <button
-                    className="rounded border border-slate-300 px-3 py-1 disabled:opacity-40"
-                    disabled={page >= totalPages}
-                    onClick={() => setPage((p) => p + 1)}
-                  >
-                    Siguiente
-                  </button>
-                </div>
-              </div>
-            </>
+          {movimientos && (
+            <DataTable
+              columns={COLUMNS}
+              rows={movimientos.items}
+              keyField={(m) => `${m.fecha}-${m.numeroDocumento}-${m.documento}`}
+              emptyMessage="Sin movimientos para el período seleccionado."
+              page={movimientos.page}
+              pageSize={movimientos.pageSize}
+              total={movimientos.total}
+              onPageChange={setPage}
+            />
           )}
         </div>
       )}

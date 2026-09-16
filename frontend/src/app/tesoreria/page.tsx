@@ -21,7 +21,7 @@ export default function TesoreriaPage() {
   return (
     <main className="mx-auto max-w-6xl p-8">
       <h1 className="text-2xl font-semibold">Tesorería</h1>
-      <p className="mt-1 text-slate-600">
+      <p className="mt-1 text-ink-secondary">
         Movimientos por banco, caja, valores y tarjetas (solo lectura).
       </p>
 
@@ -31,8 +31,8 @@ export default function TesoreriaPage() {
             key={m}
             className={`rounded px-3 py-1.5 text-sm ${
               m === medio
-                ? "bg-slate-900 text-white"
-                : "border border-slate-300 text-slate-700 hover:bg-slate-100"
+                ? "bg-finance text-white"
+                : "border border-border text-ink-primary hover:bg-surface-sunken"
             }`}
             onClick={() => setMedio(m)}
           >

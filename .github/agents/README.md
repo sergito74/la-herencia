@@ -7,8 +7,8 @@ Estos agentes trabajan como un equipo para migrar La Herencia a una aplicación 
 1. `integrated-agro-management-engineer` define el proceso y el alcance.
 2. `agricultural-production-specialist`, `livestock-health-specialist` y `financial-direction-specialist` validan el significado del negocio.
 3. `sql-server-engineer` define consultas, vistas y contratos de datos.
-4. `agro-erp-frontend-specialist` define cómo debe organizarse la navegación y el vocabulario del módulo desde la lógica operativa de una empresa agropecuaria, antes de implementar UI.
-5. `web-frontend-engineer` implementa la navegación y la experiencia operativa siguiendo esa organización.
+4. `agroux-lead-product-architect` diseña la arquitectura de producto completa: árbol de navegación, design system y especificación funcional de cada pantalla — se consulta antes de diseñar o rediseñar cualquier pantalla o flujo nuevo. `agro-erp-frontend-specialist` queda para consultas puntuales de nomenclatura/agrupación de un módulo aislado, siempre alineadas con el design system que define el arquitecto de producto.
+5. `web-frontend-engineer` implementa los componentes y la experiencia operativa siguiendo esa especificación.
 6. `python-engineer` automatiza auditorías, análisis y pruebas.
 
 ## Reglas compartidas

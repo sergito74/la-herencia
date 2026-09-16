@@ -4,6 +4,22 @@ import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 
 import { fetchArrendamientos } from "@/services/arrendamientosApi";
+import { StatusBadge, type BadgeTone } from "@/components/ui/StatusBadge";
+import { FilterBar, FilterField, FilterSubmitButton, filterInputClass } from "@/components/ui/FilterBar";
+import { EmptyState, ErrorState, LoadingState } from "@/components/ui/States";
+
+/**
+ * Único valor de `Estado` confirmado contra datos reales hoy: "Cobrado".
+ * Cualquier otro valor (o vacío) se trata como pendiente, y se resalta
+ * como vencido si su fecha de vencimiento ya pasó — no se asume un enum
+ * cerrado que los datos no respaldan (design/agroux-frontend-redesign.md §4.2).
+ */
+function estadoCuota(estado: string | null, fechaVencimiento: string | null): { label: string; tone: BadgeTone } {
+  if (estado && estado.toLowerCase() === "cobrado") return { label: "Cobrado", tone: "success" };
+  const hoy = new Date().toISOString().slice(0, 10);
+  if (fechaVencimiento && fechaVencimiento < hoy) return { label: "Vencido", tone: "danger" };
+  return { label: estado ?? "Pendiente", tone: "warning" };
+}
 
 /**
  * Listado de arrendamientos con sus cobros asociados (005 US3: FR-003).
@@ -32,105 +48,108 @@ export function ArrendamientosListado() {
 
   return (
     <div className="space-y-4">
-      <form onSubmit={handleSubmit} className="flex gap-2 rounded-lg border border-slate-200 bg-white p-4">
-        <label className="flex flex-1 flex-col gap-1 text-sm">
-          Contacto
+      <FilterBar onSubmit={handleSubmit}>
+        <FilterField label="Contacto">
           <input
-            className="rounded border border-slate-300 px-2 py-1"
+            className={filterInputClass}
             value={contacto}
             onChange={(e) => setContacto(e.target.value)}
             placeholder="Razón social"
           />
-        </label>
-        <button
-          type="submit"
-          className="self-end rounded bg-slate-900 px-4 py-2 text-sm text-white hover:bg-slate-700"
-        >
-          Buscar
-        </button>
-      </form>
+        </FilterField>
+        <FilterSubmitButton />
+      </FilterBar>
 
-      {isLoading && <p className="text-slate-600">Cargando…</p>}
-      {isError && <p className="text-red-700">Ocurrió un error al buscar arrendamientos.</p>}
+      {isLoading && <LoadingState />}
+      {isError && <ErrorState message="Ocurrió un error al buscar arrendamientos." />}
 
       {data && data.items.length === 0 && (
-        <p className="rounded border border-slate-200 bg-white p-6 text-center text-slate-600">
-          Sin resultados para esta búsqueda.
-        </p>
+        <EmptyState message="Sin resultados para esta búsqueda." />
       )}
 
       {data && data.items.length > 0 && (
         <>
           <div className="space-y-4">
-            {data.items.map((a) => (
-              <div key={a.idAlquiler} className="rounded-lg border border-slate-200 bg-white p-4">
-                <div className="flex flex-wrap items-baseline justify-between gap-2">
-                  <div>
-                    <h3 className="font-semibold text-slate-900">
-                      Arrendamiento — {a.contacto ?? "—"}
-                    </h3>
-                    <p className="text-sm text-slate-600">
-                      {a.inicioPeriodo ?? "—"} a {a.finPeriodo ?? "—"}
-                    </p>
+            {data.items.map((a) => {
+              const cobradas = a.cobros.filter((c) => c.estado?.toLowerCase() === "cobrado").length;
+              return (
+                <div key={a.idAlquiler} className="rounded-md border border-border bg-surface p-4">
+                  <div className="flex flex-wrap items-baseline justify-between gap-2">
+                    <div>
+                      <h3 className="font-semibold text-ink-primary">
+                        Arrendamiento — {a.contacto ?? "—"}
+                      </h3>
+                      <p className="text-sm text-ink-secondary">
+                        {a.inicioPeriodo ?? "—"} a {a.finPeriodo ?? "—"}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-data text-sm text-ink-secondary">
+                        Importe total del contrato:{" "}
+                        <span className="font-medium text-ink-primary">
+                          {a.importeTotalContrato != null
+                            ? a.importeTotalContrato.toLocaleString("es-AR")
+                            : "—"}
+                        </span>
+                      </p>
+                      {a.cantidadCuotas != null && a.cantidadCuotas > 0 && (
+                        <p className="text-xs text-ink-secondary">
+                          {cobradas} de {a.cantidadCuotas} cuotas cobradas
+                        </p>
+                      )}
+                    </div>
                   </div>
-                  <p className="text-right text-sm text-slate-600">
-                    Importe total del contrato:{" "}
-                    <span className="font-medium text-slate-900">
-                      {a.importeTotalContrato != null
-                        ? a.importeTotalContrato.toLocaleString("es-AR")
-                        : "—"}
-                    </span>
-                  </p>
-                </div>
 
-                {a.cobros.length === 0 ? (
-                  <p className="mt-3 rounded border border-slate-100 bg-slate-50 p-3 text-center text-sm text-slate-500">
-                    Sin cobros registrados todavía.
-                  </p>
-                ) : (
-                  <table className="mt-3 min-w-full divide-y divide-slate-200 text-sm">
-                    <thead className="text-left text-slate-500">
-                      <tr>
-                        <th className="px-2 py-1">Cuota</th>
-                        <th className="px-2 py-1">Vencimiento</th>
-                        <th className="px-2 py-1">Estado</th>
-                        <th className="px-2 py-1 text-right">Importe</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100">
-                      {a.cobros.map((c) => (
-                        <tr key={c.idCobroAlquiler}>
-                          <td className="px-2 py-1">{c.numeroCuota ?? "—"}</td>
-                          <td className="px-2 py-1">{c.fechaVencimiento ?? "—"}</td>
-                          <td className="px-2 py-1">{c.estado ?? "—"}</td>
-                          <td className="px-2 py-1 text-right">
-                            {c.importeCuota != null
-                              ? c.importeCuota.toLocaleString("es-AR")
-                              : "—"}
-                          </td>
+                  {a.cobros.length === 0 ? (
+                    <EmptyState message="Sin cobros registrados todavía." />
+                  ) : (
+                    <table className="mt-3 min-w-full divide-y divide-border text-sm">
+                      <thead className="text-left text-ink-secondary">
+                        <tr>
+                          <th className="px-2 py-1">Cuota</th>
+                          <th className="px-2 py-1">Vencimiento</th>
+                          <th className="px-2 py-1">Estado</th>
+                          <th className="px-2 py-1 text-right">Importe</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                )}
-              </div>
-            ))}
+                      </thead>
+                      <tbody className="divide-y divide-border">
+                        {a.cobros.map((c) => {
+                          const estado = estadoCuota(c.estado, c.fechaVencimiento);
+                          return (
+                            <tr key={c.idCobroAlquiler}>
+                              <td className="px-2 py-1 font-data">{c.numeroCuota ?? "—"}</td>
+                              <td className="px-2 py-1 font-data">{c.fechaVencimiento ?? "—"}</td>
+                              <td className="px-2 py-1">
+                                <StatusBadge label={estado.label} tone={estado.tone} />
+                              </td>
+                              <td className="px-2 py-1 text-right font-data">
+                                {c.importeCuota != null ? c.importeCuota.toLocaleString("es-AR") : "—"}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  )}
+                </div>
+              );
+            })}
           </div>
 
-          <div className="flex items-center justify-between text-sm text-slate-600">
+          <div className="flex items-center justify-between text-sm text-ink-secondary">
             <span>
               Página {data.page} de {totalPages} — {data.total} arrendamientos
             </span>
             <div className="flex gap-2">
               <button
-                className="rounded border border-slate-300 px-3 py-1 disabled:opacity-40"
+                className="rounded-sm border border-border px-3 py-1 disabled:opacity-40"
                 disabled={page <= 1}
                 onClick={() => setPage((p) => Math.max(1, p - 1))}
               >
                 Anterior
               </button>
               <button
-                className="rounded border border-slate-300 px-3 py-1 disabled:opacity-40"
+                className="rounded-sm border border-border px-3 py-1 disabled:opacity-40"
                 disabled={page >= totalPages}
                 onClick={() => setPage((p) => p + 1)}
               >

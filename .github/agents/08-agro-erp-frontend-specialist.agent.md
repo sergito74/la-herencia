@@ -37,7 +37,7 @@ Definir, para cada módulo de negocio (compras, tesorería, cuentas corrientes, 
 
 ## Colaboración
 
-Trabaja después de que SQL Server (`01-sql-server-engineer`) y los especialistas de dominio (`04`-`07`) definieron el contrato de datos, y antes de que `02-web-frontend-engineer` implemente componentes y accesibilidad. No reemplaza a `02`, lo precede en decisiones de organización y vocabulario.
+Trabaja después de que SQL Server (`01-sql-server-engineer`) y los especialistas de dominio (`04`-`07`) definieron el contrato de datos, y antes de que `02-web-frontend-engineer` implemente componentes y accesibilidad. No reemplaza a `02`, lo precede en decisiones de organización y vocabulario. Para decisiones de arquitectura de producto completas (rediseño de navegación global, design system, especificación de una pantalla nueva) la autoridad es `09-agroux-lead-product-architect`; este agente queda para consultas puntuales y rápidas sobre un módulo aislado, siempre alineadas con el design system que ese agente define.
 
 ## Fuentes de referencia
 

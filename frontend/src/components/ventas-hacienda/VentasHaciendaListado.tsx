@@ -3,19 +3,38 @@
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 
-import { fetchVentasHacienda } from "@/services/ventasHaciendaApi";
+import { fetchVentasHacienda, type VentaHacienda } from "@/services/ventasHaciendaApi";
+import { DataTable, type DataTableColumn } from "@/components/ui/DataTable";
+import { FilterBar, FilterField, FilterSubmitButton, filterInputClass } from "@/components/ui/FilterBar";
+import { SideDrawer } from "@/components/ui/SideDrawer";
+import { ErrorState, LoadingState } from "@/components/ui/States";
+
+const COLUMNS: DataTableColumn<VentaHacienda>[] = [
+  { key: "fecha", header: "Fecha", numeric: true, sortValue: (v) => v.fecha, render: (v) => v.fecha ?? "—" },
+  { key: "numeroDocumento", header: "Documento", render: (v) => v.numeroDocumento ?? "—" },
+  {
+    key: "consignatario",
+    header: "Consignatario",
+    sortValue: (v) => v.consignatario,
+    render: (v) => v.consignatario ?? "—",
+  },
+  { key: "lineas", header: "Líneas", numeric: true, render: (v) => v.lineas.length },
+];
 
 /**
  * Listado de ventas de hacienda: consignatario a nivel de venta, comprador
- * por línea de detalle (Nota UX de plan.md). Read-only (005 US4: FR-004).
+ * por línea de detalle (Nota UX de plan.md). El detalle por comprador se
+ * ve en un `SideDrawer` para no incrustar tablas gigantes en el listado
+ * (design/agroux-frontend-redesign.md §4.3/§5.4). Read-only (005 US4: FR-004).
  */
 export function VentasHaciendaListado() {
   const [consignatario, setConsignatario] = useState("");
   const [appliedConsignatario, setAppliedConsignatario] = useState("");
   const [page, setPage] = useState(1);
+  const [selected, setSelected] = useState<VentaHacienda | null>(null);
   const pageSize = 50;
 
-  const { data, isLoading, isError } = useQuery({
+  const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ["ventas-hacienda", appliedConsignatario, page],
     queryFn: () =>
       fetchVentasHacienda({
@@ -31,112 +50,94 @@ export function VentasHaciendaListado() {
     setAppliedConsignatario(consignatario);
   }
 
-  const totalPages = data ? Math.max(1, Math.ceil(data.total / data.pageSize)) : 1;
+  const columns: DataTableColumn<VentaHacienda>[] = COLUMNS.map((col) =>
+    col.key === "numeroDocumento"
+      ? {
+          ...col,
+          render: (v) => (
+            <button className="text-finance underline" onClick={() => setSelected(v)}>
+              {v.numeroDocumento ?? "—"}
+            </button>
+          ),
+        }
+      : col
+  );
 
   return (
     <div className="space-y-4">
-      <form onSubmit={handleSubmit} className="flex gap-2 rounded-lg border border-slate-200 bg-white p-4">
-        <label className="flex flex-1 flex-col gap-1 text-sm">
-          Consignatario
+      <FilterBar onSubmit={handleSubmit}>
+        <FilterField label="Consignatario">
           <input
-            className="rounded border border-slate-300 px-2 py-1"
+            className={filterInputClass}
             value={consignatario}
             onChange={(e) => setConsignatario(e.target.value)}
             placeholder="Razón social"
           />
-        </label>
-        <button
-          type="submit"
-          className="self-end rounded bg-slate-900 px-4 py-2 text-sm text-white hover:bg-slate-700"
-        >
-          Buscar
-        </button>
-      </form>
+        </FilterField>
+        <FilterSubmitButton />
+      </FilterBar>
 
-      {isLoading && <p className="text-slate-600">Cargando…</p>}
-      {isError && <p className="text-red-700">Ocurrió un error al buscar ventas.</p>}
+      {isLoading && <LoadingState />}
+      {isError && <ErrorState message="Ocurrió un error al buscar ventas." onRetry={() => refetch()} />}
 
-      {data && data.items.length === 0 && (
-        <p className="rounded border border-slate-200 bg-white p-6 text-center text-slate-600">
-          Sin resultados para esta búsqueda.
-        </p>
+      {data && (
+        <DataTable
+          columns={columns}
+          rows={data.items}
+          keyField={(v) => v.idVenta}
+          emptyMessage="Sin resultados para esta búsqueda."
+          page={data.page}
+          pageSize={data.pageSize}
+          total={data.total}
+          onPageChange={setPage}
+        />
       )}
 
-      {data && data.items.length > 0 && (
-        <>
-          <div className="space-y-4">
-            {data.items.map((v) => (
-              <div key={v.idVenta} className="rounded-lg border border-slate-200 bg-white p-4">
-                <div className="flex flex-wrap items-baseline justify-between gap-2">
-                  <div>
-                    <h3 className="font-semibold text-slate-900">
-                      Venta {v.numeroDocumento ?? "—"}
-                    </h3>
-                    <p className="text-sm text-slate-600">
-                      {v.fecha ?? "—"} · Consignatario: {v.consignatario ?? "—"}
-                    </p>
-                  </div>
-                </div>
-
-                <table className="mt-3 min-w-full divide-y divide-slate-200 text-sm">
-                  <thead className="text-left text-slate-500">
-                    <tr>
-                      <th className="px-2 py-1">Comprador</th>
-                      <th className="px-2 py-1">Tipo de hacienda</th>
-                      <th className="px-2 py-1 text-right">Cantidad</th>
-                      <th className="px-2 py-1 text-right">Precio unit. (A)</th>
-                      <th className="px-2 py-1 text-right">Precio unit. (B)</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {v.lineas.map((l) => (
-                      <tr key={l.idDetalleVenta}>
-                        <td className="px-2 py-1">{l.comprador ?? "—"}</td>
-                        <td className="px-2 py-1">{l.tipoHacienda ?? "—"}</td>
-                        <td className="px-2 py-1 text-right">
-                          {l.cantidad ?? "—"} {l.unidadMedida ?? ""}
-                        </td>
-                        <td className="px-2 py-1 text-right">
-                          {l.precioUnitarioA != null
-                            ? l.precioUnitarioA.toLocaleString("es-AR")
-                            : "—"}
-                        </td>
-                        <td className="px-2 py-1 text-right">
-                          {l.precioUnitarioB != null
-                            ? l.precioUnitarioB.toLocaleString("es-AR")
-                            : "—"}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            ))}
+      <SideDrawer
+        open={selected !== null}
+        onClose={() => setSelected(null)}
+        title={`Venta ${selected?.numeroDocumento ?? "—"}`}
+      >
+        {selected && (
+          <div className="space-y-3">
+            <p className="text-sm text-ink-secondary">
+              {selected.fecha ?? "—"} · Consignatario: {selected.consignatario ?? "—"}
+            </p>
+            <table className="min-w-full divide-y divide-border text-sm">
+              <thead className="text-left text-ink-secondary">
+                <tr>
+                  <th className="py-1">Comprador</th>
+                  <th className="py-1">Tipo</th>
+                  <th className="py-1 text-right">Cant.</th>
+                  <th className="py-1 text-right" title="Datos de origen, unidades no siempre consistentes">
+                    Precio (A)
+                  </th>
+                  <th className="py-1 text-right" title="Datos de origen, unidades no siempre consistentes">
+                    Precio (B)
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {selected.lineas.map((l) => (
+                  <tr key={l.idDetalleVenta}>
+                    <td className="py-1">{l.comprador ?? "—"}</td>
+                    <td className="py-1">{l.tipoHacienda ?? "—"}</td>
+                    <td className="py-1 text-right font-data">
+                      {l.cantidad ?? "—"} {l.unidadMedida ?? ""}
+                    </td>
+                    <td className="py-1 text-right font-data">
+                      {l.precioUnitarioA != null ? l.precioUnitarioA.toLocaleString("es-AR") : "—"}
+                    </td>
+                    <td className="py-1 text-right font-data">
+                      {l.precioUnitarioB != null ? l.precioUnitarioB.toLocaleString("es-AR") : "—"}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
-
-          <div className="flex items-center justify-between text-sm text-slate-600">
-            <span>
-              Página {data.page} de {totalPages} — {data.total} ventas
-            </span>
-            <div className="flex gap-2">
-              <button
-                className="rounded border border-slate-300 px-3 py-1 disabled:opacity-40"
-                disabled={page <= 1}
-                onClick={() => setPage((p) => Math.max(1, p - 1))}
-              >
-                Anterior
-              </button>
-              <button
-                className="rounded border border-slate-300 px-3 py-1 disabled:opacity-40"
-                disabled={page >= totalPages}
-                onClick={() => setPage((p) => p + 1)}
-              >
-                Siguiente
-              </button>
-            </div>
-          </div>
-        </>
-      )}
+        )}
+      </SideDrawer>
     </div>
   );
 }

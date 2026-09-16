@@ -13,7 +13,7 @@ export default function VentasHaciendaPage() {
   return (
     <main className="mx-auto max-w-6xl p-8">
       <h1 className="text-2xl font-semibold">Ventas de hacienda</h1>
-      <p className="mt-1 text-slate-600">
+      <p className="mt-1 text-ink-secondary">
         Ventas de hacienda y retenciones asociadas (solo lectura).
       </p>
 
@@ -23,8 +23,8 @@ export default function VentasHaciendaPage() {
             key={t}
             className={`rounded px-3 py-1.5 text-sm ${
               t === tab
-                ? "bg-slate-900 text-white"
-                : "border border-slate-300 text-slate-700 hover:bg-slate-100"
+                ? "bg-finance text-white"
+                : "border border-border text-ink-primary hover:bg-surface-sunken"
             }`}
             onClick={() => setTab(t)}
           >

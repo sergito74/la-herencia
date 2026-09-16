@@ -15,7 +15,7 @@ export default function CompraDetallePage({
 
   return (
     <main className="mx-auto max-w-6xl p-8">
-      <Link className="text-sm text-blue-700 underline" href="/compras">
+      <Link className="text-sm text-finance underline" href="/compras">
         ← Volver al listado
       </Link>
       <h1 className="mt-2 text-2xl font-semibold">Detalle de compra</h1>
@@ -23,7 +23,7 @@ export default function CompraDetallePage({
         {Number.isFinite(idCompra) ? (
           <DetalleCompra idCompra={idCompra} />
         ) : (
-          <p className="text-red-700">Identificador de compra inválido.</p>
+          <p className="text-status-danger">Identificador de compra inválido.</p>
         )}
       </div>
     </main>

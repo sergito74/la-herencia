@@ -1,3 +1,22 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+:root {
+  --color-bg: #f8f9f6;
+  --color-surface: #ffffff;
+  --color-border: #e3e0d6;
+}
+
+body {
+  background-color: var(--color-bg);
+  color: #2b2a25;
+  font-family: "Inter", system-ui, sans-serif;
+}
+
+/* Obligatorio en toda celda numérica/monetaria/fecha — design system
+   "Tierra & Cultivo" (design/agroux-frontend-redesign.md §2.2). */
+.font-data {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+}

@@ -31,68 +31,83 @@ export function NavHeader() {
   const otrosActive = OTROS_MOVIMIENTOS_MODULES.some((m) => isActive(pathname, m.href));
 
   return (
-    <header className="border-b border-slate-200 bg-white">
-      <div className="mx-auto flex max-w-6xl items-center gap-6 px-8 py-3">
-        <Link href="/" className="font-semibold text-slate-900">
+    <header className="border-b border-border bg-surface">
+      {/* Franja superior: logo + slot reservado para el futuro selector de
+          contexto (Establecimiento/Campaña) — design/agroux-frontend-redesign.md §3.1/§3.3.
+          No hay datos de Establecimiento/Campaña en SQL Server todavía;
+          el botón queda deshabilitado como reserva de layout. */}
+      <div className="mx-auto flex max-w-6xl items-center justify-between px-8 py-2">
+        <Link href="/" className="font-semibold text-ink-primary">
           La Herencia
         </Link>
-        <nav className="flex items-center gap-4 text-sm">
-          {TOP_LEVEL_MODULES.map((m) => {
-            const active = isActive(pathname, m.href);
-            return (
-              <Link
-                key={m.href}
-                href={m.href}
-                className={
-                  active
-                    ? "font-medium text-slate-900 underline underline-offset-4"
-                    : "text-slate-600 hover:text-slate-900"
-                }
-              >
-                {m.label}
-              </Link>
-            );
-          })}
+        <button
+          type="button"
+          disabled
+          title="Selector de Establecimiento/Campaña — próximamente"
+          className="rounded-sm border border-border px-3 py-1 text-xs text-ink-muted disabled:cursor-not-allowed"
+        >
+          Establecimiento: todos
+        </button>
+      </div>
 
-          <div
-            className="relative"
-            onMouseEnter={() => setOtrosOpen(true)}
-            onMouseLeave={() => setOtrosOpen(false)}
-          >
-            <button
-              type="button"
-              className={
-                otrosActive
-                  ? "font-medium text-slate-900 underline underline-offset-4"
-                  : "text-slate-600 hover:text-slate-900"
-              }
-              onClick={() => setOtrosOpen((v) => !v)}
-              aria-expanded={otrosOpen}
+      {/* Franja de navegación: jerarquía visual real entre primaria y
+          secundaria (design/agroux-frontend-redesign.md §3.1). */}
+      <div className="mx-auto flex max-w-6xl items-center gap-1 border-t border-border px-8">
+        {TOP_LEVEL_MODULES.map((m) => {
+          const active = isActive(pathname, m.href);
+          return (
+            <Link
+              key={m.href}
+              href={m.href}
+              className={`px-3 py-2.5 text-sm font-medium transition-colors ${
+                active
+                  ? "border-b-2 border-finance bg-finance-light text-finance"
+                  : "border-b-2 border-transparent text-ink-secondary hover:text-ink-primary"
+              }`}
             >
-              Otros movimientos ▾
-            </button>
-            {otrosOpen && (
-              <div className="absolute left-0 top-full z-10 min-w-[12rem] rounded-md border border-slate-200 bg-white py-1 shadow-lg">
-                {OTROS_MOVIMIENTOS_MODULES.map((m) => {
-                  const active = isActive(pathname, m.href);
-                  return (
-                    <Link
-                      key={m.href}
-                      href={m.href}
-                      className={`block px-4 py-2 ${
-                        active
-                          ? "font-medium text-slate-900"
-                          : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
-                      }`}
-                    >
-                      {m.label}
-                    </Link>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        </nav>
+              {m.label}
+            </Link>
+          );
+        })}
+
+        <div
+          className="relative"
+          onMouseEnter={() => setOtrosOpen(true)}
+          onMouseLeave={() => setOtrosOpen(false)}
+        >
+          <button
+            type="button"
+            className={`px-3 py-2.5 text-sm transition-colors ${
+              otrosActive
+                ? "border-b-2 border-finance bg-finance-light font-medium text-finance"
+                : "border-b-2 border-transparent text-ink-secondary hover:text-ink-primary"
+            }`}
+            onClick={() => setOtrosOpen((v) => !v)}
+            aria-expanded={otrosOpen}
+          >
+            Otros movimientos ▾
+          </button>
+          {otrosOpen && (
+            <div className="absolute left-0 top-full z-10 min-w-[12rem] rounded-md border border-border bg-surface py-1 shadow-lg">
+              {OTROS_MOVIMIENTOS_MODULES.map((m) => {
+                const active = isActive(pathname, m.href);
+                return (
+                  <Link
+                    key={m.href}
+                    href={m.href}
+                    className={`block px-4 py-2 text-sm ${
+                      active
+                        ? "font-medium text-finance"
+                        : "text-ink-secondary hover:bg-surface-sunken hover:text-ink-primary"
+                    }`}
+                  >
+                    {m.label}
+                  </Link>
+                );
+              })}
+            </div>
+          )}
+        </div>
       </div>
     </header>
   );
