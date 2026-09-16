@@ -10,8 +10,9 @@ const MEDIO_LABEL: Record<string, string> = {
 };
 
 /**
- * Renderiza los 4 estados de `origen` de forma explícita (US2: FR-006,
- * FR-007, FR-008). MUST NOT mostrar ni derivar imputación (FR-009).
+ * Renderiza los 9 estados de `origen` de forma explícita (004 US2:
+ * FR-006, FR-007, FR-008; 005 US5: FR-005, FR-006). MUST NOT mostrar ni
+ * derivar imputación (FR-007/FR-009).
  */
 export function OrigenMovimiento({ origen }: { origen: Origen }) {
   switch (origen.tipo) {
@@ -30,6 +31,37 @@ export function OrigenMovimiento({ origen }: { origen: Origen }) {
         <span className="text-slate-700">
           Tesorería · {origen.medio ? (MEDIO_LABEL[origen.medio] ?? origen.medio) : "—"}
           {origen.fecha ? ` · ${origen.fecha}` : ""}
+        </span>
+      );
+    case "impuesto":
+      return (
+        <span className="text-slate-700">
+          Impuesto · {origen.tipoImpuesto ?? "—"}
+        </span>
+      );
+    case "retencion":
+      return (
+        <span className="text-slate-700">
+          Retención · {origen.numeroCertificado ?? "—"}
+        </span>
+      );
+    case "remuneracion":
+      return (
+        <span className="text-slate-700">
+          Liquidación · {origen.empleado ?? "—"}
+          {origen.periodoLiquidado ? ` · ${origen.periodoLiquidado}` : ""}
+        </span>
+      );
+    case "arrendamiento":
+      return (
+        <span className="text-slate-700">
+          Arrendamiento · {origen.contacto ?? "—"}
+        </span>
+      );
+    case "venta_hacienda":
+      return (
+        <span className="text-slate-700">
+          Retención venta de hacienda · {origen.numeroDocumento ?? "—"}
         </span>
       );
     case "fuera_de_alcance":

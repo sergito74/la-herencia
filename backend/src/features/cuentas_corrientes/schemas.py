@@ -33,6 +33,12 @@ class Origen(BaseModel):
     `tipo` determina qué otros campos están poblados:
     - "compra": idCompra, numeroDocumento, proveedor
     - "tesoreria": medio, idMovimiento, fecha, importe
+    - "impuesto": idImpuesto, tipoImpuesto, importe
+    - "retencion": idRetencion, numeroCertificado, importe
+    - "remuneracion": idSalario, periodoLiquidado, empleado
+    - "arrendamiento": idAlquiler, contacto, importeTotalContrato
+    - "venta_hacienda": idRetencion, numeroDocumento, importe (referencia a la
+      retención, no a la venta — ver specs/005-egresos-y-ventas-menores)
     - "fuera_de_alcance": origenTipo
     - "no_disponible": motivo
     """
@@ -47,6 +53,16 @@ class Origen(BaseModel):
     numeroDocumento: str | None = None
     origenTipo: str | None = None
     motivo: str | None = None
+    idImpuesto: int | None = None
+    tipoImpuesto: str | None = None
+    idRetencion: int | None = None
+    numeroCertificado: str | None = None
+    idSalario: int | None = None
+    periodoLiquidado: str | None = None
+    empleado: str | None = None
+    idAlquiler: int | None = None
+    contacto: str | None = None
+    importeTotalContrato: float | None = None
 
 
 class MovimientoCuentaCorriente(BaseModel):

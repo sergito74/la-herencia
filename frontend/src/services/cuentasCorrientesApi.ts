@@ -22,7 +22,16 @@ export interface Saldo {
 }
 
 export interface Origen {
-  tipo: "compra" | "tesoreria" | "fuera_de_alcance" | "no_disponible";
+  tipo:
+    | "compra"
+    | "tesoreria"
+    | "impuesto"
+    | "retencion"
+    | "remuneracion"
+    | "arrendamiento"
+    | "venta_hacienda"
+    | "fuera_de_alcance"
+    | "no_disponible";
   idCompra?: number | null;
   proveedor?: string | null;
   numeroDocumento?: string | null;
@@ -32,6 +41,17 @@ export interface Origen {
   importe?: number | null;
   origenTipo?: string | null;
   motivo?: string | null;
+  // specs/005-egresos-y-ventas-menores
+  idImpuesto?: number | null;
+  tipoImpuesto?: string | null;
+  idRetencion?: number | null;
+  numeroCertificado?: string | null;
+  idSalario?: number | null;
+  periodoLiquidado?: string | null;
+  empleado?: string | null;
+  idAlquiler?: number | null;
+  contacto?: string | null;
+  importeTotalContrato?: number | null;
 }
 
 export interface MovimientoCuentaCorriente {

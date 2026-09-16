@@ -7,8 +7,9 @@ Estos agentes trabajan como un equipo para migrar La Herencia a una aplicación 
 1. `integrated-agro-management-engineer` define el proceso y el alcance.
 2. `agricultural-production-specialist`, `livestock-health-specialist` y `financial-direction-specialist` validan el significado del negocio.
 3. `sql-server-engineer` define consultas, vistas y contratos de datos.
-4. `web-frontend-engineer` implementa la navegación y la experiencia operativa.
-5. `python-engineer` automatiza auditorías, análisis y pruebas.
+4. `agro-erp-frontend-specialist` define cómo debe organizarse la navegación y el vocabulario del módulo desde la lógica operativa de una empresa agropecuaria, antes de implementar UI.
+5. `web-frontend-engineer` implementa la navegación y la experiencia operativa siguiendo esa organización.
+6. `python-engineer` automatiza auditorías, análisis y pruebas.
 
 ## Reglas compartidas
 
