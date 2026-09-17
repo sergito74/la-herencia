@@ -6,8 +6,9 @@ import { useEffect, useRef, useState } from "react";
 
 import { actualizarEstadoCuota, fetchArrendamientos } from "@/services/arrendamientosApi";
 import { ContactoLink } from "@/components/ui/ContactoLink";
+import { ContactoSelect } from "@/components/ui/ContactoSelect";
 import { StatusBadge, type BadgeTone } from "@/components/ui/StatusBadge";
-import { FilterBar, FilterField, FilterSubmitButton, filterInputClass } from "@/components/ui/FilterBar";
+import { FilterBar, FilterSubmitButton } from "@/components/ui/FilterBar";
 import { EmptyState, ErrorState, LoadingState } from "@/components/ui/States";
 import { useToast } from "@/components/ui/Toast";
 
@@ -37,7 +38,10 @@ export function ArrendamientosListado() {
   const highlight = searchParams.get("highlight");
   const highlightId = highlight ? Number(highlight) : null;
   const highlightRef = useRef<HTMLDivElement | null>(null);
-  const [contacto, setContacto] = useState("");
+  const [contacto, setContacto] = useState<{ id: number | null; nombre: string | null }>({
+    id: null,
+    nombre: null,
+  });
   const [appliedContacto, setAppliedContacto] = useState("");
   const [page, setPage] = useState(1);
   const pageSize = 50;
@@ -69,7 +73,7 @@ export function ArrendamientosListado() {
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setPage(1);
-    setAppliedContacto(contacto);
+    setAppliedContacto(contacto.nombre ?? "");
   }
 
   useEffect(() => {
@@ -83,14 +87,13 @@ export function ArrendamientosListado() {
   return (
     <div className="space-y-4">
       <FilterBar onSubmit={handleSubmit}>
-        <FilterField label="Contacto">
-          <input
-            className={filterInputClass}
-            value={contacto}
-            onChange={(e) => setContacto(e.target.value)}
-            placeholder="Razón social"
-          />
-        </FilterField>
+        <ContactoSelect
+          label="Contacto"
+          value={contacto.id}
+          razonSocial={contacto.nombre}
+          onChange={(id, nombre) => setContacto({ id, nombre })}
+          placeholder="Buscar arrendatario…"
+        />
         <FilterSubmitButton />
       </FilterBar>
 

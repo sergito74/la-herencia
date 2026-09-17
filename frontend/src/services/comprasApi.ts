@@ -1,10 +1,11 @@
 /**
- * Typed client for the /api/compras contract (see
- * specs/002-compras/contracts/compras-api.md). GET-only — this module never
- * creates, edits, or deletes compras (FR-010).
+ * Typed client for the /api/compras contract. La lectura (spec 002) es
+ * GET-only; desde 006-carga-compras (`contracts/compras-alta-api.md`) se
+ * agregan alta/edición, que escriben exclusivamente contra `WC` (ver nota
+ * en `apiClient.ts`).
  */
 
-import { apiGet } from "@/services/apiClient";
+import { apiDelete, apiGet, apiPost, apiPut } from "@/services/apiClient";
 
 export interface Proveedor {
   idContacto: number;
@@ -47,15 +48,32 @@ export interface LineaCompra {
   imputacion: Imputacion | null;
 }
 
+export interface VencimientoCompra {
+  idVencimiento: number;
+  fechaVencimiento: string | null;
+}
+
 export interface CompraDetalle {
   idCompra: number;
   fecha: string | null;
   proveedor: Proveedor | null;
+  tipo: string | null;
   tipoDocumento: string | null;
   numeroDocumento: string | null;
+  moneda: string | null;
+  tipoDeCambio: number | null;
   conceptosNoGravados: number | null;
   ingresosBrutos: number | null;
+  guias: number | null;
+  comision: number | null;
+  financiacion: number | null;
+  gastosVarios: number | null;
+  leyDeSellos: number | null;
+  resGral4169: number | null;
+  ajustaTipoCambio: boolean | null;
+  documentoOriginal: string | null;
   lineas: LineaCompra[];
+  vencimientos: VencimientoCompra[];
 }
 
 export interface ComprasSearchParams {
@@ -65,6 +83,8 @@ export interface ComprasSearchParams {
   fechaHasta?: string;
   idCentroCosto?: number;
   idRubro?: number;
+  /** Filtro exacto — usado para listar los documentos relacionados de un proveedor (006). */
+  idContacto?: number;
   page?: number;
   pageSize?: number;
 }
@@ -85,9 +105,26 @@ export interface Rubro {
   rubro: string | null;
 }
 
+export interface Destino {
+  idDestino: number;
+  destino: string | null;
+}
+
+export interface UnidadMedida {
+  unidad: string;
+}
+
+export interface Campania {
+  idCampania: number;
+  campania: string | null;
+}
+
 export interface FiltrosComprasResponse {
   centrosCosto: CentroCosto[];
   rubros: Rubro[];
+  destinos: Destino[];
+  unidadesMedida: UnidadMedida[];
+  campañas: Campania[];
 }
 
 /** Catálogos para los filtros — replica los combos del Frm Listado Compras real. */
@@ -117,4 +154,167 @@ export function fetchCompraTrazabilidad(
   idCompra: number
 ): Promise<TrazabilidadCompra> {
   return apiGet<TrazabilidadCompra>(`/api/compras/${idCompra}/trazabilidad`);
+}
+
+// --- Alta/edición (006-carga-compras) — escriben exclusivamente contra `WC` ---
+
+export type TipoComprobante = "A" | "B" | "C" | "M" | "X";
+export type TipoDocumentoCompra =
+  | "Factura"
+  | "Nota de Crédito"
+  | "Nota de Débito"
+  | "C. Deposito Cereales";
+export type MonedaCompra = "Pesos" | "Dolares";
+
+export interface LineaInput {
+  productoServicio: string;
+  cantidad: number;
+  precioUnitario: number;
+  iva: number;
+  unidad?: string | null;
+  idCentroCosto?: number | null;
+  idDestino?: number | null;
+  idRubro?: number | null;
+  campaña?: string | null;
+  ajusteFinanciero?: boolean;
+}
+
+export interface VencimientoInput {
+  fechaVencimiento: string;
+}
+
+export interface CompraAltaInput {
+  idContacto: number;
+  fecha: string;
+  tipo: TipoComprobante;
+  tipoDocumento: TipoDocumentoCompra;
+  numeroDocumento: string;
+  moneda: MonedaCompra;
+  tipoDeCambio?: number | null;
+  ingresosBrutos?: number;
+  conceptosNoGravados?: number;
+  guias?: number;
+  comision?: number;
+  financiacion?: number;
+  gastosVarios?: number;
+  leyDeSellos?: number;
+  resGral4169?: number;
+  ajustaTipoCambio?: boolean;
+  documentoOriginal?: string | null;
+  lineas: LineaInput[];
+  vencimientos: VencimientoInput[];
+}
+
+export interface PesificadoBlock {
+  subtotalNeto: number;
+  ivaCabecera: number;
+  importeTotal: number;
+}
+
+export interface LineaCalculada extends LineaInput {
+  idDetalleCompra: number | null;
+  subtotal: number;
+  importeIva: number;
+}
+
+export interface VencimientoCalculado extends VencimientoInput {
+  idVencimiento: number | null;
+}
+
+export interface CompraDetalleCompleto extends CompraAltaInput {
+  idCompra: number;
+  subtotalNeto: number;
+  ivaCabecera: number;
+  importeTotal: number;
+  pesificado: PesificadoBlock | null;
+  lineas: LineaCalculada[];
+  vencimientos: VencimientoCalculado[];
+  warnings: string[];
+}
+
+/** Alta de una compra completa (cabecera + líneas + vencimientos). Escribe solo en `WC`. */
+export function crearCompra(input: CompraAltaInput): Promise<CompraDetalleCompleto> {
+  return apiPost<CompraDetalleCompleto>("/api/compras", input);
+}
+
+/** Edición: reemplaza cabecera+líneas+vencimientos por completo. Requiere el lock adquirido. */
+export function actualizarCompra(
+  idCompra: number,
+  input: CompraAltaInput,
+  lockToken: string
+): Promise<CompraDetalleCompleto> {
+  return apiPut<CompraDetalleCompleto>(`/api/compras/${idCompra}`, input, {
+    "X-Lock-Token": lockToken,
+  });
+}
+
+export interface LockResponse {
+  idCompra: number;
+  lockToken: string;
+  expiresAt: string;
+}
+
+/** Adquiere o renueva el bloqueo exclusivo de edición (FR-009a). 409 si otra sesión lo tiene. */
+export function adquirirLock(idCompra: number, lockToken: string): Promise<LockResponse> {
+  return apiPost<LockResponse>(`/api/compras/${idCompra}/lock`, { lockToken });
+}
+
+/** Libera el bloqueo. 409 si pertenece a otra sesión. */
+export function liberarLock(idCompra: number, lockToken: string): Promise<void> {
+  return apiDelete(`/api/compras/${idCompra}/lock`, { "X-Lock-Token": lockToken });
+}
+
+export interface RubroSugerido {
+  idRubro: number | null;
+  rubro: string | null;
+  frecuencia: number;
+}
+
+/** FR-012a: sugerencia no vinculante — el usuario siempre puede cambiarla. */
+export function fetchRubroSugerido(productoServicio: string): Promise<RubroSugerido> {
+  return apiGet<RubroSugerido>("/api/compras/rubro-sugerido", { productoServicio });
+}
+
+// --- Alta controlada de catálogos: los combos de línea (Rubro/Centro de
+// Costos/Destino/Campaña) no admiten texto libre — agregar un valor nuevo
+// pasa por una confirmación explícita del usuario antes de llamar a estas
+// funciones (evita duplicados por error de tipeo). Escriben solo en `WC`.
+
+export function crearRubro(nombre: string): Promise<Rubro> {
+  return apiPost<Rubro>("/api/compras/rubros", { nombre });
+}
+
+export function crearCentroCosto(nombre: string): Promise<CentroCosto> {
+  return apiPost<CentroCosto>("/api/compras/centros-costo", { nombre });
+}
+
+export function crearDestino(nombre: string): Promise<Destino> {
+  return apiPost<Destino>("/api/compras/destinos", { nombre });
+}
+
+export function crearCampania(nombre: string): Promise<Campania> {
+  return apiPost<Campania>("/api/compras/campanias", { nombre });
+}
+
+// --- Documentos relacionados: vínculo manual entre documentos (ej. una Nota
+// de Crédito/Débito que complementa una Factura), para referencia futura —
+// no es un listado automático de todo lo comprado al proveedor. ---
+
+export interface DocumentoRelacionado {
+  idCompra: number;
+  fecha: string | null;
+  tipoDocumento: string | null;
+  numeroDocumento: string | null;
+}
+
+export function fetchDocumentosRelacionados(idCompra: number): Promise<DocumentoRelacionado[]> {
+  return apiGet<DocumentoRelacionado[]>(`/api/compras/${idCompra}/relacionados`);
+}
+
+export function agregarDocumentoRelacionado(idCompra: number, idCompraRelacionada: number): Promise<void> {
+  return apiPost(`/api/compras/${idCompra}/relacionados`, { idCompraRelacionada });
+}
+
+export function quitarDocumentoRelacionado(idCompra: number, idCompraRelacionada: number): Promise<void> {
+  return apiDelete(`/api/compras/${idCompra}/relacionados/${idCompraRelacionada}`);
 }

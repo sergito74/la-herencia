@@ -5,8 +5,9 @@ import { useState } from "react";
 
 import { fetchImpuestos, type Impuesto } from "@/services/impuestosApi";
 import { ContactoLink } from "@/components/ui/ContactoLink";
+import { ContactoSelect } from "@/components/ui/ContactoSelect";
 import { DataTable, type DataTableColumn } from "@/components/ui/DataTable";
-import { FilterBar, FilterField, FilterSubmitButton, filterInputClass } from "@/components/ui/FilterBar";
+import { FilterBar, FilterSubmitButton } from "@/components/ui/FilterBar";
 import { ErrorState, LoadingState } from "@/components/ui/States";
 
 const COLUMNS: DataTableColumn<Impuesto>[] = [
@@ -36,7 +37,10 @@ const COLUMNS: DataTableColumn<Impuesto>[] = [
  * crear/editar/eliminar (FR-008).
  */
 export function ImpuestosListado({ highlightKey }: { highlightKey?: number }) {
-  const [organismo, setOrganismo] = useState("");
+  const [organismo, setOrganismo] = useState<{ id: number | null; nombre: string | null }>({
+    id: null,
+    nombre: null,
+  });
   const [appliedOrganismo, setAppliedOrganismo] = useState("");
   const [page, setPage] = useState(1);
   const pageSize = 50;
@@ -50,20 +54,20 @@ export function ImpuestosListado({ highlightKey }: { highlightKey?: number }) {
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setPage(1);
-    setAppliedOrganismo(organismo);
+    setAppliedOrganismo(organismo.nombre ?? "");
   }
 
   return (
     <div className="space-y-4">
       <FilterBar onSubmit={handleSubmit}>
-        <FilterField label="Organismo">
-          <input
-            className={filterInputClass}
-            value={organismo}
-            onChange={(e) => setOrganismo(e.target.value)}
-            placeholder="Razón social del organismo"
-          />
-        </FilterField>
+        <ContactoSelect
+          label="Organismo"
+          tipoContacto="Organismo"
+          value={organismo.id}
+          razonSocial={organismo.nombre}
+          onChange={(id, nombre) => setOrganismo({ id, nombre })}
+          placeholder="Buscar organismo…"
+        />
         <FilterSubmitButton />
       </FilterBar>
 

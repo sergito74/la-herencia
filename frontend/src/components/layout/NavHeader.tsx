@@ -31,6 +31,7 @@ const ICONS = {
     <path d="M17 20v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2M11 4a4 4 0 1 1 0 8 4 4 0 0 1 0-8Zm8 16v-2a4 4 0 0 0-3-3.87M16 4.13A4 4 0 0 1 16 11.87" />
   ),
   produccion: <path d="M12 3 4 9v12h16V9l-8-6Zm-4 18v-6h8v6" />,
+  contactos: <path d="M16 7a4 4 0 1 1-8 0 4 4 0 0 1 8 0ZM4 21v-1a6 6 0 0 1 6-6h4a6 6 0 0 1 6 6v1" />,
   bell: <path d="M6 8a6 6 0 1 1 12 0c0 4 1.5 5.5 1.5 5.5H4.5S6 12 6 8Zm4.5 9.5a1.5 1.5 0 0 0 3 0" />,
   chevron: <path d="m6 9 6 6 6-6" />,
 };
@@ -89,6 +90,11 @@ const NAV_ITEMS: NavItem[] = [
     icon: ICONS.produccion,
     disabled: true,
     disabledTitle: "Próximamente — Órdenes de trabajo, cultivos y ganadería",
+  },
+  {
+    href: "/contactos",
+    label: "Contactos",
+    icon: ICONS.contactos,
   },
 ];
 

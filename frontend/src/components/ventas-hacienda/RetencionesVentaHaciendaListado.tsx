@@ -8,8 +8,9 @@ import {
   type RetencionVentaHacienda,
 } from "@/services/ventasHaciendaApi";
 import { ContactoLink } from "@/components/ui/ContactoLink";
+import { ContactoSelect } from "@/components/ui/ContactoSelect";
 import { DataTable, type DataTableColumn } from "@/components/ui/DataTable";
-import { FilterBar, FilterField, FilterSubmitButton, filterInputClass } from "@/components/ui/FilterBar";
+import { FilterBar, FilterSubmitButton } from "@/components/ui/FilterBar";
 import { ErrorState, LoadingState } from "@/components/ui/States";
 
 const COLUMNS: DataTableColumn<RetencionVentaHacienda>[] = [
@@ -42,7 +43,10 @@ const COLUMNS: DataTableColumn<RetencionVentaHacienda>[] = [
  * research.md).
  */
 export function RetencionesVentaHaciendaListado({ highlightKey }: { highlightKey?: number }) {
-  const [contacto, setContacto] = useState("");
+  const [contacto, setContacto] = useState<{ id: number | null; nombre: string | null }>({
+    id: null,
+    nombre: null,
+  });
   const [appliedContacto, setAppliedContacto] = useState("");
   const [page, setPage] = useState(1);
   const pageSize = 50;
@@ -60,7 +64,7 @@ export function RetencionesVentaHaciendaListado({ highlightKey }: { highlightKey
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setPage(1);
-    setAppliedContacto(contacto);
+    setAppliedContacto(contacto.nombre ?? "");
   }
 
   return (
@@ -71,14 +75,13 @@ export function RetencionesVentaHaciendaListado({ highlightKey }: { highlightKey
       </p>
 
       <FilterBar onSubmit={handleSubmit}>
-        <FilterField label="Contacto">
-          <input
-            className={filterInputClass}
-            value={contacto}
-            onChange={(e) => setContacto(e.target.value)}
-            placeholder="Razón social"
-          />
-        </FilterField>
+        <ContactoSelect
+          label="Contacto"
+          value={contacto.id}
+          razonSocial={contacto.nombre}
+          onChange={(id, nombre) => setContacto({ id, nombre })}
+          placeholder="Buscar contacto…"
+        />
         <FilterSubmitButton />
       </FilterBar>
 

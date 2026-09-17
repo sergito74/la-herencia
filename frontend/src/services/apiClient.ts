@@ -68,6 +68,65 @@ export async function apiPatch<T>(path: string, body: unknown): Promise<T> {
   return (await response.json()) as T;
 }
 
+/** POST helper — ver nota en el encabezado del módulo (solo para `WC`). */
+export async function apiPost<T>(
+  path: string,
+  body: unknown,
+  extraHeaders?: Record<string, string>
+): Promise<T> {
+  const url = new URL(path, API_BASE_URL);
+  const response = await fetch(url.toString(), {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...extraHeaders },
+    body: JSON.stringify(body),
+  });
+
+  if (!response.ok) {
+    const detail = await response.text().catch(() => "");
+    throw new ApiError(response.status, detail || response.statusText);
+  }
+
+  return (await response.json()) as T;
+}
+
+/** PUT helper — ver nota en el encabezado del módulo (solo para `WC`). */
+export async function apiPut<T>(
+  path: string,
+  body: unknown,
+  extraHeaders?: Record<string, string>
+): Promise<T> {
+  const url = new URL(path, API_BASE_URL);
+  const response = await fetch(url.toString(), {
+    method: "PUT",
+    headers: { "Content-Type": "application/json", ...extraHeaders },
+    body: JSON.stringify(body),
+  });
+
+  if (!response.ok) {
+    const detail = await response.text().catch(() => "");
+    throw new ApiError(response.status, detail || response.statusText);
+  }
+
+  return (await response.json()) as T;
+}
+
+/** DELETE helper — ver nota en el encabezado del módulo (solo para `WC`). Sin body de respuesta (204). */
+export async function apiDelete(
+  path: string,
+  extraHeaders?: Record<string, string>
+): Promise<void> {
+  const url = new URL(path, API_BASE_URL);
+  const response = await fetch(url.toString(), {
+    method: "DELETE",
+    headers: { ...extraHeaders },
+  });
+
+  if (!response.ok) {
+    const detail = await response.text().catch(() => "");
+    throw new ApiError(response.status, detail || response.statusText);
+  }
+}
+
 export function createQueryClient(): QueryClient {
   return new QueryClient({
     defaultOptions: {

@@ -14,6 +14,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from src.errors import register_error_handlers
 from src.features.arrendamientos.router import router as arrendamientos_router
 from src.features.compras.router import router as compras_router
+from src.features.contactos.router import router as contactos_router
 from src.features.cuentas_corrientes.router import router as cuentas_corrientes_router
 from src.features.impuestos.router import router as impuestos_router
 from src.features.remuneraciones.router import router as remuneraciones_router
@@ -41,12 +42,13 @@ _allowed_origins = os.environ.get(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=_allowed_origins,
-    allow_methods=["GET", "PATCH"],
+    allow_methods=["GET", "PATCH", "POST"],
     allow_headers=["*"],
 )
 
 app.include_router(arrendamientos_router)
 app.include_router(compras_router)
+app.include_router(contactos_router)
 app.include_router(cuentas_corrientes_router)
 app.include_router(impuestos_router)
 app.include_router(remuneraciones_router)

@@ -155,3 +155,95 @@ def execute_write(sql: str, params: tuple = ()) -> int:
         cursor = conn.cursor()
         cursor.execute(sql, _coerce_params(params))
         return cursor.rowcount
+
+
+def execute_insert_returning_id(sql: str, params: tuple = ()) -> int:
+    """Run an INSERT with an `OUTPUT INSERTED.<col>` clause against `WC`.
+
+    Same guards as `execute_write`, but returns the single scalar value
+    produced by the OUTPUT clause (e.g. the new identity id) instead of
+    the affected row count.
+    """
+    _assert_target_is_wc()
+    normalized = sql.strip().upper()
+    if not normalized.startswith("INSERT"):
+        raise ValueError("execute_insert_returning_id only accepts INSERT statements")
+    if "OUTPUT" not in normalized:
+        raise ValueError("execute_insert_returning_id requires an OUTPUT clause")
+    if any(kw in normalized for kw in ("DROP", "TRUNCATE", "ALTER", "EXEC", "EXECUTE")):
+        raise ValueError("Forbidden keyword detected in write statement")
+    if ";" in sql.strip().rstrip(";"):
+        raise ValueError("Multiple statements are not allowed through this connection")
+
+    with get_connection(readonly=False) as conn:
+        cursor = conn.cursor()
+        cursor.execute(sql, _coerce_params(params))
+        row = cursor.fetchone()
+        return row[0]
+
+
+def _validate_write_statement(sql: str) -> str:
+    """Shared guard for a single statement inside a transaction (see `execute_write`)."""
+    normalized = sql.strip().upper()
+    if not any(normalized.startswith(verb) for verb in ("INSERT", "UPDATE", "DELETE")):
+        raise ValueError("execute_write_transaction only accepts INSERT/UPDATE/DELETE statements")
+    if any(kw in normalized for kw in ("DROP", "TRUNCATE", "ALTER", "EXEC", "EXECUTE")):
+        raise ValueError("Forbidden keyword detected in write statement")
+    if ";" in sql.strip().rstrip(";"):
+        raise ValueError("Multiple statements are not allowed through this connection")
+    return normalized
+
+
+def execute_write_transaction(statements: list) -> list:
+    """Run several parameterized INSERT/UPDATE/DELETE statements as one transaction against `WC`.
+
+    All-or-nothing: opens a single connection with `autocommit=False`,
+    executes every statement in order, commits only if all succeed, and
+    rolls back the whole batch on any failure — needed because a Compra's
+    cabecera/líneas/vencimientos have no real foreign keys in SQL Server
+    (confirmed via `sys.foreign_keys`), so a partial write would leave an
+    orphaned, inconsistent Compra (see research.md §1).
+
+    Each item in `statements` is either a static `(sql, params)` tuple, or
+    a callable `(results_so_far: list) -> (sql, params)` for statements
+    that need a value produced by an earlier statement in the same
+    transaction (e.g. the `IdCompra` from an `OUTPUT INSERTED.IdDeuda`
+    insert, needed by the line/vencimiento inserts that follow it) —
+    building that dependent SQL ahead of time, before the id exists, is
+    not possible with a plain list of tuples.
+
+    Each resolved statement is validated exactly like `execute_write`
+    (only INSERT/UPDATE/DELETE, no DDL, no multi-statement strings). A
+    statement with an `OUTPUT` clause returns its scalar value (like
+    `execute_insert_returning_id`); otherwise the statement's rowcount is
+    returned. Returns a list with one entry per input statement, in order.
+    """
+    _assert_target_is_wc()
+    if not statements:
+        raise ValueError("execute_write_transaction requires at least one statement")
+
+    # Validate every statement we can check without executing anything yet
+    # (static tuples) before opening a connection, same as `execute_write`.
+    for item in statements:
+        if not callable(item):
+            _validate_write_statement(item[0])
+
+    conn = pyodbc.connect(CONNECTION_STRING, autocommit=False, readonly=False)
+    try:
+        cursor = conn.cursor()
+        results: list = []
+        for item in statements:
+            sql, params = item(results) if callable(item) else item
+            normalized = _validate_write_statement(sql)
+            cursor.execute(sql, _coerce_params(params))
+            if "OUTPUT" in normalized:
+                results.append(cursor.fetchone()[0])
+            else:
+                results.append(cursor.rowcount)
+        conn.commit()
+        return results
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        conn.close()

@@ -5,8 +5,9 @@ import { useState } from "react";
 
 import { fetchRemuneraciones, type Remuneracion } from "@/services/remuneracionesApi";
 import { ContactoLink } from "@/components/ui/ContactoLink";
+import { ContactoSelect } from "@/components/ui/ContactoSelect";
 import { DataTable, type DataTableColumn } from "@/components/ui/DataTable";
-import { FilterBar, FilterField, FilterSubmitButton, filterInputClass } from "@/components/ui/FilterBar";
+import { FilterBar, FilterSubmitButton } from "@/components/ui/FilterBar";
 import { ErrorState, LoadingState } from "@/components/ui/States";
 
 const COLUMNS: DataTableColumn<Remuneracion>[] = [
@@ -45,7 +46,10 @@ const COLUMNS: DataTableColumn<Remuneracion>[] = [
  * campo directo — Principio IV, ver data-model.md.
  */
 export function RemuneracionesListado({ highlightKey }: { highlightKey?: number }) {
-  const [empleado, setEmpleado] = useState("");
+  const [empleado, setEmpleado] = useState<{ id: number | null; nombre: string | null }>({
+    id: null,
+    nombre: null,
+  });
   const [appliedEmpleado, setAppliedEmpleado] = useState("");
   const [page, setPage] = useState(1);
   const pageSize = 50;
@@ -59,20 +63,20 @@ export function RemuneracionesListado({ highlightKey }: { highlightKey?: number 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setPage(1);
-    setAppliedEmpleado(empleado);
+    setAppliedEmpleado(empleado.nombre ?? "");
   }
 
   return (
     <div className="space-y-4">
       <FilterBar onSubmit={handleSubmit}>
-        <FilterField label="Empleado">
-          <input
-            className={filterInputClass}
-            value={empleado}
-            onChange={(e) => setEmpleado(e.target.value)}
-            placeholder="Razón social"
-          />
-        </FilterField>
+        <ContactoSelect
+          label="Empleado"
+          tipoContacto="Empleado"
+          value={empleado.id}
+          razonSocial={empleado.nombre}
+          onChange={(id, nombre) => setEmpleado({ id, nombre })}
+          placeholder="Buscar empleado…"
+        />
         <FilterSubmitButton />
       </FilterBar>
 

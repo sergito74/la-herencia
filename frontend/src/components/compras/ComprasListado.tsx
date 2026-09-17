@@ -6,6 +6,7 @@ import { useState } from "react";
 
 import { fetchCompras, fetchFiltrosCompras, type Compra } from "@/services/comprasApi";
 import { ContactoLink } from "@/components/ui/ContactoLink";
+import { ContactoSelect } from "@/components/ui/ContactoSelect";
 import { DataTable, type DataTableColumn } from "@/components/ui/DataTable";
 import { FilterBar, FilterField, FilterSubmitButton, filterInputClass } from "@/components/ui/FilterBar";
 import { ErrorState, LoadingState } from "@/components/ui/States";
@@ -36,16 +37,28 @@ const COLUMNS: DataTableColumn<Compra>[] = [
   },
   { key: "tipoDocumento", header: "Tipo documento", render: (c) => c.tipoDocumento ?? "—" },
   { key: "numeroDocumento", header: "Nro. documento", render: (c) => c.numeroDocumento ?? "—" },
+  {
+    key: "editar",
+    header: "",
+    render: (c) => (
+      <Link className="text-finance underline" href={`/compras/${c.idCompra}/editar`}>
+        Editar
+      </Link>
+    ),
+  },
 ];
 
 /**
  * Search + results table for compras (US1: FR-001, FR-002, FR-012, FR-013).
  * Filtros de Centro de Costos y Rubro replican el formulario Access real
  * `Frm Listado Compras` (ver design/agroux-frontend-redesign.md §5.1).
- * Read-only: no create/edit/delete affordance exists here (FR-010).
+ * Desde 006-carga-compras agrega el acceso a alta (`/compras/nueva`).
  */
 export function ComprasListado() {
-  const [proveedor, setProveedor] = useState("");
+  const [proveedor, setProveedor] = useState<{ id: number | null; nombre: string | null }>({
+    id: null,
+    nombre: null,
+  });
   const [numeroDocumento, setNumeroDocumento] = useState("");
   const [fechaDesde, setFechaDesde] = useState("");
   const [fechaHasta, setFechaHasta] = useState("");
@@ -87,20 +100,36 @@ export function ComprasListado() {
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setPage(1);
-    setAppliedFilters({ proveedor, numeroDocumento, fechaDesde, fechaHasta, idCentroCosto, idRubro });
+    setAppliedFilters({
+      proveedor: proveedor.nombre ?? "",
+      numeroDocumento,
+      fechaDesde,
+      fechaHasta,
+      idCentroCosto,
+      idRubro,
+    });
   }
 
   return (
     <div className="space-y-6">
+      <div className="flex justify-end">
+        <Link
+          href="/compras/nueva"
+          className="rounded-sm bg-agro px-4 py-2 text-sm text-white hover:opacity-90"
+        >
+          + Nueva compra
+        </Link>
+      </div>
+
       <FilterBar onSubmit={handleSubmit}>
-        <FilterField label="Proveedor">
-          <input
-            className={filterInputClass}
-            value={proveedor}
-            onChange={(e) => setProveedor(e.target.value)}
-            placeholder="Razón social"
-          />
-        </FilterField>
+        <ContactoSelect
+          label="Proveedor"
+          tipoContacto="Proveedor"
+          value={proveedor.id}
+          razonSocial={proveedor.nombre}
+          onChange={(id, nombre) => setProveedor({ id, nombre })}
+          placeholder="Buscar proveedor…"
+        />
         <FilterField label="Nro. documento">
           <input
             className={filterInputClass}
