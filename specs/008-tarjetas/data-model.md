@@ -110,4 +110,46 @@ Las compras en cuotas y sus cuotas **no** aparecen en esta cuenta corriente — 
 ## Tablas de infraestructura nuevas en `WC`
 
 - `dbo.TarjetaResumenEditLocks` (`IdResumen` int, `LockToken` uniqueidentifier, `LockedAt` datetime, `ExpiresAt` datetime) — mismo patrón que `VentaHaciendaEditLocks`/`CompraEditLocks`, para FR-013 sobre resúmenes.
-- `dbo.TarjetaCuotasEditLocks` (`IdPagoTarjeta` int, `LockToken` uniqueidentifier, `LockedAt` datetime, `ExpiresAt` datetime) — mismo patrón, para FR-013 sobre compras en cuotas.
+- `dbo.TarjetaCuotasEditLocks` (`IdPagoTarjeta` int, `LockToken` uniqueidentifier, `LockedAt` datetime, `ExpiresAt` datetime) — **sin uso** desde Session 2026-09-19: Historia 3 pasó a ser solo lectura (evidencia real: las 18 compras nunca se cargaron después de dic-2015). Se deja la tabla creada por si en el futuro se retoma algún mecanismo de edición sobre este dominio, pero el código actual no la usa.
+
+## Cambios de Session 2026-09-19 (feedback real del usuario, con Excel de resúmenes bancarios)
+
+### `Tarjetas.Activa` (corrección de dato, no de esquema)
+
+Mastercard BNA (`IdTarjeta=3`) fue dada de baja y reemplazada por Corporativa Nacion — corregido `Activa=0` a mano contra `WC` (dato de negocio).
+
+### `Tarjetas_Resumenes.ArchivoOrigen` reutilizada como `urlResumenOriginal` (FR-008)
+
+La columna `ArchivoOrigen` (varchar(255)) ya existía en el esquema real, vestigio de un mecanismo de importación automática nunca usado (0 filas pobladas, ver research.md §2) — se reutiliza tal cual para guardar el link/ruta al PDF del resumen original, mismo patrón que `documentoOriginal` en Compras/Ventas. No requirió `ALTER TABLE`.
+
+### `dbo.Tarjetas_Resumenes_Lineas_Compras` (nueva, FR-009a)
+
+Vincula una línea de consumo con una o varias Compras reales (facturas/NC/ND) que la documentan — confirmado con casos reales (ej. la línea "NEUMATICOS CORRAL 12/12" de `IdLineaConsumo=1023` vincula contra `Compras.IdDeuda=2143513659`, factura real `0265-00004930` de Neumáticos Corral).
+
+| Campo (API) | Columna real | Tipo | Notas |
+|---|---|---|---|
+| idVinculo | IdVinculo (PK, identity) | int | — (generado) |
+| idLineaConsumo | IdLineaConsumo | int, NOT NULL | FK lógica a `Tarjetas_Resumenes_Lineas` (no declarada), sin cascada real — el `repository.py` borra estos vínculos explícitamente antes de recrear las líneas en cada `PUT`/`DELETE` de resumen. |
+| idCompra | IdCompra | int, NOT NULL | FK lógica a `Compras.IdDeuda` (no declarada, validada en aplicación). |
+| importeImputado | ImporteImputado | money, NOT NULL | Porción del importe de la compra real que corresponde a esta línea de consumo — permite que una compra en cuotas real (financiada en varios resúmenes mensuales) tenga varios vínculos parciales, uno por línea/mes. |
+
+**Riesgo conocido, no resuelto**: como el `PUT` de un resumen reemplaza todas sus líneas (mismo criterio "PUT reemplaza todo" que el resto de la app), cada edición borra y recrea `IdLineaConsumo`, y por lo tanto también borra los vínculos a Compras de ese resumen — el usuario pierde el trabajo de vincular facturas cada vez que edita un resumen que ya las tenía. No se rediseñó el `PUT` para preservarlas (cambiaría el criterio ya establecido en todo el resto del módulo); se documenta como limitación conocida.
+
+### `dbo.Tarjetas_Resumenes_Pagos` (nueva, FR-002/FR-002a)
+
+Registra el pago de un resumen — confirmado que `Movimientos BNA`/`Movimientos Galicia` ya traen `IdContacto` cargado apuntando al contacto de la tarjeta (ej. `IdContacto=532` "Visa Galicia" en `Movimientos Galicia`, concepto real "PAGO VISA EMPRESA") — no hace falta adivinar por fecha/importe, se filtra directo por ese `IdContacto` (mismo vínculo por nombre documentado en research.md §3).
+
+| Campo (API) | Columna real | Tipo | Notas |
+|---|---|---|---|
+| idPago | IdPago (PK, identity) | int | — (generado) |
+| idResumen | IdResumen | int, NOT NULL | FK lógica a `Tarjetas_Resumenes` (no declarada). |
+| fecha | Fecha | datetime, NOT NULL | |
+| importe | Importe | money, NOT NULL | |
+| origen | Origen | nvarchar(20), nullable | `'BNA'`/`'Galicia'` si viene de un movimiento bancario confirmado, `NULL` si se cargó a mano. |
+| idMovimientoOrigen | IdMovimientoOrigen | int, nullable | `IdMovimientoBNA`/`IdMovimiento` del movimiento bancario vinculado — usado para no volver a ofrecerlo como candidato. |
+
+**Campo calculado, cuenta corriente de tarjeta** (actualiza la sección "Movimiento de Cuenta Corriente de Tarjeta" de arriba): además del movimiento de deuda por resumen, se agrega un movimiento de crédito por cada fila de `Tarjetas_Resumenes_Pagos` de ese resumen, con la misma fecha del pago. Se intercalan por fecha antes de calcular `saldoAcumulado`.
+
+### Historia 3 (compras en cuotas): solo lectura
+
+Evidencia real: las 18 filas de `[Tarjetas de Credito]` van de julio 2013 a diciembre 2015, ninguna posterior — el mecanismo está abandonado hace una década. El mecanismo de financiación en cuotas vigente (AgroNacion, hoja "Compras" de `Listado Resumenes.xlsx`) es otro: cada cuota se factura como una línea de consumo repetida en el resumen mensual, con `CreditoContingente`/`InteresPagoDiferido` calculados por línea — campos que ya existían sin usar en `Tarjetas_Resumenes_Lineas` (research.md §2, marcados entonces como "no confirmado si se usan"; ahora confirmado con el Excel real). No se implementó ese mecanismo de financiación por línea en este alcance (fuera de lo pedido); solo se bajó la escritura del módulo obsoleto.

@@ -1,18 +1,11 @@
 /**
- * Compras en cuotas (Historia 3) — ver
- * specs/008-tarjetas/contracts/tarjetas-api.md. No vinculadas a una
- * tarjeta del catálogo (data-model.md). Escribe exclusivamente contra `WC`.
+ * Compras en cuotas (Historia 3) — **solo lectura** desde 2026-09-19
+ * (feedback del usuario, punto 5): la estructura real es obsoleta, sin
+ * uso desde diciembre de 2015 (ver backend/src/features/tarjetas_cuotas/
+ * repository.py). Se conserva como catálogo histórico de referencia.
  */
 
-import { apiDelete, apiGet, apiPatch, apiPost, apiPut } from "@/services/apiClient";
-
-export interface CompraCuotasAltaInput {
-  idContacto: number;
-  fecha: string;
-  nroComprobante: number;
-  importeTotal: number;
-  cantidadCuotas: number;
-}
+import { apiGet } from "@/services/apiClient";
 
 export interface Cuota {
   idCuota: number;
@@ -22,9 +15,14 @@ export interface Cuota {
   cobrado: boolean;
 }
 
-export interface CompraCuotasDetalle extends CompraCuotasAltaInput {
+export interface CompraCuotasDetalle {
   idPagoTarjeta: number;
+  idContacto: number;
   contacto: string | null;
+  fecha: string;
+  nroComprobante: number;
+  cantidadCuotas: number;
+  importeTotal: number;
   cuotas: Cuota[];
 }
 
@@ -58,38 +56,4 @@ export function fetchCompras(params: {
 
 export function fetchCompraDetalle(idPagoTarjeta: number): Promise<CompraCuotasDetalle> {
   return apiGet<CompraCuotasDetalle>(`/api/tarjetas-cuotas/${idPagoTarjeta}`);
-}
-
-export function crearCompra(input: CompraCuotasAltaInput): Promise<CompraCuotasDetalle> {
-  return apiPost<CompraCuotasDetalle>("/api/tarjetas-cuotas", input);
-}
-
-export function actualizarCompra(
-  idPagoTarjeta: number,
-  input: CompraCuotasAltaInput,
-  lockToken: string
-): Promise<CompraCuotasDetalle> {
-  return apiPut<CompraCuotasDetalle>(`/api/tarjetas-cuotas/${idPagoTarjeta}`, input, { "X-Lock-Token": lockToken });
-}
-
-export function eliminarCompra(idPagoTarjeta: number, lockToken: string): Promise<void> {
-  return apiDelete(`/api/tarjetas-cuotas/${idPagoTarjeta}`, { "X-Lock-Token": lockToken });
-}
-
-export function marcarCobrada(idPagoTarjeta: number, idCuota: number, cobrado: boolean): Promise<Cuota> {
-  return apiPatch<Cuota>(`/api/tarjetas-cuotas/${idPagoTarjeta}/cuotas/${idCuota}`, { cobrado });
-}
-
-export interface LockCompraResponse {
-  idPagoTarjeta: number;
-  lockToken: string;
-  expiresAt: string;
-}
-
-export function adquirirLockCompra(idPagoTarjeta: number, lockToken: string, force = false): Promise<LockCompraResponse> {
-  return apiPost<LockCompraResponse>(`/api/tarjetas-cuotas/${idPagoTarjeta}/lock`, { lockToken, force });
-}
-
-export function liberarLockCompra(idPagoTarjeta: number, lockToken: string, keepalive = false): Promise<void> {
-  return apiDelete(`/api/tarjetas-cuotas/${idPagoTarjeta}/lock`, { "X-Lock-Token": lockToken }, keepalive);
 }

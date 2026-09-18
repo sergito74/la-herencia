@@ -20,6 +20,8 @@ export interface MovimientoTarjeta {
   idResumen: number;
   fecha: string | null;
   codigo: string;
+  /** "Resumen" (deuda del período) o "Pago" (crédito registrado contra ese resumen). */
+  origen: "Resumen" | "Pago";
   deuda: number;
   credito: number;
   saldoAcumulado: number;
@@ -31,7 +33,23 @@ export interface MovimientosTarjetaResponse {
   movimientos: MovimientoTarjeta[];
 }
 
-/** Un movimiento por resumen (nunca por cuota, research.md §3). */
+/** Un movimiento de deuda por resumen + un movimiento de crédito por cada
+ * pago registrado contra ese resumen (nunca por cuota, research.md §3). */
 export function fetchMovimientosTarjeta(idTarjeta: number): Promise<MovimientosTarjetaResponse> {
   return apiGet<MovimientosTarjetaResponse>(`/api/tarjetas/${idTarjeta}/movimientos`);
+}
+
+export interface MovimientoPagoCandidato {
+  origen: string;
+  idMovimiento: number;
+  fecha: string;
+  importe: number;
+  concepto: string | null;
+}
+
+/** Movimientos bancarios reales (Movimientos BNA/Galicia) ya cargados con
+ * `IdContacto` apuntando a esta tarjeta, candidatos a ser el pago de un
+ * resumen (punto 6 del feedback del usuario, 2026-09-19). */
+export function fetchPagosCandidatos(idTarjeta: number): Promise<MovimientoPagoCandidato[]> {
+  return apiGet<MovimientoPagoCandidato[]>(`/api/tarjetas/${idTarjeta}/pagos-candidatos`);
 }

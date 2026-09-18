@@ -15,8 +15,28 @@ export interface LineaConsumoInput {
   nroDocumento?: string | null;
 }
 
+export interface CompraVinculada {
+  idVinculo: number;
+  idCompra: number;
+  proveedor: string | null;
+  tipoDocumento: string | null;
+  numeroDocumento: string | null;
+  fechaCompra: string | null;
+  importeCompra: number | null;
+  importeImputado: number;
+}
+
 export interface LineaConsumo extends LineaConsumoInput {
   idLineaConsumo: number | null;
+  comprasVinculadas: CompraVinculada[];
+}
+
+export interface PagoResumen {
+  idPago: number;
+  fecha: string;
+  importe: number;
+  origen: string | null;
+  idMovimientoOrigen: number | null;
 }
 
 export interface ResumenAltaInput {
@@ -24,6 +44,7 @@ export interface ResumenAltaInput {
   codigo: string;
   fechaCierre: string;
   fechaVencimiento: string;
+  urlResumenOriginal?: string | null;
   impuestoSellos?: number;
   gastosAdmin?: number;
   mantCuenta?: number;
@@ -46,6 +67,7 @@ export interface ResumenDetalle extends ResumenAltaInput {
   tarjeta: string | null;
   totalCalculado: number;
   lineas: LineaConsumo[];
+  pagos: PagoResumen[];
   warnings: string[];
 }
 
@@ -107,4 +129,38 @@ export function adquirirLockResumen(idResumen: number, lockToken: string, force 
 
 export function liberarLockResumen(idResumen: number, lockToken: string, keepalive = false): Promise<void> {
   return apiDelete(`/api/tarjetas-resumenes/${idResumen}/lock`, { "X-Lock-Token": lockToken }, keepalive);
+}
+
+// --- Punto 4 del feedback (2026-09-19): vínculo línea de consumo -> Compras reales ---
+
+export function vincularCompra(
+  idLineaConsumo: number,
+  idCompra: number,
+  importeImputado: number
+): Promise<CompraVinculada> {
+  return apiPost<CompraVinculada>(`/api/tarjetas-resumenes/lineas/${idLineaConsumo}/compras`, {
+    idCompra,
+    importeImputado,
+  });
+}
+
+export function quitarVinculoCompra(idLineaConsumo: number, idVinculo: number): Promise<void> {
+  return apiDelete(`/api/tarjetas-resumenes/lineas/${idLineaConsumo}/compras/${idVinculo}`);
+}
+
+// --- Punto 6 del feedback (2026-09-19): pagos de un resumen ---
+
+export function fetchPagosResumen(idResumen: number): Promise<PagoResumen[]> {
+  return apiGet<PagoResumen[]>(`/api/tarjetas-resumenes/${idResumen}/pagos`);
+}
+
+export function registrarPagoResumen(
+  idResumen: number,
+  input: { fecha: string; importe: number; origen?: string | null; idMovimientoOrigen?: number | null }
+): Promise<PagoResumen> {
+  return apiPost<PagoResumen>(`/api/tarjetas-resumenes/${idResumen}/pagos`, input);
+}
+
+export function eliminarPagoResumen(idResumen: number, idPago: number): Promise<void> {
+  return apiDelete(`/api/tarjetas-resumenes/${idResumen}/pagos/${idPago}`);
 }

@@ -19,8 +19,29 @@ class LineaConsumoInput(BaseModel):
     nroDocumento: str | None = Field(default=None, max_length=50)
 
 
+class CompraVinculada(BaseModel):
+    """Factura/NC/ND real (`Compras`, `IdDeuda`) que documenta total o
+    parcialmente una línea de consumo — puede haber varias por línea
+    (más de un proveedor, o cuotas de un mismo consumo)."""
+
+    idVinculo: int
+    idCompra: int
+    proveedor: str | None = None
+    tipoDocumento: str | None = None
+    numeroDocumento: str | None = None
+    fechaCompra: date | None = None
+    importeCompra: float | None = None
+    importeImputado: float
+
+
+class VincularCompraRequest(BaseModel):
+    idCompra: int
+    importeImputado: float
+
+
 class LineaConsumo(LineaConsumoInput):
     idLineaConsumo: int | None = None
+    comprasVinculadas: list[CompraVinculada] = []
 
 
 class ResumenAltaRequest(BaseModel):
@@ -28,6 +49,7 @@ class ResumenAltaRequest(BaseModel):
     codigo: str = Field(min_length=1, max_length=80)
     fechaCierre: date
     fechaVencimiento: date
+    urlResumenOriginal: str | None = None
     impuestoSellos: float = 0
     gastosAdmin: float = 0
     mantCuenta: float = 0
@@ -49,6 +71,14 @@ class ResumenEditRequest(ResumenAltaRequest):
     """Mismo contrato que el alta — PUT reemplaza cabecera+líneas por completo."""
 
 
+class PagoResumen(BaseModel):
+    idPago: int
+    fecha: date
+    importe: float
+    origen: str | None = None
+    idMovimientoOrigen: int | None = None
+
+
 class ResumenDetalleResponse(BaseModel):
     idResumen: int
     idTarjeta: int
@@ -56,6 +86,7 @@ class ResumenDetalleResponse(BaseModel):
     codigo: str
     fechaCierre: date
     fechaVencimiento: date
+    urlResumenOriginal: str | None = None
     impuestoSellos: float
     gastosAdmin: float
     mantCuenta: float
@@ -72,6 +103,7 @@ class ResumenDetalleResponse(BaseModel):
     ajusteResAnterior: float
     totalCalculado: float
     lineas: list[LineaConsumo] = []
+    pagos: list[PagoResumen] = []
     warnings: list[str] = []
 
 
@@ -91,6 +123,17 @@ class ResumenesListResponse(BaseModel):
     page: int
     pageSize: int
     total: int
+
+
+class VincularPagoRequest(BaseModel):
+    """Confirma un movimiento candidato (`origen`/`idMovimiento`) como el
+    pago de este resumen, o registra un pago manual si no viene de un
+    movimiento bancario cargado (`origen`/`idMovimiento` en `None`)."""
+
+    fecha: date
+    importe: float
+    origen: str | None = None
+    idMovimientoOrigen: int | None = None
 
 
 class LockRequest(BaseModel):

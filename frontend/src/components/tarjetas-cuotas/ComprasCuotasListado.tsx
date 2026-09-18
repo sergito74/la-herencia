@@ -16,7 +16,7 @@ const COLUMNS: DataTableColumn<CompraCuotasListItem>[] = [
     key: "fecha",
     header: "Fecha",
     render: (c) => (
-      <Link className="text-finance underline" href={`/finanzas/tarjetas/compras-en-cuotas/${c.idPagoTarjeta}/editar`}>
+      <Link className="text-finance underline" href={`/finanzas/tarjetas/compras-en-cuotas/${c.idPagoTarjeta}`}>
         {c.fecha}
       </Link>
     ),

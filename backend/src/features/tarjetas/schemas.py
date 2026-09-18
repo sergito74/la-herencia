@@ -20,9 +20,22 @@ class MovimientoTarjeta(BaseModel):
     idResumen: int
     fecha: date | None = None
     codigo: str
+    origen: str
     deuda: float
     credito: float
     saldoAcumulado: float
+
+
+class MovimientoPagoCandidato(BaseModel):
+    """Fila de `Movimientos BNA`/`Movimientos Galicia` con `IdContacto`
+    apuntando a esta tarjeta — candidata a ser el pago de un resumen
+    (punto 6 del feedback del usuario, 2026-09-19)."""
+
+    origen: str
+    idMovimiento: int
+    fecha: date
+    importe: float
+    concepto: str | None = None
 
 
 class MovimientosTarjetaResponse(BaseModel):

@@ -1,27 +1,14 @@
-"""Compras en cuotas (Historia 3, 008-tarjetas) — cabecera
-`dbo.[Tarjetas de Credito]` + detalle `dbo.[Cuotas Tarjetas de Credito]`.
-No vinculada a una tarjeta del catálogo (data-model.md). Escribe
-exclusivamente contra `WC` vía `execute_write_transaction`.
+"""Compras en cuotas (Historia 3, 008-tarjetas) — **solo lectura** desde
+2026-09-19 (feedback del usuario, punto 5: estructura obsoleta, ver
+repository.py). Cabecera `dbo.[Tarjetas de Credito]` + detalle
+`dbo.[Cuotas Tarjetas de Credito]`.
 """
 
 from __future__ import annotations
 
-from datetime import date, datetime
+from datetime import date
 
-from pydantic import BaseModel, Field
-
-
-class CompraCuotasAltaRequest(BaseModel):
-    idContacto: int
-    fecha: date
-    nroComprobante: int
-    importeTotal: float
-    cantidadCuotas: int = Field(ge=1)
-
-
-class CompraCuotasEditRequest(CompraCuotasAltaRequest):
-    """Mismo contrato que el alta — PUT regenera el cronograma completo
-    siempre (FR-007a, Clarifications 2026-09-18), sin excepción."""
+from pydantic import BaseModel
 
 
 class CuotaResponse(BaseModel):
@@ -59,18 +46,3 @@ class ComprasCuotasListResponse(BaseModel):
     page: int
     pageSize: int
     total: int
-
-
-class MarcarCobradaRequest(BaseModel):
-    cobrado: bool
-
-
-class LockRequest(BaseModel):
-    lockToken: str
-    force: bool = False
-
-
-class LockResponse(BaseModel):
-    idPagoTarjeta: int
-    lockToken: str
-    expiresAt: datetime

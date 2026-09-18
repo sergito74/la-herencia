@@ -11,13 +11,17 @@ from starlette.concurrency import run_in_threadpool
 from src.db.pagination import normalize_pagination
 from src.features.tarjetas_resumenes import repository, repository_locks
 from src.features.tarjetas_resumenes.schemas import (
+    CompraVinculada,
     LockRequest,
     LockResponse,
+    PagoResumen,
     ResumenAltaRequest,
     ResumenDetalleResponse,
     ResumenEditRequest,
     ResumenesListResponse,
     ResumenListItem,
+    VincularCompraRequest,
+    VincularPagoRequest,
 )
 
 router = APIRouter(prefix="/api/tarjetas-resumenes", tags=["tarjetas-resumenes"])
@@ -53,7 +57,9 @@ def _cabecera_dict(body: ResumenAltaRequest) -> dict:
     return body.model_dump(exclude={"lineas"})
 
 
-def _to_detalle_response(id_resumen: int, cabecera: dict, lineas_out: list[dict], warnings: list[str]) -> ResumenDetalleResponse:
+def _to_detalle_response(
+    id_resumen: int, cabecera: dict, lineas_out: list[dict], warnings: list[str], pagos_out: list[dict] | None = None
+) -> ResumenDetalleResponse:
     total = repository.calcular_total(cabecera, lineas_out)
     cabecera_sin_id = {k: v for k, v in cabecera.items() if k != "idResumen"}
     return ResumenDetalleResponse(
@@ -61,6 +67,7 @@ def _to_detalle_response(id_resumen: int, cabecera: dict, lineas_out: list[dict]
         **cabecera_sin_id,
         totalCalculado=total,
         lineas=lineas_out,
+        pagos=pagos_out or [],
         warnings=warnings,
     )
 
@@ -128,8 +135,9 @@ async def editar_resumen(id_resumen: int, body: ResumenEditRequest, x_lock_token
         raise HTTPException(status_code=400, detail=exc.args[0]) from exc
 
     lineas_out = await run_in_threadpool(repository.get_lineas, id_resumen)
+    pagos_out = await run_in_threadpool(repository.get_pagos, id_resumen)
     warnings = await _warnings_duplicado(body.idTarjeta, body.codigo, id_resumen)
-    return _to_detalle_response(id_resumen, cabecera, lineas_out, warnings)
+    return _to_detalle_response(id_resumen, cabecera, lineas_out, warnings, pagos_out)
 
 
 @router.delete("/{id_resumen}", status_code=204)
@@ -150,4 +158,54 @@ async def get_resumen_detalle(id_resumen: int) -> ResumenDetalleResponse:
     if cabecera is None:
         raise HTTPException(status_code=404, detail="Resumen no encontrado")
     lineas_out = await run_in_threadpool(repository.get_lineas, id_resumen)
-    return _to_detalle_response(id_resumen, cabecera, lineas_out, warnings=[])
+    pagos_out = await run_in_threadpool(repository.get_pagos, id_resumen)
+    return _to_detalle_response(id_resumen, cabecera, lineas_out, warnings=[], pagos_out=pagos_out)
+
+
+# --- Punto 4 del feedback (2026-09-19): vínculo línea de consumo -> Compras reales ---
+
+
+@router.post("/lineas/{id_linea_consumo}/compras", response_model=CompraVinculada, status_code=201)
+async def vincular_compra_a_linea(id_linea_consumo: int, body: VincularCompraRequest) -> CompraVinculada:
+    try:
+        id_vinculo = await run_in_threadpool(
+            repository.vincular_compra, id_linea_consumo, body.idCompra, body.importeImputado
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=exc.args[0]) from exc
+    vinculos = await run_in_threadpool(repository.get_compras_vinculadas, id_linea_consumo)
+    for v in vinculos:
+        if v["idVinculo"] == id_vinculo:
+            return CompraVinculada(**v)
+    raise HTTPException(status_code=500, detail="No se pudo leer el vínculo recién creado")
+
+
+@router.delete("/lineas/{id_linea_consumo}/compras/{id_vinculo}", status_code=204)
+async def quitar_vinculo_compra(id_linea_consumo: int, id_vinculo: int) -> None:
+    await run_in_threadpool(repository.quitar_vinculo_compra, id_vinculo)
+
+
+# --- Punto 6 del feedback (2026-09-19): pagos de un resumen ---
+
+
+@router.get("/{id_resumen}/pagos", response_model=list[PagoResumen])
+async def get_pagos_resumen(id_resumen: int) -> list[PagoResumen]:
+    rows = await run_in_threadpool(repository.get_pagos, id_resumen)
+    return [PagoResumen(**row) for row in rows]
+
+
+@router.post("/{id_resumen}/pagos", response_model=PagoResumen, status_code=201)
+async def registrar_pago_resumen(id_resumen: int, body: VincularPagoRequest) -> PagoResumen:
+    id_pago = await run_in_threadpool(
+        repository.registrar_pago, id_resumen, body.fecha, body.importe, body.origen, body.idMovimientoOrigen
+    )
+    rows = await run_in_threadpool(repository.get_pagos, id_resumen)
+    for row in rows:
+        if row["idPago"] == id_pago:
+            return PagoResumen(**row)
+    raise HTTPException(status_code=500, detail="No se pudo leer el pago recién creado")
+
+
+@router.delete("/{id_resumen}/pagos/{id_pago}", status_code=204)
+async def eliminar_pago_resumen(id_resumen: int, id_pago: int) -> None:
+    await run_in_threadpool(repository.eliminar_pago, id_pago)

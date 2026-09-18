@@ -74,6 +74,7 @@ export function ResumenForm({
   const [codigo, setCodigo] = useState(initial?.codigo ?? "");
   const [fechaCierre, setFechaCierre] = useState(initial?.fechaCierre ?? "");
   const [fechaVencimiento, setFechaVencimiento] = useState(initial?.fechaVencimiento ?? "");
+  const [urlResumenOriginal, setUrlResumenOriginal] = useState(initial?.urlResumenOriginal ?? "");
   const [cargos, setCargos] = useState<Record<string, number>>(() => {
     const base: Record<string, number> = {};
     for (const [key] of CARGOS) base[key] = (initial?.[key] as number) ?? 0;
@@ -158,6 +159,7 @@ export function ResumenForm({
       codigo,
       fechaCierre,
       fechaVencimiento,
+      urlResumenOriginal: urlResumenOriginal || null,
       ...cargos,
       lineas,
     };
@@ -247,6 +249,15 @@ export function ResumenForm({
             className={inputCompacto}
             value={fechaVencimiento}
             onChange={(e) => setFechaVencimiento(e.target.value)}
+          />
+        </label>
+        <label className="sm:col-span-2">
+          <span className="text-xs text-ink-secondary">Resumen original (PDF)</span>
+          <input
+            className={inputCompacto}
+            value={urlResumenOriginal}
+            onChange={(e) => setUrlResumenOriginal(e.target.value)}
+            placeholder="Link o ruta al PDF escaneado…"
           />
         </label>
       </div>

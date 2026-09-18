@@ -7,7 +7,7 @@ from fastapi import APIRouter, HTTPException, Query
 from starlette.concurrency import run_in_threadpool
 
 from src.features.tarjetas import repository
-from src.features.tarjetas.schemas import MovimientosTarjetaResponse, Tarjeta
+from src.features.tarjetas.schemas import MovimientoPagoCandidato, MovimientosTarjetaResponse, Tarjeta
 
 router = APIRouter(prefix="/api/tarjetas", tags=["tarjetas"])
 
@@ -27,3 +27,12 @@ async def get_movimientos_tarjeta(id_tarjeta: int) -> MovimientosTarjetaResponse
     return MovimientosTarjetaResponse(
         idTarjeta=id_tarjeta, tarjeta=tarjeta["nombre"], movimientos=movimientos
     )
+
+
+@router.get("/{id_tarjeta}/pagos-candidatos", response_model=list[MovimientoPagoCandidato])
+async def get_pagos_candidatos(id_tarjeta: int) -> list[MovimientoPagoCandidato]:
+    tarjeta = await run_in_threadpool(repository.get_tarjeta, id_tarjeta)
+    if tarjeta is None:
+        raise HTTPException(status_code=404, detail="Tarjeta no encontrada")
+    rows = await run_in_threadpool(repository.get_pagos_candidatos, id_tarjeta)
+    return [MovimientoPagoCandidato(**row) for row in rows]

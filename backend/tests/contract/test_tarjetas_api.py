@@ -76,8 +76,8 @@ async def test_movimientos_tarjeta_un_movimiento_por_resumen_saldo_acumulado(cli
         repository,
         "get_movimientos",
         lambda id_tarjeta: [
-            {"idResumen": 1, "fecha": "2026-05-10", "codigo": "A", "deuda": 1000.0, "credito": 0.0, "saldoAcumulado": 1000.0},
-            {"idResumen": 2, "fecha": "2026-06-10", "codigo": "B", "deuda": 500.0, "credito": 0.0, "saldoAcumulado": 1500.0},
+            {"idResumen": 1, "fecha": "2026-05-10", "codigo": "A", "origen": "Resumen", "deuda": 1000.0, "credito": 0.0, "saldoAcumulado": 1000.0},
+            {"idResumen": 2, "fecha": "2026-06-10", "codigo": "B", "origen": "Resumen", "deuda": 500.0, "credito": 0.0, "saldoAcumulado": 1500.0},
         ],
     )
 
@@ -104,3 +104,34 @@ async def test_movimientos_tarjeta_no_incluye_cuotas(client, monkeypatch):
 
     assert response.status_code == 200
     assert response.json()["movimientos"] == []
+
+
+# --- Punto 6 del feedback (2026-09-19): pagos-candidatos ---
+
+
+@pytest.mark.anyio
+async def test_pagos_candidatos_tarjeta_inexistente_es_404(client, monkeypatch):
+    monkeypatch.setattr(repository, "get_tarjeta", lambda id_tarjeta: None)
+
+    async with httpx.AsyncClient(transport=client, base_url="http://test") as ac:
+        response = await ac.get("/api/tarjetas/999999/pagos-candidatos")
+
+    assert response.status_code == 404
+
+
+@pytest.mark.anyio
+async def test_pagos_candidatos_devuelve_movimientos_reales(client, monkeypatch):
+    monkeypatch.setattr(repository, "get_tarjeta", lambda id_tarjeta: {"idTarjeta": 3, "nombre": "Visa Galicia", "banco": "Banco Galicia"})
+    monkeypatch.setattr(
+        repository,
+        "get_pagos_candidatos",
+        lambda id_tarjeta: [
+            {"origen": "Galicia", "idMovimiento": 95, "fecha": "2021-07-12", "importe": 26340.0, "concepto": "PAGO VISA EMPRESA"}
+        ],
+    )
+
+    async with httpx.AsyncClient(transport=client, base_url="http://test") as ac:
+        response = await ac.get("/api/tarjetas/3/pagos-candidatos")
+
+    assert response.status_code == 200
+    assert response.json()[0]["idMovimiento"] == 95

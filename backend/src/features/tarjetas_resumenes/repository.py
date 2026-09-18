@@ -10,7 +10,13 @@ from __future__ import annotations
 
 from datetime import date
 
-from src.db.connection import execute_write_transaction, fetch_all, fetch_one
+from src.db.connection import (
+    execute_insert_returning_id,
+    execute_write,
+    execute_write_transaction,
+    fetch_all,
+    fetch_one,
+)
 from src.db.pagination import offset_for
 from src.db.params import as_sql_datetime
 
@@ -36,6 +42,7 @@ _CABECERA_COLUMNAS = [
     "ResumenCodigo",
     "FechaCierre",
     "FechaVencimiento",
+    "ArchivoOrigen",
     "ImpuestoSellos",
     "GastosAdmin",
     "MantCuenta",
@@ -159,6 +166,7 @@ def get_resumen_detalle(id_resumen: int) -> dict | None:
         SELECT
             r.IdResumen AS idResumen, r.IdTarjeta AS idTarjeta, t.TarjetaNombre AS tarjeta,
             r.ResumenCodigo AS codigo, r.FechaCierre AS fechaCierre, r.FechaVencimiento AS fechaVencimiento,
+            r.ArchivoOrigen AS urlResumenOriginal,
             COALESCE(r.ImpuestoSellos, 0) AS impuestoSellos,
             COALESCE(r.GastosAdmin, 0) AS gastosAdmin,
             COALESCE(r.MantCuenta, 0) AS mantCuenta,
@@ -190,7 +198,70 @@ def get_lineas(id_resumen: int) -> list[dict]:
         WHERE IdResumen = ?
         ORDER BY IdLineaConsumo ASC
     """
+    lineas = fetch_all(sql, (id_resumen,))
+    for linea in lineas:
+        linea["comprasVinculadas"] = get_compras_vinculadas(linea["idLineaConsumo"])
+    return lineas
+
+
+def get_compras_vinculadas(id_linea_consumo: int) -> list[dict]:
+    """Facturas/NC/ND reales (`Compras`) que documentan esta línea de
+    consumo (punto 4 del feedback del usuario, 2026-09-19) — una línea
+    puede tener varias (más de un proveedor, o el pago parcial de una
+    compra en cuotas)."""
+    sql = """
+        SELECT
+            v.IdVinculo AS idVinculo, v.IdCompra AS idCompra, v.ImporteImputado AS importeImputado,
+            c.[Razon Social] AS proveedor, cmp.[Tipo documento] AS tipoDocumento,
+            cmp.[Nro Documento] AS numeroDocumento, cmp.Fecha AS fechaCompra
+        FROM dbo.Tarjetas_Resumenes_Lineas_Compras v
+        JOIN dbo.Compras cmp ON cmp.IdDeuda = v.IdCompra
+        LEFT JOIN dbo.Contactos c ON c.IdContacto = cmp.IdContacto
+        WHERE v.IdLineaConsumo = ?
+        ORDER BY v.IdVinculo ASC
+    """
+    return fetch_all(sql, (id_linea_consumo,))
+
+
+def existe_compra(id_compra: int) -> bool:
+    return fetch_one("SELECT 1 FROM dbo.Compras WHERE IdDeuda = ?", (id_compra,)) is not None
+
+
+def vincular_compra(id_linea_consumo: int, id_compra: int, importe_imputado: float) -> int:
+    if not existe_compra(id_compra):
+        raise ValueError([f"La compra {id_compra} no existe."])
+    return execute_insert_returning_id(
+        "INSERT INTO dbo.Tarjetas_Resumenes_Lineas_Compras (IdLineaConsumo, IdCompra, ImporteImputado) "
+        "OUTPUT INSERTED.IdVinculo VALUES (?, ?, ?)",
+        (id_linea_consumo, id_compra, importe_imputado),
+    )
+
+
+def quitar_vinculo_compra(id_vinculo: int) -> None:
+    execute_write("DELETE FROM dbo.Tarjetas_Resumenes_Lineas_Compras WHERE IdVinculo = ?", (id_vinculo,))
+
+
+def get_pagos(id_resumen: int) -> list[dict]:
+    sql = """
+        SELECT IdPago AS idPago, Fecha AS fecha, Importe AS importe, Origen AS origen,
+               IdMovimientoOrigen AS idMovimientoOrigen
+        FROM dbo.Tarjetas_Resumenes_Pagos
+        WHERE IdResumen = ?
+        ORDER BY Fecha ASC, IdPago ASC
+    """
     return fetch_all(sql, (id_resumen,))
+
+
+def registrar_pago(id_resumen: int, fecha, importe: float, origen: str | None, id_movimiento_origen: int | None) -> int:
+    return execute_insert_returning_id(
+        "INSERT INTO dbo.Tarjetas_Resumenes_Pagos (IdResumen, Fecha, Importe, Origen, IdMovimientoOrigen) "
+        "OUTPUT INSERTED.IdPago VALUES (?, ?, ?, ?, ?)",
+        (id_resumen, as_sql_datetime(fecha), importe, origen, id_movimiento_origen),
+    )
+
+
+def eliminar_pago(id_pago: int) -> None:
+    execute_write("DELETE FROM dbo.Tarjetas_Resumenes_Pagos WHERE IdPago = ?", (id_pago,))
 
 
 def hay_resumen_duplicado(id_tarjeta: int, codigo: str, excluir_id_resumen: int | None = None) -> bool:
@@ -209,6 +280,7 @@ def _cabecera_params(cabecera: dict) -> tuple:
         cabecera["codigo"],
         as_sql_datetime(cabecera["fechaCierre"]),
         as_sql_datetime(cabecera["fechaVencimiento"]),
+        cabecera.get("urlResumenOriginal"),
         *[cabecera.get(campo) or 0 for campo in _CARGOS],
     )
 
@@ -267,11 +339,21 @@ def create_resumen(cabecera: dict, lineas: list[dict]) -> int:
 
 
 def update_resumen(id_resumen: int, cabecera: dict, lineas: list[dict]) -> None:
+    """Reemplazo total de líneas (mismo criterio que el resto de la app).
+    Borra primero los vínculos a `Compras` (punto 4 del feedback,
+    2026-09-19) — de lo contrario quedarían huérfanos apuntando a un
+    `IdLineaConsumo` que ya no existe, perdiendo silenciosamente el
+    vínculo cada vez que se edita un resumen."""
     errores = validar_resumen(cabecera["idTarjeta"])
     if errores:
         raise ValueError(errores)
 
     statements: list = [
+        (
+            "DELETE FROM dbo.Tarjetas_Resumenes_Lineas_Compras WHERE IdLineaConsumo IN "
+            "(SELECT IdLineaConsumo FROM dbo.Tarjetas_Resumenes_Lineas WHERE IdResumen = ?)",
+            (id_resumen,),
+        ),
         ("DELETE FROM dbo.Tarjetas_Resumenes_Lineas WHERE IdResumen = ?", (id_resumen,)),
         _cabecera_update_statement(id_resumen, cabecera),
     ]
@@ -297,7 +379,13 @@ def update_resumen(id_resumen: int, cabecera: dict, lineas: list[dict]) -> None:
 
 def delete_resumen(id_resumen: int) -> None:
     statements = [
+        (
+            "DELETE FROM dbo.Tarjetas_Resumenes_Lineas_Compras WHERE IdLineaConsumo IN "
+            "(SELECT IdLineaConsumo FROM dbo.Tarjetas_Resumenes_Lineas WHERE IdResumen = ?)",
+            (id_resumen,),
+        ),
         ("DELETE FROM dbo.Tarjetas_Resumenes_Lineas WHERE IdResumen = ?", (id_resumen,)),
+        ("DELETE FROM dbo.Tarjetas_Resumenes_Pagos WHERE IdResumen = ?", (id_resumen,)),
         ("DELETE FROM dbo.TarjetaResumenEditLocks WHERE IdResumen = ?", (id_resumen,)),
         ("DELETE FROM dbo.Tarjetas_Resumenes WHERE IdResumen = ?", (id_resumen,)),
     ]

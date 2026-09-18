@@ -12,7 +12,7 @@ import type { MovimientoTarjeta } from "@/services/tarjetasApi";
 const COLUMNS: DataTableColumn<MovimientoTarjeta>[] = [
   {
     key: "fecha",
-    header: "Fecha cierre",
+    header: "Fecha",
     render: (m) => (
       <Link className="text-finance underline" href={`/finanzas/tarjetas/resumenes/${m.idResumen}`}>
         {m.fecha ?? "—"}
@@ -20,6 +20,15 @@ const COLUMNS: DataTableColumn<MovimientoTarjeta>[] = [
     ),
   },
   { key: "codigo", header: "Resumen", render: (m) => m.codigo },
+  {
+    key: "origen",
+    header: "Tipo",
+    render: (m) => (
+      <span className={m.origen === "Pago" ? "text-status-success" : "text-ink-secondary"}>
+        {m.origen === "Pago" ? "Pago" : "Deuda del resumen"}
+      </span>
+    ),
+  },
   { key: "deuda", header: "Deuda", numeric: true, render: (m) => (m.deuda ? formatMoneda(m.deuda) : "—") },
   { key: "credito", header: "Crédito", numeric: true, render: (m) => (m.credito ? formatMoneda(m.credito) : "—") },
   { key: "saldoAcumulado", header: "Saldo acumulado", numeric: true, render: (m) => formatMoneda(m.saldoAcumulado) },
@@ -44,7 +53,7 @@ export function TarjetaCuentaCorriente({ idTarjeta }: { idTarjeta: number }) {
       <DataTable
         columns={COLUMNS}
         rows={movimientos}
-        keyField={(m) => m.idResumen}
+        keyField={(m) => `${m.origen}-${m.idResumen}-${m.fecha}-${m.saldoAcumulado}`}
         emptyMessage="Esta tarjeta no tiene resúmenes cargados."
         page={1}
         pageSize={movimientos.length || 1}

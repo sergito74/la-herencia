@@ -335,3 +335,106 @@ async def test_delete_resumen_con_lock_elimina(client, monkeypatch):
 
     assert response.status_code == 204
     assert borrado["id"] == 1
+
+
+# --- Punto 4 del feedback (2026-09-19): vínculo línea de consumo -> Compras reales ---
+
+
+@pytest.mark.anyio
+async def test_vincular_compra_a_linea(client, monkeypatch):
+    monkeypatch.setattr(repository, "vincular_compra", lambda idl, idc, imp: 7)
+    monkeypatch.setattr(
+        repository,
+        "get_compras_vinculadas",
+        lambda idl: [
+            {
+                "idVinculo": 7,
+                "idCompra": 2143513218,
+                "proveedor": "IT Brokers",
+                "tipoDocumento": "Factura",
+                "numeroDocumento": "0005-00058564",
+                "fechaCompra": "2021-06-07",
+                "importeImputado": 26340.0,
+            }
+        ],
+    )
+
+    async with httpx.AsyncClient(transport=client, base_url="http://test") as ac:
+        response = await ac.post(
+            "/api/tarjetas-resumenes/lineas/1/compras", json={"idCompra": 2143513218, "importeImputado": 26340.0}
+        )
+
+    assert response.status_code == 201
+    assert response.json()["idVinculo"] == 7
+
+
+@pytest.mark.anyio
+async def test_vincular_compra_inexistente_es_400(client, monkeypatch):
+    def fake_vincular(idl, idc, imp):
+        raise ValueError(["La compra 999999 no existe."])
+
+    monkeypatch.setattr(repository, "vincular_compra", fake_vincular)
+
+    async with httpx.AsyncClient(transport=client, base_url="http://test") as ac:
+        response = await ac.post(
+            "/api/tarjetas-resumenes/lineas/1/compras", json={"idCompra": 999999, "importeImputado": 100}
+        )
+
+    assert response.status_code == 400
+
+
+@pytest.mark.anyio
+async def test_quitar_vinculo_compra(client, monkeypatch):
+    monkeypatch.setattr(repository, "quitar_vinculo_compra", lambda idv: None)
+
+    async with httpx.AsyncClient(transport=client, base_url="http://test") as ac:
+        response = await ac.delete("/api/tarjetas-resumenes/lineas/1/compras/7")
+
+    assert response.status_code == 204
+
+
+# --- Punto 6 del feedback (2026-09-19): pagos de un resumen ---
+
+
+@pytest.mark.anyio
+async def test_get_pagos_resumen(client, monkeypatch):
+    monkeypatch.setattr(
+        repository,
+        "get_pagos",
+        lambda idr: [{"idPago": 1, "fecha": "2021-07-12", "importe": 26340.0, "origen": "Galicia", "idMovimientoOrigen": 95}],
+    )
+
+    async with httpx.AsyncClient(transport=client, base_url="http://test") as ac:
+        response = await ac.get("/api/tarjetas-resumenes/1/pagos")
+
+    assert response.status_code == 200
+    assert len(response.json()) == 1
+
+
+@pytest.mark.anyio
+async def test_registrar_pago_resumen(client, monkeypatch):
+    monkeypatch.setattr(repository, "registrar_pago", lambda idr, fecha, importe, origen, idmov: 5)
+    monkeypatch.setattr(
+        repository,
+        "get_pagos",
+        lambda idr: [{"idPago": 5, "fecha": "2021-07-12", "importe": 26340.0, "origen": "Galicia", "idMovimientoOrigen": 95}],
+    )
+
+    async with httpx.AsyncClient(transport=client, base_url="http://test") as ac:
+        response = await ac.post(
+            "/api/tarjetas-resumenes/1/pagos",
+            json={"fecha": "2021-07-12", "importe": 26340.0, "origen": "Galicia", "idMovimientoOrigen": 95},
+        )
+
+    assert response.status_code == 201
+    assert response.json()["idPago"] == 5
+
+
+@pytest.mark.anyio
+async def test_eliminar_pago_resumen(client, monkeypatch):
+    monkeypatch.setattr(repository, "eliminar_pago", lambda idp: None)
+
+    async with httpx.AsyncClient(transport=client, base_url="http://test") as ac:
+        response = await ac.delete("/api/tarjetas-resumenes/1/pagos/5")
+
+    assert response.status_code == 204

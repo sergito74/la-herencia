@@ -1,18 +1,18 @@
 "use client";
 
-import Link from "next/link";
-
 import { ComprasCuotasListado } from "@/components/tarjetas-cuotas/ComprasCuotasListado";
 
+/** Solo lectura desde 2026-09-19 (feedback del usuario, punto 5) — la
+ * estructura real (`[Tarjetas de Credito]`) es obsoleta, sin uso desde
+ * 2015. Se conserva como catálogo histórico, sin alta. */
 export default function ComprasCuotasPage() {
   return (
     <main className="mx-auto max-w-none px-8 py-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">Compras en cuotas</h1>
-        <Link href="/finanzas/tarjetas/compras-en-cuotas/nueva" className="rounded-sm bg-finance px-4 py-2 text-sm text-white hover:opacity-90">
-          + Nueva compra en cuotas
-        </Link>
-      </div>
+      <h1 className="text-2xl font-semibold">Compras en cuotas (histórico)</h1>
+      <p className="mt-1 text-xs text-ink-secondary">
+        Catálogo de solo lectura — este mecanismo de financiación dejó de usarse en 2015. Las compras en cuotas
+        vigentes (AgroNacion) se financian como líneas dentro del resumen mensual de la tarjeta.
+      </p>
       <div className="mt-6">
         <ComprasCuotasListado />
       </div>
