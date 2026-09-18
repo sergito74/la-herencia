@@ -3,7 +3,7 @@
 import { useParams, useRouter } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import {
   eliminarPagoResumen,
@@ -39,9 +39,26 @@ const CARGOS: [string, string][] = [
   ["ajusteResAnterior", "Ajuste de Resumen Anterior"],
 ];
 
-function VincularCompraForm({ idLineaConsumo, onLinked }: { idLineaConsumo: number; onLinked: () => void }) {
-  const [busqueda, setBusqueda] = useState("");
-  const [importeImputado, setImporteImputado] = useState(0);
+function VincularCompraForm({
+  idLineaConsumo,
+  importeSugerido,
+  nroDocumentoSugerido,
+  onLinked,
+}: {
+  idLineaConsumo: number;
+  importeSugerido: number;
+  nroDocumentoSugerido?: string | null;
+  onLinked: () => void;
+}) {
+  // El 96% de las líneas de consumo ya vienen con proveedor/documento
+  // reales del resumen del banco — la mayoría se auto-vincula sola
+  // (ver auto_vincular_compras en el backend). Este buscador solo hace
+  // falta para el resto: precarga la búsqueda con el número de
+  // documento que la línea ya trae (aunque no haya matcheado exacto,
+  // suele acercar el resultado) y el importe con el de la línea, para
+  // que en el caso común alcance con elegir de la lista y confirmar.
+  const [busqueda, setBusqueda] = useState(nroDocumentoSugerido ?? "");
+  const [importeImputado, setImporteImputado] = useState(importeSugerido);
   const [resultados, setResultados] = useState<{ idCompra: number; label: string }[]>([]);
   const [idCompra, setIdCompra] = useState<number | null>(null);
   const [buscando, setBuscando] = useState(false);
@@ -52,9 +69,16 @@ function VincularCompraForm({ idLineaConsumo, onLinked }: { idLineaConsumo: numb
     if (!busqueda.trim()) return;
     setBuscando(true);
     try {
-      const res = await fetchCompras({ proveedor: busqueda, page: 1, pageSize: 10 });
+      const [porDocumento, porProveedor] = await Promise.all([
+        fetchCompras({ numeroDocumento: busqueda, page: 1, pageSize: 10 }),
+        fetchCompras({ proveedor: busqueda, page: 1, pageSize: 10 }),
+      ]);
+      const vistos = new Set<number>();
+      const items = [...porDocumento.items, ...porProveedor.items].filter((c) =>
+        vistos.has(c.idCompra) ? false : (vistos.add(c.idCompra), true)
+      );
       setResultados(
-        res.items.map((c) => ({
+        items.map((c) => ({
           idCompra: c.idCompra,
           label: `${c.proveedor?.razonSocial ?? "—"} · ${c.tipoDocumento ?? ""} ${c.numeroDocumento ?? ""} (${c.fecha ?? "—"})`,
         }))
@@ -63,6 +87,11 @@ function VincularCompraForm({ idLineaConsumo, onLinked }: { idLineaConsumo: numb
       setBuscando(false);
     }
   }
+
+  useEffect(() => {
+    if (nroDocumentoSugerido) buscar();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   async function vincular() {
     if (idCompra == null) return;
@@ -176,6 +205,8 @@ function LineaConsumoRow({ linea, onChanged }: { linea: LineaConsumo; onChanged:
           {mostrarBuscador && linea.idLineaConsumo != null && (
             <VincularCompraForm
               idLineaConsumo={linea.idLineaConsumo}
+              importeSugerido={linea.importe}
+              nroDocumentoSugerido={linea.nroDocumento}
               onLinked={() => {
                 setMostrarBuscador(false);
                 onChanged();

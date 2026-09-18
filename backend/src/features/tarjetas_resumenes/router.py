@@ -9,6 +9,7 @@ from fastapi import APIRouter, Header, HTTPException, Query
 from starlette.concurrency import run_in_threadpool
 
 from src.db.pagination import normalize_pagination
+from src.features.tarjetas import repository as tarjetas_repository
 from src.features.tarjetas_resumenes import repository, repository_locks
 from src.features.tarjetas_resumenes.schemas import (
     CompraVinculada,
@@ -95,8 +96,11 @@ async def crear_resumen(body: ResumenAltaRequest) -> ResumenDetalleResponse:
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=exc.args[0]) from exc
 
+    await run_in_threadpool(repository.auto_vincular_compras, id_resumen)
+    await run_in_threadpool(tarjetas_repository.auto_vincular_pago, id_resumen)
     lineas_out = await run_in_threadpool(repository.get_lineas, id_resumen)
-    return _to_detalle_response(id_resumen, cabecera, lineas_out, warnings)
+    pagos_out = await run_in_threadpool(repository.get_pagos, id_resumen)
+    return _to_detalle_response(id_resumen, cabecera, lineas_out, warnings, pagos_out)
 
 
 @router.post("/{id_resumen}/lock", response_model=LockResponse)
@@ -134,6 +138,11 @@ async def editar_resumen(id_resumen: int, body: ResumenEditRequest, x_lock_token
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=exc.args[0]) from exc
 
+    # Las líneas se recrean de punta a punta en cada edición (mismo
+    # criterio "PUT reemplaza todo" que el resto de la app) — se
+    # reintenta el auto-vínculo por si alguna línea nueva matchea.
+    await run_in_threadpool(repository.auto_vincular_compras, id_resumen)
+    await run_in_threadpool(tarjetas_repository.auto_vincular_pago, id_resumen)
     lineas_out = await run_in_threadpool(repository.get_lineas, id_resumen)
     pagos_out = await run_in_threadpool(repository.get_pagos, id_resumen)
     warnings = await _warnings_duplicado(body.idTarjeta, body.codigo, id_resumen)
@@ -157,6 +166,12 @@ async def get_resumen_detalle(id_resumen: int) -> ResumenDetalleResponse:
     cabecera = await run_in_threadpool(repository.get_resumen_detalle, id_resumen)
     if cabecera is None:
         raise HTTPException(status_code=404, detail="Resumen no encontrado")
+    # Resuelve automáticamente los resúmenes históricos (migrados antes de
+    # que existiera este mecanismo) la primera vez que se consultan — sin
+    # esto, los ~1600 resúmenes ya cargados quedarían sin vincular hasta
+    # que alguien los edite (feedback 2026-09-19, puntos 4 y 6).
+    await run_in_threadpool(repository.auto_vincular_compras, id_resumen)
+    await run_in_threadpool(tarjetas_repository.auto_vincular_pago, id_resumen)
     lineas_out = await run_in_threadpool(repository.get_lineas, id_resumen)
     pagos_out = await run_in_threadpool(repository.get_pagos, id_resumen)
     return _to_detalle_response(id_resumen, cabecera, lineas_out, warnings=[], pagos_out=pagos_out)

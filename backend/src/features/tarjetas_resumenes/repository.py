@@ -227,6 +227,35 @@ def existe_compra(id_compra: int) -> bool:
     return fetch_one("SELECT 1 FROM dbo.Compras WHERE IdDeuda = ?", (id_compra,)) is not None
 
 
+def auto_vincular_compras(id_resumen: int) -> int:
+    """Vincula automáticamente cada línea de consumo sin vínculo todavía
+    con la Compra real que coincide exacto en contacto + número de
+    documento — sin pedirle nada al usuario (feedback 2026-09-19, punto 4:
+    "esto es engorroso, hay que simplificarlo"). El 96% de las líneas
+    reales ya traen `IdContacto`/`NroDocumento` cargados desde el resumen
+    del banco, y el 86% de esas matchean exacto contra `Compras` — solo
+    el resto (proveedor con formato de documento distinto, o la compra
+    nunca se cargó en el sistema) necesita intervención manual. Nunca
+    vincula si hay más de una Compra candidata (ambigüedad → manual)."""
+    creados = 0
+    for linea in get_lineas(id_resumen):
+        if linea.get("comprasVinculadas"):
+            continue
+        id_contacto = linea.get("idContacto")
+        nro_documento = linea.get("nroDocumento")
+        if not id_contacto or not nro_documento:
+            continue
+        candidatas = fetch_all(
+            "SELECT IdDeuda FROM dbo.Compras WHERE IdContacto = ? AND [Nro Documento] = ?",
+            (id_contacto, nro_documento),
+        )
+        if len(candidatas) != 1:
+            continue
+        vincular_compra(linea["idLineaConsumo"], candidatas[0]["IdDeuda"], linea["importe"])
+        creados += 1
+    return creados
+
+
 def vincular_compra(id_linea_consumo: int, id_compra: int, importe_imputado: float) -> int:
     if not existe_compra(id_compra):
         raise ValueError([f"La compra {id_compra} no existe."])

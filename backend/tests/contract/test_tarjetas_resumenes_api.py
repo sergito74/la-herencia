@@ -11,8 +11,15 @@ from datetime import datetime
 import httpx
 import pytest
 
+from src.features.tarjetas import repository as tarjetas_repository
 from src.features.tarjetas_resumenes import repository, repository_locks
 from src.main import app
+
+# Referencias a las funciones reales, tomadas antes de que el fixture
+# `sin_auto_vinculo_real` (autouse) las reemplace por no-ops — los tests
+# que prueban su lógica real las llaman directo, sin pasar por el router.
+_auto_vincular_compras_real = repository.auto_vincular_compras
+_auto_vincular_pago_real = tarjetas_repository.auto_vincular_pago
 
 VALID_BODY = {
     "idTarjeta": 3,
@@ -35,6 +42,17 @@ def client():
 @pytest.fixture
 def anyio_backend():
     return "asyncio"
+
+
+@pytest.fixture(autouse=True)
+def sin_auto_vinculo_real(monkeypatch):
+    """El router llama a `auto_vincular_compras`/`auto_vincular_pago` en
+    cada GET/POST/PUT (punto 4/6 del feedback 2026-09-19) — sin este
+    mock, tocarían la `WC` real en cada test. Los tests que quieren
+    probar el comportamiento real de estas funciones las mockean de
+    nuevo con su propio valor dentro del test."""
+    monkeypatch.setattr(repository, "auto_vincular_compras", lambda id_resumen: 0)
+    monkeypatch.setattr(tarjetas_repository, "auto_vincular_pago", lambda id_resumen: False)
 
 
 # --- FR-010: listado vacío por defecto ---
@@ -438,3 +456,154 @@ async def test_eliminar_pago_resumen(client, monkeypatch):
         response = await ac.delete("/api/tarjetas-resumenes/1/pagos/5")
 
     assert response.status_code == 204
+
+
+# --- Auto-vínculo sin intervención del usuario (feedback 2026-09-19, puntos 4 y 6) ---
+
+
+@pytest.mark.anyio
+async def test_get_resumen_intenta_auto_vincular(client, monkeypatch):
+    """El GET dispara ambos auto-vínculos — resuelve también los ~1600
+    resúmenes históricos migrados antes de que existiera este mecanismo,
+    sin que nadie tenga que editarlos."""
+    llamados = {"compras": False, "pago": False}
+    cabecera = {
+        "idResumen": 1,
+        "idTarjeta": 3,
+        "tarjeta": "Visa Galicia",
+        "codigo": "X",
+        "fechaCierre": "2026-06-10",
+        "fechaVencimiento": "2026-06-20",
+        "impuestoSellos": 0,
+        "gastosAdmin": 0,
+        "mantCuenta": 0,
+        "renovAnual": 0,
+        "promocionBNA": 0,
+        "creditoContingente": 0,
+        "intFinanc": 0,
+        "intCompens": 0,
+        "iva105": 0,
+        "percepIVA105": 0,
+        "iva21": 0,
+        "percepIVA21": 0,
+        "percepIIBB": 0,
+        "ajusteResAnterior": 0,
+    }
+    monkeypatch.setattr(repository, "get_resumen_detalle", lambda id_resumen: cabecera)
+    monkeypatch.setattr(repository, "get_lineas", lambda id_resumen: [])
+    monkeypatch.setattr(repository, "get_pagos", lambda id_resumen: [])
+    monkeypatch.setattr(repository, "auto_vincular_compras", lambda id_resumen: llamados.__setitem__("compras", True) or 0)
+    monkeypatch.setattr(tarjetas_repository, "auto_vincular_pago", lambda id_resumen: llamados.__setitem__("pago", True) or False)
+
+    async with httpx.AsyncClient(transport=client, base_url="http://test") as ac:
+        response = await ac.get("/api/tarjetas-resumenes/1")
+
+    assert response.status_code == 200
+    assert llamados == {"compras": True, "pago": True}
+
+
+def test_auto_vincular_compras_matchea_unica_candidata(monkeypatch):
+    """Línea con contacto+documento que matchea exacto UNA sola Compra
+    real → se vincula sola, sin que el usuario busque nada."""
+    monkeypatch.setattr(
+        repository,
+        "get_lineas",
+        lambda id_resumen: [
+            {"idLineaConsumo": 10, "idContacto": 481, "nroDocumento": "0265-00004930", "importe": 11225.35, "comprasVinculadas": []}
+        ],
+    )
+    monkeypatch.setattr(repository, "fetch_all", lambda sql, params: [{"IdDeuda": 2143513659}])
+    vinculado = {}
+    monkeypatch.setattr(
+        repository, "vincular_compra", lambda idl, idc, imp: vinculado.update(idl=idl, idc=idc, imp=imp) or 1
+    )
+
+    creados = _auto_vincular_compras_real(675)
+
+    assert creados == 1
+    assert vinculado == {"idl": 10, "idc": 2143513659, "imp": 11225.35}
+
+
+def test_auto_vincular_compras_no_vincula_si_hay_ambiguedad(monkeypatch):
+    """Dos Compras candidatas (mismo contacto+documento) → no adivina,
+    queda para vínculo manual."""
+    monkeypatch.setattr(
+        repository,
+        "get_lineas",
+        lambda id_resumen: [
+            {"idLineaConsumo": 10, "idContacto": 22, "nroDocumento": "11", "importe": 100.0, "comprasVinculadas": []}
+        ],
+    )
+    monkeypatch.setattr(repository, "fetch_all", lambda sql, params: [{"IdDeuda": 1}, {"IdDeuda": 2}])
+    monkeypatch.setattr(repository, "vincular_compra", lambda *a: pytest.fail("no debería vincular con ambigüedad"))
+
+    creados = _auto_vincular_compras_real(675)
+
+    assert creados == 0
+
+
+def test_auto_vincular_pago_match_simple(monkeypatch):
+    monkeypatch.setattr(tarjetas_repository, "get_pagos", lambda id_resumen: [])
+    monkeypatch.setattr(
+        tarjetas_repository,
+        "fetch_one",
+        lambda *a, **kw: {"IdTarjeta": 4, "FechaVencimiento": datetime(2021, 7, 12)},
+    )
+    monkeypatch.setattr(tarjetas_repository, "get_resumen_detalle", lambda id_resumen: {})
+    monkeypatch.setattr(tarjetas_repository, "get_lineas", lambda id_resumen: [])
+    monkeypatch.setattr(tarjetas_repository, "calcular_total", lambda cab, lin: 26969.56)
+    monkeypatch.setattr(
+        tarjetas_repository,
+        "get_pagos_candidatos",
+        lambda id_tarjeta: [
+            {"origen": "Galicia", "idMovimiento": 95, "fecha": datetime(2021, 7, 12), "importe": 26969.56, "concepto": "PAGO"}
+        ],
+    )
+    registrado = {}
+    monkeypatch.setattr(
+        tarjetas_repository,
+        "registrar_pago",
+        lambda idr, fecha, importe, origen, idmov: registrado.update(idr=idr, importe=importe, idmov=idmov),
+    )
+
+    assert _auto_vincular_pago_real(426) is True
+    assert registrado == {"idr": 426, "importe": 26969.56, "idmov": 95}
+
+
+def test_auto_vincular_pago_match_par_mismo_dia(monkeypatch):
+    """Visa Galicia real: dos movimientos el mismo día suman el total exacto."""
+    monkeypatch.setattr(tarjetas_repository, "get_pagos", lambda id_resumen: [])
+    monkeypatch.setattr(
+        tarjetas_repository,
+        "fetch_one",
+        lambda *a, **kw: {"IdTarjeta": 4, "FechaVencimiento": datetime(2021, 7, 12)},
+    )
+    monkeypatch.setattr(tarjetas_repository, "get_resumen_detalle", lambda id_resumen: {})
+    monkeypatch.setattr(tarjetas_repository, "get_lineas", lambda id_resumen: [])
+    monkeypatch.setattr(tarjetas_repository, "calcular_total", lambda cab, lin: 26969.56)
+    monkeypatch.setattr(
+        tarjetas_repository,
+        "get_pagos_candidatos",
+        lambda id_tarjeta: [
+            {"origen": "Galicia", "idMovimiento": 95, "fecha": datetime(2021, 7, 12), "importe": 26340.0, "concepto": "PAGO"},
+            {"origen": "Galicia", "idMovimiento": 96, "fecha": datetime(2021, 7, 12), "importe": 629.56, "concepto": "PAGO"},
+        ],
+    )
+    registrados = []
+    monkeypatch.setattr(
+        tarjetas_repository,
+        "registrar_pago",
+        lambda idr, fecha, importe, origen, idmov: registrados.append(idmov),
+    )
+
+    assert _auto_vincular_pago_real(426) is True
+    assert sorted(registrados) == [95, 96]
+
+
+def test_auto_vincular_pago_no_reintenta_si_ya_tiene_pago(monkeypatch):
+    monkeypatch.setattr(tarjetas_repository, "get_pagos", lambda id_resumen: [{"idPago": 1}])
+    monkeypatch.setattr(
+        tarjetas_repository, "registrar_pago", lambda *a: pytest.fail("no debería reintentar")
+    )
+
+    assert _auto_vincular_pago_real(426) is False
