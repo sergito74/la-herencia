@@ -144,18 +144,30 @@ def search_resumenes(
     rows = fetch_all(list_sql, tuple(params) + (offset, page_size))
     items = []
     for row in rows:
-        cabecera = get_resumen_detalle(row["idResumen"])
-        lineas = get_lineas(row["idResumen"])
+        id_resumen = row["idResumen"]
+        # Intenta el auto-vínculo de facturas antes de reportar el estado
+        # de conciliación en el listado (feedback 2026-09-20) — el de
+        # pagos se corre por separado (GET detalle / alta / edición) para
+        # no crear un import circular entre `tarjetas`/`tarjetas_resumenes`.
+        auto_vincular_compras(id_resumen)
+        cabecera = get_resumen_detalle(id_resumen)
+        lineas = get_lineas(id_resumen)
+        total_calculado = calcular_total(cabecera, lineas) if cabecera else 0.0
+        lineas_vinculadas = sum(1 for l in lineas if l.get("comprasVinculadas"))
+        pagado = sum(_f(p.get("importe")) for p in get_pagos(id_resumen))
         items.append(
             {
-                "idResumen": row["idResumen"],
+                "idResumen": id_resumen,
                 "idTarjeta": row["idTarjeta"],
                 "tarjeta": row["tarjeta"],
                 "codigo": row["codigo"],
                 "fechaCierre": row["fechaCierre"],
                 "fechaVencimiento": row["fechaVencimiento"],
-                "totalCalculado": calcular_total(cabecera, lineas) if cabecera else 0.0,
+                "totalCalculado": total_calculado,
                 "soloCabecera": len(lineas) == 0,
+                "pagoConciliado": pagado >= total_calculado - 0.02,
+                "lineasTotal": len(lineas),
+                "lineasVinculadas": lineas_vinculadas,
             }
         )
     return items, total

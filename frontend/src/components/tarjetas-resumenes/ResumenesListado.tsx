@@ -28,9 +28,25 @@ const COLUMNS: DataTableColumn<ResumenListItem>[] = [
   { key: "fechaVencimiento", header: "Fecha vencimiento", render: (r) => r.fechaVencimiento ?? "—" },
   { key: "totalCalculado", header: "Total", numeric: true, render: (r) => formatMoneda(r.totalCalculado) },
   {
-    key: "soloCabecera",
-    header: "",
-    render: (r) => (r.soloCabecera ? <span className="text-xs text-ink-secondary">Solo cabecera</span> : null),
+    key: "pagoConciliado",
+    header: "Pago",
+    render: (r) => (
+      <span className={r.pagoConciliado ? "text-status-success" : "text-status-warning"}>
+        {r.pagoConciliado ? "Conciliado" : "Pendiente"}
+      </span>
+    ),
+  },
+  {
+    key: "consumosConciliados",
+    header: "Consumos",
+    render: (r) =>
+      r.lineasTotal === 0 ? (
+        <span className="text-ink-secondary">Solo cabecera</span>
+      ) : (
+        <span className={r.lineasVinculadas === r.lineasTotal ? "text-status-success" : "text-status-warning"}>
+          {r.lineasVinculadas}/{r.lineasTotal} vinculados
+        </span>
+      ),
   },
   {
     key: "editar",

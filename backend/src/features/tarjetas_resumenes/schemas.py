@@ -116,6 +116,9 @@ class ResumenListItem(BaseModel):
     fechaVencimiento: date | None = None
     totalCalculado: float
     soloCabecera: bool
+    pagoConciliado: bool
+    lineasTotal: int
+    lineasVinculadas: int
 
 
 class ResumenesListResponse(BaseModel):

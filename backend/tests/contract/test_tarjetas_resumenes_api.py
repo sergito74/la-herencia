@@ -83,6 +83,9 @@ async def test_list_resumenes_con_filtro_devuelve_resultados(client, monkeypatch
                     "fechaVencimiento": "2026-06-20",
                     "totalCalculado": 45230.50,
                     "soloCabecera": False,
+                    "pagoConciliado": True,
+                    "lineasTotal": 3,
+                    "lineasVinculadas": 3,
                 }
             ],
             1,

@@ -197,14 +197,16 @@ function LineaConsumoRow({ linea, onChanged }: { linea: LineaConsumo; onChanged:
               </button>
             </div>
           ))}
-          <button
-            type="button"
-            onClick={() => setMostrarBuscador((v) => !v)}
-            className="mt-0.5 text-finance underline"
-          >
-            + Vincular factura
-          </button>
-          {mostrarBuscador && linea.idLineaConsumo != null && (
+          {linea.comprasVinculadas.length === 0 && (
+            <button
+              type="button"
+              onClick={() => setMostrarBuscador((v) => !v)}
+              className="mt-0.5 text-finance underline"
+            >
+              + Vincular factura
+            </button>
+          )}
+          {mostrarBuscador && linea.comprasVinculadas.length === 0 && linea.idLineaConsumo != null && (
             <VincularCompraForm
               idLineaConsumo={linea.idLineaConsumo}
               importeSugerido={linea.importe}

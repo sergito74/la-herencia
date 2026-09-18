@@ -80,6 +80,9 @@ export interface ResumenListItem {
   fechaVencimiento: string | null;
   totalCalculado: number;
   soloCabecera: boolean;
+  pagoConciliado: boolean;
+  lineasTotal: number;
+  lineasVinculadas: number;
 }
 
 export interface ResumenesListResponse {
