@@ -13,7 +13,7 @@ from src.db.pagination import offset_for
 
 def search_contactos(
     q: str | None,
-    tipo_contacto: str | None,
+    tipo_contacto: list[str] | None,
     page: int,
     page_size: int,
 ) -> tuple[list[dict], int]:
@@ -26,8 +26,9 @@ def search_contactos(
         params.append(f"%{q}%")
 
     if tipo_contacto:
-        where_clauses.append("[Tipo Contacto] = ?")
-        params.append(tipo_contacto)
+        placeholders = ", ".join("?" for _ in tipo_contacto)
+        where_clauses.append(f"[Tipo Contacto] IN ({placeholders})")
+        params.extend(tipo_contacto)
 
     where_sql = f"WHERE {' AND '.join(where_clauses)}" if where_clauses else ""
 

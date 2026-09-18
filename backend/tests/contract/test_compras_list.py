@@ -38,7 +38,7 @@ async def _get(transport, url):
 
 @pytest.mark.anyio
 async def test_list_compras_by_proveedor(client, monkeypatch):
-    def fake_search(proveedor, numero_documento, fecha_desde, fecha_hasta, id_centro_costo, id_rubro, page, page_size, id_contacto=None):
+    def fake_search(proveedor, numero_documento, fecha_desde, fecha_hasta, id_centro_costo, id_rubro, page, page_size, *args, **kwargs):
         assert proveedor == "Rutas Sur"
         return [FIXTURE_COMPRAS[0]], 1
 
@@ -55,7 +55,7 @@ async def test_list_compras_by_proveedor(client, monkeypatch):
 
 @pytest.mark.anyio
 async def test_list_compras_empty_result(client, monkeypatch):
-    def fake_search(proveedor, numero_documento, fecha_desde, fecha_hasta, id_centro_costo, id_rubro, page, page_size, id_contacto=None):
+    def fake_search(proveedor, numero_documento, fecha_desde, fecha_hasta, id_centro_costo, id_rubro, page, page_size, *args, **kwargs):
         return [], 0
 
     monkeypatch.setattr(repository, "search_compras", fake_search)
@@ -71,7 +71,7 @@ async def test_list_compras_empty_result(client, monkeypatch):
 async def test_list_compras_pagination_defaults(client, monkeypatch):
     captured = {}
 
-    def fake_search(proveedor, numero_documento, fecha_desde, fecha_hasta, id_centro_costo, id_rubro, page, page_size, id_contacto=None):
+    def fake_search(proveedor, numero_documento, fecha_desde, fecha_hasta, id_centro_costo, id_rubro, page, page_size, *args, **kwargs):
         captured["page"] = page
         captured["page_size"] = page_size
         return FIXTURE_COMPRAS, len(FIXTURE_COMPRAS)
@@ -89,7 +89,7 @@ async def test_list_compras_pagination_defaults(client, monkeypatch):
 async def test_list_compras_page_size_rejected_over_max(client, monkeypatch):
     # FastAPI query validation (le=200) rejects out-of-range pageSize outright,
     # before it ever reaches normalize_pagination.
-    def fake_search(proveedor, numero_documento, fecha_desde, fecha_hasta, id_centro_costo, id_rubro, page, page_size, id_contacto=None):
+    def fake_search(proveedor, numero_documento, fecha_desde, fecha_hasta, id_centro_costo, id_rubro, page, page_size, *args, **kwargs):
         return [], 0
 
     monkeypatch.setattr(repository, "search_compras", fake_search)
@@ -102,7 +102,7 @@ async def test_list_compras_page_size_rejected_over_max(client, monkeypatch):
 async def test_list_compras_page_size_at_max_allowed(client, monkeypatch):
     captured = {}
 
-    def fake_search(proveedor, numero_documento, fecha_desde, fecha_hasta, id_centro_costo, id_rubro, page, page_size, id_contacto=None):
+    def fake_search(proveedor, numero_documento, fecha_desde, fecha_hasta, id_centro_costo, id_rubro, page, page_size, *args, **kwargs):
         captured["page_size"] = page_size
         return [], 0
 
@@ -134,7 +134,7 @@ async def test_post_compras_without_body_is_rejected_not_ignored(client):
 async def test_list_compras_filters_by_centro_costo_and_rubro(client, monkeypatch):
     captured = {}
 
-    def fake_search(proveedor, numero_documento, fecha_desde, fecha_hasta, id_centro_costo, id_rubro, page, page_size, id_contacto=None):
+    def fake_search(proveedor, numero_documento, fecha_desde, fecha_hasta, id_centro_costo, id_rubro, page, page_size, *args, **kwargs):
         captured["id_centro_costo"] = id_centro_costo
         captured["id_rubro"] = id_rubro
         return [], 0

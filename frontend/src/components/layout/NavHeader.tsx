@@ -66,7 +66,15 @@ function Icon({ children, className = "h-4 w-4" }: { children: JSX.Element; clas
  */
 const NAV_ITEMS: NavItem[] = [
   { href: "/compras", label: "Compras", icon: ICONS.compras },
-  { href: "/ventas/hacienda", label: "Ventas", icon: ICONS.ventas },
+  {
+    href: "/ventas/hacienda",
+    label: "Ventas",
+    icon: ICONS.ventas,
+    submenu: [
+      { href: "/ventas/hacienda", label: "Hacienda" },
+      { href: "/ventas/granos", label: "Granos" },
+    ],
+  },
   {
     href: "/finanzas",
     label: "Finanzas",
@@ -151,17 +159,60 @@ export function NavHeader() {
 
   return (
     <header className="sticky top-0 z-20 border-b border-border bg-surface shadow-sm">
-      {/* Franja superior ("shell bar"): logo + slot para selector de contexto
-          futuro + placeholders de notificaciones/usuario — patrón SAP Fiori
-          (branding, búsqueda, notificaciones, menú de usuario siempre visibles). */}
-      <div className="mx-auto flex max-w-6xl items-center justify-between px-8 py-2.5">
-        <Link href="/" className="flex items-center gap-2 font-semibold text-ink-primary">
-          <span className="flex h-7 w-7 items-center justify-center rounded-md bg-agro text-sm text-white">
-            LH
-          </span>
-          La Herencia
-        </Link>
-        <div className="flex items-center gap-3">
+      {/* Una sola franja: logo + navegación por proceso de negocio a la
+          izquierda, selector de contexto/notificaciones/usuario a la
+          derecha — todo en la misma línea para no gastar alto de más
+          (pedido explícito del usuario, 2026-09-17). */}
+      <div className="flex w-full items-center justify-between gap-4 px-8 py-2">
+        <div className="flex min-w-0 items-center gap-4">
+          <Link href="/" className="flex shrink-0 items-center gap-2 font-semibold text-ink-primary">
+            <span className="flex h-7 w-7 items-center justify-center rounded-md bg-agro text-sm text-white">
+              LH
+            </span>
+            La Herencia
+          </Link>
+          <div className="flex items-center gap-1">
+            {NAV_ITEMS.map((item) => {
+              if (item.disabled) {
+                return (
+                  <span
+                    key={item.href}
+                    title={item.disabledTitle}
+                    className="flex cursor-not-allowed items-center gap-2 rounded-md px-3 py-2 text-sm text-ink-muted"
+                  >
+                    <Icon>{item.icon}</Icon>
+                    {item.label}
+                  </span>
+                );
+              }
+
+              const active =
+                isActive(pathname, item.href) ||
+                (item.submenu?.some((leaf) => isActive(pathname, leaf.href)) ?? false);
+
+              if (item.submenu) {
+                return <NavDropdown key={item.href} item={item} active={active} />;
+              }
+
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={`flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors ${
+                    active
+                      ? "bg-finance-light text-finance"
+                      : "text-ink-secondary hover:bg-surface-sunken hover:text-ink-primary"
+                  }`}
+                >
+                  <Icon>{item.icon}</Icon>
+                  {item.label}
+                </Link>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="flex shrink-0 items-center gap-3">
           <button
             type="button"
             disabled
@@ -187,47 +238,6 @@ export function NavHeader() {
             ?
           </button>
         </div>
-      </div>
-
-      {/* Franja de navegación por proceso de negocio. */}
-      <div className="mx-auto flex max-w-6xl items-center gap-1 border-t border-border px-8 py-1.5">
-        {NAV_ITEMS.map((item) => {
-          if (item.disabled) {
-            return (
-              <span
-                key={item.href}
-                title={item.disabledTitle}
-                className="flex cursor-not-allowed items-center gap-2 rounded-md px-3 py-2 text-sm text-ink-muted"
-              >
-                <Icon>{item.icon}</Icon>
-                {item.label}
-              </span>
-            );
-          }
-
-          const active =
-            isActive(pathname, item.href) ||
-            (item.submenu?.some((leaf) => isActive(pathname, leaf.href)) ?? false);
-
-          if (item.submenu) {
-            return <NavDropdown key={item.href} item={item} active={active} />;
-          }
-
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={`flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors ${
-                active
-                  ? "bg-finance-light text-finance"
-                  : "text-ink-secondary hover:bg-surface-sunken hover:text-ink-primary"
-              }`}
-            >
-              <Icon>{item.icon}</Icon>
-              {item.label}
-            </Link>
-          );
-        })}
       </div>
     </header>
   );

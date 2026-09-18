@@ -19,6 +19,7 @@ from src.features.cuentas_corrientes.router import router as cuentas_corrientes_
 from src.features.impuestos.router import router as impuestos_router
 from src.features.remuneraciones.router import router as remuneraciones_router
 from src.features.tesoreria.router import router as tesoreria_router
+from src.features.ventas_granos.router import router as ventas_granos_router
 from src.features.ventas_hacienda.router import router as ventas_hacienda_router
 
 app = FastAPI(
@@ -34,15 +35,19 @@ register_error_handlers(app)
 # CORS aunque el backend responda 200 — nunca se detectó porque las
 # verificaciones previas usaban curl (mismo origen que el servidor) en
 # vez de un fetch real desde el navegador. GET (lectura, mayoría de la
-# API) + PATCH (2026-09-17: primeras escrituras reales, siempre acotadas
-# a `WC` — ver `execute_write`/`_assert_target_is_wc` en `src/db/connection.py`).
+# API) + PATCH/POST/PUT/DELETE (escrituras reales, siempre acotadas a `WC`
+# — ver `execute_write`/`_assert_target_is_wc` en `src/db/connection.py`).
+# PUT/DELETE quedaron afuera de la lista original (agregados recién en
+# 006-carga-compras) — el navegador bloqueaba su preflight (OPTIONS) en
+# silencio, sin llegar nunca al backend, por eso la edición/eliminación de
+# compras fallaba con un error genérico sin detalle (2026-09-17).
 _allowed_origins = os.environ.get(
     "LA_HERENCIA_CORS_ORIGINS", "http://localhost:3000,http://localhost:3001"
 ).split(",")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=_allowed_origins,
-    allow_methods=["GET", "PATCH", "POST"],
+    allow_methods=["GET", "PATCH", "POST", "PUT", "DELETE"],
     allow_headers=["*"],
 )
 
@@ -53,6 +58,7 @@ app.include_router(cuentas_corrientes_router)
 app.include_router(impuestos_router)
 app.include_router(remuneraciones_router)
 app.include_router(tesoreria_router)
+app.include_router(ventas_granos_router)
 app.include_router(ventas_hacienda_router)
 
 

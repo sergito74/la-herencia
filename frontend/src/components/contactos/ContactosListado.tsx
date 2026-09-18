@@ -16,7 +16,7 @@ import { ContactoForm } from "@/components/contactos/ContactoForm";
 import { DataTable, type DataTableColumn } from "@/components/ui/DataTable";
 import { FilterBar, FilterField, FilterSubmitButton, filterInputClass } from "@/components/ui/FilterBar";
 import { SideDrawer } from "@/components/ui/SideDrawer";
-import { ErrorState, LoadingState } from "@/components/ui/States";
+import { EmptyState, ErrorState, LoadingState } from "@/components/ui/States";
 import { useToast } from "@/components/ui/Toast";
 
 /**
@@ -38,6 +38,11 @@ export function ContactosListado() {
   const queryClient = useQueryClient();
   const { showToast } = useToast();
 
+  // Sin filtro no se pide nada — con ~500 contactos reales, mostrar de
+  // entrada los primeros 50 en orden alfabético daba la falsa impresión de
+  // que "faltaban" proveedores que en realidad estaban más adelante en el
+  // alfabeto, sin filtrar (pedido explícito del usuario, 2026-09-17).
+  const hayFiltro = appliedFilters.q !== "" || appliedFilters.tipoContacto !== "";
   const queryKey = ["contactos", appliedFilters, page];
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey,
@@ -48,6 +53,7 @@ export function ContactosListado() {
         page,
         pageSize,
       }),
+    enabled: hayFiltro,
   });
 
   const saveMutation = useMutation({
@@ -139,12 +145,15 @@ export function ContactosListado() {
         </button>
       </FilterBar>
 
-      {isLoading && <LoadingState />}
-      {isError && (
+      {!hayFiltro && (
+        <EmptyState message="Buscá por razón social/CUIT o elegí un tipo para ver contactos." />
+      )}
+      {hayFiltro && isLoading && <LoadingState />}
+      {hayFiltro && isError && (
         <ErrorState message="Ocurrió un error al buscar contactos." onRetry={() => refetch()} />
       )}
 
-      {data && (
+      {hayFiltro && data && (
         <DataTable
           columns={COLUMNS}
           rows={data.items}

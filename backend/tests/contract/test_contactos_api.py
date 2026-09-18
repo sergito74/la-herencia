@@ -31,7 +31,7 @@ def anyio_backend():
 async def test_list_contactos_by_query(client, monkeypatch):
     def fake_search(q, tipo_contacto, page, page_size):
         assert q == "Acopio"
-        assert tipo_contacto == "Proveedor"
+        assert tipo_contacto == ["Proveedor"]
         return [FIXTURE_CONTACTO], 1
 
     monkeypatch.setattr(repository, "search_contactos", fake_search)
@@ -42,6 +42,27 @@ async def test_list_contactos_by_query(client, monkeypatch):
     assert response.status_code == 200
     body = response.json()
     assert body["items"][0]["razonSocial"] == "Acopio Central S.A."
+
+
+@pytest.mark.anyio
+async def test_list_contactos_by_multiple_tipos(client, monkeypatch):
+    """`tipoContacto` repetible (006) — ej. selector de proveedor de Compras
+    acepta varios tipos válidos, no solo uno."""
+    captured = {}
+
+    def fake_search(q, tipo_contacto, page, page_size):
+        captured["tipo_contacto"] = tipo_contacto
+        return [], 0
+
+    monkeypatch.setattr(repository, "search_contactos", fake_search)
+
+    async with httpx.AsyncClient(transport=client, base_url="http://test") as ac:
+        response = await ac.get(
+            "/api/contactos?tipoContacto=Proveedor&tipoContacto=Multiple&tipoContacto=Banco"
+        )
+
+    assert response.status_code == 200
+    assert captured["tipo_contacto"] == ["Proveedor", "Multiple", "Banco"]
 
 
 @pytest.mark.anyio

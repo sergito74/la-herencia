@@ -7,6 +7,7 @@ schema (INFORMATION_SCHEMA) on 2026-09-16. No writes are issued here
 
 from __future__ import annotations
 
+import re
 from datetime import date
 
 from src.db.connection import (
@@ -18,6 +19,16 @@ from src.db.connection import (
 )
 from src.db.pagination import offset_for
 from src.db.params import as_sql_datetime
+
+_RUTA_LOCAL_WINDOWS_RE = re.compile(r"^[a-zA-Z]:[\\/]|^\\\\")
+
+
+def es_ruta_local_windows(ruta: str) -> bool:
+    """Espejo de `esRutaLocalWindows`/`limpiarRutaCopiada` en
+    `CompraForm.tsx` — usado por el endpoint que sirve el PDF desde disco
+    (`GET /api/compras/documento-local`) para no intentar abrir cualquier
+    string como si fuera un path."""
+    return bool(_RUTA_LOCAL_WINDOWS_RE.match(ruta))
 
 
 def _row_to_compra(row: dict) -> dict:
@@ -45,13 +56,19 @@ def search_compras(
     page: int,
     page_size: int,
     id_contacto: int | None = None,
+    tipo_documento: list[str] | None = None,
+    producto_servicio: str | None = None,
+    id_destino: int | None = None,
+    campania: str | None = None,
+    sort_by: str | None = None,
+    sort_dir: str = "asc",
 ) -> tuple[list[dict], int]:
     """Search/list compras with optional filters, ordered by fecha desc.
 
-    `id_centro_costo`/`id_rubro` replican los filtros del formulario
-    Access real (`Frm Listado Compras`): una compra matchea si ALGUNA de
-    sus líneas en `Det_Compras` tiene ese centro de costo/rubro — se usa
-    `EXISTS` (no `JOIN`) para no duplicar filas de `Compras`.
+    `id_centro_costo`/`id_rubro`/`producto_servicio`/`id_destino`/`campania`
+    replican los filtros del formulario Access real (`Frm Listado Compras`):
+    una compra matchea si ALGUNA de sus líneas en `Det_Compras` cumple el
+    filtro — se usa `EXISTS` (no `JOIN`) para no duplicar filas de `Compras`.
     """
     where_clauses: list[str] = []
     params: list = []
@@ -59,6 +76,10 @@ def search_compras(
     if id_contacto:
         where_clauses.append("cmp.IdContacto = ?")
         params.append(id_contacto)
+    if tipo_documento:
+        placeholders = ", ".join("?" for _ in tipo_documento)
+        where_clauses.append(f"cmp.[Tipo documento] IN ({placeholders})")
+        params.extend(tipo_documento)
     if proveedor:
         where_clauses.append("c.[Razon Social] LIKE ?")
         params.append(f"%{proveedor}%")
@@ -83,8 +104,41 @@ def search_compras(
             "WHERE dc.IdCompra = cmp.IdDeuda AND dc.IdRubro = ?)"
         )
         params.append(id_rubro)
+    if producto_servicio:
+        where_clauses.append(
+            "EXISTS (SELECT 1 FROM dbo.Det_Compras dc "
+            "WHERE dc.IdCompra = cmp.IdDeuda AND dc.[Producto/Servicio] LIKE ?)"
+        )
+        params.append(f"%{producto_servicio}%")
+    if id_destino:
+        where_clauses.append(
+            "EXISTS (SELECT 1 FROM dbo.Det_Compras dc "
+            "WHERE dc.IdCompra = cmp.IdDeuda AND dc.IdDestino = ?)"
+        )
+        params.append(id_destino)
+    if campania:
+        where_clauses.append(
+            "EXISTS (SELECT 1 FROM dbo.Det_Compras dc "
+            "WHERE dc.IdCompra = cmp.IdDeuda AND dc.Campaña = ?)"
+        )
+        params.append(campania)
 
     where_sql = f"WHERE {' AND '.join(where_clauses)}" if where_clauses else ""
+
+    # Whitelist estricta — nunca interpolar `sort_by` directo en el SQL.
+    columnas_orden = {
+        "fecha": "cmp.Fecha",
+        "proveedor": "c.[Razon Social]",
+        "tipoDocumento": "cmp.[Tipo documento]",
+        "numeroDocumento": "cmp.[Nro Documento]",
+    }
+    direccion = "DESC" if sort_dir == "desc" else "ASC"
+    columna_orden = columnas_orden.get(sort_by or "", "cmp.Fecha")
+    order_by_sql = (
+        f"{columna_orden} {direccion}, cmp.IdDeuda {direccion}"
+        if sort_by
+        else "cmp.Fecha DESC, cmp.IdDeuda DESC"
+    )
 
     count_sql = f"""
         SELECT COUNT(*) AS total
@@ -107,7 +161,7 @@ def search_compras(
         FROM dbo.Compras cmp
         LEFT JOIN dbo.Contactos c ON c.IdContacto = cmp.IdContacto
         {where_sql}
-        ORDER BY cmp.Fecha DESC, cmp.IdDeuda DESC
+        ORDER BY {order_by_sql}
         OFFSET ? ROWS FETCH NEXT ? ROWS ONLY
     """
     rows = fetch_all(list_sql, tuple(params) + (offset, page_size))
@@ -503,18 +557,21 @@ def calcular_totales(lineas: list[dict], cabecera: dict) -> dict:
     }
 
 
-def hay_documento_duplicado(
+def buscar_documento_duplicado(
     id_contacto: int, numero_documento: str, excluir_id_compra: int | None = None
-) -> bool:
+) -> dict | None:
+    """Devuelve la compra existente con el mismo proveedor+nº de documento
+    (o `None`), usada para el bloqueo duro al guardar (`_rechazar_si_duplicado`
+    en el router) — antes esto solo generaba un warning no bloqueante."""
     sql = (
-        "SELECT 1 FROM dbo.Compras "
+        "SELECT IdDeuda AS idCompra FROM dbo.Compras "
         "WHERE IdContacto = ? AND [Nro Documento] = ?"
     )
     params: list = [id_contacto, numero_documento]
     if excluir_id_compra is not None:
         sql += " AND IdDeuda <> ?"
         params.append(excluir_id_compra)
-    return fetch_one(sql, tuple(params)) is not None
+    return fetch_one(sql, tuple(params))
 
 
 def resolver_defaults_lineas(lineas: list[dict]) -> list[dict]:
@@ -714,6 +771,25 @@ def update_compra(id_compra: int, cabecera: dict, lineas: list[dict], vencimient
             )
         )
 
+    execute_write_transaction(statements)
+
+
+def delete_compra(id_compra: int) -> None:
+    """Elimina una compra cargada por error: cabecera + todo lo que
+    depende de ella (líneas, vencimientos, vínculos a documentos
+    relacionados en cualquier dirección, y su propio lock de edición),
+    todo o nada en una sola transacción contra `WC`."""
+    statements = [
+        ("DELETE FROM dbo.Det_Compras WHERE IdCompra = ?", (id_compra,)),
+        ("DELETE FROM dbo.[Vencimiento Compras] WHERE IdCompra = ?", (id_compra,)),
+        (
+            "DELETE FROM dbo.CompraDocumentosRelacionados "
+            "WHERE IdCompra = ? OR IdCompraRelacionada = ?",
+            (id_compra, id_compra),
+        ),
+        ("DELETE FROM dbo.CompraEditLocks WHERE IdCompra = ?", (id_compra,)),
+        ("DELETE FROM dbo.Compras WHERE IdDeuda = ?", (id_compra,)),
+    ]
     execute_write_transaction(statements)
 
 

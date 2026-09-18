@@ -6,7 +6,7 @@ export const metadata = {
 
 export default function NuevaCompraPage() {
   return (
-    <main className="mx-auto max-w-[100rem] px-8 py-3">
+    <main className="mx-auto max-w-none px-8 py-3">
       <CompraForm mode="alta" />
     </main>
   );

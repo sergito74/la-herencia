@@ -37,7 +37,8 @@ export interface ContactosListResponse {
 
 export function fetchContactos(params: {
   q?: string;
-  tipoContacto?: string;
+  /** Repetible — ej. un selector de proveedor de Compras admite varios tipos válidos. */
+  tipoContacto?: string | string[];
   page?: number;
   pageSize?: number;
 }): Promise<ContactosListResponse> {

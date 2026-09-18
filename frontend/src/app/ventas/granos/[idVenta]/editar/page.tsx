@@ -1,0 +1,46 @@
+"use client";
+
+import { useParams, useRouter } from "next/navigation";
+import { useQuery } from "@tanstack/react-query";
+
+import { fetchVentaGranosDetalle } from "@/services/ventasGranosApi";
+import { VentaGranosForm } from "@/components/ventas-granos/VentaGranosForm";
+import { ErrorState, LoadingState } from "@/components/ui/States";
+
+export default function EditarVentaGranosPage() {
+  const params = useParams<{ idVenta: string }>();
+  const idVenta = Number(params.idVenta);
+  const router = useRouter();
+
+  const { data, isLoading, isError, refetch } = useQuery({
+    queryKey: ["venta-granos-detalle-edicion", idVenta],
+    queryFn: () => fetchVentaGranosDetalle(idVenta),
+  });
+
+  return (
+    <main className="mx-auto max-w-none px-8 py-3">
+      <div className="flex items-center gap-2">
+        <button
+          type="button"
+          onClick={() => router.back()}
+          title="Volver al listado de Ventas de Granos, con la búsqueda y el orden que tenía antes de entrar acá."
+          className="text-sm text-finance underline"
+        >
+          ← Volver a Ventas de Granos
+        </button>
+      </div>
+      <h1 className="mt-1 text-base font-semibold">Editar venta de granos</h1>
+
+      {isLoading && <LoadingState />}
+      {isError && (
+        <ErrorState message="Ocurrió un error al cargar la venta." onRetry={() => refetch()} />
+      )}
+
+      {data && (
+        <div className="mt-2">
+          <VentaGranosForm mode="edicion" idVenta={idVenta} initial={data} />
+        </div>
+      )}
+    </main>
+  );
+}

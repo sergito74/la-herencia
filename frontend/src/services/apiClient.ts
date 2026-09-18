@@ -27,15 +27,33 @@ export class ApiError extends Error {
   }
 }
 
+/** FastAPI devuelve errores como `{"detail": "mensaje"}` — sin esto,
+ * `ApiError.message` termina siendo el JSON crudo en vez del mensaje
+ * legible (ej. el motivo del bloqueo por documento duplicado, 006). */
+async function leerDetalleError(response: Response): Promise<string> {
+  const texto = await response.text().catch(() => "");
+  try {
+    const parsed = JSON.parse(texto);
+    if (typeof parsed?.detail === "string") return parsed.detail;
+  } catch {
+    // No era JSON — se usa el texto crudo tal cual.
+  }
+  return texto;
+}
+
 /** GET-only JSON fetch helper. No write verbs are exposed by this client. */
 export async function apiGet<T>(
   path: string,
-  params?: Record<string, string | number | undefined>
+  params?: Record<string, string | number | string[] | undefined>
 ): Promise<T> {
   const url = new URL(path, API_BASE_URL);
   if (params) {
     for (const [key, value] of Object.entries(params)) {
-      if (value !== undefined && value !== "") {
+      if (Array.isArray(value)) {
+        for (const item of value) {
+          url.searchParams.append(key, item);
+        }
+      } else if (value !== undefined && value !== "") {
         url.searchParams.set(key, String(value));
       }
     }
@@ -44,7 +62,7 @@ export async function apiGet<T>(
   const response = await fetch(url.toString(), { method: "GET" });
 
   if (!response.ok) {
-    const detail = await response.text().catch(() => "");
+    const detail = await leerDetalleError(response);
     throw new ApiError(response.status, detail || response.statusText);
   }
 
@@ -61,7 +79,7 @@ export async function apiPatch<T>(path: string, body: unknown): Promise<T> {
   });
 
   if (!response.ok) {
-    const detail = await response.text().catch(() => "");
+    const detail = await leerDetalleError(response);
     throw new ApiError(response.status, detail || response.statusText);
   }
 
@@ -82,7 +100,7 @@ export async function apiPost<T>(
   });
 
   if (!response.ok) {
-    const detail = await response.text().catch(() => "");
+    const detail = await leerDetalleError(response);
     throw new ApiError(response.status, detail || response.statusText);
   }
 
@@ -103,26 +121,31 @@ export async function apiPut<T>(
   });
 
   if (!response.ok) {
-    const detail = await response.text().catch(() => "");
+    const detail = await leerDetalleError(response);
     throw new ApiError(response.status, detail || response.statusText);
   }
 
   return (await response.json()) as T;
 }
 
-/** DELETE helper — ver nota en el encabezado del módulo (solo para `WC`). Sin body de respuesta (204). */
+/** DELETE helper — ver nota en el encabezado del módulo (solo para `WC`). Sin body de respuesta (204).
+ * `keepalive` deja la petición en curso sobrevivir a que la pestaña se
+ * cierre/navegue (ej. liberar un lock de edición en `pagehide` — sin esto,
+ * el cleanup normal de React puede cancelarse antes de completarse). */
 export async function apiDelete(
   path: string,
-  extraHeaders?: Record<string, string>
+  extraHeaders?: Record<string, string>,
+  keepalive = false
 ): Promise<void> {
   const url = new URL(path, API_BASE_URL);
   const response = await fetch(url.toString(), {
     method: "DELETE",
     headers: { ...extraHeaders },
+    keepalive,
   });
 
   if (!response.ok) {
-    const detail = await response.text().catch(() => "");
+    const detail = await leerDetalleError(response);
     throw new ApiError(response.status, detail || response.statusText);
   }
 }

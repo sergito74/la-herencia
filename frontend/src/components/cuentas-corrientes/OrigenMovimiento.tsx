@@ -112,7 +112,7 @@ export function OrigenMovimiento({ origen }: { origen: Origen }) {
         <Link
           href={
             origen.idRetencion != null
-              ? `/ventas/hacienda?tab=retenciones&highlight=${origen.idRetencion}`
+              ? `/finanzas/impuestos?tab=retenciones-venta-hacienda&highlight=${origen.idRetencion}`
               : "#"
           }
           className="text-finance underline"

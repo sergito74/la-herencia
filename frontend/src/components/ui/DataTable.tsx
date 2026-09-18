@@ -15,6 +15,8 @@ export interface DataTableColumn<T> {
   sortValue?: (row: T) => string | number | null;
 }
 
+export type SortState = { key: string; direction: "asc" | "desc" } | null;
+
 interface DataTableProps<T> {
   columns: DataTableColumn<T>[];
   rows: T[];
@@ -30,16 +32,21 @@ interface DataTableProps<T> {
    * módulo de origen (design/erp-module-architecture.md §3.3/§3.4).
    */
   highlightKey?: React.Key | null;
+  /**
+   * Ordenamiento controlado por el padre (ej. el backend ordena y
+   * pagina) — si se pasan `sort`+`onSortChange`, se usan estos en vez del
+   * estado interno, y las filas recibidas NO se reordenan localmente (se
+   * asume que ya vienen ordenadas). Sin estos props, se mantiene el
+   * comportamiento anterior: ordena solo las filas de la página cargada,
+   * sin volver a consultar el servidor.
+   */
+  sort?: SortState;
+  onSortChange?: (sort: SortState) => void;
 }
-
-type SortState = { key: string; direction: "asc" | "desc" } | null;
 
 /**
  * Tabla de datos densa con ordenamiento por columna y paginación
- * (design/agroux-frontend-redesign.md §4.1). El ordenamiento opera sobre
- * la página cargada (no re-consulta el servidor) — suficiente para el
- * volumen actual de estos módulos; si un módulo crece a miles de filas
- * por página, mover el sort al backend.
+ * (design/agroux-frontend-redesign.md §4.1).
  */
 export function DataTable<T>({
   columns,
@@ -51,8 +58,12 @@ export function DataTable<T>({
   total,
   onPageChange,
   highlightKey,
+  sort: controlledSort,
+  onSortChange,
 }: DataTableProps<T>) {
-  const [sort, setSort] = useState<SortState>(null);
+  const [internalSort, setInternalSort] = useState<SortState>(null);
+  const controlado = onSortChange != null;
+  const sort = controlado ? controlledSort ?? null : internalSort;
   const highlightRef = useRef<HTMLTableRowElement | null>(null);
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
@@ -63,6 +74,7 @@ export function DataTable<T>({
   }, [highlightKey]);
 
   const sortedRows = useMemo(() => {
+    if (controlado) return rows; // ya viene ordenado por el servidor
     if (!sort) return rows;
     const column = columns.find((c) => c.key === sort.key);
     if (!column?.sortValue) return rows;
@@ -77,15 +89,18 @@ export function DataTable<T>({
       if (va > vb) return 1 * factor;
       return 0;
     });
-  }, [rows, sort, columns]);
+  }, [rows, sort, columns, controlado]);
 
   function toggleSort(column: DataTableColumn<T>) {
     if (!column.sortValue) return;
-    setSort((prev) => {
-      if (prev?.key !== column.key) return { key: column.key, direction: "asc" };
-      if (prev.direction === "asc") return { key: column.key, direction: "desc" };
-      return null;
-    });
+    const next: SortState =
+      sort?.key !== column.key
+        ? { key: column.key, direction: "asc" }
+        : sort.direction === "asc"
+          ? { key: column.key, direction: "desc" }
+          : null;
+    if (controlado) onSortChange!(next);
+    else setInternalSort(next);
   }
 
   if (rows.length === 0) {
@@ -103,13 +118,20 @@ export function DataTable<T>({
                 return (
                   <th
                     key={col.key}
+                    title={col.sortValue ? "Ordenar por esta columna" : undefined}
                     className={`px-3 py-1.5 font-medium text-ink-secondary ${
                       col.align === "right" ? "text-right" : "text-left"
                     } ${col.sortValue ? "cursor-pointer select-none hover:text-ink-primary" : ""}`}
                     onClick={() => toggleSort(col)}
                   >
-                    {col.header}
-                    {active && <span className="ml-1">{sort!.direction === "asc" ? "▲" : "▼"}</span>}
+                    <span className="inline-flex items-center gap-1">
+                      {col.header}
+                      {col.sortValue && (
+                        <span className={`text-[0.6rem] leading-none ${active ? "text-finance" : "text-ink-muted"}`}>
+                          {active ? (sort!.direction === "asc" ? "▲" : "▼") : "⇅"}
+                        </span>
+                      )}
+                    </span>
                   </th>
                 );
               })}

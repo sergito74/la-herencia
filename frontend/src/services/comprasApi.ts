@@ -5,7 +5,30 @@
  * en `apiClient.ts`).
  */
 
-import { apiDelete, apiGet, apiPost, apiPut } from "@/services/apiClient";
+import { API_BASE_URL, apiDelete, apiGet, apiPost, apiPut } from "@/services/apiClient";
+import type { TipoContacto } from "@/services/contactosApi";
+
+/** Tipos de contacto válidos como proveedor de una compra (`validar_compra`
+ * en el backend, `repository.py`) — no solo "Proveedor". Restringir el
+ * combo a un único tipo dejaba fuera contactos válidos y, peor, hacía que
+ * compitieran por los primeros N resultados de búsqueda con tipos que ni
+ * siquiera son seleccionables acá (Comprador, Consignatario, etc.). */
+export const TIPOS_CONTACTO_COMPRA: TipoContacto[] = [
+  "Proveedor",
+  "Multiple",
+  "Organismo",
+  "Empleado",
+  "Banco",
+];
+
+/** URL del PDF servido desde el disco local de esta PC (ver
+ * `GET /api/compras/documento-local` — el backend corre en la misma
+ * máquina que el archivo, así el navegador sí puede mostrarlo). */
+export function urlDocumentoLocal(ruta: string): string {
+  const url = new URL("/api/compras/documento-local", API_BASE_URL);
+  url.searchParams.set("ruta", ruta);
+  return url.toString();
+}
 
 export interface Proveedor {
   idContacto: number;
@@ -85,6 +108,13 @@ export interface ComprasSearchParams {
   idRubro?: number;
   /** Filtro exacto — usado para listar los documentos relacionados de un proveedor (006). */
   idContacto?: number;
+  /** Filtro exacto (repetible) — usado para acotar a tipos de documento complementarios (006). */
+  tipoDocumento?: string[];
+  productoServicio?: string;
+  idDestino?: number;
+  campania?: string;
+  sortBy?: string;
+  sortDir?: "asc" | "desc";
   page?: number;
   pageSize?: number;
 }
@@ -248,20 +278,33 @@ export function actualizarCompra(
   });
 }
 
+/** Eliminación definitiva (documento cargado por error). Requiere el lock adquirido. */
+export function eliminarCompra(idCompra: number, lockToken: string): Promise<void> {
+  return apiDelete(`/api/compras/${idCompra}`, { "X-Lock-Token": lockToken });
+}
+
 export interface LockResponse {
   idCompra: number;
   lockToken: string;
   expiresAt: string;
 }
 
-/** Adquiere o renueva el bloqueo exclusivo de edición (FR-009a). 409 si otra sesión lo tiene. */
-export function adquirirLock(idCompra: number, lockToken: string): Promise<LockResponse> {
-  return apiPost<LockResponse>(`/api/compras/${idCompra}/lock`, { lockToken });
+/** Adquiere o renueva el bloqueo exclusivo de edición (FR-009a). 409 si otra sesión lo tiene.
+ * `force` ("Forzar edición" en el error de bloqueo — sistema de un solo
+ * usuario real, ver `repository_locks.py`) ignora un lock vigente de otro
+ * token, para el caso de una pestaña vieja del mismo usuario colgada. */
+export function adquirirLock(
+  idCompra: number,
+  lockToken: string,
+  force = false
+): Promise<LockResponse> {
+  return apiPost<LockResponse>(`/api/compras/${idCompra}/lock`, { lockToken, force });
 }
 
-/** Libera el bloqueo. 409 si pertenece a otra sesión. */
-export function liberarLock(idCompra: number, lockToken: string): Promise<void> {
-  return apiDelete(`/api/compras/${idCompra}/lock`, { "X-Lock-Token": lockToken });
+/** Libera el bloqueo. 409 si pertenece a otra sesión. `keepalive` para
+ * liberarlo de forma confiable al cerrar la pestaña (ver `apiDelete`). */
+export function liberarLock(idCompra: number, lockToken: string, keepalive = false): Promise<void> {
+  return apiDelete(`/api/compras/${idCompra}/lock`, { "X-Lock-Token": lockToken }, keepalive);
 }
 
 export interface RubroSugerido {

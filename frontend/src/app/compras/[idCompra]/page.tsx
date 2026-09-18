@@ -14,7 +14,7 @@ export default function CompraDetallePage({
   const idCompra = Number(params.idCompra);
 
   return (
-    <main className="mx-auto max-w-6xl p-8">
+    <main className="mx-auto max-w-none px-8 py-6">
       <Link className="text-sm text-finance underline" href="/compras">
         ← Volver al listado
       </Link>

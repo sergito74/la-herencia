@@ -8,13 +8,18 @@
 
 export type MonedaFormato = "Pesos" | "Dolares";
 
+/** Miles ".", decimales ",", sin símbolo de moneda — para celdas numéricas
+ * (ej. precio unitario) donde el prefijo $ ya está implícito por contexto. */
+export function formatMonto(value: number, decimales = 2): string {
+  return value.toLocaleString("es-AR", {
+    minimumFractionDigits: decimales,
+    maximumFractionDigits: decimales,
+  });
+}
+
 export function formatMoneda(value: number, moneda: MonedaFormato = "Pesos"): string {
   const prefijo = moneda === "Dolares" ? "us$" : "$";
-  const numero = value.toLocaleString("es-AR", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  });
-  return `${prefijo} ${numero}`;
+  return `${prefijo} ${formatMonto(value)}`;
 }
 
 export function formatCantidad(value: number): string {
@@ -22,6 +27,17 @@ export function formatCantidad(value: number): string {
     minimumFractionDigits: 0,
     maximumFractionDigits: 3,
   });
+}
+
+/** Convierte un `number` de JS a texto editable en convención local (coma
+ * decimal, sin separador de miles) — ej. `60717.34` → `"60717,34"`. Usar
+ * siempre esta función (nunca `String(numero)`) para precargar un input/
+ * celda editable desde un valor numérico: `String()` usa punto decimal, y
+ * `parseNumeroLocal` interpreta ese punto como separador de miles — el bug
+ * resultante multiplica el valor por 100 al recargarlo (visto en producción
+ * el 2026-09-17: 60.717,34 pasaba a 6.071.734 tras guardar y reabrir). */
+export function numeroAEdicionLocal(value: number): string {
+  return String(value).replace(".", ",");
 }
 
 /** Interpreta un texto numérico en convención local (miles ".", decimales

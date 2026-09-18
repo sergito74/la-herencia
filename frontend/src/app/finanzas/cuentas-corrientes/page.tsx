@@ -6,7 +6,7 @@ export const metadata = {
 
 export default function CuentasCorrientesPage() {
   return (
-    <main className="mx-auto max-w-6xl p-8">
+    <main className="mx-auto max-w-none px-8 py-6">
       <h1 className="text-2xl font-semibold">Cuentas corrientes</h1>
       <p className="mt-1 text-ink-secondary">
         Buscar un contacto y ver su saldo y movimientos (solo lectura).

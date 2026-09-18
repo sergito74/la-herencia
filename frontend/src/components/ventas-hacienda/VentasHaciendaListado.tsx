@@ -1,41 +1,44 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
+import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 
-import { fetchVentasHacienda, type VentaHacienda } from "@/services/ventasHaciendaApi";
+import { fetchVentasHacienda, TIPOS_CONTACTO_VENTA_HACIENDA, type VentaHacienda } from "@/services/ventasHaciendaApi";
 import { ContactoLink } from "@/components/ui/ContactoLink";
+import { ContactoSelect } from "@/components/ui/ContactoSelect";
 import { DataTable, type DataTableColumn } from "@/components/ui/DataTable";
-import { FilterBar, FilterField, FilterSubmitButton, filterInputClass } from "@/components/ui/FilterBar";
+import { FilterBar, FilterSubmitButton } from "@/components/ui/FilterBar";
 import { SideDrawer } from "@/components/ui/SideDrawer";
 import { ErrorState, LoadingState } from "@/components/ui/States";
-
-const COLUMNS: DataTableColumn<VentaHacienda>[] = [
-  { key: "fecha", header: "Fecha", numeric: true, sortValue: (v) => v.fecha, render: (v) => v.fecha ?? "—" },
-  { key: "numeroDocumento", header: "Documento", render: (v) => v.numeroDocumento ?? "—" },
-  {
-    key: "consignatario",
-    header: "Consignatario",
-    sortValue: (v) => v.consignatario,
-    render: (v) => (
-      <ContactoLink idContacto={v.idConsignatario} razonSocial={v.consignatario} tipoContacto="Consignatario" />
-    ),
-  },
-  { key: "lineas", header: "Líneas", numeric: true, render: (v) => v.lineas.length },
-];
 
 /**
  * Listado de ventas de hacienda: consignatario a nivel de venta, comprador
  * por línea de detalle (Nota UX de plan.md). El detalle por comprador se
  * ve en un `SideDrawer` para no incrustar tablas gigantes en el listado
- * (design/agroux-frontend-redesign.md §4.3/§5.4). Read-only (005 US4: FR-004).
+ * (design/agroux-frontend-redesign.md §4.3/§5.4). Desde 007 agrega el
+ * enlace a edición y persiste filtro/página en la URL (mismo patrón que
+ * `ComprasListado.tsx`, T032a) — así "← Volver a Ventas de Hacienda"
+ * recupera la búsqueda anterior en vez de perderla.
  */
 export function VentasHaciendaListado() {
-  const [consignatario, setConsignatario] = useState("");
-  const [appliedConsignatario, setAppliedConsignatario] = useState("");
-  const [page, setPage] = useState(1);
+  const router = useRouter();
+  const searchParams = useSearchParams();
+
+  const urlConsignatario = searchParams.get("consignatario") ?? "";
+  const urlPage = Number(searchParams.get("page") ?? "1") || 1;
+
+  const urlConsignatarioId = searchParams.get("consignatarioId");
+  const [consignatario, setConsignatario] = useState<{ id: number | null; nombre: string | null }>({
+    id: urlConsignatarioId ? Number(urlConsignatarioId) : null,
+    nombre: urlConsignatario || null,
+  });
   const [selected, setSelected] = useState<VentaHacienda | null>(null);
   const pageSize = 50;
+
+  const appliedConsignatario = urlConsignatario;
+  const page = urlPage;
 
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ["ventas-hacienda", appliedConsignatario, page],
@@ -47,36 +50,81 @@ export function VentasHaciendaListado() {
       }),
   });
 
-  function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    setPage(1);
-    setAppliedConsignatario(consignatario);
+  function aplicarEnUrl(next: { consignatario: string; consignatarioId: number | null; page: number }) {
+    const params = new URLSearchParams();
+    if (next.consignatario) params.set("consignatario", next.consignatario);
+    if (next.consignatarioId != null) params.set("consignatarioId", String(next.consignatarioId));
+    if (next.page > 1) params.set("page", String(next.page));
+    const qs = params.toString();
+    router.replace(qs ? `/ventas/hacienda?${qs}` : "/ventas/hacienda", { scroll: false });
   }
 
-  const columns: DataTableColumn<VentaHacienda>[] = COLUMNS.map((col) =>
-    col.key === "numeroDocumento"
-      ? {
-          ...col,
-          render: (v) => (
-            <button className="text-finance underline" onClick={() => setSelected(v)}>
-              {v.numeroDocumento ?? "—"}
-            </button>
-          ),
-        }
-      : col
-  );
+  function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    aplicarEnUrl({ consignatario: consignatario.nombre ?? "", consignatarioId: consignatario.id, page: 1 });
+  }
+
+  function handlePageChange(next: number) {
+    aplicarEnUrl({
+      consignatario: appliedConsignatario,
+      consignatarioId: urlConsignatarioId ? Number(urlConsignatarioId) : null,
+      page: next,
+    });
+  }
+
+  const columns: DataTableColumn<VentaHacienda>[] = [
+    {
+      key: "fecha",
+      header: "Fecha",
+      numeric: true,
+      sortValue: (v) => v.fecha,
+      render: (v) => (
+        <Link className="text-finance underline" href={`/ventas/hacienda/${v.idVenta}/editar`}>
+          {v.fecha ?? "—"}
+        </Link>
+      ),
+    },
+    {
+      key: "numeroDocumento",
+      header: "Documento",
+      render: (v) => (
+        <button className="text-finance underline" onClick={() => setSelected(v)}>
+          {v.numeroDocumento ?? "—"}
+        </button>
+      ),
+    },
+    {
+      key: "consignatario",
+      header: "Consignatario",
+      sortValue: (v) => v.consignatario,
+      render: (v) => (
+        <ContactoLink idContacto={v.idConsignatario} razonSocial={v.consignatario} tipoContacto="Consignatario" />
+      ),
+    },
+    {
+      key: "editar",
+      header: "",
+      render: (v) => (
+        <Link className="text-finance underline" href={`/ventas/hacienda/${v.idVenta}/editar`}>
+          Editar
+        </Link>
+      ),
+    },
+  ];
 
   return (
     <div className="space-y-4">
       <FilterBar onSubmit={handleSubmit}>
-        <FilterField label="Consignatario">
-          <input
-            className={filterInputClass}
-            value={consignatario}
-            onChange={(e) => setConsignatario(e.target.value)}
-            placeholder="Razón social"
+        <div className="w-64">
+          <ContactoSelect
+            label="Consignatario"
+            tipoContacto={TIPOS_CONTACTO_VENTA_HACIENDA}
+            value={consignatario.id}
+            razonSocial={consignatario.nombre}
+            onChange={(id, nombre) => setConsignatario({ id, nombre })}
+            placeholder="Buscar consignatario…"
           />
-        </FilterField>
+        </div>
         <FilterSubmitButton />
       </FilterBar>
 
@@ -92,7 +140,7 @@ export function VentasHaciendaListado() {
           page={data.page}
           pageSize={data.pageSize}
           total={data.total}
-          onPageChange={setPage}
+          onPageChange={handlePageChange}
         />
       )}
 

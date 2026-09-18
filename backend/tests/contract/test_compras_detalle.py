@@ -105,11 +105,10 @@ async def test_get_compra_detalle_conceptos_diferenciados(client, monkeypatch):
 
 @pytest.mark.anyio
 async def test_get_compra_detalle_rejects_unsupported_write_methods(client):
-    """006-carga-compras agregó PUT /api/compras/{id} (edición) — solo DELETE/PATCH siguen sin soporte."""
+    """006-carga-compras agregó PUT/DELETE /api/compras/{id} (edición/eliminación) — solo PATCH sigue sin soporte."""
     async with httpx.AsyncClient(transport=client, base_url="http://test") as ac:
-        for method in ("delete", "patch"):
-            resp = await ac.request(method, "/api/compras/12345")
-            assert resp.status_code in (404, 405)
+        resp = await ac.request("patch", "/api/compras/12345")
+        assert resp.status_code in (404, 405)
 
 
 @pytest.mark.anyio
@@ -117,4 +116,12 @@ async def test_put_compra_without_lock_header_is_rejected_not_ignored(client):
     """PUT ahora es una ruta real (edición) — sin X-Lock-Token, debe ser 422, no 404/405."""
     async with httpx.AsyncClient(transport=client, base_url="http://test") as ac:
         resp = await ac.put("/api/compras/12345", json={})
+        assert resp.status_code == 422
+
+
+@pytest.mark.anyio
+async def test_delete_compra_without_lock_header_is_rejected_not_ignored(client):
+    """DELETE (eliminación, 006) también requiere X-Lock-Token — sin él, 422, no 404/405."""
+    async with httpx.AsyncClient(transport=client, base_url="http://test") as ac:
+        resp = await ac.delete("/api/compras/12345")
         assert resp.status_code == 422

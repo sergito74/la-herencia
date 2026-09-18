@@ -39,11 +39,18 @@ export function FilterField({
 export const filterInputClass =
   "rounded-sm border border-border px-2 py-1 text-ink-primary focus:border-border-strong focus:outline-none";
 
-export function FilterSubmitButton({ children = "Buscar" }: { children?: React.ReactNode }) {
+export function FilterSubmitButton({
+  children = "Buscar",
+  className = "",
+}: {
+  children?: React.ReactNode;
+  /** Ej. "ml-auto" para alinearlo a la derecha del renglón donde cae. */
+  className?: string;
+}) {
   return (
     <button
       type="submit"
-      className="rounded-sm bg-finance px-4 py-2 text-sm text-white hover:opacity-90"
+      className={`rounded-sm bg-finance px-4 py-2 text-sm text-white hover:opacity-90 ${className}`}
     >
       {children}
     </button>

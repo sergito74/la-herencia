@@ -283,6 +283,8 @@ class CompraDetalleResponse(BaseModel):
 
 class LockRequest(BaseModel):
     lockToken: str
+    # "Forzar edición" del frontend — ver docstring de `adquirir_lock`.
+    force: bool = False
 
 
 class LockResponse(BaseModel):

@@ -27,7 +27,7 @@ export default function TesoreriaPage() {
   const highlight = searchParams.get("highlight");
 
   return (
-    <main className="mx-auto max-w-6xl p-8">
+    <main className="mx-auto max-w-none px-8 py-6">
       <h1 className="text-2xl font-semibold">Tesorería</h1>
       <p className="mt-1 text-ink-secondary">
         Movimientos por banco, caja, valores y tarjetas (solo lectura).

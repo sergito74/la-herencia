@@ -1,6 +1,6 @@
 "use client";
 
-import { useId } from "react";
+import { useId, useState } from "react";
 
 import {
   crearCampania,
@@ -11,7 +11,7 @@ import {
   type FiltrosComprasResponse,
   type LineaInput,
 } from "@/services/comprasApi";
-import { formatMoneda, normalizarNumeroPegado, parseNumeroLocal, type MonedaFormato } from "@/lib/format";
+import { formatMonto, formatMoneda, normalizarNumeroPegado, parseNumeroLocal, type MonedaFormato } from "@/lib/format";
 import { useToast } from "@/components/ui/Toast";
 
 /**
@@ -123,6 +123,9 @@ export function ComprasGrid({
   const { showToast } = useToast();
   const listIdBase = useId();
   const unidadesListId = `${listIdBase}-unidades`;
+  // Precio unitario: crudo mientras se edita (no pelear con el tipeo),
+  // formateado con separador de miles apenas se pierde el foco.
+  const [filaPrecioEnFoco, setFilaPrecioEnFoco] = useState<number | null>(null);
 
   function actualizarCelda(rowIndex: number, key: ColumnaEditable, value: string) {
     const next = rows.map((r, i) => (i === rowIndex ? { ...r, [key]: value } : r));
@@ -358,8 +361,14 @@ export function ComprasGrid({
                   <td className="w-28">
                     <input
                       className={`${inputClass} font-data text-right`}
-                      value={row.precioUnitario}
+                      value={
+                        filaPrecioEnFoco === rowIndex || !row.precioUnitario
+                          ? row.precioUnitario
+                          : formatMonto(parseNumeroLocal(row.precioUnitario))
+                      }
+                      onFocus={() => setFilaPrecioEnFoco(rowIndex)}
                       onChange={(e) => actualizarCelda(rowIndex, "precioUnitario", e.target.value)}
+                      onBlur={() => setFilaPrecioEnFoco(null)}
                       onPaste={(e) => handlePaste(rowIndex, 7, e)}
                     />
                   </td>

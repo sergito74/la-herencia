@@ -1,6 +1,6 @@
 "use client";
 
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 
 import { fetchCompraDetalle } from "@/services/comprasApi";
@@ -11,6 +11,7 @@ import { ErrorState, LoadingState } from "@/components/ui/States";
 export default function EditarCompraPage() {
   const params = useParams<{ idCompra: string }>();
   const idCompra = Number(params.idCompra);
+  const router = useRouter();
 
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ["compra-detalle-edicion", idCompra],
@@ -18,8 +19,18 @@ export default function EditarCompraPage() {
   });
 
   return (
-    <main className="mx-auto max-w-[100rem] px-8 py-3">
-      <h1 className="text-base font-semibold">Editar compra</h1>
+    <main className="mx-auto max-w-none px-8 py-3">
+      <div className="flex items-center gap-2">
+        <button
+          type="button"
+          onClick={() => router.back()}
+          title="Volver al listado de Compras, con la búsqueda y el orden que tenía antes de entrar acá."
+          className="text-sm text-finance underline"
+        >
+          ← Volver a Compras
+        </button>
+      </div>
+      <h1 className="mt-1 text-base font-semibold">Editar compra</h1>
 
       {isLoading && <LoadingState />}
       {isError && (

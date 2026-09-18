@@ -2,7 +2,13 @@
 
 import { useEffect, useState } from "react";
 
-import { formatMoneda, normalizarNumeroPegado, parseNumeroLocal, type MonedaFormato } from "@/lib/format";
+import {
+  formatMoneda,
+  normalizarNumeroPegado,
+  numeroAEdicionLocal,
+  parseNumeroLocal,
+  type MonedaFormato,
+} from "@/lib/format";
 
 /**
  * Input numérico editable que respeta la convención de formato de moneda
@@ -23,10 +29,10 @@ export function MoneyInput({
   className?: string;
 }) {
   const [focused, setFocused] = useState(false);
-  const [texto, setTexto] = useState(String(value || ""));
+  const [texto, setTexto] = useState(value ? numeroAEdicionLocal(value) : "");
 
   useEffect(() => {
-    if (!focused) setTexto(String(value || ""));
+    if (!focused) setTexto(value ? numeroAEdicionLocal(value) : "");
   }, [value, focused]);
 
   return (
@@ -37,7 +43,7 @@ export function MoneyInput({
       value={focused ? texto : formatMoneda(value || 0, moneda)}
       onFocus={() => {
         setFocused(true);
-        setTexto(value ? String(value) : "");
+        setTexto(value ? numeroAEdicionLocal(value) : "");
       }}
       onChange={(e) => setTexto(e.target.value)}
       onBlur={() => {

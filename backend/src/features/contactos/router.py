@@ -27,10 +27,13 @@ router = APIRouter(prefix="/api/contactos", tags=["contactos"])
 @router.get("", response_model=ContactosListResponse)
 async def list_contactos(
     q: str | None = Query(default=None),
-    tipoContacto: str | None = Query(default=None),
+    tipoContacto: list[str] | None = Query(default=None),
     page: int = Query(default=1, ge=1),
     pageSize: int = Query(default=50, ge=1, le=200),
 ) -> ContactosListResponse:
+    """`tipoContacto` es repetible (006) — ej. un selector de proveedor de
+    Compras acepta varios tipos válidos (Proveedor/Multiple/Organismo/
+    Empleado/Banco), no solo uno."""
     norm_page, norm_page_size = normalize_pagination(page, pageSize)
     rows, total = await run_in_threadpool(
         repository.search_contactos, q, tipoContacto, norm_page, norm_page_size

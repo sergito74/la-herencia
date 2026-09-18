@@ -15,7 +15,7 @@ export default function RemuneracionesPage() {
   const highlightKey = highlight ? Number(highlight) : undefined;
 
   return (
-    <main className="mx-auto max-w-6xl p-8">
+    <main className="mx-auto max-w-none px-8 py-6">
       <h1 className="text-2xl font-semibold">Remuneraciones</h1>
       <p className="mt-1 text-ink-secondary">
         Liquidaciones de remuneraciones y pagos efectivos (solo lectura).
