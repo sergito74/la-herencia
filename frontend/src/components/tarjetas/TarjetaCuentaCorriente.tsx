@@ -9,6 +9,18 @@ import { DataTable, type DataTableColumn } from "@/components/ui/DataTable";
 import { ErrorState, LoadingState } from "@/components/ui/States";
 import type { MovimientoTarjeta } from "@/services/tarjetasApi";
 
+function Semaforo({ ok, label }: { ok: boolean; label: string }) {
+  return (
+    <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
+      <span
+        aria-hidden
+        className={`inline-block h-2.5 w-2.5 shrink-0 rounded-full ${ok ? "bg-status-success" : "bg-status-danger"}`}
+      />
+      <span className={ok ? "text-status-success" : "text-status-danger"}>{label}</span>
+    </span>
+  );
+}
+
 const COLUMNS: DataTableColumn<MovimientoTarjeta>[] = [
   {
     key: "fecha",
@@ -32,6 +44,27 @@ const COLUMNS: DataTableColumn<MovimientoTarjeta>[] = [
   { key: "deuda", header: "Deuda", numeric: true, render: (m) => (m.deuda ? formatMoneda(m.deuda) : "—") },
   { key: "credito", header: "Crédito", numeric: true, render: (m) => (m.credito ? formatMoneda(m.credito) : "—") },
   { key: "saldoAcumulado", header: "Saldo acumulado", numeric: true, render: (m) => formatMoneda(m.saldoAcumulado) },
+  {
+    key: "pagoConciliado",
+    header: "Pago",
+    render: (m) =>
+      m.origen === "Pago" || m.pagoConciliado == null ? (
+        "—"
+      ) : (
+        <Semaforo ok={m.pagoConciliado} label={m.pagoConciliado ? "Conciliado" : "Pendiente"} />
+      ),
+  },
+  {
+    key: "consumosConciliados",
+    header: "Consumos",
+    render: (m) => {
+      if (m.origen === "Pago" || m.lineasTotal == null || m.lineasVinculadas == null) return "—";
+      if (m.lineasTotal === 0) return <Semaforo ok label="Solo cabecera" />;
+      return (
+        <Semaforo ok={m.lineasVinculadas === m.lineasTotal} label={`${m.lineasVinculadas}/${m.lineasTotal} vinculados`} />
+      );
+    },
+  },
 ];
 
 /** Cuenta corriente de una tarjeta (Historia 2, FR-002/FR-003) — un

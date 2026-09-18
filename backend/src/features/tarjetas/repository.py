@@ -63,6 +63,16 @@ def get_movimientos(id_tarjeta: int) -> list[dict]:
     for resumen in resumenes:
         lineas = get_lineas(resumen["idResumen"])
         total = calcular_total(resumen, lineas)
+        pagos = fetch_all(
+            "SELECT IdPago AS idPago, Fecha AS fecha, Importe AS importe "
+            "FROM dbo.Tarjetas_Resumenes_Pagos WHERE IdResumen = ?",
+            (resumen["idResumen"],),
+        )
+        pagado = sum(float(p["importe"]) for p in pagos)
+        lineas_vinculadas = sum(1 for l in lineas if l.get("comprasVinculadas"))
+        # Estado de conciliación por resumen — para que la cuenta corriente
+        # de la tarjeta lo muestre de un vistazo, sin entrar resumen por
+        # resumen (feedback 2026-09-21).
         eventos.append(
             {
                 "idResumen": resumen["idResumen"],
@@ -71,12 +81,10 @@ def get_movimientos(id_tarjeta: int) -> list[dict]:
                 "origen": "Resumen",
                 "deuda": total if total > 0 else 0.0,
                 "credito": -total if total < 0 else 0.0,
+                "pagoConciliado": pagado >= total - 0.02,
+                "lineasTotal": len(lineas),
+                "lineasVinculadas": lineas_vinculadas,
             }
-        )
-        pagos = fetch_all(
-            "SELECT IdPago AS idPago, Fecha AS fecha, Importe AS importe "
-            "FROM dbo.Tarjetas_Resumenes_Pagos WHERE IdResumen = ?",
-            (resumen["idResumen"],),
         )
         for pago in pagos:
             eventos.append(
@@ -87,6 +95,9 @@ def get_movimientos(id_tarjeta: int) -> list[dict]:
                     "origen": "Pago",
                     "deuda": 0.0,
                     "credito": float(pago["importe"]),
+                    "pagoConciliado": None,
+                    "lineasTotal": None,
+                    "lineasVinculadas": None,
                 }
             )
 

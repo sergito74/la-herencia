@@ -24,6 +24,12 @@ class MovimientoTarjeta(BaseModel):
     deuda: float
     credito: float
     saldoAcumulado: float
+    # Estado de conciliación del resumen (solo en filas `origen="Resumen"`
+    # — en `origen="Pago"` van en `None`, no aplica) — para que la cuenta
+    # corriente de la tarjeta lo muestre de un vistazo (feedback 2026-09-21).
+    pagoConciliado: bool | None = None
+    lineasTotal: int | None = None
+    lineasVinculadas: int | None = None
 
 
 class MovimientoPagoCandidato(BaseModel):
