@@ -13,22 +13,6 @@ import { FilterBar, FilterField, FilterSubmitButton, filterInputClass } from "@/
 import { EmptyState, ErrorState, LoadingState } from "@/components/ui/States";
 import type { ResumenListItem } from "@/services/tarjetasResumenesApi";
 
-/** Nunca oculta la diferencia real, aunque esté dentro de la tolerancia
- * de redondeo ($0.10 fijo — research.md, análisis del especialista
- * financiero contra los 293 resúmenes reales: el ruido depende de
- * cuántos cargos se suman, no de cuánto suman el total). */
-function labelPago(conciliado: boolean, diferenciaRedondeo: number): string {
-  if (diferenciaRedondeo === 0) return "Conciliado";
-  if (conciliado) {
-    return diferenciaRedondeo > 0
-      ? `Conciliado (ajuste ${formatMoneda(diferenciaRedondeo)})`
-      : `Conciliado (sobre-pago ${formatMoneda(Math.abs(diferenciaRedondeo))})`;
-  }
-  return diferenciaRedondeo > 0
-    ? `Pendiente ${formatMoneda(diferenciaRedondeo)}`
-    : `Sobre-pago ${formatMoneda(Math.abs(diferenciaRedondeo))}`;
-}
-
 function Semaforo({ ok, label }: { ok: boolean; label: string }) {
   return (
     <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
@@ -58,7 +42,7 @@ const COLUMNS: DataTableColumn<ResumenListItem>[] = [
   {
     key: "pagoConciliado",
     header: "Pago",
-    render: (r) => <Semaforo ok={r.pagoConciliado} label={labelPago(r.pagoConciliado, r.diferenciaRedondeo)} />,
+    render: (r) => <Semaforo ok={r.pagoConciliado} label={r.pagoConciliado ? "Conciliado" : "Pendiente"} />,
   },
   {
     key: "consumosConciliados",
