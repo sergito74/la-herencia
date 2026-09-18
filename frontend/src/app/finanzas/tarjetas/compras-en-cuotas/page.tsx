@@ -1,6 +1,7 @@
 "use client";
 
 import { ComprasCuotasListado } from "@/components/tarjetas-cuotas/ComprasCuotasListado";
+import { TarjetasSubNav } from "@/components/tarjetas/TarjetasSubNav";
 
 /** Solo lectura desde 2026-09-19 (feedback del usuario, punto 5) — la
  * estructura real (`[Tarjetas de Credito]`) es obsoleta, sin uso desde
@@ -13,6 +14,9 @@ export default function ComprasCuotasPage() {
         Catálogo de solo lectura — este mecanismo de financiación dejó de usarse en 2015. Las compras en cuotas
         vigentes (AgroNacion) se financian como líneas dentro del resumen mensual de la tarjeta.
       </p>
+      <div className="mt-4">
+        <TarjetasSubNav />
+      </div>
       <div className="mt-6">
         <ComprasCuotasListado />
       </div>

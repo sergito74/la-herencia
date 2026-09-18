@@ -3,6 +3,7 @@
 import Link from "next/link";
 
 import { ResumenesListado } from "@/components/tarjetas-resumenes/ResumenesListado";
+import { TarjetasSubNav } from "@/components/tarjetas/TarjetasSubNav";
 
 export default function ResumenesPage() {
   return (
@@ -12,6 +13,9 @@ export default function ResumenesPage() {
         <Link href="/finanzas/tarjetas/resumenes/nuevo" className="rounded-sm bg-finance px-4 py-2 text-sm text-white hover:opacity-90">
           + Nuevo resumen
         </Link>
+      </div>
+      <div className="mt-4">
+        <TarjetasSubNav />
       </div>
       <div className="mt-6">
         <ResumenesListado />
