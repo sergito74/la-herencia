@@ -106,6 +106,11 @@ async def crear_venta_granos(body: VentaGranosAltaRequest) -> VentaGranosDetalle
     ajustes = [a.model_dump() for a in body.ajustes]
     deducciones = [d.model_dump() for d in body.deducciones]
 
+    # FR-012a: chequear duplicado ANTES de insertar — después de crear, la
+    # fila recién insertada calzaría con su propia búsqueda y el aviso se
+    # dispararía siempre, incluso en la primera carga de un documento nuevo.
+    warnings = await _warnings_duplicado(body.idConsignatario, body.numeroDocumento)
+
     try:
         id_venta = await run_in_threadpool(repository.create_venta, cabecera, ajustes, deducciones)
     except ValueError as exc:
@@ -114,7 +119,6 @@ async def crear_venta_granos(body: VentaGranosAltaRequest) -> VentaGranosDetalle
     totales = repository.calcular_totales(cabecera, ajustes, deducciones)
     ajustes_out = await run_in_threadpool(repository.get_ajustes, id_venta)
     deducciones_out = await run_in_threadpool(repository.get_deducciones, id_venta)
-    warnings = await _warnings_duplicado(body.idConsignatario, body.numeroDocumento)
 
     return _to_detalle_response(id_venta, cabecera, totales, ajustes_out, deducciones_out, warnings)
 

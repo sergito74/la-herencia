@@ -18,6 +18,9 @@ from src.features.contactos.router import router as contactos_router
 from src.features.cuentas_corrientes.router import router as cuentas_corrientes_router
 from src.features.impuestos.router import router as impuestos_router
 from src.features.remuneraciones.router import router as remuneraciones_router
+from src.features.tarjetas.router import router as tarjetas_router
+from src.features.tarjetas_cuotas.router import router as tarjetas_cuotas_router
+from src.features.tarjetas_resumenes.router import router as tarjetas_resumenes_router
 from src.features.tesoreria.router import router as tesoreria_router
 from src.features.ventas_granos.router import router as ventas_granos_router
 from src.features.ventas_hacienda.router import router as ventas_hacienda_router
@@ -57,6 +60,9 @@ app.include_router(contactos_router)
 app.include_router(cuentas_corrientes_router)
 app.include_router(impuestos_router)
 app.include_router(remuneraciones_router)
+app.include_router(tarjetas_router)
+app.include_router(tarjetas_cuotas_router)
+app.include_router(tarjetas_resumenes_router)
 app.include_router(tesoreria_router)
 app.include_router(ventas_granos_router)
 app.include_router(ventas_hacienda_router)

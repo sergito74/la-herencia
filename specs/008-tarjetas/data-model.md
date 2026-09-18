@@ -74,7 +74,7 @@ Columnas reales no expuestas en v1 (no confirmado si ya están incluidas en `Imp
 
 | Campo (API) | Columna real | Tipo | Obligatorio | Notas |
 |---|---|---|---|---|
-| idCuota | IdAuto (PK real) | smallint | — (generado) | `IdCuotaTarjeta` (nvarchar(15)) es un label de texto, no la clave — no usar. |
+| idCuota | IdAuto (PK real) | smallint | — (generado) | **No es identity** (confirmado con `COLUMNPROPERTY(...,'IsIdentity')` durante la implementación) — se genera a mano con `MAX(IdAuto)+1`, igual que hacía Access. `IdCuotaTarjeta` (nvarchar(15)) es un label de texto sin uso como clave, pero tiene un índice único real no filtrado — no puede quedar en NULL en una fila nueva; se genera como `'CUOT' + IdAuto` (patrón real confirmado contra los 183 valores existentes). |
 | idPagoTarjeta | IdPagoTarjeta | int | Sí (FK real, aunque solo declarada como constraint residual de backup — ver research.md §2) | |
 | numeroCuota | [Cuota nro] | int | Sí | |
 | fechaVencimiento | [Fecha Vencimiento] | datetime | Sí | |

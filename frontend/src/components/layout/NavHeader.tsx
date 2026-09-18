@@ -82,6 +82,7 @@ const NAV_ITEMS: NavItem[] = [
     submenu: [
       { href: "/finanzas/tesoreria", label: "Tesorería" },
       { href: "/finanzas/cuentas-corrientes", label: "Cuentas corrientes" },
+      { href: "/finanzas/tarjetas", label: "Tarjetas" },
       { href: "/finanzas/impuestos", label: "Impuestos y retenciones" },
       { href: "/finanzas/arrendamientos", label: "Arrendamientos" },
     ],
