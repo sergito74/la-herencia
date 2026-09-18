@@ -259,8 +259,14 @@ export default function ResumenDetallePage() {
   function invalidar() {
     refetch();
     if (data) {
-      queryClient.invalidateQueries({ queryKey: ["tarjeta-movimientos", data.idTarjeta] });
-      queryClient.invalidateQueries({ queryKey: ["tarjeta-pagos-candidatos", data.idTarjeta] });
+      // `refetchType: "all"` fuerza el refetch ya mismo aunque la cuenta
+      // corriente de la tarjeta no esté montada en este momento — con el
+      // default ("active"), React Query solo la marca vieja y espera a
+      // que alguien vuelva a abrirla, y ese refetch en el remount no
+      // siempre se disparaba a tiempo (el semáforo quedaba desactualizado
+      // hasta un refresh manual, feedback 2026-09-21).
+      queryClient.invalidateQueries({ queryKey: ["tarjeta-movimientos", data.idTarjeta], refetchType: "all" });
+      queryClient.invalidateQueries({ queryKey: ["tarjeta-pagos-candidatos", data.idTarjeta], refetchType: "all" });
     }
   }
 

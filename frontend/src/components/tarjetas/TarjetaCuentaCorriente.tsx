@@ -74,6 +74,11 @@ export function TarjetaCuentaCorriente({ idTarjeta }: { idTarjeta: number }) {
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ["tarjeta-movimientos", idTarjeta],
     queryFn: () => fetchMovimientosTarjeta(idTarjeta),
+    // El estado de conciliación se edita desde otra pantalla (el detalle
+    // de cada resumen) — refrescar siempre al volver acá, no confiar en
+    // que la invalidación haya alcanzado a esta consulta a tiempo
+    // (feedback 2026-09-21: el semáforo quedaba desactualizado).
+    refetchOnMount: "always",
   });
 
   if (isLoading) return <LoadingState />;
