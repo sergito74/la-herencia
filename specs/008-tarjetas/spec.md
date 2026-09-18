@@ -8,6 +8,13 @@
 
 **Input**: User description: "Módulo Tarjetas (008-tarjetas): migración del módulo de tarjetas de crédito de Access a la web app, escribiendo exclusivamente contra la DB de trabajo `WC`. Alcance: catálogo de tarjetas (solo lectura), cuenta corriente por tarjeta (resolviendo el origen 'Tarjetas' hoy fuera de alcance en Cuentas Corrientes), compras en cuotas con tarjeta (con generación automática de cuotas), y resúmenes de tarjeta con sus líneas de consumo. Fuera de alcance: conciliación automática línea↔cuota y distribución de una línea entre varios contactos — ambas features del esquema real tienen 0 filas en producción, nunca se usaron."
 
+## Clarifications
+
+### Session 2026-09-18
+
+- Q: Cuando se edita una compra en cuotas cambiando el importe total o la cantidad de cuotas, y algunas cuotas ya están marcadas como cobradas, ¿qué debe hacer el sistema con el cronograma existente? → A: Regenerar todo el cronograma (mismo criterio de PUT que Compras/Ventas — reemplaza todo); si alguna cuota ya estaba cobrada, ese estado se pierde y hay que volver a marcarla.
+- Q: El listado de compras en cuotas (FR-006), ¿debe mostrar todo por defecto o quedar vacío hasta aplicar un filtro, como ya hacen Resúmenes/Compras/Ventas/Contactos? → A: Vacío hasta aplicar al menos un filtro, mismo criterio que el resto de los listados ya migrados.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Consultar resúmenes de tarjeta y sus consumos (Priority: P1)
@@ -84,6 +91,7 @@ Un usuario necesita ver qué tarjetas existen en el sistema y cuáles están act
 - Dos resúmenes de la misma tarjeta con el mismo código de resumen (posible reimportación) — el sistema debe advertir, no bloquear (mismo criterio que otros módulos: FR-009a/FR-012a de Ventas de Hacienda/Granos).
 - Una tarjeta inactiva con movimientos históricos sigue siendo consultable en su cuenta corriente y en resúmenes ya cargados, aunque no se pueda usar para cargar nuevos.
 - El cronograma automático de cuotas (FR-005) asume financiación sin interés — no reproduce el patrón de cuotas de importe creciente que existe en 8 de las 18 compras en cuotas históricas reales (financiación con interés bancario cargada manualmente en su momento). Esas compras históricas solo se leen, nunca se regeneran.
+- Editar una compra en cuotas que cambia el importe total o la cantidad de cuotas regenera todo el cronograma (FR-007a) — cualquier cuota que ya estuviera marcada como cobrada pierde ese estado y debe volver a marcarse.
 
 ## Requirements *(mandatory)*
 
@@ -94,8 +102,9 @@ Un usuario necesita ver qué tarjetas existen en el sistema y cuáles están act
 - **FR-003**: El sistema DEBE resolver un movimiento de cuenta corriente con origen "Tarjetas" (un cargo de resumen) a un destino navegable: el resumen de tarjeta que lo originó, en vez de mostrarlo como "fuera de alcance". Esta rama de origen no existe hoy en la vista de movimientos de Cuentas Corrientes — hay que agregarla (research.md).
 - **FR-004**: El sistema DEBE permitir cargar una compra en cuotas (fecha, contacto, número de comprobante, importe total, cantidad de cuotas). La compra en cuotas **no está vinculada a una tarjeta específica** en el esquema real (`dbo.[Tarjetas de Credito]` no tiene columna que la relacione con el catálogo `Tarjetas`) — es un financiamiento del contacto, sin selector de tarjeta.
 - **FR-005**: Al guardar una compra en cuotas, el sistema DEBE generar automáticamente el cronograma de cuotas (una cuota por mes desde la fecha de compra), dividiendo el importe total en partes iguales y ajustando la diferencia de redondeo en la última cuota. Esta fórmula asume financiación sin interés (cuota fija); no reproduce el patrón de cuotas crecientes que existe en el histórico real de compras cargadas con interés del banco (ver Assumptions).
-- **FR-006**: El sistema DEBE permitir buscar y listar las compras en cuotas cargadas, por contacto y rango de fechas.
+- **FR-006**: El sistema DEBE permitir buscar y listar las compras en cuotas cargadas, por contacto y rango de fechas, sin mostrar nada hasta que se aplique al menos un filtro (mismo criterio que FR-010 y el resto de los listados ya migrados — Compras/Ventas/Contactos/Resúmenes).
 - **FR-007**: El sistema DEBE permitir marcar una cuota individual como cobrada o no cobrada.
+- **FR-007a**: Al editar una compra en cuotas cambiando el importe total o la cantidad de cuotas, el sistema DEBE regenerar el cronograma completo de cuotas (mismo criterio de reemplazo total que usa el PUT de Compras/Ventas). Si alguna cuota ya estaba marcada como cobrada, ese estado se pierde y debe volver a marcarse manualmente — no hay una regla de preservación o bloqueo especial para este caso.
 - **FR-008**: El sistema DEBE permitir cargar un resumen de tarjeta (tarjeta, código de resumen, fecha de cierre, fecha de vencimiento, y los cargos/impuestos de cabecera: Impuesto de Sellos, Gastos de Administración, Mantenimiento de Cuenta, Renovación Anual, Promoción BNA, Crédito Contingente, Interés de Financiación, Interés Compensatorio, IVA 10,5%, Percepción IVA 10,5%, IVA 21%, Percepción IVA 21%, Percepción IIBB, Ajuste de Resumen Anterior) junto con sus líneas de consumo (fecha de compra, detalle, importe, fecha de vencimiento de la compra, contacto opcional, número de documento opcional).
 - **FR-009**: El sistema DEBE permitir cargar un resumen sin líneas de consumo ("solo cabecera"), sin exigir al menos una línea.
 - **FR-010**: El sistema DEBE permitir buscar y listar los resúmenes cargados, por tarjeta y rango de fechas de cierre/vencimiento, sin mostrar nada hasta que se aplique al menos un filtro (mismo criterio ya usado en Compras/Ventas/Contactos).

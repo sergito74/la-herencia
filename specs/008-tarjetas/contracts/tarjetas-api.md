@@ -93,7 +93,7 @@ Mismo contrato que `compras/{id}/lock` (006): `{ lockToken, force? }` → 200 `{
 
 ### GET /api/tarjetas-cuotas — Búsqueda de compras en cuotas
 
-Filtros: `idContacto`, `fechaDesde`/`fechaHasta` (sin filtro por tarjeta — FR-006, la compra en cuotas no está vinculada a una tarjeta del catálogo, ver data-model.md). Response paginado: `{ items: [{ idPagoTarjeta, contacto, fecha, nroComprobante, cantidadCuotas, cuotasCobradas, cuotasPendientes }], page, pageSize, total }`.
+Sin resultados hasta aplicar al menos un filtro (FR-006, mismo criterio que Resúmenes/Compras/Ventas/Contactos). Filtros: `idContacto`, `fechaDesde`/`fechaHasta` (sin filtro por tarjeta — la compra en cuotas no está vinculada a una tarjeta del catálogo, ver data-model.md). Response paginado: `{ items: [{ idPagoTarjeta, contacto, fecha, nroComprobante, cantidadCuotas, cuotasCobradas, cuotasPendientes }], page, pageSize, total }`.
 
 ### GET /api/tarjetas-cuotas/{idPagoTarjeta} — Detalle con cronograma
 
@@ -119,7 +119,7 @@ Al guardar, genera automáticamente 6 filas en `Cuotas Tarjetas de Credito` con 
 
 ### PUT /api/tarjetas-cuotas/{idPagoTarjeta} — Editar (requiere `X-Lock-Token`)
 
-Mismo body que el alta — regenera el cronograma completo (reemplaza todas las cuotas, pierde el estado `cobrado` de las cuotas anteriores si cambia `importeTotal`/`cantidadCuotas`; si solo se edita `fecha`/`nroComprobante`/`idContacto` sin tocar `importeTotal`/`cantidadCuotas`, el cronograma no se regenera — a definir en implementación con un test de contrato explícito para ambos casos).
+Mismo body que el alta. Regenera el cronograma completo siempre, sin excepción (Clarifications, 2026-09-18): reemplaza todas las cuotas con la fórmula de data-model.md, incluso si solo cambió `fecha`/`nroComprobante`/`idContacto` sin tocar `importeTotal`/`cantidadCuotas` — mismo criterio simple de "PUT reemplaza todo" que Compras/Ventas, sin lógica condicional. Cualquier cuota que ya estuviera marcada `cobrado=true` pierde ese estado y debe volver a marcarse (FR-007a).
 
 ### DELETE /api/tarjetas-cuotas/{idPagoTarjeta} — Eliminar (requiere `X-Lock-Token`)
 
