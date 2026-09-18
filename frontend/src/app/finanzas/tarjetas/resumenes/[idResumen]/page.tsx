@@ -22,6 +22,18 @@ import { filterInputClass } from "@/components/ui/FilterBar";
 import { ErrorState, LoadingState } from "@/components/ui/States";
 import { useToast } from "@/components/ui/Toast";
 
+function Semaforo({ ok, label }: { ok: boolean; label: string }) {
+  return (
+    <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
+      <span
+        aria-hidden
+        className={`inline-block h-2.5 w-2.5 shrink-0 rounded-full ${ok ? "bg-status-success" : "bg-status-danger"}`}
+      />
+      <span className={ok ? "text-status-success" : "text-status-danger"}>{label}</span>
+    </span>
+  );
+}
+
 const CARGOS: [string, string][] = [
   ["impuestoSellos", "Impuesto de Sellos"],
   ["gastosAdmin", "Gastos de Administración"],
@@ -180,7 +192,10 @@ function LineaConsumoRow({ linea, onChanged }: { linea: LineaConsumo; onChanged:
         <td className="py-1">{linea.detalle}</td>
         <td className="py-1 text-right font-data">{formatMoneda(linea.importe)}</td>
         <td className="py-1">
-          {linea.comprasVinculadas.length === 0 && <span className="text-ink-secondary">Sin vincular</span>}
+          <Semaforo
+            ok={linea.comprasVinculadas.length > 0}
+            label={linea.comprasVinculadas.length === 0 ? "Sin vincular" : "Vinculada"}
+          />
           {linea.comprasVinculadas.map((v) => (
             <div key={v.idVinculo} className="flex items-center gap-1">
               <span>
@@ -291,16 +306,8 @@ export default function ResumenDetallePage() {
             <h1 className="text-base font-semibold">
               Resumen {data.codigo} — {data.tarjeta}
             </h1>
-            <div className="flex items-center gap-2">
-              <span
-                className={
-                  conciliado
-                    ? "rounded-full bg-status-success-bg px-2 py-0.5 text-xs text-status-success"
-                    : "rounded-full bg-status-warning-bg px-2 py-0.5 text-xs text-status-warning"
-                }
-              >
-                {conciliado ? "Pago conciliado" : "Falta conciliar el pago"}
-              </span>
+            <div className="flex items-center gap-3">
+              <Semaforo ok={conciliado} label={conciliado ? "Pago conciliado" : "Falta conciliar el pago"} />
               <Link href={`/finanzas/tarjetas/resumenes/${idResumen}/editar`} className="text-sm text-finance underline">
                 Editar
               </Link>

@@ -13,6 +13,18 @@ import { FilterBar, FilterField, FilterSubmitButton, filterInputClass } from "@/
 import { EmptyState, ErrorState, LoadingState } from "@/components/ui/States";
 import type { ResumenListItem } from "@/services/tarjetasResumenesApi";
 
+function Semaforo({ ok, label }: { ok: boolean; label: string }) {
+  return (
+    <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
+      <span
+        aria-hidden
+        className={`inline-block h-2.5 w-2.5 shrink-0 rounded-full ${ok ? "bg-status-success" : "bg-status-danger"}`}
+      />
+      <span className={ok ? "text-status-success" : "text-status-danger"}>{label}</span>
+    </span>
+  );
+}
+
 const COLUMNS: DataTableColumn<ResumenListItem>[] = [
   {
     key: "fechaCierre",
@@ -30,22 +42,19 @@ const COLUMNS: DataTableColumn<ResumenListItem>[] = [
   {
     key: "pagoConciliado",
     header: "Pago",
-    render: (r) => (
-      <span className={r.pagoConciliado ? "text-status-success" : "text-status-warning"}>
-        {r.pagoConciliado ? "Conciliado" : "Pendiente"}
-      </span>
-    ),
+    render: (r) => <Semaforo ok={r.pagoConciliado} label={r.pagoConciliado ? "Conciliado" : "Pendiente"} />,
   },
   {
     key: "consumosConciliados",
     header: "Consumos",
     render: (r) =>
       r.lineasTotal === 0 ? (
-        <span className="text-ink-secondary">Solo cabecera</span>
+        <Semaforo ok label="Solo cabecera" />
       ) : (
-        <span className={r.lineasVinculadas === r.lineasTotal ? "text-status-success" : "text-status-warning"}>
-          {r.lineasVinculadas}/{r.lineasTotal} vinculados
-        </span>
+        <Semaforo
+          ok={r.lineasVinculadas === r.lineasTotal}
+          label={`${r.lineasVinculadas}/${r.lineasTotal} vinculados`}
+        />
       ),
   },
   {
