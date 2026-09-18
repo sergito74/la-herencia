@@ -14,6 +14,7 @@ from itertools import combinations
 
 from src.db.connection import fetch_all, fetch_one
 from src.features.tarjetas_resumenes.repository import (
+    TOLERANCIA_CONCILIACION,
     calcular_total,
     get_lineas,
     get_pagos,
@@ -69,10 +70,14 @@ def get_movimientos(id_tarjeta: int) -> list[dict]:
             (resumen["idResumen"],),
         )
         pagado = sum(float(p["importe"]) for p in pagos)
+        diferencia_redondeo = round(total - pagado, 2)
         lineas_vinculadas = sum(1 for l in lineas if l.get("comprasVinculadas"))
         # Estado de conciliación por resumen — para que la cuenta corriente
         # de la tarjeta lo muestre de un vistazo, sin entrar resumen por
-        # resumen (feedback 2026-09-21).
+        # resumen (feedback 2026-09-21). Tolerancia de redondeo justificada
+        # en `TOLERANCIA_CONCILIACION` (análisis del especialista
+        # financiero contra los 293 resúmenes reales) — la diferencia nunca
+        # se oculta, se expone en `diferenciaRedondeo` con signo.
         eventos.append(
             {
                 "idResumen": resumen["idResumen"],
@@ -81,7 +86,8 @@ def get_movimientos(id_tarjeta: int) -> list[dict]:
                 "origen": "Resumen",
                 "deuda": total if total > 0 else 0.0,
                 "credito": -total if total < 0 else 0.0,
-                "pagoConciliado": pagado >= total - 0.02,
+                "pagoConciliado": diferencia_redondeo <= TOLERANCIA_CONCILIACION,
+                "diferenciaRedondeo": diferencia_redondeo,
                 "lineasTotal": len(lineas),
                 "lineasVinculadas": lineas_vinculadas,
             }
@@ -96,6 +102,7 @@ def get_movimientos(id_tarjeta: int) -> list[dict]:
                     "deuda": 0.0,
                     "credito": float(pago["importe"]),
                     "pagoConciliado": None,
+                    "diferenciaRedondeo": None,
                     "lineasTotal": None,
                     "lineasVinculadas": None,
                 }

@@ -117,6 +117,12 @@ class ResumenListItem(BaseModel):
     totalCalculado: float
     soloCabecera: bool
     pagoConciliado: bool
+    # totalCalculado - pagado, con signo — positiva: falta pagar esa
+    # diferencia; negativa: sobre-pago. Dentro de ±0.10 se considera
+    # ruido de redondeo (research: 293 resúmenes reales, ver
+    # TOLERANCIA_CONCILIACION en repository.py), pero se expone siempre,
+    # nunca se oculta silenciosamente (trazabilidad financiera).
+    diferenciaRedondeo: float
     lineasTotal: int
     lineasVinculadas: int
 

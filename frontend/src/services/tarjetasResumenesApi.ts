@@ -81,6 +81,8 @@ export interface ResumenListItem {
   totalCalculado: number;
   soloCabecera: boolean;
   pagoConciliado: boolean;
+  /** totalCalculado - pagado, con signo — nunca oculta (ver research.md, tolerancia $0.10). */
+  diferenciaRedondeo: number;
   lineasTotal: number;
   lineasVinculadas: number;
 }

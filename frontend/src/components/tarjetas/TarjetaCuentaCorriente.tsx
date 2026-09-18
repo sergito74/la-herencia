@@ -9,6 +9,21 @@ import { DataTable, type DataTableColumn } from "@/components/ui/DataTable";
 import { ErrorState, LoadingState } from "@/components/ui/States";
 import type { MovimientoTarjeta } from "@/services/tarjetasApi";
 
+/** Nunca oculta la diferencia real, aunque esté dentro de la tolerancia
+ * de redondeo ($0.10 fijo — research.md, análisis del especialista
+ * financiero contra los 293 resúmenes reales). */
+function labelPago(conciliado: boolean, diferenciaRedondeo: number): string {
+  if (diferenciaRedondeo === 0) return "Conciliado";
+  if (conciliado) {
+    return diferenciaRedondeo > 0
+      ? `Conciliado (ajuste ${formatMoneda(diferenciaRedondeo)})`
+      : `Conciliado (sobre-pago ${formatMoneda(Math.abs(diferenciaRedondeo))})`;
+  }
+  return diferenciaRedondeo > 0
+    ? `Pendiente ${formatMoneda(diferenciaRedondeo)}`
+    : `Sobre-pago ${formatMoneda(Math.abs(diferenciaRedondeo))}`;
+}
+
 function Semaforo({ ok, label }: { ok: boolean; label: string }) {
   return (
     <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
@@ -48,10 +63,10 @@ const COLUMNS: DataTableColumn<MovimientoTarjeta>[] = [
     key: "pagoConciliado",
     header: "Pago",
     render: (m) =>
-      m.origen === "Pago" || m.pagoConciliado == null ? (
+      m.origen === "Pago" || m.pagoConciliado == null || m.diferenciaRedondeo == null ? (
         "—"
       ) : (
-        <Semaforo ok={m.pagoConciliado} label={m.pagoConciliado ? "Conciliado" : "Pendiente"} />
+        <Semaforo ok={m.pagoConciliado} label={labelPago(m.pagoConciliado, m.diferenciaRedondeo)} />
       ),
   },
   {

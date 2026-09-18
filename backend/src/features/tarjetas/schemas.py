@@ -28,6 +28,10 @@ class MovimientoTarjeta(BaseModel):
     # — en `origen="Pago"` van en `None`, no aplica) — para que la cuenta
     # corriente de la tarjeta lo muestre de un vistazo (feedback 2026-09-21).
     pagoConciliado: bool | None = None
+    # totalCalculado - pagado, con signo (positiva: falta pagar esa
+    # diferencia; negativa: sobre-pago) — nunca se oculta, aunque esté
+    # dentro de la tolerancia de redondeo (trazabilidad financiera).
+    diferenciaRedondeo: float | None = None
     lineasTotal: int | None = None
     lineasVinculadas: int | None = None
 

@@ -294,8 +294,27 @@ export default function ResumenDetallePage() {
     }
   }
 
+  // Tolerancia $0.10 fija (no proporcional): la fórmula suma 14 cargos +
+  // N líneas, cada uno redondeado por separado en su origen — el ruido
+  // depende de CUÁNTOS términos se suman, no de cuánto suman. Medido
+  // contra los 293 resúmenes reales: máximo real observado $0.03, sin
+  // ningún caso entre $0.05 y $0.50 (análisis del especialista
+  // financiero, feedback 2026-09-21). La diferencia nunca se oculta —
+  // se muestra siempre, aunque esté dentro de tolerancia.
+  const TOLERANCIA_CONCILIACION = 0.1;
   const totalPagado = data?.pagos.reduce((acc, p) => acc + p.importe, 0) ?? 0;
-  const conciliado = data != null && totalPagado >= data.totalCalculado - 0.02;
+  const diferenciaRedondeo = data ? Math.round((data.totalCalculado - totalPagado) * 100) / 100 : 0;
+  const conciliado = data != null && diferenciaRedondeo <= TOLERANCIA_CONCILIACION;
+  const estadoLabel =
+    diferenciaRedondeo === 0
+      ? "Pago conciliado"
+      : conciliado
+        ? diferenciaRedondeo > 0
+          ? `Conciliado — ajuste de redondeo ${formatMoneda(diferenciaRedondeo)}`
+          : `Conciliado — sobre-pago ${formatMoneda(Math.abs(diferenciaRedondeo))}`
+        : diferenciaRedondeo > 0
+          ? `Falta conciliar ${formatMoneda(diferenciaRedondeo)}`
+          : `Sobre-pago ${formatMoneda(Math.abs(diferenciaRedondeo))}`;
 
   return (
     <main className="mx-auto max-w-none px-8 py-3">
@@ -313,7 +332,7 @@ export default function ResumenDetallePage() {
               Resumen {data.codigo} — {data.tarjeta}
             </h1>
             <div className="flex items-center gap-3">
-              <Semaforo ok={conciliado} label={conciliado ? "Pago conciliado" : "Falta conciliar el pago"} />
+              <Semaforo ok={conciliado} label={estadoLabel} />
               <Link href={`/finanzas/tarjetas/resumenes/${idResumen}/editar`} className="text-sm text-finance underline">
                 Editar
               </Link>

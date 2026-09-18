@@ -84,6 +84,7 @@ async def test_list_resumenes_con_filtro_devuelve_resultados(client, monkeypatch
                     "totalCalculado": 45230.50,
                     "soloCabecera": False,
                     "pagoConciliado": True,
+                    "diferenciaRedondeo": 0.0,
                     "lineasTotal": 3,
                     "lineasVinculadas": 3,
                 }
@@ -610,3 +611,53 @@ def test_auto_vincular_pago_no_reintenta_si_ya_tiene_pago(monkeypatch):
     )
 
     assert _auto_vincular_pago_real(426) is False
+
+
+# --- Tolerancia de conciliación (feedback 2026-09-21, caso real IdResumen=430: diferencia $0.03) ---
+
+
+def test_search_resumenes_diferencia_dentro_de_tolerancia_es_conciliado(monkeypatch):
+    """Caso real reportado por el usuario: total $45410.88, pago $45410.85
+    (diferencia $0.03) — debe marcarse conciliado, con la diferencia
+    expuesta, no oculta."""
+    monkeypatch.setattr(
+        repository,
+        "fetch_all",
+        lambda sql, params=(): (
+            [{"total": 1}]
+            if "COUNT" in sql
+            else [{"idResumen": 430, "idTarjeta": 4, "tarjeta": "Visa Galicia", "codigo": "507261", "fechaCierre": "2021-10-28", "fechaVencimiento": "2021-11-08"}]
+        ),
+    )
+    monkeypatch.setattr(repository, "auto_vincular_compras", lambda id_resumen: 0)
+    monkeypatch.setattr(repository, "get_resumen_detalle", lambda id_resumen: {"impuestoSellos": 45410.88})
+    monkeypatch.setattr(repository, "get_lineas", lambda id_resumen: [])
+    monkeypatch.setattr(repository, "calcular_total", lambda cab, lin: 45410.88)
+    monkeypatch.setattr(repository, "get_pagos", lambda id_resumen: [{"importe": 45410.85}])
+
+    items, _total = repository.search_resumenes(4, None, None, None, None, 1, 50)
+
+    assert items[0]["pagoConciliado"] is True
+    assert items[0]["diferenciaRedondeo"] == 0.03
+
+
+def test_search_resumenes_diferencia_fuera_de_tolerancia_es_pendiente(monkeypatch):
+    monkeypatch.setattr(
+        repository,
+        "fetch_all",
+        lambda sql, params=(): (
+            [{"total": 1}]
+            if "COUNT" in sql
+            else [{"idResumen": 1, "idTarjeta": 4, "tarjeta": "Visa Galicia", "codigo": "X", "fechaCierre": "2021-10-28", "fechaVencimiento": "2021-11-08"}]
+        ),
+    )
+    monkeypatch.setattr(repository, "auto_vincular_compras", lambda id_resumen: 0)
+    monkeypatch.setattr(repository, "get_resumen_detalle", lambda id_resumen: {"impuestoSellos": 1000.0})
+    monkeypatch.setattr(repository, "get_lineas", lambda id_resumen: [])
+    monkeypatch.setattr(repository, "calcular_total", lambda cab, lin: 1000.0)
+    monkeypatch.setattr(repository, "get_pagos", lambda id_resumen: [{"importe": 999.5}])  # diferencia $0.50
+
+    items, _total = repository.search_resumenes(4, None, None, None, None, 1, 50)
+
+    assert items[0]["pagoConciliado"] is False
+    assert items[0]["diferenciaRedondeo"] == 0.5

@@ -60,6 +60,20 @@ _CABECERA_COLUMNAS = [
 ]
 
 
+TOLERANCIA_CONCILIACION = 0.10
+"""Tolerancia de redondeo para marcar un resumen como conciliado
+(feedback del usuario 2026-09-21, análisis del especialista financiero).
+`totalCalculado` suma 14 cargos de cabecera + N líneas, cada uno ya
+redondeado a 2 decimales en su origen (resumen bancario) — esa
+acumulación de redondeos independientes genera una diferencia real y
+no evitable contra el pago real del banco. Medido contra los 293
+resúmenes reales: 170/188 pagados coinciden exacto, el resto difiere
+hasta $0.03 como máximo (no hay ningún caso real entre $0.05 y $0.50).
+$0.10 fijo (no proporcional al total — el ruido depende de CUÁNTOS
+términos se suman, no de CUÁNTO suman) cubre esos casos reales con
+margen y sigue detectando cualquier discrepancia real mayor."""
+
+
 def _f(value) -> float:
     """pyodbc devuelve `decimal.Decimal` para columnas decimal/money —
     sin este cast, sumarlas con floats literales rompe con TypeError."""
@@ -155,6 +169,7 @@ def search_resumenes(
         total_calculado = calcular_total(cabecera, lineas) if cabecera else 0.0
         lineas_vinculadas = sum(1 for l in lineas if l.get("comprasVinculadas"))
         pagado = sum(_f(p.get("importe")) for p in get_pagos(id_resumen))
+        diferencia_redondeo = round(total_calculado - pagado, 2)
         items.append(
             {
                 "idResumen": id_resumen,
@@ -165,7 +180,8 @@ def search_resumenes(
                 "fechaVencimiento": row["fechaVencimiento"],
                 "totalCalculado": total_calculado,
                 "soloCabecera": len(lineas) == 0,
-                "pagoConciliado": pagado >= total_calculado - 0.02,
+                "pagoConciliado": diferencia_redondeo <= TOLERANCIA_CONCILIACION,
+                "diferenciaRedondeo": diferencia_redondeo,
                 "lineasTotal": len(lineas),
                 "lineasVinculadas": lineas_vinculadas,
             }

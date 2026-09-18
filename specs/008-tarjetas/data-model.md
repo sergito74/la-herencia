@@ -160,6 +160,18 @@ Registra el pago de un resumen — confirmado que `Movimientos BNA`/`Movimientos
 
 **Campo calculado, cuenta corriente de tarjeta** (actualiza la sección "Movimiento de Cuenta Corriente de Tarjeta" de arriba): además del movimiento de deuda por resumen, se agrega un movimiento de crédito por cada fila de `Tarjetas_Resumenes_Pagos` de ese resumen, con la misma fecha del pago. Se intercalan por fecha antes de calcular `saldoAcumulado`.
 
+### Session 2026-09-21 (feedback "vinculé 2 pagos en Visa Galicia y siguen apareciendo como pendientes")
+
+**Tolerancia de conciliación: $0.10 fijo (antes $0.02), con la diferencia siempre expuesta, nunca oculta.** Caso real reportado: `IdResumen=430` (Visa Galicia), `totalCalculado=45410.88`, pago real vinculado `45410.85` — diferencia real de $0.03, mayor a la tolerancia original de $0.02, por eso el semáforo quedaba en rojo pese a estar efectivamente pagado.
+
+Consultado el especialista de dirección financiera (`.github/agents/07-financial-direction-specialist.agent.md`), que investigó contra los 293 resúmenes reales antes de recomendar nada:
+
+- De 188 resúmenes con al menos un pago vinculado: 170 (90,4%) coinciden exacto, 18 (9,6%) difieren hasta $0.03 — **no hay un solo caso real entre $0.05 y $0.50**. El máximo real observado es $0.03, muy por debajo del techo teórico de error acumulado (~$0.07 sumando 14 cargos redondeados independientemente a 2 decimales cada uno en su origen bancario).
+- La tolerancia debe ser un **monto fijo, no proporcional al total** — el ruido de redondeo depende de *cuántos* términos se suman (14 cargos + N líneas), no de *cuánto* suman; un resumen de $561.809 real difiere solo $0.01, uno de $45.410 difiere $0.03 — no correlaciona con el tamaño.
+- **La diferencia nunca debe ocultarse silenciosamente** (principio de trazabilidad financiera, COSO) — aunque el resumen se marque conciliado dentro de tolerancia, el monto de la diferencia se expone siempre (`diferenciaRedondeo`), distinguiendo explícitamente "ajuste por redondeo" (diferencia positiva, falta cobrar centavos) de "sobre-pago" (diferencia negativa, 4 casos reales de $0.01–$0.02) — nunca fundidos en el mismo verde silencioso.
+
+Implementado: `TOLERANCIA_CONCILIACION = 0.10` (constante en `tarjetas_resumenes/repository.py`, importada por `tarjetas/repository.py` para no duplicarla). Campo nuevo `diferenciaRedondeo` (= `totalCalculado - pagado`, con signo) en `ResumenListItem` y `MovimientoTarjeta` — `null` en las filas `origen="Pago"` de la cuenta corriente (no aplica). El frontend muestra el semáforo verde con la leyenda "Conciliado (ajuste $X)" o "Conciliado (sobre-pago $X)" cuando la diferencia es distinta de cero pero dentro de tolerancia, y "Pendiente $X" / "Sobre-pago $X" cuando la supera.
+
 ### Historia 3 (compras en cuotas): solo lectura
 
 Evidencia real: las 18 filas de `[Tarjetas de Credito]` van de julio 2013 a diciembre 2015, ninguna posterior — el mecanismo está abandonado hace una década. El mecanismo de financiación en cuotas vigente (AgroNacion, hoja "Compras" de `Listado Resumenes.xlsx`) es otro: cada cuota se factura como una línea de consumo repetida en el resumen mensual, con `CreditoContingente`/`InteresPagoDiferido` calculados por línea — campos que ya existían sin usar en `Tarjetas_Resumenes_Lineas` (research.md §2, marcados entonces como "no confirmado si se usan"; ahora confirmado con el Excel real). No se implementó ese mecanismo de financiación por línea en este alcance (fuera de lo pedido); solo se bajó la escritura del módulo obsoleto.

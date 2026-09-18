@@ -27,6 +27,7 @@ export interface MovimientoTarjeta {
   saldoAcumulado: number;
   /** Estado de conciliación del resumen — `null` en filas `origen="Pago"` (no aplica). */
   pagoConciliado: boolean | null;
+  diferenciaRedondeo: number | null;
   lineasTotal: number | null;
   lineasVinculadas: number | null;
 }
