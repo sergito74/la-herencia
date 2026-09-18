@@ -41,6 +41,9 @@ export interface Compra {
   proveedor: Proveedor | null;
   tipoDocumento: string | null;
   numeroDocumento: string | null;
+  /** Importe total del documento (`vw_Compras_ImporteDocumento`) — ver
+   * uso en el buscador manual de facturas de Tarjetas (008). */
+  importeDocumento: number | null;
 }
 
 export interface ComprasListResponse {

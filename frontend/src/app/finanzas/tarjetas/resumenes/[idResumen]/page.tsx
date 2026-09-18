@@ -80,7 +80,9 @@ function VincularCompraForm({
       setResultados(
         items.map((c) => ({
           idCompra: c.idCompra,
-          label: `${c.proveedor?.razonSocial ?? "—"} · ${c.tipoDocumento ?? ""} ${c.numeroDocumento ?? ""} (${c.fecha ?? "—"})`,
+          label: `${c.proveedor?.razonSocial ?? "—"} · ${c.tipoDocumento ?? ""} ${c.numeroDocumento ?? ""} (${c.fecha ?? "—"}) — ${
+            c.importeDocumento != null ? formatMoneda(c.importeDocumento) : "importe desconocido"
+          }`,
         }))
       );
     } finally {
@@ -269,6 +271,9 @@ export default function ResumenDetallePage() {
     }
   }
 
+  const totalPagado = data?.pagos.reduce((acc, p) => acc + p.importe, 0) ?? 0;
+  const conciliado = data != null && totalPagado >= data.totalCalculado - 0.02;
+
   return (
     <main className="mx-auto max-w-none px-8 py-3">
       <button type="button" onClick={() => router.back()} className="text-sm text-finance underline">
@@ -284,9 +289,20 @@ export default function ResumenDetallePage() {
             <h1 className="text-base font-semibold">
               Resumen {data.codigo} — {data.tarjeta}
             </h1>
-            <Link href={`/finanzas/tarjetas/resumenes/${idResumen}/editar`} className="text-sm text-finance underline">
-              Editar
-            </Link>
+            <div className="flex items-center gap-2">
+              <span
+                className={
+                  conciliado
+                    ? "rounded-full bg-status-success-bg px-2 py-0.5 text-xs text-status-success"
+                    : "rounded-full bg-status-warning-bg px-2 py-0.5 text-xs text-status-warning"
+                }
+              >
+                {conciliado ? "Pago conciliado" : "Falta conciliar el pago"}
+              </span>
+              <Link href={`/finanzas/tarjetas/resumenes/${idResumen}/editar`} className="text-sm text-finance underline">
+                Editar
+              </Link>
+            </div>
           </div>
           <p className="text-xs text-ink-secondary">
             Cierre: {data.fechaCierre} · Vencimiento: {data.fechaVencimiento}
@@ -372,7 +388,7 @@ export default function ResumenDetallePage() {
               </table>
             )}
 
-            {candidatos && candidatos.length > 0 && (
+            {!conciliado && candidatos && candidatos.length > 0 && (
               <div className="mt-2">
                 <h3 className="text-xs text-ink-secondary">
                   Movimientos bancarios candidatos (misma tarjeta, no vinculados todavía)

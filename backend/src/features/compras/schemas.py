@@ -28,6 +28,11 @@ class Compra(BaseModel):
     proveedor: Proveedor | None = None
     tipoDocumento: str | None = None
     numeroDocumento: str | None = None
+    # Importe total del documento (`vw_Compras_ImporteDocumento`, ya
+    # calculado en SQL Server) — usado, entre otros, para poder elegir a
+    # ojo entre varias compras candidatas al vincular manualmente el
+    # consumo de una tarjeta (008-tarjetas, feedback 2026-09-19).
+    importeDocumento: float | None = None
 
 
 class ComprasListResponse(BaseModel):

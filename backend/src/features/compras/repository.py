@@ -43,6 +43,7 @@ def _row_to_compra(row: dict) -> dict:
         else None,
         "tipoDocumento": row["tipoDocumento"],
         "numeroDocumento": row["numeroDocumento"],
+        "importeDocumento": row.get("importeDocumento"),
     }
 
 
@@ -157,9 +158,11 @@ def search_compras(
             c.IdContacto AS idContacto,
             c.[Razon Social] AS razonSocial,
             cmp.[Tipo documento] AS tipoDocumento,
-            cmp.[Nro Documento] AS numeroDocumento
+            cmp.[Nro Documento] AS numeroDocumento,
+            vw.ImporteDocumento AS importeDocumento
         FROM dbo.Compras cmp
         LEFT JOIN dbo.Contactos c ON c.IdContacto = cmp.IdContacto
+        LEFT JOIN dbo.vw_Compras_ImporteDocumento vw ON vw.IdDeuda = cmp.IdDeuda
         {where_sql}
         ORDER BY {order_by_sql}
         OFFSET ? ROWS FETCH NEXT ? ROWS ONLY
