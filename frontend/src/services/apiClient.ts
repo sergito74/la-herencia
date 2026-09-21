@@ -35,6 +35,12 @@ async function leerDetalleError(response: Response): Promise<string> {
   try {
     const parsed = JSON.parse(texto);
     if (typeof parsed?.detail === "string") return parsed.detail;
+    // Errores de validación de negocio: el backend devuelve una lista de mensajes.
+    if (Array.isArray(parsed?.detail)) {
+      return parsed.detail
+        .map((d: unknown) => (typeof d === "string" ? d : ((d as { msg?: string })?.msg ?? JSON.stringify(d))))
+        .join(" ");
+    }
   } catch {
     // No era JSON — se usa el texto crudo tal cual.
   }

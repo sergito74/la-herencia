@@ -85,11 +85,21 @@ export function CompraForm({
   idCompra,
   initial,
   proveedorNombreInicial,
+  prefill,
 }: {
   mode: "alta" | "edicion";
   idCompra?: number;
   initial?: CompraDetalleCompleto;
   proveedorNombreInicial?: string | null;
+  /** Datos para arrancar un alta con algo cargado (ej. desde la conciliación de tarjetas). */
+  prefill?: {
+    idContacto?: number | null;
+    proveedorNombre?: string | null;
+    fecha?: string;
+    numeroDocumento?: string;
+    detalle?: string;
+    importe?: number;
+  };
 }) {
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -101,16 +111,16 @@ export function CompraForm({
     staleTime: Infinity,
   });
 
-  const [idContacto, setIdContacto] = useState<number | null>(initial?.idContacto ?? null);
+  const [idContacto, setIdContacto] = useState<number | null>(initial?.idContacto ?? prefill?.idContacto ?? null);
   const [razonSocialProveedor, setRazonSocialProveedor] = useState<string | null>(
-    proveedorNombreInicial ?? null
+    proveedorNombreInicial ?? prefill?.proveedorNombre ?? null
   );
-  const [fecha, setFecha] = useState(initial?.fecha ?? "");
+  const [fecha, setFecha] = useState(initial?.fecha ?? prefill?.fecha ?? "");
   const [tipo, setTipo] = useState<TipoComprobante>(initial?.tipo ?? "A");
   const [tipoDocumento, setTipoDocumento] = useState<TipoDocumentoCompra>(
     initial?.tipoDocumento ?? "Factura"
   );
-  const [numeroDocumento, setNumeroDocumento] = useState(initial?.numeroDocumento ?? "");
+  const [numeroDocumento, setNumeroDocumento] = useState(initial?.numeroDocumento ?? prefill?.numeroDocumento ?? "");
   const [moneda, setMonedaState] = useState<MonedaCompra>(initial?.moneda ?? "Pesos");
   const [tipoDeCambio, setTipoDeCambio] = useState<number | null>(
     initial?.moneda === "Dolares" ? initial?.tipoDeCambio ?? null : 1
@@ -142,7 +152,18 @@ export function CompraForm({
       const relleno = Math.max(0, FILAS_INICIALES - iniciales.length);
       return [...iniciales, ...Array.from({ length: relleno }, () => ({ ...FILA_VACIA }))];
     }
-    return Array.from({ length: FILAS_INICIALES }, () => ({ ...FILA_VACIA }));
+    const vacias = Array.from({ length: FILAS_INICIALES }, () => ({ ...FILA_VACIA }));
+    if (prefill?.importe) {
+      // Una sola línea con el importe del consumo (sin IVA discriminado): el usuario la ajusta.
+      vacias[0] = {
+        ...vacias[0],
+        cantidad: "1",
+        productoServicio: prefill.detalle ?? "",
+        precioUnitario: numeroAEdicionLocal(prefill.importe),
+        iva: "0",
+      };
+    }
+    return vacias;
   });
 
   const [vencimientos, setVencimientos] = useState<VencimientoInput[]>(

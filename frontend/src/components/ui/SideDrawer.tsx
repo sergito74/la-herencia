@@ -9,11 +9,14 @@ export function SideDrawer({
   onClose,
   title,
   children,
+  maxWidthClass = "max-w-md",
 }: {
   open: boolean;
   onClose: () => void;
   title: string;
   children: React.ReactNode;
+  /** Ancho máximo del panel (clase de Tailwind), ej. "max-w-6xl" para paneles de trabajo. */
+  maxWidthClass?: string;
 }) {
   if (!open) return null;
 
@@ -24,7 +27,9 @@ export function SideDrawer({
         onClick={onClose}
         aria-hidden="true"
       />
-      <div className="absolute right-0 top-0 flex h-full w-full max-w-md flex-col overflow-y-auto border-l border-border bg-surface shadow-lg">
+      <div
+        className={`absolute right-0 top-0 flex h-full w-full ${maxWidthClass} flex-col overflow-y-auto border-l border-border bg-surface shadow-lg`}
+      >
         <div className="flex items-center justify-between border-b border-border px-4 py-3">
           <h2 className="font-semibold text-ink-primary">{title}</h2>
           <button

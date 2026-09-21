@@ -7,9 +7,10 @@ const TABS = [
   { href: "/finanzas/tarjetas", label: "Tarjetas" },
   { href: "/finanzas/tarjetas/resumenes", label: "Resúmenes" },
   { href: "/finanzas/tarjetas/compras-en-cuotas", label: "Compras en cuotas" },
+  { href: "/finanzas/tarjetas/conciliacion", label: "Conciliación" },
 ] as const;
 
-/** Sub-navegación entre las 3 secciones del módulo Tarjetas — antes solo
+/** Sub-navegación entre las secciones del módulo Tarjetas — antes solo
  * existía un link de nav global al catálogo, sin ningún camino visible
  * hacia Resúmenes ni Compras en cuotas (feedback 2026-09-21: "no hay un
  * link o botón que permita cargar un nuevo resumen" — el botón existía,

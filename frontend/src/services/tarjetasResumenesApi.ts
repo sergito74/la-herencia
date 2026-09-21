@@ -29,6 +29,11 @@ export interface CompraVinculada {
 export interface LineaConsumo extends LineaConsumoInput {
   idLineaConsumo: number | null;
   comprasVinculadas: CompraVinculada[];
+  /** "SinDocumento" | "DiferenciaAceptada" cuando se resolvió a mano (009). */
+  estadoLinea?: string | null;
+  motivoEstado?: string | null;
+  detalleEstado?: string | null;
+  importeDiferencia?: number | null;
 }
 
 export interface PagoResumen {
@@ -187,11 +192,13 @@ export interface DocumentoCandidato {
   proveedor: string | null;
   /** Cuántas otras líneas de consumo ya usan este documento (ej. cuotas). */
   vinculosPrevios: number;
+  /** Nota de crédito/débito que ajusta el tipo de cambio de una factura en dólares. */
+  ajustaTipoCambio: boolean;
 }
 
 export interface ConciliacionCalculo {
-  /** exacta: en pesos y dentro de $0,10 · aproximada: en dólares con TC implícito cercano al del documento · parcial: no cierra. */
-  estado: "exacta" | "aproximada" | "parcial";
+  /** exacta: cierra en pesos (±$0,10; ±$1 con dólares) · parcial: no cierra. */
+  estado: "exacta" | "parcial";
   diferencia: number;
   pagoParcial: boolean;
   tcImplicito: number | null;
@@ -204,11 +211,45 @@ export interface SugerenciaConciliacion extends ConciliacionCalculo {
   idsCompra: number[];
 }
 
+export interface LineaContexto {
+  idLineaConsumo: number;
+  idResumen: number;
+  resumenCodigo: string | null;
+  tarjeta: string | null;
+  fechaCompra: string | null;
+  detalle: string | null;
+  importe: number;
+  idContacto: number | null;
+  proveedor: string | null;
+  nroDocumento: string | null;
+  urlResumenOriginal: string | null;
+}
+
+export interface LineaHermana {
+  idLineaConsumo: number;
+  idResumen: number;
+  resumenCodigo: string | null;
+  fechaCompra: string | null;
+  detalle: string | null;
+  importe: number;
+}
+
+export interface EstadoLinea {
+  idLineaConsumo: number;
+  estado: string;
+  motivo: string;
+  detalle: string | null;
+  importeDiferencia: number | null;
+}
+
 export interface CandidatosLinea {
   idLineaConsumo: number;
   importeLinea: number;
   fechaLinea: string | null;
   idContacto: number | null;
+  linea: LineaContexto;
+  estado: EstadoLinea | null;
+  hermanas: LineaHermana[];
   documentos: DocumentoCandidato[];
   sugerencias: SugerenciaConciliacion[];
 }
@@ -227,6 +268,158 @@ export function fetchConciliacionPreview(idLineaConsumo: number, idsCompra: numb
   });
 }
 
-export function vincularComprasLote(idLineaConsumo: number, idsCompra: number[]): Promise<CompraVinculada[]> {
-  return apiPost<CompraVinculada[]>(`/api/tarjetas-resumenes/lineas/${idLineaConsumo}/compras/lote`, { idsCompra });
+export interface AceptarDiferencia {
+  motivo: string;
+  detalle?: string | null;
+}
+
+export function vincularComprasLote(
+  idLineaConsumo: number,
+  idsCompra: number[],
+  aceptarDiferencia?: AceptarDiferencia | null
+): Promise<CompraVinculada[]> {
+  return apiPost<CompraVinculada[]>(`/api/tarjetas-resumenes/lineas/${idLineaConsumo}/compras/lote`, {
+    idsCompra,
+    aceptarDiferencia: aceptarDiferencia ?? null,
+  });
+}
+
+export const MOTIVOS_DIFERENCIA: { value: string; label: string }[] = [
+  { value: "AjusteTipoCambioSinNota", label: "Ajuste de tipo de cambio sin nota" },
+  { value: "Redondeo", label: "Redondeo" },
+  { value: "Otro", label: "Otro (indicar detalle)" },
+];
+
+export const MOTIVOS_SIN_DOCUMENTO: { value: string; label: string }[] = [
+  { value: "Impuesto", label: "Impuesto" },
+  { value: "Interes", label: "Interés" },
+  { value: "CompraNoCargada", label: "Compra no cargada en el sistema" },
+  { value: "Otro", label: "Otro (indicar detalle)" },
+];
+
+export function etiquetaMotivo(motivo: string): string {
+  return [...MOTIVOS_DIFERENCIA, ...MOTIVOS_SIN_DOCUMENTO].find((m) => m.value === motivo)?.label ?? motivo;
+}
+
+export function marcarSinDocumento(idLineaConsumo: number, motivo: string, detalle?: string | null): Promise<void> {
+  return apiPost<void>(`/api/tarjetas-resumenes/lineas/${idLineaConsumo}/sin-documento`, {
+    motivo,
+    detalle: detalle ?? null,
+  });
+}
+
+export function quitarEstadoLinea(idLineaConsumo: number): Promise<void> {
+  return apiDelete(`/api/tarjetas-resumenes/lineas/${idLineaConsumo}/estado`);
+}
+
+export function buscarDocumentos(q: string): Promise<DocumentoCandidato[]> {
+  return apiGet<DocumentoCandidato[]>("/api/tarjetas-resumenes/documentos-buscar", { q });
+}
+
+// --- Bandeja de pendientes ---
+
+export interface DocumentoResumido {
+  idCompra: number;
+  tipoDocumento: string | null;
+  numeroDocumento: string | null;
+  moneda: string | null;
+  importeOriginal: number;
+  importePesos: number;
+  proveedor: string | null;
+}
+
+export interface LineaPendiente {
+  idLineaConsumo: number;
+  idResumen: number;
+  resumenCodigo: string | null;
+  idTarjeta: number;
+  tarjeta: string | null;
+  fechaCierre: string | null;
+  fechaCompra: string | null;
+  detalle: string | null;
+  importe: number;
+  idContacto: number | null;
+  proveedor: string | null;
+  nroDocumento: string | null;
+  urlResumenOriginal: string | null;
+  cantidadDocumentos: number;
+  sugerencia: { idsCompra: number[]; estado: string; unica: boolean; documentos: DocumentoResumido[] } | null;
+}
+
+export interface PendientesResponse {
+  items: LineaPendiente[];
+  page: number;
+  pageSize: number;
+  total: number;
+  totalConSugerencia: number;
+}
+
+export interface FiltrosPendientes {
+  idTarjeta?: string;
+  proveedor?: string;
+  fechaCierreDesde?: string;
+  fechaCierreHasta?: string;
+  soloConSugerencia?: boolean;
+  page: number;
+  pageSize: number;
+}
+
+export function fetchPendientes(f: FiltrosPendientes): Promise<PendientesResponse> {
+  return apiGet<PendientesResponse>("/api/tarjetas-resumenes/pendientes", {
+    idTarjeta: f.idTarjeta,
+    proveedor: f.proveedor,
+    fechaCierreDesde: f.fechaCierreDesde,
+    fechaCierreHasta: f.fechaCierreHasta,
+    soloConSugerencia: f.soloConSugerencia ? "true" : undefined,
+    page: f.page,
+    pageSize: f.pageSize,
+  });
+}
+
+export interface ExactaPropuesta {
+  idLineaConsumo: number;
+  resumenCodigo: string | null;
+  tarjeta: string | null;
+  fechaCompra: string | null;
+  detalle: string | null;
+  proveedor: string | null;
+  importe: number;
+  documentos: DocumentoResumido[];
+}
+
+export function fetchExactasPropuestas(): Promise<ExactaPropuesta[]> {
+  return apiGet<ExactaPropuesta[]>("/api/tarjetas-resumenes/pendientes/exactas");
+}
+
+export function aceptarExactas(idsLineas: number[]): Promise<{ aplicadas: number; omitidas: number[] }> {
+  return apiPost("/api/tarjetas-resumenes/pendientes/aceptar-exactas", { idsLineas });
+}
+
+// --- Reparto muchas líneas x muchos documentos ---
+
+export interface RepartoItem {
+  idLinea: number;
+  idCompra: number;
+  importe: number;
+}
+
+export interface RepartoPropuesta {
+  lineas: { idLinea: number; importe: number; fechaCompra: string | null }[];
+  documentos: DocumentoCandidato[];
+  reparto: RepartoItem[];
+  diferencias: Record<string, number>;
+}
+
+export function proponerReparto(idsLineas: number[], idsCompra: number[]): Promise<RepartoPropuesta> {
+  return apiPost<RepartoPropuesta>("/api/tarjetas-resumenes/lineas/reparto-propuesta", { idsLineas, idsCompra });
+}
+
+export function conciliarReparto(
+  reparto: RepartoItem[],
+  aceptarDiferencia?: AceptarDiferencia | null
+): Promise<{ lineas: number; vinculos: number }> {
+  return apiPost("/api/tarjetas-resumenes/lineas/conciliar-reparto", {
+    reparto,
+    aceptarDiferencia: aceptarDiferencia ?? null,
+  });
 }
