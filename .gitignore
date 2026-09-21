@@ -43,3 +43,6 @@ Thumbs.db
 # Local Claude Code session state (not project config)
 .claude/scheduled_tasks.lock
 .claude/worktrees/
+
+# Launcher runtime state
+launcher/.run/

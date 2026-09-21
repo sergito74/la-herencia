@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8"><title>La Herencia</title>
+<style>
+  body{margin:0;height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;
+       font-family:Segoe UI,system-ui,sans-serif;background:#f6f7f5;color:#1f3d2b}
+  .logo{width:72px;height:72px;border-radius:50%;background:#226e3e;color:#fff;display:grid;place-items:center;font-weight:700;font-size:28px}
+  h1{font-size:20px;margin:20px 0 6px} p{margin:0;color:#5b6b60;font-size:14px}
+  .bar{margin-top:22px;width:220px;height:4px;background:#dfe5e0;border-radius:2px;overflow:hidden}
+  .bar i{display:block;width:40%;height:100%;background:#226e3e;animation:m 1.2s ease-in-out infinite}
+  @keyframes m{0%{margin-left:-40%}100%{margin-left:100%}}
+</style></head><body>
+<div class="logo">LH</div><h1>Iniciando La Herencia…</h1><p id="msg">Un momento, se está preparando el sistema.</p>
+<div class="bar"><i></i></div>
+<script>
+  const ping = u => fetch(u, {mode:'no-cors', cache:'no-store'}).then(() => true, () => false);
+  const t0 = Date.now();
+  (async function loop() {
+    const [api, web] = await Promise.all([ping('http://127.0.0.1:8000/health'), ping('http://127.0.0.1:3000/')]);
+    if (api && web) { location.replace('http://localhost:3000/'); return; }
+    if (Date.now() - t0 > 120000) {
+      document.getElementById('msg').textContent = 'Está tardando demasiado. Cerrá esta ventana y volvé a abrir el acceso directo.';
+      return;
+    }
+    setTimeout(loop, 400);
+  })();
+</script></body></html>
