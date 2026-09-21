@@ -107,7 +107,7 @@ function Resultado({ calculo, importeLinea }: { calculo: ConciliacionCalculo; im
           {cierra
             ? "cierra"
             : calculo.pagoParcial
-              ? "pago parcial del documento"
+              ? `paga una parte del documento (el documento es de ${formatMoneda(importeLinea - calculo.diferencia)})`
               : `diferencia ${formatMoneda(calculo.diferencia)}`}
         </span>
       </div>
@@ -447,6 +447,14 @@ function ContenidoPanel({
                               Ajuste TC
                             </span>
                           )}
+                          {d.compraParticular < 0 && (
+                            <span
+                              className="ml-1 rounded-sm bg-surface-sunken px-1 text-ink-secondary"
+                              title={`Compra particular: la factura descuenta ${formatMoneda(-d.compraParticular)} y queda en $ 0 neto. Se muestra el importe bruto, que es lo que cobró la tarjeta.`}
+                            >
+                              Compra particular
+                            </span>
+                          )}
                           {d.proveedor && d.proveedor !== linea.proveedor && <span className="ml-1 text-ink-secondary">· {d.proveedor}</span>}
                           {d.vinculosPrevios > 0 && (
                             <span className="ml-1 text-ink-secondary" title="Ya está vinculado a otras líneas (ej. cuotas)">
@@ -523,7 +531,7 @@ function ContenidoPanel({
                       onClick={() => ejecutar(() => vincularComprasLote(idLineaConsumo, idsOrdenados), "Documentos vinculados.")}
                       className="rounded-sm bg-finance px-3 py-1 text-xs text-white hover:opacity-90 disabled:opacity-40"
                     >
-                      {preview.pagoParcial ? "Vincular como pago parcial (cuota)" : `Vincular ${seleccion.length}`}
+                      {preview.pagoParcial ? "Vincular como pago parcial" : `Vincular ${seleccion.length}`}
                     </button>
                   )}
                   {preview.estado === "parcial" && !preview.pagoParcial && (

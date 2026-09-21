@@ -177,6 +177,9 @@ class DocumentoCandidato(BaseModel):
     importePesos: float
     proveedor: str | None = None
     vinculosPrevios: int = 0
+    # Línea negativa de "compra particular" que deja la factura en ~$0 neto (el importe
+    # mostrado ya es el bruto, que es lo que cobró la tarjeta). Negativo o 0.
+    compraParticular: float = 0
     # Nota de crédito/débito que ajusta el tipo de cambio de una factura en dólares.
     ajustaTipoCambio: bool = False
 

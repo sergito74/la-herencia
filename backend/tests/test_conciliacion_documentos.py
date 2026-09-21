@@ -107,3 +107,11 @@ def test_repartir_con_nota_de_credito_y_factura_entre_dos_lineas():
 def test_repartir_informa_la_diferencia_cuando_no_alcanza():
     r = repartir([_lin(10, 1000.0)], [_doc(1, 400.0)])
     assert r["diferencias"] == {10: 600.0}
+
+
+def test_factura_de_compra_particular_concilia_por_su_importe_bruto():
+    # La factura trae una línea negativa de compra particular que la deja en $0 neto:
+    # el repositorio ya entrega el bruto, y con él la línea de la tarjeta cierra exacto.
+    doc = {**_doc(1, 69999.0), "compraParticular": -69999.0}
+    r = calcular_imputacion(69999.0, [doc])
+    assert r["estado"] == "exacta" and r["diferencia"] == 0

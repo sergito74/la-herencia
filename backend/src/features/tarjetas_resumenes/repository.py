@@ -297,14 +297,30 @@ def auto_vincular_compras(id_resumen: int) -> int:
     return creados
 
 
-_SELECT_DOCUMENTO = """
+# Compra particular: se compra a nombre de la empresa (con la tarjeta) algo personal y
+# la factura lleva una línea negativa ("Compra Particular", "Compra particular Sergio",
+# "Carne consumo particular"…) que la deja en $0 neto. Lo que cobró la tarjeta es el
+# importe BRUTO de la factura, así que para conciliar se suma de vuelta esa línea
+# (el neto de estas facturas es ~0 y quedaban fuera de todos los candidatos).
+_APLICA_PARTICULAR = """
+    OUTER APPLY (
+        SELECT ISNULL(SUM(dc.Cantidad * dc.[Precio Unitario] * (1 + ISNULL(dc.IVA, 0) / 100.0)), 0) AS cp
+        FROM dbo.Det_Compras dc
+        WHERE dc.IdCompra = w.IdDeuda AND dc.[Precio Unitario] < 0 AND dc.[Producto/Servicio] LIKE '%particular%'
+    ) pa
+"""
+_IMPORTE_BRUTO = "(w.ImporteDocumento - pa.cp)"
+_CON_IMPORTE = f"ABS({_IMPORTE_BRUTO}) >= 0.005"
+
+_SELECT_DOCUMENTO = f"""
     SELECT
         w.IdDeuda AS idCompra, w.Fecha AS fecha, w.[Tipo documento] AS tipoDocumento,
         w.[Nro Documento] AS numeroDocumento, w.Moneda AS moneda, w.[Tipo de Cambio] AS tipoDeCambio,
-        w.ImporteDocumento AS importeOriginal, c.[Razon Social] AS proveedor,
+        {_IMPORTE_BRUTO} AS importeOriginal, pa.cp AS compraParticular, c.[Razon Social] AS proveedor,
         cm.[Ajusta Tipo Cambio] AS ajustaTipoCambio, w.IdContacto AS idContacto
     FROM dbo.vw_Compras_ImporteDocumento w
     JOIN dbo.Compras cm ON cm.IdDeuda = w.IdDeuda
+    {_APLICA_PARTICULAR}
     LEFT JOIN dbo.Contactos c ON c.IdContacto = w.IdContacto
 """
 
@@ -315,6 +331,7 @@ def _documento_dict(row: dict) -> dict:
         "tipoDeCambio": _f(row["tipoDeCambio"]) if row.get("tipoDeCambio") is not None else None,
         "importeOriginal": _f(row["importeOriginal"]),
         "ajustaTipoCambio": bool(row.get("ajustaTipoCambio")),
+        "compraParticular": _f(row.get("compraParticular") or 0),
     }
     doc["importePesos"] = importe_pesos(doc)
     return doc
@@ -349,14 +366,15 @@ def get_documentos_candidatos(id_linea_consumo: int, id_contacto: int, fecha_lin
     sql = f"""
         SELECT TOP (?) w.IdDeuda AS idCompra, w.Fecha AS fecha, w.[Tipo documento] AS tipoDocumento,
             w.[Nro Documento] AS numeroDocumento, w.Moneda AS moneda, w.[Tipo de Cambio] AS tipoDeCambio,
-            w.ImporteDocumento AS importeOriginal, c.[Razon Social] AS proveedor,
+            {_IMPORTE_BRUTO} AS importeOriginal, pa.cp AS compraParticular, c.[Razon Social] AS proveedor,
             cm.[Ajusta Tipo Cambio] AS ajustaTipoCambio,
             (SELECT COUNT(*) FROM dbo.Tarjetas_Resumenes_Lineas_Compras v
               WHERE v.IdCompra = w.IdDeuda AND v.IdLineaConsumo <> ?) AS vinculosPrevios
         FROM dbo.vw_Compras_ImporteDocumento w
         JOIN dbo.Compras cm ON cm.IdDeuda = w.IdDeuda
+        {_APLICA_PARTICULAR}
         LEFT JOIN dbo.Contactos c ON c.IdContacto = w.IdContacto
-        WHERE w.IdContacto = ? AND ISNULL(w.ImporteDocumento, 0) <> 0
+        WHERE w.IdContacto = ? AND {_CON_IMPORTE}
           AND NOT EXISTS (
               SELECT 1 FROM dbo.Tarjetas_Resumenes_Lineas_Compras v2
               WHERE v2.IdCompra = w.IdDeuda AND v2.IdLineaConsumo = ?)
@@ -492,13 +510,14 @@ def buscar_documentos(texto: str, limite: int = 40) -> list[dict]:
     sql = f"""
         SELECT TOP (?) w.IdDeuda AS idCompra, w.Fecha AS fecha, w.[Tipo documento] AS tipoDocumento,
             w.[Nro Documento] AS numeroDocumento, w.Moneda AS moneda, w.[Tipo de Cambio] AS tipoDeCambio,
-            w.ImporteDocumento AS importeOriginal, c.[Razon Social] AS proveedor,
+            {_IMPORTE_BRUTO} AS importeOriginal, pa.cp AS compraParticular, c.[Razon Social] AS proveedor,
             cm.[Ajusta Tipo Cambio] AS ajustaTipoCambio,
             (SELECT COUNT(*) FROM dbo.Tarjetas_Resumenes_Lineas_Compras v WHERE v.IdCompra = w.IdDeuda) AS vinculosPrevios
         FROM dbo.vw_Compras_ImporteDocumento w
         JOIN dbo.Compras cm ON cm.IdDeuda = w.IdDeuda
+        {_APLICA_PARTICULAR}
         LEFT JOIN dbo.Contactos c ON c.IdContacto = w.IdContacto
-        WHERE ISNULL(w.ImporteDocumento, 0) <> 0
+        WHERE {_CON_IMPORTE}
           AND (c.[Razon Social] LIKE ? OR w.[Nro Documento] LIKE ?)
         ORDER BY w.Fecha DESC, w.IdDeuda DESC
     """
@@ -510,7 +529,7 @@ def get_documentos_de_contactos(ids_contacto: list[int]) -> dict[int, list[dict]
         return {}
     marcas = ",".join("?" for _ in ids_contacto)
     rows = fetch_all(
-        f"{_SELECT_DOCUMENTO} WHERE w.IdContacto IN ({marcas}) AND ISNULL(w.ImporteDocumento, 0) <> 0",
+        f"{_SELECT_DOCUMENTO} WHERE w.IdContacto IN ({marcas}) AND {_CON_IMPORTE}",
         tuple(ids_contacto),
     )
     por_contacto: dict[int, list[dict]] = {}

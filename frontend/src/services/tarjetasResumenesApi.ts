@@ -194,6 +194,8 @@ export interface DocumentoCandidato {
   vinculosPrevios: number;
   /** Nota de crédito/débito que ajusta el tipo de cambio de una factura en dólares. */
   ajustaTipoCambio: boolean;
+  /** Línea negativa de compra particular (≤ 0): el importe mostrado ya es el bruto. */
+  compraParticular: number;
 }
 
 export interface ConciliacionCalculo {
