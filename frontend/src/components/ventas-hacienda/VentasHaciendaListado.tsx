@@ -12,6 +12,7 @@ import { DataTable, type DataTableColumn } from "@/components/ui/DataTable";
 import { FilterBar, FilterSubmitButton } from "@/components/ui/FilterBar";
 import { SideDrawer } from "@/components/ui/SideDrawer";
 import { ErrorState, LoadingState } from "@/components/ui/States";
+import { formatMoneda, formatCantidad } from "@/lib/format";
 
 /**
  * Listado de ventas de hacienda: consignatario a nivel de venta, comprador
@@ -182,16 +183,16 @@ export function VentasHaciendaListado() {
                     </td>
                     <td className="py-1">{l.tipoHacienda ?? "—"}</td>
                     <td className="py-1 text-right font-data">
-                      {l.cantidad ?? "—"} {l.unidadMedida ?? ""}
+                      {l.cantidad != null ? formatCantidad(l.cantidad) : "—"} {l.unidadMedida ?? ""}
                     </td>
                     <td className="py-1 text-right font-data">
-                      {l.precioUnitarioA != null ? l.precioUnitarioA.toLocaleString("es-AR") : "—"}
+                      {l.precioUnitarioA != null ? formatMoneda(l.precioUnitarioA) : "—"}
                     </td>
                     <td className="py-1 text-right font-data">
-                      {l.precioUnitarioB != null ? l.precioUnitarioB.toLocaleString("es-AR") : "—"}
+                      {l.precioUnitarioB != null ? formatMoneda(l.precioUnitarioB) : "—"}
                     </td>
                     <td className="py-1 text-right font-data font-medium">
-                      {l.importe != null ? l.importe.toLocaleString("es-AR") : "—"}
+                      {l.importe != null ? formatMoneda(l.importe) : "—"}
                     </td>
                   </tr>
                 ))}

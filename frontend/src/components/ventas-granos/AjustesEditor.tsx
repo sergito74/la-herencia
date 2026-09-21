@@ -3,6 +3,7 @@
 import type { AjusteInput } from "@/services/ventasGranosApi";
 import { MoneyInput } from "@/components/ui/MoneyInput";
 import { filterInputClass } from "@/components/ui/FilterBar";
+import { NumberInput } from "@/components/ui/NumberInput";
 
 const FILA_VACIA: AjusteInput = { concepto: "", importe: 0, alicuotaIVA: 0 };
 
@@ -51,11 +52,11 @@ export function AjustesEditor({
               moneda="Pesos"
               onChange={(importe) => actualizar(i, { importe })}
             />
-            <input
-              type="number"
+            <NumberInput
               className={`${filterInputClass} w-20 px-1.5 py-0.5 text-right text-xs font-data`}
               value={a.alicuotaIVA ?? 0}
-              onChange={(e) => actualizar(i, { alicuotaIVA: Number(e.target.value) || 0 })}
+              onChange={(v) => actualizar(i, { alicuotaIVA: v ?? 0 })}
+              maxDecimales={2}
               title="Alícuota IVA (informativo)"
             />
             <button

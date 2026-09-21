@@ -26,6 +26,7 @@ import { filterInputClass } from "@/components/ui/FilterBar";
 import { useToast } from "@/components/ui/Toast";
 import { AjustesEditor } from "@/components/ventas-granos/AjustesEditor";
 import { DeduccionesEditor } from "@/components/ventas-granos/DeduccionesEditor";
+import { NumberInput } from "@/components/ui/NumberInput";
 
 const inputCompacto = `${filterInputClass} w-full px-1.5 py-1 text-xs`;
 const labelCompacto = "flex flex-col gap-0.5 text-xs text-ink-secondary";
@@ -355,41 +356,29 @@ export function VentaGranosForm({
         </label>
         <label className={labelCompacto}>
           Tipo de cambio
-          <input
-            type="number"
-            className={inputCompacto}
-            value={tipoCambio ?? ""}
-            onChange={(e) => setTipoCambio(e.target.value ? Number(e.target.value) : null)}
-          />
+          <NumberInput className={inputCompacto} value={tipoCambio} onChange={setTipoCambio} minDecimales={2} maxDecimales={4} />
         </label>
         <label className={labelCompacto}>
           Cantidad entregada
-          <input
-            type="number"
+          <NumberInput
             required
             className={`${inputCompacto} text-right font-data`}
             value={cantidadEntregada}
-            onChange={(e) => setCantidadEntregada(Number(e.target.value) || 0)}
+            onChange={(v) => setCantidadEntregada(v ?? 0)}
           />
         </label>
         <label className={labelCompacto}>
           Cantidad vendida
-          <input
-            type="number"
+          <NumberInput
             required
             className={`${inputCompacto} text-right font-data`}
             value={cantidadVendida}
-            onChange={(e) => setCantidadVendida(Number(e.target.value) || 0)}
+            onChange={(v) => setCantidadVendida(v ?? 0)}
           />
         </label>
         <label className={labelCompacto}>
           Factor
-          <input
-            type="number"
-            className={`${inputCompacto} text-right font-data`}
-            value={factor}
-            onChange={(e) => setFactor(Number(e.target.value) || 0)}
-          />
+          <NumberInput className={`${inputCompacto} text-right font-data`} value={factor} onChange={(v) => setFactor(v ?? 0)} />
         </label>
         <label className={labelCompacto}>
           Grado operación
@@ -401,12 +390,7 @@ export function VentaGranosForm({
         </label>
         <label className={labelCompacto}>
           Cont. proteico
-          <input
-            type="number"
-            className={`${inputCompacto} text-right font-data`}
-            value={contProteico ?? ""}
-            onChange={(e) => setContProteico(e.target.value ? Number(e.target.value) : null)}
-          />
+          <NumberInput className={`${inputCompacto} text-right font-data`} value={contProteico} onChange={setContProteico} />
         </label>
         <label className={labelCompacto}>
           Nº depósito

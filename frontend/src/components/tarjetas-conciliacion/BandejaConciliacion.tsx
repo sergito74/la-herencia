@@ -11,7 +11,7 @@ import {
   type LineaPendiente,
 } from "@/services/tarjetasResumenesApi";
 import { fetchTarjetas } from "@/services/tarjetasApi";
-import { formatMoneda } from "@/lib/format";
+import { formatCantidad, formatMoneda } from "@/lib/format";
 import { DataTable, type DataTableColumn } from "@/components/ui/DataTable";
 import { FilterBar, FilterField, FilterSubmitButton, filterInputClass } from "@/components/ui/FilterBar";
 import { EmptyState, ErrorState, LoadingState } from "@/components/ui/States";
@@ -225,8 +225,8 @@ export function BandejaConciliacion() {
         <p className="text-sm text-ink-secondary">
           {data ? (
             <>
-              <strong className="text-ink-primary">{data.total}</strong> líneas pendientes ·{" "}
-              <strong className="text-ink-primary">{data.totalConSugerencia}</strong> con sugerencia exacta
+              <strong className="text-ink-primary">{formatCantidad(data.total)}</strong> líneas pendientes ·{" "}
+              <strong className="text-ink-primary">{formatCantidad(data.totalConSugerencia)}</strong> con sugerencia exacta
             </>
           ) : (
             "Cargando…"

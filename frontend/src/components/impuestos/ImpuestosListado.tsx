@@ -9,6 +9,7 @@ import { ContactoSelect } from "@/components/ui/ContactoSelect";
 import { DataTable, type DataTableColumn } from "@/components/ui/DataTable";
 import { FilterBar, FilterSubmitButton } from "@/components/ui/FilterBar";
 import { ErrorState, LoadingState } from "@/components/ui/States";
+import { formatMoneda } from "@/lib/format";
 
 const COLUMNS: DataTableColumn<Impuesto>[] = [
   { key: "fecha", header: "Fecha", numeric: true, sortValue: (i) => i.fecha, render: (i) => i.fecha ?? "—" },
@@ -28,7 +29,7 @@ const COLUMNS: DataTableColumn<Impuesto>[] = [
     align: "right",
     numeric: true,
     sortValue: (i) => i.importe,
-    render: (i) => (i.importe != null ? i.importe.toLocaleString("es-AR") : "—"),
+    render: (i) => (i.importe != null ? formatMoneda(i.importe) : "—"),
   },
 ];
 

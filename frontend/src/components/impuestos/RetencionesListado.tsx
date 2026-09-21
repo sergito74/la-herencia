@@ -8,6 +8,7 @@ import { ContactoLink } from "@/components/ui/ContactoLink";
 import { DataTable, type DataTableColumn } from "@/components/ui/DataTable";
 import { FilterBar, FilterField, FilterSubmitButton, filterInputClass } from "@/components/ui/FilterBar";
 import { ErrorState, LoadingState } from "@/components/ui/States";
+import { formatMoneda } from "@/lib/format";
 
 const COLUMNS: DataTableColumn<Retencion>[] = [
   { key: "fecha", header: "Fecha", numeric: true, sortValue: (r) => r.fecha, render: (r) => r.fecha ?? "—" },
@@ -24,7 +25,7 @@ const COLUMNS: DataTableColumn<Retencion>[] = [
     align: "right",
     numeric: true,
     sortValue: (r) => r.importe,
-    render: (r) => (r.importe != null ? r.importe.toLocaleString("es-AR") : "—"),
+    render: (r) => (r.importe != null ? formatMoneda(r.importe) : "—"),
   },
 ];
 

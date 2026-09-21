@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { EmptyState } from "@/components/ui/States";
+import { formatCantidad } from "@/lib/format";
 
 export interface DataTableColumn<T> {
   key: string;
@@ -166,7 +167,7 @@ export function DataTable<T>({
 
       <div className="flex items-center justify-between text-sm text-ink-secondary">
         <span>
-          Página {page} de {totalPages} — {total} resultados
+          Página {page} de {totalPages} — {formatCantidad(total)} resultados
         </span>
         <div className="flex gap-2">
           <button

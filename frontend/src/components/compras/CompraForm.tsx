@@ -39,6 +39,7 @@ import { useToast } from "@/components/ui/Toast";
 import { ComprasGrid, FILA_VACIA, calcularLinea, filasARequestLineas, type GridRow } from "@/components/compras/ComprasGrid";
 import { DocumentosRelacionadosPanel } from "@/components/compras/DocumentosRelacionadosPanel";
 import { VencimientosEditor } from "@/components/compras/VencimientosEditor";
+import { NumberInput } from "@/components/ui/NumberInput";
 
 const TIPOS_COMPROBANTE: TipoComprobante[] = ["A", "B", "C", "M", "X"];
 const TIPOS_DOCUMENTO: TipoDocumentoCompra[] = [
@@ -512,13 +513,14 @@ export function CompraForm({
           </label>
           <label className={labelCompacto}>
             Tipo de cambio
-            <input
-              type="number"
+            <NumberInput
               required={moneda === "Dolares"}
               disabled={moneda !== "Dolares"}
               className={`${inputCompacto} disabled:cursor-not-allowed disabled:opacity-60`}
-              value={moneda === "Dolares" ? tipoDeCambio ?? "" : 1}
-              onChange={(e) => setTipoDeCambio(e.target.value ? Number(e.target.value) : null)}
+              value={moneda === "Dolares" ? tipoDeCambio : 1}
+              onChange={setTipoDeCambio}
+              minDecimales={2}
+              maxDecimales={4}
               placeholder={moneda === "Dolares" ? "Obligatorio" : undefined}
             />
           </label>

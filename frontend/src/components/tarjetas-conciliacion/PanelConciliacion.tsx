@@ -23,17 +23,17 @@ import {
 import { urlDocumentoLocal } from "@/services/comprasApi";
 import { ApiError } from "@/services/apiClient";
 import { esRutaLocalWindows, urlParaAbrirDocumento } from "@/lib/documentoLocal";
-import { formatMoneda, formatMonto } from "@/lib/format";
+import { formatMoneda, formatMonto, formatPorcentaje } from "@/lib/format";
 import { filterInputClass } from "@/components/ui/FilterBar";
 import { SideDrawer } from "@/components/ui/SideDrawer";
 import { useToast } from "@/components/ui/Toast";
+import { MoneyInput } from "@/components/ui/MoneyInput";
 
 const nombreDoc = (d: { tipoDocumento: string | null; numeroDocumento: string | null }) =>
   `${d.tipoDocumento ?? "Documento"} ${d.numeroDocumento ?? ""}`.trim();
 
 const monedaDe = (d: { moneda: string | null }) => (d.moneda === "Dolares" ? "Dolares" : "Pesos");
 
-const porcentaje = (v: number) => `${v > 0 ? "+" : ""}${(v * 100).toLocaleString("es-AR", { maximumFractionDigits: 2 })}%`;
 
 /** Misma regla del backend: $0,10 en pesos, $1,00 si hay documentos en dólares. */
 const toleranciaDe = (docs: { moneda: string | null }[]) => (docs.some((d) => d.moneda === "Dolares") ? 1 : 0.1);
@@ -116,7 +116,7 @@ function Resultado({ calculo, importeLinea }: { calculo: ConciliacionCalculo; im
           Falta una nota de crédito/débito de ajuste de tipo de cambio por ≈ {formatMoneda(calculo.diferencia)} (tipo de
           cambio implícito {formatMonto(calculo.tcImplicito!)}
           {calculo.tcReferencia != null && ` vs ${formatMonto(calculo.tcReferencia)} del documento`}
-          {calculo.desvioTc != null && `, ${porcentaje(calculo.desvioTc)}`}).
+          {calculo.desvioTc != null && `, ${formatPorcentaje(calculo.desvioTc, true)}`}).
         </div>
       )}
     </div>
@@ -567,14 +567,11 @@ function ContenidoPanel({
                             <td className="py-0.5 pr-2">#{r.idLinea}</td>
                             <td className="pr-2">{d ? nombreDoc(d) : `#${r.idCompra}`}</td>
                             <td className="text-right">
-                              <input
-                                type="number"
-                                step="0.01"
-                                className={`${filterInputClass} w-32 px-1.5 py-0.5 text-right text-xs font-data`}
+                              <MoneyInput
+                                className={`${filterInputClass} w-36 px-1.5 py-0.5 text-right text-xs font-data`}
+                                moneda="Pesos"
                                 value={r.importe}
-                                onChange={(e) =>
-                                  setRepartoEdit((prev) => prev.map((x, j) => (j === i ? { ...x, importe: Number(e.target.value) || 0 } : x)))
-                                }
+                                onChange={(importe) => setRepartoEdit((prev) => prev.map((x, j) => (j === i ? { ...x, importe } : x)))}
                               />
                             </td>
                           </tr>

@@ -11,6 +11,7 @@ import { StatusBadge, type BadgeTone } from "@/components/ui/StatusBadge";
 import { FilterBar, FilterSubmitButton } from "@/components/ui/FilterBar";
 import { EmptyState, ErrorState, LoadingState } from "@/components/ui/States";
 import { useToast } from "@/components/ui/Toast";
+import { formatMoneda, formatCantidad } from "@/lib/format";
 
 /**
  * Enum real confirmado en el formulario Access (`Subformulario Detalle
@@ -128,7 +129,7 @@ export function ArrendamientosListado() {
                       <p className="mt-1 text-sm text-ink-secondary">
                         {a.inicioPeriodo ?? "—"} a {a.finPeriodo ?? "—"}
                         {a.tipoDePago ? ` · ${a.tipoDePago}` : ""}
-                        {a.superficieTotal != null ? ` · ${a.superficieTotal} ha` : ""}
+                        {a.superficieTotal != null ? ` · ${formatCantidad(a.superficieTotal)} ha` : ""}
                       </p>
                     </div>
                     <div className="text-right">
@@ -136,13 +137,13 @@ export function ArrendamientosListado() {
                         Importe total del contrato:{" "}
                         <span className="font-medium text-ink-primary">
                           {a.importeTotalContrato != null
-                            ? a.importeTotalContrato.toLocaleString("es-AR")
+                            ? formatMoneda(a.importeTotalContrato)
                             : "—"}
                         </span>
                       </p>
                       {a.retencionGanancias != null && a.retencionGanancias !== 0 && (
                         <p className="font-data text-xs text-ink-secondary">
-                          Ret. Ganancias: {a.retencionGanancias.toLocaleString("es-AR")}
+                          Ret. Ganancias: {formatMoneda(a.retencionGanancias)}
                         </p>
                       )}
                       {a.cantidadCuotas != null && a.cantidadCuotas > 0 && (
@@ -181,7 +182,7 @@ export function ArrendamientosListado() {
                                 <StatusBadge label={estado.label} tone={estado.tone} />
                               </td>
                               <td className="px-2 py-1 text-right font-data">
-                                {c.importeCuota != null ? c.importeCuota.toLocaleString("es-AR") : "—"}
+                                {c.importeCuota != null ? formatMoneda(c.importeCuota) : "—"}
                               </td>
                               <td className="px-2 py-1 text-right">
                                 <button

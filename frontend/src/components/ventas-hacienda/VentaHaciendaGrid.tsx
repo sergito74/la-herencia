@@ -5,6 +5,7 @@ import { useId, useState } from "react";
 import type { FiltrosVentaHaciendaResponse, LineaVentaHaciendaInput } from "@/services/ventasHaciendaApi";
 import { formatMonto, parseNumeroLocal } from "@/lib/format";
 import { ContactoSelect } from "@/components/ui/ContactoSelect";
+import { CeldaNumerica } from "@/components/ui/CeldaNumerica";
 
 /**
  * Grilla de líneas de Venta de Hacienda (007): a diferencia de Compras, el
@@ -152,10 +153,10 @@ export function VentaHaciendaGrid({
                     </select>
                   </td>
                   <td className="w-24">
-                    <input
+                    <CeldaNumerica
                       className={`${inputClass} font-data text-right`}
                       value={row.cantidad}
-                      onChange={(e) => actualizarFila(rowIndex, { cantidad: e.target.value })}
+                      onChange={(v) => actualizarFila(rowIndex, { cantidad: v })}
                     />
                   </td>
                   <td className="w-24">
@@ -167,24 +168,28 @@ export function VentaHaciendaGrid({
                     />
                   </td>
                   <td className="w-24">
-                    <input
+                    <CeldaNumerica
                       className={`${inputClass} font-data text-right`}
                       value={row.pesoTotal}
-                      onChange={(e) => actualizarFila(rowIndex, { pesoTotal: e.target.value })}
+                      onChange={(v) => actualizarFila(rowIndex, { pesoTotal: v })}
                     />
                   </td>
                   <td className="w-28">
-                    <input
+                    <CeldaNumerica
                       className={`${inputClass} font-data text-right`}
                       value={row.precioUnitarioA}
-                      onChange={(e) => actualizarFila(rowIndex, { precioUnitarioA: e.target.value })}
+                      onChange={(v) => actualizarFila(rowIndex, { precioUnitarioA: v })}
+                      minDecimales={2}
+                      maxDecimales={4}
                     />
                   </td>
                   <td className="w-28">
-                    <input
+                    <CeldaNumerica
                       className={`${inputClass} font-data text-right`}
                       value={row.precioUnitarioB}
-                      onChange={(e) => actualizarFila(rowIndex, { precioUnitarioB: e.target.value })}
+                      onChange={(v) => actualizarFila(rowIndex, { precioUnitarioB: v })}
+                      minDecimales={2}
+                      maxDecimales={4}
                     />
                   </td>
                   <td className="w-24 px-1.5 py-0.5 text-right font-data text-ink-secondary">

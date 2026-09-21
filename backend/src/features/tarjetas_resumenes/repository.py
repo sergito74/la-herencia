@@ -19,6 +19,7 @@ from src.db.connection import (
 )
 from src.db.pagination import offset_for
 from src.db.params import as_sql_datetime
+from src.formatting import formatear_moneda
 from src.features.tarjetas_resumenes.conciliacion_documentos import (
     MAX_DOCS_SUGERENCIA,
     calcular_imputacion,
@@ -658,7 +659,7 @@ def vincular_compras_lote(id_linea_consumo: int, ids_compra: list[int], aceptar_
     if calculo["estado"] == "parcial" and not calculo["pagoParcial"]:
         if not aceptar_diferencia:
             raise ValueError(
-                [f"La suma de los documentos no cierra con la línea (diferencia {calculo['diferencia']:,.2f}). "
+                [f"La suma de los documentos no cierra con la línea (diferencia {formatear_moneda(calculo['diferencia'])}). "
                  "Aceptá la diferencia con un motivo o cambiá la selección."]
             )
         _validar_motivo("DiferenciaAceptada", aceptar_diferencia.get("motivo"), aceptar_diferencia.get("detalle"))
@@ -730,7 +731,7 @@ def conciliar_reparto(reparto: list[dict], aceptar_diferencia: dict | None = Non
 
     if no_cierran:
         if not aceptar_diferencia:
-            detalle = "; ".join(f"línea {i}: {d:,.2f}" for i, d in no_cierran)
+            detalle = "; ".join(f"línea {i}: {formatear_moneda(d)}" for i, d in no_cierran)
             raise ValueError([f"Hay líneas que no cierran ({detalle}). Aceptá la diferencia con un motivo o ajustá el reparto."])
         _validar_motivo("DiferenciaAceptada", aceptar_diferencia.get("motivo"), aceptar_diferencia.get("detalle"))
         for id_linea, diferencia in no_cierran:

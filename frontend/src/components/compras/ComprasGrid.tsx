@@ -13,6 +13,7 @@ import {
 } from "@/services/comprasApi";
 import { formatMonto, formatMoneda, normalizarNumeroPegado, parseNumeroLocal, type MonedaFormato } from "@/lib/format";
 import { useToast } from "@/components/ui/Toast";
+import { CeldaNumerica } from "@/components/ui/CeldaNumerica";
 
 /**
  * Grilla de líneas de compra estilo planilla de cálculo (pedido explícito
@@ -298,10 +299,10 @@ export function ComprasGrid({
               return (
                 <tr key={rowIndex} className="hover:bg-surface-sunken">
                   <td className="w-24">
-                    <input
+                    <CeldaNumerica
                       className={`${inputClass} font-data text-right`}
                       value={row.cantidad}
-                      onChange={(e) => actualizarCelda(rowIndex, "cantidad", e.target.value)}
+                      onChange={(v) => actualizarCelda(rowIndex, "cantidad", v)}
                       onPaste={(e) => handlePaste(rowIndex, 0, e)}
                     />
                   </td>

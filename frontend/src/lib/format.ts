@@ -1,9 +1,13 @@
 /**
- * Formato de moneda/cantidad estilo factura física (pedido explícito del
- * usuario para el módulo de Compras): separador de miles ".", separador
- * decimal "," (locale es-AR ya usa esta convención), prefijo "$" para
- * Pesos y "us$" para Dólares, montos redondeados a 2 decimales y
- * cantidades a 3 decimales.
+ * Formato de números y moneda de TODO el sistema (pedido explícito del
+ * usuario): separador de miles ".", separador decimal ",", prefijo "$" para
+ * Pesos y "us$" para Dólares, montos con 2 decimales y cantidades hasta 3.
+ *
+ * La agrupación se hace a mano y no con `toLocaleString`: según el navegador
+ * y su configuración regional el locale es-AR no agrupa los números de 4
+ * dígitos ("1234" en vez de "1.234"), y el resultado tiene que ser siempre el
+ * mismo. Nunca formatear un importe o cantidad por otro camino: usar estas
+ * funciones (y `MoneyInput`/`NumberInput` en los campos editables).
  */
 
 export type MonedaFormato = "Pesos" | "Dolares";
@@ -11,10 +15,33 @@ export type MonedaFormato = "Pesos" | "Dolares";
 /** Miles ".", decimales ",", sin símbolo de moneda — para celdas numéricas
  * (ej. precio unitario) donde el prefijo $ ya está implícito por contexto. */
 export function formatMonto(value: number, decimales = 2): string {
-  return value.toLocaleString("es-AR", {
-    minimumFractionDigits: decimales,
-    maximumFractionDigits: decimales,
-  });
+  if (!Number.isFinite(value)) return "—";
+  const fijo = Math.abs(value).toFixed(decimales);
+  const [entero, decimal] = fijo.split(".");
+  const negativo = value < 0 && Number(fijo) !== 0;
+  const conMiles = entero.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+  return `${negativo ? "-" : ""}${conMiles}${decimal ? "," + decimal : ""}`;
+}
+
+/** Número sin símbolo con entre `min` y `max` decimales (los ceros de más se
+ * recortan): ej. tipo de cambio (2–4), alícuotas (0–2), cantidades (0–3). */
+export function formatNumero(value: number, opciones: { min?: number; max?: number } = {}): string {
+  const { min = 0, max = 3 } = opciones;
+  if (!Number.isFinite(value)) return "—";
+  let texto = formatMonto(value, max);
+  if (max > min) {
+    const [entero, decimal = ""] = texto.split(",");
+    let d = decimal;
+    while (d.length > min && d.endsWith("0")) d = d.slice(0, -1);
+    texto = d ? `${entero},${d}` : entero;
+  }
+  return texto;
+}
+
+/** Porcentaje a partir de una fracción (0,03 → "+3%"), con signo si `conSigno`. */
+export function formatPorcentaje(fraccion: number, conSigno = false, max = 2): string {
+  const texto = `${formatNumero(fraccion * 100, { max })}%`;
+  return conSigno && fraccion > 0 ? `+${texto}` : texto;
 }
 
 export function formatMoneda(value: number, moneda: MonedaFormato = "Pesos"): string {
@@ -23,10 +50,7 @@ export function formatMoneda(value: number, moneda: MonedaFormato = "Pesos"): st
 }
 
 export function formatCantidad(value: number): string {
-  return value.toLocaleString("es-AR", {
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 3,
-  });
+  return formatNumero(value, { min: 0, max: 3 });
 }
 
 /** Convierte un `number` de JS a texto editable en convención local (coma

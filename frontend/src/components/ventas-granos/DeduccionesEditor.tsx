@@ -4,6 +4,7 @@ import type { DeduccionInput } from "@/services/ventasGranosApi";
 import type { FiltrosVentaGranosResponse } from "@/services/ventasGranosApi";
 import { MoneyInput } from "@/components/ui/MoneyInput";
 import { filterInputClass } from "@/components/ui/FilterBar";
+import { NumberInput } from "@/components/ui/NumberInput";
 
 function filaVacia(filtros: FiltrosVentaGranosResponse | undefined): DeduccionInput {
   return {
@@ -66,11 +67,11 @@ export function DeduccionesEditor({
               onChange={(e) => actualizar(i, { detalle: e.target.value })}
               placeholder="Detalle"
             />
-            <input
-              type="number"
+            <NumberInput
               className={`${filterInputClass} w-16 px-1.5 py-0.5 text-right text-xs font-data`}
               value={d.porc}
-              onChange={(e) => actualizar(i, { porc: Number(e.target.value) || 0 })}
+              onChange={(v) => actualizar(i, { porc: v ?? 0 })}
+              maxDecimales={2}
               title="Porcentaje sobre la base de cálculo"
             />
             <MoneyInput
@@ -79,11 +80,11 @@ export function DeduccionesEditor({
               moneda="Pesos"
               onChange={(baseCalculo) => actualizar(i, { baseCalculo })}
             />
-            <input
-              type="number"
+            <NumberInput
               className={`${filterInputClass} w-16 px-1.5 py-0.5 text-right text-xs font-data`}
               value={d.alicuota ?? 0}
-              onChange={(e) => actualizar(i, { alicuota: Number(e.target.value) || 0 })}
+              onChange={(v) => actualizar(i, { alicuota: v ?? 0 })}
+              maxDecimales={2}
               title="Alícuota de IVA de esta deducción"
             />
             <button

@@ -17,6 +17,7 @@ import { DataTable, type DataTableColumn } from "@/components/ui/DataTable";
 import { FilterBar, FilterField, FilterSubmitButton, filterInputClass } from "@/components/ui/FilterBar";
 import { KpiCard } from "@/components/ui/KpiCard";
 import { ErrorState, LoadingState } from "@/components/ui/States";
+import { formatMoneda } from "@/lib/format";
 
 // Valores confirmados de `Tipo Contacto` contra datos reales (data-model.md).
 const TIPOS_CONTACTO = [
@@ -41,7 +42,7 @@ const COLUMNS: DataTableColumn<MovimientoCuentaCorriente>[] = [
     numeric: true,
     sortValue: (m) => m.deuda,
     render: (m) => (
-      <span className="text-status-danger">{m.deuda ? m.deuda.toLocaleString("es-AR") : "—"}</span>
+      <span className="text-status-danger">{m.deuda ? formatMoneda(m.deuda) : "—"}</span>
     ),
   },
   {
@@ -51,7 +52,7 @@ const COLUMNS: DataTableColumn<MovimientoCuentaCorriente>[] = [
     numeric: true,
     sortValue: (m) => m.credito,
     render: (m) => (
-      <span className="text-status-success">{m.credito ? m.credito.toLocaleString("es-AR") : "—"}</span>
+      <span className="text-status-success">{m.credito ? formatMoneda(m.credito) : "—"}</span>
     ),
   },
   {
@@ -61,7 +62,7 @@ const COLUMNS: DataTableColumn<MovimientoCuentaCorriente>[] = [
     numeric: true,
     render: (m) => (
       <span className={m.saldoParcial != null && m.saldoParcial < 0 ? "text-status-danger" : "text-status-success"}>
-        {m.saldoParcial != null ? m.saldoParcial.toLocaleString("es-AR") : "—"}
+        {m.saldoParcial != null ? formatMoneda(m.saldoParcial) : "—"}
       </span>
     ),
   },
@@ -241,10 +242,7 @@ export function CuentaCorriente() {
                 loadingSaldo
                   ? "…"
                   : saldo?.saldoParcial != null
-                    ? saldo.saldoParcial.toLocaleString("es-AR", {
-                        style: "currency",
-                        currency: "ARS",
-                      })
+                    ? formatMoneda(saldo.saldoParcial)
                     : "—"
               }
               tone={
