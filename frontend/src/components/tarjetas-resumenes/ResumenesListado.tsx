@@ -14,6 +14,7 @@ import { DataTable, type DataTableColumn } from "@/components/ui/DataTable";
 import { FilterBar, FilterField, FilterSubmitButton, filterInputClass } from "@/components/ui/FilterBar";
 import { EmptyState, ErrorState, LoadingState } from "@/components/ui/States";
 import type { ResumenListItem } from "@/services/tarjetasResumenesApi";
+import { BotonExportarConciliacion } from "@/components/tarjetas-conciliacion/BotonExportarConciliacion";
 
 function Semaforo({ ok, label }: { ok: boolean; label: string }) {
   return (
@@ -179,6 +180,14 @@ export function ResumenesListado() {
         </FilterField>
         <FilterSubmitButton className="ml-auto" />
       </FilterBar>
+
+      <div className="flex justify-end">
+        <BotonExportarConciliacion
+          idTarjeta={appliedFilters.idTarjeta}
+          fechaCierreDesde={appliedFilters.fechaCierreDesde}
+          fechaCierreHasta={appliedFilters.fechaCierreHasta}
+        />
+      </div>
 
       {!hayFiltro && <EmptyState message="Aplicá al menos un filtro (tarjeta o fecha de cierre) para ver resúmenes." />}
       {hayFiltro && isLoading && <LoadingState />}

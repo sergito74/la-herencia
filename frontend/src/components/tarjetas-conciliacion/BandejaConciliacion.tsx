@@ -17,6 +17,7 @@ import { FilterBar, FilterField, FilterSubmitButton, filterInputClass } from "@/
 import { EmptyState, ErrorState, LoadingState } from "@/components/ui/States";
 import { useToast } from "@/components/ui/Toast";
 import { PanelConciliacion } from "@/components/tarjetas-conciliacion/PanelConciliacion";
+import { BotonExportarConciliacion } from "@/components/tarjetas-conciliacion/BotonExportarConciliacion";
 
 const PAGE_SIZE = 25;
 
@@ -232,13 +233,20 @@ export function BandejaConciliacion() {
             "Cargando…"
           )}
         </p>
-        <button
-          type="button"
-          onClick={() => setVerExactas(true)}
-          className="rounded-sm bg-finance px-4 py-2 text-sm text-white hover:opacity-90"
-        >
-          Aceptar sugerencias exactas…
-        </button>
+        <div className="flex items-center gap-2">
+          <BotonExportarConciliacion
+            idTarjeta={aplicados.idTarjeta}
+            fechaCierreDesde={aplicados.fechaCierreDesde}
+            fechaCierreHasta={aplicados.fechaCierreHasta}
+          />
+          <button
+            type="button"
+            onClick={() => setVerExactas(true)}
+            className="rounded-sm bg-finance px-4 py-2 text-sm text-white hover:opacity-90"
+          >
+            Aceptar sugerencias exactas…
+          </button>
+        </div>
       </div>
 
       <FilterBar

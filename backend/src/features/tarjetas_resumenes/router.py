@@ -5,11 +5,12 @@ from __future__ import annotations
 
 from datetime import date
 
-from fastapi import APIRouter, Header, HTTPException, Query
+from fastapi import APIRouter, Header, HTTPException, Query, Response
 from starlette.concurrency import run_in_threadpool
 
 from src.db.pagination import normalize_pagination
 from src.features.tarjetas import repository as tarjetas_repository
+from src.features.tarjetas_resumenes import reporte_conciliacion
 from src.features.tarjetas_resumenes import repository, repository_locks
 from src.features.tarjetas_resumenes.schemas import (
     AceptarExactasRequest,
@@ -171,6 +172,25 @@ async def eliminar_resumen(id_resumen: int, x_lock_token: str = Header(...)) -> 
         raise HTTPException(status_code=409, detail="El resumen está siendo editado por otra sesión.")
 
     await run_in_threadpool(repository.delete_resumen, id_resumen)
+
+
+@router.get("/reporte-conciliacion")
+async def reporte_conciliacion_xlsx(
+    idTarjeta: int | None = None,
+    fechaCierreDesde: date | None = None,
+    fechaCierreHasta: date | None = None,
+) -> Response:
+    """Planilla (.xlsx) con las conciliaciones de los resúmenes, para el Estudio
+    Contable. Filtra por tarjeta y por fecha de cierre del resumen."""
+    contenido = await run_in_threadpool(
+        reporte_conciliacion.generar_xlsx, idTarjeta, fechaCierreDesde, fechaCierreHasta
+    )
+    nombre = f"conciliacion-tarjetas-{date.today().isoformat()}.xlsx"
+    return Response(
+        content=contenido,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f'attachment; filename="{nombre}"'},
+    )
 
 
 @router.get("/pendientes", response_model=PendientesResponse)

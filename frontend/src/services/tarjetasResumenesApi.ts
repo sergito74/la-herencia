@@ -4,7 +4,7 @@
  * contra `WC`.
  */
 
-import { apiDelete, apiGet, apiPost, apiPut } from "@/services/apiClient";
+import { API_BASE_URL, apiDelete, apiGet, apiPost, apiPut } from "@/services/apiClient";
 
 export interface LineaConsumoInput {
   fechaCompra: string;
@@ -424,4 +424,15 @@ export function conciliarReparto(
     reparto,
     aceptarDiferencia: aceptarDiferencia ?? null,
   });
+}
+
+// --- Reporte de conciliaciones para el Estudio Contable (.xlsx) ---
+
+/** URL de descarga de la planilla de conciliaciones, filtrada por tarjeta y fecha de cierre. */
+export function urlReporteConciliacion(f: { idTarjeta?: string; fechaCierreDesde?: string; fechaCierreHasta?: string }): string {
+  const url = new URL("/api/tarjetas-resumenes/reporte-conciliacion", API_BASE_URL);
+  if (f.idTarjeta) url.searchParams.set("idTarjeta", f.idTarjeta);
+  if (f.fechaCierreDesde) url.searchParams.set("fechaCierreDesde", f.fechaCierreDesde);
+  if (f.fechaCierreHasta) url.searchParams.set("fechaCierreHasta", f.fechaCierreHasta);
+  return url.toString();
 }
