@@ -1,32 +1,28 @@
 """Conciliación de una línea de consumo (pesos) contra uno o más documentos.
 
-Los documentos de Compras pueden estar en dólares y el resumen de la tarjeta
-siempre viene en pesos, así que los importes nunca coinciden directamente. Al
-saldar la cuenta, además, una línea puede cubrir varios documentos a la vez
-(Factura + Nota de Crédito + Nota de Débito; las NC ya vienen con importe
-negativo). Este módulo es puro (sin base de datos):
+El resumen de la tarjeta viene en pesos y los documentos de Compras pueden estar
+en dólares. Un documento en dólares se pesifica con su propio tipo de cambio, y
+la diferencia de cambio con la cotización de la tarjeta se documenta con una
+Nota de Crédito/Débito de ajuste (`Ajusta Tipo Cambio`) asociada a la factura:
+la conciliación cierra **exacta en pesos** con la factura pesificada más esas
+notas (las NC ya vienen con importe negativo, así que se suma con signo). Una
+línea puede requerir varios documentos, incluso de proveedores distintos.
 
-- `calcular_imputacion`: dada una línea y un conjunto de documentos, reparte el
-  importe de la línea entre ellos. Con documentos en dólares despeja el tipo de
-  cambio implícito (el que hace que la suma de todo cierre con la línea) y lo
-  compara con el tipo de cambio propio de los documentos.
-- `sugerir`: busca qué combinaciones de documentos concilian la línea.
+Módulo puro (sin base de datos):
+
+- `calcular_imputacion`: reparte la línea entre los documentos y dice si cierra.
+- `sugerir`: busca qué combinaciones de documentos cierran exacto con la línea.
 """
 
 from __future__ import annotations
 
 from itertools import combinations
 
-# Misma tolerancia que la conciliación de pagos (research.md §5).
 TOLERANCIA_PESOS = 0.10
-# Desvío máximo entre el tipo de cambio implícito y el de los documentos para
-# darlo por "aproximado": el resumen se liquida con la cotización de la tarjeta,
-# que no es la del día en que se cargó el documento. Calibrado con los vínculos
-# reales ya cargados que saldan una cuenta en dólares: 12 de 18 tienen desvío
-# 0%, 17 de 18 quedan dentro del 2% (el resto son cuotas/pagos parciales, con
-# desvíos de 58% a 99%). Subir la tolerancia solo agrega falsos positivos: con un
-# tipo de cambio libre, muchas combinaciones "cierran" por casualidad.
-TOLERANCIA_TC = 0.02
+# Con documentos en dólares hay una conversión de por medio (la tarjeta y el
+# documento redondean por separado): en los vínculos reales ya cargados que saldan
+# una cuenta en dólares, las diferencias de redondeo llegan a $0,68.
+TOLERANCIA_PESOS_USD = 1.00
 MAX_DOCS_SUGERENCIA = 18
 MAX_TAMANO_COMBINACION = 4
 
@@ -40,74 +36,61 @@ def _tc(doc: dict) -> float:
 
 
 def importe_pesos(doc: dict) -> float:
-    """Importe del documento pesificado con su propio tipo de cambio (el que
-    tenía al cargarlo)."""
+    """Importe del documento en pesos. Un documento en dólares se pesifica con su
+    propio tipo de cambio, redondeando antes el importe a centavos de dólar: el
+    total guardado en Compras se arma multiplicando cantidades, precios e IVA y
+    trae más decimales que la factura impresa."""
     importe = float(doc.get("importeOriginal") or 0)
     if _es_dolar(doc) and _tc(doc) > 0:
-        return round(importe * _tc(doc), 2)
+        return round(round(importe, 2) * _tc(doc), 2)
     return round(importe, 2)
+
+
+def tolerancia(docs: list[dict]) -> float:
+    return TOLERANCIA_PESOS_USD if any(_es_dolar(d) for d in docs) else TOLERANCIA_PESOS
+
+
+def _usd(doc: dict) -> float:
+    return round(float(doc.get("importeOriginal") or 0), 2)
+
+
+def _tc_implicito(importe_linea: float, docs: list[dict]) -> float | None:
+    """Tipo de cambio que haría cerrar la línea si los documentos en dólares se
+    cobraran a otra cotización — solo una pista de cuánto ajuste faltaría."""
+    usd = [d for d in docs if _es_dolar(d)]
+    suma_usd = sum(_usd(d) for d in usd)
+    if not usd or abs(suma_usd) < 1e-9:
+        return None
+    suma_ars = sum(importe_pesos(d) for d in docs if not _es_dolar(d))
+    candidato = (importe_linea - suma_ars) / suma_usd
+    return candidato if candidato > 0 else None
 
 
 def calcular_imputacion(importe_linea: float, docs: list[dict]) -> dict:
     """Reparte `importe_linea` entre `docs`.
 
-    Devuelve `imputados` ({idCompra: importe en pesos}), `diferencia` (línea −
-    total imputado), y para documentos en dólares `tcImplicito`, `tcReferencia`
-    (promedio de los TC de los documentos, ponderado por importe) y `desvioTc`.
-    `estado`: "exacta" (sin dólares y dentro de $0,10), "aproximada" (con
-    dólares y desvío de TC dentro de la tolerancia) o "parcial". `diferencia`
-    se calcula contra el importe completo de los documentos, aun en un pago
-    parcial (`pagoParcial`), para poder mostrarla.
+    `imputados`: importe en pesos de cada documento. `diferencia`: línea − suma.
+    `estado`: "exacta" (dentro de $0,10, o $1,00 si hay dólares) o "parcial". Un único documento en pesos
+    que no coincide es un pago parcial (`pagoParcial`, ej. una cuota) y se imputa
+    el importe de la línea. Si hay documentos en dólares y no cierra, `tcImplicito`
+    y `desvioTc` orientan sobre cuánto ajuste de cambio faltaría.
     """
     importe_linea = round(float(importe_linea), 2)
-    usd = [d for d in docs if _es_dolar(d)]
-    ars = [d for d in docs if not _es_dolar(d)]
-    suma_ars = sum(float(d.get("importeOriginal") or 0) for d in ars)
-    suma_usd = sum(float(d.get("importeOriginal") or 0) for d in usd)
+    imputados = {d["idCompra"]: importe_pesos(d) for d in docs}
+    diferencia = round(importe_linea - sum(imputados.values()), 2)
+    estado = "exacta" if abs(diferencia) <= tolerancia(docs) else "parcial"
 
     resultado: dict = {"tcImplicito": None, "tcReferencia": None, "desvioTc": None}
-    imputados: dict[int, float] = {}
-
-    tc_implicito = None
-    if usd and abs(suma_usd) > 1e-9:
-        candidato = (importe_linea - suma_ars) / suma_usd
-        if candidato > 0:
-            tc_implicito = candidato
-
-    if tc_implicito is None:
-        # Sin dólares, o sin forma de despejar el tipo de cambio: se pesifica
-        # cada documento con su propio TC y la diferencia queda expuesta.
-        for d in docs:
-            imputados[d["idCompra"]] = importe_pesos(d)
-    else:
-        for d in ars:
-            imputados[d["idCompra"]] = round(float(d.get("importeOriginal") or 0), 2)
-        for d in usd:
-            imputados[d["idCompra"]] = round(float(d.get("importeOriginal") or 0) * tc_implicito, 2)
-        # El redondeo por documento no debe romper el cierre exacto con la línea.
-        resto = round(importe_linea - sum(imputados.values()), 2)
-        if resto:
-            mayor = max(usd, key=lambda d: abs(float(d.get("importeOriginal") or 0)))
-            imputados[mayor["idCompra"]] = round(imputados[mayor["idCompra"]] + resto, 2)
-
-        pesos_ref = sum(abs(float(d.get("importeOriginal") or 0)) for d in usd if _tc(d) > 0)
-        if pesos_ref > 0:
-            referencia = (
-                sum(abs(float(d.get("importeOriginal") or 0)) * _tc(d) for d in usd if _tc(d) > 0) / pesos_ref
-            )
+    usd = [d for d in docs if _es_dolar(d)]
+    if usd and estado == "parcial":
+        implicito = _tc_implicito(importe_linea, docs)
+        base = sum(abs(_usd(d)) for d in usd if _tc(d) > 0)
+        if implicito is not None and base > 0:
+            referencia = sum(abs(_usd(d)) * _tc(d) for d in usd if _tc(d) > 0) / base
+            resultado["tcImplicito"] = round(implicito, 4)
             resultado["tcReferencia"] = round(referencia, 4)
-            resultado["desvioTc"] = round(tc_implicito / referencia - 1, 4)
-        resultado["tcImplicito"] = round(tc_implicito, 4)
+            resultado["desvioTc"] = round(implicito / referencia - 1, 4)
 
-    diferencia = round(importe_linea - sum(imputados.values()), 2)
-    if usd and tc_implicito is not None:
-        desvio = resultado["desvioTc"]
-        estado = "aproximada" if desvio is not None and abs(desvio) <= TOLERANCIA_TC else "parcial"
-    else:
-        estado = "exacta" if not usd and abs(diferencia) <= TOLERANCIA_PESOS else "parcial"
-
-    # Un único documento en pesos que no coincide con la línea: la línea paga
-    # una parte (cuota o pago parcial) y se imputa su importe, como siempre.
     pago_parcial = not usd and len(docs) == 1 and estado == "parcial"
     if pago_parcial:
         imputados = {docs[0]["idCompra"]: importe_linea}
@@ -124,23 +107,80 @@ def calcular_imputacion(importe_linea: float, docs: list[dict]) -> dict:
 
 
 def sugerir(importe_linea: float, docs: list[dict], top: int = 5) -> list[dict]:
-    """Combinaciones de `docs` (los más cercanos en fecha primero) que concilian
-    la línea, de mejor a peor: exactas antes que aproximadas, luego menos
-    documentos, luego menor diferencia/desvío. Menos documentos va antes que
-    menor desvío a propósito: con un tipo de cambio libre casi cualquier
-    conjunto "cierra" dentro de la tolerancia, y sumar un documento ajeno podría
-    bajar el desvío por casualidad."""
+    """Combinaciones de `docs` (los más cercanos en fecha primero) cuya suma en
+    pesos cierra exacto con la línea: primero las de menos documentos, luego la
+    menor diferencia."""
+    importe_linea = round(float(importe_linea), 2)
     candidatos = [d for d in docs if float(d.get("importeOriginal") or 0) != 0][:MAX_DOCS_SUGERENCIA]
-    encontradas: list[tuple[int, float, int, dict]] = []
+    pesos = [importe_pesos(d) for d in candidatos]
+    encontradas: list[tuple[int, float, tuple[int, ...]]] = []
     for tamano in range(1, min(MAX_TAMANO_COMBINACION, len(candidatos)) + 1):
-        for combo in combinations(candidatos, tamano):
-            calculo = calcular_imputacion(importe_linea, list(combo))
-            if calculo["estado"] == "parcial":
+        for idx in combinations(range(len(candidatos)), tamano):
+            diferencia = abs(importe_linea - sum(pesos[i] for i in idx))
+            if diferencia <= tolerancia([candidatos[i] for i in idx]):
+                encontradas.append((tamano, diferencia, idx))
+    encontradas.sort()
+    return [
+        {
+            "idsCompra": [candidatos[i]["idCompra"] for i in idx],
+            **calcular_imputacion(importe_linea, [candidatos[i] for i in idx]),
+        }
+        for _, _, idx in encontradas[:top]
+    ]
+
+
+_MAX_ASIGNACIONES = 200_000
+
+
+def repartir(lineas: list[dict], docs: list[dict]) -> dict:
+    """Propone cómo repartir varias líneas (`idLinea`, `importe`) entre varios
+    documentos: primero busca una asignación exacta con cada documento entero en
+    una sola línea; si no existe, llena las líneas en orden partiendo documentos
+    (las notas de crédito van enteras a la primera línea). Es solo una propuesta:
+    el usuario puede editar los importes antes de guardar."""
+    from itertools import product
+
+    pesos = [importe_pesos(d) for d in docs]
+    importes = [round(float(l["importe"]), 2) for l in lineas]
+    n_l, n_d = len(lineas), len(docs)
+
+    def diferencias(asignado: list[float]) -> list[float]:
+        return [round(importes[i] - asignado[i], 2) for i in range(n_l)]
+
+    reparto: list[dict] | None = None
+    if n_l and n_d and n_l**n_d <= _MAX_ASIGNACIONES:
+        for asignacion in product(range(n_l), repeat=n_d):
+            sumas = [0.0] * n_l
+            for d, li in enumerate(asignacion):
+                sumas[li] += pesos[d]
+            if all(abs(importes[i] - sumas[i]) <= tolerancia([docs[d] for d in range(n_d) if asignacion[d] == i]) for i in range(n_l)):
+                reparto = [
+                    {"idLinea": lineas[li]["idLinea"], "idCompra": docs[d]["idCompra"], "importe": pesos[d]}
+                    for d, li in enumerate(asignacion)
+                ]
+                break
+
+    if reparto is None:
+        reparto = []
+        falta = importes[:]
+        for d in range(n_d):
+            if pesos[d] < 0:
+                reparto.append({"idLinea": lineas[0]["idLinea"], "idCompra": docs[d]["idCompra"], "importe": pesos[d]})
+                falta[0] = round(falta[0] - pesos[d], 2)
+        for d in range(n_d):
+            resto = pesos[d]
+            if resto <= 0:
                 continue
-            error = abs(calculo["desvioTc"]) if calculo["estado"] == "aproximada" else abs(calculo["diferencia"])
-            orden_estado = 0 if calculo["estado"] == "exacta" else 1
-            encontradas.append(
-                (orden_estado, error, tamano, {"idsCompra": [d["idCompra"] for d in combo], **calculo})
-            )
-    encontradas.sort(key=lambda t: (t[0], t[2], t[1]))
-    return [t[3] for t in encontradas[:top]]
+            for i in range(n_l):
+                if resto <= 0.005:
+                    break
+                usar = resto if i == n_l - 1 else min(resto, max(falta[i], 0.0))
+                if usar > 0.005:
+                    reparto.append({"idLinea": lineas[i]["idLinea"], "idCompra": docs[d]["idCompra"], "importe": round(usar, 2)})
+                    falta[i] = round(falta[i] - usar, 2)
+                    resto = round(resto - usar, 2)
+
+    asignado = [
+        round(sum(r["importe"] for r in reparto if r["idLinea"] == l["idLinea"]), 2) for l in lineas
+    ]
+    return {"reparto": reparto, "diferencias": dict(zip((l["idLinea"] for l in lineas), diferencias(asignado)))}

@@ -20,9 +20,12 @@ from src.db.connection import (
 from src.db.pagination import offset_for
 from src.db.params import as_sql_datetime
 from src.features.tarjetas_resumenes.conciliacion_documentos import (
+    MAX_DOCS_SUGERENCIA,
     calcular_imputacion,
     importe_pesos,
+    repartir,
     sugerir,
+    tolerancia,
 )
 
 _CARGOS = [
@@ -225,12 +228,15 @@ def get_resumen_detalle(id_resumen: int) -> dict | None:
 def get_lineas(id_resumen: int) -> list[dict]:
     sql = """
         SELECT
-            IdLineaConsumo AS idLineaConsumo, FechaCompra AS fechaCompra, Detalle AS detalle,
-            Importe AS importe, FechaVencimientoCompra AS fechaVencimientoCompra,
-            IdContacto AS idContacto, NroDocumento AS nroDocumento
-        FROM dbo.Tarjetas_Resumenes_Lineas
-        WHERE IdResumen = ?
-        ORDER BY IdLineaConsumo ASC
+            l.IdLineaConsumo AS idLineaConsumo, l.FechaCompra AS fechaCompra, l.Detalle AS detalle,
+            l.Importe AS importe, l.FechaVencimientoCompra AS fechaVencimientoCompra,
+            l.IdContacto AS idContacto, l.NroDocumento AS nroDocumento,
+            e.Estado AS estadoLinea, e.Motivo AS motivoEstado, e.Detalle AS detalleEstado,
+            e.ImporteDiferencia AS importeDiferencia
+        FROM dbo.Tarjetas_Resumenes_Lineas l
+        LEFT JOIN dbo.Tarjetas_Resumenes_Lineas_Estado e ON e.IdLineaConsumo = l.IdLineaConsumo
+        WHERE l.IdResumen = ?
+        ORDER BY l.IdLineaConsumo ASC
     """
     lineas = fetch_all(sql, (id_resumen,))
     for linea in lineas:
@@ -294,8 +300,10 @@ _SELECT_DOCUMENTO = """
     SELECT
         w.IdDeuda AS idCompra, w.Fecha AS fecha, w.[Tipo documento] AS tipoDocumento,
         w.[Nro Documento] AS numeroDocumento, w.Moneda AS moneda, w.[Tipo de Cambio] AS tipoDeCambio,
-        w.ImporteDocumento AS importeOriginal, c.[Razon Social] AS proveedor
+        w.ImporteDocumento AS importeOriginal, c.[Razon Social] AS proveedor,
+        cm.[Ajusta Tipo Cambio] AS ajustaTipoCambio, w.IdContacto AS idContacto
     FROM dbo.vw_Compras_ImporteDocumento w
+    JOIN dbo.Compras cm ON cm.IdDeuda = w.IdDeuda
     LEFT JOIN dbo.Contactos c ON c.IdContacto = w.IdContacto
 """
 
@@ -305,6 +313,7 @@ def _documento_dict(row: dict) -> dict:
         **row,
         "tipoDeCambio": _f(row["tipoDeCambio"]) if row.get("tipoDeCambio") is not None else None,
         "importeOriginal": _f(row["importeOriginal"]),
+        "ajustaTipoCambio": bool(row.get("ajustaTipoCambio")),
     }
     doc["importePesos"] = importe_pesos(doc)
     return doc
@@ -340,9 +349,11 @@ def get_documentos_candidatos(id_linea_consumo: int, id_contacto: int, fecha_lin
         SELECT TOP (?) w.IdDeuda AS idCompra, w.Fecha AS fecha, w.[Tipo documento] AS tipoDocumento,
             w.[Nro Documento] AS numeroDocumento, w.Moneda AS moneda, w.[Tipo de Cambio] AS tipoDeCambio,
             w.ImporteDocumento AS importeOriginal, c.[Razon Social] AS proveedor,
+            cm.[Ajusta Tipo Cambio] AS ajustaTipoCambio,
             (SELECT COUNT(*) FROM dbo.Tarjetas_Resumenes_Lineas_Compras v
               WHERE v.IdCompra = w.IdDeuda AND v.IdLineaConsumo <> ?) AS vinculosPrevios
         FROM dbo.vw_Compras_ImporteDocumento w
+        JOIN dbo.Compras cm ON cm.IdDeuda = w.IdDeuda
         LEFT JOIN dbo.Contactos c ON c.IdContacto = w.IdContacto
         WHERE w.IdContacto = ? AND ISNULL(w.ImporteDocumento, 0) <> 0
           AND NOT EXISTS (
@@ -356,24 +367,259 @@ def get_documentos_candidatos(id_linea_consumo: int, id_contacto: int, fecha_lin
     return [_documento_dict(r) for r in rows]
 
 
-def get_candidatos_linea(id_linea_consumo: int) -> dict | None:
-    linea = get_linea(id_linea_consumo)
+MOTIVOS_DIFERENCIA = {"AjusteTipoCambioSinNota", "Redondeo", "Otro"}
+MOTIVOS_SIN_DOCUMENTO = {"Impuesto", "Interes", "CompraNoCargada", "Otro"}
+
+_SIN_RESOLVER = """
+    NOT EXISTS (SELECT 1 FROM dbo.Tarjetas_Resumenes_Lineas_Compras v WHERE v.IdLineaConsumo = l.IdLineaConsumo)
+    AND NOT EXISTS (SELECT 1 FROM dbo.Tarjetas_Resumenes_Lineas_Estado e WHERE e.IdLineaConsumo = l.IdLineaConsumo)
+"""
+
+
+def get_estado(id_linea_consumo: int) -> dict | None:
+    return fetch_one(
+        "SELECT IdLineaConsumo AS idLineaConsumo, Estado AS estado, Motivo AS motivo, Detalle AS detalle, "
+        "ImporteDiferencia AS importeDiferencia FROM dbo.Tarjetas_Resumenes_Lineas_Estado WHERE IdLineaConsumo = ?",
+        (id_linea_consumo,),
+    )
+
+
+def _validar_motivo(estado: str, motivo: str | None, detalle: str | None) -> None:
+    validos = MOTIVOS_DIFERENCIA if estado == "DiferenciaAceptada" else MOTIVOS_SIN_DOCUMENTO
+    if motivo not in validos:
+        raise ValueError([f"Motivo inválido: {motivo!r}. Opciones: {sorted(validos)}."])
+    if motivo == "Otro" and not (detalle or "").strip():
+        raise ValueError(["Indicá el detalle cuando el motivo es «Otro»."])
+
+
+def _stmt_estado(id_linea: int, estado: str, motivo: str, detalle: str | None, importe_dif: float | None) -> tuple:
+    return (
+        "INSERT INTO dbo.Tarjetas_Resumenes_Lineas_Estado (IdLineaConsumo, Estado, Motivo, Detalle, ImporteDiferencia) "
+        "VALUES (?, ?, ?, ?, ?)",
+        (id_linea, estado, motivo, (detalle or "").strip() or None, importe_dif),
+    )
+
+
+def _stmts_relaciones(docs: list[dict]) -> list[tuple]:
+    """Asocia cada nota de ajuste de tipo de cambio con las facturas en dólares
+    de la misma conciliación (tabla `CompraDocumentosRelacionados`, ya usada para
+    relacionar NC/ND con su factura)."""
+    ajustes = [d for d in docs if d.get("ajustaTipoCambio")]
+    facturas = [d for d in docs if d.get("moneda") == "Dolares" and not d.get("ajustaTipoCambio")]
+    stmts = []
+    for a in ajustes:
+        for f in facturas:
+            stmts.append(
+                (
+                    "INSERT INTO dbo.CompraDocumentosRelacionados (IdCompra, IdCompraRelacionada, CreatedAt) "
+                    "SELECT ?, ?, GETDATE() WHERE NOT EXISTS (SELECT 1 FROM dbo.CompraDocumentosRelacionados "
+                    "WHERE (IdCompra = ? AND IdCompraRelacionada = ?) OR (IdCompra = ? AND IdCompraRelacionada = ?))",
+                    (f["idCompra"], a["idCompra"], f["idCompra"], a["idCompra"], a["idCompra"], f["idCompra"]),
+                )
+            )
+    return stmts
+
+
+def _asegurar_pendiente(id_linea: int) -> dict:
+    linea = get_linea(id_linea)
     if linea is None:
+        raise ValueError([f"La línea {id_linea} no existe."])
+    if get_compras_vinculadas(id_linea):
+        raise ValueError([f"La línea {id_linea} ya tiene documentos vinculados."])
+    if get_estado(id_linea):
+        raise ValueError([f"La línea {id_linea} ya está resuelta."])
+    return linea
+
+
+def get_linea_contexto(id_linea_consumo: int) -> dict | None:
+    return fetch_one(
+        """
+        SELECT l.IdLineaConsumo AS idLineaConsumo, l.IdResumen AS idResumen, l.FechaCompra AS fechaCompra,
+               l.Detalle AS detalle, l.Importe AS importe, l.IdContacto AS idContacto, l.NroDocumento AS nroDocumento,
+               r.ResumenCodigo AS resumenCodigo, r.ArchivoOrigen AS urlResumenOriginal, t.TarjetaNombre AS tarjeta,
+               c.[Razon Social] AS proveedor
+        FROM dbo.Tarjetas_Resumenes_Lineas l
+        JOIN dbo.Tarjetas_Resumenes r ON r.IdResumen = l.IdResumen
+        LEFT JOIN dbo.Tarjetas t ON t.IdTarjeta = r.IdTarjeta
+        LEFT JOIN dbo.Contactos c ON c.IdContacto = l.IdContacto
+        WHERE l.IdLineaConsumo = ?
+        """,
+        (id_linea_consumo,),
+    )
+
+
+def get_lineas_hermanas(id_linea_consumo: int, id_contacto: int, limite: int = 20) -> list[dict]:
+    """Otras líneas pendientes del mismo proveedor (para conciliarlas juntas)."""
+    sql = f"""
+        SELECT TOP (?) l.IdLineaConsumo AS idLineaConsumo, l.IdResumen AS idResumen, r.ResumenCodigo AS resumenCodigo,
+               l.FechaCompra AS fechaCompra, l.Detalle AS detalle, l.Importe AS importe
+        FROM dbo.Tarjetas_Resumenes_Lineas l
+        JOIN dbo.Tarjetas_Resumenes r ON r.IdResumen = l.IdResumen
+        WHERE l.IdContacto = ? AND l.IdLineaConsumo <> ? AND {_SIN_RESOLVER}
+        ORDER BY r.FechaCierre DESC, l.IdLineaConsumo
+    """
+    rows = fetch_all(sql, (limite, id_contacto, id_linea_consumo))
+    return [{**r, "importe": _f(r["importe"])} for r in rows]
+
+
+def get_candidatos_linea(id_linea_consumo: int) -> dict | None:
+    contexto = get_linea_contexto(id_linea_consumo)
+    if contexto is None:
         return None
-    importe = _f(linea["importe"])
+    importe = _f(contexto["importe"])
+    id_contacto = contexto.get("idContacto")
     documentos = (
-        get_documentos_candidatos(id_linea_consumo, linea["idContacto"], linea["fechaCompra"])
-        if linea.get("idContacto")
-        else []
+        get_documentos_candidatos(id_linea_consumo, id_contacto, contexto["fechaCompra"]) if id_contacto else []
     )
     return {
         "idLineaConsumo": id_linea_consumo,
         "importeLinea": importe,
-        "fechaLinea": linea["fechaCompra"],
-        "idContacto": linea.get("idContacto"),
+        "fechaLinea": contexto["fechaCompra"],
+        "idContacto": id_contacto,
+        "linea": {**contexto, "importe": importe},
+        "estado": get_estado(id_linea_consumo),
+        "hermanas": get_lineas_hermanas(id_linea_consumo, id_contacto) if id_contacto else [],
         "documentos": documentos,
-        "sugerencias": sugerir(importe, documentos),
+        "sugerencias": sugerir(importe, documentos[:MAX_DOCS_SUGERENCIA]),
     }
+
+
+def buscar_documentos(texto: str, limite: int = 40) -> list[dict]:
+    """Documentos por proveedor (razón social) o número de documento, para sumar
+    a una conciliación documentos de otros proveedores."""
+    patron = f"%{texto.strip()}%"
+    sql = f"""
+        SELECT TOP (?) w.IdDeuda AS idCompra, w.Fecha AS fecha, w.[Tipo documento] AS tipoDocumento,
+            w.[Nro Documento] AS numeroDocumento, w.Moneda AS moneda, w.[Tipo de Cambio] AS tipoDeCambio,
+            w.ImporteDocumento AS importeOriginal, c.[Razon Social] AS proveedor,
+            cm.[Ajusta Tipo Cambio] AS ajustaTipoCambio,
+            (SELECT COUNT(*) FROM dbo.Tarjetas_Resumenes_Lineas_Compras v WHERE v.IdCompra = w.IdDeuda) AS vinculosPrevios
+        FROM dbo.vw_Compras_ImporteDocumento w
+        JOIN dbo.Compras cm ON cm.IdDeuda = w.IdDeuda
+        LEFT JOIN dbo.Contactos c ON c.IdContacto = w.IdContacto
+        WHERE ISNULL(w.ImporteDocumento, 0) <> 0
+          AND (c.[Razon Social] LIKE ? OR w.[Nro Documento] LIKE ?)
+        ORDER BY w.Fecha DESC, w.IdDeuda DESC
+    """
+    return [_documento_dict(r) for r in fetch_all(sql, (limite, patron, patron))]
+
+
+def get_documentos_de_contactos(ids_contacto: list[int]) -> dict[int, list[dict]]:
+    if not ids_contacto:
+        return {}
+    marcas = ",".join("?" for _ in ids_contacto)
+    rows = fetch_all(
+        f"{_SELECT_DOCUMENTO} WHERE w.IdContacto IN ({marcas}) AND ISNULL(w.ImporteDocumento, 0) <> 0",
+        tuple(ids_contacto),
+    )
+    por_contacto: dict[int, list[dict]] = {}
+    for r in rows:
+        por_contacto.setdefault(r["idContacto"], []).append(_documento_dict(r))
+    return por_contacto
+
+
+def _cercania(doc: dict, fecha_linea) -> int:
+    f, l = doc.get("fecha"), fecha_linea
+    try:
+        return abs((f - l).days)
+    except TypeError:
+        return 10**6
+
+
+def _resumen_doc(d: dict) -> dict:
+    return {k: d.get(k) for k in ("idCompra", "tipoDocumento", "numeroDocumento", "moneda", "importeOriginal", "importePesos", "proveedor")}
+
+
+def get_pendientes(
+    id_tarjeta: int | None = None,
+    proveedor: str | None = None,
+    fecha_cierre_desde=None,
+    fecha_cierre_hasta=None,
+) -> list[dict]:
+    """Líneas de consumo sin conciliar (sin documentos vinculados ni estado),
+    cada una con la mejor sugerencia exacta si existe. Las que tienen sugerencia
+    van primero; dentro de cada grupo, los resúmenes más recientes primero."""
+    where = [_SIN_RESOLVER]
+    params: list = []
+    if id_tarjeta is not None:
+        where.append("r.IdTarjeta = ?")
+        params.append(id_tarjeta)
+    if proveedor:
+        where.append("c.[Razon Social] LIKE ?")
+        params.append(f"%{proveedor.strip()}%")
+    if fecha_cierre_desde is not None:
+        where.append("r.FechaCierre >= ?")
+        params.append(as_sql_datetime(fecha_cierre_desde))
+    if fecha_cierre_hasta is not None:
+        where.append("r.FechaCierre <= ?")
+        params.append(as_sql_datetime(fecha_cierre_hasta))
+    rows = fetch_all(
+        f"""
+        SELECT l.IdLineaConsumo AS idLineaConsumo, l.IdResumen AS idResumen, r.ResumenCodigo AS resumenCodigo,
+               r.IdTarjeta AS idTarjeta, t.TarjetaNombre AS tarjeta, r.FechaCierre AS fechaCierre,
+               l.FechaCompra AS fechaCompra, l.Detalle AS detalle, l.Importe AS importe, l.IdContacto AS idContacto,
+               c.[Razon Social] AS proveedor, l.NroDocumento AS nroDocumento, r.ArchivoOrigen AS urlResumenOriginal
+        FROM dbo.Tarjetas_Resumenes_Lineas l
+        JOIN dbo.Tarjetas_Resumenes r ON r.IdResumen = l.IdResumen
+        LEFT JOIN dbo.Tarjetas t ON t.IdTarjeta = r.IdTarjeta
+        LEFT JOIN dbo.Contactos c ON c.IdContacto = l.IdContacto
+        WHERE {' AND '.join(where)}
+        ORDER BY r.FechaCierre DESC, l.IdLineaConsumo ASC
+        """,
+        tuple(params),
+    )
+    docs_por_contacto = get_documentos_de_contactos(sorted({r["idContacto"] for r in rows if r.get("idContacto")}))
+    items = []
+    for r in rows:
+        importe = _f(r["importe"])
+        docs = sorted(docs_por_contacto.get(r.get("idContacto"), []), key=lambda d: _cercania(d, r["fechaCompra"]))
+        sugerencias = sugerir(importe, docs[:MAX_DOCS_SUGERENCIA])
+        por_id = {d["idCompra"]: d for d in docs}
+        mejor = None
+        if sugerencias:
+            s = sugerencias[0]
+            mejor = {
+                "idsCompra": s["idsCompra"],
+                "estado": s["estado"],
+                "unica": len(sugerencias) == 1,
+                "documentos": [_resumen_doc(por_id[i]) for i in s["idsCompra"]],
+            }
+        items.append({**r, "importe": importe, "cantidadDocumentos": len(docs), "sugerencia": mejor})
+    items.sort(key=lambda x: 0 if x["sugerencia"] else 1)
+    return items
+
+
+def get_exactas_propuestas() -> list[dict]:
+    """Líneas cuya sugerencia exacta es segura de aplicar en bloque: única, sin
+    documentos en dólares y sin que ningún documento se repita en otra propuesta."""
+    candidatas = [
+        p
+        for p in get_pendientes()
+        if p["sugerencia"]
+        and p["sugerencia"]["unica"]
+        and all(d["moneda"] != "Dolares" for d in p["sugerencia"]["documentos"])
+    ]
+    uso: dict[int, int] = {}
+    for p in candidatas:
+        for i in p["sugerencia"]["idsCompra"]:
+            uso[i] = uso.get(i, 0) + 1
+    return [p for p in candidatas if all(uso[i] == 1 for i in p["sugerencia"]["idsCompra"])]
+
+
+def aceptar_exactas(ids_lineas: list[int]) -> dict:
+    propuestas = {p["idLineaConsumo"]: p for p in get_exactas_propuestas()}
+    aplicadas, omitidas = 0, []
+    for id_linea in ids_lineas:
+        p = propuestas.get(id_linea)
+        if p is None:
+            omitidas.append(id_linea)
+            continue
+        try:
+            vincular_compras_lote(id_linea, p["sugerencia"]["idsCompra"])
+            aplicadas += 1
+        except ValueError:
+            omitidas.append(id_linea)
+    return {"aplicadas": aplicadas, "omitidas": omitidas}
 
 
 def calcular_conciliacion(id_linea_consumo: int, ids_compra: list[int]) -> dict:
@@ -392,26 +638,107 @@ def calcular_conciliacion(id_linea_consumo: int, ids_compra: list[int]) -> dict:
     return {"documentos": docs, **calculo}
 
 
-def vincular_compras_lote(id_linea_consumo: int, ids_compra: list[int]) -> list[dict]:
+def vincular_compras_lote(id_linea_consumo: int, ids_compra: list[int], aceptar_diferencia: dict | None = None) -> list[dict]:
     """Vincula varios documentos a una línea en una sola transacción (todo o
-    nada), con los importes que reparte `calcular_conciliacion`."""
+    nada). Si la suma no cierra con la línea hace falta `aceptar_diferencia`
+    (`motivo`, `detalle`), que además queda registrada como estado de la línea.
+    Un único documento en pesos que no coincide es un pago parcial (cuota) y no
+    requiere motivo."""
     if not ids_compra:
         raise ValueError(["Elegí al menos un documento."])
-    ya_vinculados = {v["idCompra"] for v in get_compras_vinculadas(id_linea_consumo)}
-    repetidos = ya_vinculados & set(ids_compra)
-    if repetidos:
-        raise ValueError([f"Ya están vinculados a esta línea: {sorted(repetidos)}."])
+    _asegurar_pendiente(id_linea_consumo)
     calculo = calcular_conciliacion(id_linea_consumo, ids_compra)
-    statements = [
+    statements: list = [
         (
-            "INSERT INTO dbo.Tarjetas_Resumenes_Lineas_Compras (IdLineaConsumo, IdCompra, ImporteImputado) "
-            "VALUES (?, ?, ?)",
+            "INSERT INTO dbo.Tarjetas_Resumenes_Lineas_Compras (IdLineaConsumo, IdCompra, ImporteImputado) VALUES (?, ?, ?)",
             (id_linea_consumo, i["idCompra"], i["importeImputado"]),
         )
         for i in calculo["imputados"]
     ]
+    if calculo["estado"] == "parcial" and not calculo["pagoParcial"]:
+        if not aceptar_diferencia:
+            raise ValueError(
+                [f"La suma de los documentos no cierra con la línea (diferencia {calculo['diferencia']:,.2f}). "
+                 "Aceptá la diferencia con un motivo o cambiá la selección."]
+            )
+        _validar_motivo("DiferenciaAceptada", aceptar_diferencia.get("motivo"), aceptar_diferencia.get("detalle"))
+        statements.append(
+            _stmt_estado(id_linea_consumo, "DiferenciaAceptada", aceptar_diferencia["motivo"], aceptar_diferencia.get("detalle"), calculo["diferencia"])
+        )
+    statements.extend(_stmts_relaciones(calculo["documentos"]))
     execute_write_transaction(statements)
     return get_compras_vinculadas(id_linea_consumo)
+
+
+def marcar_sin_documento(id_linea_consumo: int, motivo: str, detalle: str | None) -> None:
+    _validar_motivo("SinDocumento", motivo, detalle)
+    _asegurar_pendiente(id_linea_consumo)
+    execute_write_transaction([_stmt_estado(id_linea_consumo, "SinDocumento", motivo, detalle, None)])
+
+
+def quitar_estado(id_linea_consumo: int) -> None:
+    execute_write("DELETE FROM dbo.Tarjetas_Resumenes_Lineas_Estado WHERE IdLineaConsumo = ?", (id_linea_consumo,))
+
+
+def proponer_reparto(ids_lineas: list[int], ids_compra: list[int]) -> dict:
+    """Propuesta de reparto de varias líneas entre varios documentos (editable
+    por el usuario antes de guardar)."""
+    if len(set(ids_lineas)) != len(ids_lineas) or len(set(ids_compra)) != len(ids_compra):
+        raise ValueError(["Hay líneas o documentos repetidos en la selección."])
+    lineas = []
+    for i in ids_lineas:
+        l = _asegurar_pendiente(i)
+        lineas.append({"idLinea": i, "importe": _f(l["importe"]), "fechaCompra": l["fechaCompra"]})
+    docs = get_documentos_por_ids(ids_compra)
+    faltantes = set(ids_compra) - {d["idCompra"] for d in docs}
+    if faltantes:
+        raise ValueError([f"No existen las compras: {sorted(faltantes)}."])
+    lineas.sort(key=lambda l: (l["fechaCompra"], l["idLinea"]))
+    propuesta = repartir(lineas, docs)
+    return {"lineas": lineas, "documentos": docs, **propuesta}
+
+
+def conciliar_reparto(reparto: list[dict], aceptar_diferencia: dict | None = None) -> dict:
+    """Guarda, en una transacción, el reparto de varias líneas entre varios
+    documentos. Cada línea debe cerrar con lo asignado (±tolerancia); las que no,
+    requieren `aceptar_diferencia` (mismo motivo para todas)."""
+    por_linea: dict[int, list[dict]] = {}
+    for r in reparto:
+        por_linea.setdefault(r["idLinea"], []).append(r)
+    docs = {d["idCompra"]: d for d in get_documentos_por_ids(sorted({r["idCompra"] for r in reparto}))}
+    faltantes = {r["idCompra"] for r in reparto} - set(docs)
+    if faltantes:
+        raise ValueError([f"No existen las compras: {sorted(faltantes)}."])
+
+    statements: list = []
+    no_cierran: list[tuple[int, float]] = []
+    for id_linea, items in por_linea.items():
+        linea = _asegurar_pendiente(id_linea)
+        docs_linea = [docs[i["idCompra"]] for i in items]
+        asignado = round(sum(i["importe"] for i in items), 2)
+        diferencia = round(_f(linea["importe"]) - asignado, 2)
+        for i in items:
+            statements.append(
+                (
+                    "INSERT INTO dbo.Tarjetas_Resumenes_Lineas_Compras (IdLineaConsumo, IdCompra, ImporteImputado) VALUES (?, ?, ?)",
+                    (id_linea, i["idCompra"], i["importe"]),
+                )
+            )
+        statements.extend(_stmts_relaciones(docs_linea))
+        if abs(diferencia) > tolerancia(docs_linea):
+            no_cierran.append((id_linea, diferencia))
+
+    if no_cierran:
+        if not aceptar_diferencia:
+            detalle = "; ".join(f"línea {i}: {d:,.2f}" for i, d in no_cierran)
+            raise ValueError([f"Hay líneas que no cierran ({detalle}). Aceptá la diferencia con un motivo o ajustá el reparto."])
+        _validar_motivo("DiferenciaAceptada", aceptar_diferencia.get("motivo"), aceptar_diferencia.get("detalle"))
+        for id_linea, diferencia in no_cierran:
+            statements.append(
+                _stmt_estado(id_linea, "DiferenciaAceptada", aceptar_diferencia["motivo"], aceptar_diferencia.get("detalle"), diferencia)
+            )
+    execute_write_transaction(statements)
+    return {"lineas": len(por_linea), "vinculos": len(reparto)}
 
 
 def vincular_compra(id_linea_consumo: int, id_compra: int, importe_imputado: float) -> int:
@@ -541,6 +868,11 @@ def update_resumen(id_resumen: int, cabecera: dict, lineas: list[dict]) -> None:
             "(SELECT IdLineaConsumo FROM dbo.Tarjetas_Resumenes_Lineas WHERE IdResumen = ?)",
             (id_resumen,),
         ),
+        (
+            "DELETE FROM dbo.Tarjetas_Resumenes_Lineas_Estado WHERE IdLineaConsumo IN "
+            "(SELECT IdLineaConsumo FROM dbo.Tarjetas_Resumenes_Lineas WHERE IdResumen = ?)",
+            (id_resumen,),
+        ),
         ("DELETE FROM dbo.Tarjetas_Resumenes_Lineas WHERE IdResumen = ?", (id_resumen,)),
         _cabecera_update_statement(id_resumen, cabecera),
     ]
@@ -568,6 +900,11 @@ def delete_resumen(id_resumen: int) -> None:
     statements = [
         (
             "DELETE FROM dbo.Tarjetas_Resumenes_Lineas_Compras WHERE IdLineaConsumo IN "
+            "(SELECT IdLineaConsumo FROM dbo.Tarjetas_Resumenes_Lineas WHERE IdResumen = ?)",
+            (id_resumen,),
+        ),
+        (
+            "DELETE FROM dbo.Tarjetas_Resumenes_Lineas_Estado WHERE IdLineaConsumo IN "
             "(SELECT IdLineaConsumo FROM dbo.Tarjetas_Resumenes_Lineas WHERE IdResumen = ?)",
             (id_resumen,),
         ),

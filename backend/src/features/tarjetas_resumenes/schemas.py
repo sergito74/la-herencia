@@ -42,6 +42,11 @@ class VincularCompraRequest(BaseModel):
 class LineaConsumo(LineaConsumoInput):
     idLineaConsumo: int | None = None
     comprasVinculadas: list[CompraVinculada] = []
+    # Resolución manual sin documentos (009): "SinDocumento" o "DiferenciaAceptada".
+    estadoLinea: str | None = None
+    motivoEstado: str | None = None
+    detalleEstado: str | None = None
+    importeDiferencia: float | None = None
 
 
 class ResumenAltaRequest(BaseModel):
@@ -172,6 +177,8 @@ class DocumentoCandidato(BaseModel):
     importePesos: float
     proveedor: str | None = None
     vinculosPrevios: int = 0
+    # Nota de crédito/débito que ajusta el tipo de cambio de una factura en dólares.
+    ajustaTipoCambio: bool = False
 
 
 class ImputacionDocumento(BaseModel):
@@ -196,11 +203,45 @@ class SugerenciaConciliacion(ConciliacionCalculo):
     idsCompra: list[int]
 
 
+class LineaContexto(BaseModel):
+    idLineaConsumo: int
+    idResumen: int
+    resumenCodigo: str | None = None
+    tarjeta: str | None = None
+    fechaCompra: date | None = None
+    detalle: str | None = None
+    importe: float
+    idContacto: int | None = None
+    proveedor: str | None = None
+    nroDocumento: str | None = None
+    urlResumenOriginal: str | None = None
+
+
+class LineaHermana(BaseModel):
+    idLineaConsumo: int
+    idResumen: int
+    resumenCodigo: str | None = None
+    fechaCompra: date | None = None
+    detalle: str | None = None
+    importe: float
+
+
+class EstadoLinea(BaseModel):
+    idLineaConsumo: int
+    estado: str
+    motivo: str
+    detalle: str | None = None
+    importeDiferencia: float | None = None
+
+
 class CandidatosLineaResponse(BaseModel):
     idLineaConsumo: int
     importeLinea: float
     fechaLinea: date | None = None
     idContacto: int | None = None
+    linea: LineaContexto
+    estado: EstadoLinea | None = None
+    hermanas: list[LineaHermana] = []
     documentos: list[DocumentoCandidato]
     sugerencias: list[SugerenciaConciliacion]
 
@@ -209,5 +250,104 @@ class ConciliacionPreviewResponse(ConciliacionCalculo):
     documentos: list[DocumentoCandidato]
 
 
+class AceptarDiferencia(BaseModel):
+    # AjusteTipoCambioSinNota | Redondeo | Otro (con detalle)
+    motivo: str
+    detalle: str | None = None
+
+
 class VincularLoteRequest(BaseModel):
     idsCompra: list[int] = Field(min_length=1)
+    aceptarDiferencia: AceptarDiferencia | None = None
+
+
+class SinDocumentoRequest(BaseModel):
+    # Impuesto | Interes | CompraNoCargada | Otro (con detalle)
+    motivo: str
+    detalle: str | None = None
+
+
+class DocumentoResumido(BaseModel):
+    idCompra: int
+    tipoDocumento: str | None = None
+    numeroDocumento: str | None = None
+    moneda: str | None = None
+    importeOriginal: float
+    importePesos: float
+    proveedor: str | None = None
+
+
+class SugerenciaPendiente(BaseModel):
+    idsCompra: list[int]
+    estado: str
+    unica: bool
+    documentos: list[DocumentoResumido]
+
+
+class LineaPendiente(BaseModel):
+    idLineaConsumo: int
+    idResumen: int
+    resumenCodigo: str | None = None
+    idTarjeta: int
+    tarjeta: str | None = None
+    fechaCierre: date | None = None
+    fechaCompra: date | None = None
+    detalle: str | None = None
+    importe: float
+    idContacto: int | None = None
+    proveedor: str | None = None
+    nroDocumento: str | None = None
+    urlResumenOriginal: str | None = None
+    cantidadDocumentos: int
+    sugerencia: SugerenciaPendiente | None = None
+
+
+class PendientesResponse(BaseModel):
+    items: list[LineaPendiente]
+    page: int
+    pageSize: int
+    total: int
+    totalConSugerencia: int
+
+
+class AceptarExactasRequest(BaseModel):
+    idsLineas: list[int] = Field(min_length=1)
+
+
+class AceptarExactasResponse(BaseModel):
+    aplicadas: int
+    omitidas: list[int]
+
+
+class RepartoItem(BaseModel):
+    idLinea: int
+    idCompra: int
+    importe: float
+
+
+class RepartoPropuestaRequest(BaseModel):
+    idsLineas: list[int] = Field(min_length=1)
+    idsCompra: list[int] = Field(min_length=1)
+
+
+class RepartoLinea(BaseModel):
+    idLinea: int
+    importe: float
+    fechaCompra: date | None = None
+
+
+class RepartoPropuestaResponse(BaseModel):
+    lineas: list[RepartoLinea]
+    documentos: list[DocumentoCandidato]
+    reparto: list[RepartoItem]
+    diferencias: dict[int, float]
+
+
+class ConciliarRepartoRequest(BaseModel):
+    reparto: list[RepartoItem] = Field(min_length=1)
+    aceptarDiferencia: AceptarDiferencia | None = None
+
+
+class ConciliarRepartoResponse(BaseModel):
+    lineas: int
+    vinculos: int

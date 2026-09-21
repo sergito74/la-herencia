@@ -12,17 +12,26 @@ from src.db.pagination import normalize_pagination
 from src.features.tarjetas import repository as tarjetas_repository
 from src.features.tarjetas_resumenes import repository, repository_locks
 from src.features.tarjetas_resumenes.schemas import (
+    AceptarExactasRequest,
+    AceptarExactasResponse,
     CandidatosLineaResponse,
     CompraVinculada,
     ConciliacionPreviewResponse,
+    ConciliarRepartoRequest,
+    ConciliarRepartoResponse,
+    DocumentoCandidato,
     LockRequest,
     LockResponse,
     PagoResumen,
+    PendientesResponse,
+    RepartoPropuestaRequest,
+    RepartoPropuestaResponse,
     ResumenAltaRequest,
     ResumenDetalleResponse,
     ResumenEditRequest,
     ResumenesListResponse,
     ResumenListItem,
+    SinDocumentoRequest,
     VincularCompraRequest,
     VincularLoteRequest,
     VincularPagoRequest,
@@ -164,6 +173,104 @@ async def eliminar_resumen(id_resumen: int, x_lock_token: str = Header(...)) -> 
     await run_in_threadpool(repository.delete_resumen, id_resumen)
 
 
+@router.get("/pendientes", response_model=PendientesResponse)
+async def listar_pendientes(
+    idTarjeta: int | None = None,
+    proveedor: str | None = None,
+    fechaCierreDesde: date | None = None,
+    fechaCierreHasta: date | None = None,
+    soloConSugerencia: bool = False,
+    page: int = 1,
+    pageSize: int = 25,
+) -> PendientesResponse:
+    """Bandeja de conciliación: líneas de consumo sin documentos vinculados ni
+    resolución manual, las que tienen sugerencia exacta primero."""
+    page, pageSize = normalize_pagination(page, pageSize)
+    items = await run_in_threadpool(
+        repository.get_pendientes, idTarjeta, proveedor, fechaCierreDesde, fechaCierreHasta
+    )
+    con_sugerencia = sum(1 for i in items if i["sugerencia"])
+    if soloConSugerencia:
+        items = [i for i in items if i["sugerencia"]]
+    inicio = (page - 1) * pageSize
+    return PendientesResponse(
+        items=items[inicio : inicio + pageSize],
+        page=page,
+        pageSize=pageSize,
+        total=len(items),
+        totalConSugerencia=con_sugerencia,
+    )
+
+
+@router.get("/pendientes/exactas")
+async def previsualizar_exactas() -> list[dict]:
+    """Vista previa de lo que haría "Aceptar sugerencias exactas": solo
+    combinaciones únicas, en pesos, sin documentos compartidos con otra línea."""
+    propuestas = await run_in_threadpool(repository.get_exactas_propuestas)
+    return [
+        {
+            "idLineaConsumo": p["idLineaConsumo"],
+            "resumenCodigo": p["resumenCodigo"],
+            "tarjeta": p["tarjeta"],
+            "fechaCompra": p["fechaCompra"],
+            "detalle": p["detalle"],
+            "proveedor": p["proveedor"],
+            "importe": p["importe"],
+            "documentos": p["sugerencia"]["documentos"],
+        }
+        for p in propuestas
+    ]
+
+
+@router.post("/pendientes/aceptar-exactas", response_model=AceptarExactasResponse)
+async def aceptar_exactas(body: AceptarExactasRequest) -> AceptarExactasResponse:
+    data = await run_in_threadpool(repository.aceptar_exactas, body.idsLineas)
+    return AceptarExactasResponse(**data)
+
+
+@router.get("/documentos-buscar", response_model=list[DocumentoCandidato])
+async def buscar_documentos(q: str = Query(min_length=2)) -> list[DocumentoCandidato]:
+    """Documentos por proveedor o número, para sumar a una conciliación
+    documentos de otros proveedores."""
+    rows = await run_in_threadpool(repository.buscar_documentos, q)
+    return [DocumentoCandidato(**r) for r in rows]
+
+
+@router.post("/lineas/reparto-propuesta", response_model=RepartoPropuestaResponse)
+async def proponer_reparto(body: RepartoPropuestaRequest) -> RepartoPropuestaResponse:
+    try:
+        data = await run_in_threadpool(repository.proponer_reparto, body.idsLineas, body.idsCompra)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=exc.args[0]) from exc
+    return RepartoPropuestaResponse(**data)
+
+
+@router.post("/lineas/conciliar-reparto", response_model=ConciliarRepartoResponse, status_code=201)
+async def conciliar_reparto(body: ConciliarRepartoRequest) -> ConciliarRepartoResponse:
+    try:
+        data = await run_in_threadpool(
+            repository.conciliar_reparto,
+            [i.model_dump() for i in body.reparto],
+            body.aceptarDiferencia.model_dump() if body.aceptarDiferencia else None,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=exc.args[0]) from exc
+    return ConciliarRepartoResponse(**data)
+
+
+@router.post("/lineas/{id_linea_consumo}/sin-documento", status_code=204)
+async def marcar_sin_documento(id_linea_consumo: int, body: SinDocumentoRequest) -> None:
+    try:
+        await run_in_threadpool(repository.marcar_sin_documento, id_linea_consumo, body.motivo, body.detalle)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=exc.args[0]) from exc
+
+
+@router.delete("/lineas/{id_linea_consumo}/estado", status_code=204)
+async def quitar_estado_linea(id_linea_consumo: int) -> None:
+    await run_in_threadpool(repository.quitar_estado, id_linea_consumo)
+
+
 @router.get("/{id_resumen}", response_model=ResumenDetalleResponse)
 async def get_resumen_detalle(id_resumen: int) -> ResumenDetalleResponse:
     cabecera = await run_in_threadpool(repository.get_resumen_detalle, id_resumen)
@@ -224,7 +331,12 @@ async def vincular_compras_lote(id_linea_consumo: int, body: VincularLoteRequest
     """Vincula varios documentos (Factura/NC/ND) a la línea de una sola vez,
     repartiendo su importe entre ellos (pesificando los que están en dólares)."""
     try:
-        vinculos = await run_in_threadpool(repository.vincular_compras_lote, id_linea_consumo, body.idsCompra)
+        vinculos = await run_in_threadpool(
+            repository.vincular_compras_lote,
+            id_linea_consumo,
+            body.idsCompra,
+            body.aceptarDiferencia.model_dump() if body.aceptarDiferencia else None,
+        )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=exc.args[0]) from exc
     return [CompraVinculada(**v) for v in vinculos]
