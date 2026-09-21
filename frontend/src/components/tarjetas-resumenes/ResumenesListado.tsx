@@ -8,6 +8,8 @@ import { useState } from "react";
 import { fetchResumenes } from "@/services/tarjetasResumenesApi";
 import { fetchTarjetas } from "@/services/tarjetasApi";
 import { formatMoneda } from "@/lib/format";
+import { esRutaLocalWindows, urlParaAbrirDocumento } from "@/lib/documentoLocal";
+import { urlDocumentoLocal } from "@/services/comprasApi";
 import { DataTable, type DataTableColumn } from "@/components/ui/DataTable";
 import { FilterBar, FilterField, FilterSubmitButton, filterInputClass } from "@/components/ui/FilterBar";
 import { EmptyState, ErrorState, LoadingState } from "@/components/ui/States";
@@ -55,6 +57,28 @@ const COLUMNS: DataTableColumn<ResumenListItem>[] = [
           ok={r.lineasVinculadas === r.lineasTotal}
           label={`${r.lineasVinculadas}/${r.lineasTotal} vinculados`}
         />
+      ),
+  },
+  {
+    key: "urlResumenOriginal",
+    header: "Archivo",
+    render: (r) =>
+      r.urlResumenOriginal ? (
+        <a
+          href={urlParaAbrirDocumento(r.urlResumenOriginal, "", urlDocumentoLocal)}
+          target="_blank"
+          rel="noreferrer"
+          title={
+            esRutaLocalWindows(r.urlResumenOriginal, "")
+              ? "Abre el PDF servido por el backend desde el disco de esta PC."
+              : undefined
+          }
+          className="text-finance underline"
+        >
+          Abrir PDF
+        </a>
+      ) : (
+        <span className="text-ink-secondary">—</span>
       ),
   },
   {

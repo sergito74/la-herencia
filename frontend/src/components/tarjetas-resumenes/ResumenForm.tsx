@@ -18,6 +18,7 @@ import {
 import { fetchTarjetas } from "@/services/tarjetasApi";
 import { ApiError } from "@/services/apiClient";
 import { formatMoneda } from "@/lib/format";
+import { ArchivoVinculado } from "@/components/ui/ArchivoVinculado";
 import { MoneyInput } from "@/components/ui/MoneyInput";
 import { filterInputClass } from "@/components/ui/FilterBar";
 import { useToast } from "@/components/ui/Toast";
@@ -251,15 +252,13 @@ export function ResumenForm({
             onChange={(e) => setFechaVencimiento(e.target.value)}
           />
         </label>
-        <label className="sm:col-span-2">
-          <span className="text-xs text-ink-secondary">Resumen original (PDF)</span>
-          <input
-            className={inputCompacto}
-            value={urlResumenOriginal}
-            onChange={(e) => setUrlResumenOriginal(e.target.value)}
-            placeholder="Link o ruta al PDF escaneado…"
-          />
-        </label>
+        <ArchivoVinculado
+          className="sm:col-span-2"
+          label="Resumen original (PDF)"
+          value={urlResumenOriginal}
+          onChange={setUrlResumenOriginal}
+          inputClassName={inputCompacto}
+        />
       </div>
 
       <div className="grid grid-cols-[repeat(auto-fit,minmax(9rem,1fr))] gap-2 rounded-md border border-border bg-surface p-2">

@@ -16,6 +16,7 @@ from src.features.arrendamientos.router import router as arrendamientos_router
 from src.features.compras.router import router as compras_router
 from src.features.contactos.router import router as contactos_router
 from src.features.cuentas_corrientes.router import router as cuentas_corrientes_router
+from src.features.documentos.router import router as documentos_router
 from src.features.impuestos.router import router as impuestos_router
 from src.features.remuneraciones.router import router as remuneraciones_router
 from src.features.sesion.router import router as sesion_router
@@ -59,6 +60,7 @@ app.include_router(arrendamientos_router)
 app.include_router(compras_router)
 app.include_router(contactos_router)
 app.include_router(cuentas_corrientes_router)
+app.include_router(documentos_router)
 app.include_router(impuestos_router)
 app.include_router(remuneraciones_router)
 app.include_router(sesion_router)

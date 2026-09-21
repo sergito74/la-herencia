@@ -19,6 +19,11 @@ from src.db.connection import (
 )
 from src.db.pagination import offset_for
 from src.db.params import as_sql_datetime
+from src.features.tarjetas_resumenes.conciliacion_documentos import (
+    calcular_imputacion,
+    importe_pesos,
+    sugerir,
+)
 
 _CARGOS = [
     "impuestoSellos",
@@ -178,6 +183,7 @@ def search_resumenes(
                 "codigo": row["codigo"],
                 "fechaCierre": row["fechaCierre"],
                 "fechaVencimiento": row["fechaVencimiento"],
+                "urlResumenOriginal": cabecera.get("urlResumenOriginal") if cabecera else None,
                 "totalCalculado": total_calculado,
                 "soloCabecera": len(lineas) == 0,
                 "pagoConciliado": diferencia_redondeo <= TOLERANCIA_CONCILIACION,
@@ -282,6 +288,130 @@ def auto_vincular_compras(id_resumen: int) -> int:
         vincular_compra(linea["idLineaConsumo"], candidatas[0]["IdDeuda"], linea["importe"])
         creados += 1
     return creados
+
+
+_SELECT_DOCUMENTO = """
+    SELECT
+        w.IdDeuda AS idCompra, w.Fecha AS fecha, w.[Tipo documento] AS tipoDocumento,
+        w.[Nro Documento] AS numeroDocumento, w.Moneda AS moneda, w.[Tipo de Cambio] AS tipoDeCambio,
+        w.ImporteDocumento AS importeOriginal, c.[Razon Social] AS proveedor
+    FROM dbo.vw_Compras_ImporteDocumento w
+    LEFT JOIN dbo.Contactos c ON c.IdContacto = w.IdContacto
+"""
+
+
+def _documento_dict(row: dict) -> dict:
+    doc = {
+        **row,
+        "tipoDeCambio": _f(row["tipoDeCambio"]) if row.get("tipoDeCambio") is not None else None,
+        "importeOriginal": _f(row["importeOriginal"]),
+    }
+    doc["importePesos"] = importe_pesos(doc)
+    return doc
+
+
+def get_linea(id_linea_consumo: int) -> dict | None:
+    return fetch_one(
+        """
+        SELECT IdLineaConsumo AS idLineaConsumo, IdResumen AS idResumen, FechaCompra AS fechaCompra,
+               Importe AS importe, IdContacto AS idContacto, NroDocumento AS nroDocumento
+        FROM dbo.Tarjetas_Resumenes_Lineas WHERE IdLineaConsumo = ?
+        """,
+        (id_linea_consumo,),
+    )
+
+
+def get_documentos_por_ids(ids_compra: list[int]) -> list[dict]:
+    """Documentos pedidos, en el mismo orden que `ids_compra`."""
+    if not ids_compra:
+        return []
+    marcas = ",".join("?" for _ in ids_compra)
+    rows = fetch_all(f"{_SELECT_DOCUMENTO} WHERE w.IdDeuda IN ({marcas})", tuple(ids_compra))
+    por_id = {r["idCompra"]: _documento_dict(r) for r in rows}
+    return [por_id[i] for i in ids_compra if i in por_id]
+
+
+def get_documentos_candidatos(id_linea_consumo: int, id_contacto: int, fecha_linea, limite: int = 60) -> list[dict]:
+    """Documentos (Factura/NC/ND) del proveedor de la línea, los más cercanos en
+    fecha primero, sin los ya vinculados a esta misma línea. Incluye en
+    `vinculosPrevios` a cuántas otras líneas están vinculados (un documento en
+    cuotas se paga con varias líneas)."""
+    sql = f"""
+        SELECT TOP (?) w.IdDeuda AS idCompra, w.Fecha AS fecha, w.[Tipo documento] AS tipoDocumento,
+            w.[Nro Documento] AS numeroDocumento, w.Moneda AS moneda, w.[Tipo de Cambio] AS tipoDeCambio,
+            w.ImporteDocumento AS importeOriginal, c.[Razon Social] AS proveedor,
+            (SELECT COUNT(*) FROM dbo.Tarjetas_Resumenes_Lineas_Compras v
+              WHERE v.IdCompra = w.IdDeuda AND v.IdLineaConsumo <> ?) AS vinculosPrevios
+        FROM dbo.vw_Compras_ImporteDocumento w
+        LEFT JOIN dbo.Contactos c ON c.IdContacto = w.IdContacto
+        WHERE w.IdContacto = ? AND ISNULL(w.ImporteDocumento, 0) <> 0
+          AND NOT EXISTS (
+              SELECT 1 FROM dbo.Tarjetas_Resumenes_Lineas_Compras v2
+              WHERE v2.IdCompra = w.IdDeuda AND v2.IdLineaConsumo = ?)
+        ORDER BY ABS(DATEDIFF(day, w.Fecha, ?)) ASC, w.IdDeuda DESC
+    """
+    rows = fetch_all(
+        sql, (limite, id_linea_consumo, id_contacto, id_linea_consumo, as_sql_datetime(fecha_linea))
+    )
+    return [_documento_dict(r) for r in rows]
+
+
+def get_candidatos_linea(id_linea_consumo: int) -> dict | None:
+    linea = get_linea(id_linea_consumo)
+    if linea is None:
+        return None
+    importe = _f(linea["importe"])
+    documentos = (
+        get_documentos_candidatos(id_linea_consumo, linea["idContacto"], linea["fechaCompra"])
+        if linea.get("idContacto")
+        else []
+    )
+    return {
+        "idLineaConsumo": id_linea_consumo,
+        "importeLinea": importe,
+        "fechaLinea": linea["fechaCompra"],
+        "idContacto": linea.get("idContacto"),
+        "documentos": documentos,
+        "sugerencias": sugerir(importe, documentos),
+    }
+
+
+def calcular_conciliacion(id_linea_consumo: int, ids_compra: list[int]) -> dict:
+    """Cómo se repartiría la línea entre los documentos elegidos (ver
+    `conciliacion_documentos`). `ValueError` si algo no existe o se repite."""
+    if len(set(ids_compra)) != len(ids_compra):
+        raise ValueError(["Hay documentos repetidos en la selección."])
+    linea = get_linea(id_linea_consumo)
+    if linea is None:
+        raise ValueError([f"La línea {id_linea_consumo} no existe."])
+    docs = get_documentos_por_ids(ids_compra)
+    faltantes = set(ids_compra) - {d["idCompra"] for d in docs}
+    if faltantes:
+        raise ValueError([f"No existen las compras: {sorted(faltantes)}."])
+    calculo = calcular_imputacion(_f(linea["importe"]), docs)
+    return {"documentos": docs, **calculo}
+
+
+def vincular_compras_lote(id_linea_consumo: int, ids_compra: list[int]) -> list[dict]:
+    """Vincula varios documentos a una línea en una sola transacción (todo o
+    nada), con los importes que reparte `calcular_conciliacion`."""
+    if not ids_compra:
+        raise ValueError(["Elegí al menos un documento."])
+    ya_vinculados = {v["idCompra"] for v in get_compras_vinculadas(id_linea_consumo)}
+    repetidos = ya_vinculados & set(ids_compra)
+    if repetidos:
+        raise ValueError([f"Ya están vinculados a esta línea: {sorted(repetidos)}."])
+    calculo = calcular_conciliacion(id_linea_consumo, ids_compra)
+    statements = [
+        (
+            "INSERT INTO dbo.Tarjetas_Resumenes_Lineas_Compras (IdLineaConsumo, IdCompra, ImporteImputado) "
+            "VALUES (?, ?, ?)",
+            (id_linea_consumo, i["idCompra"], i["importeImputado"]),
+        )
+        for i in calculo["imputados"]
+    ]
+    execute_write_transaction(statements)
+    return get_compras_vinculadas(id_linea_consumo)
 
 
 def vincular_compra(id_linea_consumo: int, id_compra: int, importe_imputado: float) -> int:

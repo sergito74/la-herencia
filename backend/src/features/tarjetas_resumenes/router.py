@@ -12,7 +12,9 @@ from src.db.pagination import normalize_pagination
 from src.features.tarjetas import repository as tarjetas_repository
 from src.features.tarjetas_resumenes import repository, repository_locks
 from src.features.tarjetas_resumenes.schemas import (
+    CandidatosLineaResponse,
     CompraVinculada,
+    ConciliacionPreviewResponse,
     LockRequest,
     LockResponse,
     PagoResumen,
@@ -22,6 +24,7 @@ from src.features.tarjetas_resumenes.schemas import (
     ResumenesListResponse,
     ResumenListItem,
     VincularCompraRequest,
+    VincularLoteRequest,
     VincularPagoRequest,
 )
 
@@ -193,6 +196,38 @@ async def vincular_compra_a_linea(id_linea_consumo: int, body: VincularCompraReq
         if v["idVinculo"] == id_vinculo:
             return CompraVinculada(**v)
     raise HTTPException(status_code=500, detail="No se pudo leer el vínculo recién creado")
+
+
+@router.get("/lineas/{id_linea_consumo}/candidatos", response_model=CandidatosLineaResponse)
+async def get_candidatos_linea(id_linea_consumo: int) -> CandidatosLineaResponse:
+    """Documentos del proveedor de la línea (pesificados) y combinaciones de
+    ellos que la concilian — ver `conciliacion_documentos`."""
+    data = await run_in_threadpool(repository.get_candidatos_linea, id_linea_consumo)
+    if data is None:
+        raise HTTPException(status_code=404, detail="Línea de consumo no encontrada")
+    return CandidatosLineaResponse(**data)
+
+
+@router.get("/lineas/{id_linea_consumo}/conciliacion", response_model=ConciliacionPreviewResponse)
+async def previsualizar_conciliacion(
+    id_linea_consumo: int, idsCompra: list[int] = Query(min_length=1)
+) -> ConciliacionPreviewResponse:
+    try:
+        data = await run_in_threadpool(repository.calcular_conciliacion, id_linea_consumo, idsCompra)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=exc.args[0]) from exc
+    return ConciliacionPreviewResponse(**data)
+
+
+@router.post("/lineas/{id_linea_consumo}/compras/lote", response_model=list[CompraVinculada], status_code=201)
+async def vincular_compras_lote(id_linea_consumo: int, body: VincularLoteRequest) -> list[CompraVinculada]:
+    """Vincula varios documentos (Factura/NC/ND) a la línea de una sola vez,
+    repartiendo su importe entre ellos (pesificando los que están en dólares)."""
+    try:
+        vinculos = await run_in_threadpool(repository.vincular_compras_lote, id_linea_consumo, body.idsCompra)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=exc.args[0]) from exc
+    return [CompraVinculada(**v) for v in vinculos]
 
 
 @router.delete("/lineas/{id_linea_consumo}/compras/{id_vinculo}", status_code=204)

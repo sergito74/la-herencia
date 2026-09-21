@@ -17,6 +17,7 @@ import { fetchPagosCandidatos } from "@/services/tarjetasApi";
 import { fetchCompras } from "@/services/comprasApi";
 import { urlDocumentoLocal } from "@/services/comprasApi";
 import { urlParaAbrirDocumento } from "@/lib/documentoLocal";
+import { CandidatosDocumentos } from "@/components/tarjetas-resumenes/CandidatosDocumentos";
 import { formatMoneda } from "@/lib/format";
 import { filterInputClass } from "@/components/ui/FilterBar";
 import { ErrorState, LoadingState } from "@/components/ui/States";
@@ -173,6 +174,7 @@ function VincularCompraForm({
 
 function LineaConsumoRow({ linea, onChanged }: { linea: LineaConsumo; onChanged: () => void }) {
   const [mostrarBuscador, setMostrarBuscador] = useState(false);
+  const [mostrarBusquedaManual, setMostrarBusquedaManual] = useState(false);
   const { showToast } = useToast();
 
   async function quitar(idVinculo: number) {
@@ -222,15 +224,34 @@ function LineaConsumoRow({ linea, onChanged }: { linea: LineaConsumo; onChanged:
             </button>
           )}
           {mostrarBuscador && linea.comprasVinculadas.length === 0 && linea.idLineaConsumo != null && (
-            <VincularCompraForm
-              idLineaConsumo={linea.idLineaConsumo}
-              importeSugerido={linea.importe}
-              nroDocumentoSugerido={linea.nroDocumento}
-              onLinked={() => {
-                setMostrarBuscador(false);
-                onChanged();
-              }}
-            />
+            <>
+              <CandidatosDocumentos
+                idLineaConsumo={linea.idLineaConsumo}
+                onLinked={() => {
+                  setMostrarBuscador(false);
+                  onChanged();
+                }}
+              />
+              <button
+                type="button"
+                onClick={() => setMostrarBusquedaManual((v) => !v)}
+                className="mt-1 text-xs text-ink-secondary underline"
+              >
+                {mostrarBusquedaManual ? "Ocultar búsqueda manual" : "¿No está en la lista? Buscar por otro proveedor o número"}
+              </button>
+              {mostrarBusquedaManual && (
+                <VincularCompraForm
+                  idLineaConsumo={linea.idLineaConsumo}
+                  importeSugerido={linea.importe}
+                  nroDocumentoSugerido={linea.nroDocumento}
+                  onLinked={() => {
+                    setMostrarBuscador(false);
+                    setMostrarBusquedaManual(false);
+                    onChanged();
+                  }}
+                />
+              )}
+            </>
           )}
         </td>
       </tr>

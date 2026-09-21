@@ -78,6 +78,7 @@ export interface ResumenListItem {
   codigo: string;
   fechaCierre: string | null;
   fechaVencimiento: string | null;
+  urlResumenOriginal: string | null;
   totalCalculado: number;
   soloCabecera: boolean;
   pagoConciliado: boolean;
@@ -168,4 +169,64 @@ export function registrarPagoResumen(
 
 export function eliminarPagoResumen(idResumen: number, idPago: number): Promise<void> {
   return apiDelete(`/api/tarjetas-resumenes/${idResumen}/pagos/${idPago}`);
+}
+
+// --- Conciliación de una línea contra documentos (pesificados, uno o varios) ---
+
+export interface DocumentoCandidato {
+  idCompra: number;
+  fecha: string | null;
+  tipoDocumento: string | null;
+  numeroDocumento: string | null;
+  moneda: string | null;
+  tipoDeCambio: number | null;
+  /** Importe en la moneda del documento; las Notas de Crédito vienen negativas. */
+  importeOriginal: number;
+  /** Importe pesificado con el tipo de cambio propio del documento. */
+  importePesos: number;
+  proveedor: string | null;
+  /** Cuántas otras líneas de consumo ya usan este documento (ej. cuotas). */
+  vinculosPrevios: number;
+}
+
+export interface ConciliacionCalculo {
+  /** exacta: en pesos y dentro de $0,10 · aproximada: en dólares con TC implícito cercano al del documento · parcial: no cierra. */
+  estado: "exacta" | "aproximada" | "parcial";
+  diferencia: number;
+  pagoParcial: boolean;
+  tcImplicito: number | null;
+  tcReferencia: number | null;
+  desvioTc: number | null;
+  imputados: { idCompra: number; importeImputado: number }[];
+}
+
+export interface SugerenciaConciliacion extends ConciliacionCalculo {
+  idsCompra: number[];
+}
+
+export interface CandidatosLinea {
+  idLineaConsumo: number;
+  importeLinea: number;
+  fechaLinea: string | null;
+  idContacto: number | null;
+  documentos: DocumentoCandidato[];
+  sugerencias: SugerenciaConciliacion[];
+}
+
+export interface ConciliacionPreview extends ConciliacionCalculo {
+  documentos: DocumentoCandidato[];
+}
+
+export function fetchCandidatosLinea(idLineaConsumo: number): Promise<CandidatosLinea> {
+  return apiGet<CandidatosLinea>(`/api/tarjetas-resumenes/lineas/${idLineaConsumo}/candidatos`);
+}
+
+export function fetchConciliacionPreview(idLineaConsumo: number, idsCompra: number[]): Promise<ConciliacionPreview> {
+  return apiGet<ConciliacionPreview>(`/api/tarjetas-resumenes/lineas/${idLineaConsumo}/conciliacion`, {
+    idsCompra: idsCompra.map(String),
+  });
+}
+
+export function vincularComprasLote(idLineaConsumo: number, idsCompra: number[]): Promise<CompraVinculada[]> {
+  return apiPost<CompraVinculada[]>(`/api/tarjetas-resumenes/lineas/${idLineaConsumo}/compras/lote`, { idsCompra });
 }

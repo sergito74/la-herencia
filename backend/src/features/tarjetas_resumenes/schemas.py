@@ -114,6 +114,7 @@ class ResumenListItem(BaseModel):
     codigo: str
     fechaCierre: date | None = None
     fechaVencimiento: date | None = None
+    urlResumenOriginal: str | None = None
     totalCalculado: float
     soloCabecera: bool
     pagoConciliado: bool
@@ -154,3 +155,59 @@ class LockResponse(BaseModel):
     idResumen: int
     lockToken: str
     expiresAt: datetime
+
+
+class DocumentoCandidato(BaseModel):
+    """Factura/NC/ND del proveedor de una línea, con su importe pesificado
+    (con el tipo de cambio propio del documento) para poder compararlo con el
+    resumen, que siempre viene en pesos. Las NC tienen importe negativo."""
+
+    idCompra: int
+    fecha: date | None = None
+    tipoDocumento: str | None = None
+    numeroDocumento: str | None = None
+    moneda: str | None = None
+    tipoDeCambio: float | None = None
+    importeOriginal: float
+    importePesos: float
+    proveedor: str | None = None
+    vinculosPrevios: int = 0
+
+
+class ImputacionDocumento(BaseModel):
+    idCompra: int
+    importeImputado: float
+
+
+class ConciliacionCalculo(BaseModel):
+    # "exacta": en pesos y dentro de $0,10. "aproximada": con dólares, el tipo
+    # de cambio implícito difiere del del documento en hasta 2%. "parcial": el
+    # resto (la línea paga una parte, o no cierra).
+    estado: str
+    diferencia: float
+    pagoParcial: bool = False
+    tcImplicito: float | None = None
+    tcReferencia: float | None = None
+    desvioTc: float | None = None
+    imputados: list[ImputacionDocumento]
+
+
+class SugerenciaConciliacion(ConciliacionCalculo):
+    idsCompra: list[int]
+
+
+class CandidatosLineaResponse(BaseModel):
+    idLineaConsumo: int
+    importeLinea: float
+    fechaLinea: date | None = None
+    idContacto: int | None = None
+    documentos: list[DocumentoCandidato]
+    sugerencias: list[SugerenciaConciliacion]
+
+
+class ConciliacionPreviewResponse(ConciliacionCalculo):
+    documentos: list[DocumentoCandidato]
+
+
+class VincularLoteRequest(BaseModel):
+    idsCompra: list[int] = Field(min_length=1)
