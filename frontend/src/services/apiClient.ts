@@ -47,6 +47,13 @@ async function leerDetalleError(response: Response): Promise<string> {
   return texto;
 }
 
+/** Cuerpo JSON de una respuesta, o `undefined` si viene vacía (204 No Content). */
+async function leerRespuesta(response: Response): Promise<unknown> {
+  if (response.status === 204) return undefined;
+  const texto = await response.text();
+  return texto ? JSON.parse(texto) : undefined;
+}
+
 /** GET-only JSON fetch helper. No write verbs are exposed by this client. */
 export async function apiGet<T>(
   path: string,
@@ -89,7 +96,7 @@ export async function apiPatch<T>(path: string, body: unknown): Promise<T> {
     throw new ApiError(response.status, detail || response.statusText);
   }
 
-  return (await response.json()) as T;
+  return (await leerRespuesta(response)) as T;
 }
 
 /** POST helper — ver nota en el encabezado del módulo (solo para `WC`). */
@@ -110,7 +117,7 @@ export async function apiPost<T>(
     throw new ApiError(response.status, detail || response.statusText);
   }
 
-  return (await response.json()) as T;
+  return (await leerRespuesta(response)) as T;
 }
 
 /** PUT helper — ver nota en el encabezado del módulo (solo para `WC`). */
@@ -131,7 +138,7 @@ export async function apiPut<T>(
     throw new ApiError(response.status, detail || response.statusText);
   }
 
-  return (await response.json()) as T;
+  return (await leerRespuesta(response)) as T;
 }
 
 /** DELETE helper — ver nota en el encabezado del módulo (solo para `WC`). Sin body de respuesta (204).

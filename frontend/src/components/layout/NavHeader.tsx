@@ -97,8 +97,12 @@ const NAV_ITEMS: NavItem[] = [
     href: "/produccion",
     label: "Producción",
     icon: ICONS.produccion,
-    disabled: true,
-    disabledTitle: "Próximamente — Órdenes de trabajo, cultivos y ganadería",
+    submenu: [
+      { href: "/produccion/remitos", label: "Remitos" },
+      { href: "/produccion/stock", label: "Existencias de insumos" },
+      { href: "/produccion/stock/bajas", label: "Bajas de stock" },
+      { href: "/produccion/stock/ajustes", label: "Ajustes de inventario" },
+    ],
   },
   {
     href: "/contactos",
