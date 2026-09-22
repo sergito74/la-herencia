@@ -94,13 +94,17 @@ def _sin_lotes_que_no_requieren_el_insumo(renglones: list[dict]) -> list[dict]:
     return filtrados
 
 
-def _validar_renglones(renglones: list[dict]) -> dict[int, float]:
-    """Valida cada renglón (dosis/superficie > 0, al menos una distribución
-    aplicada) y devuelve el consumo total por producto, en la unidad cargada.
-    Asume que `renglones` ya pasó por `_sin_lotes_que_no_requieren_el_insumo`."""
+def _repartir_y_validar(renglones: list[dict]) -> tuple[list[dict], dict[int, float]]:
+    """Reparte la cantidad total de cada renglón (cargada por el usuario, no
+    calculada) entre sus lotes en proporción a dosis×superficie
+    (`distribucion.repartir_total`) y valida. Devuelve los renglones con
+    `distribuciones` ya repartidas (con `cantidadAsignada`) y el consumo total
+    por producto. Asume que `renglones` ya pasó por
+    `_sin_lotes_que_no_requieren_el_insumo`."""
     if not renglones:
         raise ValueError(["La orden necesita al menos un renglón de insumo con al menos un lote que lo requiera."])
     consumo_por_producto: dict[int, float] = {}
+    repartidos: list[dict] = []
     for i, r in enumerate(renglones, start=1):
         if not r.get("distribuciones"):
             raise ValueError([f"Renglón {i}: agregá al menos un lote."])
@@ -109,18 +113,22 @@ def _validar_renglones(renglones: list[dict]) -> dict[int, float]:
         for j, d in enumerate(r["distribuciones"], start=1):
             if d["superficie"] <= 0:
                 raise ValueError([f"Renglón {i}, lote {j}: la superficie debe ser mayor a cero."])
-        total = distribucion.calcular_cantidad_total(r["distribuciones"])
-        distribucion.validar_cierre(total, r["distribuciones"])
+        total = float(r["cantidadTotal"])
+        if total <= 0:
+            raise ValueError([f"Renglón {i}: la cantidad total a aplicar debe ser mayor a cero."])
+        distribuciones_repartidas = distribucion.repartir_total(total, r["distribuciones"])
+        distribucion.validar_cierre(total, distribuciones_repartidas)
+        repartidos.append({**r, "distribuciones": distribuciones_repartidas})
         consumo_por_producto[r["idProducto"]] = consumo_por_producto.get(r["idProducto"], 0.0) + total
-    return consumo_por_producto
+    return repartidos, consumo_por_producto
 
 
 # ------------------------------------------------------------------ alta
 
 def crear_orden(datos: dict, confirmar: bool = False) -> dict:
-    datos = {**datos, "renglones": _sin_lotes_que_no_requieren_el_insumo(datos["renglones"])}
     sin_cultivo = datos.get("idRubro") is not None or datos.get("idCentroCostos") is not None
-    consumo = _validar_renglones(datos["renglones"])
+    renglones, consumo = _repartir_y_validar(_sin_lotes_que_no_requieren_el_insumo(datos["renglones"]))
+    datos = {**datos, "renglones": renglones}
 
     negativos = []
     for pid, total in consumo.items():
@@ -146,7 +154,7 @@ def crear_orden(datos: dict, confirmar: bool = False) -> dict:
 
     statements: list = [cab]
     for r in datos["renglones"]:
-        total = distribucion.calcular_cantidad_total(r["distribuciones"])
+        total = r["cantidadTotal"]
 
         def linea(res: list, r=r, total=total) -> tuple:
             return (
@@ -158,13 +166,12 @@ def crear_orden(datos: dict, confirmar: bool = False) -> dict:
         idx_insumo = len(statements)
         statements.append(linea)
         for d in r["distribuciones"]:
-            cantidad_asignada = round(float(d["dosisHa"]) * float(d["superficie"]), 4)
 
-            def dist(res: list, d=d, cantidad_asignada=cantidad_asignada, idx_insumo=idx_insumo) -> tuple:
+            def dist(res: list, d=d, idx_insumo=idx_insumo) -> tuple:
                 return (
                     "INSERT INTO dbo.Ordenes_Trabajo_Distrib (IdOrdenInsumo, IdLote, IdCultivo, IdCampania, DosisHa, Superficie, CantidadAsignada, Aplicar) "
                     "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-                    (res[idx_insumo], d["idLote"], d["idCultivo"], d["idCampania"], d["dosisHa"], d["superficie"], cantidad_asignada, 1 if d.get("aplicar", True) else 0),
+                    (res[idx_insumo], d["idLote"], d["idCultivo"], d["idCampania"], d["dosisHa"], d["superficie"], d["cantidadAsignada"], 1 if d.get("aplicar", True) else 0),
                 )
 
             statements.append(dist)
@@ -309,9 +316,9 @@ def editar_orden(id_orden: int, datos: dict, confirmar: bool = False) -> None:
     if not actual["editable"]:
         raise ValueError(["La orden no se puede editar: ya tiene devoluciones, factura de contratista vinculada, o no está Planificada. Anulala con un motivo para corregirla."])
 
-    datos = {**datos, "renglones": _sin_lotes_que_no_requieren_el_insumo(datos["renglones"])}
     sin_cultivo = datos.get("idRubro") is not None or datos.get("idCentroCostos") is not None
-    consumo = _validar_renglones(datos["renglones"])
+    renglones, consumo = _repartir_y_validar(_sin_lotes_que_no_requieren_el_insumo(datos["renglones"]))
+    datos = {**datos, "renglones": renglones}
     negativos = []
     for pid, total in consumo.items():
         existencia_actual_orden = sum(
@@ -339,7 +346,7 @@ def editar_orden(id_orden: int, datos: dict, confirmar: bool = False) -> None:
         ),
     ))
     for r in datos["renglones"]:
-        total = distribucion.calcular_cantidad_total(r["distribuciones"])
+        total = r["cantidadTotal"]
 
         def linea(res: list, r=r, total=total) -> tuple:
             return (
@@ -350,12 +357,11 @@ def editar_orden(id_orden: int, datos: dict, confirmar: bool = False) -> None:
         idx_insumo = len(stmts)
         stmts.append(linea)
         for d in r["distribuciones"]:
-            cantidad_asignada = round(float(d["dosisHa"]) * float(d["superficie"]), 4)
 
-            def dist(res: list, d=d, cantidad_asignada=cantidad_asignada, idx_insumo=idx_insumo) -> tuple:
+            def dist(res: list, d=d, idx_insumo=idx_insumo) -> tuple:
                 return (
                     "INSERT INTO dbo.Ordenes_Trabajo_Distrib (IdOrdenInsumo, IdLote, IdCultivo, IdCampania, DosisHa, Superficie, CantidadAsignada, Aplicar) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-                    (res[idx_insumo], d["idLote"], d["idCultivo"], d["idCampania"], d["dosisHa"], d["superficie"], cantidad_asignada, 1 if d.get("aplicar", True) else 0),
+                    (res[idx_insumo], d["idLote"], d["idCultivo"], d["idCampania"], d["dosisHa"], d["superficie"], d["cantidadAsignada"], 1 if d.get("aplicar", True) else 0),
                 )
 
             stmts.append(dist)

@@ -19,6 +19,7 @@ class DistribIn(BaseModel):
 class RenglonInsumoIn(BaseModel):
     idProducto: int
     unidad: str
+    cantidadTotal: float
     distribuciones: list[DistribIn] = Field(min_length=1)
 
 

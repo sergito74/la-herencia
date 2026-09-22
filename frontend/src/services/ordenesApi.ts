@@ -71,6 +71,7 @@ export interface DistribucionIn {
 export interface RenglonInsumoIn {
   idProducto: number;
   unidad: string;
+  cantidadTotal: number;
   distribuciones: DistribucionIn[];
 }
 

@@ -9,12 +9,12 @@ from src.features.ordenes import repository
 from src.features.ordenes.repository import RequiereConfirmacion
 
 
-def _orden(distribuciones):
+def _orden(distribuciones, cantidad_total=35):
     return {
         "fecha": date(2026, 9, 22),
         "idTipoLabor": 1,
         "idContratistaContacto": None,
-        "renglones": [{"idProducto": 100, "unidad": "LTS", "distribuciones": distribuciones}],
+        "renglones": [{"idProducto": 100, "unidad": "LTS", "cantidadTotal": cantidad_total, "distribuciones": distribuciones}],
         "idRubro": None,
         "idCentroCostos": None,
         "observaciones": None,
@@ -22,10 +22,13 @@ def _orden(distribuciones):
 
 
 def _distribuciones():
+    # Pesos dosis×superficie: 20 y 15 (sobre un total de 35 que coincide con
+    # el peso total, así el reparto proporcional recupera esos mismos valores
+    # por lote — comportamiento histórico de las órdenes migradas).
     return [
         {"idLote": 1, "idCultivo": 1, "idCampania": 1, "dosisHa": 2, "superficie": 10, "aplicar": True},
         {"idLote": 2, "idCultivo": 2, "idCampania": 1, "dosisHa": 3, "superficie": 5, "aplicar": True},
-    ]  # total = 20 + 15 = 35
+    ]
 
 
 def test_crear_orden_requiere_confirmacion_si_supera_el_stock(monkeypatch):

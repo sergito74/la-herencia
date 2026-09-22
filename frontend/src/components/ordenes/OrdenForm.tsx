@@ -22,8 +22,10 @@ import {
   type GrupoCultivoCampania,
 } from "@/components/ordenes/CultivoCampaniaLotesSelector";
 import { formatCantidad } from "@/lib/format";
+import { repartirTotal } from "@/lib/repartoInsumo";
+import { NumberInput } from "@/components/ui/NumberInput";
 
-type Renglon = { idProducto: number | null; producto: string; unidad: string; distribuciones: RenglonInsumoIn["distribuciones"] };
+type Renglon = { idProducto: number | null; producto: string; unidad: string; cantidadTotal: number; distribuciones: RenglonInsumoIn["distribuciones"] };
 
 /** Agrega/quita filas de `distribuciones` para que coincidan exactamente con
  * los lotes incluidos en la selección de Cultivo/Campaña de la orden, sin
@@ -89,6 +91,7 @@ export function OrdenForm({ orden }: { orden?: OrdenDetalle }) {
       idProducto: i.idProducto,
       producto: i.producto ?? "",
       unidad: i.unidad,
+      cantidadTotal: i.cantidadTotal,
       distribuciones: i.distribuciones.map((d) => ({
         idLote: d.idLote,
         idCultivo: d.idCultivo,
@@ -127,7 +130,7 @@ export function OrdenForm({ orden }: { orden?: OrdenDetalle }) {
   if (!catalogos) return <p className="text-ink-secondary">Cargando catálogos…</p>;
 
   const agregarRenglon = () =>
-    setRenglones([...renglones, { idProducto: null, producto: "", unidad: "LTS", distribuciones: sincronizarDistribuciones([], lotesBase) }]);
+    setRenglones([...renglones, { idProducto: null, producto: "", unidad: "LTS", cantidadTotal: 0, distribuciones: sincronizarDistribuciones([], lotesBase) }]);
 
   const quitarRenglon = (i: number) => setRenglones(renglones.filter((_, idx) => idx !== i));
 
@@ -135,7 +138,7 @@ export function OrdenForm({ orden }: { orden?: OrdenDetalle }) {
     fecha,
     idTipoLabor: idTipoLabor ?? 0,
     idContratistaContacto,
-    renglones: renglones.map((r) => ({ idProducto: r.idProducto ?? 0, unidad: r.unidad, distribuciones: r.distribuciones })),
+    renglones: renglones.map((r) => ({ idProducto: r.idProducto ?? 0, unidad: r.unidad, cantidadTotal: r.cantidadTotal, distribuciones: r.distribuciones })),
     idRubro: sinCultivo ? idRubro : null,
     idCentroCostos: sinCultivo ? idCentroCostos : null,
     observaciones: observaciones || null,
@@ -154,6 +157,10 @@ export function OrdenForm({ orden }: { orden?: OrdenDetalle }) {
     }
     if (renglones.length === 0 || renglones.some((r) => !r.idProducto || r.distribuciones.length === 0)) {
       setError("Cada renglón necesita un producto y al menos un lote.");
+      return;
+    }
+    if (renglones.some((r) => !r.cantidadTotal || r.cantidadTotal <= 0)) {
+      setError("Cada renglón necesita la cantidad total a aplicar del insumo.");
       return;
     }
     setGuardando(true);
@@ -189,13 +196,13 @@ export function OrdenForm({ orden }: { orden?: OrdenDetalle }) {
   const totalesInsumos = renglones
     .filter((r) => r.idProducto)
     .map((r) => {
+      const cantidadPorFila = repartirTotal(r.cantidadTotal, r.distribuciones);
       const porGrupo = superficiePorGrupo.map((g) => {
         const [gc, gca] = g.clave.split("-").map(Number);
-        const total = r.distribuciones.filter((d) => d.aplicar && d.idCultivo === gc && d.idCampania === gca).reduce((acc, d) => acc + d.dosisHa * d.superficie, 0);
+        const total = r.distribuciones.reduce((acc, d, idx) => (d.idCultivo === gc && d.idCampania === gca ? acc + cantidadPorFila[idx] : acc), 0);
         return { etiqueta: g.etiqueta, total };
       });
-      const total = porGrupo.reduce((acc, g) => acc + g.total, 0);
-      return { producto: r.producto, unidad: r.unidad, total, porGrupo };
+      return { producto: r.producto, unidad: r.unidad, total: r.cantidadTotal, porGrupo };
     });
 
   return (
@@ -296,12 +303,27 @@ export function OrdenForm({ orden }: { orden?: OrdenDetalle }) {
                   }}
                   className="flex-1"
                 />
+                <label className="flex items-center gap-1 text-sm">
+                  Cantidad total a aplicar
+                  <NumberInput
+                    className="w-28 rounded border border-border px-2 py-1 text-right"
+                    value={r.cantidadTotal || null}
+                    onChange={(v) => {
+                      const copia = [...renglones];
+                      copia[i] = { ...copia[i], cantidadTotal: v ?? 0 };
+                      setRenglones(copia);
+                    }}
+                    maxDecimales={4}
+                  />
+                  {r.unidad}
+                </label>
                 <button type="button" onClick={() => quitarRenglon(i)} className="text-status-danger hover:underline">
                   Quitar renglón
                 </button>
               </div>
               <DistribucionLotesPanel
                 grupos={grupos}
+                cantidadTotal={r.cantidadTotal}
                 distribuciones={r.distribuciones}
                 onChange={(d) => {
                   const copia = [...renglones];

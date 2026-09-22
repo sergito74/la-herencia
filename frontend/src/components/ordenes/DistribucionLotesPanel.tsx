@@ -3,23 +3,29 @@
 import { useState } from "react";
 
 import { formatCantidad } from "@/lib/format";
+import { repartirTotal } from "@/lib/repartoInsumo";
 import { NumberInput } from "@/components/ui/NumberInput";
 import type { GrupoCultivoCampania } from "@/components/ordenes/CultivoCampaniaLotesSelector";
 import type { DistribucionIn } from "@/services/ordenesApi";
 
 /**
  * Dosis por hectárea de un renglón de insumo, lote por lote: la dosis puede
- * variar de cultivo a cultivo y de lote a lote (no es uniforme dentro de un
- * mismo Cultivo/Campaña), así que cada lote tiene su propio campo. "Aplicar a
- * todo el grupo" es solo un atajo para completar rápido cuando sí coincide —
- * un valor de partida que se puede seguir editando lote por lote.
+ * variar de cultivo a cultivo y de lote a lote. No define la cantidad de cada
+ * lote en valor absoluto — es el PESO con el que se reparte la cantidad total
+ * que cargó el usuario (dato real del plan del ingeniero agrónomo), en
+ * proporción a dosis×superficie de cada lote (hallazgo orden 153: así se
+ * calculaban los datos heredados, verificado contra la migración). "Aplicar a
+ * todo el grupo" es un atajo para completar rápido cuando la dosis coincide
+ * entre lotes de un mismo Cultivo/Campaña.
  */
 export function DistribucionLotesPanel({
   grupos,
+  cantidadTotal,
   distribuciones,
   onChange,
 }: {
   grupos: GrupoCultivoCampania[];
+  cantidadTotal: number;
   distribuciones: DistribucionIn[];
   onChange: (distribuciones: DistribucionIn[]) => void;
 }) {
@@ -48,7 +54,7 @@ export function DistribucionLotesPanel({
   };
 
   const gruposConFilas = grupos.map((g) => ({ g, filas: filasDeGrupo(g) })).filter(({ filas }) => filas.length > 0);
-  const total = distribuciones.filter((d) => d.aplicar).reduce((acc, d) => acc + d.dosisHa * d.superficie, 0);
+  const cantidadPorFila = repartirTotal(cantidadTotal, distribuciones);
 
   if (gruposConFilas.length === 0) {
     return <p className="text-sm text-ink-secondary">Elegí Cultivo/Campaña y sus lotes arriba antes de cargar la dosis.</p>;
@@ -59,7 +65,7 @@ export function DistribucionLotesPanel({
       {gruposConFilas.map(({ g, filas }) => {
         const k = clave(g.idCultivo, g.idCampania);
         const superficieGrupo = filas.filter(({ d }) => d.aplicar).reduce((acc, { d }) => acc + d.superficie, 0);
-        const totalGrupo = filas.filter(({ d }) => d.aplicar).reduce((acc, { d }) => acc + d.dosisHa * d.superficie, 0);
+        const totalGrupo = filas.reduce((acc, { i }) => acc + cantidadPorFila[i], 0);
         return (
           <div key={k} className="rounded border border-border/60 p-2">
             <div className="mb-1 flex flex-wrap items-center gap-3">
@@ -79,7 +85,7 @@ export function DistribucionLotesPanel({
               <button type="button" onClick={() => aplicarAtajoAGrupo(g)} className="text-sm text-finance hover:underline">
                 Completar
               </button>
-              <span className="text-sm text-ink-secondary">Total del grupo: {formatCantidad(totalGrupo)}</span>
+              <span className="text-sm text-ink-secondary">Le corresponde al grupo: {formatCantidad(totalGrupo)}</span>
             </div>
             <table className="w-full text-sm">
               <thead>
@@ -87,7 +93,7 @@ export function DistribucionLotesPanel({
                   <th className="pb-1">Lote</th>
                   <th className="pb-1">Superficie</th>
                   <th className="pb-1">Dosis/ha</th>
-                  <th className="pb-1">Cantidad</th>
+                  <th className="pb-1">Cantidad (calculada)</th>
                   <th className="pb-1">Aplicar</th>
                 </tr>
               </thead>
@@ -101,7 +107,7 @@ export function DistribucionLotesPanel({
                       <td className="py-1 pr-2">
                         <NumberInput className="w-24 rounded border border-border px-1 py-0.5 text-right" value={d.dosisHa} onChange={(v) => actualizarFila(i, { dosisHa: v ?? 0 })} maxDecimales={4} />
                       </td>
-                      <td className="py-1 pr-2 text-right">{formatCantidad(d.dosisHa * d.superficie)}</td>
+                      <td className="py-1 pr-2 text-right">{formatCantidad(cantidadPorFila[i])}</td>
                       <td className="py-1 pr-2 text-center">
                         <input type="checkbox" checked={d.aplicar} onChange={(e) => actualizarFila(i, { aplicar: e.target.checked })} />
                       </td>
@@ -114,7 +120,7 @@ export function DistribucionLotesPanel({
         );
       })}
       <div className="flex items-center justify-end">
-        <span className="text-sm font-medium">Total del insumo: {formatCantidad(total)}</span>
+        <span className="text-sm font-medium">Total del insumo (cargado): {formatCantidad(cantidadTotal)}</span>
       </div>
     </div>
   );
