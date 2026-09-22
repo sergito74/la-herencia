@@ -33,12 +33,24 @@ export interface Contratista {
   nombre: string;
 }
 
+export interface PlanAgricolaItem {
+  idPlanAgricola: number;
+  idLote: number;
+  numeroLote: string | null;
+  superficie: number | null;
+  idCultivo: number;
+  cultivo: string | null;
+  idCampania: number;
+  campania: string | null;
+}
+
 export interface CatalogosOrdenes {
   lotes: Lote[];
   cultivos: Cultivo[];
   campanias: Campania[];
   tiposLabor: TipoLabor[];
   contratistas: Contratista[];
+  planAgricola: PlanAgricolaItem[];
 }
 
 export const fetchCatalogosOrdenes = () => apiGet<CatalogosOrdenes>("/api/ordenes/catalogos");

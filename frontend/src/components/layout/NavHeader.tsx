@@ -98,6 +98,7 @@ const NAV_ITEMS: NavItem[] = [
     label: "Producción",
     icon: ICONS.produccion,
     submenu: [
+      { href: "/produccion/planificacion", label: "Planificación agrícola" },
       { href: "/produccion/remitos", label: "Remitos" },
       { href: "/produccion/stock", label: "Existencias de insumos" },
       { href: "/produccion/stock/bajas", label: "Bajas de stock" },

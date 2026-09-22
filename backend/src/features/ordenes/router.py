@@ -18,6 +18,7 @@ from src.features.ordenes.schemas import (
     OrdenIn,
     TipoLaborIn,
 )
+from src.features.planificacion import repository as planificacion_repository
 
 router = APIRouter(prefix="/api/ordenes", tags=["ordenes"])
 
@@ -40,6 +41,7 @@ async def catalogos() -> dict:
         "campanias": await run_in_threadpool(repository.listar_campanias),
         "tiposLabor": await run_in_threadpool(repository.listar_tipos_labor),
         "contratistas": await run_in_threadpool(repository.listar_contratistas),
+        "planAgricola": await run_in_threadpool(planificacion_repository.listar),
     }
 
 

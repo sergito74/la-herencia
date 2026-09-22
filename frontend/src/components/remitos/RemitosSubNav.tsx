@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 const TABS = [
+  { href: "/produccion/planificacion", label: "Planificación agrícola", exacto: true },
   { href: "/produccion/remitos", label: "Remitos", exacto: true },
   { href: "/produccion/remitos/facturas-sin-remito", label: "Facturas sin remito" },
   { href: "/produccion/stock", label: "Existencias", exacto: true },

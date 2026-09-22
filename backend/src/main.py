@@ -19,6 +19,7 @@ from src.features.cuentas_corrientes.router import router as cuentas_corrientes_
 from src.features.documentos.router import router as documentos_router
 from src.features.impuestos.router import router as impuestos_router
 from src.features.ordenes.router import router as ordenes_router
+from src.features.planificacion.router import router as planificacion_router
 from src.features.remitos.router import router as remitos_router
 from src.features.remitos.stock_router import router as stock_router
 from src.features.remuneraciones.router import router as remuneraciones_router
@@ -67,6 +68,7 @@ app.include_router(documentos_router)
 app.include_router(impuestos_router)
 app.include_router(remitos_router)
 app.include_router(ordenes_router)
+app.include_router(planificacion_router)
 app.include_router(stock_router)
 app.include_router(remuneraciones_router)
 app.include_router(sesion_router)

@@ -2,7 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { ProductoSelect } from "@/components/remitos/ProductoSelect";
 import { ApiError } from "@/services/apiClient";
@@ -16,11 +16,59 @@ import {
   type RenglonInsumoIn,
 } from "@/services/ordenesApi";
 import { DistribucionLotesPanel } from "@/components/ordenes/DistribucionLotesPanel";
+import {
+  CultivoCampaniaLotesSelector,
+  lotesBaseDeGrupos,
+  type GrupoCultivoCampania,
+} from "@/components/ordenes/CultivoCampaniaLotesSelector";
+import { formatCantidad } from "@/lib/format";
+
+type Renglon = { idProducto: number | null; producto: string; unidad: string; distribuciones: RenglonInsumoIn["distribuciones"] };
+
+/** Agrega/quita filas de `distribuciones` para que coincidan exactamente con
+ * los lotes incluidos en la selección de Cultivo/Campaña de la orden, sin
+ * perder la dosis/ha ya cargada en los lotes que siguen incluidos. */
+function sincronizarDistribuciones(actuales: RenglonInsumoIn["distribuciones"], base: ReturnType<typeof lotesBaseDeGrupos>): RenglonInsumoIn["distribuciones"] {
+  return base.map((b) => {
+    const existente = actuales.find((d) => d.idLote === b.idLote && d.idCultivo === b.idCultivo && d.idCampania === b.idCampania);
+    return existente ?? { idLote: b.idLote, idCultivo: b.idCultivo, idCampania: b.idCampania, dosisHa: 0, superficie: b.superficie, aplicar: true };
+  });
+}
+
+/** Reconstruye los grupos Cultivo/Campaña de una orden existente a partir de
+ * sus distribuciones ya guardadas, agregando también los lotes que la
+ * Planificación Agrícola sugiere hoy para ese mismo Cultivo/Campaña (por si el
+ * plan cambió desde que se cargó la orden) — nada de lo ya guardado desaparece. */
+function gruposDesdeOrden(orden: OrdenDetalle, planAgricola: { idLote: number; numeroLote: string | null; superficie: number | null; idCultivo: number; cultivo: string | null; idCampania: number; campania: string | null }[]): GrupoCultivoCampania[] {
+  const grupos = new Map<string, GrupoCultivoCampania>();
+  for (const insumo of orden.insumos) {
+    for (const d of insumo.distribuciones) {
+      const clave = `${d.idCultivo}-${d.idCampania}`;
+      if (!grupos.has(clave)) {
+        grupos.set(clave, { idCultivo: d.idCultivo, idCampania: d.idCampania, cultivo: d.cultivo ?? "", campania: d.campania ?? "", lotes: [] });
+      }
+      const g = grupos.get(clave)!;
+      if (!g.lotes.some((l) => l.idLote === d.idLote)) {
+        const enPlan = planAgricola.some((p) => p.idLote === d.idLote && p.idCultivo === d.idCultivo && p.idCampania === d.idCampania);
+        g.lotes.push({ idLote: d.idLote, numeroLote: d.lote ?? String(d.idLote), superficie: d.superficie, incluido: true, fueraDelPlan: !enPlan });
+      }
+    }
+  }
+  for (const g of grupos.values()) {
+    for (const p of planAgricola) {
+      if (p.idCultivo === g.idCultivo && p.idCampania === g.idCampania && !g.lotes.some((l) => l.idLote === p.idLote)) {
+        g.lotes.push({ idLote: p.idLote, numeroLote: p.numeroLote ?? String(p.idLote), superficie: p.superficie ?? 0, incluido: false });
+      }
+    }
+  }
+  return [...grupos.values()];
+}
 
 /**
- * Alta/edición de una Orden de Trabajo (Historia 1): cabecera, y por cada
- * insumo, el reparto por lote/dosis. Al guardar se descuenta stock por FIFO y
- * se emite el Formulario de Retiro con su propio número (FR-008).
+ * Alta/edición de una Orden de Trabajo (Historia 1): Cultivo/Campaña y sus
+ * lotes primero (sugeridos por la Planificación Agrícola), después tipo de
+ * labor, contratista e insumos con su dosis/ha por lote. Al guardar se
+ * descuenta stock por FIFO y se emite el Formulario de Retiro (FR-008).
  */
 export function OrdenForm({ orden }: { orden?: OrdenDetalle }) {
   const router = useRouter();
@@ -34,9 +82,9 @@ export function OrdenForm({ orden }: { orden?: OrdenDetalle }) {
   const [sinCultivo, setSinCultivo] = useState(orden?.idRubro != null);
   const [idRubro, setIdRubro] = useState<number | null>(orden?.idRubro ?? null);
   const [idCentroCostos, setIdCentroCostos] = useState<number | null>(orden?.idCentroCostos ?? null);
-  const [renglones, setRenglones] = useState<
-    { idProducto: number | null; producto: string; unidad: string; distribuciones: RenglonInsumoIn["distribuciones"] }[]
-  >(
+  const [grupos, setGrupos] = useState<GrupoCultivoCampania[]>([]);
+  const [gruposInicializados, setGruposInicializados] = useState(false);
+  const [renglones, setRenglones] = useState<Renglon[]>(
     orden?.insumos.map((i) => ({
       idProducto: i.idProducto,
       producto: i.producto ?? "",
@@ -55,10 +103,35 @@ export function OrdenForm({ orden }: { orden?: OrdenDetalle }) {
   const [advertencias, setAdvertencias] = useState<string[] | null>(null);
   const [guardando, setGuardando] = useState(false);
 
+  useEffect(() => {
+    if (!catalogos || gruposInicializados) return;
+    if (orden) setGrupos(gruposDesdeOrden(orden, catalogos.planAgricola));
+    setGruposInicializados(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [catalogos, gruposInicializados]);
+
+  const lotesBase = lotesBaseDeGrupos(grupos);
+
+  // Cada vez que cambia el set de lotes incluidos, cada renglón de insumo
+  // sincroniza sus filas de dosis/ha sin perder lo ya cargado (ver arriba).
+  useEffect(() => {
+    if (!gruposInicializados) return;
+    setRenglones((actuales) => {
+      const sincronizados = actuales.map((r) => ({ ...r, distribuciones: sincronizarDistribuciones(r.distribuciones, lotesBase) }));
+      const cambio = sincronizados.some((r, i) => r.distribuciones !== actuales[i].distribuciones && JSON.stringify(r.distribuciones) !== JSON.stringify(actuales[i].distribuciones));
+      return cambio ? sincronizados : actuales;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [JSON.stringify(lotesBase), gruposInicializados]);
+
   if (!catalogos) return <p className="text-ink-secondary">Cargando catálogos…</p>;
 
+  const lotePorId = Object.fromEntries(catalogos.lotes.map((l) => [l.idLote, l.numeroLote]));
+  const cultivoPorId = Object.fromEntries(catalogos.cultivos.map((c) => [c.idCultivo, c.nombre]));
+  const campaniaPorId = Object.fromEntries(catalogos.campanias.map((c) => [c.idCampania, c.nombre]));
+
   const agregarRenglon = () =>
-    setRenglones([...renglones, { idProducto: null, producto: "", unidad: "LTS", distribuciones: [] }]);
+    setRenglones([...renglones, { idProducto: null, producto: "", unidad: "LTS", distribuciones: sincronizarDistribuciones([], lotesBase) }]);
 
   const quitarRenglon = (i: number) => setRenglones(renglones.filter((_, idx) => idx !== i));
 
@@ -77,6 +150,10 @@ export function OrdenForm({ orden }: { orden?: OrdenDetalle }) {
     setError(null);
     if (!idTipoLabor) {
       setError("Elegí el tipo de labor.");
+      return;
+    }
+    if (!sinCultivo && lotesBase.length === 0) {
+      setError("Elegí al menos un Cultivo/Campaña y sus lotes.");
       return;
     }
     if (renglones.length === 0 || renglones.some((r) => !r.idProducto || r.distribuciones.length === 0)) {
@@ -103,6 +180,27 @@ export function OrdenForm({ orden }: { orden?: OrdenDetalle }) {
       setGuardando(false);
     }
   };
+
+  // Totales del punto 6: superficie por Cultivo/Campaña y total de cada
+  // insumo, también desglosado por Cultivo/Campaña.
+  const superficiePorGrupo = grupos.map((g) => ({
+    clave: `${g.idCultivo}-${g.idCampania}`,
+    etiqueta: `${g.cultivo} — ${g.campania}`,
+    superficie: g.lotes.filter((l) => l.incluido).reduce((acc, l) => acc + l.superficie, 0),
+  }));
+  const superficieTotal = superficiePorGrupo.reduce((acc, g) => acc + g.superficie, 0);
+
+  const totalesInsumos = renglones
+    .filter((r) => r.idProducto)
+    .map((r) => {
+      const porGrupo = superficiePorGrupo.map((g) => {
+        const [gc, gca] = g.clave.split("-").map(Number);
+        const total = r.distribuciones.filter((d) => d.aplicar && d.idCultivo === gc && d.idCampania === gca).reduce((acc, d) => acc + d.dosisHa * d.superficie, 0);
+        return { etiqueta: g.etiqueta, total };
+      });
+      const total = porGrupo.reduce((acc, g) => acc + g.total, 0);
+      return { producto: r.producto, unidad: r.unidad, total, porGrupo };
+    });
 
   return (
     <div className="space-y-6">
@@ -174,6 +272,19 @@ export function OrdenForm({ orden }: { orden?: OrdenDetalle }) {
         </div>
       )}
 
+      {!sinCultivo && (
+        <div>
+          <h2 className="mb-2 text-lg font-medium">Cultivo / Campaña y lotes</h2>
+          <CultivoCampaniaLotesSelector
+            cultivos={catalogos.cultivos}
+            campanias={catalogos.campanias}
+            planAgricola={catalogos.planAgricola}
+            grupos={grupos}
+            onChange={setGrupos}
+          />
+        </div>
+      )}
+
       <div>
         <h2 className="mb-2 text-lg font-medium">Insumos</h2>
         <div className="space-y-4">
@@ -194,10 +305,10 @@ export function OrdenForm({ orden }: { orden?: OrdenDetalle }) {
                 </button>
               </div>
               <DistribucionLotesPanel
-                lotes={catalogos.lotes}
-                cultivos={catalogos.cultivos}
-                campanias={catalogos.campanias}
                 distribuciones={r.distribuciones}
+                lotePorId={lotePorId}
+                cultivoPorId={cultivoPorId}
+                campaniaPorId={campaniaPorId}
                 onChange={(d) => {
                   const copia = [...renglones];
                   copia[i] = { ...copia[i], distribuciones: d };
@@ -211,6 +322,45 @@ export function OrdenForm({ orden }: { orden?: OrdenDetalle }) {
           + Agregar insumo
         </button>
       </div>
+
+      {(superficiePorGrupo.length > 0 || totalesInsumos.length > 0) && (
+        <div className="rounded border border-border bg-surface-sunken p-3">
+          <h2 className="mb-2 text-lg font-medium">Resumen</h2>
+          {superficiePorGrupo.length > 0 && (
+            <div className="mb-3">
+              <p className="text-sm font-medium">Superficie afectada: {formatCantidad(superficieTotal)} ha</p>
+              <ul className="ml-4 list-disc text-sm text-ink-secondary">
+                {superficiePorGrupo.map((g) => (
+                  <li key={g.clave}>
+                    {g.etiqueta}: {formatCantidad(g.superficie)} ha
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {totalesInsumos.length > 0 && (
+            <div>
+              <p className="text-sm font-medium">Insumos</p>
+              <ul className="ml-4 list-disc text-sm text-ink-secondary">
+                {totalesInsumos.map((t, i) => (
+                  <li key={i}>
+                    {t.producto}: {formatCantidad(t.total)} {t.unidad}
+                    {t.porGrupo.length > 1 && (
+                      <ul className="ml-4 list-[circle]">
+                        {t.porGrupo.map((g) => (
+                          <li key={g.etiqueta}>
+                            {g.etiqueta}: {formatCantidad(g.total)} {t.unidad}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
+      )}
 
       <label className="block text-sm">
         Observaciones
