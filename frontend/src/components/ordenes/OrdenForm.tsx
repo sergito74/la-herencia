@@ -126,10 +126,6 @@ export function OrdenForm({ orden }: { orden?: OrdenDetalle }) {
 
   if (!catalogos) return <p className="text-ink-secondary">Cargando catálogos…</p>;
 
-  const lotePorId = Object.fromEntries(catalogos.lotes.map((l) => [l.idLote, l.numeroLote]));
-  const cultivoPorId = Object.fromEntries(catalogos.cultivos.map((c) => [c.idCultivo, c.nombre]));
-  const campaniaPorId = Object.fromEntries(catalogos.campanias.map((c) => [c.idCampania, c.nombre]));
-
   const agregarRenglon = () =>
     setRenglones([...renglones, { idProducto: null, producto: "", unidad: "LTS", distribuciones: sincronizarDistribuciones([], lotesBase) }]);
 
@@ -305,10 +301,8 @@ export function OrdenForm({ orden }: { orden?: OrdenDetalle }) {
                 </button>
               </div>
               <DistribucionLotesPanel
+                grupos={grupos}
                 distribuciones={r.distribuciones}
-                lotePorId={lotePorId}
-                cultivoPorId={cultivoPorId}
-                campaniaPorId={campaniaPorId}
                 onChange={(d) => {
                   const copia = [...renglones];
                   copia[i] = { ...copia[i], distribuciones: d };
