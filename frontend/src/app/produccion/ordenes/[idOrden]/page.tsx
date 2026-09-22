@@ -25,6 +25,8 @@ export default function DetalleOrdenPage() {
   const { data: orden, isLoading, isError, refetch } = useQuery({ queryKey: ["orden", id], queryFn: () => fetchOrden(id), staleTime: 0 });
   const [motivo, setMotivo] = useState("");
   const [anulando, setAnulando] = useState(false);
+  const [ejecutando, setEjecutando] = useState(false);
+  const [fechaEjecucion, setFechaEjecucion] = useState(new Date().toISOString().slice(0, 10));
   const [descMaquinaria, setDescMaquinaria] = useState("");
   const [costoMaquinaria, setCostoMaquinaria] = useState<number | null>(null);
   const [idCompraFactura, setIdCompraFactura] = useState<number | null>(null);
@@ -34,10 +36,11 @@ export default function DetalleOrdenPage() {
     qc.invalidateQueries({ queryKey: ["ordenes"] });
   }
 
-  async function marcarEjecutada() {
+  async function confirmarEjecucion() {
     try {
-      await ejecutarOrden(id, new Date().toISOString().slice(0, 10));
+      await ejecutarOrden(id, fechaEjecucion);
       showToast("Orden marcada como ejecutada.", "success");
+      setEjecutando(false);
       refrescar();
     } catch (e) {
       showToast(e instanceof ApiError ? e.message : "No se pudo ejecutar la orden.", "danger");
@@ -97,7 +100,7 @@ export default function DetalleOrdenPage() {
             </Link>
           )}
           {orden.estado === "Planificada" && (
-            <button type="button" onClick={marcarEjecutada} className="rounded bg-finance px-3 py-1.5 text-sm text-white">
+            <button type="button" onClick={() => setEjecutando(true)} className="rounded bg-finance px-3 py-1.5 text-sm text-white">
               Marcar ejecutada
             </button>
           )}
@@ -130,6 +133,23 @@ export default function DetalleOrdenPage() {
 
       {orden.motivoAnulacion && (
         <p className="mt-3 rounded border border-status-danger bg-status-danger-bg p-3 text-sm text-status-danger">Motivo de anulación: {orden.motivoAnulacion}</p>
+      )}
+
+      {ejecutando && (
+        <div className="mt-4 rounded border border-border p-3">
+          <label className="block text-sm">
+            Fecha de ejecución
+            <input type="date" className="mt-1 w-full rounded border border-border px-2 py-1.5" value={fechaEjecucion} onChange={(e) => setFechaEjecucion(e.target.value)} />
+          </label>
+          <div className="mt-2 flex gap-2">
+            <button type="button" onClick={confirmarEjecucion} disabled={!fechaEjecucion} className="rounded bg-finance px-3 py-1.5 text-sm text-white disabled:opacity-50">
+              Confirmar ejecución
+            </button>
+            <button type="button" onClick={() => setEjecutando(false)} className="rounded border border-border px-3 py-1.5 text-sm">
+              Cancelar
+            </button>
+          </div>
+        </div>
       )}
 
       {anulando && (
