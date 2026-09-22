@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
-import { ProductoSelect } from "@/components/remitos/ProductoSelect";
+import { InsumoConStockSelect } from "@/components/ordenes/InsumoConStockSelect";
 import { ApiError } from "@/services/apiClient";
 import { fetchOpcionesBajas } from "@/services/remitosApi";
 import {
@@ -294,7 +294,7 @@ export function OrdenForm({ orden }: { orden?: OrdenDetalle }) {
           {renglones.map((r, i) => (
             <div key={i} className="rounded border border-border p-3">
               <div className="mb-2 flex items-center gap-3">
-                <ProductoSelect
+                <InsumoConStockSelect
                   value={r.idProducto ? { idProducto: r.idProducto, producto: r.producto } : null}
                   onChange={(p) => {
                     const copia = [...renglones];
