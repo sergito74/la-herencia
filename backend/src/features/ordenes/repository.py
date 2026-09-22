@@ -69,11 +69,28 @@ def listar_contratistas() -> list[dict]:
 
 # ------------------------------------------------------------------ validación de renglones
 
+def _sin_lotes_que_no_requieren_el_insumo(renglones: list[dict]) -> list[dict]:
+    """Dosis/ha = 0 en un lote significa que ese Cultivo/Campaña/Lote no
+    necesita este insumo — no es un error de carga (pedido del usuario,
+    orden 153: un contratista mal cargado no debería obligar a inventar una
+    dosis en lotes donde no se aplicó nada). Se descarta antes de validar y
+    de guardar, así no quedan renglones ni distribuciones vacías en las
+    tablas. Un renglón de insumo que termina sin ningún lote (no se usó en
+    ningún lote de la orden) se descarta entero."""
+    filtrados = []
+    for r in renglones:
+        distribuciones = [d for d in r["distribuciones"] if float(d["dosisHa"]) > 0]
+        if distribuciones:
+            filtrados.append({**r, "distribuciones": distribuciones})
+    return filtrados
+
+
 def _validar_renglones(renglones: list[dict]) -> dict[int, float]:
     """Valida cada renglón (dosis/superficie > 0, al menos una distribución
-    aplicada) y devuelve el consumo total por producto, en la unidad cargada."""
+    aplicada) y devuelve el consumo total por producto, en la unidad cargada.
+    Asume que `renglones` ya pasó por `_sin_lotes_que_no_requieren_el_insumo`."""
     if not renglones:
-        raise ValueError(["La orden necesita al menos un renglón de insumo."])
+        raise ValueError(["La orden necesita al menos un renglón de insumo con al menos un lote que lo requiera."])
     consumo_por_producto: dict[int, float] = {}
     for i, r in enumerate(renglones, start=1):
         if not r.get("distribuciones"):
@@ -81,8 +98,6 @@ def _validar_renglones(renglones: list[dict]) -> dict[int, float]:
         if not any(d.get("aplicar", True) for d in r["distribuciones"]):
             raise ValueError([f"Renglón {i}: al menos un lote debe estar marcado para aplicar."])
         for j, d in enumerate(r["distribuciones"], start=1):
-            if d["dosisHa"] <= 0:
-                raise ValueError([f"Renglón {i}, lote {j}: la dosis por hectárea debe ser mayor a cero."])
             if d["superficie"] <= 0:
                 raise ValueError([f"Renglón {i}, lote {j}: la superficie debe ser mayor a cero."])
         total = distribucion.calcular_cantidad_total(r["distribuciones"])
@@ -94,6 +109,7 @@ def _validar_renglones(renglones: list[dict]) -> dict[int, float]:
 # ------------------------------------------------------------------ alta
 
 def crear_orden(datos: dict, confirmar: bool = False) -> dict:
+    datos = {**datos, "renglones": _sin_lotes_que_no_requieren_el_insumo(datos["renglones"])}
     sin_cultivo = datos.get("idRubro") is not None or datos.get("idCentroCostos") is not None
     consumo = _validar_renglones(datos["renglones"])
 
@@ -284,6 +300,7 @@ def editar_orden(id_orden: int, datos: dict, confirmar: bool = False) -> None:
     if not actual["editable"]:
         raise ValueError(["La orden no se puede editar: ya tiene devoluciones, factura de contratista vinculada, o no está Planificada. Anulala con un motivo para corregirla."])
 
+    datos = {**datos, "renglones": _sin_lotes_que_no_requieren_el_insumo(datos["renglones"])}
     sin_cultivo = datos.get("idRubro") is not None or datos.get("idCentroCostos") is not None
     consumo = _validar_renglones(datos["renglones"])
     negativos = []

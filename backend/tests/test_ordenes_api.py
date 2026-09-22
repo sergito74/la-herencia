@@ -71,9 +71,49 @@ def test_crear_orden_sin_lotes_aplicados_falla_validacion():
         repository.crear_orden(datos, confirmar=True)
 
 
-def test_crear_orden_dosis_o_superficie_invalida_falla_validacion():
-    datos = _orden([{"idLote": 1, "idCultivo": 1, "idCampania": 1, "dosisHa": 0, "superficie": 10, "aplicar": True}])
+def test_crear_orden_superficie_invalida_falla_validacion():
+    datos = _orden([{"idLote": 1, "idCultivo": 1, "idCampania": 1, "dosisHa": 2, "superficie": 0, "aplicar": True}])
     with pytest.raises(ValueError):
+        repository.crear_orden(datos, confirmar=True)
+
+
+def test_crear_orden_lote_con_dosis_cero_no_requiere_el_insumo_no_falla_y_no_se_guarda(monkeypatch):
+    """Dosis/ha = 0 en un lote no es un error de carga: significa que ese
+    Cultivo/Campaña/Lote no necesita este insumo (hallazgo orden 153, corregir
+    el contratista no debería exigir inventar una dosis donde no se aplicó
+    nada). Ese lote se descarta antes de guardar — no genera fila."""
+    monkeypatch.setattr(repository, "_existencia", lambda pid: 100.0)
+    distribuciones = [
+        {"idLote": 1, "idCultivo": 1, "idCampania": 1, "dosisHa": 2, "superficie": 10, "aplicar": True},
+        {"idLote": 2, "idCultivo": 2, "idCampania": 1, "dosisHa": 0, "superficie": 5, "aplicar": True},
+    ]
+    statements_ejecutados = []
+
+    def fake_execute_write_transaction(statements):
+        statements_ejecutados.extend(statements)
+        resultados = []
+        for s in statements:
+            sql = s[0] if not callable(s) else s(resultados)[0]
+            if "Ordenes_Trabajo (" in sql:
+                resultados.append(501)
+            elif "Ordenes_Trabajo_Insumos (" in sql:
+                resultados.append(9001)
+            elif "Ordenes_Trabajo_Distrib (" in sql:
+                resultados.append(1)
+            elif "Formularios_Retiro (" in sql:
+                resultados.append(777)
+        return resultados
+
+    monkeypatch.setattr(repository, "execute_write_transaction", fake_execute_write_transaction)
+    repository.crear_orden(_orden(distribuciones), confirmar=True)
+    # cabecera + renglón + 1 sola distribución (la de dosis 0 se descartó) + formulario
+    assert len(statements_ejecutados) == 1 + 1 + 1 + 1
+
+
+def test_crear_orden_renglon_con_todas_las_dosis_en_cero_se_descarta_entero(monkeypatch):
+    monkeypatch.setattr(repository, "_existencia", lambda pid: 100.0)
+    datos = _orden([{"idLote": 1, "idCultivo": 1, "idCampania": 1, "dosisHa": 0, "superficie": 10, "aplicar": True}])
+    with pytest.raises(ValueError, match="al menos un renglón"):
         repository.crear_orden(datos, confirmar=True)
 
 
