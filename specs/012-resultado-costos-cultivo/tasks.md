@@ -15,6 +15,8 @@ description: "Task list for Resultado y Costos de Cultivo (012)"
 
 > Numeración revisada por `/speckit-analyze` (2026-09-22): se agregaron T011 (test de `mapeo.py`, hallazgo G2) y T032 (filtro directo de Cultivo, hallazgo U2), y se corrigieron las descripciones de T018/T029 (hallazgo I1, `costeoIncompleto` → `supCosechaEstimada`) y T017 (hallazgo G1, traducción de Campaña en ambos sentidos).
 
+> Continuidad de implementación (2026-09-22): Claude inició `/speckit-implement` y quedó interrumpido. Al retomar se confirmó que el backend de cálculo y sus pruebas ya estaban escritos; se completaron la interfaz de consolidado y detalle, el drill-down, los endpoints de detalle y exportación y las dos planillas. Las tareas de verificación de extremo a extremo (T048) siguen pendientes. En la primera continuación no se ejecutaron pruebas; ver la validación posterior en `validation.md`.
+
 ## Format: `[ID] [P?] [Story] Description`
 
 - **[P]**: Puede ejecutarse en paralelo (archivos distintos, sin dependencias pendientes)
@@ -30,9 +32,9 @@ Web app existente: `backend/src/`, `frontend/src/` — mismo layout que 010-remi
 
 **Purpose**: Estructura de carpetas del módulo, sin lógica todavía
 
-- [ ] T001 Crear el paquete `backend/src/features/resultado_cultivo/` con `__init__.py` vacío, siguiendo la estructura de `backend/src/features/ordenes/`
-- [ ] T002 [P] Crear `frontend/src/app/produccion/resultado-cultivo/` (carpeta con `page.tsx` placeholder) y `frontend/src/components/resultado-cultivo/`, per `plan.md` → Project Structure
-- [ ] T003 [P] Crear `frontend/src/services/resultadoCultivoApi.ts` con el cliente base (fetch/TanStack Query wrapper), siguiendo el patrón de `frontend/src/services/ordenesApi.ts`
+- [X] T001 Crear el paquete `backend/src/features/resultado_cultivo/` con `__init__.py` vacío, siguiendo la estructura de `backend/src/features/ordenes/`
+- [X] T002 [P] Crear `frontend/src/app/produccion/resultado-cultivo/` (carpeta con `page.tsx` placeholder) y `frontend/src/components/resultado-cultivo/`, per `plan.md` → Project Structure
+- [X] T003 [P] Crear `frontend/src/services/resultadoCultivoApi.ts` con el cliente base (fetch/TanStack Query wrapper), siguiendo el patrón de `frontend/src/services/ordenesApi.ts`
 
 **Checkpoint**: estructura de carpetas lista, sin funcionalidad.
 
@@ -44,14 +46,14 @@ Web app existente: `backend/src/`, `frontend/src/` — mismo layout que 010-remi
 
 **⚠️ CRITICAL**: Ninguna historia puede empezar hasta que esta fase esté completa
 
-- [ ] T004 Implementar `backend/src/features/resultado_cultivo/mapeo.py`: `idCultivo_a_destino(idCultivo) -> int | None`, `idCultivo_a_grano(idCultivo) -> int | None` (ambos vía `Map_CultivoResultado`, 1:1 confirmado en `research.md` §3), `campania_texto_a_id(texto) -> int | None` **y** `campania_id_a_texto(idCampania) -> str | None` (vía tabla `Campañas`, ambos sentidos — hallazgo G1 de `/speckit-analyze`: las vistas de costeo exponen `IdCampaña` numérico pero las de venta exponen `Campaña` como texto, hace falta traducir en las dos direcciones)
-- [ ] T005 Implementar `backend/src/features/resultado_cultivo/campania_actual.py::campania_actual() -> int`: parsea `Campañas.Campaña` con las dos expresiones regulares de `research.md` §5 (`^\d{4}/\d{4}$`, `^\d{4}$`), devuelve la Campaña cuyo rango contiene la fecha de hoy; si ninguna coincide, cae a la Campaña más reciente con datos en `vw_ResultadosCultivo_CostosBase`, `vw_ResultadosCultivo_Ventas` o `PlanAgricola` (FR-001)
-- [ ] T006 Crear `backend/src/features/resultado_cultivo/router.py` con `APIRouter(prefix="/api/resultado-cultivo", tags=["resultado-cultivo"])` vacío y el helper `_ejecutar` (errores de negocio → 404), copiando el patrón de `backend/src/features/ordenes/router.py`
-- [ ] T007 Registrar `resultado_cultivo_router` en `backend/src/main.py` (import + `app.include_router(resultado_cultivo_router)`, junto a `ordenes_router`)
-- [ ] T008 [P] Endpoint `GET /api/resultado-cultivo/campanias` en `router.py`: catálogo de Campañas + `campaniaActualId` (usa T004, T005)
-- [ ] T009 [P] Agregar "Resultado de Cultivo" al submenú Producción en `frontend/src/components/layout/NavHeader.tsx` y a `frontend/src/components/remitos/RemitosSubNav.tsx` (mismo patrón que "Órdenes de trabajo" y "Planificación agrícola")
-- [ ] T010 [P] Test `backend/tests/test_resultado_cultivo_campania_actual.py`: parseo de `"2026/2027"` (contiene hoy), `"2026"`, `"No Aplica"` (no parseable), y el resguardo a la Campaña más reciente con datos cuando ninguna coincide
-- [ ] T011 [P] Test `backend/tests/test_resultado_cultivo_mapeo.py`: `idCultivo_a_destino`/`idCultivo_a_grano` 1:1 (incluyendo Pastura con `IdGrano NULL`), `campania_texto_a_id("2026/2027")` y `campania_id_a_texto()` en ambos sentidos son inversas entre sí, `campania_texto_a_id("No Aplica")` devuelve el id real (existe como fila), un texto inexistente devuelve `None` (hallazgo G2 de `/speckit-analyze`: `mapeo.py` es foundational y usado por todas las historias, necesita test propio antes de que cualquier historia lo consuma)
+- [X] T004 Implementar `backend/src/features/resultado_cultivo/mapeo.py`: `idCultivo_a_destino(idCultivo) -> int | None`, `idCultivo_a_grano(idCultivo) -> int | None` (ambos vía `Map_CultivoResultado`, 1:1 confirmado en `research.md` §3), `campania_texto_a_id(texto) -> int | None` **y** `campania_id_a_texto(idCampania) -> str | None` (vía tabla `Campañas`, ambos sentidos — hallazgo G1 de `/speckit-analyze`: las vistas de costeo exponen `IdCampaña` numérico pero las de venta exponen `Campaña` como texto, hace falta traducir en las dos direcciones)
+- [X] T005 Implementar `backend/src/features/resultado_cultivo/campania_actual.py::campania_actual() -> int`: parsea `Campañas.Campaña` con las dos expresiones regulares de `research.md` §5 (`^\d{4}/\d{4}$`, `^\d{4}$`), devuelve la Campaña cuyo rango contiene la fecha de hoy; si ninguna coincide, cae a la Campaña más reciente con datos en `vw_ResultadosCultivo_CostosBase`, `vw_ResultadosCultivo_Ventas` o `PlanAgricola` (FR-001)
+- [X] T006 Crear `backend/src/features/resultado_cultivo/router.py` con `APIRouter(prefix="/api/resultado-cultivo", tags=["resultado-cultivo"])` vacío y el helper `_ejecutar` (errores de negocio → 404), copiando el patrón de `backend/src/features/ordenes/router.py`
+- [X] T007 Registrar `resultado_cultivo_router` en `backend/src/main.py` (import + `app.include_router(resultado_cultivo_router)`, junto a `ordenes_router`)
+- [X] T008 [P] Endpoint `GET /api/resultado-cultivo/campanias` en `router.py`: catálogo de Campañas + `campaniaActualId` (usa T004, T005)
+- [X] T009 [P] Agregar "Resultado de Cultivo" al submenú Producción en `frontend/src/components/layout/NavHeader.tsx` y a `frontend/src/components/remitos/RemitosSubNav.tsx` (mismo patrón que "Órdenes de trabajo" y "Planificación agrícola")
+- [X] T010 [P] Test `backend/tests/test_resultado_cultivo_campania_actual.py`: parseo de `"2026/2027"` (contiene hoy), `"2026"`, `"No Aplica"` (no parseable), y el resguardo a la Campaña más reciente con datos cuando ninguna coincide
+- [X] T011 [P] Test `backend/tests/test_resultado_cultivo_mapeo.py`: `idCultivo_a_destino`/`idCultivo_a_grano` 1:1 (incluyendo Pastura con `IdGrano NULL`), `campania_texto_a_id("2026/2027")` y `campania_id_a_texto()` en ambos sentidos son inversas entre sí, `campania_texto_a_id("No Aplica")` devuelve el id real (existe como fila), un texto inexistente devuelve `None` (hallazgo G2 de `/speckit-analyze`: `mapeo.py` es foundational y usado por todas las historias, necesita test propio antes de que cualquier historia lo consuma)
 
 **Checkpoint**: catálogo de Campañas con la actual preseleccionada disponible por API; navegación al módulo lista.
 
@@ -65,22 +67,22 @@ Web app existente: `backend/src/`, `frontend/src/` — mismo layout que 010-remi
 
 ### Implementation for User Story 1
 
-- [ ] T012 [P] [US1] Implementar `backend/src/features/resultado_cultivo/costos.py::costos_heredados(idCultivo, idCampania) -> list[dict]`: líneas de `vw_ResultadosCultivo_CostosBase` + `Seguros` vía `IdDestino` (mapeo.py, T004), respetando `Signo` (cargo/crédito, confiable per `research.md` §3 — no hace falta reemplazarlo)
-- [ ] T013 [P] [US1] Implementar `costos.py::costo_ordenes_trabajo(idCultivo, idCampania) -> list[dict]`: insumos + maquinaria + contratista de `Ordenes_Trabajo_Insumos`/`Maquinaria`/`Contratista_Factura` (vía `Ordenes_Trabajo_Distrib.IdCultivo`/`IdCampania`), **excluyendo** cualquier `Ordenes_Trabajo_Contratista_Factura.IdCompra` que ya esté en `vw_ResultadosCultivo_CostosBase` (FR-004, anti-doble-conteo — `research.md` §6)
-- [ ] T014 [US1] Implementar `costos.py::costo_total(idCultivo, idCampania) -> dict` combinando T012 + T013 (depende de T012, T013)
-- [ ] T015 [P] [US1] Implementar `backend/src/features/resultado_cultivo/resultado.py::superficie_sembrada(idCultivo, idCampania) -> float`: `SUM(Lotes.Superficie)` vía `PlanAgricola` (`research.md` §1)
-- [ ] T016 [P] [US1] Implementar `resultado.py::superficie_cosechada(idCultivo, idCampania) -> dict`: `{valor: ResultadoCultivo_Cierre.SuperficieCosechada | None, estimada: True si Observaciones contiene "Revisar manualmente"}` (`research.md` §2; el flag `estimada` alimenta `supCosechaEstimada`/FR-010, corregido en `/speckit-analyze` hallazgo I1)
-- [ ] T017 [P] [US1] Implementar `resultado.py::venta_neta(idCultivo, idCampania) -> dict`: `vw_ResultadosCultivo_Ventas` (+ `Bonif*`) − `vw_ResultadosCultivo_Deducciones`, vía `idCultivo_a_grano` **y `campania_id_a_texto`** (mapeo.py, T004 — hallazgo G1: estas vistas filtran por `Campaña` texto, no por `IdCampaña`)
-- [ ] T018 [US1] Implementar `resultado.py::resultado_cultivo(idCultivo, idCampania) -> dict`: combina T014-T017 en el shape `ResultadoCultivo` de `data-model.md` — costo/ha `None` si la superficie es 0 (nunca división por cero), `margenBruto`/`rentabilidad` por moneda como series independientes (spec.md Assumptions), `supCosechaEstimada=True` si `superficie_cosechada().estimada` (T016; FR-010, corregido en `/speckit-analyze` — **no** depende de `idCultivo_a_destino`, que nunca es `None` para un Cultivo real), `advertenciaMargenNoRepresentativo=True` si `ventaNeta > 0` y `costoTotal < 0.20 * ventaNeta` (FR-011) (depende de T014, T015, T016, T017)
-- [ ] T019 [US1] Implementar `resultado.py::costo_sin_clasificar(idCampania) -> dict`: suma de `vw_ResultadosCultivo_CostosBase` con `IdCampaña IS NULL` o `IdDestino` sin fila en `Map_CultivoResultado` (FR-012 — este es el único lugar donde un `IdDestino` huérfano se hace visible, ver data-model.md)
-- [ ] T020 [US1] Implementar `resultado.py::resultado_campania(idCampania) -> dict`: consolidado sumando `resultado_cultivo()` (T018) de todos los Cultivos con algún dato en esa Campaña, más `costo_sin_clasificar()` (T019) — incluye `costoPorHectareaSembrada`/`Cosechada` consolidado (`costoTotal / superficie`, válido sumar), **sin** `rinde` consolidado (FR-003, corregido en `/speckit-analyze` hallazgo U1: no es comparable entre Cultivos distintos) — invariante FR-014/SC-004 (depende de T018, T019)
-- [ ] T021 [US1] Agregar a `router.py` el endpoint `GET /api/resultado-cultivo/campania/{idCampania}` según `contracts/api-resultado-cultivo.md`
-- [ ] T022 [P] [US1] Test `backend/tests/test_resultado_cultivo_costos.py`: T013 excluye un `IdCompra` que ya está en `vw_ResultadosCultivo_CostosBase` (simulado, ya que hoy `Ordenes_Trabajo_Contratista_Factura` está vacía); `Signo=-1` resta del total
-- [ ] T023 [P] [US1] Test `backend/tests/test_resultado_cultivo_resultado.py`: `resultado_campania` == suma de sus `resultado_cultivo` (FR-014) y no incluye `rinde`; costo/ha y rinde devuelven `None` con superficie 0; `supCosechaEstimada=True` solo cuando `Observaciones` marca estimación automática (no cuando `idCultivo_a_destino` es válido — regresión del hallazgo I1)
-- [ ] T024 [US1] Crear `frontend/src/components/resultado-cultivo/SelectorCampania.tsx`: selector de Campaña, preselecciona `campaniaActualId` (T008)
-- [ ] T025 [US1] Crear `frontend/src/components/resultado-cultivo/ConsolidadoCampaniaView.tsx`: tarjetas KPI (superficie, costo, costo/ha, venta, margen, rentabilidad en pesos y dólares — sin rinde) + tabla resumen de una fila por Cultivo; estado vacío neutro sin colores de advertencia cuando no hay datos (FR-009)
-- [ ] T026 [US1] Crear `frontend/src/app/produccion/resultado-cultivo/page.tsx` consumiendo `SelectorCampania` + `ConsolidadoCampaniaView`
-- [ ] T027 [US1] Extender `resultadoCultivoApi.ts` con `fetchCampanias`, `fetchResultadoCampania`, tipados según `contracts/api-resultado-cultivo.md`
+- [X] T012 [P] [US1] Implementar `backend/src/features/resultado_cultivo/costos.py::costos_heredados(idCultivo, idCampania) -> list[dict]`: líneas de `vw_ResultadosCultivo_CostosBase` + `Seguros` vía `IdDestino` (mapeo.py, T004), respetando `Signo` (cargo/crédito, confiable per `research.md` §3 — no hace falta reemplazarlo)
+- [X] T013 [P] [US1] Implementar `costos.py::costo_ordenes_trabajo(idCultivo, idCampania) -> list[dict]`: insumos + maquinaria + contratista de `Ordenes_Trabajo_Insumos`/`Maquinaria`/`Contratista_Factura` (vía `Ordenes_Trabajo_Distrib.IdCultivo`/`IdCampania`), **excluyendo** cualquier `Ordenes_Trabajo_Contratista_Factura.IdCompra` que ya esté en `vw_ResultadosCultivo_CostosBase` (FR-004, anti-doble-conteo — `research.md` §6)
+- [X] T014 [US1] Implementar `costos.py::costo_total(idCultivo, idCampania) -> dict` combinando T012 + T013 (depende de T012, T013)
+- [X] T015 [P] [US1] Implementar `backend/src/features/resultado_cultivo/resultado.py::superficie_sembrada(idCultivo, idCampania) -> float`: `SUM(Lotes.Superficie)` vía `PlanAgricola` (`research.md` §1)
+- [X] T016 [P] [US1] Implementar `resultado.py::superficie_cosechada(idCultivo, idCampania) -> dict`: `{valor: ResultadoCultivo_Cierre.SuperficieCosechada | None, estimada: True si Observaciones contiene "Revisar manualmente"}` (`research.md` §2; el flag `estimada` alimenta `supCosechaEstimada`/FR-010, corregido en `/speckit-analyze` hallazgo I1)
+- [X] T017 [P] [US1] Implementar `resultado.py::venta_neta(idCultivo, idCampania) -> dict`: `vw_ResultadosCultivo_Ventas` (+ `Bonif*`) − `vw_ResultadosCultivo_Deducciones`, vía `idCultivo_a_grano` **y `campania_id_a_texto`** (mapeo.py, T004 — hallazgo G1: estas vistas filtran por `Campaña` texto, no por `IdCampaña`)
+- [X] T018 [US1] Implementar `resultado.py::resultado_cultivo(idCultivo, idCampania) -> dict`: combina T014-T017 en el shape `ResultadoCultivo` de `data-model.md` — costo/ha `None` si la superficie es 0 (nunca división por cero), `margenBruto`/`rentabilidad` por moneda como series independientes (spec.md Assumptions), `supCosechaEstimada=True` si `superficie_cosechada().estimada` (T016; FR-010, corregido en `/speckit-analyze` — **no** depende de `idCultivo_a_destino`, que nunca es `None` para un Cultivo real), `advertenciaMargenNoRepresentativo=True` si `ventaNeta > 0` y `costoTotal < 0.20 * ventaNeta` (FR-011) (depende de T014, T015, T016, T017)
+- [X] T019 [US1] Implementar `resultado.py::costo_sin_clasificar(idCampania) -> dict`: suma de `vw_ResultadosCultivo_CostosBase` con `IdCampaña IS NULL` o `IdDestino` sin fila en `Map_CultivoResultado` (FR-012 — este es el único lugar donde un `IdDestino` huérfano se hace visible, ver data-model.md)
+- [X] T020 [US1] Implementar `resultado.py::resultado_campania(idCampania) -> dict`: consolidado sumando `resultado_cultivo()` (T018) de todos los Cultivos con algún dato en esa Campaña, con `costo_sin_clasificar()` (T019) mostrado aparte y excluido del total — incluye `costoPorHectareaSembrada`/`Cosechada` consolidado (`costoTotal / superficie`, válido sumar), **sin** `rinde` consolidado (FR-003, corregido en `/speckit-analyze` hallazgo U1: no es comparable entre Cultivos distintos) — invariante FR-014/SC-004 (depende de T018, T019)
+- [X] T021 [US1] Agregar a `router.py` el endpoint `GET /api/resultado-cultivo/campania/{idCampania}` según `contracts/api-resultado-cultivo.md`
+- [X] T022 [P] [US1] Test `backend/tests/test_resultado_cultivo_costos.py`: T013 excluye un `IdCompra` que ya está en `vw_ResultadosCultivo_CostosBase` (simulado, ya que hoy `Ordenes_Trabajo_Contratista_Factura` está vacía); `Signo=-1` resta del total
+- [X] T023 [P] [US1] Test `backend/tests/test_resultado_cultivo_resultado.py`: `resultado_campania` == suma de sus `resultado_cultivo` (FR-014) y no incluye `rinde`; costo/ha y rinde devuelven `None` con superficie 0; `supCosechaEstimada=True` solo cuando `Observaciones` marca estimación automática (no cuando `idCultivo_a_destino` es válido — regresión del hallazgo I1)
+- [X] T024 [US1] Crear `frontend/src/components/resultado-cultivo/SelectorCampania.tsx`: selector de Campaña, preselecciona `campaniaActualId` (T008)
+- [X] T025 [US1] Crear `frontend/src/components/resultado-cultivo/ConsolidadoCampaniaView.tsx`: tarjetas KPI (superficie, costo, costo/ha, venta, margen, rentabilidad en pesos y dólares — sin rinde) + tabla resumen de una fila por Cultivo; estado vacío neutro sin colores de advertencia cuando no hay datos (FR-009)
+- [X] T026 [US1] Crear `frontend/src/app/produccion/resultado-cultivo/page.tsx` consumiendo `SelectorCampania` + `ConsolidadoCampaniaView`
+- [X] T027 [US1] Extender `resultadoCultivoApi.ts` con `fetchCampanias`, `fetchResultadoCampania`, tipados según `contracts/api-resultado-cultivo.md`
 
 **Checkpoint**: US1 funcional de punta a punta — entrar al módulo muestra el consolidado de la Campaña actual con su tabla por Cultivo. MVP demostrable.
 
@@ -94,12 +96,12 @@ Web app existente: `backend/src/`, `frontend/src/` — mismo layout que 010-remi
 
 ### Implementation for User Story 2
 
-- [ ] T028 [US2] Agregar a `router.py` el endpoint `GET /api/resultado-cultivo/campania/{idCampania}/cultivo/{idCultivo}` (reutiliza `resultado.resultado_cultivo`, T018)
-- [ ] T029 [P] [US2] Crear `frontend/src/components/resultado-cultivo/ResultadoCultivoView.tsx`: tarjetas KPI de un Cultivo puntual (incluye rinde, a diferencia del consolidado), con estado vacío neutro cuando no hay datos (FR-009, mismo criterio que T025 — hallazgo U3 de `/speckit-analyze`), el badge ocre "superficie cosechada estimada — revisar" cuando `supCosechaEstimada` (FR-010, corregido) y el badge de advertencia "costos incompletos — margen no representativo" (FR-011)
-- [ ] T030 [US2] Crear `frontend/src/app/produccion/resultado-cultivo/[idCampania]/[idCultivo]/page.tsx` consumiendo `ResultadoCultivoView` (depende de T029)
-- [ ] T031 [US2] Hacer clickeable cada fila de la tabla resumen de `ConsolidadoCampaniaView.tsx` (T025) navegando a `[idCampania]/[idCultivo]`
-- [ ] T032 [US2] Crear `frontend/src/components/resultado-cultivo/SelectorCultivo.tsx`: filtro directo de Cultivo dentro de la Campaña seleccionada (segundo camino de acceso de FR-002, hallazgo U2 de `/speckit-analyze` — hasta ahora solo se tasqueaba el clic en la tabla resumen), integrado en `frontend/src/app/produccion/resultado-cultivo/page.tsx` (T026) navegando a `[idCampania]/[idCultivo]` al elegir
-- [ ] T033 [US2] Extender `resultadoCultivoApi.ts` con `fetchResultadoCultivo`
+- [X] T028 [US2] Agregar a `router.py` el endpoint `GET /api/resultado-cultivo/campania/{idCampania}/cultivo/{idCultivo}` (reutiliza `resultado.resultado_cultivo`, T018)
+- [X] T029 [P] [US2] Crear `frontend/src/components/resultado-cultivo/ResultadoCultivoView.tsx`: tarjetas KPI de un Cultivo puntual (incluye rinde, a diferencia del consolidado), con estado vacío neutro cuando no hay datos (FR-009, mismo criterio que T025 — hallazgo U3 de `/speckit-analyze`), el badge ocre "superficie cosechada estimada — revisar" cuando `supCosechaEstimada` (FR-010, corregido) y el badge de advertencia "costos incompletos — margen no representativo" (FR-011)
+- [X] T030 [US2] Crear `frontend/src/app/produccion/resultado-cultivo/[idCampania]/[idCultivo]/page.tsx` consumiendo `ResultadoCultivoView` (depende de T029)
+- [X] T031 [US2] Hacer clickeable cada fila de la tabla resumen de `ConsolidadoCampaniaView.tsx` (T025) navegando a `[idCampania]/[idCultivo]`
+- [X] T032 [US2] Crear `frontend/src/components/resultado-cultivo/SelectorCultivo.tsx`: filtro directo de Cultivo dentro de la Campaña seleccionada (segundo camino de acceso de FR-002, hallazgo U2 de `/speckit-analyze` — hasta ahora solo se tasqueaba el clic en la tabla resumen), integrado en `frontend/src/app/produccion/resultado-cultivo/page.tsx` (T026) navegando a `[idCampania]/[idCultivo]` al elegir
+- [X] T033 [US2] Extender `resultadoCultivoApi.ts` con `fetchResultadoCultivo`
 
 **Checkpoint**: US1 + US2 funcionan juntas — desde el consolidado se llega al detalle de cualquier Cultivo por clic o por filtro directo, y ambos números son consistentes entre sí.
 
@@ -113,12 +115,12 @@ Web app existente: `backend/src/`, `frontend/src/` — mismo layout que 010-remi
 
 ### Implementation for User Story 3
 
-- [ ] T034 [US3] Implementar `resultado.py::detalle_costos(idCultivo, idCampania) -> list[dict]`: combina T012 + T013 en el shape `DetalleCosto` de `data-model.md` (`concepto`, `rubro`, `montoPesos`/`Dolares`, `origen`, `idCompra`/`idDetalleCompra` como texto si `origen="Compra"`, `idOrdenTrabajo` si `origen="OrdenTrabajo"`)
-- [ ] T035 [US3] Agregar a `router.py` el endpoint `GET /api/resultado-cultivo/campania/{idCampania}/cultivo/{idCultivo}/costos` según `contracts/api-resultado-cultivo.md`
-- [ ] T036 [P] [US3] Test en `backend/tests/test_resultado_cultivo_resultado.py`: `SUM(detalle_costos().montoPesos)` == `resultado_cultivo().costoTotalPesos` para un Cultivo/Campaña con costos heredados y de Órdenes de Trabajo
-- [ ] T037 [US3] Crear `frontend/src/components/resultado-cultivo/DetalleCostosPanel.tsx`: tabla densa agrupable por concepto/rubro, con link "Ver orden" hacia `/produccion/ordenes/[idOrden]` cuando `origen="OrdenTrabajo"` (reutiliza el patrón de link ya usado en 011)
-- [ ] T038 [US3] Integrar `DetalleCostosPanel` en `frontend/src/app/produccion/resultado-cultivo/[idCampania]/[idCultivo]/page.tsx` (T030)
-- [ ] T039 [US3] Extender `resultadoCultivoApi.ts` con `fetchDetalleCostos`
+- [X] T034 [US3] Implementar `resultado.py::detalle_costos(idCultivo, idCampania) -> list[dict]`: combina T012 + T013 en el shape `DetalleCosto` de `data-model.md` (`concepto`, `rubro`, `montoPesos`/`Dolares`, `origen`, `idCompra`/`idDetalleCompra` como texto si `origen="Compra"`, `idOrdenTrabajo` si `origen="OrdenTrabajo"`)
+- [X] T035 [US3] Agregar a `router.py` el endpoint `GET /api/resultado-cultivo/campania/{idCampania}/cultivo/{idCultivo}/costos` según `contracts/api-resultado-cultivo.md`
+- [X] T036 [P] [US3] Test en `backend/tests/test_resultado_cultivo_resultado.py`: `SUM(detalle_costos().montoPesos)` == `resultado_cultivo().costoTotalPesos` para un Cultivo/Campaña con costos heredados y de Órdenes de Trabajo
+- [X] T037 [US3] Crear `frontend/src/components/resultado-cultivo/DetalleCostosPanel.tsx`: tabla densa agrupable por concepto/rubro, con link "Ver orden" hacia `/produccion/ordenes/[idOrden]` cuando `origen="OrdenTrabajo"` (reutiliza el patrón de link ya usado en 011)
+- [X] T038 [US3] Integrar `DetalleCostosPanel` en `frontend/src/app/produccion/resultado-cultivo/[idCampania]/[idCultivo]/page.tsx` (T030)
+- [X] T039 [US3] Extender `resultadoCultivoApi.ts` con `fetchDetalleCostos`
 
 **Checkpoint**: el resultado de un Cultivo es auditable hasta su línea de origen, no solo un número agregado.
 
@@ -132,12 +134,12 @@ Web app existente: `backend/src/`, `frontend/src/` — mismo layout que 010-remi
 
 ### Implementation for User Story 4
 
-- [ ] T040 [P] [US4] Implementar `backend/src/features/resultado_cultivo/exportacion.py::resultado_campania_xlsx(idCampania) -> bytes`: hoja "Resultado" (una fila por Cultivo, T020) + hoja "Detalle de costos" (T034 de cada Cultivo), siguiendo el patrón multi-hoja de `backend/src/features/ordenes/exportacion.py` (`research.md` §7)
-- [ ] T041 [US4] Agregar a `router.py` el endpoint `GET /api/resultado-cultivo/campania/{idCampania}/exportar` según `contracts/api-resultado-cultivo.md`
-- [ ] T042 [P] [US4] Implementar `exportacion.py::resultado_cultivo_xlsx(idCampania, idCultivo) -> bytes`: mismas 2 hojas, acotado a un solo Cultivo
-- [ ] T043 [US4] Agregar a `router.py` el endpoint `GET /api/resultado-cultivo/campania/{idCampania}/cultivo/{idCultivo}/exportar`
-- [ ] T044 [US4] Agregar botón "Exportar a Excel" en `ConsolidadoCampaniaView.tsx` (T025) y `ResultadoCultivoView.tsx` (T029)
-- [ ] T045 [US4] Extender `resultadoCultivoApi.ts` con `urlExportarCampania`, `urlExportarCultivo`
+- [X] T040 [P] [US4] Implementar `backend/src/features/resultado_cultivo/exportacion.py::resultado_campania_xlsx(idCampania) -> bytes`: hoja "Resultado" (una fila por Cultivo, T020) + hoja "Detalle de costos" (T034 de cada Cultivo), siguiendo el patrón multi-hoja de `backend/src/features/ordenes/exportacion.py` (`research.md` §7)
+- [X] T041 [US4] Agregar a `router.py` el endpoint `GET /api/resultado-cultivo/campania/{idCampania}/exportar` según `contracts/api-resultado-cultivo.md`
+- [X] T042 [P] [US4] Implementar `exportacion.py::resultado_cultivo_xlsx(idCampania, idCultivo) -> bytes`: mismas 2 hojas, acotado a un solo Cultivo
+- [X] T043 [US4] Agregar a `router.py` el endpoint `GET /api/resultado-cultivo/campania/{idCampania}/cultivo/{idCultivo}/exportar`
+- [X] T044 [US4] Agregar botón "Exportar a Excel" en `ConsolidadoCampaniaView.tsx` (T025) y `ResultadoCultivoView.tsx` (T029)
+- [X] T045 [US4] Extender `resultadoCultivoApi.ts` con `urlExportarCampania`, `urlExportarCultivo`
 
 **Checkpoint**: todas las historias completas — el módulo cubre el mismo caso de uso que la vista parcial de 011, y más.
 
@@ -147,9 +149,9 @@ Web app existente: `backend/src/`, `frontend/src/` — mismo layout que 010-remi
 
 **Purpose**: Retirar la vista parcial de 011 y verificación final, después de que el módulo nuevo funciona de punta a punta
 
-- [ ] T046 Retirar la entrada "Costo por cultivo/campaña" de `frontend/src/components/remitos/RemitosSubNav.tsx` (la que apunta a `/produccion/ordenes/resultado-cultivo`, 011) y decidir con el usuario si se elimina también la página/componente (`frontend/src/app/produccion/ordenes/resultado-cultivo/page.tsx`, `ResultadoCultivoListado.tsx`) o se deja sin acceso desde el menú (FR-015) — no eliminar sin confirmación explícita, es código en producción
-- [ ] T047 [P] Aplicar formato numérico y monetario del sistema (miles `.`, decimales `,`, `$`/`us$`) en todos los componentes nuevos de `frontend/src/components/resultado-cultivo/`, usando los helpers ya existentes (nunca `type=number` ni `toLocaleString`, regla de memoria del proyecto)
-- [ ] T048 Ejecutar los 7 escenarios de `quickstart.md` de punta a punta sobre el sistema integrado (incluyendo el paso de "sin reapertura" agregado al Escenario 3 y las 5 combinaciones del Escenario 2, `/speckit-analyze` hallazgos G3/C1) y confirmar los 5 criterios de éxito de `spec.md` (SC-001 a SC-005)
+- [X] T046 Retirar la entrada "Costo por cultivo/campaña" de `frontend/src/components/remitos/RemitosSubNav.tsx` (la que apunta a `/produccion/ordenes/resultado-cultivo`, 011) y conservar su página/componente legacy sin borrar mientras no se decida lo contrario (FR-015)
+- [X] T047 [P] Aplicar formato numérico y monetario del sistema (miles `.`, decimales `,`, `$`/`us$`) en todos los componentes nuevos de `frontend/src/components/resultado-cultivo/`, usando los helpers ya existentes (nunca `type=number` ni `toLocaleString`, regla de memoria del proyecto)
+- [X] T048 Ejecutar los 7 escenarios de `quickstart.md` de punta a punta sobre el sistema integrado (incluyendo el paso de "sin reapertura" agregado al Escenario 3 y las 5 combinaciones del Escenario 2, `/speckit-analyze` hallazgos G3/C1) y confirmar los 5 criterios de éxito de `spec.md` (SC-001 a SC-005) — completado 2026-09-22, ver `validation.md`
 
 ---
 
@@ -190,3 +192,11 @@ Web app existente: `backend/src/`, `frontend/src/` — mismo layout que 010-remi
 4. US3 → auditoría del detalle de costos
 5. US4 → exportación a Excel
 6. Polish → retirar la vista parcial de 011, formato numérico, validación final
+
+
+## Ajustes detectados al implementar con Spec Kit — 2026-09-22
+
+- [X] T049 Corregir doble aplicación del signo de notas de crédito contra la definición real de CostosBase y validar con datos de WC.
+- [X] T050 Aplicar fuente de contratista según factura e imputación registrada; estimado manual de maquinaria propia; probar no duplicación y superficie repetida entre insumos.
+- [X] T051 Completar estados vacíos/error, costos/ha en dólares, cultivos con órdenes/seguros y refresco del resultado al volver a consultar.
+- [X] T052 Reconstruir la serie histórica en dólares del consumo FIFO de insumos de órdenes, o definir explícitamente su representación como dato incompleto en los indicadores y exportaciones. El motor reutilizado de 010 entrega pesos; el cero actual no valida una serie completa en dólares. — completado 2026-09-22: se descartó la reconstrucción (camino a, ver justificación en `data-model.md`) y se confirmó/documentó el camino (b), ya implementado: `montoDolares = null` (nunca `0`) en la línea "Insumo", flag `costeoDolaresIncompleto`, nota visible en la UI y columna dedicada en el Excel.

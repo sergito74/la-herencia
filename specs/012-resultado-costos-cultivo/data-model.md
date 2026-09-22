@@ -24,7 +24,7 @@ Módulo 100% de solo lectura: no crea tablas nuevas. Las entidades de abajo son 
 |---|---|
 | idCampania, campania | `Campañas` |
 | superficieSembrada | `SUM` de `ResultadoCultivo` de todos sus Cultivos |
-| costoTotalPesos/Dolares | `SUM` de `ResultadoCultivo.costoTotal*` de todos sus Cultivos + costo sin clasificar (ver `CostoSinClasificar`) |
+| costoTotalPesos/Dolares | `SUM` de `ResultadoCultivo.costoTotal*` de todos sus Cultivos; excluye el costo sin clasificar (ver `CostoSinClasificar`) |
 | ventaNetaPesos/Dolares | `SUM` de `ResultadoCultivo.ventaNeta*` |
 | margenBrutoPesos/Dolares | ventaNeta − costoTotal (por moneda, series independientes) |
 | rentabilidadPesos/Dolares | margenBruto / costoTotal (por moneda) |
@@ -60,10 +60,12 @@ Invariante (FR-014, SC-004): `costoTotal`/`ventaNeta`/`margenBruto` de `Resultad
 | Campo | Origen |
 |---|---|
 | concepto, rubro | `vw_ResultadosCultivo_CostosAgrupados` / `CostosBase.Concepto` |
-| montoPesos/Dolares | `Pesos`/`Dolares` × `Signo` |
+| montoPesos/Dolares | `ABS(Pesos)`/`ABS(Dolares)` × `Signo` |
 | origen | `"Compra"` \| `"OrdenTrabajo"` \| `"Seguro"` |
 | idCompra, idDetalleCompra | de `vw_ResultadosCultivo_CostosBase`, solo si `origen = "Compra"` (mostrado como texto, sin link — Compras no migrado, research.md §8) |
 | idOrdenTrabajo | de `Ordenes_Trabajo_*`, solo si `origen = "OrdenTrabajo"` (con link a `/produccion/ordenes/[idOrden]`) |
+
+**Decisión T052 (2026-09-22)**: la línea `concepto = "Insumo"` (consumo FIFO de un renglón de Orden de Trabajo, motor reutilizado de 010) SIEMPRE trae `montoDolares = null`, nunca `0`. Se investigó reconstruir la serie histórica en dólares (camino a) y se descartó: `costo_unitario_renglon` (`backend/src/features/remitos/costeo.py`) promedia, por moneda, los vínculos factura/NC/ND de un mismo renglón de remito y sólo al final convierte el subtotal en dólares a pesos con el tipo de cambio histórico de cada vínculo — el resultado que expone `calcular_stock`/`Capa.costo_unitario` es un único monto en pesos ya mezclado, sin conservar qué fracción vino de una compra en dólares ni a qué tipo de cambio. Cuando una capa FIFO se nutre de compras en distintas monedas (caso real, no marginal) no existe una única "porción en dólares" que reconstruir sin inventar un criterio arbitrario de reparto. Se optó por el camino (b): `resultado_cultivo()` expone `costeoDolaresIncompleto = true` cuando alguna línea tiene `montoDolares = null` (`backend/src/features/resultado_cultivo/resultado.py`), y la UI (`ResultadoCultivoView.tsx`, `DetalleCostosPanel.tsx`) muestra una nota explícita ("Costos en dólares parciales…") y "Sin dato" en vez de "$0" en la línea de Insumo. Los totales/margen/rentabilidad en dólares sólo suman lo disponible y quedan señalizados como incompletos — nunca se presenta un cero engañoso.
 
 ### `CostoSinClasificar` (FR-012, a nivel de `ResultadoCampania`)
 
@@ -79,3 +81,17 @@ Este es el único lugar donde un `IdDestino` sin Cultivo asociado se hace visibl
 - `costoTotal` de un `ResultadoCultivo` MUST excluir cualquier `Ordenes_Trabajo_Contratista_Factura.IdCompra` que ya exista en `vw_ResultadosCultivo_CostosBase` (FR-004, anti-doble-conteo).
 - `rinde`, `costoPorHectareaSembrada`, `costoPorHectareaCosechada` MUST ser `null` (no `0` ni error) cuando el divisor es cero o no existe — nunca se divide por superficie sembrada para calcular rinde (research.md, spec Edge Cases).
 - `pesos` y `dolares` de un mismo campo son series independientes (Assumptions de spec.md) — ninguna función de cálculo MUST derivar una a partir de la otra dividiendo por un tipo de cambio propio.
+
+
+**Decisión del usuario (2026-09-22)**: los costos sin clasificar se muestran aparte, sin sumarlos al costo total de la campaña ni afectar su margen, rentabilidad o costo por hectárea. El total consolidado es la suma de los cultivos. El importe informativo incluye destinos sin cultivo de la campaña consultada y costos sin campaña asignada de todo el sistema; estos últimos no se atribuyen a la campaña seleccionada.
+
+
+## Aclaración de costeo aplicada — 2026-09-22
+
+El usuario aclaró que el contratista se costea por su factura y la maquinaria propia por el estimado por hectárea ingresado manualmente en su formulario. En 012, las facturas vinculadas se toman por sus renglones de `Det_Compras`, con el destino y la campaña registrados; no se reparten por superficie ni por cantidad de insumos. Una factura que ya aparece en CostosBase no vuelve a sumarse por la orden. Los identificadores de factura y renglón se conservan en el detalle. Vincular la misma factura a varias órdenes no multiplica sus renglones; se muestra como referencia la primera orden vigente vinculada.
+
+Maquinaria propia nueva: se usa `CostoPorHectarea` manual y la superficie registrada del lote de la orden, una vez por lote (máxima superficie registrada para ese lote dentro del cultivo/campaña cuando se repite entre insumos). No hay tarifa calculada ni catálogo de tarifas. `TipoCambioBna`, cuando fue registrado, permite expresar ese estimado en dólares; si falta, el detalle no inventa conversión. La maquinaria heredada conserva los importes de su formulario incluidos en CostosBase y se identifica como `MaquinariaPropia`.
+
+Verificación del SQL real: CostosBase ya firma `Pesos` y `Dolares` en notas de crédito. Se normaliza `ABS(importe) × Signo`, evitando volver a convertir el crédito en cargo. Esta corrección reemplaza cualquier indicación previa de multiplicar directamente el importe firmado por Signo.
+
+El motor FIFO existente entrega los costos de insumos de órdenes en pesos. La serie en dólares de esos insumos no está reconstruida en este corte; no se debe interpretar su cero actual como una conversión validada. Esta limitación debe resolverse antes de considerar completos los indicadores en dólares cuando incluyen esas órdenes.

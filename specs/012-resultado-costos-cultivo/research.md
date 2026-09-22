@@ -20,6 +20,8 @@ Superficie picada: **sin fuente estructurada encontrada** en ninguna tabla/vista
 
 **Rationale**: no hay ninguna fuente real de "superficie picada" hoy en `WC`; forzar un valor sería inventar un dato. Mantener el campo en la UI para pasturas/verdeos, con guion, deja la puerta abierta si en el futuro se carga.
 
+**Hallazgo durante la implementación (2026-09-22)**: la cantidad cosechada (numerador del rinde) tampoco tenía fuente documentada en el research original. Encontrada la tabla heredada `Datos Cosecha` (225 filas reales, columnas `IdDestino`, `IdCampaña`, `[Cantidad a Liquidar]` — kg entregados/liquidados por remito de cosecha) — **decisión**: `cantidadCosechada = SUM([Cantidad a Liquidar]) FROM [Datos Cosecha] WHERE IdDestino = ? AND IdCampaña = ?`, vía `idCultivo_a_destino` (mismo `IdDestino` que el costeo). Si no hay filas, `cantidadCosechada = None` (rinde "—", no 0).
+
 ## 3. Traducción Cultivo → claves heredadas (`Map_CultivoResultado`)
 
 **Decision**: `Map_CultivoResultado` es 1:1 por Cultivo (11 filas, verificado). Cada fila expone dos claves independientes:
@@ -49,6 +51,8 @@ La Campaña "actual" es aquella cuyo rango contiene la fecha de hoy. Si ninguna 
 
 **Alternatives considered**: agregar una columna `FechaInicio`/`FechaFin` a `Campañas` — rechazada, es una tabla heredada compartida por todo el sistema (Compras, Ventas, Órdenes de Trabajo) y el módulo es de solo lectura; cambiar su esquema está fuera de alcance de esta spec.
 
+**Hallazgo durante la implementación (2026-09-22)**: una Campaña `"YYYY/YYYY+1"` y una `"YYYY"` suelta pueden contener la misma fecha de hoy simultáneamente — confirmado con datos reales: `"2026/2027"` (id 32) y `"2026"` (id 25) ambas activas y con datos (`PlanAgricola`, costos) al 2026-09-22. No estaba contemplado en la decisión original. Resuelto con un desempate explícito: se prioriza `"YYYY/YYYY+1"` (la campaña agrícola típica del sistema) por sobre `"YYYY"` cuando ambas coinciden.
+
 ## 6. Prevención de doble conteo (FR-004)
 
 **Decision**: al sumar el costo de contratista de una Orden de Trabajo (`Ordenes_Trabajo_Contratista_Factura.IdCompra`), excluir explícitamente cualquier `IdCompra` que ya aparezca en `vw_ResultadosCultivo_CostosBase` (`WHERE IdCompra NOT IN (SELECT IdCompra FROM vw_ResultadosCultivo_CostosBase)` o equivalente por `LEFT JOIN ... IS NULL`). Cubrir con un test unitario que simule el caso (hoy no reproducible con datos reales: `Ordenes_Trabajo_Contratista_Factura` está vacía), para que quede blindado antes de que se cargue el primer dato real.
@@ -66,3 +70,17 @@ La Campaña "actual" es aquella cuyo rango contiene la fecha de hoy. Si ninguna 
 **Decision**: cada línea de `vw_ResultadosCultivo_CostosBase` ya expone `IdCompra`/`IdDetalleCompra` — se muestran como texto (el módulo de Compras aún no está migrado a la web, así que no hay a dónde linkear todavía). Las líneas originadas en `Ordenes_Trabajo_*` sí tienen link "Ver orden" hacia `/produccion/ordenes/[idOrden]` (módulo 011, ya en producción).
 
 **Rationale**: confirmado por el agente `07-financial-direction-specialist` (necesidad real) y `09-agroux-lead-product-architect` (mecanismo de navegación); limitado por lo que efectivamente está migrado hoy.
+
+
+**Decisión del usuario (2026-09-22)**: los costos sin clasificar se muestran aparte, sin sumarlos al costo total de la campaña ni afectar su margen, rentabilidad o costo por hectárea. El total consolidado es la suma de los cultivos. El importe informativo incluye destinos sin cultivo de la campaña consultada y costos sin campaña asignada de todo el sistema; estos últimos no se atribuyen a la campaña seleccionada.
+
+
+## Aclaración de costeo aplicada — 2026-09-22
+
+El usuario aclaró que el contratista se costea por su factura y la maquinaria propia por el estimado por hectárea ingresado manualmente en su formulario. En 012, las facturas vinculadas se toman por sus renglones de `Det_Compras`, con el destino y la campaña registrados; no se reparten por superficie ni por cantidad de insumos. Una factura que ya aparece en CostosBase no vuelve a sumarse por la orden. Los identificadores de factura y renglón se conservan en el detalle. Vincular la misma factura a varias órdenes no multiplica sus renglones; se muestra como referencia la primera orden vigente vinculada.
+
+Maquinaria propia nueva: se usa `CostoPorHectarea` manual y la superficie registrada del lote de la orden, una vez por lote (máxima superficie registrada para ese lote dentro del cultivo/campaña cuando se repite entre insumos). No hay tarifa calculada ni catálogo de tarifas. `TipoCambioBna`, cuando fue registrado, permite expresar ese estimado en dólares; si falta, el detalle no inventa conversión. La maquinaria heredada conserva los importes de su formulario incluidos en CostosBase y se identifica como `MaquinariaPropia`.
+
+Verificación del SQL real: CostosBase ya firma `Pesos` y `Dolares` en notas de crédito. Se normaliza `ABS(importe) × Signo`, evitando volver a convertir el crédito en cargo. Esta corrección reemplaza cualquier indicación previa de multiplicar directamente el importe firmado por Signo.
+
+El motor FIFO existente entrega los costos de insumos de órdenes en pesos. La serie en dólares de esos insumos no está reconstruida en este corte; no se debe interpretar su cero actual como una conversión validada. Esta limitación debe resolverse antes de considerar completos los indicadores en dólares cuando incluyen esas órdenes.

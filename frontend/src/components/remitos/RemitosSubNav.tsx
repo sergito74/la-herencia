@@ -12,7 +12,7 @@ const TABS = [
   { href: "/produccion/stock/ajustes", label: "Ajustes de inventario" },
   { href: "/produccion/stock/unidades", label: "Unidades de productos" },
   { href: "/produccion/ordenes", label: "Órdenes de trabajo", exacto: true },
-  { href: "/produccion/ordenes/resultado-cultivo", label: "Costo por cultivo/campaña" },
+  { href: "/produccion/resultado-cultivo", label: "Resultado de cultivo", exacto: true },
 ] as const;
 
 /** Sub-navegación del módulo de insumos: remitos, facturas sin remito y control de stock. */

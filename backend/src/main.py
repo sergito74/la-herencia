@@ -1,7 +1,8 @@
 """FastAPI app entrypoint. Mounts feature routers.
 
-Read-only module (constitution principle II, FR-010): only GET endpoints
-are registered anywhere under /api.
+Feature routers may expose reads and task-scoped writes to the development
+database WC. The shared connection layer prevents writes to the protected
+official database during development.
 """
 
 from __future__ import annotations
@@ -21,6 +22,7 @@ from src.features.impuestos.router import router as impuestos_router
 from src.features.ordenes.router import router as ordenes_router
 from src.features.planificacion.router import router as planificacion_router
 from src.features.remitos.router import router as remitos_router
+from src.features.resultado_cultivo.router import router as resultado_cultivo_router
 from src.features.remitos.stock_router import router as stock_router
 from src.features.remuneraciones.router import router as remuneraciones_router
 from src.features.sesion.router import router as sesion_router
@@ -33,7 +35,7 @@ from src.features.ventas_hacienda.router import router as ventas_hacienda_router
 
 app = FastAPI(
     title="La Herencia API",
-    description="API de solo lectura sobre SQL Server LaHerencia.",
+    description="API de La Herencia sobre SQL Server WC.",
     version="0.1.0",
 )
 
@@ -69,6 +71,7 @@ app.include_router(impuestos_router)
 app.include_router(remitos_router)
 app.include_router(ordenes_router)
 app.include_router(planificacion_router)
+app.include_router(resultado_cultivo_router)
 app.include_router(stock_router)
 app.include_router(remuneraciones_router)
 app.include_router(sesion_router)

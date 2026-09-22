@@ -3,13 +3,9 @@
 /**
  * Fetch wrapper for the La Herencia backend API.
  *
- * Most of this app is still GET-only against the original `LaHerencia`
- * database — that read path is unaffected. `apiPatch` (added 2026-09-17)
- * is the one exception: it's used only by features whose backend writes
- * exclusively to `WC` ("Working Copy"), never to `LaHerencia` — enforced
- * server-side in `backend/src/db/connection.py` (`execute_write`), not
- * by this client. Do not add new mutation helpers here without a
- * matching `WC`-only guard on the backend endpoint they call.
+ * The development app uses SQL Server `WC` through the Python backend.
+ * The official `LaHerencia` database is protected during development.
+ * Any write guard belongs in the backend connection layer, not this client.
  */
 
 import { QueryClient } from "@tanstack/react-query";

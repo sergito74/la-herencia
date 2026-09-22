@@ -31,7 +31,7 @@ DSN = os.environ.get("LA_HERENCIA_DSN", "SQL_LaHerencia")
 DATABASE = os.environ.get("LA_HERENCIA_DATABASE", "WC")
 CONNECTION_STRING = f"DSN={DSN};Trusted_Connection=Yes;DATABASE={DATABASE}"
 
-_FORBIDDEN_DATABASE = "LaHerencia"
+_DEVELOPMENT_DATABASE = "WC"
 
 _FORBIDDEN_KEYWORDS = (
     "INSERT",
@@ -84,16 +84,17 @@ def _coerce_params(params: tuple) -> tuple:
 
 
 def _assert_target_is_wc() -> None:
-    """Hard stop: writes may only ever target `WC`, never `LaHerencia`.
+    """Hard stop: application connections must target development database `WC`.
 
-    This is the code-level enforcement of the golden rule — even a
-    misconfigured `LA_HERENCIA_DATABASE` env var cannot make a write hit
-    the original database.
+    Checking only that the configured database is not `LaHerencia` leaves
+    typos and unexpected database names writable. Restricting the target to
+    the explicitly designated working copy protects the official database
+    and prevents writes to any other database by mistake.
     """
-    if DATABASE.strip().lower() == _FORBIDDEN_DATABASE.lower():
+    if DATABASE.strip().lower() != _DEVELOPMENT_DATABASE.lower():
         raise RuntimeError(
-            f"Refusing to write: LA_HERENCIA_DATABASE is set to "
-            f"'{_FORBIDDEN_DATABASE}' (the protected original), not 'WC'."
+            "Refusing database access: LA_HERENCIA_DATABASE is set to "
+            f"'{DATABASE}', but development must use '{_DEVELOPMENT_DATABASE}'."
         )
 
 
@@ -105,6 +106,7 @@ def get_connection(*, readonly: bool = True) -> Generator[pyodbc.Connection, Non
     session state), so concurrent reads from multiple users never block one
     another (FR-014).
     """
+    _assert_target_is_wc()
     conn = pyodbc.connect(CONNECTION_STRING, autocommit=True, readonly=readonly)
     try:
         yield conn
