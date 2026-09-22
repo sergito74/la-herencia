@@ -6,7 +6,7 @@ import { useParams, useRouter } from "next/navigation";
 import { useState } from "react";
 
 import { ApiError } from "@/services/apiClient";
-import { agregarMaquinaria, anularOrden, ejecutarOrden, fetchOrden, vincularFacturaContratista } from "@/services/ordenesApi";
+import { agregarMaquinaria, anularOrden, corregirFechaEjecucion, ejecutarOrden, fetchOrden, vincularFacturaContratista } from "@/services/ordenesApi";
 import { formatCantidad, formatMoneda } from "@/lib/format";
 import { ErrorState, LoadingState } from "@/components/ui/States";
 import { NumberInput } from "@/components/ui/NumberInput";
@@ -27,6 +27,8 @@ export default function DetalleOrdenPage() {
   const [anulando, setAnulando] = useState(false);
   const [ejecutando, setEjecutando] = useState(false);
   const [fechaEjecucion, setFechaEjecucion] = useState(new Date().toISOString().slice(0, 10));
+  const [corrigiendoFecha, setCorrigiendoFecha] = useState(false);
+  const [fechaEjecucionCorregida, setFechaEjecucionCorregida] = useState("");
   const [descMaquinaria, setDescMaquinaria] = useState("");
   const [costoMaquinaria, setCostoMaquinaria] = useState<number | null>(null);
   const [idCompraFactura, setIdCompraFactura] = useState<number | null>(null);
@@ -44,6 +46,17 @@ export default function DetalleOrdenPage() {
       refrescar();
     } catch (e) {
       showToast(e instanceof ApiError ? e.message : "No se pudo ejecutar la orden.", "danger");
+    }
+  }
+
+  async function confirmarCorreccionFecha() {
+    try {
+      await corregirFechaEjecucion(id, fechaEjecucionCorregida);
+      showToast("Fecha de ejecución corregida.", "success");
+      setCorrigiendoFecha(false);
+      refrescar();
+    } catch (e) {
+      showToast(e instanceof ApiError ? e.message : "No se pudo corregir la fecha.", "danger");
     }
   }
 
@@ -119,7 +132,21 @@ export default function DetalleOrdenPage() {
         </div>
         <div>
           <div className="text-ink-secondary">Fecha ejecución</div>
-          <div>{orden.fechaEjecucion ?? "—"}</div>
+          <div className="flex items-center gap-2">
+            {orden.fechaEjecucion ?? "—"}
+            {orden.estado === "Ejecutada" && (
+              <button
+                type="button"
+                onClick={() => {
+                  setFechaEjecucionCorregida(orden.fechaEjecucion ?? new Date().toISOString().slice(0, 10));
+                  setCorrigiendoFecha(true);
+                }}
+                className="text-xs text-finance underline"
+              >
+                Corregir
+              </button>
+            )}
+          </div>
         </div>
         <div>
           <div className="text-ink-secondary">Labor</div>
@@ -133,6 +160,23 @@ export default function DetalleOrdenPage() {
 
       {orden.motivoAnulacion && (
         <p className="mt-3 rounded border border-status-danger bg-status-danger-bg p-3 text-sm text-status-danger">Motivo de anulación: {orden.motivoAnulacion}</p>
+      )}
+
+      {corrigiendoFecha && (
+        <div className="mt-4 rounded border border-border p-3">
+          <label className="block text-sm">
+            Fecha de ejecución correcta
+            <input type="date" className="mt-1 w-full rounded border border-border px-2 py-1.5" value={fechaEjecucionCorregida} onChange={(e) => setFechaEjecucionCorregida(e.target.value)} />
+          </label>
+          <div className="mt-2 flex gap-2">
+            <button type="button" onClick={confirmarCorreccionFecha} disabled={!fechaEjecucionCorregida} className="rounded bg-finance px-3 py-1.5 text-sm text-white disabled:opacity-50">
+              Guardar corrección
+            </button>
+            <button type="button" onClick={() => setCorrigiendoFecha(false)} className="rounded border border-border px-3 py-1.5 text-sm">
+              Cancelar
+            </button>
+          </div>
+        </div>
       )}
 
       {ejecutando && (

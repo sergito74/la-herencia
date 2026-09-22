@@ -131,6 +131,11 @@ async def ejecutar_orden(id_orden: int, body: EjecutarIn) -> None:
     await _ejecutar(repository.ejecutar_orden, id_orden, body.fechaEjecucion)
 
 
+@router.patch("/{id_orden}/fecha-ejecucion", status_code=204)
+async def corregir_fecha_ejecucion(id_orden: int, body: EjecutarIn) -> None:
+    await _ejecutar(repository.corregir_fecha_ejecucion, id_orden, body.fechaEjecucion)
+
+
 @router.post("/{id_orden}/anular", status_code=204)
 async def anular_orden(id_orden: int, body: AnularIn) -> None:
     await _ejecutar(repository.anular_orden, id_orden, body.motivo)

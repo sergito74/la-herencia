@@ -172,6 +172,25 @@ def test_anular_orden_ya_anulada_falla(monkeypatch):
         repository.anular_orden(501, "motivo")
 
 
+def test_corregir_fecha_ejecucion_actualiza_solo_la_fecha(monkeypatch):
+    """Bug reportado: 'Marcar ejecutada' guardaba la fecha del click sin
+    pedirla (orden 153, quedó con la fecha de hoy en vez del 19/09/2026).
+    Corregir la fecha después no debe cambiar el estado ni nada más."""
+    monkeypatch.setattr(repository, "obtener_orden", lambda id_orden: {"estado": "Ejecutada"})
+    statements = []
+    monkeypatch.setattr(repository, "execute_write_transaction", lambda stmts: statements.extend(stmts) or [1])
+    repository.corregir_fecha_ejecucion(153, date(2026, 9, 19))
+    sql, params = statements[0]
+    assert "FechaEjecucion = ?" in sql and "Estado" not in sql
+    assert params[0].date() == date(2026, 9, 19) and params[1] == 153
+
+
+def test_corregir_fecha_ejecucion_solo_si_esta_ejecutada(monkeypatch):
+    monkeypatch.setattr(repository, "obtener_orden", lambda id_orden: {"estado": "Planificada"})
+    with pytest.raises(ValueError):
+        repository.corregir_fecha_ejecucion(501, date(2026, 9, 19))
+
+
 # ------------------------------------------------------------------ Historia 2: devoluciones (T031)
 
 def test_devolucion_valida_reingresa_stock(monkeypatch):

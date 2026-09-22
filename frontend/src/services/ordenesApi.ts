@@ -171,6 +171,8 @@ export const editarOrden = (id: number, datos: OrdenIn) => apiPatch<{ idOrden: n
 
 export const ejecutarOrden = (id: number, fechaEjecucion: string) => apiPost<void>(`/api/ordenes/${id}/ejecutar`, { fechaEjecucion });
 
+export const corregirFechaEjecucion = (id: number, fechaEjecucion: string) => apiPatch<void>(`/api/ordenes/${id}/fecha-ejecucion`, { fechaEjecucion });
+
 export const anularOrden = (id: number, motivo: string) => apiPost<void>(`/api/ordenes/${id}/anular`, { motivo });
 
 export const ejecutarOrdenUrlExportar = (f: FiltrosOrdenes) => {

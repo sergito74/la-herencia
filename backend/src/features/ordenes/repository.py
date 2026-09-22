@@ -381,6 +381,20 @@ def ejecutar_orden(id_orden: int, fecha_ejecucion) -> None:
     ])
 
 
+def corregir_fecha_ejecucion(id_orden: int, fecha_ejecucion) -> None:
+    """Corrige la fecha de ejecución de una orden ya Ejecutada (ej. se marcó
+    con la fecha del día por error, en vez de la fecha real de la labor).
+    No cambia el estado ni ningún otro dato de la orden."""
+    actual = obtener_orden(id_orden)
+    if actual is None:
+        raise ValueError([f"La orden {id_orden} no existe."])
+    if actual["estado"] != "Ejecutada":
+        raise ValueError([f"Solo se puede corregir la fecha de ejecución de una orden Ejecutada (está {actual['estado']})."])
+    execute_write_transaction([
+        ("UPDATE dbo.Ordenes_Trabajo SET FechaEjecucion = ? WHERE IdOrdenTrabajo = ?", (as_sql_datetime(fecha_ejecucion), id_orden)),
+    ])
+
+
 def anular_orden(id_orden: int, motivo: str) -> None:
     if not (motivo or "").strip():
         raise ValueError(["Indicá el motivo de la anulación."])
