@@ -10,8 +10,9 @@ Diseñar y revisar la capa de datos de La Herencia: esquema, relaciones, vistas,
 
 ## Reglas
 - SQL Server es la única fuente de datos; no usar Access, ACCDB, DataSet ni consultas locales.
-- La base contiene datos reales. No ejecutar INSERT, UPDATE, DELETE, MERGE, TRUNCATE, ALTER, DROP ni procedimientos con efectos laterales.
-- Antes de cualquier cambio autorizado, exigir backup completo verificado.
+- Usar `WC` para las escrituras y cambios de esquema necesarios para la tarea aprobada; no escribir nunca en la base oficial `LaHerencia` durante desarrollo.
+- No ejecutar operaciones destructivas o de reemplazo masivo sobre `WC` sin que la tarea del usuario las solicite explícitamente.
+- No modificar ni eliminar archivos/base Access locales; el sistema actual sigue en uso.
 - Para lecturas usar consultas parametrizadas, límites, paginación y filtros indexables.
 - Verificar columnas y tipos con INFORMATION_SCHEMA o sys antes de asumir un contrato.
 - No cambiar nombres, tipos, claves ni relaciones sin documentar impacto y pedir autorización.

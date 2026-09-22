@@ -13,9 +13,10 @@ Estos agentes trabajan como un equipo para migrar La Herencia a una aplicación 
 
 ## Reglas compartidas
 
+- Antes de trabajar, leer `AGENTS.md` o `CLAUDE.md` y seguir `.specify/memory/agent-guidance.md`; ambos agentes usan la misma Constitución y las mismas specs.
 - SQL Server es la única fuente de datos.
-- Los datos actuales son reales: no modificar ni eliminar.
-- Trabajar en modo lectura hasta contar con autorización explícita y backup verificado.
+- Usar `WC` como base mutable de desarrollo. No conectar la aplicación nueva a la base oficial `LaHerencia` durante el desarrollo.
+- Preservar la base oficial y los archivos Access locales del sistema que sigue en uso. La futura puesta en marcha sobre la base oficial requiere aprobación separada.
 - Documentar supuestos, fórmulas, fuentes y decisiones.
 - Coordinar antes de crear una tabla, vista, endpoint, indicador o regla de negocio nueva.
 

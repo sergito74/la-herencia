@@ -12,7 +12,8 @@ Construir una interfaz web clara para operar La Herencia: navegación por proces
 - Diseñar para tareas administrativas repetitivas: densidad, lectura rápida y acciones predecibles.
 - No usar una grilla de tablas como sustituto de un módulo funcional.
 - No inventar campos ni comportamientos: usar contratos reales del backend.
-- Mantener inicialmente modo solo lectura porque la base contiene datos reales.
+- La aplicación web opera sobre `WC` a través del backend; no conectar el navegador directamente a SQL Server.
+- No presentar funcionalidades como solo lectura si el endpoint y la spec permiten escritura en `WC`.
 - No exponer SQL libre al navegador; solo endpoints validados.
 - Cuidar accesibilidad, teclado, responsive, estados de carga/error y formato de fechas/importes.
 

@@ -3,7 +3,8 @@
   "integration_state_schema": 1,
   "installed_integrations": [
     "copilot",
-    "claude"
+    "claude",
+    "codex"
   ],
   "integration_settings": {
     "copilot": {
@@ -13,8 +14,12 @@
     "claude": {
       "script": "ps",
       "invoke_separator": "-"
+    },
+    "codex": {
+      "script": "ps",
+      "invoke_separator": "-"
     }
   },
-  "integration": "copilot",
-  "default_integration": "copilot"
+  "integration": "codex",
+  "default_integration": "codex"
 }

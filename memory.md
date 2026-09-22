@@ -1,5 +1,7 @@
 # La Herencia - Memory for Claude Code
 
+> **Vigencia**: las reglas operativas actuales están en `.specify/memory/constitution.md` y `.specify/memory/agent-guidance.md`. Las notas históricas más abajo pueden describir decisiones ya reemplazadas; ante discrepancias, prevalecen esos dos archivos y la instrucción más reciente del usuario.
+
 Fecha de actualización: 2026-09-15
 
 ## 1. Propósito del documento
@@ -183,12 +185,7 @@ Resultado:
 
 `BACKUP_VERIFYONLY=OK`
 
-Regla actual:
-
-- Sistema en modo solo lectura.
-- No ejecutar INSERT, UPDATE, DELETE, MERGE, TRUNCATE, ALTER, DROP ni procedimientos con efectos laterales.
-- No realizar pruebas insertando datos reales.
-- Si en el futuro se autorizan escrituras, exigir backup completo reciente y verificado, plan de rollback y confirmación explícita del usuario.
+Regla vigente al 2026-09-22: `WC` es la copia mutable para desarrollo y admite las escrituras de la aplicación dentro del alcance de la tarea. La base SQL Server oficial `LaHerencia` debe quedar intacta durante desarrollo. Los archivos Access locales pertenecen al sistema actual en uso y no deben modificarse ni eliminarse. La puesta en marcha futura sobre la base oficial requiere aprobación y planificación separadas.
 
 La API web actual tiene el endpoint POST de compras bloqueado con HTTP 403.
 El botón WinForms de guardar compras también está bloqueado y muestra un mensaje de modo consulta.
@@ -199,7 +196,7 @@ Archivo:
 
 `.specify/memory/constitution.md`
 
-Versión actual local:
+Versión registrada al crear esta nota (histórica; ver la versión vigente en el archivo):
 
 `1.1.0`
 
@@ -598,12 +595,12 @@ Tesorería:
 
 ## 17. Estado actual y pendientes inmediatos
 
-Estado actual:
+Estado anotado históricamente en septiembre (contrastar con Git y archivos actuales):
 
 - GitHub remoto configurado y funcionando.
 - `main` publicado.
 - Baseline remoto: `720cebc`.
-- Constitución actualizada localmente pero pendiente de commit/push.
+- La constitución y otros archivos fueron cambiando después; su estado de versión/Git se consulta en el repositorio.
 - `memory.md` es este archivo y debe agregarse al siguiente commit.
 - Base SQL Server intacta.
 - Backup verificado disponible fuera de Git.
@@ -622,15 +619,15 @@ Pendientes recomendados:
 6. Ejecutar `/speckit-tasks` y `/speckit-analyze` antes de implementar.
 7. Crear backend Python nuevo, sin mezclarlo con el prototipo ASP.NET salvo que sea necesario durante transición.
 8. Crear frontend Next.js con TypeScript, Tailwind y TanStack Query.
-9. Mantener API y base en modo lectura hasta autorización explícita.
+9. Desarrollar y validar usando `WC`; mantener protegida la base oficial.
 10. Añadir pruebas de contrato SQL/API, navegación y estados vacíos/error.
-11. Hacer commit y push de la constitución `1.1.0` y este `memory.md`.
+11. Revisar el estado Git antes de confirmar cambios; no asumir que esta lista histórica sigue pendiente.
 
 ## 18. Cómo continuar con Claude Code
 
 Abrir Claude Code en:
 
-`C:\Users\Sergio\Documents\La Herencia\Sistema La Herencia\La Herencia`
+`C:\dev\LaHerencia`
 
 Leer este archivo primero:
 
@@ -638,17 +635,19 @@ Leer este archivo primero:
 
 Leer también:
 
+- `CLAUDE.md`
+- `.specify/memory/agent-guidance.md`
 - `.specify/memory/constitution.md`
 - `.specify/README.md`
 - `.github/agents/README.md`
 - El agente especialista relevante de `.github/agents/`
 
-No iniciar escrituras SQL.
+Las escrituras de desarrollo se hacen en `WC`; no escribir en la base oficial.
 No subir bases Access.
 No usar ASP.NET/vanilla para nueva funcionalidad.
 No asumir que el prototipo actual es la arquitectura final.
 
-Primer ciclo recomendado:
+Este ciclo es una nota histórica; el trabajo funcional vigente se continúa desde su spec/tareas existentes, en particular 012:
 
 ```text
 /speckit-specify Diseñar el módulo web de cuentas corrientes y tesorería en modo solo lectura, usando Python, SQL Server, Next.js, TypeScript, Tailwind CSS y TanStack Query. Debe permitir seleccionar proveedor/cliente, consultar saldo y movimientos trazables, seleccionar banco/cuenta/caja y revisar movimientos financieros. No modificar datos reales.
@@ -660,32 +659,41 @@ Primer ciclo recomendado:
 /speckit-converge
 ```
 
-## 19. Seguridad y advertencias para Claude Code
+## 19. Seguridad y advertencias históricas para Claude Code
 
 - No pedir ni imprimir tokens.
 - No incluir credenciales en código.
 - No ejecutar comandos destructivos.
 - No ejecutar scripts de Access.
-- No modificar SQL Server.
+- No escribir en la base oficial `LaHerencia`; las escrituras de desarrollo van a `WC`.
 - No usar backups como fuente de lectura operacional.
 - No versionar bases reales.
-- Antes de cualquier escritura autorizada, detenerse y exigir backup SQL Server verificado.
+- La escritura de desarrollo en `WC` está autorizada por el usuario; el cutover a la base oficial necesita aprobación separada.
 - Si una consulta o columna no está confirmada, consultar `INFORMATION_SCHEMA.COLUMNS` y probar un SELECT limitado.
-- Si existe una contradicción entre código previo y esta memoria/constitución, esta memoria refleja el contexto actual, pero la constitución es la autoridad normativa.
+- Si existe una contradicción entre código previo y esta memoria/constitución, prevalecen la guía compartida, la constitución vigente y la instrucción más reciente del usuario.
 
-## 20. Regla de oro: base `WC` (Working Copy) — 2026-09-17
+## 20. Nota histórica: base `WC` (Working Copy) — 2026-09-17
 
 **Decisión explícita del usuario, prioridad máxima, no reinterpretar.**
 
 La aplicación web (todo `backend/src/db/connection.py`) apunta ahora a una base SQL Server llamada **`WC`**, creada el 2026-09-17 vía `BACKUP DATABASE [LaHerencia] ... WITH COPY_ONLY` + `RESTORE DATABASE [WC] ... WITH MOVE ..., REPLACE` — una réplica binaria completa de `LaHerencia` en el momento de la copia (mismos row counts verificados: `Compras`=6436, `Contactos`=627).
 
-**Regla de oro**: de ahora en adelante, **todo el desarrollo, toda la funcionalidad de escritura y toda edición de datos ocurre exclusivamente sobre `WC`**. `LaHerencia` (la base original) queda intacta y **NUNCA** se vuelve a escribir desde este proyecto — se conserva como referencia/fuente de verdad histórica, no como base operativa.
+**Regla vigente durante desarrollo**: todo desarrollo y escritura de la aplicación ocurre sobre `WC`. La base oficial `LaHerencia` queda intacta hasta el futuro corte de puesta en marcha, que requerirá aprobación explícita. La aplicación se desarrollará para poder montarse sobre la base oficial una vez terminado y aprobado el desarrollo.
 
 Enforcement en código (no solo convención):
-- `backend/src/db/connection.py`: `CONNECTION_STRING` usa `DATABASE=WC` por defecto (env var `LA_HERENCIA_DATABASE`, default `"WC"`).
-- Nueva función `execute_write()` (para INSERT/UPDATE/DELETE) llama a `_assert_target_is_wc()` que **lanza excepción y aborta** si `LA_HERENCIA_DATABASE` llegara a apuntar a `"LaHerencia"` — barrera de código, no solo documentación.
+- `backend/src/db/connection.py`: `CONNECTION_STRING` usa `DATABASE=WC` por defecto (env var `LA_HERENCIA_DATABASE`, default `"WC"`). La capa de conexión rechaza ahora cualquier base configurada que no sea `WC`.
 - `fetch_all`/`fetch_one` (lectura) siguen con su guard existente de solo-SELECT, ahora corriendo contra `WC`.
 
 Implicaciones para migraciones futuras del roadmap (agricultura, bancos/tarjetas, etc.): toda spec nueva que necesite escritura se diseña asumiendo `WC` como destino, nunca `LaHerencia`. Si en algún momento se necesita resincronizar `WC` desde `LaHerencia` (por ejemplo, para traer datos nuevos cargados en el sistema Access real mientras tanto), repetir el mismo procedimiento BACKUP/RESTORE — pisa `WC` por completo, no hace merge.
 
 Archivos de backup usados para esta operación (fuera de Git, en `C:\Temp\`): `LaHerencia_for_WC_20260916_143240.bak`.
+
+
+## Continuidad 012 — 2026-09-22
+
+El usuario informó cambio de OpenAI gratuito a Plus. Se retomó T048: ver `specs/012-resultado-costos-cultivo/validation.md`. Pasaron 23 pruebas focalizadas, TypeScript, consultas API/Excel en WC y navegación básica con Playwright. Decisión explícita: costos sin clasificar aparte, excluidos de los totales de campaña. T048 permanece abierta: falta validar actualización con orden nueva y resolver el cálculo de maquinaria/contratista por superficie; se consultó esta regla al usuario y no se aplicó todavía.
+
+
+## Spec Kit para Codex — 2026-09-22
+
+Por pedido del usuario, Spec Kit es la herramienta de desarrollo. Se completó la instalación oficial 1.0.7 de GitHub con diez skills locales en `.agents/skills/` y Codex como integración predeterminada. Se conservan Claude y Copilot, las specs y la Constitución. Ver `.specify/README.md` para uso y diagnóstico de coexistencia. La instalación no cierra T048 de 012 ni resuelve la consulta pendiente sobre costeo por superficie.

@@ -9,8 +9,9 @@ description: Ingeniero especialista en Python, automatización, análisis de dat
 Crear herramientas Python para análisis, validación, automatización segura, importación controlada, conciliación, exportación y pruebas sobre SQL Server.
 
 ## Reglas
-- No modificar datos reales por defecto.
-- Separar claramente lectura, simulación y escritura autorizada.
+- El desarrollo puede leer y escribir en `WC` según el alcance de la spec y la tarea del usuario.
+- No conectar a la base oficial `LaHerencia` durante desarrollo ni alterar archivos Access locales.
+- Separar claramente lecturas y escrituras de la aplicación; las operaciones destructivas o masivas en `WC` requieren pedido explícito.
 - Usar entornos virtuales, tipado, logging, manejo de errores y pruebas.
 - Para datos estructurados usar conectores y parsers, no manipulación frágil de texto.
 - Documentar consultas, filtros, zona horaria, moneda y reglas de redondeo.

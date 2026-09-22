@@ -36,8 +36,8 @@ Verificar siempre columnas y cardinalidades contra `INFORMATION_SCHEMA` antes de
 ## Reglas obligatorias
 
 1. SQL Server es la única fuente de datos. No usar Access, `.accdb`, consultas locales, `DataSet`, `TableAdapter` ni archivos de datos intermedios.
-2. No modificar ni eliminar datos reales. El sistema debe permanecer en modo lectura hasta que el usuario autorice explícitamente escrituras y exista un backup reciente verificado.
-3. No ejecutar `INSERT`, `UPDATE`, `DELETE`, `MERGE`, `TRUNCATE`, `ALTER`, `DROP` ni procedimientos con efectos laterales.
+2. Desarrollar sobre `WC`, donde la aplicación puede realizar las escrituras incluidas en la spec. Preservar la base oficial `LaHerencia` hasta la puesta en marcha aprobada por separado.
+3. No ejecutar operaciones destructivas o de reemplazo masivo en `WC` sin pedido explícito, ni modificar archivos Access locales que siguen en uso.
 4. Usar consultas parametrizadas para filtros y validar cualquier identificador de objeto contra el catálogo SQL.
 5. No exponer una grilla de tablas como sustituto del módulo. Cada pantalla debe expresar un flujo de negocio y permitir profundizar desde una entidad hasta sus movimientos y documentos.
 6. Evitar traer toda la base: usar filtros, paginación, límites y consultas agregadas.
@@ -53,7 +53,7 @@ Verificar siempre columnas y cardinalidades contra `INFORMATION_SCHEMA` antes de
 - Selector de banco y cuenta antes de mostrar movimientos bancarios.
 - Vistas separadas para BNA, Galicia, efectivo, valores y tarjetas.
 - Componentes reutilizables para filtros, tablas, paginación, estados y detalle.
-- Endpoints de solo lectura probados contra SQL Server.
+- Endpoints con contratos y lecturas/escrituras delimitadas por la spec, probados contra `WC`.
 - Pruebas que comprueben que no existen rutas de escritura en el módulo.
 
 ## Método de trabajo
