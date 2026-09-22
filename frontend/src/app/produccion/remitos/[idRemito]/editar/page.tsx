@@ -4,12 +4,14 @@ import { Suspense } from "react";
 import { useParams } from "next/navigation";
 
 import { RemitoForm } from "@/components/remitos/RemitoForm";
+import { BackLink } from "@/components/ui/BackLink";
 
 export default function EditarRemitoPage() {
   const params = useParams<{ idRemito: string }>();
   return (
     <main className="mx-auto max-w-6xl px-8 py-6">
-      <h1 className="text-2xl font-semibold">Editar remito</h1>
+      <BackLink href={`/produccion/remitos/${params.idRemito}`}>Volver al remito</BackLink>
+      <h1 className="mt-2 text-2xl font-semibold">Editar remito</h1>
       <p className="mt-2 text-xs text-ink-secondary">
         Los renglones ya consumidos o vinculados a una factura quedan congelados (producto, unidad y cantidad). Para corregirlos hay que anular el remito con un motivo y cargar uno nuevo.
       </p>

@@ -5,6 +5,7 @@ import { useState } from "react";
 
 import { PagosRemuneracionListado } from "@/components/remuneraciones/PagosRemuneracionListado";
 import { RemuneracionesListado } from "@/components/remuneraciones/RemuneracionesListado";
+import { BackLink } from "@/components/ui/BackLink";
 
 const TABS = ["Liquidaciones", "Pagos"] as const;
 
@@ -16,7 +17,8 @@ export default function RemuneracionesPage() {
 
   return (
     <main className="mx-auto max-w-none px-8 py-6">
-      <h1 className="text-2xl font-semibold">Remuneraciones</h1>
+      <BackLink href="/">Volver al inicio</BackLink>
+      <h1 className="mt-2 text-2xl font-semibold">Remuneraciones</h1>
       <p className="mt-1 text-ink-secondary">
         Liquidaciones de remuneraciones y pagos efectivos (solo lectura).
       </p>

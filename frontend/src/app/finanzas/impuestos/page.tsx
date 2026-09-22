@@ -6,6 +6,7 @@ import { useState } from "react";
 import { ImpuestosListado } from "@/components/impuestos/ImpuestosListado";
 import { RetencionesListado } from "@/components/impuestos/RetencionesListado";
 import { RetencionesVentaHaciendaListado } from "@/components/ventas-hacienda/RetencionesVentaHaciendaListado";
+import { BackLink } from "@/components/ui/BackLink";
 
 const TABS = ["Impuestos", "Retenciones", "Retenciones Venta Hacienda"] as const;
 
@@ -24,7 +25,8 @@ export default function ImpuestosPage() {
 
   return (
     <main className="mx-auto max-w-none px-8 py-6">
-      <h1 className="text-2xl font-semibold">Impuestos</h1>
+      <BackLink href="/">Volver al inicio</BackLink>
+      <h1 className="mt-2 text-2xl font-semibold">Impuestos</h1>
       <p className="mt-1 text-ink-secondary">
         Impuestos y retenciones impositivas (solo lectura).
       </p>

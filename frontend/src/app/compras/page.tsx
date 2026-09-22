@@ -3,6 +3,7 @@ import { Suspense } from "react";
 
 import { ComprasListado } from "@/components/compras/ComprasListado";
 import { LoadingState } from "@/components/ui/States";
+import { BackLink } from "@/components/ui/BackLink";
 
 export const metadata = {
   title: "Compras",
@@ -11,7 +12,8 @@ export const metadata = {
 export default function ComprasPage() {
   return (
     <main className="mx-auto max-w-none px-8 py-6">
-      <div className="flex items-center justify-between">
+      <BackLink href="/">Volver al inicio</BackLink>
+      <div className="mt-2 flex items-center justify-between">
         <h1 className="text-2xl font-semibold">Compras</h1>
         <Link
           href="/compras/nueva"

@@ -14,6 +14,7 @@ import { useToast } from "@/components/ui/Toast";
 import { BadgeEstadoOrden } from "@/components/ordenes/EstadosOrden";
 import { DevolucionPanel } from "@/components/ordenes/DevolucionPanel";
 import { FormularioRetiroView } from "@/components/ordenes/FormularioRetiroView";
+import { BackLink } from "@/components/ui/BackLink";
 
 export default function DetalleOrdenPage() {
   const { idOrden } = useParams<{ idOrden: string }>();
@@ -84,7 +85,8 @@ export default function DetalleOrdenPage() {
 
   return (
     <main className="mx-auto max-w-none px-8 py-6">
-      <div className="flex items-center justify-between">
+      <BackLink href="/produccion/ordenes">Volver a Órdenes de trabajo</BackLink>
+      <div className="mt-2 flex items-center justify-between">
         <h1 className="text-2xl font-semibold">
           Orden N° {orden.idOrden} <BadgeEstadoOrden estado={orden.estado} />
         </h1>

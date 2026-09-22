@@ -3,6 +3,7 @@ import { Suspense } from "react";
 
 import { VentasGranosListado } from "@/components/ventas-granos/VentasGranosListado";
 import { LoadingState } from "@/components/ui/States";
+import { BackLink } from "@/components/ui/BackLink";
 
 export const metadata = {
   title: "Ventas de granos",
@@ -11,7 +12,8 @@ export const metadata = {
 export default function VentasGranosPage() {
   return (
     <main className="mx-auto max-w-none px-8 py-6">
-      <div className="flex items-center justify-between">
+      <BackLink href="/">Volver al inicio</BackLink>
+      <div className="mt-2 flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-semibold">Ventas de granos</h1>
           <p className="mt-1 text-ink-secondary">Ventas de granos liquidadas, con ajustes y deducciones.</p>

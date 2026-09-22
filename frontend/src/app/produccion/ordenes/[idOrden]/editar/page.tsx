@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 
 import { ErrorState, LoadingState } from "@/components/ui/States";
 import { OrdenForm } from "@/components/ordenes/OrdenForm";
+import { BackLink } from "@/components/ui/BackLink";
 import { fetchOrden } from "@/services/ordenesApi";
 
 export default function EditarOrdenPage() {
@@ -14,7 +15,8 @@ export default function EditarOrdenPage() {
 
   return (
     <main className="mx-auto max-w-none px-8 py-6">
-      <h1 className="text-2xl font-semibold">Editar orden N° {id}</h1>
+      <BackLink href={`/produccion/ordenes/${id}`}>Volver a la orden</BackLink>
+      <h1 className="mt-2 text-2xl font-semibold">Editar orden N° {id}</h1>
       <div className="mt-6">
         {isLoading && <LoadingState />}
         {isError && <ErrorState message="No se pudo cargar la orden." onRetry={refetch} />}

@@ -1,4 +1,5 @@
 import { CompraForm } from "@/components/compras/CompraForm";
+import { BackLink } from "@/components/ui/BackLink";
 
 export const metadata = {
   title: "Nueva compra",
@@ -22,7 +23,10 @@ export default function NuevaCompraPage({ searchParams }: { searchParams: Params
   };
   return (
     <main className="mx-auto max-w-none px-8 py-3">
-      <CompraForm mode="alta" prefill={prefill} />
+      <BackLink href="/compras">Volver a Compras</BackLink>
+      <div className="mt-2">
+        <CompraForm mode="alta" prefill={prefill} />
+      </div>
     </main>
   );
 }
