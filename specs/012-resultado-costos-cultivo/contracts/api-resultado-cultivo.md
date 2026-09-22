@@ -13,7 +13,7 @@ Listado de Campañas (`idCampania`, `campania`), igual catálogo que `/api/orden
 `ResultadoCampania` completo (Historia 1): tarjetas KPI consolidadas + `cultivos: ResultadoCultivoResumen[]` (una fila por Cultivo, sin el detalle de costos). Incluye `costoSinClasificar` si aplica (FR-012).
 
 ### `GET /api/resultado-cultivo/campania/{idCampania}/cultivo/{idCultivo}`
-`ResultadoCultivo` completo de un Cultivo puntual (Historia 2): superficie, rinde, costo, costo/ha, venta, margen, rentabilidad, `costeoIncompleto`, `advertenciaMargenNoRepresentativo`. No incluye `detalleCostos` (endpoint separado, para no traer el desglose completo cuando solo hace falta el resumen).
+`ResultadoCultivo` completo de un Cultivo puntual (Historia 2): superficie, rinde, costo, costo/ha, venta, margen, rentabilidad, `supCosechaEstimada`, `advertenciaMargenNoRepresentativo`. No incluye `detalleCostos` (endpoint separado, para no traer el desglose completo cuando solo hace falta el resumen).
 
 ### `GET /api/resultado-cultivo/campania/{idCampania}/cultivo/{idCultivo}/costos`
 `DetalleCosto[]` (Historia 3): una fila por línea de costo, agrupable en el cliente por `concepto`/`rubro`. Cada línea trae `origen` (`Compra` | `OrdenTrabajo` | `Seguro`) y su identificador de origen (`idCompra`/`idDetalleCompra` como texto, o `idOrdenTrabajo` con link).

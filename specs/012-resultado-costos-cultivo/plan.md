@@ -65,7 +65,7 @@ specs/012-resultado-costos-cultivo/
 backend/
 ├── src/features/resultado_cultivo/
 │   ├── __init__.py
-│   ├── mapeo.py          # Traducción Cultivo→IdDestino/IdGrano (Map_CultivoResultado) y Campaña texto→IdCampaña
+│   ├── mapeo.py          # Traducción Cultivo→IdDestino/IdGrano (Map_CultivoResultado) y Campaña texto↔IdCampaña (ambos sentidos, ver research.md §3-4)
 │   ├── campania_actual.py # Cálculo de la Campaña "actual" según la fecha de hoy (FR-001), con resguardo
 │   ├── costos.py          # Combina CostosBase/CostosAgrupados/Seguros + costo de Ordenes_Trabajo_*, anti-doble-conteo (FR-004)
 │   ├── resultado.py       # Superficie (PlanAgricola + ResultadoCultivo_Cierre), rinde, venta, margen, rentabilidad por Cultivo/Campaña y consolidado de Campaña
@@ -75,7 +75,8 @@ backend/
 └── tests/
     ├── test_resultado_cultivo_mapeo.py
     ├── test_resultado_cultivo_campania_actual.py
-    └── test_resultado_cultivo_costos.py
+    ├── test_resultado_cultivo_costos.py
+    └── test_resultado_cultivo_resultado.py
 
 frontend/src/
 ├── app/produccion/resultado-cultivo/
@@ -85,7 +86,8 @@ frontend/src/
 │   ├── ConsolidadoCampaniaView.tsx        # Tarjetas KPI + tabla resumen por Cultivo
 │   ├── ResultadoCultivoView.tsx           # Tarjetas KPI de un Cultivo puntual
 │   ├── DetalleCostosPanel.tsx             # Tabla densa por concepto, con link "Ver orden"
-│   └── SelectorCampania.tsx               # Selector de Campaña, preselecciona la "actual"
+│   ├── SelectorCampania.tsx               # Selector de Campaña, preselecciona la "actual"
+│   └── SelectorCultivo.tsx                # Filtro directo Cultivo (FR-002, segundo camino de acceso además del clic en la tabla resumen)
 ├── services/resultadoCultivoApi.ts
 └── components/layout/NavHeader.tsx         # Agregar "Resultado de Cultivo" al submenú Producción; retirar la entrada de la vista parcial de 011
 ```

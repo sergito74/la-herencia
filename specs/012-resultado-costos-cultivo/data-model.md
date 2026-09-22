@@ -5,7 +5,7 @@ Módulo 100% de solo lectura: no crea tablas nuevas. Las entidades de abajo son 
 ## Fuentes heredadas reutilizadas (solo lectura)
 
 - **`Map_CultivoResultado`** (11 filas, 1:1 por Cultivo): `IdCultivo`, `IdDestino` (NULL para "Sin Cultivo", inactiva), `IdGrano` (NULL para Pastura), `Activo`.
-- **`Campañas`** (32 filas): `IdCampaña`, `Campaña` (texto, formatos `"YYYY/YYYY+1"` / `"YYYY"` / `"No Aplica"`).
+- **`Campañas`** (32 filas): `IdCampaña`, `Campaña` (texto, formatos `"YYYY/YYYY+1"` / `"YYYY"` / `"No Aplica"`). Se traduce en ambos sentidos: texto→id para las vistas de costeo (`IdCampaña` numérico) e id→texto para las vistas de venta (`Campaña` texto) — ver `mapeo.py` en `plan.md`.
 - **`vw_ResultadoCultivo_Campaña`**: total consolidado por Campaña (sin desglose por Cultivo) — usado como verificación cruzada de FR-014, no como fuente primaria (el consolidado se recalcula sumando los Cultivos).
 - **`vw_ResultadosCultivo_CostosBase`**: línea de costo con `IdDestino`, `IdCampaña` (nullable), `IdCompra`, `IdDetalleCompra`, `Concepto`, `Item`, `Pesos`, `Dolares`, `Signo` (1 cargo / -1 crédito).
 - **`vw_ResultadosCultivo_CostosAgrupados`**: mismo costo, agrupado por `Concepto`/`IdRubro`.
@@ -28,8 +28,11 @@ Módulo 100% de solo lectura: no crea tablas nuevas. Las entidades de abajo son 
 | ventaNetaPesos/Dolares | `SUM` de `ResultadoCultivo.ventaNeta*` |
 | margenBrutoPesos/Dolares | ventaNeta − costoTotal (por moneda, series independientes) |
 | rentabilidadPesos/Dolares | margenBruto / costoTotal (por moneda) |
+| costoPorHectareaSembradaPesos/Dolares | costoTotal / superficieSembrada si > 0, si no `null` — válido consolidar (división de sumas) |
 | cultivos | lista de `ResultadoCultivoResumen` (una fila por Cultivo con datos en la Campaña) |
 | costoSinClasificar | ver `CostoSinClasificar` |
+
+`ResultadoCampania` **no incluye `rinde`**: sumar/promediar rinde de Cultivos distintos no es un número agronómicamente comparable (spec.md FR-003, corregido en `/speckit-analyze` hallazgo U1) — el rinde solo existe a nivel de `ResultadoCultivo`.
 
 Invariante (FR-014, SC-004): `costoTotal`/`ventaNeta`/`margenBruto` de `ResultadoCampania` MUST igualar la suma de los mismos campos de sus `ResultadoCultivo`.
 
@@ -48,7 +51,7 @@ Invariante (FR-014, SC-004): `costoTotal`/`ventaNeta`/`margenBruto` de `Resultad
 | ventaNetaPesos/Dolares | `vw_ResultadosCultivo_Ventas` + `Bonif*` − `vw_ResultadosCultivo_Deducciones`, vía `IdGrano` |
 | margenBrutoPesos/Dolares | ventaNeta − costoTotal |
 | rentabilidadPesos/Dolares | margenBruto / costoTotal |
-| costeoIncompleto | `true` si el Cultivo tiene `IdDestino` NULL en `Map_CultivoResultado` (FR-010) |
+| supCosechaEstimada | `true` si la fila de `ResultadoCultivo_Cierre` de ese Cultivo/Campaña tiene `Observaciones` conteniendo "Revisar manualmente" (41 de 43 filas reales) — corregido en `/speckit-analyze` hallazgo I1: `Map_CultivoResultado` es 1:1, ningún Cultivo real tiene `IdDestino` NULL, así que esa no podía ser la condición real de FR-010 (FR-010) |
 | advertenciaMargenNoRepresentativo | `true` si `ventaNeta > 0` y `costoTotal < 0.20 * ventaNeta` (FR-011) |
 | detalleCostos | lista de `DetalleCosto` (Historia 3) |
 
@@ -68,6 +71,8 @@ Invariante (FR-014, SC-004): `costoTotal`/`ventaNeta`/`margenBruto` de `Resultad
 |---|---|
 | montoPesos/Dolares | `SUM` de `vw_ResultadosCultivo_CostosBase` donde `IdCampaña IS NULL`, o `IdDestino` no está en `Map_CultivoResultado` |
 | motivo | `"Sin campaña asignada"` \| `"Sin cultivo asociado (IdDestino huérfano)"` |
+
+Este es el único lugar donde un `IdDestino` sin Cultivo asociado se hace visible — no genera ningún badge a nivel de Cultivo (ver `supCosechaEstimada` arriba, que es el badge real por Cultivo/Campaña).
 
 ## Reglas de validación / invariantes
 
