@@ -8,12 +8,11 @@ import type { GrupoCultivoCampania } from "@/components/ordenes/CultivoCampaniaL
 import type { DistribucionIn } from "@/services/ordenesApi";
 
 /**
- * Dosis por hectárea de un renglón de insumo: se carga UNA vez por
- * Cultivo/Campaña (así es como lo manda el ingeniero agronómico — la misma
- * dosis para todos los lotes de un mismo momento de aplicación) y se reparte
- * automáticamente entre sus lotes según la superficie de cada uno (FR-003).
- * Si un lote puntual necesita una dosis distinta, "Personalizar por lote"
- * habilita editarlo sin tocar el resto del grupo.
+ * Dosis por hectárea de un renglón de insumo, lote por lote: la dosis puede
+ * variar de cultivo a cultivo y de lote a lote (no es uniforme dentro de un
+ * mismo Cultivo/Campaña), así que cada lote tiene su propio campo. "Aplicar a
+ * todo el grupo" es solo un atajo para completar rápido cuando sí coincide —
+ * un valor de partida que se puede seguir editando lote por lote.
  */
 export function DistribucionLotesPanel({
   grupos,
@@ -24,7 +23,7 @@ export function DistribucionLotesPanel({
   distribuciones: DistribucionIn[];
   onChange: (distribuciones: DistribucionIn[]) => void;
 }) {
-  const [personalizados, setPersonalizados] = useState<Set<string>>(new Set());
+  const [dosisAtajo, setDosisAtajo] = useState<Record<string, number | null>>({});
 
   const clave = (idCultivo: number, idCampania: number) => `${idCultivo}-${idCampania}`;
 
@@ -33,32 +32,19 @@ export function DistribucionLotesPanel({
       .map((d, i) => ({ d, i }))
       .filter(({ d }) => d.idCultivo === g.idCultivo && d.idCampania === g.idCampania);
 
-  const dosisUniformeDeGrupo = (filas: { d: DistribucionIn }[]) => {
-    if (filas.length === 0) return 0;
-    const primera = filas[0].d.dosisHa;
-    return filas.every((f) => f.d.dosisHa === primera) ? primera : null;
-  };
-
-  const aplicarDosisAGrupo = (g: GrupoCultivoCampania, dosisHa: number) => {
-    const copia = [...distribuciones];
-    for (const { i } of filasDeGrupo(g)) copia[i] = { ...copia[i], dosisHa };
-    onChange(copia);
-  };
-
   const actualizarFila = (i: number, cambios: Partial<DistribucionIn>) => {
     const copia = [...distribuciones];
     copia[i] = { ...copia[i], ...cambios };
     onChange(copia);
   };
 
-  const alternarPersonalizar = (g: GrupoCultivoCampania) => {
+  const aplicarAtajoAGrupo = (g: GrupoCultivoCampania) => {
     const k = clave(g.idCultivo, g.idCampania);
-    setPersonalizados((actual) => {
-      const copia = new Set(actual);
-      if (copia.has(k)) copia.delete(k);
-      else copia.add(k);
-      return copia;
-    });
+    const dosisHa = dosisAtajo[k];
+    if (dosisHa == null) return;
+    const copia = [...distribuciones];
+    for (const { i } of filasDeGrupo(g)) copia[i] = { ...copia[i], dosisHa };
+    onChange(copia);
   };
 
   const gruposConFilas = grupos.map((g) => ({ g, filas: filasDeGrupo(g) })).filter(({ filas }) => filas.length > 0);
@@ -72,62 +58,58 @@ export function DistribucionLotesPanel({
     <div className="space-y-3 rounded border border-border p-3">
       {gruposConFilas.map(({ g, filas }) => {
         const k = clave(g.idCultivo, g.idCampania);
-        const dosisUniforme = dosisUniformeDeGrupo(filas);
-        const abierto = personalizados.has(k) || dosisUniforme === null;
         const superficieGrupo = filas.filter(({ d }) => d.aplicar).reduce((acc, { d }) => acc + d.superficie, 0);
         const totalGrupo = filas.filter(({ d }) => d.aplicar).reduce((acc, { d }) => acc + d.dosisHa * d.superficie, 0);
         return (
           <div key={k} className="rounded border border-border/60 p-2">
-            <div className="flex flex-wrap items-center gap-3">
+            <div className="mb-1 flex flex-wrap items-center gap-3">
               <span className="text-sm font-medium">
                 {g.cultivo} — {g.campania}
                 <span className="ml-2 font-normal text-ink-secondary">({formatCantidad(superficieGrupo)} ha)</span>
               </span>
-              <label className="flex items-center gap-1 text-sm">
-                Dosis/ha
+              <label className="flex items-center gap-1 text-sm text-ink-secondary">
+                Aplicar a todo el grupo
                 <NumberInput
-                  className="w-24 rounded border border-border px-1 py-0.5 text-right"
-                  value={dosisUniforme}
-                  onChange={(v) => aplicarDosisAGrupo(g, v ?? 0)}
+                  className="w-20 rounded border border-border px-1 py-0.5 text-right"
+                  value={dosisAtajo[k] ?? null}
+                  onChange={(v) => setDosisAtajo((actual) => ({ ...actual, [k]: v }))}
                   maxDecimales={4}
                 />
               </label>
-              <span className="text-sm text-ink-secondary">Total del grupo: {formatCantidad(totalGrupo)}</span>
-              <button type="button" onClick={() => alternarPersonalizar(g)} className="text-sm text-finance hover:underline">
-                {abierto ? "Ocultar detalle por lote" : "Personalizar por lote"}
+              <button type="button" onClick={() => aplicarAtajoAGrupo(g)} className="text-sm text-finance hover:underline">
+                Completar
               </button>
+              <span className="text-sm text-ink-secondary">Total del grupo: {formatCantidad(totalGrupo)}</span>
             </div>
-            {abierto && (
-              <table className="mt-2 w-full text-sm">
-                <thead>
-                  <tr className="text-left text-ink-secondary">
-                    <th className="pb-1">Lote</th>
-                    <th className="pb-1">Superficie</th>
-                    <th className="pb-1">Dosis/ha</th>
-                    <th className="pb-1">Cantidad</th>
-                    <th className="pb-1">Aplicar</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filas.map(({ d, i }) => {
-                    const lote = g.lotes.find((l) => l.idLote === d.idLote);
-                    return (
-                      <tr key={d.idLote} className="border-t border-border">
-                        <td className="py-1 pr-2">{lote?.numeroLote ?? d.idLote}</td>
-                        <td className="py-1 pr-2 text-right">{formatCantidad(d.superficie)}</td>
-                        <td className="py-1 pr-2">
-                          <NumberInput className="w-24 rounded border border-border px-1 py-0.5 text-right" value={d.dosisHa} onChange={(v) => actualizarFila(i, { dosisHa: v ?? 0 })} maxDecimales={4} />
-                        </td>
-                        <td className="py-1 pr-2 text-right">{formatCantidad(d.dosisHa * d.superficie)}</td>
-                        <td className="py-1 pr-2 text-center">
-                          <input type="checkbox" checked={d.aplicar} onChange={(e) => actualizarFila(i, { aplicar: e.target.checked })} />
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            )}
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-left text-ink-secondary">
+                  <th className="pb-1">Lote</th>
+                  <th className="pb-1">Superficie</th>
+                  <th className="pb-1">Dosis/ha</th>
+                  <th className="pb-1">Cantidad</th>
+                  <th className="pb-1">Aplicar</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filas.map(({ d, i }) => {
+                  const lote = g.lotes.find((l) => l.idLote === d.idLote);
+                  return (
+                    <tr key={d.idLote} className="border-t border-border">
+                      <td className="py-1 pr-2">{lote?.numeroLote ?? d.idLote}</td>
+                      <td className="py-1 pr-2 text-right">{formatCantidad(d.superficie)}</td>
+                      <td className="py-1 pr-2">
+                        <NumberInput className="w-24 rounded border border-border px-1 py-0.5 text-right" value={d.dosisHa} onChange={(v) => actualizarFila(i, { dosisHa: v ?? 0 })} maxDecimales={4} />
+                      </td>
+                      <td className="py-1 pr-2 text-right">{formatCantidad(d.dosisHa * d.superficie)}</td>
+                      <td className="py-1 pr-2 text-center">
+                        <input type="checkbox" checked={d.aplicar} onChange={(e) => actualizarFila(i, { aplicar: e.target.checked })} />
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
         );
       })}
