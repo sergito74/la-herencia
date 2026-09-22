@@ -159,25 +159,27 @@ export default function DetalleOrdenPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="text-left text-ink-secondary">
-                  <th>Lote</th>
-                  <th>Cultivo</th>
-                  <th>Campaña</th>
-                  <th className="text-right">Dosis/ha</th>
-                  <th className="text-right">Superficie</th>
-                  <th className="text-right">Cantidad</th>
-                  <th>Aplicado</th>
+                  <th className="py-1 pr-3">Lote</th>
+                  <th className="py-1 pr-3">Cultivo</th>
+                  <th className="py-1 pr-3">Campaña</th>
+                  <th className="py-1 pr-3 text-right">Dosis/ha</th>
+                  <th className="py-1 pr-3 text-right">Superficie</th>
+                  <th className="py-1 pr-3 text-right">Cantidad</th>
+                  <th className="py-1 pr-3">Unidad</th>
+                  <th className="py-1 pr-3">Aplicado</th>
                 </tr>
               </thead>
               <tbody>
                 {r.distribuciones.map((d) => (
                   <tr key={d.idDistrib} className="border-t border-border">
-                    <td>{d.lote}</td>
-                    <td>{d.cultivo}</td>
-                    <td>{d.campania}</td>
-                    <td className="text-right">{formatCantidad(d.dosisHa)}</td>
-                    <td className="text-right">{formatCantidad(d.superficie)}</td>
-                    <td className="text-right">{formatCantidad(d.cantidadAsignada)}</td>
-                    <td>{d.aplicar ? "Sí" : "No"}</td>
+                    <td className="py-1 pr-3">{d.lote}</td>
+                    <td className="py-1 pr-3">{d.cultivo}</td>
+                    <td className="py-1 pr-3">{d.campania}</td>
+                    <td className="py-1 pr-3 text-right">{formatCantidad(d.dosisHa)}</td>
+                    <td className="py-1 pr-3 text-right">{formatCantidad(d.superficie)}</td>
+                    <td className="py-1 pr-3 text-right">{formatCantidad(d.cantidadAsignada)}</td>
+                    <td className="py-1 pr-3">{r.unidad}</td>
+                    <td className="py-1 pr-3">{d.aplicar ? "Sí" : "No"}</td>
                   </tr>
                 ))}
               </tbody>
