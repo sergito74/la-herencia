@@ -43,6 +43,15 @@ def _existencia(id_producto: int) -> float:
     return calcular_stock(id_producto).get(id_producto, {}).get("existencia", 0.0)
 
 
+def _unidad_base(id_producto: int) -> str:
+    return calcular_stock(id_producto).get(id_producto, {}).get("unidadBase") or ""
+
+
+def _nombre_producto(id_producto: int) -> str:
+    fila = fetch_one("SELECT Producto AS nombre FROM dbo.vw_ProductosBase WHERE IdProducto = ?", (id_producto,))
+    return fila["nombre"] if fila else f"Producto {id_producto}"
+
+
 # ------------------------------------------------------------------ catálogos
 
 def listar_lotes() -> list[dict]:
@@ -117,7 +126,7 @@ def crear_orden(datos: dict, confirmar: bool = False) -> dict:
     for pid, total in consumo.items():
         existencia = _existencia(pid)
         if existencia - total < -TOLERANCIA:
-            negativos.append(f"Producto {pid}: hay {existencia:g} y la orden retira {total:g}: el stock quedaría negativo.")
+            negativos.append(f"{_nombre_producto(pid)}: hay {existencia:g} {_unidad_base(pid)} y la orden retira {total:g}: el stock quedaría negativo.")
     if negativos and not confirmar:
         raise RequiereConfirmacion(negativos)
 
@@ -310,7 +319,7 @@ def editar_orden(id_orden: int, datos: dict, confirmar: bool = False) -> None:
         )
         existencia = _existencia(pid) + existencia_actual_orden
         if existencia - total < -TOLERANCIA:
-            negativos.append(f"Producto {pid}: hay {existencia:g} (liberando lo que ya usaba esta orden) y la orden retira {total:g}.")
+            negativos.append(f"{_nombre_producto(pid)}: hay {existencia:g} {_unidad_base(pid)} (liberando lo que ya usaba esta orden) y la orden retira {total:g}.")
     if negativos and not confirmar:
         raise RequiereConfirmacion(negativos)
 
