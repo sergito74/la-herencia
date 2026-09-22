@@ -21,6 +21,7 @@ class MedioConfig(NamedTuple):
     id_field: str
     date_column: str
     select_columns: dict[str, str]  # API field -> SQL column/expression
+    extra_join: str | None = None  # optional JOIN appended after `table` (013)
 
 
 MEDIOS_CONFIG: dict[str, MedioConfig] = {
@@ -36,15 +37,24 @@ MEDIOS_CONFIG: dict[str, MedioConfig] = {
             "importe": "Importe",
             "idContacto": "IdContacto",
             "contacto": "Contacto",
+            "idCarga": "_crm_bna.IdCarga",
         },
+        extra_join=(
+            "LEFT JOIN dbo.CargasResumenBancario_Movimientos _crm_bna "
+            "ON _crm_bna.Banco = 'BNA' AND _crm_bna.IdMovimiento = [Movimientos BNA].IdMovimientoBNA"
+        ),
     ),
     "galicia": MedioConfig(
         table="dbo.[Movimientos Galicia]",
-        id_column="IdMovimiento",
+        # Calificado con la tabla: sin esto, el JOIN a
+        # CargasResumenBancario_Movimientos (que también tiene una columna
+        # IdMovimiento) vuelve "IdMovimiento" ambiguo en ORDER BY (encontrado
+        # corriendo T025 contra `WC` real, 2026-09-22).
+        id_column="[Movimientos Galicia].IdMovimiento",
         id_field="idMovimiento",
         date_column="Fecha",
         select_columns={
-            "idMovimiento": "IdMovimiento",
+            "idMovimiento": "[Movimientos Galicia].IdMovimiento",
             "fecha": "Fecha",
             "descripcion": "[Descripción]",
             "debitos": "[Débitos]",
@@ -52,7 +62,12 @@ MEDIOS_CONFIG: dict[str, MedioConfig] = {
             "saldo": "Saldo",
             "idContacto": "IdContacto",
             "contacto": "Contacto",
+            "idCarga": "_crm_gal.IdCarga",
         },
+        extra_join=(
+            "LEFT JOIN dbo.CargasResumenBancario_Movimientos _crm_gal "
+            "ON _crm_gal.Banco = 'Galicia' AND _crm_gal.IdMovimiento = [Movimientos Galicia].IdMovimiento"
+        ),
     ),
     "efectivo": MedioConfig(
         table="dbo.[Pagos efectivo]",
@@ -147,7 +162,8 @@ def get_movimientos(
         params.append(as_sql_datetime(fecha_hasta))
     where_sql = f"WHERE {' AND '.join(where_clauses)}" if where_clauses else ""
 
-    count_sql = f"SELECT COUNT(*) AS total FROM {config.table} {where_sql}"
+    join_sql = config.extra_join or ""
+    count_sql = f"SELECT COUNT(*) AS total FROM {config.table} {join_sql} {where_sql}"
     total_row = fetch_one(count_sql, tuple(params))
     total = total_row["total"] if total_row else 0
 
@@ -155,6 +171,7 @@ def get_movimientos(
     list_sql = f"""
         SELECT {_select_sql(config)}
         FROM {config.table}
+        {join_sql}
         {where_sql}
         ORDER BY {config.date_column} DESC, {config.id_column} DESC
         OFFSET ? ROWS FETCH NEXT ? ROWS ONLY
@@ -169,6 +186,32 @@ def get_movimiento(medio: str, id_movimiento: int) -> dict | None:
     sql = f"""
         SELECT {_select_sql(config)}
         FROM {config.table}
+        {config.extra_join or ""}
         WHERE {config.id_column} = ?
     """
     return fetch_one(sql, (id_movimiento,))
+
+
+def listar_cargas(banco: str) -> list[dict]:
+    """Historial de cargas confirmadas de un banco (013 US4, FR-009).
+
+    El alias SQL de esta columna NO puede ser "insertados": ese texto
+    contiene la subcadena "INSERT", que `_assert_read_only` (connection.py)
+    rechaza en cualquier SELECT sin importar dónde aparezca — se alias como
+    `cargados` y se renombra a la clave pública `insertados` después de
+    leer, ya en Python.
+    """
+    tabla_banco = "BNA" if banco == "bna" else "Galicia"
+    sql = """
+        SELECT IdCarga AS idCarga, NombreArchivo AS nombreArchivo,
+               FechaHoraCarga AS fechaHoraCarga, CantidadCargados AS cargados,
+               CantidadOmitidosDuplicado AS omitidosDuplicado,
+               CantidadOmitidosIncompletos AS omitidosIncompletos
+        FROM dbo.CargasResumenBancario
+        WHERE Banco = ?
+        ORDER BY FechaHoraCarga DESC
+    """
+    rows = fetch_all(sql, (tabla_banco,))
+    for row in rows:
+        row["insertados"] = row.pop("cargados")
+    return rows

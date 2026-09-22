@@ -22,6 +22,7 @@ Esta carpeta contiene la fuente funcional compartida por Claude y Codex. La guí
 | `010-remitos` | Remitos y control de stock | spec |
 | `011-ordenes-trabajo` | Órdenes de trabajo agrícolas | spec, plan, tareas, investigación, modelo, contrato, quickstart, checklist |
 | `012-resultado-costos-cultivo` | Resultado y costos de cultivo | spec, plan, tareas, investigación, modelo, contrato, quickstart, checklist |
+| `013-carga-resumenes-excel` | Confirmar carga de resúmenes bancarios BNA/Galicia (completa 003 US3) | spec, plan, tareas, investigación, modelo, contrato, quickstart, checklist, validación |
 
 ## Reanudar trabajo interrumpido
 

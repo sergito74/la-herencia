@@ -33,6 +33,7 @@ class MovimientoBNA(BaseModel):
     importe: float | None = None
     idContacto: int | None = None
     contacto: str | None = None
+    idCarga: int | None = None
 
 
 class MovimientoGalicia(BaseModel):
@@ -44,6 +45,7 @@ class MovimientoGalicia(BaseModel):
     saldo: float | None = None
     idContacto: int | None = None
     contacto: str | None = None
+    idCarga: int | None = None
 
 
 class PagoEfectivo(BaseModel):
@@ -137,3 +139,42 @@ class ExcelValidacionResponse(BaseModel):
     valido: bool
     errores: list[str]
     movimientosPrevisualizados: list
+
+
+class ResumenConfirmacion(BaseModel):
+    nuevos: int
+    omitidosDuplicado: int
+    omitidosIncompletos: int
+    total: int
+
+
+class ExcelPrevisualizacionConfirmacionResponse(BaseModel):
+    medioDetectado: str | None = None
+    valido: bool
+    errores: list[str]
+    movimientosPrevisualizados: list = []
+    resumen: ResumenConfirmacion | None = None
+
+
+class ExcelConfirmacionResponse(BaseModel):
+    valido: bool
+    errores: list[str] = []
+    banco: str | None = None
+    idCarga: int | None = None
+    insertados: int | None = None
+    omitidosDuplicado: int | None = None
+    omitidosIncompletos: int | None = None
+    total: int | None = None
+
+
+class CargaResumen(BaseModel):
+    idCarga: int
+    nombreArchivo: str
+    fechaHoraCarga: datetime
+    insertados: int
+    omitidosDuplicado: int
+    omitidosIncompletos: int
+
+
+class CargasResponse(BaseModel):
+    items: list[CargaResumen]

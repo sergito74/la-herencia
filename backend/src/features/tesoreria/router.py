@@ -12,9 +12,12 @@ from fastapi import APIRouter, HTTPException, Query, UploadFile
 from starlette.concurrency import run_in_threadpool
 
 from src.db.pagination import normalize_pagination
-from src.features.tesoreria import excel_import, matching, repository
+from src.features.tesoreria import confirmacion_carga, excel_import, matching, repository
 from src.features.tesoreria.schemas import (
     MEDIOS,
+    CargasResponse,
+    ExcelConfirmacionResponse,
+    ExcelPrevisualizacionConfirmacionResponse,
     ExcelValidacionResponse,
     LineaResumenTarjeta,
     MediosResponse,
@@ -85,3 +88,61 @@ async def validar_excel(archivo: UploadFile) -> ExcelValidacionResponse:
         excel_import.validar_y_previsualizar, archivo.filename or "", contenido
     )
     return ExcelValidacionResponse(**resultado)
+
+
+def _banco_de_medio_detectado(medio_detectado: str | None) -> str | None:
+    if medio_detectado in confirmacion_carga.BANCOS:
+        return medio_detectado
+    return None
+
+
+@router.post(
+    "/excel/previsualizar-confirmacion",
+    response_model=ExcelPrevisualizacionConfirmacionResponse,
+)
+async def previsualizar_confirmacion_excel(
+    archivo: UploadFile,
+) -> ExcelPrevisualizacionConfirmacionResponse:
+    contenido = await archivo.read()
+    preview = await run_in_threadpool(
+        excel_import.validar_y_previsualizar, archivo.filename or "", contenido
+    )
+    banco = _banco_de_medio_detectado(preview.get("medioDetectado"))
+    if not preview["valido"] or banco is None:
+        return ExcelPrevisualizacionConfirmacionResponse(
+            medioDetectado=preview.get("medioDetectado"),
+            valido=False,
+            errores=preview["errores"] or ["Formato no soportado para confirmación de carga"],
+        )
+    resultado = await run_in_threadpool(
+        confirmacion_carga.previsualizar_confirmacion, banco, archivo.filename or "", contenido
+    )
+    return ExcelPrevisualizacionConfirmacionResponse(**resultado)
+
+
+@router.post("/excel/confirmar", response_model=ExcelConfirmacionResponse)
+async def confirmar_excel(archivo: UploadFile) -> ExcelConfirmacionResponse:
+    contenido = await archivo.read()
+    preview = await run_in_threadpool(
+        excel_import.validar_y_previsualizar, archivo.filename or "", contenido
+    )
+    banco = _banco_de_medio_detectado(preview.get("medioDetectado"))
+    if not preview["valido"] or banco is None:
+        raise HTTPException(
+            status_code=422,
+            detail=preview["errores"] or ["Formato no soportado para confirmación de carga"],
+        )
+    resultado = await run_in_threadpool(
+        confirmacion_carga.confirmar_carga, banco, archivo.filename or "", contenido
+    )
+    if not resultado["valido"]:
+        raise HTTPException(status_code=422, detail=resultado["errores"])
+    return ExcelConfirmacionResponse(**resultado)
+
+
+@router.get("/{medio}/cargas", response_model=CargasResponse)
+async def list_cargas(medio: str) -> CargasResponse:
+    if medio not in confirmacion_carga.BANCOS:
+        raise HTTPException(status_code=404, detail="Este medio no tiene historial de cargas")
+    rows = await run_in_threadpool(repository.listar_cargas, medio)
+    return CargasResponse(items=rows)

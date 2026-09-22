@@ -28,6 +28,7 @@ export interface MovimientoBNA {
   importe: number | null;
   idContacto: number | null;
   contacto: string | null;
+  idCarga: number | null;
 }
 
 export interface MovimientoGalicia {
@@ -39,6 +40,7 @@ export interface MovimientoGalicia {
   saldo: number | null;
   idContacto: number | null;
   contacto: string | null;
+  idCarga: number | null;
 }
 
 export interface PagoEfectivo {
@@ -149,11 +151,11 @@ export interface ExcelValidacionResponse {
   movimientosPrevisualizados: Record<string, unknown>[];
 }
 
-export async function validarExcel(archivo: File): Promise<ExcelValidacionResponse> {
+async function postArchivo<T>(path: string, archivo: File): Promise<T> {
   const formData = new FormData();
   formData.append("archivo", archivo);
 
-  const response = await fetch(new URL("/api/tesoreria/excel/validar", API_BASE_URL), {
+  const response = await fetch(new URL(path, API_BASE_URL), {
     method: "POST",
     body: formData,
   });
@@ -163,5 +165,63 @@ export async function validarExcel(archivo: File): Promise<ExcelValidacionRespon
     throw new ApiError(response.status, detail || response.statusText);
   }
 
-  return (await response.json()) as ExcelValidacionResponse;
+  return (await response.json()) as T;
+}
+
+export async function validarExcel(archivo: File): Promise<ExcelValidacionResponse> {
+  return postArchivo<ExcelValidacionResponse>("/api/tesoreria/excel/validar", archivo);
+}
+
+export type EstadoMovimientoImportado = "nuevo" | "omitidoDuplicado" | "omitidoIncompleto";
+
+export interface ResumenConfirmacion {
+  nuevos: number;
+  omitidosDuplicado: number;
+  omitidosIncompletos: number;
+  total: number;
+}
+
+export interface ExcelPrevisualizacionConfirmacionResponse {
+  medioDetectado: "bna" | "galicia" | null;
+  valido: boolean;
+  errores: string[];
+  movimientosPrevisualizados: (Record<string, unknown> & { estado: EstadoMovimientoImportado })[];
+  resumen: ResumenConfirmacion | null;
+}
+
+export function previsualizarConfirmacion(
+  archivo: File
+): Promise<ExcelPrevisualizacionConfirmacionResponse> {
+  return postArchivo<ExcelPrevisualizacionConfirmacionResponse>(
+    "/api/tesoreria/excel/previsualizar-confirmacion",
+    archivo
+  );
+}
+
+export interface ExcelConfirmacionResponse {
+  valido: boolean;
+  errores: string[];
+  banco: "bna" | "galicia" | null;
+  idCarga: number | null;
+  insertados: number | null;
+  omitidosDuplicado: number | null;
+  omitidosIncompletos: number | null;
+  total: number | null;
+}
+
+export function confirmarCargaExcel(archivo: File): Promise<ExcelConfirmacionResponse> {
+  return postArchivo<ExcelConfirmacionResponse>("/api/tesoreria/excel/confirmar", archivo);
+}
+
+export interface CargaResumen {
+  idCarga: number;
+  nombreArchivo: string;
+  fechaHoraCarga: string;
+  insertados: number;
+  omitidosDuplicado: number;
+  omitidosIncompletos: number;
+}
+
+export function fetchCargas(banco: "bna" | "galicia"): Promise<{ items: CargaResumen[] }> {
+  return apiGet<{ items: CargaResumen[] }>(`/api/tesoreria/${banco}/cargas`);
 }
