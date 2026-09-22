@@ -46,3 +46,4 @@ Thumbs.db
 
 # Launcher runtime state
 launcher/.run/
+backups/

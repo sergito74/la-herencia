@@ -2,7 +2,9 @@
 
 Entradas: renglones de remitos no anulados (con el costo de las facturas
 vinculadas) y sobrantes de ajustes. Salidas: consumos de órdenes de trabajo
-(`Ordenes_Detalles`), bajas y faltantes de ajustes. Todo en la unidad base del
+heredadas (`Ordenes_Detalles`, 153 órdenes migradas), consumos de órdenes de
+trabajo nuevas (`Ordenes_Trabajo_Insumos`, 011-ordenes-trabajo — no reutiliza la
+tabla heredada), bajas y faltantes de ajustes. Todo en la unidad base del
 producto. Las vistas heredadas no se tocan; el cálculo se rehace siempre desde los
 datos, así los costos provisorios se corrigen solos al vincular una factura.
 """
@@ -182,6 +184,11 @@ def calcular_stock(id_producto: int | None = None, excluir_remito: int | None = 
                 c.costo_unitario = ultimo
                 meta[c.id]["estadoCosto"] = "heredado"
 
+    # Las 153 órdenes heredadas ya fueron migradas a `Ordenes_Trabajo` (011-ordenes-trabajo,
+    # `migrar_ordenes.py`, 2026-09-22): sin este `NOT EXISTS`, cada una contaría su consumo
+    # dos veces (acá y en la consulta de abajo) porque la migración copia los datos, no
+    # mueve/borra las filas heredadas. El marcador es el mismo que usa `migrar_ordenes.py`
+    # para su propia idempotencia.
     filtro_o, params_o = _filtro("od.IdFormulado", id_producto)
     for o in fetch_all(
         f"""
@@ -189,6 +196,10 @@ def calcular_stock(id_producto: int | None = None, excluir_remito: int | None = 
                COALESCE(o.[Fecha Ejecucion], o.[Fecha Pedido]) AS fecha
         FROM dbo.Ordenes_Detalles od JOIN dbo.Ordenes o ON o.IdOrden = od.IdOrden
         WHERE ISNULL(od.[Total Aplicado], 0) > 0{filtro_o}
+          AND NOT EXISTS (
+              SELECT 1 FROM dbo.Ordenes_Trabajo mt
+              WHERE mt.Observaciones = 'Migrado de Orden heredada #' + CAST(o.IdOrden AS nvarchar(20))
+          )
         """,
         params_o,
     ):
@@ -197,6 +208,26 @@ def calcular_stock(id_producto: int | None = None, excluir_remito: int | None = 
         sid = f"O{o['id']}"
         salidas[o["idProducto"]].append(Salida(id=sid, fecha=fecha(o["fecha"]), cantidad=_f(o["cantidad"]), tipo="orden", orden=o["id"]))
         salida_meta[sid] = {"tipo": "orden", "idOrden": o["idOrden"], "fecha": fecha(o["fecha"])}
+
+    # Órdenes de Trabajo nuevas (011-ordenes-trabajo): no se escriben en la tabla
+    # heredada `Ordenes_Detalles`, así que su consumo se lee de `Ordenes_Trabajo_Insumos`.
+    # `CantidadTotal` ya viene neta de devoluciones (FR-004/FR-009: una devolución
+    # reingresa stock como capa, no como ajuste de salida).
+    filtro_ot, params_ot = _filtro("oti.IdProducto", id_producto)
+    for o in fetch_all(
+        f"""
+        SELECT oti.IdOrdenInsumo AS id, oti.IdOrdenTrabajo AS idOrden, oti.IdProducto AS idProducto,
+               oti.CantidadTotal AS cantidad, COALESCE(ot.FechaEjecucion, ot.FechaPedido) AS fecha
+        FROM dbo.Ordenes_Trabajo_Insumos oti JOIN dbo.Ordenes_Trabajo ot ON ot.IdOrdenTrabajo = oti.IdOrdenTrabajo
+        WHERE ot.Estado <> 'Anulada' AND oti.CantidadTotal > 0{filtro_ot}
+        """,
+        params_ot,
+    ):
+        if o["fecha"] is None:
+            continue
+        sid = f"OT{o['id']}"
+        salidas[o["idProducto"]].append(Salida(id=sid, fecha=fecha(o["fecha"]), cantidad=_f(o["cantidad"]), tipo="ordenTrabajo", orden=o["id"]))
+        salida_meta[sid] = {"tipo": "ordenTrabajo", "idOrdenTrabajo": o["idOrden"], "fecha": fecha(o["fecha"])}
 
     filtro_b, params_b = _filtro("d.IdProducto", id_producto)
     for b in fetch_all(

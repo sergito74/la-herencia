@@ -3,10 +3,10 @@
 ## Core Principles
 
 ### I. SQL Server Is the System of Record
-SQL Server database `LaHerencia` is the only authoritative source for application data. New code MUST use the existing SQL Server connection and verified tables, views, and queries. Access databases, `.accdb` files, local queries, DataSets, TableAdapters, and duplicated data stores are obsolete and MUST NOT be used for new functionality.
+SQL Server database `WC` — a full working copy of `LaHerencia` — is the only database new code, scripts, migrations, tests, or agents may write to. `LaHerencia` is the protected original: read-only, never written to by application code. New code MUST use the existing SQL Server connection and verified tables, views, and queries against `WC`. Access databases, `.accdb` files, local queries, DataSets, TableAdapters, and duplicated data stores are obsolete and MUST NOT be used for new functionality.
 
 ### II. Real Data Protection Is Non-Negotiable
-The database contains production data. The default mode is read-only. No feature, script, test, migration, or agent may execute `INSERT`, `UPDATE`, `DELETE`, `MERGE`, `TRUNCATE`, `ALTER`, `DROP`, or side-effecting procedures without explicit user authorization and a recent full backup verified with SQL Server. Tests MUST NOT write to the real database.
+`LaHerencia` contains the protected original production data and MUST NEVER receive `INSERT`, `UPDATE`, `DELETE`, `MERGE`, `TRUNCATE`, `ALTER`, `DROP`, or any side-effecting procedure from application code, scripts, tests, migrations, or agents, under any circumstance. `WC` is a full working copy and the only database authorized writes may target; even there, no feature, script, test, migration, or agent may write without explicit user authorization and a recent full backup of `WC` verified with SQL Server. Tests MUST NOT write to either database unless explicitly authorized against `WC`.
 
 ### III. Business Processes Before Raw Tables
 Every user-facing module MUST represent a business process, not merely expose database tables. Screens MUST support the user's path from context to result: entity or account selection, filters, summary, detail, origin, and relevant documents. The web navigation MUST reflect administration, production, livestock health, treasury, accounts, sales, purchases, and reporting workflows.
@@ -55,4 +55,6 @@ The first implementation target for the migration is a read-only web module that
 
 This constitution supersedes informal practices for the La Herencia migration. Every specification, plan, task list, implementation, and convergence review MUST check compliance with these principles. Any exception requires a written reason, explicit user approval, risk assessment, and rollback plan. Amendments MUST update this file, its version, and the affected workflow artifacts. The `.github/agents/README.md` and `.specify/README.md` provide supporting guidance but do not override this constitution.
 
-**Version**: 1.1.0 | **Ratified**: 2026-09-15 | **Last Amended**: 2026-09-15
+**Version**: 1.2.0 | **Ratified**: 2026-09-15 | **Last Amended**: 2026-09-22
+
+**Amendment 1.2.0 (2026-09-22)**: Principles I and II amended to name `WC` explicitly as the working copy that authorized writes target, and `LaHerencia` explicitly as the protected, never-written-to original. This codifies a practice already in effect since 010-remitos (and consistently documented in every module's `FR-0xx` "toda escritura va exclusivamente contra `WC`") that the original text of v1.1.0 did not name, flagged as a CRITICAL finding (C1) by `/speckit-analyze` while planning 011-ordenes-trabajo. No behavioral change: this amendment brings the written principle in line with practice already followed by every shipped module.
