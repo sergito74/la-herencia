@@ -168,7 +168,7 @@ export function OrdenForm({ orden }: { orden?: OrdenDetalle }) {
       }
     } catch (e) {
       if (e instanceof ApiError && e.status === 409) {
-        setAdvertencias(e.message.split(" "));
+        setAdvertencias(e.message.split(/(?<=\.)\s+/));
       } else {
         setError(e instanceof Error ? e.message : "No se pudo guardar la orden.");
       }
