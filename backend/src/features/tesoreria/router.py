@@ -8,11 +8,11 @@ from __future__ import annotations
 
 from datetime import date
 
-from fastapi import APIRouter, HTTPException, Query, UploadFile
+from fastapi import APIRouter, HTTPException, Query, Response, UploadFile
 from starlette.concurrency import run_in_threadpool
 
 from src.db.pagination import normalize_pagination
-from src.features.tesoreria import confirmacion_carga, excel_import, matching, repository
+from src.features.tesoreria import confirmacion_carga, excel_import, exportacion, matching, repository
 from src.features.tesoreria.schemas import (
     MEDIOS,
     CargasResponse,
@@ -138,6 +138,21 @@ async def confirmar_excel(archivo: UploadFile) -> ExcelConfirmacionResponse:
     if not resultado["valido"]:
         raise HTTPException(status_code=422, detail=resultado["errores"])
     return ExcelConfirmacionResponse(**resultado)
+
+
+@router.get("/valores-propios/exportar")
+async def exportar_valores_propios(
+    fechaDesde: date | None = Query(default=None),
+    fechaHasta: date | None = Query(default=None),
+) -> Response:
+    contenido = await run_in_threadpool(exportacion.valores_propios_xlsx, fechaDesde, fechaHasta)
+    return Response(
+        content=contenido,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={
+            "Content-Disposition": f'attachment; filename="valores-propios-{date.today().isoformat()}.xlsx"'
+        },
+    )
 
 
 @router.get("/{medio}/cargas", response_model=CargasResponse)

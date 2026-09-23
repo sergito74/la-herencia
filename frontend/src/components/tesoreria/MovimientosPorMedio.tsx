@@ -5,6 +5,7 @@ import { useState } from "react";
 
 import {
   fetchMovimientos,
+  urlExportarValoresPropios,
   type Medio,
   type MovimientoPorMedio,
 } from "@/services/tesoreriaApi";
@@ -63,6 +64,8 @@ function columnsFor(medio: Medio): ColumnDef[] {
         { key: "importe", header: "Importe", numeric: true, render: (m: any) => m.importe ?? "—" },
         { key: "cobrado", header: "Cobrado", render: (m: any) => m.cobrado ?? "—" },
         { key: "fechaCobro", header: "Fecha cobro", numeric: true, render: (m: any) => m.fechaCobro ?? "—" },
+        { key: "numeroCuenta", header: "Nro. cuenta", render: (m: any) => m.numeroCuenta ?? "—" },
+        { key: "comentarios", header: "Comentarios", render: (m: any) => m.comentarios ?? "—" },
       ];
     case "valores-recibidos":
       return [
@@ -174,6 +177,17 @@ export function MovimientosPorMedio({
             }}
           />
         </FilterField>
+        {medio === "valores-propios" && (
+          <a
+            href={urlExportarValoresPropios({
+              fechaDesde: fechaDesde || undefined,
+              fechaHasta: fechaHasta || undefined,
+            })}
+            className="self-end rounded border border-border px-3 py-1.5 text-sm hover:bg-surface-sunken"
+          >
+            Exportar a Excel
+          </a>
+        )}
       </FilterBar>
 
       {isLoading && <LoadingState />}

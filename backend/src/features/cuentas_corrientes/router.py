@@ -7,20 +7,32 @@ from __future__ import annotations
 
 from datetime import date
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Response
 from starlette.concurrency import run_in_threadpool
 
 from src.db.pagination import normalize_pagination
-from src.features.cuentas_corrientes import origen_resolver, repository
+from src.features.cuentas_corrientes import exportacion, origen_resolver, repository
 from src.features.cuentas_corrientes.schemas import (
     Contacto,
     ContactosListResponse,
     MovimientoCuentaCorriente,
     MovimientosListResponse,
     Saldo,
+    SaldoContacto,
+    SaldosResponse,
 )
 
 router = APIRouter(prefix="/api/cuentas-corrientes", tags=["cuentas-corrientes"])
+
+_XLSX_MEDIA_TYPE = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+
+
+def _xlsx_response(contenido: bytes, filename: str) -> Response:
+    return Response(
+        content=contenido,
+        media_type=_XLSX_MEDIA_TYPE,
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
 
 
 @router.get("/contactos", response_model=ContactosListResponse)
@@ -78,3 +90,27 @@ async def list_movimientos(
         pageSize=norm_page_size,
         total=total,
     )
+
+
+@router.get("/contactos/{id_contacto}/exportar")
+async def exportar_cuenta_corriente(
+    id_contacto: int,
+    fechaDesde: date | None = Query(default=None),
+    fechaHasta: date | None = Query(default=None),
+) -> Response:
+    contenido = await run_in_threadpool(
+        exportacion.cuenta_corriente_xlsx, id_contacto, fechaDesde, fechaHasta
+    )
+    return _xlsx_response(contenido, f"cuenta-corriente-{id_contacto}-{date.today().isoformat()}.xlsx")
+
+
+@router.get("/saldos", response_model=SaldosResponse)
+async def list_saldos(orden: str = Query(default="razonSocial")) -> SaldosResponse:
+    rows = await run_in_threadpool(repository.get_saldos_todos, orden)
+    return SaldosResponse(items=[SaldoContacto(**row) for row in rows])
+
+
+@router.get("/saldos/exportar")
+async def exportar_saldos(orden: str = Query(default="razonSocial")) -> Response:
+    contenido = await run_in_threadpool(exportacion.saldos_xlsx, orden)
+    return _xlsx_response(contenido, f"saldos-cuentas-corrientes-{date.today().isoformat()}.xlsx")

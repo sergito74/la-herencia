@@ -63,6 +63,7 @@ export interface ValorPropio {
   cobrado: string | null;
   fechaCobro: string | null;
   numeroCuenta: string | null;
+  comentarios: string | null;
 }
 
 export interface ValorRecibido {
@@ -224,4 +225,11 @@ export interface CargaResumen {
 
 export function fetchCargas(banco: "bna" | "galicia"): Promise<{ items: CargaResumen[] }> {
   return apiGet<{ items: CargaResumen[] }>(`/api/tesoreria/${banco}/cargas`);
+}
+
+export function urlExportarValoresPropios(params: MovimientosParams = {}): string {
+  const url = new URL("/api/tesoreria/valores-propios/exportar", API_BASE_URL);
+  if (params.fechaDesde) url.searchParams.set("fechaDesde", params.fechaDesde);
+  if (params.fechaHasta) url.searchParams.set("fechaHasta", params.fechaHasta);
+  return url.toString();
 }

@@ -71,6 +71,7 @@ class ValorPropio(BaseModel):
     cobrado: str | None = None
     fechaCobro: date | None = None
     numeroCuenta: str | None = None
+    comentarios: str | None = None
 
 
 class ValorRecibido(BaseModel):

@@ -99,6 +99,7 @@ MEDIOS_CONFIG: dict[str, MedioConfig] = {
             "cobrado": "Cobrado",
             "fechaCobro": "[Fecha Cobro]",
             "numeroCuenta": "[Numero Cuenta]",
+            "comentarios": "Comentarios",
         },
     ),
     "valores-recibidos": MedioConfig(

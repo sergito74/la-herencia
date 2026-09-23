@@ -27,6 +27,16 @@ class Saldo(BaseModel):
     saldoParcial: float | None = None
 
 
+class SaldoContacto(BaseModel):
+    idContacto: int
+    razonSocial: str | None = None
+    saldoParcial: float | None = None
+
+
+class SaldosResponse(BaseModel):
+    items: list[SaldoContacto]
+
+
 class Origen(BaseModel):
     """Referencia resuelta de un movimiento, per data-model.md.
 

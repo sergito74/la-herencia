@@ -4,7 +4,7 @@
  * GET-only — this module never creates, edits, or deletes datos (FR-010).
  */
 
-import { apiGet } from "@/services/apiClient";
+import { API_BASE_URL, apiGet } from "@/services/apiClient";
 
 export interface Contacto {
   idContacto: number;
@@ -94,4 +94,36 @@ export function fetchMovimientos(
     `/api/cuentas-corrientes/contactos/${idContacto}/movimientos`,
     { ...params }
   );
+}
+
+export function urlExportarCuenta(
+  idContacto: number,
+  params: { fechaDesde?: string; fechaHasta?: string } = {}
+): string {
+  const url = new URL(`/api/cuentas-corrientes/contactos/${idContacto}/exportar`, API_BASE_URL);
+  if (params.fechaDesde) url.searchParams.set("fechaDesde", params.fechaDesde);
+  if (params.fechaHasta) url.searchParams.set("fechaHasta", params.fechaHasta);
+  return url.toString();
+}
+
+export interface SaldoContacto {
+  idContacto: number;
+  razonSocial: string | null;
+  saldoParcial: number | null;
+}
+
+export interface SaldosResponse {
+  items: SaldoContacto[];
+}
+
+export type OrdenSaldos = "razonSocial" | "saldo";
+
+export function fetchSaldos(orden: OrdenSaldos = "razonSocial"): Promise<SaldosResponse> {
+  return apiGet<SaldosResponse>("/api/cuentas-corrientes/saldos", { orden });
+}
+
+export function urlExportarSaldos(orden: OrdenSaldos = "razonSocial"): string {
+  const url = new URL("/api/cuentas-corrientes/saldos/exportar", API_BASE_URL);
+  url.searchParams.set("orden", orden);
+  return url.toString();
 }

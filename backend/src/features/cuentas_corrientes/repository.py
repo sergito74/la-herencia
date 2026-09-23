@@ -81,6 +81,32 @@ def get_saldo(id_contacto: int) -> dict | None:
     return {"idContacto": row["idContacto"], "saldoParcial": row.get("saldoParcial")}
 
 
+def get_saldos_todos(orden: str = "razonSocial") -> list[dict]:
+    """Saldo actual de todos los contactos con al menos un movimiento (014 US2).
+
+    Misma regla que `get_saldo` (última fila por contacto en el orden
+    `Fecha, Origen, IdOrigen`), pero para todos los contactos en una sola
+    consulta vía `ROW_NUMBER() OVER (PARTITION BY IdContacto ...)` en vez de
+    repetir `get_saldo` contacto por contacto. Incluye contactos con saldo
+    exactamente $0 (FR-004) — nunca filtra por `SaldoParcial <> 0`.
+    """
+    order_sql = "SaldoParcial ASC" if orden == "saldo" else "[Razon Social]"
+    sql = f"""
+        SELECT IdContacto AS idContacto, [Razon Social] AS razonSocial, SaldoParcial AS saldoParcial
+        FROM (
+            SELECT IdContacto, [Razon Social], SaldoParcial,
+                   ROW_NUMBER() OVER (
+                       PARTITION BY IdContacto
+                       ORDER BY Fecha DESC, Origen DESC, IdOrigen DESC
+                   ) AS rn
+            FROM dbo.vw_MovimientosCuenta_Saldo
+        ) ultimos
+        WHERE rn = 1
+        ORDER BY {order_sql}
+    """
+    return fetch_all(sql)
+
+
 def get_movimientos(
     id_contacto: int,
     fecha_desde: date | None,

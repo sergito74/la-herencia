@@ -8,6 +8,7 @@ import {
   fetchContactos,
   fetchMovimientos,
   fetchSaldo,
+  urlExportarCuenta,
   type Contacto,
   type MovimientoCuentaCorriente,
 } from "@/services/cuentasCorrientesApi";
@@ -249,6 +250,15 @@ export function CuentaCorriente() {
                 saldo?.saldoParcial == null ? "neutral" : saldo.saldoParcial < 0 ? "danger" : "success"
               }
             />
+            <a
+              href={urlExportarCuenta(selected.idContacto, {
+                fechaDesde: appliedDates.fechaDesde || undefined,
+                fechaHasta: appliedDates.fechaHasta || undefined,
+              })}
+              className="rounded border border-border px-3 py-1.5 text-sm hover:bg-surface-sunken"
+            >
+              Exportar a Excel
+            </a>
             <button
               type="button"
               className="text-sm text-finance underline"
