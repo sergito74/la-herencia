@@ -24,6 +24,7 @@ Esta carpeta contiene la fuente funcional compartida por Claude y Codex. La guí
 | `012-resultado-costos-cultivo` | Resultado y costos de cultivo | spec, plan, tareas, investigación, modelo, contrato, quickstart, checklist |
 | `013-carga-resumenes-excel` | Confirmar carga de resúmenes bancarios BNA/Galicia (completa 003 US3) | spec, plan, tareas, investigación, modelo, contrato, quickstart, checklist, validación |
 | `014-informes-cuentas-valores` | Exportar saldos de Cuentas Corrientes y Valores Propios a Excel | spec, plan, tareas, investigación, modelo, contrato, quickstart, checklist, validación |
+| `015-inicio-kpis` | Indicadores reales y contenido actualizado en la pantalla de inicio | spec, plan, tareas, quickstart, checklist |
 
 ## Reanudar trabajo interrumpido
 

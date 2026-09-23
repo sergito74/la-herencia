@@ -5,6 +5,9 @@ import Link from "next/link";
 
 import { KpiCard } from "@/components/ui/KpiCard";
 import { fetchArrendamientos } from "@/services/arrendamientosApi";
+import { DeudaTotalKpi } from "@/components/inicio/DeudaTotalKpi";
+import { TarjetasPendientesKpi } from "@/components/inicio/TarjetasPendientesKpi";
+import { ResultadoCampaniaKpi } from "@/components/inicio/ResultadoCampaniaKpi";
 
 interface ProcessCardLink {
   href: string;
@@ -19,9 +22,10 @@ interface ProcessCard {
 }
 
 /**
- * 4 procesos de negocio con contenido + 1 placeholder de Producción —
- * ver design/erp-module-architecture.md §4.3 (reemplaza en autoridad la
- * agrupación "3 principales + Otros movimientos" anterior).
+ * 5 procesos de negocio (Compras, Ventas, Finanzas, Personal, Producción),
+ * todos con contenido real — ver design/erp-module-architecture.md §4.3.
+ * Producción se actualizó en 015-inicio-kpis: ya no es un placeholder de
+ * "próximamente", refleja los módulos migrados en 010/011/012.
  */
 const PROCESOS: ProcessCard[] = [
   {
@@ -36,10 +40,11 @@ const PROCESOS: ProcessCard[] = [
   },
   {
     label: "Finanzas",
-    description: "Tesorería, cuentas corrientes, impuestos y arrendamientos.",
+    description: "Tesorería, cuentas corrientes, tarjetas, impuestos y arrendamientos.",
     links: [
       { href: "/finanzas/tesoreria", label: "Tesorería" },
       { href: "/finanzas/cuentas-corrientes", label: "Cuentas corrientes" },
+      { href: "/finanzas/tarjetas", label: "Tarjetas" },
       { href: "/finanzas/impuestos", label: "Impuestos y retenciones" },
       { href: "/finanzas/arrendamientos", label: "Arrendamientos" },
     ],
@@ -48,6 +53,17 @@ const PROCESOS: ProcessCard[] = [
     label: "Personal",
     description: "Liquidaciones de remuneraciones y pagos efectivos.",
     links: [{ href: "/personal/remuneraciones", label: "Remuneraciones" }],
+  },
+  {
+    label: "Producción",
+    description: "Planificación agrícola, remitos, stock, órdenes de trabajo y resultado de cultivo.",
+    links: [
+      { href: "/produccion/planificacion", label: "Planificación agrícola" },
+      { href: "/produccion/remitos", label: "Remitos" },
+      { href: "/produccion/stock", label: "Existencias de insumos" },
+      { href: "/produccion/ordenes", label: "Órdenes de trabajo" },
+      { href: "/produccion/resultado-cultivo", label: "Resultado de cultivo" },
+    ],
   },
 ];
 
@@ -129,22 +145,20 @@ export default function Home() {
         Sistema administrativo por proceso de negocio (solo lectura salvo donde se indique).
       </p>
 
-      <div className="mt-6">
+      <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <DeudaTotalKpi />
+        <TarjetasPendientesKpi />
         <CuotasArrendamientoKpis />
+      </div>
+
+      <div className="mt-4">
+        <ResultadoCampaniaKpi />
       </div>
 
       <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
         {PROCESOS.map((p) => (
           <ProcessCardView key={p.label} proceso={p} />
         ))}
-      </div>
-
-      <div className="mt-4 rounded-md border border-dashed border-border bg-surface-sunken p-5 text-ink-muted">
-        <h2 className="font-semibold">Producción</h2>
-        <p className="mt-1 text-sm">
-          Órdenes de trabajo, cultivos y ganadería — próximamente. El sistema Access original
-          tiene estos procesos activos; todavía no fueron migrados.
-        </p>
       </div>
     </main>
   );
