@@ -68,7 +68,7 @@ export async function apiGet<T>(
     }
   }
 
-  const response = await fetch(url.toString(), { method: "GET" });
+  const response = await fetch(url.toString(), { method: "GET", credentials: "include" });
 
   if (!response.ok) {
     const detail = await leerDetalleError(response);
@@ -85,6 +85,7 @@ export async function apiPatch<T>(path: string, body: unknown): Promise<T> {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
+    credentials: "include",
   });
 
   if (!response.ok) {
@@ -106,6 +107,7 @@ export async function apiPost<T>(
     method: "POST",
     headers: { "Content-Type": "application/json", ...extraHeaders },
     body: JSON.stringify(body),
+    credentials: "include",
   });
 
   if (!response.ok) {
@@ -127,6 +129,7 @@ export async function apiPut<T>(
     method: "PUT",
     headers: { "Content-Type": "application/json", ...extraHeaders },
     body: JSON.stringify(body),
+    credentials: "include",
   });
 
   if (!response.ok) {
@@ -151,6 +154,7 @@ export async function apiDelete(
     method: "DELETE",
     headers: { ...extraHeaders },
     keepalive,
+    credentials: "include",
   });
 
   if (!response.ok) {

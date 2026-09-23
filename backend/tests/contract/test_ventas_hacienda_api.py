@@ -9,8 +9,12 @@ from __future__ import annotations
 import httpx
 import pytest
 
+from src.auth.tokens import crear_token
+from src.features.auth.router import COOKIE_NAME
 from src.features.ventas_hacienda import repository
 from src.main import app
+
+_ADMIN_COOKIES = {COOKIE_NAME: crear_token(id_usuario=0, rol="Administrador")}
 
 FIXTURE_VENTA = {
     "idVenta": 1,
@@ -57,7 +61,7 @@ def client():
 
 
 async def _get(transport, url):
-    async with httpx.AsyncClient(transport=transport, base_url="http://test") as ac:
+    async with httpx.AsyncClient(transport=transport, base_url="http://test", cookies=_ADMIN_COOKIES) as ac:
         return await ac.get(url)
 
 
@@ -94,7 +98,7 @@ async def test_list_ventas_hacienda_empty_result(client, monkeypatch):
 async def test_ventas_hacienda_rejects_unsupported_write_methods(client):
     """007-ventas-hacienda-granos agregó POST /api/ventas-hacienda (alta real) —
     solo PUT/DELETE/PATCH sin un `id_venta` en la ruta siguen sin soporte."""
-    async with httpx.AsyncClient(transport=client, base_url="http://test") as ac:
+    async with httpx.AsyncClient(transport=client, base_url="http://test", cookies=_ADMIN_COOKIES) as ac:
         for method in ("put", "delete", "patch"):
             resp = await ac.request(method, "/api/ventas-hacienda")
             assert resp.status_code in (404, 405)
@@ -103,7 +107,7 @@ async def test_ventas_hacienda_rejects_unsupported_write_methods(client):
 @pytest.mark.anyio
 async def test_post_ventas_hacienda_without_body_is_422(client):
     """POST ahora es una ruta real (alta, 007) — sin body, 422, no 404/405."""
-    async with httpx.AsyncClient(transport=client, base_url="http://test") as ac:
+    async with httpx.AsyncClient(transport=client, base_url="http://test", cookies=_ADMIN_COOKIES) as ac:
         resp = await ac.post("/api/ventas-hacienda", json={})
         assert resp.status_code == 422
 
@@ -142,7 +146,7 @@ async def test_retenciones_venta_hacienda_rejects_write_methods(client):
     como `/api/ventas-hacienda/{id_venta}` (007) — como "retenciones" no es
     un id numérico válido, la ruta responde 422 (path param inválido), no
     404/405; PATCH y POST siguen sin ruta que matchee este path, 404/405."""
-    async with httpx.AsyncClient(transport=client, base_url="http://test") as ac:
+    async with httpx.AsyncClient(transport=client, base_url="http://test", cookies=_ADMIN_COOKIES) as ac:
         for method in ("post", "patch"):
             resp = await ac.request(method, "/api/ventas-hacienda/retenciones")
             assert resp.status_code in (404, 405)

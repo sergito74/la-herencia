@@ -1,8 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
+
+import { useAuth } from "@/components/auth/AuthContext";
 
 interface NavLeaf {
   href: string;
@@ -164,6 +166,15 @@ function NavDropdown({ item, active }: { item: NavItem; active: boolean }) {
 
 export function NavHeader() {
   const pathname = usePathname();
+  const router = useRouter();
+  const { usuario, logout } = useAuth();
+
+  if (pathname === "/login") return null;
+
+  async function handleLogout() {
+    await logout();
+    router.replace("/login");
+  }
 
   return (
     <header className="sticky top-0 z-20 border-b border-border bg-surface shadow-sm">
@@ -237,14 +248,24 @@ export function NavHeader() {
           >
             <Icon>{ICONS.bell}</Icon>
           </button>
-          <button
-            type="button"
-            disabled
-            title="Cuenta de usuario — autenticación pendiente de implementar"
-            className="flex h-7 w-7 items-center justify-center rounded-full bg-finance-light text-xs font-medium text-finance disabled:cursor-not-allowed"
-          >
-            ?
-          </button>
+          {usuario && (
+            <div className="flex items-center gap-2">
+              <span
+                title={`${usuario.nombre ?? usuario.usuario} (${usuario.rol})`}
+                className="text-sm text-ink-secondary"
+              >
+                {usuario.nombre ?? usuario.usuario}
+              </span>
+              <button
+                type="button"
+                onClick={handleLogout}
+                title="Cerrar sesión"
+                className="rounded-md border border-border px-3 py-1 text-xs text-ink-secondary hover:bg-surface-sunken"
+              >
+                Cerrar sesión
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </header>

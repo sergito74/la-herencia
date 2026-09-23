@@ -1,11 +1,18 @@
 import pytest
 from fastapi.testclient import TestClient
 
+from src.auth.tokens import crear_token
+
 from src.features.remitos import repository, stock_repo
 from src.features.remitos.repository import RequiereConfirmacion
 from src.main import app
 
 client = TestClient(app)
+client.cookies.set(
+    "la_herencia_session",
+    crear_token(id_usuario=0, rol="Administrador"),
+)  # 016-autenticacion: la API ahora exige sesión; estos tests preexistentes
+# simulan un Administrador para no cambiar su comportamiento (SC-003).
 
 
 def test_estado_de_renglon_por_cantidad_vinculada():

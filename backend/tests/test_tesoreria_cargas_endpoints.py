@@ -2,10 +2,17 @@ import io
 
 from fastapi.testclient import TestClient
 
+from src.auth.tokens import crear_token
+
 from src.features.tesoreria import confirmacion_carga, excel_import, repository
 from src.main import app
 
 client = TestClient(app)
+client.cookies.set(
+    "la_herencia_session",
+    crear_token(id_usuario=0, rol="Administrador"),
+)  # 016-autenticacion: la API ahora exige sesión; estos tests preexistentes
+# simulan un Administrador para no cambiar su comportamiento (SC-003).
 
 _ARCHIVO = ("resumen.xls", io.BytesIO(b"contenido"), "application/vnd.ms-excel")
 

@@ -4,6 +4,7 @@ import { Suspense } from "react";
 import { ComprasListado } from "@/components/compras/ComprasListado";
 import { LoadingState } from "@/components/ui/States";
 import { BackLink } from "@/components/ui/BackLink";
+import { SoloLectura } from "@/components/auth/SoloLectura";
 
 export const metadata = {
   title: "Compras",
@@ -15,12 +16,14 @@ export default function ComprasPage() {
       <BackLink href="/">Volver al inicio</BackLink>
       <div className="mt-2 flex items-center justify-between">
         <h1 className="text-2xl font-semibold">Compras</h1>
-        <Link
-          href="/compras/nueva"
-          className="rounded-sm bg-agro px-4 py-2 text-sm text-white hover:opacity-90"
-        >
-          + Nueva compra
-        </Link>
+        <SoloLectura>
+          <Link
+            href="/compras/nueva"
+            className="rounded-sm bg-agro px-4 py-2 text-sm text-white hover:opacity-90"
+          >
+            + Nueva compra
+          </Link>
+        </SoloLectura>
       </div>
       <div className="mt-6">
         <Suspense fallback={<LoadingState />}>

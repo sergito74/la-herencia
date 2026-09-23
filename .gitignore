@@ -52,3 +52,6 @@ backups/
 .env*
 *.egg-info/
 build/
+
+# Secreto de firma de sesión (016-autenticacion), exclusivo de cada instalación
+backend/.auth_secret

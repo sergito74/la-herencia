@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ResumenesListado } from "@/components/tarjetas-resumenes/ResumenesListado";
 import { TarjetasSubNav } from "@/components/tarjetas/TarjetasSubNav";
 import { BackLink } from "@/components/ui/BackLink";
+import { SoloLectura } from "@/components/auth/SoloLectura";
 
 export default function ResumenesPage() {
   return (
@@ -12,9 +13,11 @@ export default function ResumenesPage() {
       <BackLink href="/finanzas/tarjetas">Volver a Tarjetas</BackLink>
       <div className="mt-2 flex items-center justify-between">
         <h1 className="text-2xl font-semibold">Resúmenes de tarjeta</h1>
-        <Link href="/finanzas/tarjetas/resumenes/nuevo" className="rounded-sm bg-finance px-4 py-2 text-sm text-white hover:opacity-90">
-          + Nuevo resumen
-        </Link>
+        <SoloLectura>
+          <Link href="/finanzas/tarjetas/resumenes/nuevo" className="rounded-sm bg-finance px-4 py-2 text-sm text-white hover:opacity-90">
+            + Nuevo resumen
+          </Link>
+        </SoloLectura>
       </div>
       <div className="mt-4">
         <TarjetasSubNav />

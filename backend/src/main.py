@@ -9,10 +9,15 @@ from __future__ import annotations
 
 import os
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from starlette.middleware.base import BaseHTTPMiddleware
 
+from src.auth.tokens import verificar_token
 from src.errors import register_error_handlers
+from src.features.auth.router import COOKIE_NAME
+from src.features.auth.router import router as auth_router
 from src.features.arrendamientos.router import router as arrendamientos_router
 from src.features.compras.router import router as compras_router
 from src.features.contactos.router import router as contactos_router
@@ -60,8 +65,42 @@ app.add_middleware(
     allow_origins=_allowed_origins,
     allow_methods=["GET", "PATCH", "POST", "PUT", "DELETE"],
     allow_headers=["*"],
+    allow_credentials=True,
 )
 
+# Endpoints exentos de autenticación (016-autenticacion, FR-001): el propio
+# login, el chequeo de salud del launcher y la documentación automática
+# (no exponen datos de WC).
+_AUTH_EXEMPT_PATHS = {"/api/auth/login", "/health", "/docs", "/openapi.json"}
+_WRITE_METHODS = {"POST", "PUT", "PATCH", "DELETE"}
+
+
+class AuthMiddleware(BaseHTTPMiddleware):
+    """Exige una sesión válida en toda la API salvo `_AUTH_EXEMPT_PATHS`.
+
+    Además rechaza con 403 las escrituras (POST/PUT/PATCH/DELETE) de
+    usuarios con rol `Lectura` (FR-006), sin llegar a invocar el endpoint.
+    """
+
+    async def dispatch(self, request: Request, call_next):
+        if request.method == "OPTIONS" or request.url.path in _AUTH_EXEMPT_PATHS:
+            return await call_next(request)
+
+        token = request.cookies.get(COOKIE_NAME)
+        payload = verificar_token(token) if token else None
+        if payload is None:
+            return JSONResponse(status_code=401, content={"detail": "Sesión inválida o expirada"})
+
+        if request.method in _WRITE_METHODS and payload.get("rol") == "Lectura":
+            return JSONResponse(status_code=403, content={"detail": "Rol de solo lectura"})
+
+        request.state.usuario = payload
+        return await call_next(request)
+
+
+app.add_middleware(AuthMiddleware)
+
+app.include_router(auth_router)
 app.include_router(arrendamientos_router)
 app.include_router(compras_router)
 app.include_router(contactos_router)
