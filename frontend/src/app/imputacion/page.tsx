@@ -2,8 +2,9 @@
 
 import { useEffect, useMemo, useState } from "react";
 
+import { SoloLectura } from "@/components/auth/SoloLectura";
 import { PropuestaCard } from "@/components/imputacion/PropuestaCard";
-import { apiGet } from "@/services/apiClient";
+import { apiGet, apiPost } from "@/services/apiClient";
 import type { PendienteIntervencionOut, PropuestaFraccion } from "@/services/imputacionApi";
 
 const ETIQUETA_MOTIVO: Record<string, string> = {
@@ -15,6 +16,29 @@ export default function ImputacionPage() {
   const [fracciones, setFracciones] = useState<PropuestaFraccion[]>([]);
   const [pendientesIntervencion, setPendientesIntervencion] = useState<PendienteIntervencionOut[]>([]);
   const [filtro, setFiltro] = useState<"todas" | "pendiente" | "requiereIntervencion">("todas");
+  const [calculando, setCalculando] = useState(false);
+  const [ultimoCalculo, setUltimoCalculo] = useState<{ insumosCalculados: number; contratistasCalculados: number } | null>(
+    null
+  );
+
+  async function calcularPendientes() {
+    setCalculando(true);
+    try {
+      const resultado = await apiPost<{ insumosCalculados: number; contratistasCalculados: number }>(
+        "/api/imputacion/calcular-pendientes",
+        {}
+      );
+      setUltimoCalculo(resultado);
+      // Recarga el listado actual con lo recién calculado.
+      setFiltro((f) => f);
+      apiGet<PropuestaFraccion[]>("/api/imputacion/propuestas", {
+        estado: filtro === "todas" ? undefined : "Pendiente",
+        pageSize: 200,
+      }).then(setFracciones);
+    } finally {
+      setCalculando(false);
+    }
+  }
 
   useEffect(() => {
     if (filtro === "requiereIntervencion") {
@@ -42,6 +66,30 @@ export default function ImputacionPage() {
   return (
     <main className="mx-auto max-w-none px-8 py-6">
       <h1 className="text-2xl font-semibold">Imputación automática</h1>
+      <p className="mt-1 text-sm text-ink-secondary">
+        Propuestas de reparto de costos a Cultivo/Campaña calculadas a partir del consumo real (FIFO/Órdenes de
+        Trabajo) — quedan pendientes hasta que las apruebes o corrijas.
+      </p>
+
+      <div className="mt-4 flex items-center gap-3">
+        <SoloLectura>
+          <button
+            type="button"
+            onClick={calcularPendientes}
+            disabled={calculando}
+            className="rounded-md bg-agro px-3 py-1.5 text-sm text-white disabled:opacity-60"
+          >
+            {calculando ? "Calculando…" : "Calcular pendientes"}
+          </button>
+        </SoloLectura>
+        {ultimoCalculo && (
+          <span className="text-xs text-ink-secondary">
+            {ultimoCalculo.insumosCalculados} facturas de insumo y {ultimoCalculo.contratistasCalculados} de
+            contratista procesadas.
+          </span>
+        )}
+      </div>
+
       <div className="mt-4 flex gap-2">
         {(["todas", "pendiente", "requiereIntervencion"] as const).map((f) => (
           <button

@@ -335,6 +335,30 @@ def costo_aprobado_por_campania(id_campania: int) -> dict:
     }
 
 
+def candidatos_insumo_sin_corrida(limite: int = 2000) -> list[int]:
+    """`IdDetalleCompra` de renglones de insumo ya vinculados a un remito
+    (`tblRemitoCompra`, dentro de alcance) que todavía no tienen ninguna
+    corrida del motor — candidatos para el cálculo masivo."""
+    filas = fetch_all(
+        f"SELECT DISTINCT TOP {int(limite)} t.IdDetalleCompra AS idDetalleCompra "
+        "FROM dbo.tblRemitoCompra t "
+        "WHERE NOT EXISTS (SELECT 1 FROM dbo.ImputacionPropuestas p WHERE p.IdDetalleCompra = t.IdDetalleCompra)",
+    )
+    return [f["idDetalleCompra"] for f in filas]
+
+
+def candidatos_contratista_sin_corrida(limite: int = 2000) -> list[int]:
+    """`IdCompra` de facturas de contratista/maquinaria ya vinculadas a
+    alguna Orden (`OrdenesContratistaFacturas`) que todavía no tienen
+    ninguna corrida del motor."""
+    filas = fetch_all(
+        f"SELECT DISTINCT TOP {int(limite)} f.IdCompra AS idCompra "
+        "FROM dbo.OrdenesContratistaFacturas f "
+        "WHERE NOT EXISTS (SELECT 1 FROM dbo.ImputacionPropuestas p WHERE p.IdDetalleCompra = f.IdCompra AND p.Origen = 'Contratista')",
+    )
+    return [f["idCompra"] for f in filas]
+
+
 def obtener_referencia(id_producto: int, es_ganaderia: bool) -> dict | None:
     """Última clasificación aprobada/corregida por el usuario para este producto/destino
     (lado de lectura del aprendizaje simple, FR-008 — el lado de escritura es

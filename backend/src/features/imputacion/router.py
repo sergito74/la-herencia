@@ -119,6 +119,24 @@ async def comparacion(idCampania: int = Query(...)) -> ComparacionCampaniaOut:
     )
 
 
+@router.post("/calcular-pendientes")
+async def calcular_pendientes() -> dict:
+    """Corre el motor sobre todas las facturas en alcance (insumo/contratista)
+    que todavía no tienen ninguna corrida — botón de "activación" masiva en
+    vez de tener que pedir cada propuesta una por una."""
+    insumos_calculados = 0
+    for id_detalle_compra in repository.candidatos_insumo_sin_corrida():
+        _asegurar_corrida(id_detalle_compra, "Insumo")
+        insumos_calculados += 1
+
+    contratistas_calculados = 0
+    for id_compra in repository.candidatos_contratista_sin_corrida():
+        _asegurar_corrida(id_compra, "Contratista")
+        contratistas_calculados += 1
+
+    return {"insumosCalculados": insumos_calculados, "contratistasCalculados": contratistas_calculados}
+
+
 @router.post("/recalcular")
 async def recalcular(body: RecalcularIn) -> dict:
     if body.idDetalleCompra is None:

@@ -107,6 +107,7 @@ const NAV_ITEMS: NavItem[] = [
       { href: "/produccion/stock/ajustes", label: "Ajustes de inventario" },
       { href: "/produccion/ordenes", label: "Órdenes de trabajo" },
       { href: "/produccion/resultado-cultivo", label: "Resultado de cultivo" },
+      { href: "/imputacion", label: "Imputación automática de costos" },
     ],
   },
   {
