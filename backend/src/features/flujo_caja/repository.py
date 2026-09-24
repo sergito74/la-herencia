@@ -13,6 +13,7 @@ from datetime import date, datetime
 
 from src.db.connection import fetch_all
 from src.db.params import as_sql_datetime
+from src.features.flujo_caja import atribucion
 from src.features.flujo_caja.clasificacion import es_interno
 
 FECHA_PRIMER_SALDO_CONOCIDO = date(2010, 8, 31)
@@ -82,6 +83,10 @@ def _clave_periodo(fecha: datetime, granularidad: str) -> str:
     if granularidad == "semanal":
         iso = fecha.isocalendar()
         return f"{iso[0]}-W{iso[1]:02d}"
+    if granularidad == "trimestral":
+        return f"{fecha.year:04d}-T{(fecha.month - 1) // 3 + 1}"
+    if granularidad == "anual":
+        return f"{fecha.year:04d}"
     return f"{fecha.year:04d}-{fecha.month:02d}"
 
 
@@ -181,3 +186,105 @@ def ultima_fecha_por_cuenta() -> list[dict]:
         }
     )
     return resultado
+
+
+def atribuir_movimientos(movimientos: list[dict]) -> list[dict]:
+    """Agrega `rubro`/`centroCosto` a cada movimiento no interno (018 v2,
+    2026-09-24: "ingresos y egresos de dinero reales", nunca documentos de
+    venta/compra — el rubro solo sirve para AGRUPAR el movimiento real, el
+    importe siempre es el del banco, no el de la venta/compra)."""
+    reales = [m for m in movimientos if not m["esInterno"]]
+    if not reales:
+        return movimientos
+
+    fechas = [m["fecha"].date() if hasattr(m["fecha"], "date") else m["fecha"] for m in reales]
+    indice_ingresos = atribucion.construir_indice_ingresos(min(fechas), max(fechas))
+
+    for m in reales:
+        fecha = m["fecha"].date() if hasattr(m["fecha"], "date") else m["fecha"]
+        importe_abs = round(abs(m["importe"]), 2)
+        if m["importe"] < 0:
+            atrib = atribucion.atribuir_egreso(m["idContacto"], fecha, importe_abs)
+        else:
+            atrib = atribucion.atribuir_ingreso(indice_ingresos, m["idContacto"], fecha, importe_abs)
+        m["rubro"] = atrib["rubro"]
+        m["centroCosto"] = atrib["centroCosto"]
+    return movimientos
+
+
+def agregar_por_rubro(movimientos_atribuidos: list[dict], granularidad: str) -> dict:
+    """Ingresos (lista plana) y Egresos (agrupados por Centro de Costos, con
+    subtotal) × período — formato pedido por Sergio (Cash Flow 2025-2026.xlsx,
+    adaptado: acá el Rubro/Centro de Costos sale de la atribución real, no
+    se tipea a mano, y los grupos de Egresos SÍ tienen subtotal)."""
+    periodos: set[str] = set()
+    ingresos: dict[str, dict[str, float]] = defaultdict(lambda: defaultdict(float))
+    egresos: dict[tuple[str, str], dict[str, float]] = defaultdict(lambda: defaultdict(float))
+
+    for m in movimientos_atribuidos:
+        if m["esInterno"]:
+            continue
+        clave = _clave_periodo(m["fecha"], granularidad)
+        periodos.add(clave)
+        if m["importe"] >= 0:
+            ingresos[m["rubro"]][clave] += m["importe"]
+        else:
+            egresos[(m["centroCosto"] or "Sin centro de costos", m["rubro"])][clave] += m["importe"]
+
+    periodos_ordenados = sorted(periodos)
+
+    filas_ingresos = [
+        {"rubro": rubro, "valores": {p: round(v.get(p, 0.0), 2) for p in periodos_ordenados}, "total": round(sum(v.values()), 2)}
+        for rubro, v in sorted(ingresos.items())
+    ]
+    total_ingresos_por_periodo = {
+        p: round(sum(f["valores"][p] for f in filas_ingresos), 2) for p in periodos_ordenados
+    }
+
+    grupos: dict[str, list[dict]] = defaultdict(list)
+    for (centro, rubro), v in sorted(egresos.items()):
+        grupos[centro].append(
+            {"rubro": rubro, "valores": {p: round(v.get(p, 0.0), 2) for p in periodos_ordenados}, "total": round(sum(v.values()), 2)}
+        )
+    centros_costo = []
+    for centro, filas in sorted(grupos.items()):
+        subtotal_por_periodo = {p: round(sum(f["valores"][p] for f in filas), 2) for p in periodos_ordenados}
+        centros_costo.append(
+            {
+                "centroCosto": centro,
+                "rubros": filas,
+                "subtotalPorPeriodo": subtotal_por_periodo,
+                "subtotal": round(sum(subtotal_por_periodo.values()), 2),
+            }
+        )
+    total_egresos_por_periodo = {
+        p: round(sum(c["subtotalPorPeriodo"][p] for c in centros_costo), 2) for p in periodos_ordenados
+    }
+
+    return {
+        "periodos": periodos_ordenados,
+        "ingresos": {"rubros": filas_ingresos, "totalPorPeriodo": total_ingresos_por_periodo},
+        "egresos": {"centrosCosto": centros_costo, "totalPorPeriodo": total_egresos_por_periodo},
+    }
+
+
+def saldo_inicial_al(fecha_desde: date) -> float:
+    """Suma de `SaldoApertura` de cada cuenta + todos sus movimientos reales
+    (incluidos los internos — la plata que realmente hay en el banco no
+    distingue interno/operativo) desde su apertura hasta `fecha_desde`
+    (exclusive). Pedido explícito de Sergio: el saldo inicial sale de lo ya
+    cargado en el sistema, no se tipea a mano."""
+    cuentas = fetch_all("SELECT SaldoApertura AS saldoApertura FROM dbo.CuentasBancarias")
+    saldo = sum(float(c["saldoApertura"]) for c in cuentas)
+
+    hasta = as_sql_datetime(fecha_desde)
+    fila_bna = fetch_all(
+        "SELECT SUM(Importe) AS total FROM dbo.[Movimientos BNA] WHERE [Fecha / Hora Mov#] < ?", (hasta,)
+    )
+    fila_galicia = fetch_all(
+        "SELECT SUM([Créditos]) AS creditos, SUM([Débitos]) AS debitos FROM dbo.[Movimientos Galicia] WHERE Fecha < ?",
+        (hasta,),
+    )
+    saldo += float(fila_bna[0]["total"] or 0)
+    saldo += float(fila_galicia[0]["creditos"] or 0) - float(fila_galicia[0]["debitos"] or 0)
+    return round(saldo, 2)

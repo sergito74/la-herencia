@@ -62,3 +62,33 @@ class MovimientoFlujoCaja(BaseModel):
 
 class DetalleFlujoCajaResponse(BaseModel):
     movimientos: list[MovimientoFlujoCaja]
+
+
+class FilaRubro(BaseModel):
+    rubro: str
+    valores: dict[str, float]
+    total: float
+
+
+class GrupoCentroCosto(BaseModel):
+    centroCosto: str
+    rubros: list[FilaRubro]
+    subtotalPorPeriodo: dict[str, float]
+    subtotal: float
+
+
+class SeccionIngresos(BaseModel):
+    rubros: list[FilaRubro]
+    totalPorPeriodo: dict[str, float]
+
+
+class SeccionEgresos(BaseModel):
+    centrosCosto: list[GrupoCentroCosto]
+    totalPorPeriodo: dict[str, float]
+
+
+class FlujoCajaPorRubroResponse(BaseModel):
+    periodos: list[str]
+    saldoInicial: float
+    ingresos: SeccionIngresos
+    egresos: SeccionEgresos
