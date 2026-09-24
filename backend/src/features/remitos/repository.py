@@ -15,6 +15,7 @@ from datetime import date, datetime
 
 from src.db.connection import execute_write_transaction, fetch_all, fetch_one
 from src.db.params import as_sql_datetime
+from src.features.imputacion import motor as imputacion_motor
 from src.features.remitos import catalogo
 from src.features.remitos.stock_datos import calcular_stock, equivalencias, factor_a_base, unidades_base
 
@@ -585,6 +586,10 @@ def vincular_renglones(id_remito: int, items: list[dict]) -> dict:
     nros = _sincronizar_nro_factura(id_remito) + [fetch_one("SELECT [Nro Documento] AS n FROM dbo.Compras WHERE IdDeuda = ?", (c,))["n"] for c in compras - actuales]
     stmts.append(("UPDATE dbo.Remitos SET NroFactura = ? WHERE IdRemito = ?", (_texto_facturas(nros), id_remito)))
     execute_write_transaction(stmts)
+    # Nuevo vínculo renglón↔factura: recalcula cualquier propuesta pendiente
+    # del motor de imputación para estos renglones (017-imputacion-automatica-costos).
+    for it in items:
+        imputacion_motor.recalcular_si_corresponde(it["idDetalleCompra"], "Insumo")
     return {"advertencias": avisos}
 
 
@@ -612,6 +617,7 @@ def desvincular_renglon(id_remito: int, id_vinculo: int) -> None:
         if dc and dc["p"] == fila["idProducto"]:
             stmts.append(("UPDATE dbo.Det_Compras SET IdFormulado = NULL WHERE IdDetalleCompra = ?", (fila["idDetalleCompra"],)))
     execute_write_transaction(stmts)
+    imputacion_motor.recalcular_si_corresponde(fila["idDetalleCompra"], "Insumo")
 
 
 def vincular_factura(id_remito: int, id_compra: int) -> None:

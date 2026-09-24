@@ -14,8 +14,20 @@ from datetime import date, datetime
 
 from src.db.connection import execute_write_transaction, fetch_all, fetch_one
 from src.db.params import as_sql_datetime
+from src.features.imputacion import motor as imputacion_motor
+from src.features.imputacion import repository as imputacion_repository
 from src.features.ordenes import costeo, distribucion, formulario_retiro
 from src.features.remitos.stock_datos import calcular_stock
+
+
+def _recalcular_imputacion_por_productos(ids_producto: set[int]) -> None:
+    """Dispara `imputacion.motor.recalcular_si_corresponde` para todo renglón
+    de factura que ya tenga una corrida calculada para estos productos —
+    017-imputacion-automatica-costos, FR-011/FR-012. Sin efecto si el motor
+    nunca calculó nada para ese producto todavía."""
+    for id_producto in ids_producto:
+        for id_detalle_compra in imputacion_repository.detalles_compra_con_corrida_por_producto(id_producto):
+            imputacion_motor.recalcular_si_corresponde(id_detalle_compra, "Insumo")
 
 TOLERANCIA = 0.005
 ESTADOS = ("Planificada", "Ejecutada", "Anulada")
@@ -289,9 +301,11 @@ def obtener_orden(id_orden: int) -> dict | None:
         "FROM dbo.Ordenes_Trabajo_Maquinaria WHERE IdOrdenTrabajo = ?",
         (id_orden,),
     )
-    factura = fetch_one(
+    # N a N desde 017-imputacion-automatica-costos: una Orden puede tener varias
+    # facturas de contratista vinculadas (generaliza el vínculo 1 a 1 anterior).
+    facturas = fetch_all(
         "SELECT f.IdCompra AS idCompra, c.[Tipo documento] AS tipoDocumento, c.[Nro Documento] AS numeroDocumento, c.Moneda AS moneda, c.[Tipo de Cambio] AS tipoDeCambio "
-        "FROM dbo.Ordenes_Trabajo_Contratista_Factura f JOIN dbo.Compras c ON c.IdDeuda = f.IdCompra WHERE f.IdOrdenTrabajo = ?",
+        "FROM dbo.OrdenesContratistaFacturas f JOIN dbo.Compras c ON c.IdDeuda = f.IdCompra WHERE f.IdOrdenTrabajo = ?",
         (id_orden,),
     )
     return {
@@ -300,10 +314,11 @@ def obtener_orden(id_orden: int) -> dict | None:
         "fechaEjecucion": _d(cab["fechaEjecucion"]),
         "insumos": insumos,
         "maquinaria": maquinaria,
-        "facturaContratista": factura,
+        "facturaContratista": facturas[0] if facturas else None,
+        "facturasContratista": facturas,
         "formularioRetiro": formulario_retiro.obtener(id_orden),
         "tieneDevoluciones": any(r["devoluciones"] for r in insumos),
-        "editable": cab["estado"] == "Planificada" and not any(r["devoluciones"] for r in insumos) and factura is None,
+        "editable": cab["estado"] == "Planificada" and not any(r["devoluciones"] for r in insumos) and not facturas,
     }
 
 
@@ -366,6 +381,11 @@ def editar_orden(id_orden: int, datos: dict, confirmar: bool = False) -> None:
 
             stmts.append(dist)
     execute_write_transaction(stmts)
+    # La distribución por Lote/Cultivo/Campaña de esta orden pudo haber
+    # cambiado: recalcula cualquier propuesta del motor de imputación que
+    # dependía del consumo anterior (017-imputacion-automatica-costos).
+    ids_producto = {r["idProducto"] for r in actual["insumos"]} | {r["idProducto"] for r in datos["renglones"]}
+    _recalcular_imputacion_por_productos(ids_producto)
 
 
 # ------------------------------------------------------------------ transiciones de estado
@@ -419,6 +439,9 @@ def anular_orden(id_orden: int, motivo: str) -> None:
             (f"Orden de trabajo {id_orden} anulada: {motivo.strip()}", f"Devolución de orden de trabajo {id_orden}"),
         ),
     ])
+    # El consumo de esta orden ya no cuenta (Estado='Anulada'): cualquier
+    # propuesta del motor de imputación que dependía de él queda desactualizada.
+    _recalcular_imputacion_por_productos({r["idProducto"] for r in actual["insumos"]})
 
 
 # ------------------------------------------------------------------ devoluciones (Historia 2)
@@ -496,17 +519,30 @@ def agregar_maquinaria(id_orden: int, datos: dict) -> dict:
 # ------------------------------------------------------------------ factura de contratista (Historia 4)
 
 def vincular_factura_contratista(id_orden: int, id_compra: int) -> dict:
+    """Vincula una factura de contratista a una Orden — N a N desde
+    017-imputacion-automatica-costos: una misma factura puede cubrir varias
+    Órdenes, y una Orden puede tener más de una factura (ya no bloquea si
+    alguna de las dos ya tenía un vínculo, a diferencia del modelo 1 a 1
+    anterior)."""
     orden = obtener_orden(id_orden)
     if orden is None:
         raise ValueError([f"La orden {id_orden} no existe."])
-    if orden["facturaContratista"] is not None:
-        raise ValueError(["La orden ya tiene una factura de contratista vinculada."])
     distribuciones = [d for r in orden["insumos"] for d in r["distribuciones"]]
     resultado_costeo = costeo.costo_contratista(id_compra, distribuciones)
     execute_write_transaction([
-        ("INSERT INTO dbo.Ordenes_Trabajo_Contratista_Factura (IdOrdenTrabajo, IdCompra) VALUES (?, ?)", (id_orden, id_compra)),
+        ("INSERT INTO dbo.OrdenesContratistaFacturas (IdOrdenTrabajo, IdCompra) VALUES (?, ?)", (id_orden, id_compra)),
     ])
     return resultado_costeo
+
+
+def desvincular_factura_contratista(id_orden: int, id_compra: int) -> None:
+    fila = fetch_one(
+        "SELECT IdVinculo AS id FROM dbo.OrdenesContratistaFacturas WHERE IdOrdenTrabajo = ? AND IdCompra = ?",
+        (id_orden, id_compra),
+    )
+    if fila is None:
+        raise ValueError([f"La orden {id_orden} no tiene vinculada la factura {id_compra}."])
+    execute_write_transaction([("DELETE FROM dbo.OrdenesContratistaFacturas WHERE IdVinculo = ?", (fila["id"],))])
 
 
 # ------------------------------------------------------------------ catálogo de labores (Historia 7)

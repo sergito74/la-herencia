@@ -153,5 +153,13 @@ async def agregar_maquinaria(id_orden: int, body: MaquinariaIn) -> dict:
 
 
 @router.post("/{id_orden}/factura", status_code=201)
+@router.post("/{id_orden}/factura-contratista", status_code=201)
 async def vincular_factura(id_orden: int, body: FacturaContratistaIn) -> dict:
+    """N a N desde 017-imputacion-automatica-costos: se puede llamar varias
+    veces con distintas facturas, ya no bloquea si la Orden ya tenía una."""
     return await _ejecutar(repository.vincular_factura_contratista, id_orden, body.idCompra)
+
+
+@router.delete("/{id_orden}/factura-contratista/{id_compra}", status_code=204)
+async def desvincular_factura(id_orden: int, id_compra: int) -> None:
+    await _ejecutar(repository.desvincular_factura_contratista, id_orden, id_compra)

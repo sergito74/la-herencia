@@ -69,7 +69,7 @@ def _filas_maquinaria_y_contratista(id_cultivo: int | None, id_campania: int | N
         ids_t,
     )
     contratista = fetch_all(
-        f"SELECT f.IdOrdenTrabajo AS idOrdenTrabajo, f.IdCompra AS idCompra FROM dbo.Ordenes_Trabajo_Contratista_Factura f WHERE f.IdOrdenTrabajo IN ({marcas})",
+        f"SELECT f.IdOrdenTrabajo AS idOrdenTrabajo, f.IdCompra AS idCompra FROM dbo.OrdenesContratistaFacturas f WHERE f.IdOrdenTrabajo IN ({marcas})",
         ids_t,
     )
     return maquinaria, contratista

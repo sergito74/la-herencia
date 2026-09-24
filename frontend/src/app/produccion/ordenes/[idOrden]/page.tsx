@@ -6,7 +6,15 @@ import { useParams, useRouter } from "next/navigation";
 import { useState } from "react";
 
 import { ApiError } from "@/services/apiClient";
-import { agregarMaquinaria, anularOrden, corregirFechaEjecucion, ejecutarOrden, fetchOrden, vincularFacturaContratista } from "@/services/ordenesApi";
+import {
+  agregarMaquinaria,
+  anularOrden,
+  corregirFechaEjecucion,
+  desvincularFacturaContratista,
+  ejecutarOrden,
+  fetchOrden,
+  vincularFacturaContratista,
+} from "@/services/ordenesApi";
 import { formatCantidad, formatMoneda } from "@/lib/format";
 import { ErrorState, LoadingState } from "@/components/ui/States";
 import { NumberInput } from "@/components/ui/NumberInput";
@@ -93,6 +101,16 @@ export default function DetalleOrdenPage() {
       refrescar();
     } catch (e) {
       showToast(e instanceof ApiError ? e.message : "No se pudo vincular la factura.", "danger");
+    }
+  }
+
+  async function quitarFactura(idCompra: number) {
+    try {
+      await desvincularFacturaContratista(id, idCompra);
+      showToast("Factura desvinculada.", "success");
+      refrescar();
+    } catch (e) {
+      showToast(e instanceof ApiError ? e.message : "No se pudo desvincular la factura.", "danger");
     }
   }
 
@@ -283,24 +301,34 @@ export default function DetalleOrdenPage() {
       </div>
 
       <div className="mt-6">
-        <h2 className="text-lg font-medium">Factura del contratista</h2>
-        {orden.facturaContratista ? (
-          <div className="mt-2 rounded border border-border p-3 text-sm">
-            {orden.facturaContratista.tipoDocumento} {orden.facturaContratista.numeroDocumento} ({orden.facturaContratista.moneda})
+        <h2 className="text-lg font-medium">Facturas del contratista</h2>
+        {/* N a N desde 017-imputacion-automatica-costos: se pueden vincular varias facturas a la misma orden. */}
+        {orden.facturasContratista.length > 0 && (
+          <ul className="mt-2 space-y-1">
+            {orden.facturasContratista.map((f) => (
+              <li key={f.idCompra} className="flex items-center justify-between rounded border border-border p-3 text-sm">
+                <span>
+                  {f.tipoDocumento} {f.numeroDocumento} ({f.moneda})
+                </span>
+                {orden.estado !== "Anulada" && (
+                  <button type="button" onClick={() => quitarFactura(f.idCompra)} className="text-xs text-ink-secondary hover:text-red-600">
+                    Quitar
+                  </button>
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
+        {orden.estado !== "Anulada" && orden.contratista && (
+          <div className="mt-2 flex items-end gap-2">
+            <label className="text-sm">
+              N° de compra (IdCompra)
+              <NumberInput className="mt-1 block w-32 rounded border border-border px-2 py-1.5 text-right" value={idCompraFactura} onChange={setIdCompraFactura} maxDecimales={0} />
+            </label>
+            <button type="button" onClick={guardarFactura} disabled={!idCompraFactura} className="rounded bg-finance px-3 py-1.5 text-sm text-white disabled:opacity-50">
+              Vincular otra factura
+            </button>
           </div>
-        ) : (
-          orden.estado !== "Anulada" &&
-          orden.contratista && (
-            <div className="mt-2 flex items-end gap-2">
-              <label className="text-sm">
-                N° de compra (IdCompra)
-                <NumberInput className="mt-1 block w-32 rounded border border-border px-2 py-1.5 text-right" value={idCompraFactura} onChange={setIdCompraFactura} maxDecimales={0} />
-              </label>
-              <button type="button" onClick={guardarFactura} disabled={!idCompraFactura} className="rounded bg-finance px-3 py-1.5 text-sm text-white disabled:opacity-50">
-                Vincular
-              </button>
-            </div>
-          )
         )}
       </div>
 

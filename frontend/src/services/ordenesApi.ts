@@ -2,7 +2,7 @@
  * Órdenes de Trabajo (011-ordenes-trabajo). Escribe exclusivamente contra `WC`.
  */
 
-import { API_BASE_URL, apiGet, apiPatch, apiPost } from "@/services/apiClient";
+import { API_BASE_URL, apiDelete, apiGet, apiPatch, apiPost } from "@/services/apiClient";
 import type { Paginado } from "@/services/remitosApi";
 
 // ------------------------------------------------------------------ catálogos
@@ -158,6 +158,7 @@ export interface OrdenDetalle extends OrdenListItem {
   insumos: RenglonInsumoDetalle[];
   maquinaria: { idOrdenMaquinaria: number; descripcion: string; costoPorHectarea: number; tipoCambioBna: number | null }[];
   facturaContratista: { idCompra: number; tipoDocumento: string; numeroDocumento: string; moneda: string; tipoDeCambio: number | null } | null;
+  facturasContratista: { idCompra: number; tipoDocumento: string; numeroDocumento: string; moneda: string; tipoDeCambio: number | null }[];
   formularioRetiro: FormularioRetiro | null;
   tieneDevoluciones: boolean;
   editable: boolean;
@@ -201,8 +202,13 @@ export const agregarMaquinaria = (idOrden: number, datos: MaquinariaIn) =>
 
 // ------------------------------------------------------------------ factura de contratista (Historia 4)
 
+// N a N desde 017-imputacion-automatica-costos: se puede llamar varias veces
+// con distintas facturas para la misma orden.
 export const vincularFacturaContratista = (idOrden: number, idCompra: number) =>
-  apiPost<{ montoPesos: number; montoDolares: number | null; porLote: Record<number, number> }>(`/api/ordenes/${idOrden}/factura`, { idCompra });
+  apiPost<{ montoPesos: number; montoDolares: number | null; porLote: Record<number, number> }>(`/api/ordenes/${idOrden}/factura-contratista`, { idCompra });
+
+export const desvincularFacturaContratista = (idOrden: number, idCompra: number) =>
+  apiDelete(`/api/ordenes/${idOrden}/factura-contratista/${idCompra}`);
 
 // ------------------------------------------------------------------ resultado por cultivo/campaña (Historia 6)
 

@@ -25,6 +25,8 @@ Esta carpeta contiene la fuente funcional compartida por Claude y Codex. La guí
 | `013-carga-resumenes-excel` | Confirmar carga de resúmenes bancarios BNA/Galicia (completa 003 US3) | spec, plan, tareas, investigación, modelo, contrato, quickstart, checklist, validación |
 | `014-informes-cuentas-valores` | Exportar saldos de Cuentas Corrientes y Valores Propios a Excel | spec, plan, tareas, investigación, modelo, contrato, quickstart, checklist, validación |
 | `015-inicio-kpis` | Indicadores reales y contenido actualizado en la pantalla de inicio | spec, plan, tareas, quickstart, checklist |
+| `016-autenticacion` | Login con usuarios y roles (Administrador/Lectura) | spec, plan, tareas, checklist |
+| `017-imputacion-automatica-costos` | Motor de auto-clasificación de Rubro/Centro de Costos/Cultivo/Campaña para facturas de insumos y contratistas (modo paralelo/benchmark contra el motor heredado de 012) | spec, checklist |
 
 ## Reanudar trabajo interrumpido
 
