@@ -32,6 +32,7 @@ interface Linea {
   centroCostoManual: string | null;
   rubroManual: string | null;
   fracciones: Fraccion[];
+  totalFracciones: number;
 }
 
 interface Documento {
@@ -43,7 +44,10 @@ interface Documento {
   numeroDocumento: string | null;
   moneda: string;
   lineas: Linea[];
+  totalDocumento: number;
 }
+
+type Estado = "Pendiente" | "Aprobada" | "RequiereIntervencion";
 
 function etiquetaDestino(f: Fraccion): string {
   if (f.cultivo) return `${f.cultivo} / ${f.campania ?? "—"}`;
@@ -84,7 +88,16 @@ function LineaRow({ linea }: { linea: Linea }) {
         <td className="py-1.5">{linea.cantidad}</td>
         <td className="py-1.5">{linea.campaniaManual ?? "—"}</td>
         <td className="py-1.5">{linea.centroCostoManual ?? linea.rubroManual ?? "—"}</td>
-        <td className="py-1.5 text-ink-secondary">{tiene ? `${linea.fracciones.length} fracción(es)` : "sin propuesta"}</td>
+        <td className="py-1.5 text-ink-secondary">
+          {tiene ? (
+            <>
+              {linea.totalFracciones.toLocaleString("es-AR")} ({linea.fracciones.length} fracción
+              {linea.fracciones.length > 1 ? "es" : ""})
+            </>
+          ) : (
+            "sin propuesta"
+          )}
+        </td>
       </tr>
       {abierta &&
         linea.fracciones.map((f) => (
@@ -94,7 +107,17 @@ function LineaRow({ linea }: { linea: Linea }) {
               {f.importe.toLocaleString("es-AR")}
             </td>
             <td className="py-1">{f.origen}</td>
-            <td className="py-1">{badgeEstado(f.estado)}</td>
+            <td className="py-1">
+              {badgeEstado(f.estado)}
+              {f.estado !== "Aprobada" && (
+                <a
+                  href={`/imputacion?idDetalleCompra=${linea.idDetalleCompra}`}
+                  className="ml-2 text-ink-secondary underline"
+                >
+                  Revisar
+                </a>
+              )}
+            </td>
           </tr>
         ))}
     </>
@@ -106,33 +129,39 @@ export default function DocumentosImputacionPage() {
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
 
+  const [totalGeneral, setTotalGeneral] = useState(0);
+
   const [idContacto, setIdContacto] = useState<number | null>(null);
   const [proveedorNombre, setProveedorNombre] = useState<string | null>(null);
   const [fechaDesde, setFechaDesde] = useState("");
   const [fechaHasta, setFechaHasta] = useState("");
-  const [filtrosAplicados, setFiltrosAplicados] = useState<{ idContacto: number | null; fechaDesde: string; fechaHasta: string }>({
+  const [estado, setEstado] = useState<Estado | "">("");
+  const [filtrosAplicados, setFiltrosAplicados] = useState<{ idContacto: number | null; fechaDesde: string; fechaHasta: string; estado: Estado | "" }>({
     idContacto: null,
     fechaDesde: "",
     fechaHasta: "",
+    estado: "",
   });
 
   useEffect(() => {
-    apiGet<{ items: Documento[]; total: number }>("/api/imputacion/documentos", {
+    apiGet<{ items: Documento[]; total: number; totalGeneral: number }>("/api/imputacion/documentos", {
       page,
       pageSize: 20,
       idContacto: filtrosAplicados.idContacto ?? undefined,
       fechaDesde: filtrosAplicados.fechaDesde || undefined,
       fechaHasta: filtrosAplicados.fechaHasta || undefined,
+      estado: filtrosAplicados.estado || undefined,
     }).then((r) => {
       setDocumentos(r.items);
       setTotal(r.total);
+      setTotalGeneral(r.totalGeneral);
     });
   }, [page, filtrosAplicados]);
 
   function aplicarFiltros(e: React.FormEvent) {
     e.preventDefault();
     setPage(1);
-    setFiltrosAplicados({ idContacto, fechaDesde, fechaHasta });
+    setFiltrosAplicados({ idContacto, fechaDesde, fechaHasta, estado });
   }
 
   function urlExportar() {
@@ -140,6 +169,7 @@ export default function DocumentosImputacionPage() {
     if (filtrosAplicados.idContacto) url.searchParams.set("idContacto", String(filtrosAplicados.idContacto));
     if (filtrosAplicados.fechaDesde) url.searchParams.set("fechaDesde", filtrosAplicados.fechaDesde);
     if (filtrosAplicados.fechaHasta) url.searchParams.set("fechaHasta", filtrosAplicados.fechaHasta);
+    if (filtrosAplicados.estado) url.searchParams.set("estado", filtrosAplicados.estado);
     return url.toString();
   }
 
@@ -169,6 +199,14 @@ export default function DocumentosImputacionPage() {
           </FilterField>
           <FilterField label="Fecha hasta">
             <input type="date" className={filterInputClass} value={fechaHasta} onChange={(e) => setFechaHasta(e.target.value)} />
+          </FilterField>
+          <FilterField label="Estado">
+            <select className={filterInputClass} value={estado} onChange={(e) => setEstado(e.target.value as Estado | "")}>
+              <option value="">Todos</option>
+              <option value="Pendiente">Pendiente</option>
+              <option value="Aprobada">Aprobada</option>
+              <option value="RequiereIntervencion">Requiere intervención</option>
+            </select>
           </FilterField>
           <FilterSubmitButton />
         </FilterBar>
@@ -206,10 +244,23 @@ export default function DocumentosImputacionPage() {
                   <LineaRow key={linea.idDetalleCompra} linea={linea} />
                 ))}
               </tbody>
+              <tfoot>
+                <tr className="border-t border-border text-sm font-medium">
+                  <td colSpan={4} className="py-1.5 pl-6 text-right">
+                    Total documento
+                  </td>
+                  <td className="py-1.5">{doc.totalDocumento.toLocaleString("es-AR")}</td>
+                </tr>
+              </tfoot>
             </table>
           </div>
         ))}
         {documentos.length === 0 && <p className="text-sm text-ink-secondary">No hay documentos con imputación todavía.</p>}
+        {documentos.length > 0 && (
+          <div className="flex items-center justify-end gap-2 rounded-md border border-border bg-surface-sunken px-4 py-2 text-sm font-medium">
+            Total general (con estos filtros): {totalGeneral.toLocaleString("es-AR")}
+          </div>
+        )}
       </div>
 
       <div className="mt-4 flex items-center gap-2 text-sm">

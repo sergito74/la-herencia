@@ -324,16 +324,13 @@ def detalles_compra_con_corrida_por_producto(id_producto: int) -> list[int]:
     return [f["idDetalleCompra"] for f in filas]
 
 
-def listar_documentos_con_imputacion(
-    id_contacto: int | None = None,
-    fecha_desde=None,
-    fecha_hasta=None,
-    page: int = 1,
-    page_size: int = 20,
-) -> tuple[list[dict], int]:
-    """Documentos comerciales (Compras) que ya tienen al menos una propuesta
-    del motor — informe/pantalla para la oficina del contador (pedido del
-    usuario, 2026-09-25)."""
+_VIGENTE_SQL = (
+    "p.IdCorrida = (SELECT TOP 1 p2.IdCorrida FROM dbo.ImputacionPropuestas p2 "
+    "WHERE p2.IdDetalleCompra = p.IdDetalleCompra ORDER BY p2.FechaCalculo DESC)"
+)
+
+
+def _filtros_documentos(id_contacto, fecha_desde, fecha_hasta, estado) -> tuple[list[str], list]:
     where = ["c.IdDeuda IN (SELECT DISTINCT dc.IdCompra FROM dbo.Det_Compras dc "
              "JOIN dbo.ImputacionPropuestas p ON p.IdDetalleCompra = dc.IdDetalleCompra)"]
     params: list = []
@@ -346,6 +343,47 @@ def listar_documentos_con_imputacion(
     if fecha_hasta is not None:
         where.append("c.Fecha <= ?")
         params.append(fecha_hasta)
+    if estado is not None:
+        where.append(
+            "c.IdDeuda IN (SELECT DISTINCT dc.IdCompra FROM dbo.Det_Compras dc "
+            f"JOIN dbo.ImputacionPropuestas p ON p.IdDetalleCompra = dc.IdDetalleCompra AND {_VIGENTE_SQL} "
+            "WHERE p.Estado = ?)"
+        )
+        params.append(estado)
+    return where, params
+
+
+def total_general_documentos(id_contacto=None, fecha_desde=None, fecha_hasta=None, estado=None) -> float:
+    """Suma de `Importe` (fracciones vigentes) de TODOS los documentos que
+    matchean el filtro, no solo la página actual — para el total general
+    del informe (pedido del usuario 2026-09-25)."""
+    where, params = _filtros_documentos(id_contacto, fecha_desde, fecha_hasta, estado)
+    where_sql = "WHERE " + " AND ".join(where)
+    fila = fetch_one(
+        f"""
+        SELECT SUM(p.Importe) AS total
+        FROM dbo.ImputacionPropuestas p
+        JOIN dbo.Det_Compras dc ON dc.IdDetalleCompra = p.IdDetalleCompra
+        JOIN dbo.Compras c ON c.IdDeuda = dc.IdCompra
+        WHERE {_VIGENTE_SQL} AND dc.IdCompra IN (SELECT c2.IdDeuda FROM dbo.Compras c2 {where_sql})
+        """,
+        tuple(params),
+    )
+    return float((fila or {}).get("total") or 0)
+
+
+def listar_documentos_con_imputacion(
+    id_contacto: int | None = None,
+    fecha_desde=None,
+    fecha_hasta=None,
+    estado: str | None = None,
+    page: int = 1,
+    page_size: int = 20,
+) -> tuple[list[dict], int]:
+    """Documentos comerciales (Compras) que ya tienen al menos una propuesta
+    del motor — informe/pantalla para la oficina del contador (pedido del
+    usuario, 2026-09-25)."""
+    where, params = _filtros_documentos(id_contacto, fecha_desde, fecha_hasta, estado)
     where_sql = "WHERE " + " AND ".join(where)
 
     total = fetch_one(f"SELECT COUNT(*) AS total FROM dbo.Compras c {where_sql}", tuple(params))["total"]
@@ -368,26 +406,43 @@ def listar_documentos_con_imputacion(
 
 
 def lineas_con_imputacion(id_compra: int) -> list[dict]:
-    """Renglones de un documento comercial con la clasificación manual y las
-    fracciones vigentes del motor (con nombres resueltos para el informe)."""
+    """Renglones de un único documento comercial, con su clasificación
+    manual y las fracciones vigentes del motor. Para varios documentos a la
+    vez (una página del informe) usar `lineas_con_imputacion_batch`, que
+    evita el patrón N+1 de llamar a esta función una vez por documento."""
+    return lineas_con_imputacion_batch((id_compra,)).get(id_compra, [])
+
+
+def lineas_con_imputacion_batch(ids_compra: tuple[int, ...]) -> dict[int, list[dict]]:
+    """Igual que `lineas_con_imputacion`, pero para varios documentos en 2
+    queries en vez de 2×N — usada por el informe `/api/imputacion/documentos`
+    (antes hacía 2 round-trips por documento de la página, hallazgo de
+    revisión SQL, 2026-09-25)."""
+    if not ids_compra:
+        return {}
+
+    marcas_compra = ",".join("?" for _ in ids_compra)
     lineas = fetch_all(
-        "SELECT dc.IdDetalleCompra AS idDetalleCompra, dc.[Producto/Servicio] AS producto, "
-        "dc.Cantidad AS cantidad, dc.Unidad AS unidad, dc.[Precio Unitario] AS precioUnitario, "
-        "dc.IdCampaña AS idCampaniaManual, ca.Campaña AS campaniaManual, "
-        "dc.IdCentroCostos AS idCentroCostoManual, cc.[Centro de costos] AS centroCostoManual, "
-        "dc.IdRubro AS idRubroManual, r.Rubro AS rubroManual "
-        "FROM dbo.Det_Compras dc "
-        "LEFT JOIN dbo.Campañas ca ON ca.IdCampaña = dc.IdCampaña "
-        "LEFT JOIN dbo.[Centro de costos] cc ON cc.IdCentro = dc.IdCentroCostos "
-        "LEFT JOIN dbo.Rubros r ON r.IdRubro = dc.IdRubro "
-        "WHERE dc.IdCompra = ? ORDER BY dc.IdDetalleCompra",
-        (id_compra,),
+        f"""
+        SELECT dc.IdCompra AS idCompra, dc.IdDetalleCompra AS idDetalleCompra, dc.[Producto/Servicio] AS producto,
+               dc.Cantidad AS cantidad, dc.Unidad AS unidad, dc.[Precio Unitario] AS precioUnitario,
+               dc.IdCampaña AS idCampaniaManual, ca.Campaña AS campaniaManual,
+               dc.IdCentroCostos AS idCentroCostoManual, cc.[Centro de costos] AS centroCostoManual,
+               dc.IdRubro AS idRubroManual, r.Rubro AS rubroManual
+        FROM dbo.Det_Compras dc
+        LEFT JOIN dbo.Campañas ca ON ca.IdCampaña = dc.IdCampaña
+        LEFT JOIN dbo.[Centro de costos] cc ON cc.IdCentro = dc.IdCentroCostos
+        LEFT JOIN dbo.Rubros r ON r.IdRubro = dc.IdRubro
+        WHERE dc.IdCompra IN ({marcas_compra})
+        ORDER BY dc.IdCompra, dc.IdDetalleCompra
+        """,
+        ids_compra,
     )
     if not lineas:
-        return []
+        return {}
 
-    marcas = ",".join("?" for _ in lineas)
-    ids = tuple(l["idDetalleCompra"] for l in lineas)
+    marcas_linea = ",".join("?" for _ in lineas)
+    ids_linea = tuple(l["idDetalleCompra"] for l in lineas)
     fracciones = fetch_all(
         f"""
         SELECT p.IdDetalleCompra AS idDetalleCompra, p.IdPropuesta AS idPropuesta, p.Origen AS origen,
@@ -400,20 +455,22 @@ def lineas_con_imputacion(id_compra: int) -> list[dict]:
         LEFT JOIN dbo.Cultivos cu ON cu.IdCultivo = p.IdCultivo
         LEFT JOIN dbo.Campañas ca ON ca.IdCampaña = p.IdCampania
         LEFT JOIN dbo.[Centro de costos] cc ON cc.IdCentro = p.IdCentroCosto
-        WHERE p.IdDetalleCompra IN ({marcas})
+        WHERE p.IdDetalleCompra IN ({marcas_linea})
           AND p.IdCorrida = (SELECT TOP 1 p2.IdCorrida FROM dbo.ImputacionPropuestas p2
                               WHERE p2.IdDetalleCompra = p.IdDetalleCompra ORDER BY p2.FechaCalculo DESC)
         ORDER BY p.IdDetalleCompra, p.IdPropuesta
         """,
-        ids,
+        ids_linea,
     )
-    por_linea: dict[int, list[dict]] = defaultdict(list)
+    fracciones_por_linea: dict[int, list[dict]] = defaultdict(list)
     for f in fracciones:
-        por_linea[f["idDetalleCompra"]].append(f)
+        fracciones_por_linea[f["idDetalleCompra"]].append(f)
 
+    lineas_por_compra: dict[int, list[dict]] = defaultdict(list)
     for linea in lineas:
-        linea["fracciones"] = por_linea.get(linea["idDetalleCompra"], [])
-    return lineas
+        linea["fracciones"] = fracciones_por_linea.get(linea["idDetalleCompra"], [])
+        lineas_por_compra[linea["idCompra"]].append(linea)
+    return lineas_por_compra
 
 
 def costo_aprobado_por_campania(id_campania: int) -> dict:

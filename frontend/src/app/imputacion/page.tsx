@@ -1,18 +1,33 @@
 "use client";
 
+import { useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
 import { SoloLectura } from "@/components/auth/SoloLectura";
 import { PropuestaCard } from "@/components/imputacion/PropuestaCard";
-import { apiGet, apiPost } from "@/services/apiClient";
+import { useToast } from "@/components/ui/Toast";
+import { apiGet, ApiError, apiPost } from "@/services/apiClient";
 import type { PendienteIntervencionOut, PropuestaFraccion } from "@/services/imputacionApi";
 
-const ETIQUETA_MOTIVO: Record<string, string> = {
-  sinOrdenVinculada: "Sin Orden de Trabajo vinculada",
-  repartoNoCierra: "El reparto no cierra contra el total de la factura",
+const MOTIVO: Record<string, { titulo: string; accion: string }> = {
+  sinOrdenVinculada: {
+    titulo: "Sin Orden de Trabajo vinculada",
+    accion: "Vinculá la factura a la Orden de Trabajo que corresponde (en Órdenes de Trabajo) y volvé a calcular.",
+  },
+  repartoNoCierra: {
+    titulo: "El reparto no cierra contra el total de la factura",
+    accion: "Revisá las Órdenes vinculadas a esta factura de contratista — la suma repartida difiere del total por más de lo tolerable.",
+  },
+  fueraDeCalendarioAgricola: {
+    titulo: "Fecha fuera del calendario agrícola de ese cultivo",
+    accion: "La Orden de origen tiene una fecha que no encaja con el ciclo real de ese Cultivo/Campaña — revisá esa Orden.",
+  },
 };
 
 export default function ImputacionPage() {
+  const searchParams = useSearchParams();
+  const idDetalleCompraFoco = searchParams.get("idDetalleCompra");
+
   const [fracciones, setFracciones] = useState<PropuestaFraccion[]>([]);
   const [pendientesIntervencion, setPendientesIntervencion] = useState<PendienteIntervencionOut[]>([]);
   const [filtro, setFiltro] = useState<"todas" | "pendiente" | "requiereIntervencion">("todas");
@@ -20,6 +35,7 @@ export default function ImputacionPage() {
   const [ultimoCalculo, setUltimoCalculo] = useState<{ insumosCalculados: number; contratistasCalculados: number } | null>(
     null
   );
+  const { showToast } = useToast();
 
   async function calcularPendientes() {
     setCalculando(true);
@@ -29,12 +45,18 @@ export default function ImputacionPage() {
         {}
       );
       setUltimoCalculo(resultado);
+      showToast(
+        `${resultado.insumosCalculados} facturas de insumo y ${resultado.contratistasCalculados} de contratista procesadas.`,
+        "success"
+      );
       // Recarga el listado actual con lo recién calculado.
       setFiltro((f) => f);
       apiGet<PropuestaFraccion[]>("/api/imputacion/propuestas", {
         estado: filtro === "todas" ? undefined : "Pendiente",
         pageSize: 200,
       }).then(setFracciones);
+    } catch (e) {
+      showToast(e instanceof ApiError ? e.message : "No se pudo calcular las propuestas pendientes.", "danger");
     } finally {
       setCalculando(false);
     }
@@ -107,17 +129,29 @@ export default function ImputacionPage() {
 
       {filtro === "requiereIntervencion" ? (
         <div className="mt-6 space-y-2">
-          {pendientesIntervencion.map((p) => (
-            <div key={p.idCorrida} className="rounded-md border border-border p-3 text-sm">
-              <span className="font-medium">
-                {p.origen === "Contratista" ? "Factura de contratista" : "Factura de insumo"} #{p.idDetalleCompra}
-              </span>
-              <p className="text-ink-secondary">{ETIQUETA_MOTIVO[p.motivo] ?? p.motivo}</p>
-            </div>
-          ))}
+          {pendientesIntervencion.map((p) => {
+            const info = MOTIVO[p.motivo];
+            return (
+              <div key={p.idCorrida} className="rounded-md border border-red-200 bg-red-50 p-3 text-sm">
+                <span className="font-medium">
+                  {p.origen === "Contratista" ? "Factura de contratista" : "Factura de insumo"} #{p.idDetalleCompra}
+                </span>
+                <p className="mt-1 text-ink-secondary">{info?.titulo ?? p.motivo}</p>
+                {info && <p className="mt-0.5 text-xs text-ink-secondary">→ {info.accion}</p>}
+              </div>
+            );
+          })}
           {pendientesIntervencion.length === 0 && (
             <p className="text-sm text-ink-secondary">No hay casos que requieran intervención manual.</p>
           )}
+        </div>
+      ) : idDetalleCompraFoco ? (
+        <div className="mt-6">
+          <h2 className="mb-2 text-sm font-medium text-ink-secondary">Renglón de factura {idDetalleCompraFoco}</h2>
+          <PropuestaCard idDetalleCompra={Number(idDetalleCompraFoco)} />
+          <a href="/imputacion" className="mt-2 inline-block text-xs text-ink-secondary underline">
+            ← Ver todas las propuestas
+          </a>
         </div>
       ) : (
         <div className="mt-6 space-y-6">

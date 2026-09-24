@@ -43,10 +43,11 @@ def _etiqueta_destino(f: dict) -> str:
     return "En stock sin consumir"
 
 
-def informe_documentos_xlsx(id_contacto: int | None, fecha_desde, fecha_hasta) -> bytes:
+def informe_documentos_xlsx(id_contacto: int | None, fecha_desde, fecha_hasta, estado: str | None = None) -> bytes:
     documentos, _total = repository.listar_documentos_con_imputacion(
-        id_contacto, fecha_desde, fecha_hasta, page=1, page_size=5000
+        id_contacto, fecha_desde, fecha_hasta, estado, page=1, page_size=5000
     )
+    total_general = 0.0
 
     wb = Workbook()
     ws = wb.active
@@ -60,11 +61,16 @@ def informe_documentos_xlsx(id_contacto: int | None, fecha_desde, fecha_hasta) -
         ws.column_dimensions[get_column_letter(i)].width = ancho
     ws.freeze_panes = "A2"
 
+    lineas_por_compra = repository.lineas_con_imputacion_batch(tuple(d["idCompra"] for d in documentos))
+
     fila = 2
     for doc in documentos:
         documento = f"{doc['tipoDocumento'] or ''} {doc['numeroDocumento'] or ''}".strip()
-        lineas = repository.lineas_con_imputacion(doc["idCompra"])
+        lineas = lineas_por_compra.get(doc["idCompra"], [])
+        total_documento = 0.0
         for linea in lineas:
+            total_linea = round(sum(float(f["importe"]) for f in linea["fracciones"]), 2)
+            total_documento += total_linea
             ws.append(
                 [
                     documento,
@@ -91,6 +97,15 @@ def informe_documentos_xlsx(id_contacto: int | None, fecha_desde, fecha_hasta) -
                 )
                 ws.row_dimensions[fila].outline_level = 1
                 fila += 1
+        total_general += total_documento
+        ws.append(["", "", "", "", "", "", f"Total {documento}", round(total_documento, 2), ""])
+        for c in ws[fila]:
+            c.font = Font(bold=True)
+        fila += 1
+
+    ws.append(["", "", "", "", "", "", "TOTAL GENERAL", round(total_general, 2), ""])
+    for c in ws[fila]:
+        c.font = Font(bold=True, color="1F3D2B")
 
     ws.sheet_properties.outlinePr.summaryBelow = False
     for r in ws.iter_rows(min_row=2, max_row=ws.max_row):

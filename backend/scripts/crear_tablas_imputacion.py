@@ -39,6 +39,29 @@ IF NOT EXISTS (
 CREATE INDEX IX_ImputacionPropuestas_DetalleCompra ON dbo.ImputacionPropuestas (IdDetalleCompra, IdCorrida)
 """
 
+# Cubre el TOP 1 ... ORDER BY FechaCalculo DESC (corrida vigente) que se repite
+# en casi todas las queries del informe/motor — sin esto, cae a lookup por fila
+# en vez de index-only scan (hallazgo de revisión SQL Server, 2026-09-25).
+DDL_INDICE_VIGENTE = """
+IF NOT EXISTS (
+    SELECT 1 FROM sys.indexes
+    WHERE name = 'IX_ImputacionPropuestas_Vigente' AND object_id = OBJECT_ID('dbo.ImputacionPropuestas')
+)
+CREATE INDEX IX_ImputacionPropuestas_Vigente ON dbo.ImputacionPropuestas (IdDetalleCompra, FechaCalculo DESC)
+INCLUDE (IdCorrida, Estado, Importe, IdLote, IdCultivo, IdCampania, IdCentroCosto, EsGanaderia)
+"""
+
+# Filtro por proveedor/fecha del informe de documentos (hallazgo de revisión
+# SQL Server, 2026-09-25) — sin esto, listar_documentos_con_imputacion hace
+# table scan de Compras al filtrar por proveedor.
+DDL_INDICE_COMPRAS_CONTACTO_FECHA = """
+IF NOT EXISTS (
+    SELECT 1 FROM sys.indexes
+    WHERE name = 'IX_Compras_Contacto_Fecha' AND object_id = OBJECT_ID('dbo.Compras')
+)
+CREATE INDEX IX_Compras_Contacto_Fecha ON dbo.Compras (IdContacto, Fecha DESC)
+"""
+
 DDL_ORDENES_CONTRATISTA_FACTURAS = """
 IF OBJECT_ID('dbo.OrdenesContratistaFacturas', 'U') IS NULL
 CREATE TABLE dbo.OrdenesContratistaFacturas (
@@ -68,6 +91,8 @@ def main() -> None:
         cursor = conn.cursor()
         cursor.execute(DDL_PROPUESTAS)
         cursor.execute(DDL_INDICE_PROPUESTAS)
+        cursor.execute(DDL_INDICE_VIGENTE)
+        cursor.execute(DDL_INDICE_COMPRAS_CONTACTO_FECHA)
         cursor.execute(DDL_ORDENES_CONTRATISTA_FACTURAS)
         cursor.execute(DDL_REFERENCIAS)
     finally:

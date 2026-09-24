@@ -106,15 +106,26 @@ async def listar_documentos(
     idContacto: int | None = Query(default=None),
     fechaDesde: str | None = Query(default=None),
     fechaHasta: str | None = Query(default=None),
+    estado: EstadoPropuesta | None = Query(default=None),
     page: int = Query(default=1, ge=1),
     pageSize: int = Query(default=20, ge=1, le=100),
 ) -> dict:
     """Documentos comerciales con sus renglones e imputaciones (manual +
-    motor) — informe/pantalla para la oficina del contador."""
-    documentos, total = repository.listar_documentos_con_imputacion(idContacto, fechaDesde, fechaHasta, page, pageSize)
+    motor) — informe/pantalla para la oficina del contador. `estado` filtra
+    a los documentos que tienen al menos una fracción vigente en ese estado
+    (ej. "solo lo que requiere intervención")."""
+    documentos, total = repository.listar_documentos_con_imputacion(idContacto, fechaDesde, fechaHasta, estado, page, pageSize)
+    lineas_por_compra = repository.lineas_con_imputacion_batch(tuple(d["idCompra"] for d in documentos))
+    total_general = repository.total_general_documentos(idContacto, fechaDesde, fechaHasta, estado)
+
     for doc in documentos:
-        doc["lineas"] = repository.lineas_con_imputacion(doc["idCompra"])
-    return {"items": documentos, "total": total, "page": page, "pageSize": pageSize}
+        lineas = lineas_por_compra.get(doc["idCompra"], [])
+        for linea in lineas:
+            linea["totalFracciones"] = round(sum(f["importe"] for f in linea["fracciones"]), 2)
+        doc["lineas"] = lineas
+        doc["totalDocumento"] = round(sum(l["totalFracciones"] for l in lineas), 2)
+
+    return {"items": documentos, "total": total, "page": page, "pageSize": pageSize, "totalGeneral": round(total_general, 2)}
 
 
 @router.get("/documentos/exportar")
@@ -122,8 +133,9 @@ async def exportar_documentos(
     idContacto: int | None = Query(default=None),
     fechaDesde: str | None = Query(default=None),
     fechaHasta: str | None = Query(default=None),
+    estado: EstadoPropuesta | None = Query(default=None),
 ) -> Response:
-    contenido = exportacion.informe_documentos_xlsx(idContacto, fechaDesde, fechaHasta)
+    contenido = exportacion.informe_documentos_xlsx(idContacto, fechaDesde, fechaHasta, estado)
     return Response(
         content=contenido,
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",

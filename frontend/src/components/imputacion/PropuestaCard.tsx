@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react";
 
-import { apiGet, apiPost } from "@/services/apiClient";
+import { apiGet, ApiError, apiPost } from "@/services/apiClient";
+import { useToast } from "@/components/ui/Toast";
 import type { AprobarPropuestaIn, PropuestaFraccion } from "@/services/imputacionApi";
 
 interface Traza {
@@ -19,8 +20,17 @@ interface Traza {
   }>;
 }
 
-function etiquetaDestino(f: PropuestaFraccion): string {
-  if (f.idCultivo) return `Cultivo ${f.idCultivo} / Campaña ${f.idCampania ?? "—"}`;
+interface Catalogos {
+  cultivos: { idCultivo: number; nombre: string }[];
+  campanias: { idCampania: number; nombre: string }[];
+}
+
+function etiquetaDestino(f: PropuestaFraccion, catalogos: Catalogos | null): string {
+  if (f.idCultivo) {
+    const cultivo = catalogos?.cultivos.find((c) => c.idCultivo === f.idCultivo)?.nombre ?? `Cultivo ${f.idCultivo}`;
+    const campania = catalogos?.campanias.find((c) => c.idCampania === f.idCampania)?.nombre ?? f.idCampania ?? "—";
+    return `${cultivo} / ${campania}`;
+  }
   if (f.idCentroCosto) return `Centro de Costos ${f.idCentroCosto}`;
   if (f.esGanaderia) return "Ganadería";
   return "En stock sin consumir";
@@ -29,13 +39,16 @@ function etiquetaDestino(f: PropuestaFraccion): string {
 export function PropuestaCard({ idDetalleCompra }: { idDetalleCompra: number }) {
   const [fracciones, setFracciones] = useState<PropuestaFraccion[] | null>(null);
   const [trazas, setTrazas] = useState<Traza[] | null>(null);
+  const [catalogos, setCatalogos] = useState<Catalogos | null>(null);
   const [enviando, setEnviando] = useState(false);
   const [editando, setEditando] = useState(false);
   const [correcciones, setCorrecciones] = useState<Record<number, { idCultivo?: number; idCampania?: number }>>({});
+  const { showToast } = useToast();
 
   useEffect(() => {
     apiGet<PropuestaFraccion[]>("/api/imputacion/propuestas", { idDetalleCompra }).then(setFracciones);
     apiGet<Traza[]>(`/api/imputacion/propuestas/${idDetalleCompra}/trazabilidad`).then(setTrazas);
+    apiGet<Catalogos>("/api/ordenes/catalogos").then(setCatalogos);
   }, [idDetalleCompra]);
 
   if (!fracciones) return <p className="text-sm text-ink-secondary">Cargando propuesta…</p>;
@@ -63,6 +76,9 @@ export function PropuestaCard({ idDetalleCompra }: { idDetalleCompra: number }) 
       setFracciones(actualizadas);
       setCorrecciones({});
       setEditando(false);
+      showToast("Propuesta aprobada.", "success");
+    } catch (e) {
+      showToast(e instanceof ApiError ? e.message : "No se pudo aprobar la propuesta.", "danger");
     } finally {
       setEnviando(false);
     }
@@ -89,23 +105,35 @@ export function PropuestaCard({ idDetalleCompra }: { idDetalleCompra: number }) 
         <tbody>
           {fracciones.map((f) => (
             <tr key={f.idPropuesta} className="border-t border-border">
-              <td className="py-1">{etiquetaDestino(f)}</td>
+              <td className="py-1">{etiquetaDestino(f, catalogos)}</td>
               <td className="py-1">{f.importe.toLocaleString("es-AR")}</td>
               <td className="py-1">{f.estado}</td>
               {editando && f.estado === "Pendiente" && (
                 <td className="py-1">
-                  <input
-                    type="number"
-                    placeholder="idCultivo"
-                    className="w-20 rounded-sm border border-border px-1 text-xs"
+                  <select
+                    className="rounded-sm border border-border px-1 py-0.5 text-xs"
+                    defaultValue=""
                     onChange={(e) => corregirCampo(f.idPropuesta, "idCultivo", e.target.value)}
-                  />
-                  <input
-                    type="number"
-                    placeholder="idCampania"
-                    className="ml-1 w-24 rounded-sm border border-border px-1 text-xs"
+                  >
+                    <option value="">Cultivo (sin cambio)</option>
+                    {catalogos?.cultivos.map((c) => (
+                      <option key={c.idCultivo} value={c.idCultivo}>
+                        {c.nombre}
+                      </option>
+                    ))}
+                  </select>
+                  <select
+                    className="ml-1 rounded-sm border border-border px-1 py-0.5 text-xs"
+                    defaultValue=""
                     onChange={(e) => corregirCampo(f.idPropuesta, "idCampania", e.target.value)}
-                  />
+                  >
+                    <option value="">Campaña (sin cambio)</option>
+                    {catalogos?.campanias.map((c) => (
+                      <option key={c.idCampania} value={c.idCampania}>
+                        {c.nombre}
+                      </option>
+                    ))}
+                  </select>
                 </td>
               )}
             </tr>
