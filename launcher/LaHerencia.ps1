@@ -1,4 +1,4 @@
-param([switch]$Stop, [switch]$Watch, [switch]$NoBrowser)
+param([switch]$Stop, [switch]$Watch, [switch]$NoBrowser, [switch]$Dev)
 
 $ErrorActionPreference = 'Stop'
 $Root      = Split-Path -Parent $PSScriptRoot
@@ -93,12 +93,15 @@ if ($Watch) {
         } catch {
             # Solo cuenta si alguna vez vio al backend arriba: durante el arranque
             # todavia no responde y eso no significa que se haya caido.
-            if ($visto -and ++$fallas -ge 3) { Stop-All; exit 0 }
+            if ($visto -and ++$fallas -eq 3) {
+                Write-Output "$(Get-Date -Format o) API sin respuesta; se conserva el proceso para no interrumpir trabajo."
+            }
             continue
         }
         $grace = if ($e.huboPestana) { $CloseGraceS } else { $NeverOpenedGraceS }
         if ($e.segundosSinActividad -ge $IdleLimitS -or
             ($e.pestanasAbiertas -eq 0 -and $e.segundosSinPestanas -ge $grace)) {
+            Write-Output "$(Get-Date -Format o) Apagado por inactividad/cierre de pestanas."
             Stop-All
             exit 0
         }
@@ -111,6 +114,12 @@ if (-not (Test-Path $Python)) {
 }
 if (-not (Test-Path (Join-Path $Frontend 'node_modules'))) {
     Show-Msg "Faltan las dependencias del frontend.`n`nEjecuta 'npm install' en:`n$Frontend" 'Error'
+    exit 1
+}
+
+$WebMode = if ($Dev) { 'dev' } else { 'start' }
+if (-not $Dev -and -not (Test-PortBusy $WebPort) -and -not (Test-Path (Join-Path $Frontend '.next/BUILD_ID'))) {
+    Show-Msg "Falta compilar el frontend. Ejecuta npm run build en $Frontend antes de abrir el sistema." 'Error'
     exit 1
 }
 
@@ -128,7 +137,7 @@ if (Test-Path $PidFile) {
 # --- Backend ---
 if (-not (Test-PortBusy $ApiPort)) {
     $p = Start-Process -FilePath $Python `
-        -ArgumentList '-m', 'uvicorn', 'src.main:app', '--port', $ApiPort `
+        -ArgumentList '-m', 'uvicorn', 'src.main:app', '--host', 'localhost', '--port', $ApiPort `
         -WorkingDirectory $Backend -WindowStyle Hidden -PassThru `
         -RedirectStandardOutput (Join-Path $RunDir 'backend.log') `
         -RedirectStandardError  (Join-Path $RunDir 'backend.err.log')
@@ -138,7 +147,7 @@ if (-not (Test-PortBusy $ApiPort)) {
 # --- Frontend ---
 if (-not (Test-PortBusy $WebPort)) {
     $p = Start-Process -FilePath 'cmd.exe' `
-        -ArgumentList '/c', 'npm run dev -- --port', $WebPort `
+        -ArgumentList '/c', "npm run $WebMode -- --port", $WebPort `
         -WorkingDirectory $Frontend -WindowStyle Hidden -PassThru `
         -RedirectStandardOutput (Join-Path $RunDir 'frontend.log') `
         -RedirectStandardError  (Join-Path $RunDir 'frontend.err.log')

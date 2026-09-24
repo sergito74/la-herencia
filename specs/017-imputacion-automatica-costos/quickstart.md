@@ -63,3 +63,7 @@
 4. Verificar que ningún valor de `vw_ResultadoCultivo_Campaña` ni de `resultado.py::costo_por_cultivo_campania` (012) cambió como consecuencia de correr este motor.
 
 **Resultado esperado**: SC-003, SC-005 — comparación disponible sin error y sin efecto sobre los reportes existentes.
+
+## Arranque para pruebas de usuario — 2026-09-24
+
+Después de cambios en frontend, ejecutar `npm run build` desde `frontend` con el servidor detenido. Abrir el acceso directo habitual: ahora usa la versión compilada (`next start`) y evita compilar cada pantalla al navegar. Para desarrollo con recarga automática: `powershell -File launcher/LaHerencia.ps1 -Dev`. No alternar modos sobre un servidor que ya esté abierto; cerrarlo antes. El build se debe repetir tras cada cambio de frontend; el backend requiere reinicio tras cambios Python.

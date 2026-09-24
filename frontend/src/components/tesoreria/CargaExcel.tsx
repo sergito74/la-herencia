@@ -70,7 +70,7 @@ export function CargaExcel() {
         Cargar resumen bancario (BNA / Galicia, Excel)
       </h3>
       <p className="mt-1 text-xs italic text-ink-secondary">
-        La vista previa nunca escribe nada. Solo "Confirmar carga" persiste los movimientos
+        La vista previa nunca escribe nada. Solo &quot;Confirmar carga&quot; persiste los movimientos
         nuevos en el sistema.
       </p>
 

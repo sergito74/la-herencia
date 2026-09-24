@@ -202,3 +202,9 @@ description: "Task list for Motor de auto-clasificación de Rubro/Centro de Cost
 ## Notas de la revisión `/speckit-analyze` (2026-09-23)
 
 Antes de implementar T015/T047 (motor.py), confirmar con el usuario el mecanismo de "consumo ganadero" documentado en research.md (Decisión: reutiliza `Stock_Bajas`) — no fue verificado explícitamente en la sesión de clarificación original, solo el resultado esperado (reparto Agricultura/Ganadería).
+
+## Corrección de rendimiento — 2026-09-24
+
+- [X] PERF01 Liberar el event loop de las llamadas síncronas de imputación, preservar el lock de corridas y validar concurrencia (25 pruebas focalizadas exitosas).
+- [X] PERF02 Preparar arranque compilado, conservar modo Dev y evitar cierre forzado por sondeos fallidos; build, lint y TypeScript exitosos.
+- [X] PERF03 Escuchar localhost IPv4/IPv6 y medir arranque, entrega de páginas y lectura de documentos WC; evidencia en docs/auditoria-rendimiento-2026-09-24.md.

@@ -8,6 +8,56 @@ from src.features.imputacion import motor, repository
 from src.features.imputacion.repository import CorridaNoVigente
 
 
+def test_trazabilidad_permite_atender_otra_peticion(monkeypatch):
+    import asyncio
+    import threading
+    from src.features.imputacion import router
+
+    liberar = threading.Event()
+    iniciado = threading.Event()
+
+    def consulta_lenta(_):
+        iniciado.set()
+        assert liberar.wait(2), "El event loop quedó bloqueado por la consulta"
+        return []
+
+    monkeypatch.setattr(motor, "trazabilidad_insumo", consulta_lenta)
+
+    async def escenario():
+        tarea = asyncio.create_task(router.trazabilidad(1))
+        try:
+            for _ in range(100):
+                if iniciado.is_set():
+                    break
+                await asyncio.sleep(0.01)
+            assert iniciado.is_set()
+            assert not tarea.done()
+        finally:
+            liberar.set()
+        assert await tarea == []
+
+    asyncio.run(escenario())
+
+
+def test_corridas_concurrentes_no_duplican_calculo(monkeypatch):
+    import asyncio
+    import time
+    from src.features.imputacion import router
+
+    guardadas = []
+    monkeypatch.setattr(repository, "corrida_vigente", lambda _: guardadas[0] if guardadas else None)
+    monkeypatch.setattr(motor, "evaluar_insumo", lambda _: (time.sleep(0.03) or [{"importe": 1}], None))
+    monkeypatch.setattr(repository, "marcar_stock_sin_consumir_aprobada", lambda filas: filas)
+    monkeypatch.setattr(repository, "guardar_corrida", lambda *args: guardadas.append("corrida"))
+
+    async def escenario():
+        monkeypatch.setattr(router, "_lock_corridas", asyncio.Lock())
+        await asyncio.gather(router._asegurar_corrida(1, "Insumo"), router._asegurar_corrida(1, "Insumo"))
+
+    asyncio.run(escenario())
+    assert guardadas == ["corrida"]
+
+
 def test_aprobar_sin_cambios(monkeypatch):
     llamadas = []
     monkeypatch.setattr(repository, "detalle_compra_de_corrida", lambda idc: 900)

@@ -92,3 +92,7 @@ frontend/src/
 ## Complexity Tracking
 
 *Sin violaciones.*
+
+## Corrección de rendimiento — 2026-09-24
+
+Las llamadas ODBC, FIFO y Excel del router de imputación se ejecutan mediante `run_in_threadpool`, conservando el lock de check+insert de corridas. Esto permite atender otras peticiones mientras SQL trabaja. Se valida atención concurrente y ausencia de corridas duplicadas. El launcher usa `npm run start` por defecto, con build previo; `-Dev` conserva el arranque de desarrollo. Los fallos de sondeo se registran sin matar procesos; permanece el cierre por inactividad o cierre de pestañas reportados por la API. No cambian contratos ni fórmulas.

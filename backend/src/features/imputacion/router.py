@@ -6,6 +6,7 @@ import asyncio
 from datetime import date
 
 from fastapi import APIRouter, HTTPException, Query, Request, Response
+from starlette.concurrency import run_in_threadpool
 
 from src.features.imputacion import exportacion, motor, repository
 from src.features.ordenes import resultado as ordenes_resultado
@@ -38,22 +39,13 @@ def _usuario_actual(request: Request) -> str | None:
     return repository.nombre_usuario(payload["idUsuario"])
 
 
-# El "check (corrida_vigente) + insert (guardar_corrida)" de _asegurar_corrida
-# no es atómico a nivel SQL — hoy no se puede intercalar porque las llamadas
-# son síncronas dentro de un único proceso `uvicorn` sin `--workers` (bloquean
-# el event loop, así que dos requests nunca corren de verdad en paralelo),
-# pero ese invariante es frágil (alcanza con mover esta función a
-# `run_in_threadpool` para que dos "Calcular pendientes" simultáneos dupliquen
-# corridas para el mismo renglón — no corrompe datos, la vigente sigue
-# resolviéndose bien por `FechaCalculo DESC`, pero genera trabajo de más).
-# Este lock lo deja protegido también si ese invariante cambia (hallazgo de
-# revisión SQL Server, 2026-09-25).
+# Serializa check + insert mientras el trabajo corre fuera del event loop.
 _lock_corridas = asyncio.Lock()
 
 
 async def _asegurar_corrida(id_detalle_compra: int, origen: str | None) -> None:
     async with _lock_corridas:
-        _asegurar_corrida_sync(id_detalle_compra, origen)
+        await run_in_threadpool(_asegurar_corrida_sync, id_detalle_compra, origen)
 
 
 def _asegurar_corrida_sync(id_detalle_compra: int, origen: str | None) -> None:
@@ -90,21 +82,21 @@ async def listar_propuestas(
 ) -> list[PropuestaFraccion]:
     if idDetalleCompra is not None:
         await _asegurar_corrida(idDetalleCompra, origen)
-    filas = repository.listar_propuestas(estado, origen, idDetalleCompra, page, pageSize)
+    filas = await run_in_threadpool(repository.listar_propuestas, estado, origen, idDetalleCompra, page, pageSize)
     return [PropuestaFraccion(**f) for f in filas]
 
 
 @router.get("/propuestas/{idDetalleCompra}/trazabilidad")
 async def trazabilidad(idDetalleCompra: int) -> list[dict]:
-    return motor.trazabilidad_insumo(idDetalleCompra)
+    return await run_in_threadpool(motor.trazabilidad_insumo, idDetalleCompra)
 
 
 @router.post("/propuestas/{idCorrida}/aprobar")
 async def aprobar_propuesta(idCorrida: str, body: AprobarPropuestaIn, request: Request) -> dict:
     correcciones = [c.model_dump() for c in body.correcciones] if body.correcciones else None
-    usuario = _usuario_actual(request)
+    usuario = await run_in_threadpool(_usuario_actual, request)
     try:
-        repository.aprobar_corrida(idCorrida, correcciones, usuario)
+        await run_in_threadpool(repository.aprobar_corrida, idCorrida, correcciones, usuario)
     except CorridaNoVigente as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
     return {"status": "ok"}
@@ -117,11 +109,11 @@ async def aprobar_lote(body: AprobarLoteIn, request: Request) -> AprobarLoteOut:
     (UX, hallazgo de revisión 2026-09-25). Cada corrida se aprueba
     independiente: si una falla (ej. ya no es la vigente), las demás
     igual se procesan."""
-    usuario = _usuario_actual(request)
+    usuario = await run_in_threadpool(_usuario_actual, request)
     resultados: list[AprobarLoteResultado] = []
     for id_corrida in body.idCorridas:
         try:
-            repository.aprobar_corrida(id_corrida, None, usuario)
+            await run_in_threadpool(repository.aprobar_corrida, id_corrida, None, usuario)
             resultados.append(AprobarLoteResultado(idCorrida=id_corrida, ok=True))
         except CorridaNoVigente as exc:
             resultados.append(AprobarLoteResultado(idCorrida=id_corrida, ok=False, error=str(exc)))
@@ -135,13 +127,13 @@ async def aprobar_lote(body: AprobarLoteIn, request: Request) -> AprobarLoteOut:
 async def pendientes_intervencion(
     page: int = Query(default=1, ge=1), pageSize: int = Query(default=50, ge=1, le=200)
 ) -> list[PendienteIntervencionOut]:
-    filas = repository.pendientes_intervencion(page, pageSize)
+    filas = await run_in_threadpool(repository.pendientes_intervencion, page, pageSize)
     salida = []
     for f in filas:
         if f["origen"] == "Contratista":
-            _fracciones, motivo_real = motor.evaluar_contratista(f["idDetalleCompra"])
+            _fracciones, motivo_real = await run_in_threadpool(motor.evaluar_contratista, f["idDetalleCompra"])
         else:
-            _fracciones, motivo_real = motor.evaluar_insumo(f["idDetalleCompra"])
+            _fracciones, motivo_real = await run_in_threadpool(motor.evaluar_insumo, f["idDetalleCompra"])
         motivo = motivo_real or "repartoNoCierra"
         salida.append(
             PendienteIntervencionOut(
@@ -168,9 +160,9 @@ async def listar_documentos(
     motor) — informe/pantalla para la oficina del contador. `estado` filtra
     a los documentos que tienen al menos una fracción vigente en ese estado
     (ej. "solo lo que requiere intervención")."""
-    documentos, total = repository.listar_documentos_con_imputacion(idContacto, fechaDesde, fechaHasta, estado, page, pageSize)
-    lineas_por_compra = repository.lineas_con_imputacion_batch(tuple(d["idCompra"] for d in documentos))
-    total_general = repository.total_general_documentos(idContacto, fechaDesde, fechaHasta, estado)
+    documentos, total = await run_in_threadpool(repository.listar_documentos_con_imputacion, idContacto, fechaDesde, fechaHasta, estado, page, pageSize)
+    lineas_por_compra = await run_in_threadpool(repository.lineas_con_imputacion_batch, tuple(d["idCompra"] for d in documentos))
+    total_general = await run_in_threadpool(repository.total_general_documentos, idContacto, fechaDesde, fechaHasta, estado)
 
     for doc in documentos:
         lineas = lineas_por_compra.get(doc["idCompra"], [])
@@ -189,7 +181,7 @@ async def exportar_documentos(
     fechaHasta: str | None = Query(default=None),
     estado: EstadoPropuesta | None = Query(default=None),
 ) -> Response:
-    contenido = exportacion.informe_documentos_xlsx(idContacto, fechaDesde, fechaHasta, estado)
+    contenido = await run_in_threadpool(exportacion.informe_documentos_xlsx, idContacto, fechaDesde, fechaHasta, estado)
     return Response(
         content=contenido,
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -199,9 +191,9 @@ async def exportar_documentos(
 
 @router.get("/comparacion", response_model=ComparacionCampaniaOut)
 async def comparacion(idCampania: int = Query(...)) -> ComparacionCampaniaOut:
-    heredado = ordenes_resultado.resumen_campania_heredado(idCampania)
+    heredado = await run_in_threadpool(ordenes_resultado.resumen_campania_heredado, idCampania)
     fila = heredado[0] if heredado else {"campania": None, "totalCostoPesos": 0.0, "totalCostoDolares": None}
-    nuevo = repository.costo_aprobado_por_campania(idCampania)
+    nuevo = await run_in_threadpool(repository.costo_aprobado_por_campania, idCampania)
 
     total_heredado = float(fila.get("totalCostoPesos") or 0)
     total_nuevo = float(nuevo["totalAprobado"] or 0)
@@ -226,12 +218,12 @@ async def calcular_pendientes() -> dict:
     que todavía no tienen ninguna corrida — botón de "activación" masiva en
     vez de tener que pedir cada propuesta una por una."""
     insumos_calculados = 0
-    for id_detalle_compra in repository.candidatos_insumo_sin_corrida():
+    for id_detalle_compra in await run_in_threadpool(repository.candidatos_insumo_sin_corrida):
         await _asegurar_corrida(id_detalle_compra, "Insumo")
         insumos_calculados += 1
 
     contratistas_calculados = 0
-    for id_compra in repository.candidatos_contratista_sin_corrida():
+    for id_compra in await run_in_threadpool(repository.candidatos_contratista_sin_corrida):
         await _asegurar_corrida(id_compra, "Contratista")
         contratistas_calculados += 1
 
@@ -242,6 +234,7 @@ async def calcular_pendientes() -> dict:
 async def recalcular(body: RecalcularIn) -> dict:
     if body.idDetalleCompra is None:
         raise ValueError("idDetalleCompra es requerido")
-    origen = repository.origen_de_corrida(repository.corrida_vigente(body.idDetalleCompra) or "") or "Insumo"
-    id_corrida = motor.recalcular_si_corresponde(body.idDetalleCompra, origen)
+    vigente = await run_in_threadpool(repository.corrida_vigente, body.idDetalleCompra)
+    origen = await run_in_threadpool(repository.origen_de_corrida, vigente or "") or "Insumo"
+    id_corrida = await run_in_threadpool(motor.recalcular_si_corresponde, body.idDetalleCompra, origen)
     return {"idCorrida": id_corrida}
