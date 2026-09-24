@@ -22,6 +22,7 @@ import re
 from collections.abc import Generator
 from contextlib import contextmanager
 from datetime import date
+from decimal import Decimal
 
 import pyodbc
 
@@ -114,6 +115,17 @@ def get_connection(*, readonly: bool = True) -> Generator[pyodbc.Connection, Non
         conn.close()
 
 
+def _coerce_row(row_dict: dict) -> dict:
+    """`money`/`decimal` llegan de pyodbc como `Decimal`. Los endpoints que
+    devuelven estas filas directamente (sin pasar por un schema Pydantic)
+    no los convierten solos: FastAPI los serializa como *string* en el JSON
+    ("5000934.0000"), y el frontend, que espera number, termina concatenando
+    texto en vez de sumar (bug real de UI, 2026-09-24). Un solo punto de
+    conversión acá cubre todos los endpoints, no solo los que usan
+    response_model."""
+    return {k: float(v) if isinstance(v, Decimal) else v for k, v in row_dict.items()}
+
+
 def fetch_all(sql: str, params: tuple = ()) -> list[dict]:
     """Run a parameterized SELECT and return rows as a list of dicts."""
     _assert_read_only(sql)
@@ -121,7 +133,7 @@ def fetch_all(sql: str, params: tuple = ()) -> list[dict]:
         cursor = conn.cursor()
         cursor.execute(sql, _coerce_params(params))
         columns = [column[0] for column in cursor.description]
-        return [dict(zip(columns, row, strict=True)) for row in cursor.fetchall()]
+        return [_coerce_row(dict(zip(columns, row, strict=True))) for row in cursor.fetchall()]
 
 
 def fetch_one(sql: str, params: tuple = ()) -> dict | None:
@@ -134,7 +146,7 @@ def fetch_one(sql: str, params: tuple = ()) -> dict | None:
         row = cursor.fetchone()
         if row is None:
             return None
-        return dict(zip(columns, row, strict=True))
+        return _coerce_row(dict(zip(columns, row, strict=True)))
 
 
 def execute_write(sql: str, params: tuple = ()) -> int:

@@ -16,7 +16,7 @@
   const t0 = Date.now();
   (async function loop() {
     const [api, web] = await Promise.all([ping('http://127.0.0.1:8000/health'), ping('http://127.0.0.1:3000/')]);
-    if (api && web) { location.replace('http://localhost:3000/'); return; }
+    if (api && web) { location.replace('http://127.0.0.1:3000/'); return; }
     if (Date.now() - t0 > 120000) {
       document.getElementById('msg').textContent = 'Está tardando demasiado. Cerrá esta ventana y volvé a abrir el acceso directo.';
       return;

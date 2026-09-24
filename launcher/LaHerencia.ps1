@@ -9,8 +9,13 @@ $RunDir    = Join-Path $PSScriptRoot '.run'
 $PidFile   = Join-Path $RunDir 'pids.json'
 $ApiPort   = 8000
 $WebPort   = 3000
-$WebUrl    = "http://localhost:$WebPort"
-# Los sondeos van por 127.0.0.1: en esta PC cada request a "localhost" tarda ~2 s.
+# Todo el sistema (pagina abierta, API, sondeos) usa 127.0.0.1 de punta a
+# punta: en esta PC resolver "localhost" agrega ~2 s por request, y ademas
+# si la pagina se abre en un host y la API responde en otro, son origenes
+# distintos para el navegador y la cookie de sesion de uno no se manda al
+# otro (bug real, 2026-09-24: login parecia "no traer datos" en todo el
+# sistema porque cada request volvia 401 sin que se notara).
+$WebUrl    = "http://127.0.0.1:$WebPort"
 $WebProbe  = "http://127.0.0.1:$WebPort"
 $ApiHealth = "http://127.0.0.1:$ApiPort/health"
 $ApiSesion = "http://127.0.0.1:$ApiPort/api/sesion"
@@ -117,10 +122,47 @@ if (-not (Test-Path (Join-Path $Frontend 'node_modules'))) {
     exit 1
 }
 
+# .env.local no se versiona (cada instalacion tiene el suyo) y a veces
+# termina con "localhost" en vez de "127.0.0.1" (reinstalado, copiado a
+# mano, etc). Resolver "localhost" en esta PC agrega ~2s a cada request
+# del navegador y hace que el sistema entero se sienta colgado. Se
+# autocorrige en cada arranque para que ese error no dependa de que
+# alguien se acuerde.
+$EnvLocal = Join-Path $Frontend '.env.local'
+$ApiUrlLine = "NEXT_PUBLIC_API_BASE_URL=http://127.0.0.1:$ApiPort"
+if (-not (Test-Path $EnvLocal) -or (Get-Content $EnvLocal -Raw) -match 'localhost') {
+    Set-Content -Path $EnvLocal -Value $ApiUrlLine -Encoding utf8
+}
+
 $WebMode = if ($Dev) { 'dev' } else { 'start' }
-if (-not $Dev -and -not (Test-PortBusy $WebPort) -and -not (Test-Path (Join-Path $Frontend '.next/BUILD_ID'))) {
-    Show-Msg "Falta compilar el frontend. Ejecuta npm run build en $Frontend antes de abrir el sistema." 'Error'
-    exit 1
+# Produccion por defecto ("npm run start" sobre el build ya compilado): es
+# notablemente mas rapido que "next dev" (que compila cada pagina la primera
+# vez que se visita) para el uso diario. El riesgo de esto es servir una
+# version vieja si el codigo cambio y nadie corrio el build a mano -- por
+# eso, en vez de resignar velocidad pasando a dev por defecto (lo que se
+# probo y resulto inaceptablemente lento, 2026-09-24), se reconstruye sola
+# cuando hace falta: si falta el build o el codigo fuente es mas nuevo que
+# el build existente. Usar -Dev solo para iterar sobre el frontend.
+if (-not $Dev -and -not (Test-PortBusy $WebPort)) {
+    $buildId = Join-Path $Frontend '.next/BUILD_ID'
+    $desactualizado = $true
+    if (Test-Path $buildId) {
+        $buildTime = (Get-Item $buildId).LastWriteTimeUtc
+        $fuenteMasNueva = Get-ChildItem (Join-Path $Frontend 'src') -Recurse -File -ErrorAction SilentlyContinue |
+            Where-Object { $_.LastWriteTimeUtc -gt $buildTime } | Select-Object -First 1
+        $desactualizado = [bool]$fuenteMasNueva
+    }
+    if ($desactualizado) {
+        if (-not $NoBrowser) { Start-Process $Splash }
+        $buildProc = Start-Process -FilePath 'cmd.exe' -ArgumentList '/c', 'npm run build' `
+            -WorkingDirectory $Frontend -WindowStyle Hidden -PassThru -Wait `
+            -RedirectStandardOutput (Join-Path $RunDir 'build.log') `
+            -RedirectStandardError  (Join-Path $RunDir 'build.err.log')
+        if ($buildProc.ExitCode -ne 0 -or -not (Test-Path $buildId)) {
+            Show-Msg "Fallo la compilacion del frontend.`nRevisa: $RunDir\build.err.log" 'Error'
+            exit 1
+        }
+    }
 }
 
 $listo = (Test-Url $ApiHealth) -and (Test-Url $WebProbe)
@@ -137,7 +179,7 @@ if (Test-Path $PidFile) {
 # --- Backend ---
 if (-not (Test-PortBusy $ApiPort)) {
     $p = Start-Process -FilePath $Python `
-        -ArgumentList '-m', 'uvicorn', 'src.main:app', '--host', 'localhost', '--port', $ApiPort `
+        -ArgumentList '-m', 'uvicorn', 'src.main:app', '--host', '127.0.0.1', '--port', $ApiPort `
         -WorkingDirectory $Backend -WindowStyle Hidden -PassThru `
         -RedirectStandardOutput (Join-Path $RunDir 'backend.log') `
         -RedirectStandardError  (Join-Path $RunDir 'backend.err.log')

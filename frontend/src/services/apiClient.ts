@@ -10,8 +10,13 @@
 
 import { QueryClient } from "@tanstack/react-query";
 
+// Nunca "localhost" como default: en la PC de producción resolverlo agrega
+// ~2s a cada request (ver launcher/LaHerencia.ps1). Si NEXT_PUBLIC_API_BASE_URL
+// no está seteada o alguien la vuelve a poner en "localhost", este fallback
+// evita que el sistema entero se sienta colgado.
+const configurado = process.env.NEXT_PUBLIC_API_BASE_URL;
 export const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000";
+  configurado && !configurado.includes("localhost") ? configurado : "http://127.0.0.1:8000";
 
 export class ApiError extends Error {
   status: number;

@@ -59,7 +59,8 @@ register_error_handlers(app)
 # silencio, sin llegar nunca al backend, por eso la edición/eliminación de
 # compras fallaba con un error genérico sin detalle (2026-09-17).
 _allowed_origins = os.environ.get(
-    "LA_HERENCIA_CORS_ORIGINS", "http://localhost:3000,http://localhost:3001"
+    "LA_HERENCIA_CORS_ORIGINS",
+    "http://127.0.0.1:3000,http://127.0.0.1:3001,http://localhost:3000,http://localhost:3001",
 ).split(",")
 app.add_middleware(
     CORSMiddleware,
@@ -84,6 +85,19 @@ _AUTH_EXEMPT_PREFIXES = ("/api/sesion/",)
 _WRITE_METHODS = {"POST", "PUT", "PATCH", "DELETE"}
 
 
+def _respuesta_con_cors(request: Request, status_code: int, content: dict) -> JSONResponse:
+    """401/403 cortados acá arriba, antes de llegar al router: sin esto el
+    navegador los trata como error de CORS (respuesta sin
+    Access-Control-Allow-Origin) en vez de mostrar el 401/403 real —
+    "no encuentra nada" en vez de "sesión vencida" (2026-09-24)."""
+    response = JSONResponse(status_code=status_code, content=content)
+    origin = request.headers.get("origin")
+    if origin in _allowed_origins:
+        response.headers["Access-Control-Allow-Origin"] = origin
+        response.headers["Access-Control-Allow-Credentials"] = "true"
+    return response
+
+
 class AuthMiddleware(BaseHTTPMiddleware):
     """Exige una sesión válida en toda la API salvo `_AUTH_EXEMPT_PATHS`/`_AUTH_EXEMPT_PREFIXES`.
 
@@ -102,10 +116,10 @@ class AuthMiddleware(BaseHTTPMiddleware):
         token = request.cookies.get(COOKIE_NAME)
         payload = verificar_token(token) if token else None
         if payload is None:
-            return JSONResponse(status_code=401, content={"detail": "Sesión inválida o expirada"})
+            return _respuesta_con_cors(request, 401, {"detail": "Sesión inválida o expirada"})
 
         if request.method in _WRITE_METHODS and payload.get("rol") == "Lectura":
-            return JSONResponse(status_code=403, content={"detail": "Rol de solo lectura"})
+            return _respuesta_con_cors(request, 403, {"detail": "Rol de solo lectura"})
 
         request.state.usuario = payload
         return await call_next(request)
