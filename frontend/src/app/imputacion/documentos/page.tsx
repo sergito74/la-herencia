@@ -2,12 +2,15 @@
 
 import { useEffect, useState } from "react";
 
-import { API_BASE_URL, apiGet } from "@/services/apiClient";
+import { API_BASE_URL, ApiError, apiGet, apiPost } from "@/services/apiClient";
 import { ContactoSelect } from "@/components/ui/ContactoSelect";
 import { FilterBar, FilterField, FilterSubmitButton, filterInputClass } from "@/components/ui/FilterBar";
+import { SoloLectura } from "@/components/auth/SoloLectura";
+import { useToast } from "@/components/ui/Toast";
 
 interface Fraccion {
   idPropuesta: number;
+  idCorrida: string;
   origen: "Insumo" | "Contratista";
   idLote: number | null;
   lote: string | null;
@@ -65,9 +68,24 @@ function badgeEstado(estado: Fraccion["estado"]) {
   return <span className={`rounded-full px-2 py-0.5 text-xs ${clases[estado]}`}>{estado}</span>;
 }
 
-function LineaRow({ linea }: { linea: Linea }) {
+function LineaRow({ linea, onAprobada }: { linea: Linea; onAprobada: (idCorrida: string) => void }) {
   const [abierta, setAbierta] = useState(false);
+  const [aprobando, setAprobando] = useState<string | null>(null);
   const tiene = linea.fracciones.length > 0;
+  const { showToast } = useToast();
+
+  async function aprobar(idCorrida: string) {
+    setAprobando(idCorrida);
+    try {
+      await apiPost(`/api/imputacion/propuestas/${idCorrida}/aprobar`, {});
+      onAprobada(idCorrida);
+      showToast("Propuesta aprobada.", "success");
+    } catch (e) {
+      showToast(e instanceof ApiError ? e.message : "No se pudo aprobar la propuesta.", "danger");
+    } finally {
+      setAprobando(null);
+    }
+  }
 
   return (
     <>
@@ -109,6 +127,18 @@ function LineaRow({ linea }: { linea: Linea }) {
             <td className="py-1">{f.origen}</td>
             <td className="py-1">
               {badgeEstado(f.estado)}
+              {f.estado === "Pendiente" && (
+                <SoloLectura>
+                  <button
+                    type="button"
+                    onClick={() => aprobar(f.idCorrida)}
+                    disabled={aprobando === f.idCorrida}
+                    className="ml-2 rounded border border-agro px-1.5 py-0.5 text-xs text-agro disabled:opacity-60"
+                  >
+                    {aprobando === f.idCorrida ? "Aprobando…" : "Aprobar"}
+                  </button>
+                </SoloLectura>
+              )}
               {f.estado !== "Aprobada" && (
                 <a
                   href={`/imputacion?idDetalleCompra=${linea.idDetalleCompra}`}
@@ -162,6 +192,20 @@ export default function DocumentosImputacionPage() {
     e.preventDefault();
     setPage(1);
     setFiltrosAplicados({ idContacto, fechaDesde, fechaHasta, estado });
+  }
+
+  function marcarCorridaAprobada(idCorrida: string) {
+    setDocumentos((prev) =>
+      prev.map((doc) => ({
+        ...doc,
+        lineas: doc.lineas.map((linea) => ({
+          ...linea,
+          fracciones: linea.fracciones.map((f) =>
+            f.idCorrida === idCorrida ? { ...f, estado: "Aprobada" as const } : f
+          ),
+        })),
+      }))
+    );
   }
 
   function urlExportar() {
@@ -241,7 +285,7 @@ export default function DocumentosImputacionPage() {
               </thead>
               <tbody>
                 {doc.lineas.map((linea) => (
-                  <LineaRow key={linea.idDetalleCompra} linea={linea} />
+                  <LineaRow key={linea.idDetalleCompra} linea={linea} onAprobada={marcarCorridaAprobada} />
                 ))}
               </tbody>
               <tfoot>

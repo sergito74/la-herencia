@@ -30,14 +30,15 @@ def test_informe_documentos_xlsx_genera_filas_agrupadas_y_totales(monkeypatch):
             "tipoDocumento": "Factura",
             "numeroDocumento": "0001-00000001",
             "moneda": "Pesos",
+            "tipoDeCambio": None,
         }
     ]
     lineas = [
         _linea(
             100,
             fracciones=[
-                {"cultivo": "Trigo", "campania": "2025/2026", "centroCosto": None, "esGanaderia": False, "importe": 123.45, "estado": "Aprobada"},
-                {"cultivo": None, "campania": None, "centroCosto": None, "esGanaderia": None, "importe": 50.0, "estado": "Aprobada"},
+                {"cultivo": "Trigo", "campania": "2025/2026", "centroCosto": None, "esGanaderia": False, "lote": "3B", "idOrdenTrabajo": 12, "importe": 123.45, "estado": "Aprobada"},
+                {"cultivo": None, "campania": None, "centroCosto": None, "esGanaderia": None, "lote": None, "idOrdenTrabajo": None, "importe": 50.0, "estado": "Aprobada"},
             ],
         )
     ]
@@ -57,13 +58,23 @@ def test_informe_documentos_xlsx_genera_filas_agrupadas_y_totales(monkeypatch):
     filas = list(ws.iter_rows(min_row=2, values_only=True))
     # línea + 2 fracciones + total del documento + total general = 5 filas
     assert len(filas) == 5
-    assert filas[3][6] == "Total Factura 0001-00000001"
-    assert filas[3][7] == 173.45
-    assert filas[4][6] == "TOTAL GENERAL"
-    assert filas[4][7] == 173.45
+    idx_destino = exportacion._COLUMNAS.index(("Centro/Cultivo/Campaña (motor)", 30))
+    idx_origen = exportacion._COLUMNAS.index(("Origen (lote/orden)", 20))
+    assert filas[1][idx_destino] == "Trigo / 2025/2026"
+    assert filas[1][idx_origen] == "Lote 3B · Orden 12"
+    assert filas[3][idx_destino] == "Total Factura 0001-00000001"
+    assert filas[3][exportacion._COL_IMPORTE] == 173.45
+    assert filas[4][idx_destino] == "TOTAL GENERAL"
+    assert filas[4][exportacion._COL_IMPORTE] == 173.45
     # las 2 filas de fracciones quedan plegadas (outline_level=1)
     assert ws.row_dimensions[3].outline_level == 1
     assert ws.row_dimensions[4].outline_level == 1
+
+
+def test_origen_trazable_combina_lote_y_orden():
+    assert exportacion._origen_trazable({"lote": "3B", "idOrdenTrabajo": 12}) == "Lote 3B · Orden 12"
+    assert exportacion._origen_trazable({"lote": "3B", "idOrdenTrabajo": None}) == "Lote 3B"
+    assert exportacion._origen_trazable({"lote": None, "idOrdenTrabajo": None}) == "—"
 
 
 def test_etiqueta_destino_prioriza_cultivo_luego_centro_luego_stock():

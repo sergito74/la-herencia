@@ -17,7 +17,8 @@ _COLUMNAS = (
     "p.IdDetalleCompra AS idDetalleCompra, p.IdOrdenTrabajo AS idOrdenTrabajo, "
     "p.IdLote AS idLote, p.IdCultivo AS idCultivo, p.IdCampania AS idCampania, "
     "p.IdCentroCosto AS idCentroCosto, p.EsGanaderia AS esGanaderia, p.Importe AS importe, "
-    "p.Estado AS estado, p.FechaCalculo AS fechaCalculo, p.FechaAprobacion AS fechaAprobacion"
+    "p.Estado AS estado, p.FechaCalculo AS fechaCalculo, p.FechaAprobacion AS fechaAprobacion, "
+    "p.UsuarioAprobacion AS usuarioAprobacion"
 )
 
 
@@ -102,11 +103,14 @@ def actualizar_referencia(id_producto: int, es_ganaderia: bool, id_cultivo: int 
     )
 
 
-def aprobar_corrida(id_corrida: str, correcciones: list[dict] | None = None) -> None:
+def aprobar_corrida(id_corrida: str, correcciones: list[dict] | None = None, usuario: str | None = None) -> None:
     """Marca toda la corrida como `Aprobada`, aplicando primero las
     correcciones puntuales que traiga (FR-007), y actualiza `ImputacionReferencias`
     para los productos corregidos (FR-008). 409 si la corrida ya no es la
-    vigente de su renglón."""
+    vigente de su renglón. `usuario` (NombreUsuario de 016-autenticacion)
+    queda registrado en `UsuarioAprobacion` — control interno mínimo, sin
+    ser un historial de auditoría completo (hallazgo de revisión financiera,
+    2026-09-25)."""
     id_detalle_compra = detalle_compra_de_corrida(id_corrida)
     if id_detalle_compra is None:
         raise ValueError(f"Corrida {id_corrida} no existe")
@@ -126,8 +130,8 @@ def aprobar_corrida(id_corrida: str, correcciones: list[dict] | None = None) -> 
 
     statements.append(
         (
-            "UPDATE dbo.ImputacionPropuestas SET Estado = 'Aprobada', FechaAprobacion = SYSUTCDATETIME() WHERE IdCorrida = ?",
-            (id_corrida,),
+            "UPDATE dbo.ImputacionPropuestas SET Estado = 'Aprobada', FechaAprobacion = SYSUTCDATETIME(), UsuarioAprobacion = ? WHERE IdCorrida = ?",
+            (usuario, id_corrida),
         )
     )
     execute_write_transaction(statements)
@@ -445,8 +449,8 @@ def lineas_con_imputacion_batch(ids_compra: tuple[int, ...]) -> dict[int, list[d
     ids_linea = tuple(l["idDetalleCompra"] for l in lineas)
     fracciones = fetch_all(
         f"""
-        SELECT p.IdDetalleCompra AS idDetalleCompra, p.IdPropuesta AS idPropuesta, p.Origen AS origen,
-               p.IdLote AS idLote, lo.[Numero Lote] AS lote, p.IdCultivo AS idCultivo, cu.Cultivo AS cultivo,
+        SELECT p.IdDetalleCompra AS idDetalleCompra, p.IdPropuesta AS idPropuesta, p.IdCorrida AS idCorrida, p.Origen AS origen,
+               p.IdOrdenTrabajo AS idOrdenTrabajo, p.IdLote AS idLote, lo.[Numero Lote] AS lote, p.IdCultivo AS idCultivo, cu.Cultivo AS cultivo,
                p.IdCampania AS idCampania, ca.Campaña AS campania, p.IdCentroCosto AS idCentroCosto,
                cc.[Centro de costos] AS centroCosto, p.EsGanaderia AS esGanaderia, p.Importe AS importe,
                p.Estado AS estado
@@ -518,6 +522,11 @@ def candidatos_contratista_sin_corrida(limite: int = 2000) -> list[int]:
         "WHERE NOT EXISTS (SELECT 1 FROM dbo.ImputacionPropuestas p WHERE p.IdDetalleCompra = f.IdCompra AND p.Origen = 'Contratista')",
     )
     return [f["idCompra"] for f in filas]
+
+
+def nombre_usuario(id_usuario: int) -> str | None:
+    fila = fetch_one("SELECT NombreUsuario AS n FROM dbo.AuthUsuarios WHERE IdUsuario = ?", (id_usuario,))
+    return fila["n"] if fila else None
 
 
 def obtener_referencia(id_producto: int, es_ganaderia: bool) -> dict | None:

@@ -2,14 +2,18 @@
 
 from __future__ import annotations
 
+import asyncio
 from datetime import date
 
-from fastapi import APIRouter, HTTPException, Query, Response
+from fastapi import APIRouter, HTTPException, Query, Request, Response
 
 from src.features.imputacion import exportacion, motor, repository
 from src.features.ordenes import resultado as ordenes_resultado
 from src.features.imputacion.repository import CorridaNoVigente
 from src.features.imputacion.schemas import (
+    AprobarLoteIn,
+    AprobarLoteOut,
+    AprobarLoteResultado,
     AprobarPropuestaIn,
     ComparacionCampaniaOut,
     CostoCampaniaOut,
@@ -24,7 +28,35 @@ from src.features.imputacion.schemas import (
 router = APIRouter(prefix="/api/imputacion", tags=["imputacion"])
 
 
-def _asegurar_corrida(id_detalle_compra: int, origen: str | None) -> None:
+def _usuario_actual(request: Request) -> str | None:
+    """`NombreUsuario` de la sesión actual (016-autenticacion) — el token
+    solo trae `idUsuario`, se resuelve el nombre para registrar quién
+    aprobó (control interno, hallazgo de revisión financiera 2026-09-25)."""
+    payload = getattr(request.state, "usuario", None)
+    if not payload:
+        return None
+    return repository.nombre_usuario(payload["idUsuario"])
+
+
+# El "check (corrida_vigente) + insert (guardar_corrida)" de _asegurar_corrida
+# no es atómico a nivel SQL — hoy no se puede intercalar porque las llamadas
+# son síncronas dentro de un único proceso `uvicorn` sin `--workers` (bloquean
+# el event loop, así que dos requests nunca corren de verdad en paralelo),
+# pero ese invariante es frágil (alcanza con mover esta función a
+# `run_in_threadpool` para que dos "Calcular pendientes" simultáneos dupliquen
+# corridas para el mismo renglón — no corrompe datos, la vigente sigue
+# resolviéndose bien por `FechaCalculo DESC`, pero genera trabajo de más).
+# Este lock lo deja protegido también si ese invariante cambia (hallazgo de
+# revisión SQL Server, 2026-09-25).
+_lock_corridas = asyncio.Lock()
+
+
+async def _asegurar_corrida(id_detalle_compra: int, origen: str | None) -> None:
+    async with _lock_corridas:
+        _asegurar_corrida_sync(id_detalle_compra, origen)
+
+
+def _asegurar_corrida_sync(id_detalle_compra: int, origen: str | None) -> None:
     """Si el renglón todavía no tiene ninguna corrida, la calcula y la guarda
     (dentro de alcance, FR-014 — si está fuera de alcance no genera nada)."""
     if repository.corrida_vigente(id_detalle_compra) is not None:
@@ -57,7 +89,7 @@ async def listar_propuestas(
     pageSize: int = Query(default=50, ge=1, le=200),
 ) -> list[PropuestaFraccion]:
     if idDetalleCompra is not None:
-        _asegurar_corrida(idDetalleCompra, origen)
+        await _asegurar_corrida(idDetalleCompra, origen)
     filas = repository.listar_propuestas(estado, origen, idDetalleCompra, page, pageSize)
     return [PropuestaFraccion(**f) for f in filas]
 
@@ -68,13 +100,35 @@ async def trazabilidad(idDetalleCompra: int) -> list[dict]:
 
 
 @router.post("/propuestas/{idCorrida}/aprobar")
-async def aprobar_propuesta(idCorrida: str, body: AprobarPropuestaIn) -> dict:
+async def aprobar_propuesta(idCorrida: str, body: AprobarPropuestaIn, request: Request) -> dict:
     correcciones = [c.model_dump() for c in body.correcciones] if body.correcciones else None
+    usuario = _usuario_actual(request)
     try:
-        repository.aprobar_corrida(idCorrida, correcciones)
+        repository.aprobar_corrida(idCorrida, correcciones, usuario)
     except CorridaNoVigente as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
     return {"status": "ok"}
+
+
+@router.post("/propuestas/aprobar-lote", response_model=AprobarLoteOut)
+async def aprobar_lote(body: AprobarLoteIn, request: Request) -> AprobarLoteOut:
+    """Aprueba varias corridas de una sola llamada, sin corrección — para el
+    caso frecuente de aprobar en bloque las propuestas que ya están bien
+    (UX, hallazgo de revisión 2026-09-25). Cada corrida se aprueba
+    independiente: si una falla (ej. ya no es la vigente), las demás
+    igual se procesan."""
+    usuario = _usuario_actual(request)
+    resultados: list[AprobarLoteResultado] = []
+    for id_corrida in body.idCorridas:
+        try:
+            repository.aprobar_corrida(id_corrida, None, usuario)
+            resultados.append(AprobarLoteResultado(idCorrida=id_corrida, ok=True))
+        except CorridaNoVigente as exc:
+            resultados.append(AprobarLoteResultado(idCorrida=id_corrida, ok=False, error=str(exc)))
+        except ValueError as exc:
+            resultados.append(AprobarLoteResultado(idCorrida=id_corrida, ok=False, error=str(exc)))
+    aprobadas = sum(1 for r in resultados if r.ok)
+    return AprobarLoteOut(resultados=resultados, aprobadas=aprobadas, fallidas=len(resultados) - aprobadas)
 
 
 @router.get("/pendientes-intervencion", response_model=list[PendienteIntervencionOut])
@@ -173,12 +227,12 @@ async def calcular_pendientes() -> dict:
     vez de tener que pedir cada propuesta una por una."""
     insumos_calculados = 0
     for id_detalle_compra in repository.candidatos_insumo_sin_corrida():
-        _asegurar_corrida(id_detalle_compra, "Insumo")
+        await _asegurar_corrida(id_detalle_compra, "Insumo")
         insumos_calculados += 1
 
     contratistas_calculados = 0
     for id_compra in repository.candidatos_contratista_sin_corrida():
-        _asegurar_corrida(id_compra, "Contratista")
+        await _asegurar_corrida(id_compra, "Contratista")
         contratistas_calculados += 1
 
     return {"insumosCalculados": insumos_calculados, "contratistasCalculados": contratistas_calculados}

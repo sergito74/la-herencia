@@ -68,3 +68,42 @@ def test_cambio_fuente_genera_corrida_nueva_sin_pisar_aprobada(monkeypatch):
     origen, idd, fracciones = guardadas[0]
     assert origen == "Insumo" and idd == 900
     assert all(f.get("estado", "Pendiente") == "Pendiente" for f in fracciones)
+
+
+def test_aprobar_corrida_guarda_usuario(monkeypatch):
+    llamadas = []
+    monkeypatch.setattr(repository, "detalle_compra_de_corrida", lambda idc: 900)
+    monkeypatch.setattr(repository, "corrida_vigente", lambda idd: "corrida-1")
+    monkeypatch.setattr(repository, "execute_write_transaction", lambda stmts: llamadas.extend(stmts) or [1])
+
+    repository.aprobar_corrida("corrida-1", usuario="sergio")
+
+    sql, params = llamadas[-1]
+    assert "UsuarioAprobacion" in sql
+    assert params == ("sergio", "corrida-1")
+
+
+def test_aprobar_lote_procesa_cada_corrida_independiente(monkeypatch):
+    from src.features.imputacion import router
+    from src.features.imputacion.repository import CorridaNoVigente
+    from src.features.imputacion.schemas import AprobarLoteIn
+
+    def fake_aprobar(id_corrida, correcciones=None, usuario=None):
+        if id_corrida == "mala":
+            raise CorridaNoVigente("ya no es vigente")
+
+    monkeypatch.setattr(repository, "aprobar_corrida", fake_aprobar)
+
+    class FakeState:
+        usuario = None
+
+    class FakeRequest:
+        state = FakeState()
+
+    import asyncio
+
+    resultado = asyncio.run(router.aprobar_lote(AprobarLoteIn(idCorridas=["buena-1", "mala", "buena-2"]), FakeRequest()))
+
+    assert resultado.aprobadas == 2
+    assert resultado.fallidas == 1
+    assert [r.ok for r in resultado.resultados] == [True, False, True]

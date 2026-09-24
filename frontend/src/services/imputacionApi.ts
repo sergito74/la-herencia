@@ -18,6 +18,7 @@ export interface PropuestaFraccion {
   estado: EstadoPropuesta;
   fechaCalculo: string;
   fechaAprobacion: string | null;
+  usuarioAprobacion: string | null;
 }
 
 export interface CorreccionFraccion {
@@ -57,6 +58,18 @@ export interface PendienteIntervencionOut {
   idCorrida: string;
   origen: Origen;
   idDetalleCompra: number;
-  motivo: "sinOrdenVinculada" | "repartoNoCierra";
+  motivo: "sinOrdenVinculada" | "repartoNoCierra" | "fueraDeCalendarioAgricola";
   fechaCalculo: string;
+}
+
+export interface AprobarLoteResultado {
+  idCorrida: string;
+  ok: boolean;
+  error: string | null;
+}
+
+export interface AprobarLoteOut {
+  resultados: AprobarLoteResultado[];
+  aprobadas: number;
+  fallidas: number;
 }

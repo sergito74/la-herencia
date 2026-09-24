@@ -24,13 +24,18 @@ _COLUMNAS = [
     ("Documento", 22),
     ("Fecha", 12),
     ("Proveedor", 30),
+    ("Moneda", 10),
+    ("Tipo de Cambio", 12),
     ("Producto/Servicio", 32),
     ("Cantidad", 12),
     ("Campaña manual", 16),
     ("Centro/Cultivo/Campaña (motor)", 30),
+    ("Origen (lote/orden)", 20),
     ("Importe", 14),
     ("Estado", 18),
 ]
+
+_COL_IMPORTE = 10  # índice 0-based dentro de la fila (columna "Importe")
 
 
 def _etiqueta_destino(f: dict) -> str:
@@ -41,6 +46,20 @@ def _etiqueta_destino(f: dict) -> str:
     if f.get("esGanaderia"):
         return "Ganadería"
     return "En stock sin consumir"
+
+
+def _origen_trazable(f: dict) -> str:
+    """Resumen de origen (sin la cadena FIFO completa, que exige recalcular
+    por renglón — ver `motor.trazabilidad_insumo` para el detalle exacto
+    desde la pantalla): Lote y Orden de Trabajo, cuando la fracción viene de
+    consumo real (hallazgo de revisión financiera, 2026-09-25 — antes el
+    Excel no daba ninguna pista de origen)."""
+    partes = []
+    if f.get("lote"):
+        partes.append(f"Lote {f['lote']}")
+    if f.get("idOrdenTrabajo"):
+        partes.append(f"Orden {f['idOrdenTrabajo']}")
+    return " · ".join(partes) if partes else "—"
 
 
 def informe_documentos_xlsx(id_contacto: int | None, fecha_desde, fecha_hasta, estado: str | None = None) -> bytes:
@@ -76,9 +95,12 @@ def informe_documentos_xlsx(id_contacto: int | None, fecha_desde, fecha_hasta, e
                     documento,
                     doc["fecha"],
                     doc["proveedor"],
+                    doc["moneda"],
+                    float(doc["tipoDeCambio"]) if doc.get("tipoDeCambio") is not None else None,
                     linea["producto"],
                     linea["cantidad"],
                     linea.get("campaniaManual") or "—",
+                    "",
                     "",
                     "",
                     "",
@@ -88,9 +110,11 @@ def informe_documentos_xlsx(id_contacto: int | None, fecha_desde, fecha_hasta, e
             for f in linea["fracciones"]:
                 ws.append(
                     [
-                        "", "", "", "", "",
+                        "", "", "", "", "", "",
+                        "",
                         "",
                         _etiqueta_destino(f),
+                        _origen_trazable(f),
                         f["importe"],
                         f["estado"],
                     ]
@@ -98,19 +122,19 @@ def informe_documentos_xlsx(id_contacto: int | None, fecha_desde, fecha_hasta, e
                 ws.row_dimensions[fila].outline_level = 1
                 fila += 1
         total_general += total_documento
-        ws.append(["", "", "", "", "", "", f"Total {documento}", round(total_documento, 2), ""])
+        ws.append(["", "", "", "", "", "", "", "", f"Total {documento}", "", round(total_documento, 2), ""])
         for c in ws[fila]:
             c.font = Font(bold=True)
         fila += 1
 
-    ws.append(["", "", "", "", "", "", "TOTAL GENERAL", round(total_general, 2), ""])
+    ws.append(["", "", "", "", "", "", "", "", "TOTAL GENERAL", "", round(total_general, 2), ""])
     for c in ws[fila]:
         c.font = Font(bold=True, color="1F3D2B")
 
     ws.sheet_properties.outlinePr.summaryBelow = False
     for r in ws.iter_rows(min_row=2, max_row=ws.max_row):
         r[1].number_format = _FECHA
-        r[7].number_format = _PESOS
+        r[_COL_IMPORTE].number_format = _PESOS
     if ws.max_row >= 2:
         ws.auto_filter.ref = f"A1:{get_column_letter(len(_COLUMNAS))}{ws.max_row}"
 

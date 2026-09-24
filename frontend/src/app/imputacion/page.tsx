@@ -7,7 +7,7 @@ import { SoloLectura } from "@/components/auth/SoloLectura";
 import { PropuestaCard } from "@/components/imputacion/PropuestaCard";
 import { useToast } from "@/components/ui/Toast";
 import { apiGet, ApiError, apiPost } from "@/services/apiClient";
-import type { PendienteIntervencionOut, PropuestaFraccion } from "@/services/imputacionApi";
+import type { AprobarLoteOut, PendienteIntervencionOut, PropuestaFraccion } from "@/services/imputacionApi";
 
 const MOTIVO: Record<string, { titulo: string; accion: string }> = {
   sinOrdenVinculada: {
@@ -35,6 +35,8 @@ export default function ImputacionPage() {
   const [ultimoCalculo, setUltimoCalculo] = useState<{ insumosCalculados: number; contratistasCalculados: number } | null>(
     null
   );
+  const [seleccionadas, setSeleccionadas] = useState<Set<number>>(new Set());
+  const [aprobandoLote, setAprobandoLote] = useState(false);
   const { showToast } = useToast();
 
   async function calcularPendientes() {
@@ -62,7 +64,7 @@ export default function ImputacionPage() {
     }
   }
 
-  useEffect(() => {
+  function recargarLista() {
     if (filtro === "requiereIntervencion") {
       apiGet<PendienteIntervencionOut[]>("/api/imputacion/pendientes-intervencion", { pageSize: 200 }).then(
         setPendientesIntervencion
@@ -73,6 +75,12 @@ export default function ImputacionPage() {
       estado: filtro === "todas" ? undefined : "Pendiente",
       pageSize: 200,
     }).then(setFracciones);
+  }
+
+  useEffect(() => {
+    recargarLista();
+    setSeleccionadas(new Set());
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filtro]);
 
   const porFactura = useMemo(() => {
@@ -84,6 +92,36 @@ export default function ImputacionPage() {
     }
     return agrupado;
   }, [fracciones]);
+
+  function toggleSeleccion(idDetalleCompra: number) {
+    setSeleccionadas((prev) => {
+      const next = new Set(prev);
+      if (next.has(idDetalleCompra)) next.delete(idDetalleCompra);
+      else next.add(idDetalleCompra);
+      return next;
+    });
+  }
+
+  async function aprobarSeleccionadas() {
+    const idCorridas = [...seleccionadas]
+      .map((idDetalleCompra) => porFactura.get(idDetalleCompra)?.[0]?.idCorrida)
+      .filter((v): v is string => Boolean(v));
+    if (idCorridas.length === 0) return;
+    setAprobandoLote(true);
+    try {
+      const resultado = await apiPost<AprobarLoteOut>("/api/imputacion/propuestas/aprobar-lote", { idCorridas });
+      showToast(
+        `${resultado.aprobadas} propuestas aprobadas${resultado.fallidas > 0 ? `, ${resultado.fallidas} fallaron` : ""}.`,
+        resultado.fallidas > 0 ? "danger" : "success"
+      );
+      setSeleccionadas(new Set());
+      recargarLista();
+    } catch (e) {
+      showToast(e instanceof ApiError ? e.message : "No se pudo aprobar el lote seleccionado.", "danger");
+    } finally {
+      setAprobandoLote(false);
+    }
+  }
 
   return (
     <main className="mx-auto max-w-none px-8 py-6">
@@ -155,12 +193,41 @@ export default function ImputacionPage() {
         </div>
       ) : (
         <div className="mt-6 space-y-6">
-          {[...porFactura.keys()].map((idDetalleCompra) => (
-            <div key={idDetalleCompra}>
-              <h2 className="mb-2 text-sm font-medium text-ink-secondary">Renglón de factura {idDetalleCompra}</h2>
-              <PropuestaCard idDetalleCompra={idDetalleCompra} />
-            </div>
-          ))}
+          {seleccionadas.size > 0 && (
+            <SoloLectura>
+              <div className="flex items-center gap-3 rounded-md border border-agro/40 bg-agro/5 p-2">
+                <span className="text-sm text-ink-secondary">{seleccionadas.size} factura(s) seleccionada(s)</span>
+                <button
+                  type="button"
+                  onClick={aprobarSeleccionadas}
+                  disabled={aprobandoLote}
+                  className="rounded-md bg-agro px-3 py-1.5 text-sm text-white disabled:opacity-60"
+                >
+                  {aprobandoLote ? "Aprobando…" : "Aprobar seleccionadas"}
+                </button>
+              </div>
+            </SoloLectura>
+          )}
+          {[...porFactura.keys()].map((idDetalleCompra) => {
+            const tienePendientes = porFactura.get(idDetalleCompra)?.some((f) => f.estado === "Pendiente");
+            return (
+              <div key={idDetalleCompra}>
+                <div className="mb-2 flex items-center gap-2">
+                  {tienePendientes && (
+                    <SoloLectura>
+                      <input
+                        type="checkbox"
+                        checked={seleccionadas.has(idDetalleCompra)}
+                        onChange={() => toggleSeleccion(idDetalleCompra)}
+                      />
+                    </SoloLectura>
+                  )}
+                  <h2 className="text-sm font-medium text-ink-secondary">Renglón de factura {idDetalleCompra}</h2>
+                </div>
+                <PropuestaCard idDetalleCompra={idDetalleCompra} />
+              </div>
+            );
+          })}
           {porFactura.size === 0 && <p className="text-sm text-ink-secondary">No hay propuestas para mostrar.</p>}
         </div>
       )}

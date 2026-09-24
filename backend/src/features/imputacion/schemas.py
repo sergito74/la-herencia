@@ -26,6 +26,7 @@ class PropuestaFraccion(BaseModel):
     estado: EstadoPropuesta
     fechaCalculo: datetime
     fechaAprobacion: datetime | None
+    usuarioAprobacion: str | None = None
 
 
 class CorreccionFraccion(BaseModel):
@@ -38,6 +39,22 @@ class CorreccionFraccion(BaseModel):
 
 class AprobarPropuestaIn(BaseModel):
     correcciones: list[CorreccionFraccion] | None = None
+
+
+class AprobarLoteIn(BaseModel):
+    idCorridas: list[str]
+
+
+class AprobarLoteResultado(BaseModel):
+    idCorrida: str
+    ok: bool
+    error: str | None = None
+
+
+class AprobarLoteOut(BaseModel):
+    resultados: list[AprobarLoteResultado]
+    aprobadas: int
+    fallidas: int
 
 
 class RecalcularIn(BaseModel):

@@ -62,6 +62,18 @@ IF NOT EXISTS (
 CREATE INDEX IX_Compras_Contacto_Fecha ON dbo.Compras (IdContacto, Fecha DESC)
 """
 
+# Migración aditiva (2026-09-25, control interno — hallazgo de revisión
+# financiera): quién aprobó cada corrida, no solo cuándo. No reemplaza la
+# decisión de la spec de no auditar cada corrección individual — es un dato
+# mínimo, no un historial de versiones.
+DDL_COLUMNA_USUARIO_APROBACION = """
+IF NOT EXISTS (
+    SELECT 1 FROM sys.columns
+    WHERE object_id = OBJECT_ID('dbo.ImputacionPropuestas') AND name = 'UsuarioAprobacion'
+)
+ALTER TABLE dbo.ImputacionPropuestas ADD UsuarioAprobacion varchar(60) NULL
+"""
+
 DDL_ORDENES_CONTRATISTA_FACTURAS = """
 IF OBJECT_ID('dbo.OrdenesContratistaFacturas', 'U') IS NULL
 CREATE TABLE dbo.OrdenesContratistaFacturas (
@@ -93,6 +105,7 @@ def main() -> None:
         cursor.execute(DDL_INDICE_PROPUESTAS)
         cursor.execute(DDL_INDICE_VIGENTE)
         cursor.execute(DDL_INDICE_COMPRAS_CONTACTO_FECHA)
+        cursor.execute(DDL_COLUMNA_USUARIO_APROBACION)
         cursor.execute(DDL_ORDENES_CONTRATISTA_FACTURAS)
         cursor.execute(DDL_REFERENCIAS)
     finally:

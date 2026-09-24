@@ -107,7 +107,12 @@ export function PropuestaCard({ idDetalleCompra }: { idDetalleCompra: number }) 
             <tr key={f.idPropuesta} className="border-t border-border">
               <td className="py-1">{etiquetaDestino(f, catalogos)}</td>
               <td className="py-1">{f.importe.toLocaleString("es-AR")}</td>
-              <td className="py-1">{f.estado}</td>
+              <td className="py-1">
+                {f.estado}
+                {f.estado === "Aprobada" && f.usuarioAprobacion && (
+                  <span className="ml-1 text-xs text-ink-secondary">por {f.usuarioAprobacion}</span>
+                )}
+              </td>
               {editando && f.estado === "Pendiente" && (
                 <td className="py-1">
                   <select
