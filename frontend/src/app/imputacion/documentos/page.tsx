@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 
 import { API_BASE_URL, apiGet } from "@/services/apiClient";
+import { ContactoSelect } from "@/components/ui/ContactoSelect";
+import { FilterBar, FilterField, FilterSubmitButton, filterInputClass } from "@/components/ui/FilterBar";
 
 interface Fraccion {
   idPropuesta: number;
@@ -104,15 +106,41 @@ export default function DocumentosImputacionPage() {
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
 
+  const [idContacto, setIdContacto] = useState<number | null>(null);
+  const [proveedorNombre, setProveedorNombre] = useState<string | null>(null);
+  const [fechaDesde, setFechaDesde] = useState("");
+  const [fechaHasta, setFechaHasta] = useState("");
+  const [filtrosAplicados, setFiltrosAplicados] = useState<{ idContacto: number | null; fechaDesde: string; fechaHasta: string }>({
+    idContacto: null,
+    fechaDesde: "",
+    fechaHasta: "",
+  });
+
   useEffect(() => {
-    apiGet<{ items: Documento[]; total: number }>("/api/imputacion/documentos", { page, pageSize: 20 }).then((r) => {
+    apiGet<{ items: Documento[]; total: number }>("/api/imputacion/documentos", {
+      page,
+      pageSize: 20,
+      idContacto: filtrosAplicados.idContacto ?? undefined,
+      fechaDesde: filtrosAplicados.fechaDesde || undefined,
+      fechaHasta: filtrosAplicados.fechaHasta || undefined,
+    }).then((r) => {
       setDocumentos(r.items);
       setTotal(r.total);
     });
-  }, [page]);
+  }, [page, filtrosAplicados]);
+
+  function aplicarFiltros(e: React.FormEvent) {
+    e.preventDefault();
+    setPage(1);
+    setFiltrosAplicados({ idContacto, fechaDesde, fechaHasta });
+  }
 
   function urlExportar() {
-    return new URL("/api/imputacion/documentos/exportar", API_BASE_URL).toString();
+    const url = new URL("/api/imputacion/documentos/exportar", API_BASE_URL);
+    if (filtrosAplicados.idContacto) url.searchParams.set("idContacto", String(filtrosAplicados.idContacto));
+    if (filtrosAplicados.fechaDesde) url.searchParams.set("fechaDesde", filtrosAplicados.fechaDesde);
+    if (filtrosAplicados.fechaHasta) url.searchParams.set("fechaHasta", filtrosAplicados.fechaHasta);
+    return url.toString();
   }
 
   return (
@@ -124,11 +152,31 @@ export default function DocumentosImputacionPage() {
       </p>
 
       <div className="mt-4">
+        <FilterBar onSubmit={aplicarFiltros}>
+          <FilterField label="Proveedor">
+            <ContactoSelect
+              value={idContacto}
+              razonSocial={proveedorNombre}
+              onChange={(id, nombre) => {
+                setIdContacto(id);
+                setProveedorNombre(nombre);
+              }}
+              placeholder="Buscar proveedor…"
+            />
+          </FilterField>
+          <FilterField label="Fecha desde">
+            <input type="date" className={filterInputClass} value={fechaDesde} onChange={(e) => setFechaDesde(e.target.value)} />
+          </FilterField>
+          <FilterField label="Fecha hasta">
+            <input type="date" className={filterInputClass} value={fechaHasta} onChange={(e) => setFechaHasta(e.target.value)} />
+          </FilterField>
+          <FilterSubmitButton />
+        </FilterBar>
         <a
           href={urlExportar()}
-          className="rounded-md border border-border px-3 py-1.5 text-sm text-ink-secondary hover:bg-surface-sunken"
+          className="mt-3 inline-block rounded-md border border-border px-3 py-1.5 text-sm text-ink-secondary hover:bg-surface-sunken"
         >
-          Exportar a Excel
+          Exportar a Excel {filtrosAplicados.idContacto || filtrosAplicados.fechaDesde || filtrosAplicados.fechaHasta ? "(con estos filtros)" : ""}
         </a>
       </div>
 
