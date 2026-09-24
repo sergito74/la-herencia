@@ -10,8 +10,9 @@ nada por sí solo: `repository.guardar_corrida()` persiste el resultado.
 from __future__ import annotations
 
 from src.features.compras.repository import get_id_centro_costo_por_nombre
-from src.features.imputacion import repository
+from src.features.imputacion import calendario_agricola, repository
 from src.features.remitos.stock_datos import calcular_stock
+from src.features.remitos.stock_datos import fecha as _normalizar_fecha
 
 EPS = 1e-6
 
@@ -91,6 +92,39 @@ def _destino_de_baja(salida_meta: dict, cantidad: float, id_producto: int) -> li
     ]
 
 
+def evaluar_insumo(id_detalle_compra: int) -> tuple[list[dict], str | None]:
+    """`calcular_propuesta_insumo` + validación contra el calendario agrícola
+    real (`calendario_agricola.py`, pedido del usuario 2026-09-24): si alguna
+    fracción imputa a un Cultivo/Campaña cuya fecha real de la Orden cae
+    claramente fuera de la ventana plausible de siembra/cosecha (ni siquiera
+    con el margen de labores previas), la corrida entera queda
+    `RequiereIntervencion` con motivo `'fueraDeCalendarioAgricola'` en vez de
+    aprobarse con un dato agronómicamente inconsistente."""
+    fracciones = calcular_propuesta_insumo(id_detalle_compra)
+    if not fracciones:
+        return fracciones, None
+
+    cultivos = repository.nombres_cultivos()
+    campanias = repository.nombres_campanias()
+    ordenes_cache: dict[int, dict | None] = {}
+
+    for f in fracciones:
+        id_orden = f.get("idOrdenTrabajo")
+        id_cultivo = f.get("idCultivo")
+        id_campania = f.get("idCampania")
+        if id_orden is None or id_cultivo is None or id_campania is None:
+            continue
+        if id_orden not in ordenes_cache:
+            ordenes_cache[id_orden] = repository.orden_trabajo_info(id_orden)
+        orden = ordenes_cache[id_orden]
+        fecha = _normalizar_fecha(orden.get("fecha")) if orden else None
+        plausible = calendario_agricola.es_fecha_plausible(cultivos.get(id_cultivo), campanias.get(id_campania), fecha)
+        if plausible is False:
+            return [], "fueraDeCalendarioAgricola"
+
+    return fracciones, None
+
+
 def calcular_propuesta_insumo(id_detalle_compra: int) -> list[dict]:
     """Reparto propuesto para un renglón de factura de insumo, siguiendo la
     cadena capa FIFO → Orden/baja → Lote/Cultivo/Campaña (FR-001/FR-002/FR-005).
@@ -160,10 +194,12 @@ def recalcular_si_corresponde(id_detalle_compra: int, origen: str = "Insumo") ->
         return None
 
     if origen == "Contratista":
-        fracciones = calcular_propuesta_contratista(id_detalle_compra)
+        fracciones, motivo = evaluar_contratista(id_detalle_compra)
     else:
-        fracciones = calcular_propuesta_insumo(id_detalle_compra)
+        fracciones, motivo = evaluar_insumo(id_detalle_compra)
     if not fracciones:
+        if motivo:
+            return repository.guardar_requiere_intervencion(origen, id_detalle_compra, motivo)
         return None
 
     fracciones = repository.marcar_stock_sin_consumir_aprobada(fracciones)

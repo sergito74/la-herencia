@@ -210,3 +210,70 @@ def test_propuesta_contratista_orden_sin_cultivo(monkeypatch):
     assert len(fracciones) == 1
     assert fracciones[0]["idCentroCosto"] == ID_CENTRO_ADM_GENERAL
     assert fracciones[0]["importe"] == 500.0
+
+
+def test_evaluar_insumo_marca_requiere_intervencion_fuera_de_calendario(monkeypatch):
+    from datetime import date
+
+    stock = {
+        "capas": [{"id": "R1", "cantidad": 10.0, "restante": 0.0, "costoUnitario": 100.0}],
+        "consumos": {"OT1": {"items": [{"capa": "R1", "cantidad": 10.0}]}},
+        "salidaMeta": {"OT1": {"tipo": "ordenTrabajo", "idOrdenTrabajo": 55}},
+    }
+    _preparar(
+        monkeypatch,
+        stock=stock,
+        ordenes={55: {"idOrdenTrabajo": 55, "idRubro": None, "idCentroCostos": None, "fecha": date(2026, 1, 15)}},
+        distribuciones={1: [{"idLote": 10, "idCultivo": 20, "idCampania": 30, "cantidadAsignada": 10.0}]},
+    )
+    monkeypatch.setattr(motor.repository, "nombres_cultivos", lambda: {20: "Soja primera"})
+    monkeypatch.setattr(motor.repository, "nombres_campanias", lambda: {30: "2026/2027"})
+
+    fracciones, motivo = motor.evaluar_insumo(ID_DETALLE_COMPRA)
+    assert fracciones == []
+    assert motivo == "fueraDeCalendarioAgricola"
+
+
+def test_evaluar_insumo_no_bloquea_labor_previa_plausible(monkeypatch):
+    from datetime import date
+
+    stock = {
+        "capas": [{"id": "R1", "cantidad": 10.0, "restante": 0.0, "costoUnitario": 100.0}],
+        "consumos": {"OT1": {"items": [{"capa": "R1", "cantidad": 10.0}]}},
+        "salidaMeta": {"OT1": {"tipo": "ordenTrabajo", "idOrdenTrabajo": 55}},
+    }
+    _preparar(
+        monkeypatch,
+        stock=stock,
+        ordenes={55: {"idOrdenTrabajo": 55, "idRubro": None, "idCentroCostos": None, "fecha": date(2026, 9, 19)}},
+        distribuciones={1: [{"idLote": 10, "idCultivo": 20, "idCampania": 30, "cantidadAsignada": 10.0}]},
+    )
+    monkeypatch.setattr(motor.repository, "nombres_cultivos", lambda: {20: "Soja primera"})
+    monkeypatch.setattr(motor.repository, "nombres_campanias", lambda: {30: "2026/2027"})
+
+    fracciones, motivo = motor.evaluar_insumo(ID_DETALLE_COMPRA)
+    assert motivo is None
+    assert len(fracciones) == 1
+
+
+def test_evaluar_insumo_normaliza_fecha_string(monkeypatch):
+    """Regresión real: pyodbc devuelve las columnas `date` como texto, no
+    como `datetime.date` — sin normalizar, comparar contra el calendario
+    agrícola explota con TypeError."""
+    stock = {
+        "capas": [{"id": "R1", "cantidad": 10.0, "restante": 0.0, "costoUnitario": 100.0}],
+        "consumos": {"OT1": {"items": [{"capa": "R1", "cantidad": 10.0}]}},
+        "salidaMeta": {"OT1": {"tipo": "ordenTrabajo", "idOrdenTrabajo": 55}},
+    }
+    _preparar(
+        monkeypatch,
+        stock=stock,
+        ordenes={55: {"idOrdenTrabajo": 55, "idRubro": None, "idCentroCostos": None, "fecha": "2026-09-19"}},
+        distribuciones={1: [{"idLote": 10, "idCultivo": 20, "idCampania": 30, "cantidadAsignada": 10.0}]},
+    )
+    monkeypatch.setattr(motor.repository, "nombres_cultivos", lambda: {20: "Soja primera"})
+    monkeypatch.setattr(motor.repository, "nombres_campanias", lambda: {30: "2026/2027"})
+
+    fracciones, motivo = motor.evaluar_insumo(ID_DETALLE_COMPRA)
+    assert motivo is None
+    assert len(fracciones) == 1

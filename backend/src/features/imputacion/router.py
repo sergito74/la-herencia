@@ -37,8 +37,10 @@ def _asegurar_corrida(id_detalle_compra: int, origen: str | None) -> None:
         repository.guardar_corrida("Contratista", id_detalle_compra, fracciones)
         return
 
-    fracciones = motor.calcular_propuesta_insumo(id_detalle_compra)
+    fracciones, motivo = motor.evaluar_insumo(id_detalle_compra)
     if not fracciones:
+        if motivo:
+            repository.guardar_requiere_intervencion("Insumo", id_detalle_compra, motivo)
         return
     fracciones = repository.marcar_stock_sin_consumir_aprobada(fracciones)
     repository.guardar_corrida("Insumo", id_detalle_compra, fracciones)
@@ -80,10 +82,11 @@ async def pendientes_intervencion(
     filas = repository.pendientes_intervencion(page, pageSize)
     salida = []
     for f in filas:
-        motivo = "repartoNoCierra"
         if f["origen"] == "Contratista":
             _fracciones, motivo_real = motor.evaluar_contratista(f["idDetalleCompra"])
-            motivo = motivo_real or motivo
+        else:
+            _fracciones, motivo_real = motor.evaluar_insumo(f["idDetalleCompra"])
+        motivo = motivo_real or "repartoNoCierra"
         salida.append(
             PendienteIntervencionOut(
                 idCorrida=f["idCorrida"],

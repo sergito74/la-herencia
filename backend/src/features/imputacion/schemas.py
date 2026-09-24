@@ -70,5 +70,5 @@ class PendienteIntervencionOut(BaseModel):
     idCorrida: str
     origen: Origen
     idDetalleCompra: int
-    motivo: Literal["sinOrdenVinculada", "repartoNoCierra"]
+    motivo: Literal["sinOrdenVinculada", "repartoNoCierra", "fueraDeCalendarioAgricola"]
     fechaCalculo: datetime

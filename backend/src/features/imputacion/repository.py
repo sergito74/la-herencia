@@ -234,9 +234,20 @@ def vinculos_remito_para_compra(id_detalle_compra: int) -> list[dict]:
     )
 
 
+def nombres_cultivos() -> dict[int, str]:
+    filas = fetch_all("SELECT IdCultivo AS id, Cultivo AS nombre FROM dbo.Cultivos")
+    return {f["id"]: f["nombre"] for f in filas}
+
+
+def nombres_campanias() -> dict[int, str]:
+    filas = fetch_all("SELECT [IdCampaña] AS id, [Campaña] AS nombre FROM dbo.Campañas")
+    return {f["id"]: f["nombre"] for f in filas}
+
+
 def orden_trabajo_info(id_orden_trabajo: int) -> dict | None:
     return fetch_one(
-        "SELECT IdOrdenTrabajo AS idOrdenTrabajo, IdRubro AS idRubro, IdCentroCostos AS idCentroCostos "
+        "SELECT IdOrdenTrabajo AS idOrdenTrabajo, IdRubro AS idRubro, IdCentroCostos AS idCentroCostos, "
+        "COALESCE(FechaEjecucion, FechaPedido) AS fecha "
         "FROM dbo.Ordenes_Trabajo WHERE IdOrdenTrabajo = ?",
         (id_orden_trabajo,),
     )
