@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException, Query
+from datetime import date
 
-from src.features.imputacion import motor, repository
+from fastapi import APIRouter, HTTPException, Query, Response
+
+from src.features.imputacion import exportacion, motor, repository
 from src.features.ordenes import resultado as ordenes_resultado
 from src.features.imputacion.repository import CorridaNoVigente
 from src.features.imputacion.schemas import (
@@ -97,6 +99,36 @@ async def pendientes_intervencion(
             )
         )
     return salida
+
+
+@router.get("/documentos")
+async def listar_documentos(
+    idContacto: int | None = Query(default=None),
+    fechaDesde: str | None = Query(default=None),
+    fechaHasta: str | None = Query(default=None),
+    page: int = Query(default=1, ge=1),
+    pageSize: int = Query(default=20, ge=1, le=100),
+) -> dict:
+    """Documentos comerciales con sus renglones e imputaciones (manual +
+    motor) — informe/pantalla para la oficina del contador."""
+    documentos, total = repository.listar_documentos_con_imputacion(idContacto, fechaDesde, fechaHasta, page, pageSize)
+    for doc in documentos:
+        doc["lineas"] = repository.lineas_con_imputacion(doc["idCompra"])
+    return {"items": documentos, "total": total, "page": page, "pageSize": pageSize}
+
+
+@router.get("/documentos/exportar")
+async def exportar_documentos(
+    idContacto: int | None = Query(default=None),
+    fechaDesde: str | None = Query(default=None),
+    fechaHasta: str | None = Query(default=None),
+) -> Response:
+    contenido = exportacion.informe_documentos_xlsx(idContacto, fechaDesde, fechaHasta)
+    return Response(
+        content=contenido,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f'attachment; filename="imputacion-documentos-{date.today().isoformat()}.xlsx"'},
+    )
 
 
 @router.get("/comparacion", response_model=ComparacionCampaniaOut)

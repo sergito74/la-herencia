@@ -1,0 +1,104 @@
+"""Exportación a Excel del informe de imputación por documento comercial
+(pedido del usuario, 2026-09-25) — para la oficina del contador.
+
+Cada línea de factura queda seguida de sus fracciones de imputación como
+filas agrupadas (`outline_level`): Excel las muestra plegadas por defecto,
+con el signo "+" para desplegarlas — el equivalente en planilla de las
+"filas desplegables" pedidas para la pantalla.
+"""
+
+from __future__ import annotations
+
+from io import BytesIO
+
+from openpyxl import Workbook
+from openpyxl.styles import Alignment, Font, PatternFill
+from openpyxl.utils import get_column_letter
+
+from src.features.imputacion import repository
+
+_PESOS = '"$" #,##0.00;[Red]-"$" #,##0.00'
+_FECHA = "dd/mm/yyyy"
+
+_COLUMNAS = [
+    ("Documento", 22),
+    ("Fecha", 12),
+    ("Proveedor", 30),
+    ("Producto/Servicio", 32),
+    ("Cantidad", 12),
+    ("Campaña manual", 16),
+    ("Centro/Cultivo/Campaña (motor)", 30),
+    ("Importe", 14),
+    ("Estado", 18),
+]
+
+
+def _etiqueta_destino(f: dict) -> str:
+    if f.get("cultivo"):
+        return f"{f['cultivo']} / {f.get('campania') or '—'}"
+    if f.get("centroCosto"):
+        return f["centroCosto"]
+    if f.get("esGanaderia"):
+        return "Ganadería"
+    return "En stock sin consumir"
+
+
+def informe_documentos_xlsx(id_contacto: int | None, fecha_desde, fecha_hasta) -> bytes:
+    documentos, _total = repository.listar_documentos_con_imputacion(
+        id_contacto, fecha_desde, fecha_hasta, page=1, page_size=5000
+    )
+
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Imputación por documento"
+    ws.append([c for c, _ in _COLUMNAS])
+    for i, (_, ancho) in enumerate(_COLUMNAS, start=1):
+        celda = ws.cell(row=1, column=i)
+        celda.font = Font(bold=True, color="FFFFFF")
+        celda.fill = PatternFill("solid", fgColor="1F3D2B")
+        celda.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
+        ws.column_dimensions[get_column_letter(i)].width = ancho
+    ws.freeze_panes = "A2"
+
+    fila = 2
+    for doc in documentos:
+        documento = f"{doc['tipoDocumento'] or ''} {doc['numeroDocumento'] or ''}".strip()
+        lineas = repository.lineas_con_imputacion(doc["idCompra"])
+        for linea in lineas:
+            ws.append(
+                [
+                    documento,
+                    doc["fecha"],
+                    doc["proveedor"],
+                    linea["producto"],
+                    linea["cantidad"],
+                    linea.get("campaniaManual") or "—",
+                    "",
+                    "",
+                    "",
+                ]
+            )
+            fila += 1
+            for f in linea["fracciones"]:
+                ws.append(
+                    [
+                        "", "", "", "", "",
+                        "",
+                        _etiqueta_destino(f),
+                        f["importe"],
+                        f["estado"],
+                    ]
+                )
+                ws.row_dimensions[fila].outline_level = 1
+                fila += 1
+
+    ws.sheet_properties.outlinePr.summaryBelow = False
+    for r in ws.iter_rows(min_row=2, max_row=ws.max_row):
+        r[1].number_format = _FECHA
+        r[7].number_format = _PESOS
+    if ws.max_row >= 2:
+        ws.auto_filter.ref = f"A1:{get_column_letter(len(_COLUMNAS))}{ws.max_row}"
+
+    buffer = BytesIO()
+    wb.save(buffer)
+    return buffer.getvalue()

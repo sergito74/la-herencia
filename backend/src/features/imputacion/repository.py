@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import uuid
+from collections import defaultdict
 from datetime import datetime, timezone
 
 
@@ -321,6 +322,98 @@ def detalles_compra_con_corrida_por_producto(id_producto: int) -> list[int]:
         (id_producto,),
     )
     return [f["idDetalleCompra"] for f in filas]
+
+
+def listar_documentos_con_imputacion(
+    id_contacto: int | None = None,
+    fecha_desde=None,
+    fecha_hasta=None,
+    page: int = 1,
+    page_size: int = 20,
+) -> tuple[list[dict], int]:
+    """Documentos comerciales (Compras) que ya tienen al menos una propuesta
+    del motor — informe/pantalla para la oficina del contador (pedido del
+    usuario, 2026-09-25)."""
+    where = ["c.IdDeuda IN (SELECT DISTINCT dc.IdCompra FROM dbo.Det_Compras dc "
+             "JOIN dbo.ImputacionPropuestas p ON p.IdDetalleCompra = dc.IdDetalleCompra)"]
+    params: list = []
+    if id_contacto is not None:
+        where.append("c.IdContacto = ?")
+        params.append(id_contacto)
+    if fecha_desde is not None:
+        where.append("c.Fecha >= ?")
+        params.append(fecha_desde)
+    if fecha_hasta is not None:
+        where.append("c.Fecha <= ?")
+        params.append(fecha_hasta)
+    where_sql = "WHERE " + " AND ".join(where)
+
+    total = fetch_one(f"SELECT COUNT(*) AS total FROM dbo.Compras c {where_sql}", tuple(params))["total"]
+
+    offset = max(page - 1, 0) * page_size
+    filas = fetch_all(
+        f"""
+        SELECT c.IdDeuda AS idCompra, c.Fecha AS fecha, c.IdContacto AS idContacto,
+               ct.[Razon Social] AS proveedor, c.[Tipo documento] AS tipoDocumento,
+               c.[Nro Documento] AS numeroDocumento, c.Moneda AS moneda, c.[Tipo de Cambio] AS tipoDeCambio
+        FROM dbo.Compras c
+        LEFT JOIN dbo.Contactos ct ON ct.IdContacto = c.IdContacto
+        {where_sql}
+        ORDER BY c.Fecha DESC, c.IdDeuda DESC
+        OFFSET ? ROWS FETCH NEXT ? ROWS ONLY
+        """,
+        (*params, offset, page_size),
+    )
+    return filas, total
+
+
+def lineas_con_imputacion(id_compra: int) -> list[dict]:
+    """Renglones de un documento comercial con la clasificación manual y las
+    fracciones vigentes del motor (con nombres resueltos para el informe)."""
+    lineas = fetch_all(
+        "SELECT dc.IdDetalleCompra AS idDetalleCompra, dc.[Producto/Servicio] AS producto, "
+        "dc.Cantidad AS cantidad, dc.Unidad AS unidad, dc.[Precio Unitario] AS precioUnitario, "
+        "dc.IdCampaña AS idCampaniaManual, ca.Campaña AS campaniaManual, "
+        "dc.IdCentroCostos AS idCentroCostoManual, cc.[Centro de costos] AS centroCostoManual, "
+        "dc.IdRubro AS idRubroManual, r.Rubro AS rubroManual "
+        "FROM dbo.Det_Compras dc "
+        "LEFT JOIN dbo.Campañas ca ON ca.IdCampaña = dc.IdCampaña "
+        "LEFT JOIN dbo.[Centro de costos] cc ON cc.IdCentro = dc.IdCentroCostos "
+        "LEFT JOIN dbo.Rubros r ON r.IdRubro = dc.IdRubro "
+        "WHERE dc.IdCompra = ? ORDER BY dc.IdDetalleCompra",
+        (id_compra,),
+    )
+    if not lineas:
+        return []
+
+    marcas = ",".join("?" for _ in lineas)
+    ids = tuple(l["idDetalleCompra"] for l in lineas)
+    fracciones = fetch_all(
+        f"""
+        SELECT p.IdDetalleCompra AS idDetalleCompra, p.IdPropuesta AS idPropuesta, p.Origen AS origen,
+               p.IdLote AS idLote, lo.[Numero Lote] AS lote, p.IdCultivo AS idCultivo, cu.Cultivo AS cultivo,
+               p.IdCampania AS idCampania, ca.Campaña AS campania, p.IdCentroCosto AS idCentroCosto,
+               cc.[Centro de costos] AS centroCosto, p.EsGanaderia AS esGanaderia, p.Importe AS importe,
+               p.Estado AS estado
+        FROM dbo.ImputacionPropuestas p
+        LEFT JOIN dbo.Lotes lo ON lo.IdLote = p.IdLote
+        LEFT JOIN dbo.Cultivos cu ON cu.IdCultivo = p.IdCultivo
+        LEFT JOIN dbo.Campañas ca ON ca.IdCampaña = p.IdCampania
+        LEFT JOIN dbo.[Centro de costos] cc ON cc.IdCentro = p.IdCentroCosto
+        WHERE p.IdDetalleCompra IN ({marcas})
+          AND p.IdCorrida = (SELECT TOP 1 p2.IdCorrida FROM dbo.ImputacionPropuestas p2
+                              WHERE p2.IdDetalleCompra = p.IdDetalleCompra ORDER BY p2.FechaCalculo DESC)
+        ORDER BY p.IdDetalleCompra, p.IdPropuesta
+        """,
+        ids,
+    )
+    por_linea: dict[int, list[dict]] = defaultdict(list)
+    for f in fracciones:
+        por_linea[f["idDetalleCompra"]].append(f)
+
+    for linea in lineas:
+        linea["fracciones"] = por_linea.get(linea["idDetalleCompra"], [])
+    return lineas
 
 
 def costo_aprobado_por_campania(id_campania: int) -> dict:

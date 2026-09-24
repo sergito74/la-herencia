@@ -108,6 +108,7 @@ const NAV_ITEMS: NavItem[] = [
       { href: "/produccion/ordenes", label: "Órdenes de trabajo" },
       { href: "/produccion/resultado-cultivo", label: "Resultado de cultivo" },
       { href: "/imputacion", label: "Imputación automática de costos" },
+      { href: "/imputacion/documentos", label: "Imputación por documento (contador)" },
     ],
   },
   {
