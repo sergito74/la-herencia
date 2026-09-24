@@ -71,20 +71,32 @@ app.add_middleware(
 
 # Endpoints exentos de autenticación (016-autenticacion, FR-001): el propio
 # login, el chequeo de salud del launcher y la documentación automática
-# (no exponen datos de WC).
+# (no exponen datos de WC). `/api/sesion/*` tampoco: es solo el heartbeat de
+# pestañas en memoria que usa el launcher/watcher (launcher/LaHerencia.ps1)
+# para el auto-apagado — corre antes de cualquier login (incluso en /login)
+# y nunca tuvo ni tiene acceso a WC (src/features/sesion/router.py). Sin
+# este exento, el propio launcher no podía arrancar: `POST /api/sesion/inicio`
+# quedaba bloqueado con 401 apenas se agregó el middleware (016), regresión
+# no detectada porque nunca se probó el arranque completo del launcher
+# después de esa feature (hallazgo 2026-09-24).
 _AUTH_EXEMPT_PATHS = {"/api/auth/login", "/health", "/docs", "/openapi.json"}
+_AUTH_EXEMPT_PREFIXES = ("/api/sesion/",)
 _WRITE_METHODS = {"POST", "PUT", "PATCH", "DELETE"}
 
 
 class AuthMiddleware(BaseHTTPMiddleware):
-    """Exige una sesión válida en toda la API salvo `_AUTH_EXEMPT_PATHS`.
+    """Exige una sesión válida en toda la API salvo `_AUTH_EXEMPT_PATHS`/`_AUTH_EXEMPT_PREFIXES`.
 
     Además rechaza con 403 las escrituras (POST/PUT/PATCH/DELETE) de
     usuarios con rol `Lectura` (FR-006), sin llegar a invocar el endpoint.
     """
 
     async def dispatch(self, request: Request, call_next):
-        if request.method == "OPTIONS" or request.url.path in _AUTH_EXEMPT_PATHS:
+        if (
+            request.method == "OPTIONS"
+            or request.url.path in _AUTH_EXEMPT_PATHS
+            or request.url.path.startswith(_AUTH_EXEMPT_PREFIXES)
+        ):
             return await call_next(request)
 
         token = request.cookies.get(COOKIE_NAME)

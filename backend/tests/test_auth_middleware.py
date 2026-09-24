@@ -67,3 +67,15 @@ def test_login_y_health_no_requieren_cookie():
 
     resp = client.post("/api/auth/login", json={"usuario": "no-existe", "password": "x"})
     assert resp.status_code != 401 or resp.json()["detail"] != "Sesión inválida o expirada"
+
+
+def test_sesion_no_requiere_cookie():
+    """El heartbeat del launcher (`launcher/LaHerencia.ps1`) y la pestaña del
+    navegador llaman a /api/sesion/* sin login — nunca tuvo acceso a WC.
+    Regresión real (2026-09-24): sin este exento, `POST /api/sesion/inicio`
+    quedaba bloqueado con 401 y el launcher no arrancaba el sistema."""
+    resp = client.post("/api/sesion/inicio")
+    assert resp.status_code != 401
+
+    resp = client.get("/api/sesion/estado")
+    assert resp.status_code != 401
