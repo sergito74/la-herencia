@@ -23,6 +23,7 @@ from src.features.compras.router import router as compras_router
 from src.features.contactos.router import router as contactos_router
 from src.features.cuentas_corrientes.router import router as cuentas_corrientes_router
 from src.features.documentos.router import router as documentos_router
+from src.features.flujo_caja.router import router as flujo_caja_router
 from src.features.imputacion.router import router as imputacion_router
 from src.features.impuestos.router import router as impuestos_router
 from src.features.ordenes.router import router as ordenes_router
@@ -133,6 +134,7 @@ app.include_router(compras_router)
 app.include_router(contactos_router)
 app.include_router(cuentas_corrientes_router)
 app.include_router(documentos_router)
+app.include_router(flujo_caja_router)
 app.include_router(imputacion_router)
 app.include_router(impuestos_router)
 app.include_router(remitos_router)

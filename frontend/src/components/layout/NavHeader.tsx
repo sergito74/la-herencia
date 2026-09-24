@@ -83,6 +83,7 @@ const NAV_ITEMS: NavItem[] = [
     icon: ICONS.finanzas,
     submenu: [
       { href: "/finanzas/tesoreria", label: "Tesorería" },
+      { href: "/finanzas/flujo-caja-real", label: "Flujo de caja real" },
       { href: "/finanzas/cuentas-corrientes", label: "Cuentas corrientes" },
       { href: "/finanzas/tarjetas", label: "Tarjetas" },
       { href: "/finanzas/impuestos", label: "Impuestos y retenciones" },
