@@ -46,6 +46,7 @@ class MovimientoPagoCandidato(BaseModel):
     fecha: date
     importe: float
     concepto: str | None = None
+    numeroCuentaBancaria: str | None = None
 
 
 class MovimientosTarjetaResponse(BaseModel):

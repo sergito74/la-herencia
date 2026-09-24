@@ -154,10 +154,12 @@ def get_pagos_candidatos(id_tarjeta: int) -> list[dict]:
     candidatos: list[dict] = []
     if tarjeta["banco"] == "Banco Nacion":
         rows = fetch_all(
-            "SELECT IdMovimientoBNA AS idMovimiento, [Fecha / Hora Mov#] AS fecha, "
-            "Importe AS importe, Concepto AS concepto "
-            "FROM dbo.[Movimientos BNA] WHERE IdContacto = ? AND Importe < 0 "
-            "ORDER BY [Fecha / Hora Mov#] DESC",
+            "SELECT m.IdMovimientoBNA AS idMovimiento, m.[Fecha / Hora Mov#] AS fecha, "
+            "m.Importe AS importe, m.Concepto AS concepto, cb.NumeroCuenta AS numeroCuentaBancaria "
+            "FROM dbo.[Movimientos BNA] m "
+            "LEFT JOIN dbo.CuentasBancarias cb ON cb.IdCuentaBancaria = m.IdCuentaBancaria "
+            "WHERE m.IdContacto = ? AND m.Importe < 0 "
+            "ORDER BY m.[Fecha / Hora Mov#] DESC",
             (id_contacto,),
         )
         for row in rows:
@@ -170,6 +172,7 @@ def get_pagos_candidatos(id_tarjeta: int) -> list[dict]:
                     "fecha": row["fecha"],
                     "importe": abs(float(row["importe"])),
                     "concepto": row["concepto"],
+                    "numeroCuentaBancaria": row["numeroCuentaBancaria"],
                 }
             )
     elif tarjeta["banco"] == "Banco Galicia":

@@ -38,10 +38,19 @@ MEDIOS_CONFIG: dict[str, MedioConfig] = {
             "idContacto": "IdContacto",
             "contacto": "Contacto",
             "idCarga": "_crm_bna.IdCarga",
+            # El BNA cambio de numero de cuenta 3 veces con el tiempo; hasta
+            # 2026-09 todo se cargaba como si fuera una sola cuenta
+            # (`separar_cuentas_bna.py` reconstruyo IdCuentaBancaria para el
+            # historico). Se muestra el numero real y la certeza de la
+            # asignacion en vez de ocultar que son cuentas distintas.
+            "numeroCuentaBancaria": "_cb_bna.NumeroCuenta",
+            "certezaCuenta": "[Movimientos BNA].CertezaCuenta",
         },
         extra_join=(
             "LEFT JOIN dbo.CargasResumenBancario_Movimientos _crm_bna "
-            "ON _crm_bna.Banco = 'BNA' AND _crm_bna.IdMovimiento = [Movimientos BNA].IdMovimientoBNA"
+            "ON _crm_bna.Banco = 'BNA' AND _crm_bna.IdMovimiento = [Movimientos BNA].IdMovimientoBNA "
+            "LEFT JOIN dbo.CuentasBancarias _cb_bna "
+            "ON _cb_bna.IdCuentaBancaria = [Movimientos BNA].IdCuentaBancaria"
         ),
     ),
     "galicia": MedioConfig(

@@ -34,6 +34,8 @@ class MovimientoBNA(BaseModel):
     idContacto: int | None = None
     contacto: str | None = None
     idCarga: int | None = None
+    numeroCuentaBancaria: str | None = None
+    certezaCuenta: str | None = None
 
 
 class MovimientoGalicia(BaseModel):

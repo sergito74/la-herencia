@@ -17,7 +17,7 @@ from __future__ import annotations
 import re
 from datetime import date
 
-from src.db.connection import execute_write_transaction, fetch_all
+from src.db.connection import execute_write_transaction, fetch_all, fetch_one
 from src.features.tesoreria import excel_import
 
 _ESPACIOS_RE = re.compile(r"\s+")
@@ -161,19 +161,36 @@ def previsualizar_confirmacion(banco: str, filename: str, contenido: bytes) -> d
     return preview
 
 
-def _insert_bna_statement(fila: dict):
+def _id_cuenta_bna_vigente() -> int:
+    """El BNA cambio de numero de cuenta varias veces (`separar_cuentas_bna.py`
+    reconstruyo el historico); toda carga nueva pertenece a la cuenta sin
+    FechaBaja (la unica abierta hoy, 6150111899 a la fecha de esta migracion).
+    Si en el futuro esa cuenta se da de baja y se abre otra, hay que cargar
+    la cuenta nueva en `CuentasBancarias` antes de la primera carga."""
+    fila = fetch_one(
+        "SELECT IdCuentaBancaria FROM dbo.CuentasBancarias "
+        "WHERE Banco = 'BNA' AND FechaBaja IS NULL"
+    )
+    if fila is None:
+        raise ValueError("No hay ninguna cuenta BNA vigente en CuentasBancarias (FechaBaja IS NULL)")
+    return fila["IdCuentaBancaria"]
+
+
+def _insert_bna_statement(fila: dict, id_cuenta_bancaria: int):
     return (
         """
         INSERT INTO dbo.[Movimientos BNA]
-            ([Fecha / Hora Mov#], [Nro# Comprobante], Concepto, Importe)
+            ([Fecha / Hora Mov#], [Nro# Comprobante], Concepto, Importe, IdCuentaBancaria, CertezaCuenta)
         OUTPUT INSERTED.IdMovimientoBNA
-        VALUES (?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?)
         """,
         (
             fila["fecha"],
             _to_float_or_none(fila.get("comprobante")),
             fila.get("concepto"),
             fila["importe"],
+            id_cuenta_bancaria,
+            "Alta",
         ),
     )
 
@@ -228,7 +245,6 @@ def confirmar_carga(banco: str, filename: str, contenido: bytes) -> dict:
     omitidos_duplicado = sum(1 for v in duplicado_por_idx.values() if v)
     omitidos_incompletos = len(movimientos) - len(completos_idx)
 
-    insertar = _insert_bna_statement if banco == "bna" else _insert_galicia_statement
     tabla_banco = "BNA" if banco == "bna" else "Galicia"
     n = len(nuevos)
 
@@ -238,7 +254,11 @@ def confirmar_carga(banco: str, filename: str, contenido: bytes) -> dict:
     # `execute_write_transaction` resuelve cada callable con los resultados
     # ya obtenidos, en orden: `resultados[0..n-1]` son los ids de movimiento
     # y `resultados[n]` es el `IdCarga` recién insertado.
-    statements: list = [insertar(fila) for fila in nuevos]
+    if banco == "bna":
+        id_cuenta_bancaria = _id_cuenta_bna_vigente()
+        statements: list = [_insert_bna_statement(fila, id_cuenta_bancaria) for fila in nuevos]
+    else:
+        statements = [_insert_galicia_statement(fila) for fila in nuevos]
     statements.append(
         lambda resultados: (
             """

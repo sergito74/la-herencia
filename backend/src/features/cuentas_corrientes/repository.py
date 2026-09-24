@@ -197,11 +197,13 @@ def get_compra_referencia(id_compra: int) -> dict | None:
 def get_bna_referencia(id_movimiento: int) -> dict | None:
     sql = """
         SELECT
-            IdMovimientoBNA AS idMovimiento,
-            [Fecha / Hora Mov#] AS fecha,
-            Importe AS importe
-        FROM dbo.[Movimientos BNA]
-        WHERE IdMovimientoBNA = ?
+            m.IdMovimientoBNA AS idMovimiento,
+            m.[Fecha / Hora Mov#] AS fecha,
+            m.Importe AS importe,
+            cb.NumeroCuenta AS numeroCuentaBancaria
+        FROM dbo.[Movimientos BNA] m
+        LEFT JOIN dbo.CuentasBancarias cb ON cb.IdCuentaBancaria = m.IdCuentaBancaria
+        WHERE m.IdMovimientoBNA = ?
     """
     return fetch_one(sql, (id_movimiento,))
 
