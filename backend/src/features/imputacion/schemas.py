@@ -11,7 +11,17 @@ Origen = Literal["Insumo", "Contratista"]
 EstadoPropuesta = Literal["Pendiente", "Aprobada", "RequiereIntervencion"]
 
 
-class PropuestaFraccion(BaseModel):
+class ContextoComercial(BaseModel):
+    producto: str | None = None
+    idCompra: int | None = None
+    proveedor: str | None = None
+    tipoDocumento: str | None = None
+    numeroDocumento: str | None = None
+    fechaDocumento: datetime | None = None
+    monedaDocumento: str | None = None
+
+
+class PropuestaFraccion(ContextoComercial):
     idPropuesta: int
     idCorrida: str
     origen: Origen
@@ -23,6 +33,12 @@ class PropuestaFraccion(BaseModel):
     idCentroCosto: int | None
     esGanaderia: bool | None
     importe: float
+    cantidad: float | None = None
+    unidad: str | None = None
+    cultivo: str | None = None
+    campania: str | None = None
+    lote: str | None = None
+    centroCosto: str | None = None
     estado: EstadoPropuesta
     fechaCalculo: datetime
     fechaAprobacion: datetime | None
@@ -83,7 +99,7 @@ class ComparacionCampaniaOut(BaseModel):
     comparacionParcial: bool
 
 
-class PendienteIntervencionOut(BaseModel):
+class PendienteIntervencionOut(ContextoComercial):
     idCorrida: str
     origen: Origen
     idDetalleCompra: int

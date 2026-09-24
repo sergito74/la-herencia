@@ -3,7 +3,17 @@
 export type Origen = "Insumo" | "Contratista";
 export type EstadoPropuesta = "Pendiente" | "Aprobada" | "RequiereIntervencion";
 
-export interface PropuestaFraccion {
+export interface ContextoComercial {
+  producto: string | null;
+  idCompra: number | null;
+  proveedor: string | null;
+  tipoDocumento: string | null;
+  numeroDocumento: string | null;
+  fechaDocumento: string | null;
+  monedaDocumento: string | null;
+}
+
+export interface PropuestaFraccion extends ContextoComercial {
   idPropuesta: number;
   idCorrida: string;
   origen: Origen;
@@ -15,6 +25,12 @@ export interface PropuestaFraccion {
   idCentroCosto: number | null;
   esGanaderia: boolean | null;
   importe: number;
+  cantidad: number | null;
+  unidad: string | null;
+  cultivo: string | null;
+  campania: string | null;
+  lote: string | null;
+  centroCosto: string | null;
   estado: EstadoPropuesta;
   fechaCalculo: string;
   fechaAprobacion: string | null;
@@ -54,7 +70,7 @@ export interface ComparacionCampaniaOut {
   comparacionParcial: boolean;
 }
 
-export interface PendienteIntervencionOut {
+export interface PendienteIntervencionOut extends ContextoComercial {
   idCorrida: string;
   origen: Origen;
   idDetalleCompra: number;

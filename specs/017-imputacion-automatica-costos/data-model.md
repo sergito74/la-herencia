@@ -19,6 +19,8 @@ Una fila por **fracción** de reparto propuesta para un renglón de factura (ins
 | `IdCentroCosto` | int NULL FK → `[Centro de costos].IdCentro` | Se completa con "Adm. General" para órdenes sin cultivo; NULL en los demás casos (el Centro de Costos real de Agricultura/Ganadería se resuelve por Cultivo, no se duplica acá). Nombre de columna deliberadamente distinto de `Det_Compras.IdCentroCostos` (con "s", tabla existente) — son dos conceptos distintos, no un typo. |
 | `EsGanaderia` | bit | Reparto Agricultura (`0`) / Ganadería (`1`) de esta fracción, previo a Cultivo/Campaña (Clarifications: reparto multidestino). |
 | `Importe` | money | Fracción del importe del renglón de factura imputada a este destino. |
+| `Cantidad` | decimal(28,8) NULL | Cantidad física atribuida a la fracción, incluyendo stock; NULL si no registrada o contratista. |
+| `Unidad` | nvarchar(50) NULL | Unidad original del renglón de remito que origina la fracción. Puede diferir de la unidad de compra. |
 | `Estado` | varchar(20) | `'Pendiente'` \| `'Aprobada'` \| `'RequiereIntervencion'`. |
 | `FechaCalculo` | datetime2 | Cuándo se generó esta corrida. |
 | `FechaAprobacion` | datetime2 NULL | |

@@ -8,7 +8,7 @@ from datetime import date
 from fastapi import APIRouter, HTTPException, Query, Request, Response
 from starlette.concurrency import run_in_threadpool
 
-from src.features.imputacion import exportacion, motor, repository
+from src.features.imputacion import exportacion, motor, repository, presentacion
 from src.features.ordenes import resultado as ordenes_resultado
 from src.features.imputacion.repository import CorridaNoVigente
 from src.features.imputacion.schemas import (
@@ -83,6 +83,7 @@ async def listar_propuestas(
     if idDetalleCompra is not None:
         await _asegurar_corrida(idDetalleCompra, origen)
     filas = await run_in_threadpool(repository.listar_propuestas, estado, origen, idDetalleCompra, page, pageSize)
+    filas = await run_in_threadpool(presentacion.enriquecer_fracciones, filas)
     return [PropuestaFraccion(**f) for f in filas]
 
 
@@ -128,6 +129,7 @@ async def pendientes_intervencion(
     page: int = Query(default=1, ge=1), pageSize: int = Query(default=50, ge=1, le=200)
 ) -> list[PendienteIntervencionOut]:
     filas = await run_in_threadpool(repository.pendientes_intervencion, page, pageSize)
+    filas = await run_in_threadpool(presentacion.enriquecer_fracciones, filas)
     salida = []
     for f in filas:
         if f["origen"] == "Contratista":
@@ -137,11 +139,8 @@ async def pendientes_intervencion(
         motivo = motivo_real or "repartoNoCierra"
         salida.append(
             PendienteIntervencionOut(
-                idCorrida=f["idCorrida"],
-                origen=f["origen"],
-                idDetalleCompra=f["idDetalleCompra"],
+                **f,
                 motivo=motivo,
-                fechaCalculo=f["fechaCalculo"],
             )
         )
     return salida

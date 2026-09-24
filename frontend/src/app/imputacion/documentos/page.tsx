@@ -7,6 +7,7 @@ import { ContactoSelect } from "@/components/ui/ContactoSelect";
 import { FilterBar, FilterField, FilterSubmitButton, filterInputClass } from "@/components/ui/FilterBar";
 import { SoloLectura } from "@/components/auth/SoloLectura";
 import { useToast } from "@/components/ui/Toast";
+import { ResumenImputacion } from "@/components/imputacion/ResumenImputacion";
 
 interface Fraccion {
   idPropuesta: number;
@@ -22,6 +23,9 @@ interface Fraccion {
   centroCosto: string | null;
   esGanaderia: boolean | null;
   importe: number;
+  cantidad: number | null;
+  unidad: string | null;
+  idOrdenTrabajo: number | null;
   estado: "Pendiente" | "Aprobada" | "RequiereIntervencion";
 }
 
@@ -53,6 +57,7 @@ interface Documento {
 type Estado = "Pendiente" | "Aprobada" | "RequiereIntervencion";
 
 function etiquetaDestino(f: Fraccion): string {
+  if (f.estado === "RequiereIntervencion") return "Requiere intervención";
   if (f.cultivo) return `${f.cultivo} / ${f.campania ?? "—"}`;
   if (f.centroCosto) return f.centroCosto;
   if (f.esGanaderia) return "Ganadería";
@@ -103,7 +108,7 @@ function LineaRow({ linea, onAprobada }: { linea: Linea; onAprobada: (idCorrida:
           )}
           {linea.producto}
         </td>
-        <td className="py-1.5">{linea.cantidad}</td>
+        <td className="py-1.5">{linea.cantidad?.toLocaleString("es-AR")} {linea.unidad}</td>
         <td className="py-1.5">{linea.campaniaManual ?? "—"}</td>
         <td className="py-1.5">{linea.centroCostoManual ?? linea.rubroManual ?? "—"}</td>
         <td className="py-1.5 text-ink-secondary">
@@ -121,11 +126,11 @@ function LineaRow({ linea, onAprobada }: { linea: Linea; onAprobada: (idCorrida:
         linea.fracciones.map((f) => (
           <tr key={f.idPropuesta} className="border-t border-border bg-surface-sunken text-xs">
             <td className="py-1 pl-14 text-ink-secondary">↳ {etiquetaDestino(f)}</td>
-            <td className="py-1" colSpan={2}>
-              {f.importe.toLocaleString("es-AR")}
-            </td>
-            <td className="py-1">{f.origen}</td>
+            <td className="py-1">{f.origen === "Contratista" ? "No aplica" : f.cantidad == null ? "No registrada" : `${f.cantidad.toLocaleString("es-AR", { maximumFractionDigits: 4 })} ${f.unidad || "(unidad no informada)"}`}</td>
+            <td className="py-1">{f.campania ?? "—"}</td>
+            <td className="py-1">{f.lote ? `Lote ${f.lote}` : f.origen}</td>
             <td className="py-1">
+              <span className="mr-2">{f.importe.toLocaleString("es-AR")} ARS</span>
               {badgeEstado(f.estado)}
               {f.estado === "Pendiente" && (
                 <SoloLectura>
@@ -273,6 +278,13 @@ export default function DocumentosImputacionPage() {
                 {new Date(doc.fecha).toLocaleDateString("es-AR")} · {doc.moneda}
               </span>
             </div>
+            <div className="px-4 py-3">
+              <ResumenImputacion filas={doc.lineas.flatMap((linea) => linea.fracciones.map((f) => ({
+                ...f, producto: linea.producto, idDetalleCompra: linea.idDetalleCompra,
+              })))} />
+            </div>
+            <details className="px-4 pb-3">
+            <summary className="cursor-pointer py-2 text-sm font-medium">Detalle por insumo y clasificación manual</summary>
             <table className="w-full">
               <thead>
                 <tr className="text-left text-xs text-ink-secondary">
@@ -280,7 +292,7 @@ export default function DocumentosImputacionPage() {
                   <th className="py-1.5">Cantidad</th>
                   <th className="py-1.5">Campaña manual</th>
                   <th className="py-1.5">Centro/Rubro manual</th>
-                  <th className="py-1.5">Motor</th>
+                  <th className="py-1.5">Motor (ARS)</th>
                 </tr>
               </thead>
               <tbody>
@@ -297,6 +309,7 @@ export default function DocumentosImputacionPage() {
                 </tr>
               </tfoot>
             </table>
+            </details>
           </div>
         ))}
         {documentos.length === 0 && <p className="text-sm text-ink-secondary">No hay documentos con imputación todavía.</p>}

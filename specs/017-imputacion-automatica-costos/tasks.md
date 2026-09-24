@@ -205,6 +205,13 @@ Antes de implementar T015/T047 (motor.py), confirmar con el usuario el mecanismo
 
 ## Corrección de rendimiento — 2026-09-24
 
+## Cantidades y presentación — 2026-09-24
+
+- [X] UI01 Persistir y exponer cantidad/unidad por fracción; pruebas de reparto, stock e histórico sin cantidad.
+- [X] UI02 Exponer nombre de insumo, destinos legibles y encabezado comercial en propuestas, incluyendo intervención y acceso directo.
+- [X] UI03 Mostrar cantidades y resumen Cultivo/Campaña desplegable en ambas pantallas; conservar aprobación y corrección.
+- [X] UI04 Aplicar migración aditiva en WC con respaldo verificado y recuperación histórica inequívoca; validar lecturas, pruebas y frontend.
+
 - [X] PERF01 Liberar el event loop de las llamadas síncronas de imputación, preservar el lock de corridas y validar concurrencia (25 pruebas focalizadas exitosas).
 - [X] PERF02 Preparar arranque compilado, conservar modo Dev y evitar cierre forzado por sondeos fallidos; build, lint y TypeScript exitosos.
 - [X] PERF03 Escuchar localhost IPv4/IPv6 y medir arranque, entrega de páginas y lectura de documentos WC; evidencia en docs/auditoria-rendimiento-2026-09-24.md.

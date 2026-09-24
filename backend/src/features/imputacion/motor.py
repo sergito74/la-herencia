@@ -140,6 +140,7 @@ def calcular_propuesta_insumo(id_detalle_compra: int) -> list[dict]:
     if not vinculos:
         return []
     peso_por_detalle_remito = {v["idDetalleRemito"]: float(v["cantidadRemitida"] or 0) for v in vinculos}
+    unidades_por_remito = {v["idDetalleRemito"]: v.get("unidad") for v in vinculos}
 
     stock = calcular_stock(id_producto).get(id_producto, {})
     capas = {c["id"]: c for c in stock.get("capas", [])}
@@ -154,12 +155,17 @@ def calcular_propuesta_insumo(id_detalle_compra: int) -> list[dict]:
         if capa is None or capa["cantidad"] <= EPS:
             continue
         peso_factura_en_capa = cantidad_remitida / float(capa["cantidad"])
+        # consumo_base / entrada_base es una proporción; al multiplicarla
+        # por CantidadRemitida, la cantidad resultante queda en la unidad
+        # original del remito, que puede diferir de la base FIFO y la factura.
+        unidad = unidades_por_remito[capa_id]
         costo_unitario = capa.get("costoUnitario") or 0.0
 
         # Fracción todavía en stock (no consumida) atribuible a esta factura.
         cantidad_stock = float(capa.get("restante", 0)) * peso_factura_en_capa
         if cantidad_stock > EPS:
-            fracciones.append({"importe": round(cantidad_stock * costo_unitario, 2), "esStock": True})
+            fracciones.append({"importe": round(cantidad_stock * costo_unitario, 2), "esStock": True,
+                               "cantidad": cantidad_stock, "unidad": unidad})
 
         for sid, consumo in consumos.items():
             tomado_de_esta_capa = sum(
@@ -174,10 +180,10 @@ def calcular_propuesta_insumo(id_detalle_compra: int) -> list[dict]:
             if meta.get("tipo") == "ordenTrabajo":
                 for destino in _destino_de_orden_insumo(int(sid[2:]), meta["idOrdenTrabajo"], cantidad_atribuida):
                     proporcion = destino["cantidad"] / cantidad_atribuida if cantidad_atribuida > EPS else 0
-                    fracciones.append({**destino, "importe": round(importe * proporcion, 2)})
+                    fracciones.append({**destino, "importe": round(importe * proporcion, 2), "unidad": unidad})
             elif meta.get("tipo") == "baja":
                 for destino in _destino_de_baja(meta, cantidad_atribuida, id_producto):
-                    fracciones.append({**destino, "importe": importe})
+                    fracciones.append({**destino, "importe": importe, "unidad": unidad})
             # Otros tipos de salida (ajuste faltante, orden heredada) quedan
             # fuera de alcance de este motor (FR-014): no se les propone reparto.
 

@@ -10,6 +10,13 @@
 
 ## Clarifications
 
+### Ampliación de presentación — 2026-09-24
+
+- En Imputación automática y por documento comercial, cada fracción debe mostrar cantidad de insumo y unidad junto con su importe.
+- Mostrar un resumen por Cultivo/Campaña con detalle desplegable de insumos y fracciones. Mantener stock, Ganadería, otros centros e intervención separados. Las cantidades solo se suman por insumo y unidad; los importes del motor se expresan en pesos.
+- En automática, identificar la propuesta por nombre de insumo/servicio y encabezado del documento (proveedor, tipo, número, fecha y moneda), incluso al ingresar desde Revisar. Los identificadores internos quedan para navegación y trazabilidad.
+- Conservar estados, correcciones e importes existentes. Las cantidades históricas solo se completan cuando pueden reconstruirse sin ambigüedad; de otro modo indicar que no están registradas. Contratistas no llevan cantidad de insumo.
+
 ### Sesión 2026-09-23 (25 preguntas + 3 de seguimiento, con los agentes especialistas: producción agrícola, dirección financiera, SQL Server)
 
 - **Valor del costo vs. destino del costo**: el importe de cada renglón de factura se fija en el momento de la compra, igual que hoy (el FIFO de Remitos, spec 010, no revaloriza) — invariable en dólares, ajustable en pesos solo por notas de crédito/débito de diferencia de cambio ya vinculadas a esa factura. Lo que decide este motor nuevo es **a qué Cultivo/Campaña/Centro de Costos se imputa** ese importe ya fijado, nunca su valor.

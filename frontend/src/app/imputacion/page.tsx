@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import { SoloLectura } from "@/components/auth/SoloLectura";
 import { PropuestaCard } from "@/components/imputacion/PropuestaCard";
+import { EncabezadoPropuesta } from "@/components/imputacion/EncabezadoPropuesta";
 import { useToast } from "@/components/ui/Toast";
 import { apiGet, ApiError, apiPost } from "@/services/apiClient";
 import type { AprobarLoteOut, PendienteIntervencionOut, PropuestaFraccion } from "@/services/imputacionApi";
@@ -171,9 +172,7 @@ export default function ImputacionPage() {
             const info = MOTIVO[p.motivo];
             return (
               <div key={p.idCorrida} className="rounded-md border border-red-200 bg-red-50 p-3 text-sm">
-                <span className="font-medium">
-                  {p.origen === "Contratista" ? "Factura de contratista" : "Factura de insumo"} #{p.idDetalleCompra}
-                </span>
+                <EncabezadoPropuesta contexto={p} />
                 <p className="mt-1 text-ink-secondary">{info?.titulo ?? p.motivo}</p>
                 {info && <p className="mt-0.5 text-xs text-ink-secondary">→ {info.accion}</p>}
               </div>
@@ -185,8 +184,7 @@ export default function ImputacionPage() {
         </div>
       ) : idDetalleCompraFoco ? (
         <div className="mt-6">
-          <h2 className="mb-2 text-sm font-medium text-ink-secondary">Renglón de factura {idDetalleCompraFoco}</h2>
-          <PropuestaCard idDetalleCompra={Number(idDetalleCompraFoco)} />
+          <PropuestaCard key={idDetalleCompraFoco} idDetalleCompra={Number(idDetalleCompraFoco)} onAprobada={recargarLista} />
           <a href="/imputacion" className="mt-2 inline-block text-xs text-ink-secondary underline">
             ← Ver todas las propuestas
           </a>
@@ -222,9 +220,9 @@ export default function ImputacionPage() {
                       />
                     </SoloLectura>
                   )}
-                  <h2 className="text-sm font-medium text-ink-secondary">Renglón de factura {idDetalleCompra}</h2>
+                  {tienePendientes && <span className="text-xs text-ink-secondary">Seleccionar propuesta para aprobación</span>}
                 </div>
-                <PropuestaCard idDetalleCompra={idDetalleCompra} />
+                <PropuestaCard idDetalleCompra={idDetalleCompra} onAprobada={recargarLista} />
               </div>
             );
           })}

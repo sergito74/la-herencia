@@ -42,6 +42,10 @@ Query params: `idCampania` (requerido).
 - `costoHeredado` viene de `resultado.py::resumen_campania_heredado()` (012, sin modificar).
 - `costoNuevo` suma únicamente fracciones `Estado = 'Aprobada'` de `ImputacionPropuestas` para ese `idCampania`; `comparacionParcial = true` si existen fracciones `Pendiente`/`RequiereIntervencion` para esa campaña.
 
+## Ampliación de lecturas — 2026-09-24
+
+Propuestas y fracciones de documentos incorporan `cantidad: number | null` y `unidad: string | null`: cantidad física atribuida al destino; null significa no registrada/no aplicable, nunca cero implícito. Propuestas incorporan `producto`, `idCompra`, `proveedor`, `tipoDocumento`, `numeroDocumento`, `fechaDocumento`, `monedaDocumento`, `cultivo`, `campania`, `lote`, `centroCosto` (nullable). El origen Contratista resuelve el encabezado por IdCompra; Insumo por IdDetalleCompra. Intervención devuelve el mismo contexto comercial. Los importes de fracciones son pesos; monedaDocumento identifica únicamente el documento original. Los resúmenes se calculan sobre las fracciones completas mostradas de cada documento/propuesta, separando cantidades por producto/unidad.
+
 ## Intervención manual
 
 ### `GET /api/imputacion/pendientes-intervencion`

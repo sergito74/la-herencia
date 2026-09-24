@@ -83,6 +83,15 @@ CREATE TABLE dbo.OrdenesContratistaFacturas (
 )
 """
 
+# Snapshot físico del reparto. NULL conserva el significado de las corridas
+# anteriores: una cantidad que no se registró no equivale a cero.
+DDL_COLUMNAS_CANTIDAD_UNIDAD = """
+IF COL_LENGTH('dbo.ImputacionPropuestas', 'Cantidad') IS NULL
+    ALTER TABLE dbo.ImputacionPropuestas ADD Cantidad decimal(28, 8) NULL;
+IF COL_LENGTH('dbo.ImputacionPropuestas', 'Unidad') IS NULL
+    ALTER TABLE dbo.ImputacionPropuestas ADD Unidad nvarchar(50) NULL;
+"""
+
 DDL_REFERENCIAS = """
 IF OBJECT_ID('dbo.ImputacionReferencias', 'U') IS NULL
 CREATE TABLE dbo.ImputacionReferencias (
@@ -106,6 +115,7 @@ def main() -> None:
         cursor.execute(DDL_INDICE_VIGENTE)
         cursor.execute(DDL_INDICE_COMPRAS_CONTACTO_FECHA)
         cursor.execute(DDL_COLUMNA_USUARIO_APROBACION)
+        cursor.execute(DDL_COLUMNAS_CANTIDAD_UNIDAD)
         cursor.execute(DDL_ORDENES_CONTRATISTA_FACTURAS)
         cursor.execute(DDL_REFERENCIAS)
     finally:

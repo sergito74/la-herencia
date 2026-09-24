@@ -19,6 +19,7 @@ _COLUMNAS = (
     "p.IdCentroCosto AS idCentroCosto, p.EsGanaderia AS esGanaderia, p.Importe AS importe, "
     "p.Estado AS estado, p.FechaCalculo AS fechaCalculo, p.FechaAprobacion AS fechaAprobacion, "
     "p.UsuarioAprobacion AS usuarioAprobacion"
+    ", p.Cantidad AS cantidad, p.Unidad AS unidad"
 )
 
 
@@ -39,8 +40,8 @@ def guardar_corrida(origen: str, id_detalle_compra: int, fracciones: list[dict])
         (
             "INSERT INTO dbo.ImputacionPropuestas "
             "(IdCorrida, Origen, IdDetalleCompra, IdOrdenTrabajo, IdLote, IdCultivo, IdCampania, "
-            "IdCentroCosto, EsGanaderia, Importe, Estado, FechaAprobacion) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            "IdCentroCosto, EsGanaderia, Importe, Estado, FechaAprobacion, Cantidad, Unidad) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             (
                 id_corrida,
                 origen,
@@ -54,6 +55,8 @@ def guardar_corrida(origen: str, id_detalle_compra: int, fracciones: list[dict])
                 f["importe"],
                 f.get("estado", "Pendiente"),
                 f.get("fechaAprobacion"),
+                f.get("cantidad"),
+                f.get("unidad"),
             ),
         )
         for f in fracciones
@@ -233,8 +236,11 @@ def vinculos_remito_para_compra(id_detalle_compra: int) -> list[dict]:
     """Renglones de remito vinculados a este renglón de factura, con la cantidad
     remitida de cada uno (`tblRemitoCompra`, fuente de verdad del vínculo)."""
     return fetch_all(
-        "SELECT IdDetalleRemito AS idDetalleRemito, CantidadRemitida AS cantidadRemitida "
-        "FROM dbo.tblRemitoCompra WHERE IdDetalleCompra = ?",
+        "SELECT v.IdDetalleRemito AS idDetalleRemito, v.CantidadRemitida AS cantidadRemitida, "
+        "rd.[Unidad Medida] AS unidad "
+        "FROM dbo.tblRemitoCompra v "
+        "JOIN dbo.Remitos_Detalles rd ON rd.IdDetalleRemito = v.IdDetalleRemito "
+        "WHERE v.IdDetalleCompra = ?",
         (id_detalle_compra,),
     )
 
@@ -453,7 +459,7 @@ def lineas_con_imputacion_batch(ids_compra: tuple[int, ...]) -> dict[int, list[d
                p.IdOrdenTrabajo AS idOrdenTrabajo, p.IdLote AS idLote, lo.[Numero Lote] AS lote, p.IdCultivo AS idCultivo, cu.Cultivo AS cultivo,
                p.IdCampania AS idCampania, ca.Campaña AS campania, p.IdCentroCosto AS idCentroCosto,
                cc.[Centro de costos] AS centroCosto, p.EsGanaderia AS esGanaderia, p.Importe AS importe,
-               p.Estado AS estado
+               p.Estado AS estado, p.Cantidad AS cantidad, p.Unidad AS unidad
         FROM dbo.ImputacionPropuestas p
         LEFT JOIN dbo.Lotes lo ON lo.IdLote = p.IdLote
         LEFT JOIN dbo.Cultivos cu ON cu.IdCultivo = p.IdCultivo

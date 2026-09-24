@@ -91,6 +91,10 @@ frontend/src/
 
 ## Complexity Tracking
 
+## Cantidades y presentación por Cultivo/Campaña — 2026-09-24
+
+Ampliar snapshot de fracciones con cantidad/unidad físicas nullable, sin deducirlas de importes. Migración aditiva y eventual recuperación inequívoca del histórico, exclusivamente en WC con respaldo verificado. Enriquecer lecturas con nombres de destinos y datos del comprobante mediante joins acotados. Componente compartido de resumen desplegable; cantidades separadas por insumo/unidad. Conservar aprobación/corrección, mostrar errores y vacíos. Validar motor, contrato/API, consultas reales de lectura y TypeScript/lint.
+
 *Sin violaciones.*
 
 ## Corrección de rendimiento — 2026-09-24
