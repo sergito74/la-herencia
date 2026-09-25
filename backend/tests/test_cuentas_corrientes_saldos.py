@@ -4,6 +4,7 @@ import openpyxl
 from fastapi.testclient import TestClient
 
 from src.auth.tokens import crear_token
+from src.db.connection import fetch_all
 
 from src.features.cuentas_corrientes import exportacion, repository
 from src.main import app
@@ -94,3 +95,28 @@ def test_exportar_endpoints_devuelven_xlsx(monkeypatch):
     monkeypatch.setattr(exportacion, "cuenta_corriente_xlsx", lambda *a, **k: b"contenido")
     r2 = client.get("/api/cuentas-corrientes/contactos/1/exportar")
     assert r2.status_code == 200
+
+
+def test_vw_movimientos_cuenta_incluye_origen_tarjetas():
+    """Bug real encontrado 2026-09-25 (reportado por Sergio sobre el
+    proveedor "2JM"): `vw_MovimientosCuenta_Base` nunca incluía los pagos
+    hechos con tarjeta de crédito, dejando 111 proveedores con saldo
+    deudor incorrecto. Corregido con
+    `scripts/agregar_tarjetas_a_vista_cuenta_corriente.py` (solo en `WC`,
+    `LaHerencia` mantiene el bug heredado — ver esa migración para el
+    detalle completo del diseño)."""
+    origenes = {r["Origen"] for r in fetch_all("SELECT DISTINCT Origen FROM dbo.vw_MovimientosCuenta_Base")}
+    assert "Tarjetas" in origenes
+
+
+def test_2jm_saldo_cierra_tras_incluir_pago_con_tarjeta():
+    """Caso real reportado por Sergio: factura 00001-00003751 de "2JM"
+    pagada con Visa Galicia (resumen VI00000000035262903, $130.400) no
+    se reflejaba en la cuenta corriente. El saldo debe cerrar cerca de $0
+    (redondeos de centavos ya presentes en todo el historial del contacto,
+    no un problema nuevo)."""
+    fila = fetch_all("SELECT IdContacto FROM dbo.Contactos WHERE [Razon Social] = '2JM'")
+    id_contacto = fila[0]["IdContacto"]
+    saldo = repository.get_saldo(id_contacto)
+    assert saldo is not None
+    assert abs(saldo["saldoParcial"]) < 1.0
