@@ -15,6 +15,7 @@ import {
   marcarSinDocumento,
   proponerReparto,
   quitarEstadoLinea,
+  quitarVinculoCompra,
   vincularComprasLote,
   type ConciliacionCalculo,
   type DocumentoCandidato,
@@ -249,6 +250,24 @@ function ContenidoPanel({
     }
   }
 
+  /** A diferencia de `ejecutar`, no cierra el panel: después de quitar un
+   * vínculo mal cargado (ej. caso "Agüero Shamaim SRL") lo normal es seguir
+   * ahí mismo para cargar el correcto. */
+  async function quitarVinculo(idVinculo: number) {
+    setGuardando(true);
+    setError(null);
+    try {
+      await quitarVinculoCompra(idLineaConsumo, idVinculo);
+      showToast("Vínculo quitado.", "success");
+      onChanged();
+      await refetch();
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : "No se pudo quitar el vínculo.");
+    } finally {
+      setGuardando(false);
+    }
+  }
+
   if (isLoading) return <p className="text-sm text-ink-secondary">Cargando…</p>;
   if (isError || !data) {
     return (
@@ -327,7 +346,17 @@ function ContenidoPanel({
                   <span>
                     {v.proveedor ?? "—"} · {v.tipoDocumento ?? "Documento"} {v.numeroDocumento ?? ""}
                   </span>
-                  <span className="font-data">{formatMoneda(v.importeImputado)}</span>
+                  <span className="flex items-center gap-2">
+                    <span className="font-data">{formatMoneda(v.importeImputado)}</span>
+                    <button
+                      type="button"
+                      disabled={guardando}
+                      onClick={() => quitarVinculo(v.idVinculo)}
+                      className="text-ink-secondary underline hover:text-status-danger disabled:opacity-40"
+                    >
+                      Quitar
+                    </button>
+                  </span>
                 </li>
               ))}
             </ul>
