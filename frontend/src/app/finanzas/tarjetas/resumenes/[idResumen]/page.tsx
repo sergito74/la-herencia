@@ -76,16 +76,26 @@ function LineaConsumoRow({ linea, onChanged }: { linea: LineaConsumo; onChanged:
     }
   }
 
+  // Bug real corregido 2026-09-26 (caso "Agüero Shamaim SRL"): esta grilla
+  // consideraba "conciliada" (y ocultaba "Conciliar…") apenas había UN
+  // vínculo, aunque fuera solo una parte de una línea "agrupada" (varios
+  // proveedores en un mismo resumen, ej. MercadoLibre) — igual que el bug
+  // ya corregido en PanelConciliacion.tsx/backend, pero acá se calculaba
+  // de nuevo con su propia lógica, sin usar `importeRestante` del backend.
+  const totalImputado = linea.comprasVinculadas.reduce((acc, v) => acc + v.importeImputado, 0);
+  const importeRestante = Math.round((linea.importe - totalImputado) * 100) / 100;
   const resuelta = linea.estadoLinea != null;
-  const conciliada = linea.comprasVinculadas.length > 0 || resuelta;
+  const conciliada = resuelta || (linea.comprasVinculadas.length > 0 && importeRestante <= 1);
   const etiqueta =
     linea.estadoLinea === "SinDocumento"
       ? "Sin documento"
       : linea.estadoLinea === "DiferenciaAceptada"
         ? "Diferencia aceptada"
-        : linea.comprasVinculadas.length > 0
+        : conciliada
           ? "Vinculada"
-          : "Sin vincular";
+          : linea.comprasVinculadas.length > 0
+            ? `Vinculada parcial — falta ${formatMoneda(importeRestante)}`
+            : "Sin vincular";
 
   return (
     <tr className="border-t border-border align-top">
