@@ -303,11 +303,20 @@ def auto_vincular_compras(id_resumen: int) -> int:
 # "Carne consumo particular"…) que la deja en $0 neto. Lo que cobró la tarjeta es el
 # importe BRUTO de la factura, así que para conciliar se suma de vuelta esa línea
 # (el neto de estas facturas es ~0 y quedaban fuera de todos los candidatos).
+#
+# La línea negativa puede cargarse de dos formas (109 de 115 casos reales con
+# `Precio Unitario` negativo, 3 con `Cantidad` negativa en su lugar — mismo
+# efecto sobre el total, solo cambia qué factor es negativo; caso real "Cumo
+# Store", 2026-09-26, que quedaba afuera de los candidatos por esto). El
+# filtro compara el SUBTOTAL de la línea, no un factor en particular, para
+# reconocer ambas formas.
 _APLICA_PARTICULAR = """
     OUTER APPLY (
         SELECT ISNULL(SUM(dc.Cantidad * dc.[Precio Unitario] * (1 + ISNULL(dc.IVA, 0) / 100.0)), 0) AS cp
         FROM dbo.Det_Compras dc
-        WHERE dc.IdCompra = w.IdDeuda AND dc.[Precio Unitario] < 0 AND dc.[Producto/Servicio] LIKE '%particular%'
+        WHERE dc.IdCompra = w.IdDeuda
+          AND dc.Cantidad * dc.[Precio Unitario] < 0
+          AND dc.[Producto/Servicio] LIKE '%particular%'
     ) pa
 """
 _IMPORTE_BRUTO = "(w.ImporteDocumento - pa.cp)"
