@@ -21,6 +21,7 @@ from src.features.auth.router import router as auth_router
 from src.features.aplicaciones_pago.router import router as aplicaciones_pago_router
 from src.features.arrendamientos.router import router as arrendamientos_router
 from src.features.compras.router import router as compras_router
+from src.features.conciliacion_historico.router import router as conciliacion_historico_router
 from src.features.contactos.router import router as contactos_router
 from src.features.cuentas_corrientes.router import router as cuentas_corrientes_router
 from src.features.documentos.router import router as documentos_router
@@ -133,6 +134,7 @@ app.include_router(auth_router)
 app.include_router(aplicaciones_pago_router)
 app.include_router(arrendamientos_router)
 app.include_router(compras_router)
+app.include_router(conciliacion_historico_router)
 app.include_router(contactos_router)
 app.include_router(cuentas_corrientes_router)
 app.include_router(documentos_router)

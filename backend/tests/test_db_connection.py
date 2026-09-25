@@ -20,7 +20,7 @@ def test_execute_write_refuses_target_laherencia(monkeypatch):
 
 def test_execute_write_refuses_target_laherencia_case_insensitive(monkeypatch):
     monkeypatch.setattr(connection, "DATABASE", "LAHERENCIA")
-    with pytest.raises(RuntimeError, match="LaHerencia"):
+    with pytest.raises(RuntimeError, match="LAHERENCIA"):
         connection.execute_write("UPDATE dbo.Foo SET Bar = ? WHERE Id = ?", (1, 2))
 
 

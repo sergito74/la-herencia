@@ -48,6 +48,9 @@ Thumbs.db
 launcher/.run/
 backups/
 
+# Auditoría generada por scripts one-off (ej. conciliar_historico_cuentas_corrientes.py)
+backend/conciliacion_historico_*.csv
+
 # Configuration and generated packages
 .env*
 *.egg-info/
