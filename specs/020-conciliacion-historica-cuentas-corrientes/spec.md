@@ -14,8 +14,8 @@
 
 - Q: ¿Para qué contactos se aplica el backlog histórico? → A: Para todos los proveedores y clientes con movimientos en el rango 2015-2026, en una sola pasada (no por piloto).
 - Q: ¿Qué hacer cuando la aplicación FIFO no es 100% cierta (documento no encontrado, importes que no cierran, ambigüedad entre varios documentos candidatos)? → A: Aplicar la mejor coincidencia disponible ("mejor esfuerzo") y marcarla explícitamente como tal, en vez de dejarla sin aplicar.
-- Q: ¿Cómo se obtiene el "saldo de referencia" de Access para US3? → A: No hay exportación de Access disponible ni planeada en el corto plazo. El saldo reconstruido desde el arrastre de movimientos ya existe en el sistema (`vw_MovimientosCuenta_Saldo`, la misma fuente que usa la feature 004) — no hay que construirlo de nuevo. Falta un dato de verdad externo (saldo real de cada cuenta) para validar contra eso, que se conseguirá y analizará en una etapa posterior, fuera del alcance inmediato de esta feature.
-- Q: ¿Qué tolerancia usar para marcar un contacto "conciliado" en la comparación de saldos? → A: 0.5% relativo al saldo (una vez que exista el dato externo contra el cual comparar).
+- Q: ¿Cómo se obtiene el "saldo de referencia" de Access para US3? → A (revisado 2026-09-25): calcularlo directamente desde Access, no desde una exportación manual. Investigando se confirmó que los `.accdb` de Access están enlazados por ODBC a la base SQL Server `LaHerencia` (la protegida, que Access sigue escribiendo en producción) — Access no tiene datos propios, es un front-end. El "saldo de Access" es, en los hechos, `vw_MovimientosCuenta_Saldo` calculado sobre `LaHerencia`. Se implementó `backend/scripts/comparar_saldo_laherencia.py`, que lee `LaHerencia` en modo estrictamente solo lectura y guarda el resultado en `SaldosReferenciaAccess` (`WC`).
+- Q: ¿Qué tolerancia usar para marcar un contacto "conciliado" en la comparación de saldos? → A: 0.5% relativo al saldo, mínimo $1. Validado contra datos reales: 512 de 513 contactos conciliados en la primera corrida.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -108,8 +108,8 @@ Un usuario administrativo necesita comparar, contacto por contacto, el saldo de 
 
 ## Assumptions
 
-- El "saldo de referencia (Access)" se puede obtener o reconstruir contacto por contacto (por ejemplo, desde una exportación puntual de los formularios Access, o desde un cálculo equivalente sobre datos migrados); su forma concreta de carga se decide en la fase de planificación, no en esta especificación.
+- El "saldo de referencia (Access)" se lee directamente de `LaHerencia` (la base que Access enlaza por ODBC y sigue escribiendo en producción), en modo estrictamente solo lectura — resuelto, ver Clarifications.
 - "Todos los contactos" se refiere a los proveedores y clientes con movimientos de tesorería en el rango 2015-2026 en la base `WC`; contactos de otro tipo (bancos, empleados, organismos) quedan fuera de alcance salvo que tengan documentos de compra/venta asociados.
 - El rango 2015-2026 cubre la totalidad de movimientos sin aplicar, independientemente de la etiqueta que les asigne 018 (`FECHA_CORTE_APLICACION = 2015-09-01`, que en la práctica distingue solo un puñado de movimientos anteriores a esa fecha como "Histórico sin aplicar" del resto, etiquetado "Pendiente de aplicar"): este proceso aplica sobre ambos grupos por igual, ya que ambos están hoy sin aplicación real.
 - La revisión y corrección manual de casos de "mejor esfuerzo" o "con diferencia" es un trabajo humano posterior a esta feature; el alcance aquí es generar la aplicación y la visibilidad, no garantizar que cada caso individual sea 100% correcto.
-- No se modifica ni se tocan datos de la base `LaHerencia` (protegida); todo el proceso opera sobre `WC`, igual que el resto del sistema.
+- `LaHerencia` (protegida) se lee en modo estrictamente solo lectura únicamente para la verificación de saldos (US3); nunca se escribe en ella. Todo el resto del proceso (aplicar el histórico, generar aplicaciones, el log de revisión) opera exclusivamente sobre `WC`, igual que el resto del sistema.

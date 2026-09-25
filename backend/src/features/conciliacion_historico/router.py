@@ -9,7 +9,7 @@ from fastapi import APIRouter, Query
 from starlette.concurrency import run_in_threadpool
 
 from src.features.conciliacion_historico import repository
-from src.features.conciliacion_historico.schemas import DetalleContactoResponse, ResumenResponse
+from src.features.conciliacion_historico.schemas import DetalleContactoResponse, ResumenResponse, SaldosResponse
 
 router = APIRouter(prefix="/api/conciliacion-historico", tags=["conciliacion-historico"])
 
@@ -18,6 +18,12 @@ router = APIRouter(prefix="/api/conciliacion-historico", tags=["conciliacion-his
 async def resumen_endpoint(soloConDudas: bool = Query(default=False)) -> ResumenResponse:
     filas = await run_in_threadpool(repository.resumen_por_contacto, soloConDudas)
     return ResumenResponse(contactos=filas)
+
+
+@router.get("/saldos", response_model=SaldosResponse)
+async def saldos_endpoint(estado: str | None = Query(default=None, pattern="^(conciliado|con-diferencia)$")) -> SaldosResponse:
+    filas = await run_in_threadpool(repository.comparar_saldos, estado)
+    return SaldosResponse(contactos=filas)
 
 
 @router.get("/{idContacto}/detalle", response_model=DetalleContactoResponse)

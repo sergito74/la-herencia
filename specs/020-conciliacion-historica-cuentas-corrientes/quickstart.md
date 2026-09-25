@@ -1,12 +1,12 @@
 # Quickstart: Conciliación histórica de cuentas corrientes
 
-**Estado (2026-09-25)**: Escenarios 1-4 ejecutados y validados contra `WC` real. Escenario 5 no se ejecutó de punta a punta para no anular una aplicación real como efecto de una validación (se deja para cuando el usuario corrija un caso real). Escenario 6 no aplica todavía: US3 está pospuesta (no existe `SaldosReferenciaAccess` con datos ni el endpoint `/saldos` — ver research.md §2).
+**Estado (2026-09-25)**: Escenarios 1-4 y 6 ejecutados y validados contra `WC` y `LaHerencia` reales (497 tests en verde). Escenario 5 no se ejecutó de punta a punta para no anular una aplicación real como efecto de una validación (se deja para cuando el usuario corrija un caso real). Las 3 historias de usuario (US1/US2/US3) están completas.
 
 ## Prerrequisitos
 
 - Backup de `WC` verificado (Constitución, Principio II) antes de correr `--apply` — hecho: `backups/WC_pre_conciliacion_historico_20260925.bak`.
 - Migración de esquema aplicada: columnas `Origen`/`NotaConciliacion` en `AplicacionesPago`, tabla `SaldosReferenciaAccess` creada — hecho.
-- ~~Archivo de saldos de referencia Access...~~ no aplica: US3 pospuesta, ver research.md §2.
+- DSN `SQL_LaHerencia` configurado y accesible en modo lectura para `comparar_saldo_laherencia.py` (mismo DSN que usa el backend, apunta a `LaHerencia` por defecto) — ya disponible en este entorno.
 
 ## Escenario 1 — Dry-run del histórico
 
@@ -57,6 +57,13 @@ GET /api/conciliacion-historico/258/detalle
 
 **Estado**: no ejecutado contra datos reales — anularía una de las únicas 5 aplicaciones de mejor esfuerzo existentes sin necesidad real de corregirla todavía. La lógica está cubierta por los tests de 019 (endpoint de anulación) y por el filtro `Anulada = 0` que ya usa `detalle_contacto` (mismo filtro que `aplicaciones_pago.repository.estado_movimiento`). Queda para ejecutarse la primera vez que el usuario corrija un caso real.
 
-## Escenario 6 — Verificar saldo contra Access
+## Escenario 6 — Verificar saldo contra el sistema real (LaHerencia)
 
-**Pospuesto (US3)**: no existe el endpoint `/saldos` ni datos en `SaldosReferenciaAccess` — ver research.md §2 (actualizado 2026-09-25). El saldo reconstruido ya existe en `vw_MovimientosCuenta_Saldo` (misma fuente que 004); falta un dato de verdad externo con el cual compararlo, a conseguir en una etapa posterior.
+```
+.venv\Scripts\python.exe -m scripts.comparar_saldo_laherencia --apply
+GET /api/conciliacion-historico/saldos?estado=con-diferencia
+```
+
+**Esperado**: el script lee `LaHerencia` (solo lectura) y `WC`, guarda la comparación en `SaldosReferenciaAccess`, y el endpoint devuelve solo los contactos fuera de tolerancia (0.5%, mínimo $1).
+
+**Resultado real (2026-09-25)**: 512/513 contactos conciliados. 1 con diferencia (Agrovet Integral SRL, #5) — investigado: una compra cargada en `WC` que nunca se registró en `LaHerencia` (hallazgo real de datos, no un bug de esta feature).

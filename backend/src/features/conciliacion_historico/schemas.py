@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from datetime import date
+
 from pydantic import BaseModel
 
 
@@ -40,3 +42,17 @@ class DetalleContactoResponse(BaseModel):
     idContacto: int
     aplicaciones: list[AplicacionAutomatica]
     excepciones: list[ExcepcionMovimiento]
+
+
+class ComparacionSaldo(BaseModel):
+    idContacto: int
+    razonSocial: str | None = None
+    saldoActual: float
+    saldoReferencia: float
+    fechaCorteReferencia: date
+    diferencia: float
+    estado: str
+
+
+class SaldosResponse(BaseModel):
+    contactos: list[ComparacionSaldo]

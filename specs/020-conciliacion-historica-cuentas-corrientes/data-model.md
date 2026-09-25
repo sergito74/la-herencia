@@ -11,15 +11,21 @@ Se agregan dos columnas nuevas (no se toca ninguna columna existente ni su semá
 
 Reglas heredadas de 019 que siguen aplicando sin cambios: inmutabilidad (insertar/anular, nunca `UPDATE` de `ImporteAplicado`/`IdDocumentoAplicado`), índices existentes, y que el estado de documento/movimiento se sigue calculando siempre en el momento desde esta misma tabla — el proceso histórico no introduce una segunda fuente de verdad.
 
-## SaldosReferenciaAccess — **pospuesta** (ver research.md §2, actualizado 2026-09-25)
+## SaldosReferenciaAccess (tabla nueva — implementada 2026-09-25, ver research.md §2)
 
-No se crea esta tabla por ahora. El usuario aclaró que no existe (ni va a armar en el corto plazo) una exportación de Access con la que comparar, y que el "saldo reconstruido desde el arrastre de movimientos" ya existe en el sistema: es `dbo.vw_MovimientosCuenta_Saldo` (columna `SaldoParcial`), la misma fuente que ya consume `cuentas_corrientes.repository.get_saldo`/`get_saldos_todos` (004). Construir una segunda reconstrucción del saldo a partir de los mismos datos de `WC` compararía el sistema contra sí mismo, sin aportar ninguna validación real.
+| Columna | Tipo | Notas |
+|---|---|---|
+| IdContacto | int PK | Mismo `IdContacto` que el resto del sistema |
+| SaldoAccess | money | `SaldoParcial` leído de `vw_MovimientosCuenta_Saldo` en `LaHerencia` (no un archivo — ver research.md §2: Access es hoy un front-end sobre `LaHerencia`) |
+| FechaCorte | date | Fecha de la corrida que generó este valor |
+| FechaCarga | datetime2 default sysutcdatetime() | |
 
-Cuando exista un dato de verdad externo (saldo real de cada cuenta, a conseguir en una etapa posterior), esta tabla se diseña recién en ese momento, con la forma concreta que tenga ese dato disponible.
+Poblada por `backend/scripts/comparar_saldo_laherencia.py --apply`: lee `LaHerencia` en modo estrictamente solo-lectura (conexión dedicada, reutiliza el guard `_assert_read_only` de `src/db/connection.py`), nunca escribe ahí. Upsert por `IdContacto` en cada corrida — solo interesa el último valor leído.
 
 ## Entidades derivadas (calculadas, no persistidas)
 
 - **Resumen de conciliación por contacto** (US2): `{ idContacto, aplicadosExactos, aplicadosMejorEsfuerzo, sinAplicar }` — cuenta de movimientos de tesorería 2015-2026 del contacto en cada categoría. Se deriva de `AplicacionesPago.Origen` (join con el movimiento original) más los movimientos sin ninguna aplicación vigente en ese rango.
+- **Comparación de saldo** (US3): `{ idContacto, saldoActual, saldoReferencia, diferencia, estado }` — `saldoActual` sale de `cuentas_corrientes.get_saldos_todos()` (WC, sin modificar), `saldoReferencia` de `SaldosReferenciaAccess` (LaHerencia), `estado = 'conciliado'` si `abs(diferencia) <= max($1, abs(saldoReferencia) * 0.5%)`, `'con-diferencia'` en caso contrario.
 
 ## Relación con features existentes
 

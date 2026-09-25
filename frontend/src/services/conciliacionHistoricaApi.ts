@@ -43,3 +43,22 @@ export function fetchResumenConciliacion(soloConDudas: boolean): Promise<{ conta
 export function fetchDetalleConciliacion(idContacto: number): Promise<DetalleContacto> {
   return apiGet<DetalleContacto>(`/api/conciliacion-historico/${idContacto}/detalle`);
 }
+
+export interface ComparacionSaldo {
+  idContacto: number;
+  razonSocial: string | null;
+  saldoActual: number;
+  saldoReferencia: number;
+  fechaCorteReferencia: string;
+  diferencia: number;
+  estado: "conciliado" | "con-diferencia";
+}
+
+export function fetchSaldosConciliacion(
+  estado?: "conciliado" | "con-diferencia"
+): Promise<{ contactos: ComparacionSaldo[] }> {
+  return apiGet<{ contactos: ComparacionSaldo[] }>(
+    "/api/conciliacion-historico/saldos",
+    estado ? { estado } : {}
+  );
+}

@@ -76,3 +76,38 @@ def test_detalle_endpoint_devuelve_aplicaciones_y_excepciones(monkeypatch):
     body = response.json()
     assert body["aplicaciones"][0]["origen"] == "automatica-mejor-esfuerzo"
     assert body["excepciones"][0]["subcategoria"] == "con-documento-sin-pendiente"
+
+
+def test_saldos_endpoint_devuelve_comparacion(monkeypatch):
+    monkeypatch.setattr(
+        repository,
+        "comparar_saldos",
+        lambda estado: [
+            {
+                "idContacto": 5,
+                "razonSocial": "Agrovet Integral SRL",
+                "saldoActual": -541397.39,
+                "saldoReferencia": -101483.57,
+                "fechaCorteReferencia": "2026-09-25",
+                "diferencia": -439913.82,
+                "estado": "con-diferencia",
+            }
+        ],
+    )
+    response = client.get("/api/conciliacion-historico/saldos")
+    assert response.status_code == 200
+    body = response.json()
+    assert body["contactos"][0]["estado"] == "con-diferencia"
+    assert body["contactos"][0]["diferencia"] == -439913.82
+
+
+def test_saldos_endpoint_pasa_el_filtro_estado(monkeypatch):
+    llamadas = []
+    monkeypatch.setattr(repository, "comparar_saldos", lambda estado: llamadas.append(estado) or [])
+    client.get("/api/conciliacion-historico/saldos?estado=con-diferencia")
+    assert llamadas == ["con-diferencia"]
+
+
+def test_saldos_endpoint_rechaza_estado_invalido():
+    response = client.get("/api/conciliacion-historico/saldos?estado=invalido")
+    assert response.status_code == 422

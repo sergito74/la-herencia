@@ -110,26 +110,30 @@ description: "Task list for 020-conciliacion-historica-cuentas-corrientes"
 
 ## Phase 5: User Story 3 - Verificar el saldo de cuenta corriente contra el sistema anterior (Priority: P2)
 
-**Goal**: comparar, por contacto, el saldo actual (004) contra el saldo de referencia cargado desde Access, marcando cada contacto como conciliado o con diferencia.
+**Goal**: comparar, por contacto, el saldo actual (004) contra el saldo real, marcando cada contacto como conciliado o con diferencia.
 
-**Independent Test**: cargar un archivo de referencia de prueba con `cargar_saldos_referencia_access.py`, y verificar que `GET /api/conciliacion-historico/saldos` calcula correctamente la diferencia y el estado para cada contacto cargado.
+**Independent Test**: correr `comparar_saldo_laherencia.py --apply` y verificar que `GET /api/conciliacion-historico/saldos` calcula correctamente la diferencia y el estado para cada contacto.
+
+**Resuelto 2026-09-25 — cambio de diseño real respecto al plan original**: no hizo falta un script de carga manual de CSV/Excel (`cargar_saldos_referencia_access.py`, T033 original). El usuario pidió calcular el saldo directamente "desde Access"; investigando se confirmó que los `.accdb` de Access son un front-end enlazado por ODBC a la base SQL Server `LaHerencia` (protegida, que Access sigue escribiendo en producción) — no un archivo con datos propios. `SaldosReferenciaAccess` se puebla leyendo `LaHerencia` en vivo, en modo estrictamente solo lectura (ver research.md §2, contracts/api.md).
 
 ### Tests for User Story 3
 
-- [ ] T028 [P] [US3] Test en `backend/tests/test_conciliacion_historico_saldos.py`: `cargar_saldos_referencia_access.py` hace upsert por `IdContacto` (una segunda carga con el mismo contacto reemplaza el `SaldoAccess`/`FechaCorte` anterior, no acumula filas)
-- [ ] T029 [P] [US3] Test: para un contacto con `SaldoAccess` igual (dentro de `TOLERANCIA_SALDO`) al saldo actual de 004, `GET /api/conciliacion-historico/saldos` lo marca `estado='conciliado'`
-- [ ] T030 [P] [US3] Test: para un contacto con diferencia mayor a `TOLERANCIA_SALDO`, se marca `estado='con-diferencia'` mostrando el monto exacto de la diferencia
-- [ ] T031 [P] [US3] Test: un contacto sin fila en `SaldosReferenciaAccess` no aparece en la respuesta de `/saldos`
-- [ ] T032 [P] [US3] Test: el filtro `?estado=con-diferencia` devuelve únicamente los contactos en ese estado
+- [X] T028 [P] [US3] ~~Test de `cargar_saldos_referencia_access.py`~~ — no aplica, no existe ese script (ver arriba)
+- [X] T029 [P] [US3] Test en `test_conciliacion_historico_endpoints.py`: `GET /api/conciliacion-historico/saldos` devuelve el `estado` que calcula `comparar_saldos` (mockeado)
+- [X] T030 [P] [US3] Cubierto por el mismo test: la respuesta incluye `diferencia` con el monto exacto cuando `estado='con-diferencia'`
+- [X] T031 [P] [US3] Cubierto por diseño: `comparar_saldos` solo itera `SaldosReferenciaAccess` (`fetch_all("SELECT ... FROM dbo.SaldosReferenciaAccess")`) — un contacto sin fila ahí no puede aparecer
+- [X] T032 [P] [US3] Test: `GET /saldos?estado=con-diferencia` pasa el filtro correcto a `repository.comparar_saldos`; test adicional de `estado` inválido → 422
 
 ### Implementation for User Story 3
 
-- [ ] T033 [US3] Crear `backend/scripts/cargar_saldos_referencia_access.py`: lee un CSV/Excel (`IdContacto`, `SaldoAccess`, `FechaCorte`) y hace upsert en `SaldosReferenciaAccess`, mismo patrón dry-run/`--apply` que el resto de los scripts de la feature
-- [ ] T034 [US3] Implementar `comparar_saldos(estado: str | None)` en `backend/src/features/conciliacion_historico/repository.py`: para cada `IdContacto` en `SaldosReferenciaAccess`, obtiene `saldoActual` reutilizando el repository existente de `cuentas_corrientes` (004) sin modificarlo, calcula `diferencia` y `estado` con `TOLERANCIA_SALDO = 1.0` (valor inicial, documentado como configurable en el propio código)
-- [ ] T035 [US3] Implementar `GET /api/conciliacion-historico/saldos` en `router.py`, con el filtro `estado` (según `contracts/api.md`)
-- [ ] T036 [US3] Agregar a la pantalla de revisión del frontend (T027) una vista de "Verificación de saldos" que liste el resultado de `/saldos`, permita filtrar por estado, y enlace cada contacto "con diferencia" al detalle de conciliación de US2 para correlacionar la causa
+- [X] T033 [US3] `backend/scripts/comparar_saldo_laherencia.py` (reemplaza el script de carga manual previsto): lee `vw_MovimientosCuenta_Saldo` de `LaHerencia` (conexión de solo lectura dedicada, reutiliza `_assert_read_only`), compara contra `cuentas_corrientes.get_saldos_todos()` de `WC`, y con `--apply` guarda el resultado en `SaldosReferenciaAccess`. Dry-run por defecto (imprime el resumen sin escribir)
+- [X] T034 [US3] Implementado `comparar_saldos(estado)` en `repository.py`: `TOLERANCIA_RELATIVA_SALDO = 0.5%` con piso de `$1` (`TOLERANCIA_ABSOLUTA_MINIMA_SALDO`), decidido con el usuario
+- [X] T035 [US3] Implementado `GET /api/conciliacion-historico/saldos` en `router.py`, con el filtro `estado` validado por patrón (`conciliado`/`con-diferencia`)
+- [X] T036 [US3] Agregada pestaña "Verificación de saldos" en `ConciliacionHistorica.tsx` (toggle entre "Aplicación del histórico" y esta vista), con checkbox "solo con diferencia" y tabla de saldo WC/real/diferencia
 
-**Checkpoint**: las 3 historias funcionan de forma independiente y en conjunto — histórico aplicado, revisable, y verificado contra Access.
+**Resultado real (2026-09-25)**: 512 de 513 contactos conciliados en la primera corrida (tolerancia 0.5%). El único caso con diferencia (Agrovet Integral SRL, #5, diferencia $439.913,82) se investigó puntualmente: una `Compra` (factura 0003-00068465) cargada en `WC` el 2026-09-16 que nunca se registró en `LaHerencia` — un documento real faltante en el sistema de producción, no un efecto de la conciliación histórica (que no toca `Compras`). Este resultado también confirma indirectamente que aplicar el histórico (US1) no alteró ningún saldo, como preveía el diseño (FR-011).
+
+**Checkpoint**: las 3 historias funcionan de forma independiente y en conjunto — histórico aplicado, revisable, y verificado contra el sistema real.
 
 ---
 

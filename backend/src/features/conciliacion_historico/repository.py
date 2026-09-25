@@ -27,6 +27,8 @@ from src.features.tesoreria.repository import MEDIOS_CONFIG, get_movimientos
 
 MEDIOS_CONCILIABLES = ("bna", "galicia", "efectivo", "valores-recibidos", "tarjetas")
 TOLERANCIA_RELATIVA_MEJOR_ESFUERZO = 0.02
+TOLERANCIA_RELATIVA_SALDO = 0.005
+TOLERANCIA_ABSOLUTA_MINIMA_SALDO = 1.0
 USUARIO_PROCESO = "sistema-conciliacion-020"
 
 # Subcategorías de "excepcion" (research.md §6, analizado contra datos reales
@@ -240,3 +242,46 @@ def aplicar_clasificacion(origen_movimiento: str, id_movimiento_origen: int, cla
         )
         ids_generados.append(id_aplicacion)
     return ids_generados
+
+
+def comparar_saldos(estado: str | None = None) -> list[dict]:
+    """Compara, por contacto con referencia cargada, el saldo actual de `WC`
+    contra el saldo real leído de `LaHerencia` (US3 — research.md §2,
+    actualizado 2026-09-25: el "sistema Access" es, en los hechos, un
+    front-end sobre `LaHerencia`; `SaldosReferenciaAccess` se puebla desde
+    ahí vía `scripts/comparar_saldo_laherencia.py`, no desde un archivo
+    manual). El saldo actual de `WC` se reutiliza tal cual de `cuentas_corrientes`
+    (004) — esta función no reimplementa ni ajusta ese cálculo."""
+    from src.features.cuentas_corrientes.repository import get_saldos_todos
+
+    referencias = fetch_all(
+        "SELECT r.IdContacto AS idContacto, r.SaldoAccess AS saldoReferencia, r.FechaCorte AS fechaCorte "
+        "FROM dbo.SaldosReferenciaAccess r"
+    )
+    saldos_wc = {f["idContacto"]: float(f["saldoParcial"] or 0) for f in get_saldos_todos()}
+    razones_sociales = {
+        f["idContacto"]: f["razonSocial"] for f in fetch_all("SELECT IdContacto AS idContacto, [Razon Social] AS razonSocial FROM dbo.Contactos")
+    }
+
+    resultado = []
+    for ref in referencias:
+        id_contacto = ref["idContacto"]
+        saldo_referencia = float(ref["saldoReferencia"])
+        saldo_actual = saldos_wc.get(id_contacto, 0.0)
+        diferencia = round(saldo_actual - saldo_referencia, 2)
+        tolerancia = max(TOLERANCIA_ABSOLUTA_MINIMA_SALDO, abs(saldo_referencia) * TOLERANCIA_RELATIVA_SALDO)
+        item_estado = "conciliado" if abs(diferencia) <= tolerancia else "con-diferencia"
+        if estado and item_estado != estado:
+            continue
+        resultado.append(
+            {
+                "idContacto": id_contacto,
+                "razonSocial": razones_sociales.get(id_contacto),
+                "saldoActual": saldo_actual,
+                "saldoReferencia": saldo_referencia,
+                "fechaCorteReferencia": ref["fechaCorte"],
+                "diferencia": diferencia,
+                "estado": item_estado,
+            }
+        )
+    return resultado

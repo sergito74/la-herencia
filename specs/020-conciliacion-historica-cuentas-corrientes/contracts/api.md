@@ -53,7 +53,7 @@ Para anular una aplicación, se usa el endpoint ya existente de 019 (`POST /api/
 
 ## `GET /api/conciliacion-historico/saldos`
 
-Comparación de saldo contra Access (US3), reutilizando el cálculo de saldo de 004.
+Comparación de saldo actual (`WC`) contra el saldo real de `LaHerencia` (US3 — la base que Access sigue escribiendo en producción, ver research.md §2), reutilizando el cálculo de saldo de 004 sin modificarlo. `SaldosReferenciaAccess` se puebla con `backend/scripts/comparar_saldo_laherencia.py --apply`, que lee `LaHerencia` en modo solo lectura.
 
 **Query params**: `estado` (`'conciliado'` | `'con-diferencia'`, opcional).
 
@@ -62,16 +62,18 @@ Comparación de saldo contra Access (US3), reutilizando el cálculo de saldo de 
 {
   "contactos": [
     {
-      "idContacto": 123,
-      "razonSocial": "Rutas Sur Atlantico S.A.",
-      "saldoActual": 148500.0,
-      "saldoAccess": 148500.0,
-      "fechaCorteAccess": "2026-08-31",
-      "diferencia": 0.0,
-      "estado": "conciliado"
+      "idContacto": 5,
+      "razonSocial": "Agrovet Integral SRL",
+      "saldoActual": -541397.39,
+      "saldoReferencia": -101483.57,
+      "fechaCorteReferencia": "2026-09-25",
+      "diferencia": -439913.82,
+      "estado": "con-diferencia"
     }
   ]
 }
 ```
 
-Un contacto sin fila en `SaldosReferenciaAccess` no aparece en este listado (no se puede comparar sin referencia cargada).
+Un contacto sin fila en `SaldosReferenciaAccess` no aparece en este listado (no se puede comparar sin referencia cargada). Tolerancia: `abs(diferencia) <= max($1, abs(saldoReferencia) * 0.5%)`.
+
+**Resultado real (2026-09-25)**: 512/513 contactos conciliados; el único caso con diferencia (Agrovet Integral SRL, arriba) reveló una compra cargada en `WC` que nunca se registró en `LaHerencia` — un hallazgo real de datos, no un efecto de esta feature.
