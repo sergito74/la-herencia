@@ -33,7 +33,7 @@ Web app existente: `backend/src/`, `frontend/src/`.
 **⚠️ CRITICAL**: ninguna historia puede implementarse hasta que esta fase esté completa.
 
 - [ ] T003 Escribir `backend/scripts/crear_tabla_aplicaciones_pago.py` (idempotente, `_assert_target_is_wc`, patrón de `crear_tablas_imputacion.py`/`separar_cuentas_bna.py`) con el DDL de `AplicacionesPago` de data-model.md (columnas, CHECK de `TipoDocumento`/`OrigenMovimiento`/`ImporteAplicado > 0`, índices `(OrigenMovimiento, IdMovimientoOrigen)` y `(TipoDocumento, IdDocumentoAplicado)`)
-- [ ] T004 Ejecutar el script contra `WC` (crear la tabla real) y verificar con una lectura que existe vacía
+- [ ] T004 Ejecutar el script contra `WC` (crear la tabla real) y verificar con una lectura que existe vacía — **pedir confirmación explícita de Sergio antes de correrlo**, mismo hábito que en 018 (`separar_cuentas_bna.py`), aunque el riesgo de crear una tabla nueva sea bajo (hallazgo P1 de `/speckit-analyze`)
 - [ ] T005 Definir `TOLERANCIA_REDONDEO_APLICACION = 1.0` como constante nombrada en `backend/src/features/aplicaciones_pago/repository.py` (research.md §4)
 - [ ] T006 Implementar `documentos_pendientes(id_contacto, tipo)` en `backend/src/features/aplicaciones_pago/documentos.py`: para `tipo='compra'`, `importeTotal` desde `vw_Cns_Total_Compra.GranTotal`; para `tipo='venta'`, reusa `ventas_hacienda.repository.{get_venta_cabecera,get_lineas_venta,calcular_totales}` para Hacienda y `[Importe Neto a percibir]` para Granos (research.md §1/§2) — en ambos casos resta `SUM(ImporteAplicado) WHERE Anulada=0` de `AplicacionesPago` para el `saldoPendiente`, y excluye documentos con `saldoPendiente <= TOLERANCIA_REDONDEO_APLICACION`
 - [ ] T007 Implementar en `backend/src/features/aplicaciones_pago/repository.py`: `estado_documento(tipo_documento, id_documento)`, `estado_movimiento(origen_movimiento, id_movimiento_origen)`, `insertar_aplicaciones(origen_movimiento, id_movimiento_origen, aplicaciones: list, usuario)` (valida no sobre-aplicación de cada documento y del movimiento antes de insertar, FR-008), `anular_aplicacion(id_aplicacion, motivo, usuario)` (nunca edita `ImporteAplicado`, solo marca `Anulada`)
@@ -53,6 +53,8 @@ Web app existente: `backend/src/`, `frontend/src/`.
 
 - [ ] T009 [P] [US1] Test de sugerencia FIFO en `backend/tests/test_aplicaciones_pago_sugerencia.py`: dado un contacto con 2 compras pendientes (una más vieja que otra) y un importe que solo alcanza para cubrir la primera entera y parte de la segunda, la sugerencia asigna en ese orden y dedo dejar `saldoSinAsignar = 0`
 - [ ] T010 [P] [US1] Contract test en `backend/tests/test_aplicaciones_pago_endpoints.py`: `POST /api/aplicaciones-pago` con una aplicación editada (distinta a la sugerencia) se guarda tal cual quedó; `GET /api/aplicaciones-pago/documento/CompraDeuda/{id}` refleja el estado `Parcial`/`Total` correcto
+- [ ] T010b [P] [US1] Contract test en `backend/tests/test_aplicaciones_pago_endpoints.py`: `POST /api/aplicaciones-pago` con un `importeAplicado` que deja un documento o el movimiento sobre-aplicado (más allá de `TOLERANCIA_REDONDEO_APLICACION`) devuelve 400 y no inserta ninguna fila (FR-008/SC-002 — hallazgo C1 de `/speckit-analyze`)
+- [ ] T010c [P] [US1] Contract test en `backend/tests/test_aplicaciones_pago_endpoints.py`: `POST /api/aplicaciones-pago` aceptando un `idDocumento` de un contacto DISTINTO al del movimiento no rechaza la operación (FR-006 — hallazgo C2 de `/speckit-analyze`)
 
 ### Implementation for User Story 1
 
@@ -63,6 +65,7 @@ Web app existente: `backend/src/`, `frontend/src/`.
 - [ ] T015 [US1] Implementar `GET /api/aplicaciones-pago/documento/{tipoDocumento}/{idDocumento}`
 - [ ] T016 [US1] Registrar `aplicaciones_pago_router` en `backend/src/main.py`
 - [ ] T017 [US1] Implementar `fetchSugerencia`/`fetchDocumentosPendientes`/`confirmarAplicacion` en `frontend/src/services/aplicacionesPagoApi.ts` y el panel `AplicarPagoPanel.tsx` (sugerencia editable en grilla, botón confirmar)
+- [ ] T017b [US1] En `AplicarPagoPanel.tsx`, agregar un buscador de "aplicar a otro contacto" (adicional a la sugerencia automática, que solo busca documentos del mismo contacto que el movimiento) — permite elegir un contacto distinto y ver sus documentos pendientes, mostrando aviso visible de que difiere del contacto del movimiento (FR-006 — hallazgo C2 de `/speckit-analyze`)
 
 **Checkpoint**: User Story 1 funcional de forma independiente.
 
