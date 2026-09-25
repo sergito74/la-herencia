@@ -56,6 +56,31 @@ def test_un_documento_en_pesos_que_no_coincide_es_pago_parcial_e_imputa_la_linea
     assert r["imputados"] == [{"idCompra": 1, "importeImputado": 250.0}]
 
 
+def test_linea_que_agrupa_varios_proveedores_imputa_el_valor_real_del_documento():
+    """Caso real "Agüero Shamaim SRL" (2026-09-26): un resumen de
+    MercadoLibre ($130.145,77) agrupa el cobro de varios proveedores; solo
+    se vincula la factura de uno ($23.868). A diferencia del caso "cuota"
+    (documento más grande que la línea), acá la línea es más grande que el
+    documento: no hay que imputarle toda la línea al documento (eso generaría
+    un saldo a favor fantasma), sino solo su valor real, dejando el resto
+    pendiente para vincular otros documentos más tarde."""
+    r = calcular_imputacion(130145.77, [_doc(1, 23868.0)])
+    assert not r["pagoParcial"]
+    assert r["permiteParcial"]
+    assert r["estado"] == "parcial" and r["diferencia"] == 106277.77
+    assert r["imputados"] == [{"idCompra": 1, "importeImputado": 23868.0}]
+
+
+def test_seleccionar_de_mas_no_permite_parcial_igual_que_antes():
+    """Cuando lo elegido vale MÁS que la línea (varios documentos, ninguno es
+    claramente "la cuota"), sigue requiriendo aceptar la diferencia — no es
+    el caso "agrupado" (ahí la línea es la que sobra, no lo elegido)."""
+    r = calcular_imputacion(1000.0, [_doc(1, 700.0), _doc(2, 500.0)])
+    assert not r["pagoParcial"]
+    assert not r["permiteParcial"]
+    assert r["estado"] == "parcial" and r["diferencia"] == -200.0
+
+
 def test_sugerir_encuentra_factura_usd_mas_nc_usd_que_saldan_la_cuenta():
     docs = [
         _doc(1, 918.66, "Dolares", 1200),

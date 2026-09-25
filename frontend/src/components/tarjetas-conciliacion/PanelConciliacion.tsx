@@ -274,6 +274,11 @@ function ContenidoPanel({
 
   // --- Estado ya resuelto (sin documento / diferencia aceptada) ---
   const resuelto = estado != null;
+  // --- Cubierta por vínculos ya cargados (sin necesitar "estado"): antes una
+  // línea con cualquier vínculo se consideraba resuelta para siempre; ahora
+  // solo cuando lo vinculado ya cubre el importe (ver `_SIN_RESOLVER`, backend).
+  const completa = !resuelto && data.vinculos.length > 0 && data.importeRestante <= 1;
+  const noQuedaNadaPorHacer = resuelto || completa;
 
   // --- Reparto (varias líneas) ---
   const lineasReparto = propuesta?.lineas ?? [];
@@ -303,7 +308,31 @@ function ContenidoPanel({
             {linea.nroDocumento && ` · doc. ${linea.nroDocumento}`}
           </div>
           <div className="mt-2 font-data text-xl font-semibold">{formatMoneda(linea.importe)}</div>
+          {data.vinculos.length > 0 && (
+            <div className="mt-1 text-xs text-ink-secondary">
+              Vinculado {formatMoneda(data.totalImputado)} de {formatMoneda(linea.importe)} — resta{" "}
+              <span className={data.importeRestante > 0.5 ? "font-medium text-status-warning" : "text-status-success"}>
+                {formatMoneda(data.importeRestante)}
+              </span>
+            </div>
+          )}
         </div>
+
+        {data.vinculos.length > 0 && (
+          <div className="rounded-md border border-border bg-surface p-3">
+            <p className="text-xs font-medium text-ink-secondary">Ya vinculados a esta línea</p>
+            <ul className="mt-1 space-y-0.5 text-xs">
+              {data.vinculos.map((v) => (
+                <li key={v.idVinculo} className="flex items-center justify-between gap-2">
+                  <span>
+                    {v.proveedor ?? "—"} · {v.tipoDocumento ?? "Documento"} {v.numeroDocumento ?? ""}
+                  </span>
+                  <span className="font-data">{formatMoneda(v.importeImputado)}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
 
         {resuelto && estado && (
           <div className="rounded-md border border-border bg-surface-sunken p-3 text-xs">
@@ -322,7 +351,13 @@ function ContenidoPanel({
           </div>
         )}
 
-        {data.hermanas.length > 0 && !resuelto && (
+        {completa && (
+          <div className="rounded-md border border-status-success bg-status-success/10 p-3 text-xs text-status-success">
+            Línea completa — {formatMoneda(data.totalImputado)} vinculados.
+          </div>
+        )}
+
+        {data.hermanas.length > 0 && !noQuedaNadaPorHacer && (
           <div className="rounded-md border border-border bg-surface p-3">
             <p className="text-xs font-medium text-ink-secondary">
               Otras líneas pendientes de este proveedor — tildá las que se concilian junto con esta
@@ -369,9 +404,9 @@ function ContenidoPanel({
 
       {/* ---------------- Derecha: canasta de documentos ---------------- */}
       <section className="space-y-3">
-        {!resuelto && data.sugerencias.length > 0 && (
+        {!noQuedaNadaPorHacer && data.sugerencias.length > 0 && (
           <div>
-            <p className="text-xs font-medium text-ink-secondary">Combinaciones que cierran exacto con {formatMoneda(linea.importe)}</p>
+            <p className="text-xs font-medium text-ink-secondary">Combinaciones que cierran exacto con {formatMoneda(data.importeRestante)}</p>
             <ul className="mt-1 space-y-1">
               {data.sugerencias.map((s) => (
                 <li key={s.idsCompra.join("-")} className="flex flex-wrap items-center justify-between gap-2 rounded-sm bg-surface-sunken px-2 py-1">
@@ -403,7 +438,7 @@ function ContenidoPanel({
           </div>
         )}
 
-        {!resuelto && (
+        {!noQuedaNadaPorHacer && (
           <div>
             <p className="text-xs font-medium text-ink-secondary">
               {data.idContacto == null
@@ -518,23 +553,27 @@ function ContenidoPanel({
         )}
 
         {/* ---------- Resumen y acciones ---------- */}
-        {!resuelto && (
+        {!noQuedaNadaPorHacer && (
           <div className="rounded-md border border-border bg-surface p-3">
             {!modoReparto && seleccion.length > 0 && preview && (
               <>
-                <Resultado calculo={preview} importeLinea={linea.importe} />
+                <Resultado calculo={preview} importeLinea={data.importeRestante} />
                 <div className="mt-2 flex flex-wrap items-center gap-2">
-                  {(preview.estado === "exacta" || preview.pagoParcial) && (
+                  {(preview.estado === "exacta" || preview.pagoParcial || preview.permiteParcial) && (
                     <button
                       type="button"
                       disabled={guardando}
                       onClick={() => ejecutar(() => vincularComprasLote(idLineaConsumo, idsOrdenados), "Documentos vinculados.")}
                       className="rounded-sm bg-finance px-3 py-1 text-xs text-white hover:opacity-90 disabled:opacity-40"
                     >
-                      {preview.pagoParcial ? "Vincular como pago parcial" : `Vincular ${seleccion.length}`}
+                      {preview.pagoParcial
+                        ? "Vincular como pago parcial"
+                        : preview.permiteParcial
+                          ? `Vincular ${seleccion.length} (queda ${formatMoneda(preview.diferencia)} pendiente)`
+                          : `Vincular ${seleccion.length}`}
                     </button>
                   )}
-                  {preview.estado === "parcial" && !preview.pagoParcial && (
+                  {preview.estado === "parcial" && !preview.pagoParcial && !preview.permiteParcial && (
                     <button type="button" onClick={() => setDialogo("diferencia")} className="rounded-sm bg-finance px-3 py-1 text-xs text-white hover:opacity-90">
                       Aceptar diferencia con motivo…
                     </button>

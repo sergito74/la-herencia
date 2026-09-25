@@ -69,11 +69,29 @@ def _tc_implicito(importe_linea: float, docs: list[dict]) -> float | None:
 def calcular_imputacion(importe_linea: float, docs: list[dict]) -> dict:
     """Reparte `importe_linea` entre `docs`.
 
-    `imputados`: importe en pesos de cada documento. `diferencia`: línea − suma.
-    `estado`: "exacta" (dentro de $0,10, o $1,00 si hay dólares) o "parcial". Un único documento en pesos
-    que no coincide es un pago parcial (`pagoParcial`, ej. una cuota) y se imputa
-    el importe de la línea. Si hay documentos en dólares y no cierra, `tcImplicito`
-    y `desvioTc` orientan sobre cuánto ajuste de cambio faltaría.
+    `imputados`: importe en pesos de cada documento. `diferencia`: línea − suma
+    (positiva = todavía falta cubrir parte de la línea; negativa = lo elegido
+    vale más que la línea). `estado`: "exacta" (dentro de $0,10, o $1,00 si hay
+    dólares) o "parcial".
+
+    Dos casos de "parcial" con tratamiento distinto (bug real encontrado
+    2026-09-26, caso "Agüero Shamaim SRL" — un resumen de MercadoLibre que
+    agrupa el cobro de varios proveedores distintos):
+
+    - **Cuota** (`pagoParcial`): un único documento en pesos vale MÁS que la
+      línea (`diferencia < 0`, ej. una compra grande pagada en varias cuotas
+      mensuales de tarjeta) — se imputa toda la línea a ese documento; el
+      resto del documento se cubre con líneas futuras.
+    - **Agrupado** (`permiteParcial`): lo elegido vale MENOS que la línea
+      (`diferencia > 0`, ej. esta línea agrupa el cobro de varios
+      proveedores y solo se está vinculando uno) — se imputa el valor real
+      del/los documento(s) elegido(s), sin forzar toda la línea sobre uno
+      solo, y la línea queda pendiente para seguir agregando documentos de
+      otros proveedores más tarde (no requiere aceptar una diferencia,
+      porque no es un desvío — es trabajo incompleto a propósito).
+
+    Si hay documentos en dólares y no cierra, `tcImplicito` y `desvioTc`
+    orientan sobre cuánto ajuste de cambio faltaría.
     """
     importe_linea = round(float(importe_linea), 2)
     imputados = {d["idCompra"]: importe_pesos(d) for d in docs}
@@ -91,13 +109,16 @@ def calcular_imputacion(importe_linea: float, docs: list[dict]) -> dict:
             resultado["tcReferencia"] = round(referencia, 4)
             resultado["desvioTc"] = round(implicito / referencia - 1, 4)
 
-    pago_parcial = not usd and len(docs) == 1 and estado == "parcial"
+    pago_parcial = not usd and len(docs) == 1 and estado == "parcial" and diferencia < 0
     if pago_parcial:
         imputados = {docs[0]["idCompra"]: importe_linea}
+
+    permite_parcial = estado == "parcial" and not pago_parcial and diferencia > 0
 
     resultado.update(
         {
             "pagoParcial": pago_parcial,
+            "permiteParcial": permite_parcial,
             "imputados": [{"idCompra": k, "importeImputado": v} for k, v in imputados.items()],
             "diferencia": diferencia,
             "estado": estado,

@@ -202,7 +202,10 @@ export interface ConciliacionCalculo {
   /** exacta: cierra en pesos (±$0,10; ±$1 con dólares) · parcial: no cierra. */
   estado: "exacta" | "parcial";
   diferencia: number;
+  /** Un único documento vale MÁS que lo que resta de la línea (cuota de una compra grande): se le imputa todo lo que resta. */
   pagoParcial: boolean;
+  /** Lo elegido vale MENOS que lo que resta de la línea (línea "agrupada", ej. MercadoLibre con varios proveedores): se guarda sin pedir motivo y queda saldo pendiente para seguir agregando documentos. */
+  permiteParcial: boolean;
   tcImplicito: number | null;
   tcReferencia: number | null;
   desvioTc: number | null;
@@ -247,10 +250,15 @@ export interface EstadoLinea {
 export interface CandidatosLinea {
   idLineaConsumo: number;
   importeLinea: number;
+  /** Suma de lo ya vinculado — puede ser menor a `importeLinea` en una línea "agrupada" todavía incompleta. */
+  totalImputado: number;
+  /** `importeLinea - totalImputado`: lo que falta cubrir. */
+  importeRestante: number;
   fechaLinea: string | null;
   idContacto: number | null;
   linea: LineaContexto;
   estado: EstadoLinea | null;
+  vinculos: CompraVinculada[];
   hermanas: LineaHermana[];
   documentos: DocumentoCandidato[];
   sugerencias: SugerenciaConciliacion[];

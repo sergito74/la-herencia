@@ -9,39 +9,46 @@ x3) y ninguno leía `Tarjetas_Resumenes_Lineas`. Impacto medido: 111
 proveedores, 1.682 líneas, $39.476.823 históricos nunca reflejados como
 pago en ninguna cuenta corriente.
 
-**Diseño del fix** (deliberadamente conservador, ver tasks/memoria):
-- Una línea de tarjeta que coincide con una `Compra` existente del mismo
-  contacto (por `Nro Documento`, normalizando espacios — hallazgo: "0149 -
-  00011970" en Compras vs "0149-00011970" en tarjetas) es el PAGO de esa
-  deuda: entra como Crédito (o Deuda si el importe es negativo, ej. un
-  reintegro).
-- **Actualizado 2026-09-25 (caso real "ACA Bolivar")**: cuando la línea de
-  tarjeta NO tiene `NroDocumento` cargado (78 de 1.682 líneas — el
-  resumen de tarjeta nunca vinculó esa línea a su factura), se intenta un
-  segundo match por `IdContacto` + misma `Fecha` + mismo importe (tolerancia
-  $1, la misma que usa 019 para cierre exacto). Rescata 13 líneas más
-  (ej. ACA Bolivar, factura 00021-00007157 del 2025-11-18, $60.008). Solo
-  se usa esta vía cuando no hay ningún `NroDocumento` que intentar
-  matchear — nunca reemplaza un número que sí existe pero no coincide,
-  para no aflojar el criterio original.
-- Una línea de tarjeta que sigue sin ninguna `Compra` asociada por ninguno
-  de los dos criterios (ej. Carrefour, YPF, Nación Seguros: ~259 de 1.682
-  líneas) se deja FUERA de la vista a propósito: son compras pagadas en
-  el instante con la tarjeta, sin una factura cargada aparte — el gasto y
-  su pago son el mismo evento, nunca generan saldo pendiente real.
-  Incluirlas como "Deuda" crearía una deuda fantasma que nunca se cancela
-  (no hay un segundo movimiento que la salde); dejarlas afuera es la
-  única representación correcta con los datos disponibles.
-- `CROSS APPLY TOP 1 ... ORDER BY IdDeuda` evita duplicar el crédito si,
-  por casualidad, dos `Compras` del mismo contacto comparten un `Nro
-  Documento` (53 casos detectados, mayoría con documento NULL).
+**Diseño del fix — v3, reescrito 2026-09-26 (caso real "Agüero Shamaim
+SRL")**: las versiones anteriores (v1: match por `Nro Documento`; v2:
++ fallback por fecha+importe) usaban una heurística propia en la vista,
+sin saber que **ya existe una tabla real y activamente usada** para esto:
+`Tarjetas_Resumenes_Lineas_Compras` (vínculo línea de consumo ↔ compra,
+con `ImporteImputado` parcial — el mecanismo real del módulo de tarjetas,
+008/009, con 1.417 vínculos ya cargados). Esa heurística no soportaba el
+caso real reportado por Sergio: un resumen de tarjeta (MercadoLibre,
+$130.145,77) que agrupa el cobro de **varios proveedores distintos**, del
+cual solo una parte ($23.868) corresponde a la factura de "Agüero Shamaim
+SRL" — la heurística de fecha+importe exacto nunca iba a encontrar ese
+caso, porque el importe de la línea nunca es igual al de una sola factura.
+
+**Diseño correcto**: cada fila de `Tarjetas_Resumenes_Lineas_Compras` es
+una imputación real (parcial o total) de una línea de consumo contra una
+`Compra` — igual en espíritu a `AplicacionesPago` (019/020), pero para el
+módulo de tarjetas. El contacto sale de la `Compra` (`IdCompra` →
+`Compras.IdContacto`), no de `Tarjetas_Resumenes_Lineas.IdContacto` (que
+en los casos de resumen agrupado, como MercadoLibre, viene vacío — el
+gasto no pertenece a un único proveedor). Ya cubre 1.416 de 1.679 líneas
+de tarjeta con contacto (84%), incluidos los casos de "2JM" y "ACA
+Bolivar" ya resueltos con la heurística anterior (mismo `IdCompra`, mismo
+importe — confirmado antes de reemplazarla). Las líneas de tarjeta sin
+ningún vínculo cargado (ej. Carrefour, YPF, compras pagadas al instante
+sin factura aparte) siguen fuera de la vista a propósito: no hay con qué
+generar un crédito real.
+
+**Hallazgo aparte, no corregido acá**: el vínculo de Agüero Shamaim
+(`IdVinculo 3007`) tiene `ImporteImputado = $130.145,77` (el importe
+*completo* del resumen), cuando la factura real vale $23.868 — parece un
+error de carga en la pantalla de vínculos del módulo de tarjetas (cargó
+el total de la línea en vez de la porción real). Corregir ese vínculo es
+una acción de datos que le corresponde al usuario, no a este script.
 
 Solo modifica `WC` — nunca `LaHerencia` (protegida, Principio II). Esto
-significa que, a partir de ahora, el saldo de estos 111 contactos en `WC`
-va a diferir del de `LaHerencia` a propósito (WC corregido, LaHerencia
-con el bug heredado) hasta que alguien corrija la vista real en
-producción — una decisión explícita del usuario (2026-09-25), no un
-efecto no controlado.
+significa que, a partir de ahora, el saldo de estos contactos en `WC` va
+a diferir del de `LaHerencia` a propósito (WC corregido, LaHerencia con
+el bug heredado) hasta que alguien corrija la vista real en producción —
+una decisión explícita del usuario (2026-09-25), no un efecto no
+controlado.
 
 Uso (desde backend/):  .venv\\Scripts\\python.exe -m scripts.agregar_tarjetas_a_vista_cuenta_corriente
 """
@@ -340,33 +347,22 @@ UNION ALL
 
 SELECT
     t.FechaCompra AS Fecha,
-    t.IdContacto,
+    c.IdContacto,
     ct.[Razon Social],
     'Tarjeta' AS Documento,
-    t.NroDocumento AS [Nro Documento],
-    CASE WHEN -ISNULL(t.Importe, 0) > 0 THEN -t.Importe ELSE 0 END AS Deuda,
-    CASE WHEN -ISNULL(t.Importe, 0) < 0 THEN t.Importe ELSE 0 END AS Credito,
+    c.[Nro Documento],
+    CASE WHEN -ISNULL(v.ImporteImputado, 0) > 0 THEN -v.ImporteImputado ELSE 0 END AS Deuda,
+    CASE WHEN -ISNULL(v.ImporteImputado, 0) < 0 THEN v.ImporteImputado ELSE 0 END AS Credito,
     CAST('Tarjetas' AS varchar(50)) AS Origen,
-    CAST(t.IdLineaConsumo AS bigint) AS IdOrigen
-FROM dbo.Tarjetas_Resumenes_Lineas AS t
+    CAST(v.IdVinculo AS bigint) AS IdOrigen
+FROM dbo.Tarjetas_Resumenes_Lineas_Compras AS v
+INNER JOIN dbo.Tarjetas_Resumenes_Lineas AS t
+    ON t.IdLineaConsumo = v.IdLineaConsumo
+INNER JOIN dbo.Compras AS c
+    ON c.IdDeuda = v.IdCompra
 INNER JOIN dbo.Contactos AS ct
-    ON ct.IdContacto = t.IdContacto
-CROSS APPLY (
-    SELECT TOP 1 c.IdDeuda
-    FROM dbo.Compras AS c
-    JOIN dbo.vw_Cns_Total_Compra AS tc ON tc.IdDeuda = c.IdDeuda
-    WHERE c.IdContacto = t.IdContacto
-      AND (
-            (NULLIF(LTRIM(RTRIM(t.NroDocumento)), '') IS NOT NULL
-             AND REPLACE(c.[Nro Documento], ' ', '') = REPLACE(t.NroDocumento, ' ', ''))
-         OR (NULLIF(LTRIM(RTRIM(t.NroDocumento)), '') IS NULL
-             AND c.Fecha = t.FechaCompra
-             AND ABS(tc.GranTotal - t.Importe) < 1.0)
-      )
-    ORDER BY c.IdDeuda
-) AS compra
-WHERE t.IdContacto IS NOT NULL
-  AND ISNULL(t.Importe, 0) <> 0;
+    ON ct.IdContacto = c.IdContacto
+WHERE ISNULL(v.ImporteImputado, 0) <> 0;
 """
 
 

@@ -26,6 +26,7 @@ class CompraVinculada(BaseModel):
 
     idVinculo: int
     idCompra: int
+    importeImputado: float = 0.0
     proveedor: str | None = None
     tipoDocumento: str | None = None
     numeroDocumento: str | None = None
@@ -196,6 +197,7 @@ class ConciliacionCalculo(BaseModel):
     estado: str
     diferencia: float
     pagoParcial: bool = False
+    permiteParcial: bool = False
     tcImplicito: float | None = None
     tcReferencia: float | None = None
     desvioTc: float | None = None
@@ -240,10 +242,13 @@ class EstadoLinea(BaseModel):
 class CandidatosLineaResponse(BaseModel):
     idLineaConsumo: int
     importeLinea: float
+    totalImputado: float = 0.0
+    importeRestante: float = 0.0
     fechaLinea: date | None = None
     idContacto: int | None = None
     linea: LineaContexto
     estado: EstadoLinea | None = None
+    vinculos: list[CompraVinculada] = []
     hermanas: list[LineaHermana] = []
     documentos: list[DocumentoCandidato]
     sugerencias: list[SugerenciaConciliacion]

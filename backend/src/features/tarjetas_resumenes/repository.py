@@ -22,6 +22,7 @@ from src.db.params import as_sql_datetime
 from src.formatting import formatear_moneda
 from src.features.tarjetas_resumenes.conciliacion_documentos import (
     MAX_DOCS_SUGERENCIA,
+    TOLERANCIA_PESOS_USD,
     calcular_imputacion,
     importe_pesos,
     repartir,
@@ -389,8 +390,15 @@ def get_documentos_candidatos(id_linea_consumo: int, id_contacto: int, fecha_lin
 MOTIVOS_DIFERENCIA = {"AjusteTipoCambioSinNota", "Redondeo", "Otro"}
 MOTIVOS_SIN_DOCUMENTO = {"Impuesto", "Interes", "CompraNoCargada", "Otro"}
 
+# Una línea "sin resolver" es la que todavía tiene saldo por cubrir (no
+# simplemente "sin ningún vínculo") — bug real corregido 2026-09-26 (caso
+# "Agüero Shamaim SRL"): antes, apenas se cargaba UN vínculo la línea
+# desaparecía del listado de pendientes para siempre, aunque ese vínculo
+# fuera solo una parte de una línea "agrupada" (varios proveedores en un
+# mismo resumen, ej. MercadoLibre) y quedara saldo real sin vincular.
 _SIN_RESOLVER = """
-    NOT EXISTS (SELECT 1 FROM dbo.Tarjetas_Resumenes_Lineas_Compras v WHERE v.IdLineaConsumo = l.IdLineaConsumo)
+    ISNULL((SELECT SUM(v.ImporteImputado) FROM dbo.Tarjetas_Resumenes_Lineas_Compras v
+            WHERE v.IdLineaConsumo = l.IdLineaConsumo), 0) < l.Importe - 1.00
     AND NOT EXISTS (SELECT 1 FROM dbo.Tarjetas_Resumenes_Lineas_Estado e WHERE e.IdLineaConsumo = l.IdLineaConsumo)
 """
 
@@ -439,15 +447,33 @@ def _stmts_relaciones(docs: list[dict]) -> list[tuple]:
     return stmts
 
 
+def _total_imputado(id_linea: int) -> float:
+    """Suma de lo ya vinculado a esta línea — puede ser menor a `Importe`
+    cuando quedó un "agrupado" (research: conciliacion_documentos.py,
+    `permiteParcial`) pendiente de completar con más documentos."""
+    fila = fetch_one(
+        "SELECT SUM(ImporteImputado) AS total FROM dbo.Tarjetas_Resumenes_Lineas_Compras WHERE IdLineaConsumo = ?",
+        (id_linea,),
+    )
+    return _f(fila["total"]) if fila and fila["total"] is not None else 0.0
+
+
 def _asegurar_pendiente(id_linea: int) -> dict:
+    """Devuelve la línea con su `importeRestante` (importe menos lo ya
+    vinculado). Antes bloqueaba cualquier segunda vinculación con "ya tiene
+    documentos vinculados" — bug real (caso "Agüero Shamaim SRL",
+    2026-09-26): una línea "agrupada" (varios proveedores en un mismo
+    resumen) queda para siempre sin poder agregarle el resto de los
+    documentos. Ahora solo bloquea cuando ya está completamente cubierta."""
     linea = get_linea(id_linea)
     if linea is None:
         raise ValueError([f"La línea {id_linea} no existe."])
-    if get_compras_vinculadas(id_linea):
-        raise ValueError([f"La línea {id_linea} ya tiene documentos vinculados."])
     if get_estado(id_linea):
         raise ValueError([f"La línea {id_linea} ya está resuelta."])
-    return linea
+    restante = round(_f(linea["importe"]) - _total_imputado(id_linea), 2)
+    if restante <= TOLERANCIA_PESOS_USD:
+        raise ValueError([f"La línea {id_linea} ya está completamente vinculada."])
+    return {**linea, "importeRestante": restante}
 
 
 def get_linea_contexto(id_linea_consumo: int) -> dict | None:
@@ -486,6 +512,8 @@ def get_candidatos_linea(id_linea_consumo: int) -> dict | None:
     if contexto is None:
         return None
     importe = _f(contexto["importe"])
+    total_imputado = _total_imputado(id_linea_consumo)
+    restante = round(importe - total_imputado, 2)
     id_contacto = contexto.get("idContacto")
     documentos = (
         get_documentos_candidatos(id_linea_consumo, id_contacto, contexto["fechaCompra"]) if id_contacto else []
@@ -493,13 +521,16 @@ def get_candidatos_linea(id_linea_consumo: int) -> dict | None:
     return {
         "idLineaConsumo": id_linea_consumo,
         "importeLinea": importe,
+        "totalImputado": total_imputado,
+        "importeRestante": restante,
         "fechaLinea": contexto["fechaCompra"],
         "idContacto": id_contacto,
         "linea": {**contexto, "importe": importe},
         "estado": get_estado(id_linea_consumo),
+        "vinculos": get_compras_vinculadas(id_linea_consumo),
         "hermanas": get_lineas_hermanas(id_linea_consumo, id_contacto) if id_contacto else [],
         "documentos": documentos,
-        "sugerencias": sugerir(importe, documentos[:MAX_DOCS_SUGERENCIA]),
+        "sugerencias": sugerir(restante, documentos[:MAX_DOCS_SUGERENCIA]),
     }
 
 
@@ -643,27 +674,33 @@ def aceptar_exactas(ids_lineas: list[int]) -> dict:
 
 
 def calcular_conciliacion(id_linea_consumo: int, ids_compra: list[int]) -> dict:
-    """Cómo se repartiría la línea entre los documentos elegidos (ver
-    `conciliacion_documentos`). `ValueError` si algo no existe o se repite."""
+    """Cómo se repartiría lo que resta de la línea (importe menos lo ya
+    vinculado — ver `_asegurar_pendiente`) entre los documentos elegidos
+    (ver `conciliacion_documentos`). `ValueError` si algo no existe o se
+    repite."""
     if len(set(ids_compra)) != len(ids_compra):
         raise ValueError(["Hay documentos repetidos en la selección."])
     linea = get_linea(id_linea_consumo)
     if linea is None:
         raise ValueError([f"La línea {id_linea_consumo} no existe."])
+    restante = round(_f(linea["importe"]) - _total_imputado(id_linea_consumo), 2)
     docs = get_documentos_por_ids(ids_compra)
     faltantes = set(ids_compra) - {d["idCompra"] for d in docs}
     if faltantes:
         raise ValueError([f"No existen las compras: {sorted(faltantes)}."])
-    calculo = calcular_imputacion(_f(linea["importe"]), docs)
+    calculo = calcular_imputacion(restante, docs)
     return {"documentos": docs, **calculo}
 
 
 def vincular_compras_lote(id_linea_consumo: int, ids_compra: list[int], aceptar_diferencia: dict | None = None) -> list[dict]:
-    """Vincula varios documentos a una línea en una sola transacción (todo o
-    nada). Si la suma no cierra con la línea hace falta `aceptar_diferencia`
-    (`motivo`, `detalle`), que además queda registrada como estado de la línea.
-    Un único documento en pesos que no coincide es un pago parcial (cuota) y no
-    requiere motivo."""
+    """Vincula varios documentos al saldo restante de una línea (importe menos
+    lo ya vinculado) en una sola transacción (todo o nada). Si lo elegido no
+    cierra y vale MENOS que el restante (`permiteParcial` — línea "agrupada",
+    varios proveedores en un mismo resumen), se guarda igual sin pedir motivo:
+    la línea queda con saldo pendiente para seguir agregando documentos
+    después. Si lo elegido vale MÁS que el restante (o no es el caso "cuota"
+    de un único documento), hace falta `aceptar_diferencia` (`motivo`,
+    `detalle`), que además queda registrada como estado de la línea."""
     if not ids_compra:
         raise ValueError(["Elegí al menos un documento."])
     _asegurar_pendiente(id_linea_consumo)
@@ -675,7 +712,7 @@ def vincular_compras_lote(id_linea_consumo: int, ids_compra: list[int], aceptar_
         )
         for i in calculo["imputados"]
     ]
-    if calculo["estado"] == "parcial" and not calculo["pagoParcial"]:
+    if calculo["estado"] == "parcial" and not calculo["pagoParcial"] and not calculo["permiteParcial"]:
         if not aceptar_diferencia:
             raise ValueError(
                 [f"La suma de los documentos no cierra con la línea (diferencia {formatear_moneda(calculo['diferencia'])}). "
