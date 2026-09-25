@@ -37,11 +37,26 @@ sin factura aparte) siguen fuera de la vista a propósito: no hay con qué
 generar un crédito real.
 
 **Hallazgo aparte, no corregido acá**: el vínculo de Agüero Shamaim
-(`IdVinculo 3007`) tiene `ImporteImputado = $130.145,77` (el importe
-*completo* del resumen), cuando la factura real vale $23.868 — parece un
-error de carga en la pantalla de vínculos del módulo de tarjetas (cargó
-el total de la línea en vez de la porción real). Corregir ese vínculo es
-una acción de datos que le corresponde al usuario, no a este script.
+(`IdVinculo 3007`) tenía `ImporteImputado = $130.145,77` (el importe
+*completo* del resumen), cuando la factura real vale $23.868 — error de
+carga en la pantalla de vínculos del módulo de tarjetas (cargó el total
+de la línea en vez de la porción real); corregido a mano en la base
+(dato, no vista) el 2026-09-26 tras confirmar el importe con el usuario.
+
+**v4, 2026-09-26 (caso real "Cumo Store")**: el módulo de tarjetas tiene
+un patrón ya soportado de "compra particular" (gasto personal pagado con
+tarjeta de la empresa, neteado a $0 agregando una línea negativa
+"Compra particular" con el mismo importe — `GranTotal = 0` en
+`vw_Cns_Total_Compra`). Si se vincula la línea de tarjeta a esa compra
+(por el importe bruto que cobró la tarjeta, no el neto $0 de la
+factura), la v3 generaba un **crédito fantasma** en cuenta corriente: la
+empresa nunca le debió nada a ese proveedor, y tampoco le sobrepagó — el
+gasto ya está totalmente neteado a nivel factura, la tarjeta lo pagó por
+completo en el mismo momento. Se agrega el filtro `tc.GranTotal > 0`: el
+vínculo de tarjeta solo aporta Crédito a cuenta corriente cuando la
+compra tiene una deuda real y positiva que cancelar — si el neto es $0
+(o negativo), el vínculo se ignora en cuenta corriente (igual que las
+líneas sin ningún vínculo, research.md `SIN_DOCUMENTO_COMERCIAL`).
 
 Solo modifica `WC` — nunca `LaHerencia` (protegida, Principio II). Esto
 significa que, a partir de ahora, el saldo de estos contactos en `WC` va
@@ -360,9 +375,12 @@ INNER JOIN dbo.Tarjetas_Resumenes_Lineas AS t
     ON t.IdLineaConsumo = v.IdLineaConsumo
 INNER JOIN dbo.Compras AS c
     ON c.IdDeuda = v.IdCompra
+INNER JOIN dbo.vw_Cns_Total_Compra AS tc
+    ON tc.IdDeuda = c.IdDeuda
 INNER JOIN dbo.Contactos AS ct
     ON ct.IdContacto = c.IdContacto
-WHERE ISNULL(v.ImporteImputado, 0) <> 0;
+WHERE tc.GranTotal > 0
+  AND ISNULL(v.ImporteImputado, 0) <> 0;
 """
 
 
