@@ -43,6 +43,8 @@ export interface ResumenFlujoCaja {
 export interface MovimientoFlujoCaja {
   fecha: string;
   banco: string;
+  origenMovimiento: string | null;
+  idMovimientoOrigen: number | null;
   numeroCuentaBancaria: string | null;
   concepto: string | null;
   importe: number;

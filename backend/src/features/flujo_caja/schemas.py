@@ -52,6 +52,8 @@ class ResumenFlujoCajaResponse(BaseModel):
 class MovimientoFlujoCaja(BaseModel):
     fecha: datetime
     banco: str
+    origenMovimiento: str | None = None
+    idMovimientoOrigen: int | None = None
     numeroCuentaBancaria: str | None = None
     concepto: str | None = None
     importe: float

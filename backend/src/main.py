@@ -18,6 +18,7 @@ from src.auth.tokens import verificar_token
 from src.errors import register_error_handlers
 from src.features.auth.router import COOKIE_NAME
 from src.features.auth.router import router as auth_router
+from src.features.aplicaciones_pago.router import router as aplicaciones_pago_router
 from src.features.arrendamientos.router import router as arrendamientos_router
 from src.features.compras.router import router as compras_router
 from src.features.contactos.router import router as contactos_router
@@ -129,6 +130,7 @@ class AuthMiddleware(BaseHTTPMiddleware):
 app.add_middleware(AuthMiddleware)
 
 app.include_router(auth_router)
+app.include_router(aplicaciones_pago_router)
 app.include_router(arrendamientos_router)
 app.include_router(compras_router)
 app.include_router(contactos_router)

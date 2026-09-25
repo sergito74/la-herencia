@@ -27,6 +27,59 @@ from src.features.ventas_hacienda.repository import calcular_totales
 SIN_RUBRO = "Sin rubro asignado"
 CENTRO_COSTO_SIN_ASIGNAR = "Sin centro de costos"
 
+# 019-aplicacion-pagos-cobros, FR-009/FR-010: fecha de corte confirmada por
+# Sergio. Antes de esta fecha no se exige aplicar retroactivamente — se
+# distingue explícitamente de "pendiente de aplicar" (posterior al corte,
+# sin aplicación) para no mezclar dos situaciones distintas bajo la misma
+# etiqueta.
+FECHA_CORTE_APLICACION = date(2015, 9, 1)
+PENDIENTE_DE_APLICAR = "Pendiente de aplicar"
+HISTORICO_SIN_APLICAR = "Histórico sin aplicar"
+
+
+def _rubro_de_venta(tipo_documento: str, id_documento: int) -> str:
+    if tipo_documento == "VentaHacienda":
+        from src.features.ventas_hacienda.repository import get_lineas_venta
+
+        lineas = get_lineas_venta(id_documento)
+        tipos = {l.get("tipoHacienda") for l in lineas if l.get("tipoHacienda")}
+        return f"Venta {tipos.pop()}" if len(tipos) == 1 else "Venta Hacienda (varias categorías)"
+    if tipo_documento == "VentaGranos":
+        fila = fetch_all("SELECT [Tipo de Grano] AS tipoGrano FROM dbo.[Venta Granos] WHERE IdVenta = ?", (id_documento,))
+        tipo_grano = fila[0]["tipoGrano"] if fila else None
+        return f"Venta {tipo_grano}" if tipo_grano else "Venta Granos"
+    return SIN_RUBRO
+
+
+def atribuir_desde_aplicaciones(origen_movimiento: str, id_movimiento_origen: int) -> dict | None:
+    """`None` si el movimiento no tiene aplicaciones vigentes (el llamador
+    decide el fallback: matching exacto o fecha de corte, 019 research.md
+    §7). Si las tiene, el Rubro/Centro de Costos sale de los documentos
+    aplicados, ponderado por `ImporteAplicado` si hay más de uno con rubro
+    distinto — nunca del matching exacto."""
+    from src.features.aplicaciones_pago.repository import aplicaciones_vigentes_de_movimiento
+
+    aplicaciones = aplicaciones_vigentes_de_movimiento(origen_movimiento, id_movimiento_origen)
+    if not aplicaciones:
+        return None
+
+    peso_por_rubro: dict[tuple[str, str], float] = defaultdict(float)
+    for a in aplicaciones:
+        importe = float(a["importeAplicado"])
+        if a["tipoDocumento"] == "CompraDeuda":
+            lineas = _rubros_de_compra(a["idDocumentoAplicado"])
+            rubros = {l["rubro"] for l in lineas if l["rubro"]}
+            centros = {l["centroCosto"] for l in lineas if l["centroCosto"]}
+            rubro = rubros.pop() if len(rubros) == 1 else "Compra con varios rubros"
+            centro = centros.pop() if len(centros) == 1 else CENTRO_COSTO_SIN_ASIGNAR
+        else:
+            rubro = _rubro_de_venta(a["tipoDocumento"], a["idDocumentoAplicado"])
+            centro = None
+        peso_por_rubro[(rubro, centro)] += importe
+
+    ((rubro, centro), _peso) = max(peso_por_rubro.items(), key=lambda kv: kv[1])
+    return {"rubro": rubro, "centroCosto": centro}
+
 
 def _fecha(valor) -> date | None:
     if valor is None:

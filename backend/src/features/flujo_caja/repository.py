@@ -27,8 +27,8 @@ def get_movimientos_normalizados(fecha_desde: date, fecha_hasta: date) -> list[d
 
     filas_bna = fetch_all(
         """
-        SELECT m.[Fecha / Hora Mov#] AS fecha, m.Importe AS importe, m.Concepto AS concepto,
-               m.IdContacto AS idContacto, m.Contacto AS contacto,
+        SELECT m.IdMovimientoBNA AS idMovimiento, m.[Fecha / Hora Mov#] AS fecha, m.Importe AS importe,
+               m.Concepto AS concepto, m.IdContacto AS idContacto, m.Contacto AS contacto,
                cb.NumeroCuenta AS numeroCuentaBancaria
         FROM dbo.[Movimientos BNA] m
         LEFT JOIN dbo.CuentasBancarias cb ON cb.IdCuentaBancaria = m.IdCuentaBancaria
@@ -40,6 +40,8 @@ def get_movimientos_normalizados(fecha_desde: date, fecha_hasta: date) -> list[d
         {
             "fecha": f["fecha"],
             "banco": "BNA",
+            "origenMovimiento": "bna",
+            "idMovimientoOrigen": f["idMovimiento"],
             "numeroCuentaBancaria": f["numeroCuentaBancaria"],
             "importe": float(f["importe"]),
             "concepto": f["concepto"],
@@ -52,7 +54,7 @@ def get_movimientos_normalizados(fecha_desde: date, fecha_hasta: date) -> list[d
 
     filas_galicia = fetch_all(
         """
-        SELECT Fecha AS fecha, [Débitos] AS debitos, [Créditos] AS creditos,
+        SELECT IdMovimiento AS idMovimiento, Fecha AS fecha, [Débitos] AS debitos, [Créditos] AS creditos,
                [Descripción] AS concepto, [Grupo de Conceptos] AS grupoConceptos,
                IdContacto AS idContacto, Contacto AS contacto
         FROM dbo.[Movimientos Galicia]
@@ -67,6 +69,8 @@ def get_movimientos_normalizados(fecha_desde: date, fecha_hasta: date) -> list[d
             {
                 "fecha": f["fecha"],
                 "banco": "Galicia",
+                "origenMovimiento": "galicia",
+                "idMovimientoOrigen": f["idMovimiento"],
                 "numeroCuentaBancaria": numero_cuenta_galicia,
                 "importe": importe,
                 "concepto": f["concepto"],
@@ -203,10 +207,24 @@ def atribuir_movimientos(movimientos: list[dict]) -> list[dict]:
     for m in reales:
         fecha = m["fecha"].date() if hasattr(m["fecha"], "date") else m["fecha"]
         importe_abs = round(abs(m["importe"]), 2)
-        if m["importe"] < 0:
-            atrib = atribucion.atribuir_egreso(m["idContacto"], fecha, importe_abs)
-        else:
-            atrib = atribucion.atribuir_ingreso(indice_ingresos, m["idContacto"], fecha, importe_abs)
+
+        # 019: las aplicaciones reales (pago/cobro -> documento) son la
+        # fuente PRIMARIA de rubro — el matching exacto por importe/fecha
+        # queda como fallback (research.md §7).
+        atrib = atribucion.atribuir_desde_aplicaciones(m.get("origenMovimiento"), m.get("idMovimientoOrigen"))
+        if atrib is None:
+            if m["importe"] < 0:
+                atrib = atribucion.atribuir_egreso(m["idContacto"], fecha, importe_abs)
+            else:
+                atrib = atribucion.atribuir_ingreso(indice_ingresos, m["idContacto"], fecha, importe_abs)
+            if atrib["rubro"] == atribucion.SIN_RUBRO:
+                # FR-010: sin match ni aplicación, se distingue historico
+                # (antes del corte, no exigible) de pendiente real de aplicar.
+                if fecha < atribucion.FECHA_CORTE_APLICACION:
+                    atrib = {"rubro": atribucion.HISTORICO_SIN_APLICAR, "centroCosto": None}
+                else:
+                    atrib = {"rubro": atribucion.PENDIENTE_DE_APLICAR, "centroCosto": None}
+
         m["rubro"] = atrib["rubro"]
         m["centroCosto"] = atrib["centroCosto"]
     return movimientos

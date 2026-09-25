@@ -3,6 +3,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 
+import { AplicarPagoPanel } from "@/components/aplicaciones-pago/AplicarPagoPanel";
 import { TablaFlujoCaja } from "@/components/flujo-caja/TablaFlujoCaja";
 import { SideDrawer } from "@/components/ui/SideDrawer";
 import { formatMonto } from "@/lib/format";
@@ -18,6 +19,8 @@ export default function FlujoCajaRealPage() {
   });
 
   const rangoDetalle = detalle ? rangoDelPeriodo(detalle.periodo, granularidad) : null;
+  const [aplicando, setAplicando] = useState<{ origenMovimiento: string; idMovimientoOrigen: number } | null>(null);
+
   const detalleQuery = useQuery({
     queryKey: ["flujo-caja-detalle", detalle],
     queryFn: () =>
@@ -88,12 +91,33 @@ export default function FlujoCajaRealPage() {
                   {m.concepto || "—"} {m.contacto ? `· ${m.contacto}` : ""}
                   {m.esInterno && " · movimiento interno"}
                 </p>
+                {!m.esInterno && m.origenMovimiento && m.idMovimientoOrigen != null && (
+                  <button
+                    type="button"
+                    className="mt-1 text-xs text-agro underline"
+                    onClick={() => setAplicando({ origenMovimiento: m.origenMovimiento!, idMovimientoOrigen: m.idMovimientoOrigen! })}
+                  >
+                    Aplicar a factura/venta…
+                  </button>
+                )}
               </li>
             ))}
             {detalleQuery.data.movimientos.length === 0 && (
               <li className="px-4 py-3 text-sm text-ink-secondary">Sin movimientos.</li>
             )}
           </ul>
+        )}
+      </SideDrawer>
+
+      <SideDrawer open={aplicando !== null} onClose={() => setAplicando(null)} title="Aplicar pago/cobro">
+        {aplicando && (
+          <div className="p-4">
+            <AplicarPagoPanel
+              origenMovimiento={aplicando.origenMovimiento}
+              idMovimientoOrigen={aplicando.idMovimientoOrigen}
+              onAplicado={() => setAplicando(null)}
+            />
+          </div>
         )}
       </SideDrawer>
     </main>
