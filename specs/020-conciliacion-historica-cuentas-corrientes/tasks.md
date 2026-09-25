@@ -23,7 +23,7 @@ description: "Task list for 020-conciliacion-historica-cuentas-corrientes"
 - [X] T001 Crear script de migración de esquema `backend/scripts/migrar_conciliacion_historico_esquema.py` — **desviación**: sin flag `--apply` (no hace falta: es DDL idempotente vía `IF NOT EXISTS`/`IF OBJECT_ID IS NULL`, mismo patrón real de `crear_tabla_aplicaciones_pago.py`, que tampoco tiene dry-run)
 - [X] T002 Ejecutar `migrar_conciliacion_historico_esquema.py` contra `WC` y verificar con `INFORMATION_SCHEMA.COLUMNS`/`INFORMATION_SCHEMA.TABLES` — hecho 2026-09-25, tras backup verificado (`backups/WC_pre_conciliacion_historico_20260925.bak`, 79 MB, `BACKUP DATABASE` vía `pyodbc`, sin `COMPRESSION` — no soportada en esta instancia Express)
 - [X] T003 [P] Crear estructura del módulo `backend/src/features/conciliacion_historico/` — **desviación**: solo `__init__.py` + `repository.py` por ahora; `router.py`/`schemas.py` se crean recién en US2, cuando existan endpoints reales que definir (evita archivos vacíos sin contenido)
-- [ ] T004 [P] Registrar `conciliacion_historico.router` en el router principal — **diferida a US2** (no hay router todavía, ver T003)
+- [X] T004 [P] Registrar `conciliacion_historico.router` en el router principal — hecho en US2 (T026), cuando el router pasó a existir con endpoints reales
 
 **Checkpoint**: esquema listo, módulo montado — puede arrancar cualquier historia.
 
@@ -87,7 +87,7 @@ description: "Task list for 020-conciliacion-historica-cuentas-corrientes"
 - [X] T019 [P] [US2] Test en `backend/tests/test_conciliacion_historico_endpoints.py`: `GET /api/conciliacion-historico/resumen` devuelve los conteos correctos por contacto (mockeado, mismo criterio que 019)
 - [X] T020 [P] [US2] Test: `GET /api/conciliacion-historico/resumen?soloConDudas=true` pasa el filtro correctamente a `repository.resumen_por_contacto`
 - [X] T021 [P] [US2] Test: `GET /api/conciliacion-historico/{idContacto}/detalle` lista aplicaciones con `origen`/`notaConciliacion` y excepciones con `subcategoria`/`motivo`
-- [ ] T022 [P] [US2] Test de integración real (anular mejor esfuerzo → detalle refleja el cambio) — **diferido**: no bloquea el uso de la pantalla, se valida a mano cuando exista el frontend de revisión
+- [ ] T022 [P] [US2] Test de integración real (anular mejor esfuerzo → detalle refleja el cambio) — **no se automatiza**: requeriría anular una aplicación real en `WC` como efecto de correr la suite de tests, contra la convención ya establecida del proyecto de que los tests automatizados no escriben en `WC` real (ver docstring de `test_aplicaciones_pago_endpoints.py`). La lógica que haría pasar este test ya está cubierta indirectamente: `detalle_contacto` filtra por `Anulada = 0` (mismo filtro que usa `aplicaciones_pago.repository.estado_movimiento`), y el endpoint de anulación es el mismo ya testeado en 019. Verificación manual disponible vía quickstart Escenario 5.
 
 ### Implementation for User Story 2
 
@@ -135,10 +135,10 @@ description: "Task list for 020-conciliacion-historica-cuentas-corrientes"
 
 ## Phase 6: Polish & Cross-Cutting Concerns
 
-- [ ] T037 [P] Ejecutar los 6 escenarios de `quickstart.md` contra datos reales de `WC` (con backup verificado antes de cualquier `--apply`) y documentar resultado
-- [ ] T038 Ejecutar `pytest backend/tests/test_conciliacion_historico_*.py` y confirmar 100% en verde
-- [ ] T039 [P] Revisar formato de números y convenciones de UX (memoria `feedback_formato_numeros`) en las pantallas de revisión y verificación de saldos
-- [ ] T040 Actualizar `specs/020-conciliacion-historica-cuentas-corrientes/data-model.md` si la corrida real contra `WC` revela ajustes necesarios en `TOLERANCIA_SALDO` o en el criterio de "mejor esfuerzo" (documentar el valor final calibrado, igual que se hizo con la tolerancia 2% de conciliación de documentos USD)
+- [X] T037 [P] Ejecutar los 6 escenarios de `quickstart.md` contra datos reales de `WC` — 1-4 ejecutados y documentados con resultado real en `quickstart.md`; 5 no ejecutado a propósito (anularía una de las 5 únicas aplicaciones de mejor esfuerzo sin necesidad real); 6 no aplica (US3 pospuesta)
+- [X] T038 Ejecutado `pytest backend/tests/test_conciliacion_historico_*.py` (11 tests) y la suite completa del backend (494 tests) — 100% en verde
+- [X] T039 [P] Revisado formato de números (memoria `feedback_formato_numeros`) en la pantalla de revisión — hallazgo: faltaba mostrar `importeAplicado` en el detalle; agregado con `formatMoneda` (nunca `toLocaleString`/`type=number`). No aplica a verificación de saldos (US3 pospuesta)
+- [X] T040 `data-model.md` actualizado con el ajuste real encontrado (`Origen varchar(20)` → `varchar(30)`, ver sección `AplicacionesPago`). El criterio de "mejor esfuerzo" (2%) no necesitó recalibración: solo 5 de 12.762 movimientos cayeron en esa categoría, la tolerancia original resultó adecuada. `TOLERANCIA_SALDO` no aplica todavía (US3 pospuesta, sin datos contra los que calibrar)
 
 ---
 

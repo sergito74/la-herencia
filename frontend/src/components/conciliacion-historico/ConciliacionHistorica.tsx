@@ -10,7 +10,7 @@ import {
 } from "@/services/conciliacionHistoricaApi";
 import { DataTable, type DataTableColumn } from "@/components/ui/DataTable";
 import { EmptyState, ErrorState, LoadingState } from "@/components/ui/States";
-import { formatCantidad } from "@/lib/format";
+import { formatCantidad, formatMoneda } from "@/lib/format";
 
 const SUBCATEGORIA_LABEL: Record<string, string> = {
   "sin-contacto": "Sin contacto identificable",
@@ -161,7 +161,8 @@ function DetalleContactoPanel({ idContacto, onCerrar }: { idContacto: number; on
                           mejor esfuerzo
                         </span>
                       )}
-                      {a.origenMovimiento} #{a.idMovimientoOrigen} → {a.tipoDocumento} #{a.idDocumentoAplicado}
+                      {a.origenMovimiento} #{a.idMovimientoOrigen} → {a.tipoDocumento} #{a.idDocumentoAplicado} ·{" "}
+                      {formatMoneda(a.importeAplicado)}
                     </span>
                     {a.notaConciliacion && <span className="text-xs text-ink-secondary">{a.notaConciliacion}</span>}
                   </li>
