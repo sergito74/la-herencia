@@ -19,6 +19,7 @@ from src.db.connection import (
 )
 from src.db.pagination import offset_for
 from src.db.params import as_sql_datetime
+from src.features.compras.particular import APLICA_PARTICULAR_JOIN
 from src.formatting import formatear_moneda
 from src.features.tarjetas_resumenes.conciliacion_documentos import (
     MAX_DOCS_SUGERENCIA,
@@ -304,21 +305,10 @@ def auto_vincular_compras(id_resumen: int) -> int:
 # importe BRUTO de la factura, así que para conciliar se suma de vuelta esa línea
 # (el neto de estas facturas es ~0 y quedaban fuera de todos los candidatos).
 #
-# La línea negativa puede cargarse de dos formas (109 de 115 casos reales con
-# `Precio Unitario` negativo, 3 con `Cantidad` negativa en su lugar — mismo
-# efecto sobre el total, solo cambia qué factor es negativo; caso real "Cumo
-# Store", 2026-09-26, que quedaba afuera de los candidatos por esto). El
-# filtro compara el SUBTOTAL de la línea, no un factor en particular, para
-# reconocer ambas formas.
-_APLICA_PARTICULAR = """
-    OUTER APPLY (
-        SELECT ISNULL(SUM(dc.Cantidad * dc.[Precio Unitario] * (1 + ISNULL(dc.IVA, 0) / 100.0)), 0) AS cp
-        FROM dbo.Det_Compras dc
-        WHERE dc.IdCompra = w.IdDeuda
-          AND dc.Cantidad * dc.[Precio Unitario] < 0
-          AND dc.[Producto/Servicio] LIKE '%particular%'
-    ) pa
-"""
+# La detección de la línea negativa vive en `compras.particular` — reusada
+# también por `cuentas_socios` (021) para no duplicar esta lógica en un
+# segundo lugar (021-cuentas-socios, tasks.md T006/T007).
+_APLICA_PARTICULAR = APLICA_PARTICULAR_JOIN
 _IMPORTE_BRUTO = "(w.ImporteDocumento - pa.cp)"
 _CON_IMPORTE = f"ABS({_IMPORTE_BRUTO}) >= 0.005"
 
