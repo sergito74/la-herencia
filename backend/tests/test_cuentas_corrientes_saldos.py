@@ -120,3 +120,17 @@ def test_2jm_saldo_cierra_tras_incluir_pago_con_tarjeta():
     saldo = repository.get_saldo(id_contacto)
     assert saldo is not None
     assert abs(saldo["saldoParcial"]) < 1.0
+
+
+def test_aca_bolivar_saldo_cierra_con_linea_de_tarjeta_sin_nro_documento():
+    """Segundo caso real reportado por Sergio, mismo día: "ACA Bolivar"
+    tenía una línea de tarjeta ($60.008, 2025-11-18) sin `NroDocumento`
+    cargado en el resumen — el match original por número de documento no
+    la encontraba. Extendido el fix para matchear por fecha+importe
+    cuando no hay número de documento (tolerancia $1, ver
+    `scripts/agregar_tarjetas_a_vista_cuenta_corriente.py`)."""
+    fila = fetch_all("SELECT IdContacto FROM dbo.Contactos WHERE [Razon Social] = 'ACA Bolivar'")
+    id_contacto = fila[0]["IdContacto"]
+    saldo = repository.get_saldo(id_contacto)
+    assert saldo is not None
+    assert abs(saldo["saldoParcial"]) < 2.0

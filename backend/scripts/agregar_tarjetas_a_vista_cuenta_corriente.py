@@ -15,13 +15,23 @@ pago en ninguna cuenta corriente.
   00011970" en Compras vs "0149-00011970" en tarjetas) es el PAGO de esa
   deuda: entra como Crédito (o Deuda si el importe es negativo, ej. un
   reintegro).
-- Una línea de tarjeta SIN compra asociada (ej. Carrefour, YPF, Nación
-  Seguros: 272 de 1.682 líneas) se deja FUERA de la vista a propósito: son
-  compras pagadas en el instante con la tarjeta, sin una factura cargada
-  aparte — el gasto y su pago son el mismo evento, nunca generan saldo
-  pendiente real. Incluirlas como "Deuda" crearía una deuda fantasma que
-  nunca se cancela (no hay un segundo movimiento que la salde); dejarlas
-  afuera es la única representación correcta con los datos disponibles.
+- **Actualizado 2026-09-25 (caso real "ACA Bolivar")**: cuando la línea de
+  tarjeta NO tiene `NroDocumento` cargado (78 de 1.682 líneas — el
+  resumen de tarjeta nunca vinculó esa línea a su factura), se intenta un
+  segundo match por `IdContacto` + misma `Fecha` + mismo importe (tolerancia
+  $1, la misma que usa 019 para cierre exacto). Rescata 13 líneas más
+  (ej. ACA Bolivar, factura 00021-00007157 del 2025-11-18, $60.008). Solo
+  se usa esta vía cuando no hay ningún `NroDocumento` que intentar
+  matchear — nunca reemplaza un número que sí existe pero no coincide,
+  para no aflojar el criterio original.
+- Una línea de tarjeta que sigue sin ninguna `Compra` asociada por ninguno
+  de los dos criterios (ej. Carrefour, YPF, Nación Seguros: ~259 de 1.682
+  líneas) se deja FUERA de la vista a propósito: son compras pagadas en
+  el instante con la tarjeta, sin una factura cargada aparte — el gasto y
+  su pago son el mismo evento, nunca generan saldo pendiente real.
+  Incluirlas como "Deuda" crearía una deuda fantasma que nunca se cancela
+  (no hay un segundo movimiento que la salde); dejarlas afuera es la
+  única representación correcta con los datos disponibles.
 - `CROSS APPLY TOP 1 ... ORDER BY IdDeuda` evita duplicar el crédito si,
   por casualidad, dos `Compras` del mismo contacto comparten un `Nro
   Documento` (53 casos detectados, mayoría con documento NULL).
@@ -344,8 +354,15 @@ INNER JOIN dbo.Contactos AS ct
 CROSS APPLY (
     SELECT TOP 1 c.IdDeuda
     FROM dbo.Compras AS c
+    JOIN dbo.vw_Cns_Total_Compra AS tc ON tc.IdDeuda = c.IdDeuda
     WHERE c.IdContacto = t.IdContacto
-      AND REPLACE(c.[Nro Documento], ' ', '') = REPLACE(t.NroDocumento, ' ', '')
+      AND (
+            (NULLIF(LTRIM(RTRIM(t.NroDocumento)), '') IS NOT NULL
+             AND REPLACE(c.[Nro Documento], ' ', '') = REPLACE(t.NroDocumento, ' ', ''))
+         OR (NULLIF(LTRIM(RTRIM(t.NroDocumento)), '') IS NULL
+             AND c.Fecha = t.FechaCompra
+             AND ABS(tc.GranTotal - t.Importe) < 1.0)
+      )
     ORDER BY c.IdDeuda
 ) AS compra
 WHERE t.IdContacto IS NOT NULL
