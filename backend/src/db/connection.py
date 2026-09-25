@@ -1,15 +1,19 @@
 """SQL Server access shared across feature modules.
 
-**Regla de oro (2026-09-17, decisión explícita del usuario)**: la
-aplicación trabaja exclusivamente contra `WC` ("Working Copy"), una
-réplica completa de `LaHerencia` restaurada vía BACKUP/RESTORE el
-2026-09-17. `LaHerencia` (la base original) NUNCA se escribe desde este
-código — `fetch_all`/`fetch_one` siguen siendo de solo lectura (para
-`WC` también, salvo que se use `execute_write` explícitamente), y
-`execute_write` se niega en tiempo de ejecución a operar contra
-cualquier base que no sea `WC` (ver `_assert_target_is_wc`). Esto
-convierte la regla de negocio en una barrera de código, no solo en una
-convención.
+**Regla de oro (actualizada 2026-09-25, corte a producción)**: la
+aplicación trabaja exclusivamente contra `WC`, que dejó de ser una
+copia de trabajo descartable el 2026-09-25: es la base de **producción**
+de acá en adelante (Constitución, Amendment 1.4.0). `LaHerencia` (la
+base original, enlazada por Access) queda congelada — Access ya no se
+usa para carga real, y `LaHerencia` NUNCA se escribe desde este código
+(solo se leyó, puntualmente y de forma aislada, para la verificación de
+saldos de la feature 020). `fetch_all`/`fetch_one` siguen siendo de solo
+lectura (para `WC` también, salvo que se use `execute_write`
+explícitamente), y `execute_write` se niega en tiempo de ejecución a
+operar contra cualquier base que no sea `WC` (ver `_assert_target_is_wc`).
+Esto convierte la regla de negocio en una barrera de código, no solo en
+una convención — el nombre "WC" quedó como identificador histórico de
+la base, ya no describe su rol.
 
 Uses the pre-configured ODBC DSN ``SQL_LaHerencia`` (Trusted_Connection).
 No credentials are hard-coded or logged.
@@ -85,12 +89,14 @@ def _coerce_params(params: tuple) -> tuple:
 
 
 def _assert_target_is_wc() -> None:
-    """Hard stop: application connections must target development database `WC`.
+    """Hard stop: application connections must target `WC`, the production
+    database since the 2026-09-25 cutover (name kept for historical
+    continuity — it no longer means "working copy").
 
     Checking only that the configured database is not `LaHerencia` leaves
     typos and unexpected database names writable. Restricting the target to
-    the explicitly designated working copy protects the official database
-    and prevents writes to any other database by mistake.
+    the explicitly designated database protects `LaHerencia` (frozen) and
+    prevents writes to any other database by mistake.
     """
     if DATABASE.strip().lower() != _DEVELOPMENT_DATABASE.lower():
         raise RuntimeError(

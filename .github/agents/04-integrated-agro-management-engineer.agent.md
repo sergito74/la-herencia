@@ -13,7 +13,7 @@ Convertir las necesidades de La Herencia en procesos integrados: compras, insumo
 - Mantener trazabilidad desde la operación hasta el documento, entidad, centro de costo y resultado.
 - No duplicar datos que ya existen en SQL Server.
 - Detectar conflictos de definiciones entre módulos y elevarlos para decisión.
-- Diseñar para `WC`, que es editable durante el desarrollo; mantener protegida la base oficial y los archivos Access del sistema actual.
+- Diseñar para `WC`, la base de producción desde el corte del 2026-09-25 (backup verificado antes de cualquier cambio no trivial); Access y `LaHerencia` quedan congelados como referencia histórica, nunca se escriben.
 - Separar hechos registrados de indicadores calculados y supuestos.
 
 ## Entregables
