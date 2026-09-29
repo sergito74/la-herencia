@@ -31,6 +31,9 @@ from src.features.imputacion.router import router as imputacion_router
 from src.features.impuestos.router import router as impuestos_router
 from src.features.ordenes.router import router as ordenes_router
 from src.features.planificacion.router import router as planificacion_router
+from src.features.conciliacion_tesoreria.router import router as conciliacion_tesoreria_router
+from src.features.traspasos_internos_tesoreria.router import router as traspasos_internos_tesoreria_router
+from src.features.reasignacion_contacto.router import router as reasignacion_contacto_router
 from src.features.remitos.router import router as remitos_router
 from src.features.resultado_cultivo.router import router as resultado_cultivo_router
 from src.features.remitos.stock_router import router as stock_router
@@ -135,6 +138,7 @@ app.include_router(auth_router)
 app.include_router(aplicaciones_pago_router)
 app.include_router(arrendamientos_router)
 app.include_router(compras_router)
+app.include_router(conciliacion_tesoreria_router)
 app.include_router(cuentas_socios_router)
 app.include_router(conciliacion_historico_router)
 app.include_router(contactos_router)
@@ -146,6 +150,7 @@ app.include_router(impuestos_router)
 app.include_router(remitos_router)
 app.include_router(ordenes_router)
 app.include_router(planificacion_router)
+app.include_router(reasignacion_contacto_router)
 app.include_router(resultado_cultivo_router)
 app.include_router(stock_router)
 app.include_router(remuneraciones_router)
@@ -154,6 +159,7 @@ app.include_router(tarjetas_router)
 app.include_router(tarjetas_cuotas_router)
 app.include_router(tarjetas_resumenes_router)
 app.include_router(tesoreria_router)
+app.include_router(traspasos_internos_tesoreria_router)
 app.include_router(ventas_granos_router)
 app.include_router(ventas_hacienda_router)
 

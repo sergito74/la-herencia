@@ -9,9 +9,21 @@
 
 import { API_BASE_URL, apiGet, ApiError } from "@/services/apiClient";
 
+/** 023-conciliacion-tesoreria + 024-traspasos-internos-tesoreria: estado
+ * unificado de un movimiento (nunca se guarda, se recalcula siempre —
+ * `traspaso_interno` es el 5.º valor que suma 024). */
+export type EstadoConciliacion =
+  | "sin_documento"
+  | "sin_conciliar"
+  | "parcialmente_conciliado"
+  | "conciliado"
+  | "ya_reconocido"
+  | "traspaso_interno";
+
 export type Medio =
   | "bna"
   | "galicia"
+  | "mercado-libre"
   | "efectivo"
   | "valores-propios"
   | "valores-recibidos"
@@ -29,6 +41,8 @@ export interface MovimientoBNA {
   idContacto: number | null;
   contacto: string | null;
   idCarga: number | null;
+  saldo: number | null;
+  estadoConciliacion: EstadoConciliacion | null;
 }
 
 export interface MovimientoGalicia {
@@ -41,6 +55,19 @@ export interface MovimientoGalicia {
   idContacto: number | null;
   contacto: string | null;
   idCarga: number | null;
+  estadoConciliacion: EstadoConciliacion | null;
+}
+
+export interface MovimientoMercadoLibre {
+  idMovimiento: number;
+  fecha: string | null;
+  descripcion: string | null;
+  idOperacion: string | null;
+  importe: number | null;
+  saldo: number | null;
+  idContacto: number | null;
+  contacto: string | null;
+  estadoConciliacion: EstadoConciliacion | null;
 }
 
 export interface PagoEfectivo {
@@ -52,6 +79,7 @@ export interface PagoEfectivo {
   numeroDocumento: number | null;
   importeImputado: number | null;
   idOperacion: number | null;
+  estadoConciliacion: EstadoConciliacion | null;
 }
 
 export interface ValorPropio {
@@ -64,6 +92,7 @@ export interface ValorPropio {
   fechaCobro: string | null;
   numeroCuenta: string | null;
   comentarios: string | null;
+  estadoConciliacion: EstadoConciliacion | null;
 }
 
 export interface ValorRecibido {
@@ -77,6 +106,7 @@ export interface ValorRecibido {
   idReceptor: number | null;
   importe: number | null;
   destino: string | null;
+  estadoConciliacion: EstadoConciliacion | null;
 }
 
 export interface LineaResumenTarjeta {
@@ -92,6 +122,7 @@ export interface LineaResumenTarjeta {
 export type MovimientoPorMedio = {
   bna: MovimientoBNA;
   galicia: MovimientoGalicia;
+  "mercado-libre": MovimientoMercadoLibre;
   efectivo: PagoEfectivo;
   "valores-propios": ValorPropio;
   "valores-recibidos": ValorRecibido;
@@ -114,6 +145,7 @@ export interface MovimientosParams {
 
 export interface CompraCandidata {
   idCompra: number;
+  idContacto: number | null;
   numeroDocumento: string | null;
   proveedor: string | null;
   fecha: string | null;

@@ -310,14 +310,21 @@ async def get_resumen_detalle(id_resumen: int) -> ResumenDetalleResponse:
 # --- Punto 4 del feedback (2026-09-19): vínculo línea de consumo -> Compras reales ---
 
 
+def _status_code_vinculo(detail) -> int:
+    # 025-conciliacion-tarjetas-impuestos, FR-005/FR-009: un saldo pendiente
+    # excedido es un conflicto de estado (409), no un pedido mal formado.
+    texto = " ".join(detail) if isinstance(detail, list) else str(detail)
+    return 409 if "saldo pendiente" in texto else 400
+
+
 @router.post("/lineas/{id_linea_consumo}/compras", response_model=CompraVinculada, status_code=201)
 async def vincular_compra_a_linea(id_linea_consumo: int, body: VincularCompraRequest) -> CompraVinculada:
     try:
         id_vinculo = await run_in_threadpool(
-            repository.vincular_compra, id_linea_consumo, body.idCompra, body.importeImputado
+            repository.vincular_compra, id_linea_consumo, body.idCompra, body.importeImputado, body.idImpuesto
         )
     except ValueError as exc:
-        raise HTTPException(status_code=400, detail=exc.args[0]) from exc
+        raise HTTPException(status_code=_status_code_vinculo(exc.args[0]), detail=exc.args[0]) from exc
     vinculos = await run_in_threadpool(repository.get_compras_vinculadas, id_linea_consumo)
     for v in vinculos:
         if v["idVinculo"] == id_vinculo:
@@ -337,28 +344,35 @@ async def get_candidatos_linea(id_linea_consumo: int) -> CandidatosLineaResponse
 
 @router.get("/lineas/{id_linea_consumo}/conciliacion", response_model=ConciliacionPreviewResponse)
 async def previsualizar_conciliacion(
-    id_linea_consumo: int, idsCompra: list[int] = Query(min_length=1)
+    id_linea_consumo: int,
+    idsCompra: list[int] = Query(default=[]),
+    idsImpuesto: list[int] = Query(default=[]),
 ) -> ConciliacionPreviewResponse:
+    if not idsCompra and not idsImpuesto:
+        raise HTTPException(status_code=400, detail=["Elegí al menos un documento."])
     try:
-        data = await run_in_threadpool(repository.calcular_conciliacion, id_linea_consumo, idsCompra)
+        data = await run_in_threadpool(repository.calcular_conciliacion, id_linea_consumo, idsCompra, idsImpuesto)
     except ValueError as exc:
-        raise HTTPException(status_code=400, detail=exc.args[0]) from exc
+        raise HTTPException(status_code=_status_code_vinculo(exc.args[0]), detail=exc.args[0]) from exc
     return ConciliacionPreviewResponse(**data)
 
 
 @router.post("/lineas/{id_linea_consumo}/compras/lote", response_model=list[CompraVinculada], status_code=201)
 async def vincular_compras_lote(id_linea_consumo: int, body: VincularLoteRequest) -> list[CompraVinculada]:
-    """Vincula varios documentos (Factura/NC/ND) a la línea de una sola vez,
-    repartiendo su importe entre ellos (pesificando los que están en dólares)."""
+    """Vincula varios documentos (Factura/NC/ND de Compras, y/o desde
+    025-conciliacion-tarjetas-impuestos pagos de Impuestos) a la línea de
+    una sola vez, repartiendo su importe entre ellos (pesificando los que
+    están en dólares)."""
     try:
         vinculos = await run_in_threadpool(
             repository.vincular_compras_lote,
             id_linea_consumo,
             body.idsCompra,
             body.aceptarDiferencia.model_dump() if body.aceptarDiferencia else None,
+            body.idsImpuesto,
         )
     except ValueError as exc:
-        raise HTTPException(status_code=400, detail=exc.args[0]) from exc
+        raise HTTPException(status_code=_status_code_vinculo(exc.args[0]), detail=exc.args[0]) from exc
     return [CompraVinculada(**v) for v in vinculos]
 
 

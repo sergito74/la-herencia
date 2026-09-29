@@ -56,7 +56,7 @@ async def test_get_saldo_not_found(client, monkeypatch):
 
 @pytest.mark.anyio
 async def test_list_movimientos(client, monkeypatch):
-    def fake_movimientos(id_contacto, fecha_desde, fecha_hasta, page, page_size):
+    def fake_movimientos(id_contacto, fecha_desde, fecha_hasta, page, page_size, sort_by=None, sort_dir="asc"):
         assert id_contacto == 42
         return [FIXTURE_MOVIMIENTO], 1
 
@@ -78,7 +78,7 @@ async def test_list_movimientos(client, monkeypatch):
 
 @pytest.mark.anyio
 async def test_list_movimientos_empty_result(client, monkeypatch):
-    def fake_movimientos(id_contacto, fecha_desde, fecha_hasta, page, page_size):
+    def fake_movimientos(id_contacto, fecha_desde, fecha_hasta, page, page_size, sort_by=None, sort_dir="asc"):
         return [], 0
 
     monkeypatch.setattr(repository, "get_movimientos", fake_movimientos)
@@ -94,7 +94,7 @@ async def test_list_movimientos_empty_result(client, monkeypatch):
 async def test_list_movimientos_date_filters_forwarded(client, monkeypatch):
     captured = {}
 
-    def fake_movimientos(id_contacto, fecha_desde, fecha_hasta, page, page_size):
+    def fake_movimientos(id_contacto, fecha_desde, fecha_hasta, page, page_size, sort_by=None, sort_dir="asc"):
         captured["fecha_desde"] = fecha_desde
         captured["fecha_hasta"] = fecha_hasta
         return [], 0

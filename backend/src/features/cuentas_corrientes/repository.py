@@ -107,12 +107,28 @@ def get_saldos_todos(orden: str = "razonSocial") -> list[dict]:
     return fetch_all(sql)
 
 
+# Único punto de entrada para nombres de columna en el ORDER BY dinámico
+# de abajo — nunca se interpola el `sortBy` del cliente directo en el SQL
+# (aunque venga validado por Pydantic/Literal en el schema, se revalida acá
+# contra este allowlist antes de usarlo en texto).
+_COLUMNAS_ORDENABLES = {
+    "fecha": "Fecha",
+    "documento": "Documento",
+    "numeroDocumento": "[Nro Documento]",
+    "deuda": "Deuda",
+    "credito": "Credito",
+    "saldoParcial": "SaldoParcial",
+}
+
+
 def get_movimientos(
     id_contacto: int,
     fecha_desde: date | None,
     fecha_hasta: date | None,
     page: int,
     page_size: int,
+    sort_by: str | None = None,
+    sort_dir: str = "asc",
 ) -> tuple[list[dict], int]:
     """Movimientos de cuenta corriente del contacto (FR-004, FR-005, FR-012, FR-014).
 
@@ -148,6 +164,17 @@ def get_movimientos(
     # Mismo orden canónico usado ahí (`Fecha, Origen, IdOrigen`), del que
     # también depende que `SaldoParcial` sea correcto (es un acumulado).
     offset = offset_for(page, page_size)
+    # Ordenamiento pedido por el cliente (pantalla de Cuenta Corriente,
+    # 2026-09-28: ordenar debe cubrir TODOS los movimientos del contacto,
+    # no solo la página cargada — antes se ordenaba en el navegador, que
+    # solo ve una página a la vez). `SaldoParcial` sigue siendo el saldo
+    # acumulado en orden cronológico real (ya viene calculado así en la
+    # vista); reordenar la lista para mostrarla no recalcula ese número,
+    # solo cambia en qué renglón aparece cada uno — mismo criterio que un
+    # libro mayor contable al que se le cambia el orden de visualización.
+    columna_orden = _COLUMNAS_ORDENABLES.get(sort_by or "", "Fecha")
+    direccion = "DESC" if sort_dir == "desc" else "ASC"
+    orden_desempate = "" if columna_orden == "Fecha" else ", Fecha ASC"
     list_sql = f"""
         SELECT DISTINCT
             Fecha AS fecha,
@@ -160,7 +187,7 @@ def get_movimientos(
             SaldoParcial AS saldoParcial
         FROM dbo.vw_MovimientosCuenta_Saldo
         {where_sql}
-        ORDER BY Fecha ASC, Origen ASC, IdOrigen ASC
+        ORDER BY {columna_orden} {direccion}{orden_desempate}, Origen ASC, IdOrigen ASC
         OFFSET ? ROWS FETCH NEXT ? ROWS ONLY
     """
     rows = fetch_all(list_sql, tuple(params) + (offset, page_size))
@@ -247,3 +274,16 @@ def get_valores_recibidos_referencia(id_valor: int) -> dict | None:
         WHERE IdValor = ?
     """
     return fetch_one(sql, (id_valor,))
+
+
+def get_conciliacion_tesoreria_referencia(id_conciliacion: int) -> dict | None:
+    """023-conciliacion-tesoreria: resuelve el `IdOrigen` (= IdConciliacion)
+    al medio/movimiento de Tesorería original, para que el link "Origen"
+    de cuentas corrientes lleve al mismo listado que cualquier otro
+    movimiento de Tesorería (mismo criterio que get_bna_referencia/etc.)."""
+    sql = """
+        SELECT Medio AS medio, IdMovimiento AS idMovimiento, Fecha AS fecha, Importe AS importe
+        FROM dbo.ConciliacionesTesoreria
+        WHERE IdConciliacion = ?
+    """
+    return fetch_one(sql, (id_conciliacion,))

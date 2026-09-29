@@ -11,59 +11,81 @@ import { ContactoSelect } from "@/components/ui/ContactoSelect";
 import { DataTable, type DataTableColumn, type SortState } from "@/components/ui/DataTable";
 import { FilterBar, FilterField, FilterSubmitButton, filterInputClass } from "@/components/ui/FilterBar";
 import { EmptyState, ErrorState, LoadingState } from "@/components/ui/States";
+import { formatMoneda } from "@/lib/format";
 
-const COLUMNS: DataTableColumn<Compra>[] = [
-  {
-    key: "fecha",
-    header: "Fecha",
-    numeric: true,
-    sortValue: (c) => c.fecha,
-    render: (c) => (
-      // Clic en la fecha abre el mismo formulario de carga/edición (no el
-      // PDF original) — pedido explícito del usuario (2026-09-17).
-      <Link
-        className="text-finance underline"
-        href={`/compras/${c.idCompra}/editar`}
-        title="Ver/editar esta compra."
-      >
-        {c.fecha ?? "—"}
-      </Link>
-    ),
-  },
-  {
-    key: "proveedor",
-    header: "Proveedor",
-    sortValue: (c) => c.proveedor?.razonSocial ?? null,
-    render: (c) => (
-      <ContactoLink
-        idContacto={c.proveedor?.idContacto}
-        razonSocial={c.proveedor?.razonSocial}
-        tipoContacto="Proveedor"
-      />
-    ),
-  },
-  {
-    key: "tipoDocumento",
-    header: "Tipo documento",
-    sortValue: (c) => c.tipoDocumento,
-    render: (c) => c.tipoDocumento ?? "—",
-  },
-  {
-    key: "numeroDocumento",
-    header: "Nro. documento",
-    sortValue: (c) => c.numeroDocumento,
-    render: (c) => c.numeroDocumento ?? "—",
-  },
-  {
-    key: "editar",
-    header: "",
-    render: (c) => (
-      <Link className="text-finance underline" href={`/compras/${c.idCompra}/editar`}>
-        Editar
-      </Link>
-    ),
-  },
-];
+// El proveedor casi siempre ya está filtrado en el buscador de arriba —
+// pedido explícito del usuario (2026-09-29): mostrarlo por fila es
+// redundante y ocupa el lugar que debería tener el total del documento,
+// que faltaba. Se muestra Proveedor solo cuando la búsqueda NO filtró por
+// proveedor (listado por número de documento/fecha/etc., con varios
+// proveedores mezclados), para no perder esa información justo ahí.
+function buildColumns(mostrarProveedor: boolean): DataTableColumn<Compra>[] {
+  const columnas: DataTableColumn<Compra>[] = [
+    {
+      key: "fecha",
+      header: "Fecha",
+      numeric: true,
+      sortValue: (c) => c.fecha,
+      render: (c) => (
+        // Clic en la fecha abre el mismo formulario de carga/edición (no el
+        // PDF original) — pedido explícito del usuario (2026-09-17).
+        <Link
+          className="text-finance underline"
+          href={`/compras/${c.idCompra}/editar`}
+          title="Ver/editar esta compra."
+        >
+          {c.fecha ?? "—"}
+        </Link>
+      ),
+    },
+  ];
+  if (mostrarProveedor) {
+    columnas.push({
+      key: "proveedor",
+      header: "Proveedor",
+      sortValue: (c) => c.proveedor?.razonSocial ?? null,
+      render: (c) => (
+        <ContactoLink
+          idContacto={c.proveedor?.idContacto}
+          razonSocial={c.proveedor?.razonSocial}
+          tipoContacto="Proveedor"
+        />
+      ),
+    });
+  }
+  columnas.push(
+    {
+      key: "tipoDocumento",
+      header: "Tipo documento",
+      sortValue: (c) => c.tipoDocumento,
+      render: (c) => c.tipoDocumento ?? "—",
+    },
+    {
+      key: "numeroDocumento",
+      header: "Nro. documento",
+      sortValue: (c) => c.numeroDocumento,
+      render: (c) => c.numeroDocumento ?? "—",
+    },
+    {
+      key: "importeDocumento",
+      header: "Total",
+      align: "right",
+      numeric: true,
+      sortValue: (c) => c.importeDocumento,
+      render: (c) => (c.importeDocumento != null ? formatMoneda(c.importeDocumento) : "—"),
+    },
+    {
+      key: "editar",
+      header: "",
+      render: (c) => (
+        <Link className="text-finance underline" href={`/compras/${c.idCompra}/editar`}>
+          Editar
+        </Link>
+      ),
+    }
+  );
+  return columnas;
+}
 
 interface FiltrosState {
   proveedorNombre: string;
@@ -156,6 +178,8 @@ export function ComprasListado() {
     queryFn: fetchFiltrosCompras,
     staleTime: Infinity,
   });
+
+  const columns = buildColumns(!appliedFilters.proveedorNombre);
 
   // Sin filtro no se pide/muestra nada — mismo criterio que Contactos
   // (pedido explícito del usuario, 2026-09-17): con miles de compras
@@ -344,7 +368,7 @@ export function ComprasListado() {
 
       {hayFiltro && data && (
         <DataTable
-          columns={COLUMNS}
+          columns={columns}
           rows={data.items}
           keyField={(c) => c.idCompra}
           emptyMessage="Sin resultados para esta búsqueda."

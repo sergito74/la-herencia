@@ -66,6 +66,21 @@ def resolve_origen(origen_tipo: str | None, id_origen: int | None) -> dict:
             "importe": referencia.get("importe"),
         }
 
+    if origen_tipo == "Conciliación Tesorería":
+        # 023-conciliacion-tesoreria: IdOrigen acá es el IdConciliacion, no
+        # el id del movimiento original — se resuelve un nivel más antes de
+        # armar el mismo link "tesoreria" que ya usan bna/galicia/efectivo.
+        conciliacion = repository.get_conciliacion_tesoreria_referencia(id_origen)
+        if conciliacion is None:
+            return dict(_NO_DISPONIBLE_SIN_REGISTRO)
+        return {
+            "tipo": "tesoreria",
+            "medio": conciliacion["medio"],
+            "idMovimiento": conciliacion["idMovimiento"],
+            "fecha": conciliacion.get("fecha"),
+            "importe": conciliacion.get("importe"),
+        }
+
     if origen_tipo in ("Impuestos", "Retenciones"):
         if origen_tipo == "Impuestos":
             impuesto = impuestos_repository.get_impuesto_referencia(id_origen)

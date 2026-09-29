@@ -1,8 +1,8 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import {
   fetchContactos,
@@ -13,8 +13,9 @@ import {
   type MovimientoCuentaCorriente,
 } from "@/services/cuentasCorrientesApi";
 import { OrigenMovimiento } from "@/components/cuentas-corrientes/OrigenMovimiento";
+import { ReasignarMovimientoButton } from "@/components/cuentas-corrientes/ReasignarMovimientoButton";
 import { Breadcrumb } from "@/components/ui/Breadcrumb";
-import { DataTable, type DataTableColumn } from "@/components/ui/DataTable";
+import { DataTable, type DataTableColumn, type SortState } from "@/components/ui/DataTable";
 import { FilterBar, FilterField, FilterSubmitButton, filterInputClass } from "@/components/ui/FilterBar";
 import { KpiCard } from "@/components/ui/KpiCard";
 import { ErrorState, LoadingState } from "@/components/ui/States";
@@ -32,10 +33,16 @@ const TIPOS_CONTACTO = [
   "Tarjeta de Credito",
 ];
 
-const COLUMNS: DataTableColumn<MovimientoCuentaCorriente>[] = [
+function buildColumns(onReasignado: () => void): DataTableColumn<MovimientoCuentaCorriente>[] {
+  return [
   { key: "fecha", header: "Fecha", numeric: true, sortValue: (m) => m.fecha, render: (m) => m.fecha ?? "—" },
-  { key: "documento", header: "Documento", render: (m) => m.documento ?? "—" },
-  { key: "numeroDocumento", header: "Nro. documento", render: (m) => m.numeroDocumento ?? "—" },
+  { key: "documento", header: "Documento", sortValue: (m) => m.documento ?? "", render: (m) => m.documento ?? "—" },
+  {
+    key: "numeroDocumento",
+    header: "Nro. documento",
+    sortValue: (m) => m.numeroDocumento ?? "",
+    render: (m) => m.numeroDocumento ?? "—",
+  },
   {
     key: "deuda",
     header: "Deuda (débito)",
@@ -61,6 +68,7 @@ const COLUMNS: DataTableColumn<MovimientoCuentaCorriente>[] = [
     header: "Saldo",
     align: "right",
     numeric: true,
+    sortValue: (m) => m.saldoParcial,
     render: (m) => (
       <span className={m.saldoParcial != null && m.saldoParcial < 0 ? "text-status-danger" : "text-status-success"}>
         {m.saldoParcial != null ? formatMoneda(m.saldoParcial) : "—"}
@@ -68,7 +76,15 @@ const COLUMNS: DataTableColumn<MovimientoCuentaCorriente>[] = [
     ),
   },
   { key: "origen", header: "Origen", render: (m) => <OrigenMovimiento origen={m.origen} /> },
-];
+  {
+    key: "reasignar",
+    header: "",
+    render: (m) => (
+      <ReasignarMovimientoButton origenTipo={m.origenTipo} idOrigen={m.idOrigen} onReasignado={onReasignado} />
+    ),
+  },
+  ];
+}
 
 /**
  * Búsqueda de contacto + saldo + movimientos (US1: FR-001, FR-002, FR-003,
@@ -78,11 +94,19 @@ const COLUMNS: DataTableColumn<MovimientoCuentaCorriente>[] = [
  */
 export function CuentaCorriente() {
   const searchParams = useSearchParams();
+  const queryClient = useQueryClient();
   const [q, setQ] = useState("");
   const [tipoContacto, setTipoContacto] = useState("");
   const [appliedQ, setAppliedQ] = useState("");
-  const [appliedTipoContacto, setAppliedTipoContacto] = useState("");
   const [selected, setSelected] = useState<Contacto | null>(null);
+
+  // Sugiere a medida que se escribe (como ContactoSelect en el resto del
+  // sistema), sin esperar a un submit — pedido explícito del usuario
+  // (2026-09-28): el filtro de contacto debía funcionar como autocomplete.
+  useEffect(() => {
+    const timer = setTimeout(() => setAppliedQ(q), 250);
+    return () => clearTimeout(timer);
+  }, [q]);
 
   // Vínculo transversal (design/erp-module-architecture.md §3.5): un link
   // "ver cuenta corriente" desde cualquier módulo (Compras, Arrendamientos,
@@ -104,19 +128,24 @@ export function CuentaCorriente() {
   const [appliedDates, setAppliedDates] = useState({ fechaDesde: "", fechaHasta: "" });
   const [page, setPage] = useState(1);
   const pageSize = 50;
+  // Ordenamiento server-side (pedido explícito del usuario, 2026-09-28):
+  // antes DataTable ordenaba solo las filas de la página cargada — con
+  // `sort`+`onSortChange` controlados, el pedido de orden viaja al backend
+  // y cubre TODOS los movimientos del contacto, no solo los 50 visibles.
+  const [sort, setSort] = useState<SortState>(null);
 
   const {
     data: contactosData,
     isLoading: loadingContactos,
     isError: errorContactos,
   } = useQuery({
-    queryKey: ["cc-contactos", appliedQ, appliedTipoContacto],
+    queryKey: ["cc-contactos", appliedQ, tipoContacto],
     queryFn: () =>
       fetchContactos({
         q: appliedQ || undefined,
-        tipoContacto: appliedTipoContacto || undefined,
+        tipoContacto: tipoContacto || undefined,
       }),
-    enabled: appliedQ.length > 0 || appliedTipoContacto.length > 0,
+    enabled: appliedQ.length >= 2 || tipoContacto.length > 0,
   });
 
   const { data: saldo, isLoading: loadingSaldo } = useQuery({
@@ -129,28 +158,37 @@ export function CuentaCorriente() {
     data: movimientos,
     isLoading: loadingMovimientos,
     isError: errorMovimientos,
+    refetch: refetchMovimientos,
   } = useQuery({
-    queryKey: ["cc-movimientos", selected?.idContacto, appliedDates, page, pageSize],
+    queryKey: ["cc-movimientos", selected?.idContacto, appliedDates, page, pageSize, sort],
     queryFn: () =>
       fetchMovimientos(selected!.idContacto, {
         fechaDesde: appliedDates.fechaDesde || undefined,
         fechaHasta: appliedDates.fechaHasta || undefined,
         page,
         pageSize,
+        sortBy: sort?.key,
+        sortDir: sort?.direction,
       }),
     enabled: selected !== null,
   });
 
-  function handleSearchSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    setAppliedQ(q);
-    setAppliedTipoContacto(tipoContacto);
-    setSelected(null);
+  function handleReasignado() {
+    // El movimiento reasignado puede pasar a la cuenta corriente de OTRO
+    // contacto — invalidamos saldos/movimientos en general, no solo los
+    // del contacto seleccionado (022-reasignacion-contacto, US1).
+    queryClient.invalidateQueries({ queryKey: ["cc-saldo"] });
+    queryClient.invalidateQueries({ queryKey: ["cc-movimientos"] });
+    queryClient.invalidateQueries({ queryKey: ["cc-saldos"] });
+    refetchMovimientos();
   }
+
+  const columns = useMemo(() => buildColumns(handleReasignado), [queryClient, refetchMovimientos]);
 
   function handleSelectContacto(contacto: Contacto) {
     setSelected(contacto);
     setPage(1);
+    setSort(null);
     setAppliedDates({ fechaDesde: "", fechaHasta: "" });
     setFechaDesde("");
     setFechaHasta("");
@@ -173,20 +211,26 @@ export function CuentaCorriente() {
         />
       )}
 
-      <FilterBar onSubmit={handleSearchSubmit}>
+      <FilterBar onSubmit={(e) => e.preventDefault()}>
         <FilterField label="Contacto">
           <input
             className={filterInputClass}
             value={q}
-            onChange={(e) => setQ(e.target.value)}
-            placeholder="Razón social"
+            onChange={(e) => {
+              setQ(e.target.value);
+              setSelected(null);
+            }}
+            placeholder="Escribí al menos 2 letras de la razón social…"
           />
         </FilterField>
         <FilterField label="Tipo de contacto">
           <select
             className={filterInputClass}
             value={tipoContacto}
-            onChange={(e) => setTipoContacto(e.target.value)}
+            onChange={(e) => {
+              setTipoContacto(e.target.value);
+              setSelected(null);
+            }}
           >
             <option value="">Todos</option>
             {TIPOS_CONTACTO.map((tipo) => (
@@ -196,7 +240,6 @@ export function CuentaCorriente() {
             ))}
           </select>
         </FilterField>
-        <FilterSubmitButton />
       </FilterBar>
 
       {loadingContactos && <LoadingState rows={3} />}
@@ -293,7 +336,7 @@ export function CuentaCorriente() {
 
           {movimientos && (
             <DataTable
-              columns={COLUMNS}
+              columns={columns}
               rows={movimientos.items}
               keyField={(m) => `${m.fecha}-${m.numeroDocumento}-${m.documento}`}
               emptyMessage="Sin movimientos para el período seleccionado."
@@ -301,6 +344,11 @@ export function CuentaCorriente() {
               pageSize={movimientos.pageSize}
               total={movimientos.total}
               onPageChange={setPage}
+              sort={sort}
+              onSortChange={(next) => {
+                setSort(next);
+                setPage(1);
+              }}
             />
           )}
         </div>

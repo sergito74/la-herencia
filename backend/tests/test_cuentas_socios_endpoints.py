@@ -37,7 +37,7 @@ def test_compras_particulares_candidatas(monkeypatch):
         repository,
         "listar_compras_particulares_candidatas",
         lambda proveedor: [
-            {"idCompra": 2143515240, "fecha": "2025-11-14", "proveedor": "Cumo Store", "numeroDocumento": "0004-1", "importeBruto": 29699.10}
+            {"idCompra": 2143515240, "fecha": "2025-11-14", "proveedor": "Cumo Store", "numeroDocumento": "0004-1", "importePersonal": 29699.10}
         ],
     )
     response = client.get("/api/cuentas-socios/compras-particulares-candidatas?proveedor=Cumo")

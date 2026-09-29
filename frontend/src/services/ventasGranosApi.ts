@@ -52,6 +52,7 @@ export interface DeduccionGranos {
 export interface VentaGranosDetalle {
   idVenta: number;
   idConsignatario: number;
+  consignatario: string | null;
   idTipoDocumento: number;
   numeroDocumento: string;
   fecha: string;

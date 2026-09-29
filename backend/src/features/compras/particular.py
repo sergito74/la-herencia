@@ -1,7 +1,16 @@
 """Detección y cálculo del patrón "compra particular" (008/009, corregido
 2026-09-26 — casos reales "2JM", "ACA Bolivar", "Cumo Store"): una compra
 con una línea negativa ("Compra particular", "Compra particular Sergio",
-"Devolución compra particular"...) que la netea a $0 en su propio total.
+"Devolución compra particular"...) que descuenta de su propio total la
+parte que en realidad es un gasto personal pagado con medios de la
+empresa (tarjeta, efectivo).
+
+La línea negativa NO tiene que netear la compra a $0: puede ser un
+descuento parcial (ej. una compra de $13.521 con una línea "Compra
+particular Lucy" de -$6.080,51 deja $7.440,50 de deuda real con el
+proveedor, y $6.080,51 de gasto personal) — caso agregado 2026-09-26 al
+extender `cuentas_socios` (021) a splits parciales, no solo compras
+100% personales.
 
 Fuente única de esta lógica, reutilizada por `tarjetas_resumenes`
 (candidatos de conciliación de resumen) y `cuentas_socios` (021, candidatas
@@ -35,8 +44,11 @@ APLICA_PARTICULAR_JOIN = """
 
 def importe_bruto_compra_particular(id_compra: int) -> float | None:
     """Importe bruto de una compra "particular" (el total antes de la
-    línea negativa que la netea a $0), o `None` si la compra no tiene
-    ninguna línea "particular" (no es candidata)."""
+    línea negativa, es decir lo que realmente cobró el proveedor/la
+    tarjeta) — usado por `tarjetas_resumenes` para conciliar contra el
+    monto real del resumen, sin importar si el descuento fue total o
+    parcial. `None` si la compra no tiene ninguna línea "particular"
+    (no es candidata)."""
     fila = fetch_one(
         f"""
         SELECT w.ImporteDocumento - pa.cp AS bruto, pa.cp AS cp
@@ -49,3 +61,25 @@ def importe_bruto_compra_particular(id_compra: int) -> float | None:
     if fila is None or float(fila["cp"] or 0) == 0:
         return None
     return round(float(fila["bruto"]), 2)
+
+
+def importe_personal_compra_particular(id_compra: int) -> float | None:
+    """Importe personal de una compra "particular": el valor absoluto de
+    la línea negativa en sí (no el total reconstruido) — lo que hay que
+    asignarle al socio. Coincide con `importe_bruto_compra_particular`
+    cuando la compra queda neteada a $0 (100% personal), pero es distinto
+    cuando queda un remanente de deuda real con el proveedor (split
+    parcial): ese remanente es de la empresa, no del socio, y no debe
+    sumarse a lo que se le asigna. `None` si no es una compra "particular"."""
+    fila = fetch_one(
+        f"""
+        SELECT pa.cp AS cp
+        FROM dbo.vw_Compras_ImporteDocumento w
+        {APLICA_PARTICULAR_JOIN}
+        WHERE w.IdDeuda = ?
+        """,
+        (id_compra,),
+    )
+    if fila is None or float(fila["cp"] or 0) == 0:
+        return None
+    return round(abs(float(fila["cp"])), 2)

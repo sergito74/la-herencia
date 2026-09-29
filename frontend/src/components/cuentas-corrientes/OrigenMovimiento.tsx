@@ -8,6 +8,9 @@ const MEDIO_LABEL: Record<string, string> = {
   galicia: "Galicia",
   efectivo: "Efectivo",
   valores_recibidos: "Valores recibidos",
+  "mercado-libre": "Mercado Libre",
+  "valores-propios": "Valores propios",
+  "valores-recibidos": "Valores recibidos",
 };
 
 // El enum `medio` de cuentas corrientes usa guion bajo
@@ -18,6 +21,9 @@ const MEDIO_TO_TESORERIA_SLUG: Record<string, string> = {
   galicia: "galicia",
   efectivo: "efectivo",
   valores_recibidos: "valores-recibidos",
+  "mercado-libre": "mercado-libre",
+  "valores-propios": "valores-propios",
+  "valores-recibidos": "valores-recibidos",
 };
 
 /**
@@ -39,7 +45,7 @@ export function OrigenMovimiento({ origen }: { origen: Origen }) {
     case "compra":
       return (
         <Link
-          href={origen.idCompra != null ? `/compras/${origen.idCompra}` : "#"}
+          href={origen.idCompra != null ? `/compras/${origen.idCompra}/editar` : "#"}
           className="text-finance underline"
         >
           Compra {origen.numeroDocumento ?? "—"}

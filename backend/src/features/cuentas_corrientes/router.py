@@ -59,6 +59,8 @@ async def list_movimientos(
     fechaHasta: date | None = Query(default=None),
     page: int = Query(default=1, ge=1),
     pageSize: int = Query(default=50, ge=1, le=200),
+    sortBy: str | None = Query(default=None),
+    sortDir: str = Query(default="asc"),
 ) -> MovimientosListResponse:
     norm_page, norm_page_size = normalize_pagination(page, pageSize)
     rows, total = await run_in_threadpool(
@@ -68,6 +70,8 @@ async def list_movimientos(
         fechaHasta,
         norm_page,
         norm_page_size,
+        sortBy,
+        sortDir,
     )
     def _resolve_items() -> list[MovimientoCuentaCorriente]:
         return [
@@ -79,6 +83,8 @@ async def list_movimientos(
                 credito=row["credito"],
                 saldoParcial=row.get("saldoParcial"),
                 origen=origen_resolver.resolve_origen(row["origenTipo"], row["idOrigen"]),
+                origenTipo=row["origenTipo"],
+                idOrigen=row["idOrigen"],
             )
             for row in rows
         ]

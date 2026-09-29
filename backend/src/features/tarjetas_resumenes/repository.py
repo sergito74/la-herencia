@@ -11,12 +11,15 @@ from __future__ import annotations
 from datetime import date
 
 from src.db.connection import (
+    atomic_reconciliation,
     execute_insert_returning_id,
     execute_write,
     execute_write_transaction,
     fetch_all,
     fetch_one,
 )
+from src.features.conciliacion_tesoreria import documentos as documentos_compartidos
+from src.features.conciliacion_tesoreria import documentos_adapter
 from src.db.pagination import offset_for
 from src.db.params import as_sql_datetime
 from src.features.compras.particular import APLICA_PARTICULAR_JOIN
@@ -104,10 +107,22 @@ def existe_tarjeta(id_tarjeta: int) -> bool:
     return fetch_one("SELECT 1 FROM dbo.Tarjetas WHERE IdTarjeta = ?", (id_tarjeta,)) is not None
 
 
-def validar_resumen(id_tarjeta: int) -> list[str]:
+def validar_resumen(id_tarjeta: int, cabecera: dict | None = None, lineas: list[dict] | None = None) -> list[str]:
     errores: list[str] = []
     if not existe_tarjeta(id_tarjeta):
         errores.append(f"La tarjeta {id_tarjeta} no existe.")
+
+    hoy = date.today()
+    if cabecera is not None:
+        for campo, etiqueta in (("fechaCierre", "de cierre"), ("fechaVencimiento", "de vencimiento")):
+            valor = cabecera.get(campo)
+            if valor and valor > hoy:
+                errores.append(f"La fecha {etiqueta} del resumen ({valor}) es una fecha futura.")
+    for linea in lineas or []:
+        fecha_compra = linea.get("fechaCompra")
+        if fecha_compra and fecha_compra > hoy:
+            errores.append(f"La línea \"{linea.get('detalle') or ''}\" tiene una fecha de compra futura ({fecha_compra}).")
+
     return errores
 
 
@@ -248,22 +263,39 @@ def get_lineas(id_resumen: int) -> list[dict]:
 
 
 def get_compras_vinculadas(id_linea_consumo: int) -> list[dict]:
-    """Facturas/NC/ND reales (`Compras`) que documentan esta línea de
-    consumo (punto 4 del feedback del usuario, 2026-09-19) — una línea
-    puede tener varias (más de un proveedor, o el pago parcial de una
-    compra en cuotas)."""
+    """Documentos reales (`Compras` o, desde 025-conciliacion-tarjetas-
+    impuestos, pagos de `Impuestos`) que documentan esta línea de consumo
+    (punto 4 del feedback del usuario, 2026-09-19) — una línea puede tener
+    varios (más de un proveedor/organismo, o el pago parcial de un
+    documento grande en cuotas). `origen` distingue siempre cuál es
+    (FR-004) — nunca se pierde ni se muestra ambiguo."""
     sql = """
         SELECT
-            v.IdVinculo AS idVinculo, v.IdCompra AS idCompra, v.ImporteImputado AS importeImputado,
+            v.IdVinculo AS idVinculo, v.IdCompra AS idCompra, NULL AS idImpuesto,
+            'Compras' AS origen, v.ImporteImputado AS importeImputado,
             c.[Razon Social] AS proveedor, cmp.[Tipo documento] AS tipoDocumento,
             cmp.[Nro Documento] AS numeroDocumento, cmp.Fecha AS fechaCompra
         FROM dbo.Tarjetas_Resumenes_Lineas_Compras v
         JOIN dbo.Compras cmp ON cmp.IdDeuda = v.IdCompra
         LEFT JOIN dbo.Contactos c ON c.IdContacto = cmp.IdContacto
-        WHERE v.IdLineaConsumo = ?
-        ORDER BY v.IdVinculo ASC
+        WHERE v.IdLineaConsumo = ? AND v.IdCompra IS NOT NULL
+
+        UNION ALL
+
+        SELECT
+            v.IdVinculo AS idVinculo, NULL AS idCompra, v.IdImpuesto AS idImpuesto,
+            'Impuestos' AS origen, v.ImporteImputado AS importeImputado,
+            c.[Razon Social] AS proveedor, ti.[Nombre Impuesto] AS tipoDocumento,
+            i.[Numero de documento] AS numeroDocumento, i.Fecha AS fechaCompra
+        FROM dbo.Tarjetas_Resumenes_Lineas_Compras v
+        JOIN dbo.Impuestos i ON i.IdImpuesto = v.IdImpuesto
+        LEFT JOIN dbo.Contactos c ON c.IdContacto = i.IdOrganismo
+        LEFT JOIN dbo.[Tipo Impuesto] ti ON ti.IdTipoImpuesto = i.IdTipoImpuesto
+        WHERE v.IdLineaConsumo = ? AND v.IdImpuesto IS NOT NULL
+
+        ORDER BY idVinculo ASC
     """
-    return fetch_all(sql, (id_linea_consumo,))
+    return fetch_all(sql, (id_linea_consumo, id_linea_consumo))
 
 
 def existe_compra(id_compra: int) -> bool:
@@ -294,7 +326,12 @@ def auto_vincular_compras(id_resumen: int) -> int:
         )
         if len(candidatas) != 1:
             continue
-        vincular_compra(linea["idLineaConsumo"], candidatas[0]["IdDeuda"], linea["importe"])
+        try:
+            vincular_compra(linea["idLineaConsumo"], candidatas[0]["IdDeuda"], linea["importe"])
+        except ValueError:
+            # Un documento consumido por otra vía requiere revisión manual;
+            # consultar un resumen histórico no debe producir una sobreimputación.
+            continue
         creados += 1
     return creados
 
@@ -325,16 +362,41 @@ _SELECT_DOCUMENTO = f"""
 """
 
 
-def _documento_dict(row: dict) -> dict:
+def _documento_dict(row: dict, total_compartido: float | None = None) -> dict:
     doc = {
         **row,
         "tipoDeCambio": _f(row["tipoDeCambio"]) if row.get("tipoDeCambio") is not None else None,
         "importeOriginal": _f(row["importeOriginal"]),
         "ajustaTipoCambio": bool(row.get("ajustaTipoCambio")),
         "compraParticular": _f(row.get("compraParticular") or 0),
+        "origen": row.get("origen") or "Compras",
+        # 026 completa el saldo compartido de ambos orígenes más abajo.
+        "saldoPendiente": _f(row["saldoPendiente"]) if row.get("saldoPendiente") is not None else None,
     }
     doc["importePesos"] = importe_pesos(doc)
+    origen = doc['origen']
+    id_doc = doc.get('idImpuesto') if origen == 'Impuestos' else doc.get('idCompra')
+    if id_doc is not None:
+        if total_compartido is None:
+            row = fetch_one(
+                "SELECT ISNULL((SELECT SUM(Importe) FROM dbo.ConciliacionesTesoreria "
+                "WHERE TipoOrigenDocumento=? AND IdOrigenDocumento=?),0) + "
+                "ISNULL((SELECT SUM(ImporteImputado) FROM dbo.Tarjetas_Resumenes_Lineas_Compras "
+                "WHERE (?='Compras' AND IdCompra=?) OR (?='Impuestos' AND IdImpuesto=?)),0) AS total",
+                (origen,id_doc,origen,id_doc,origen,id_doc))
+            total = float(row['total'])
+        else:
+            total = total_compartido
+        restante = round(doc['importePesos'] - total,2)
+        doc['saldoPendiente'] = max(0,restante) if doc['importePesos']>=0 else min(0,restante)
     return doc
+
+
+
+def _documentos_dict(rows: list[dict]) -> list[dict]:
+    refs = [(r.get('origen') or 'Compras', r.get('idImpuesto') if r.get('origen')=='Impuestos' else r['idCompra']) for r in rows]
+    totales = documentos_compartidos.totales_imputados(refs)
+    return [_documento_dict(row,totales.get(ref,0)) for row,ref in zip(rows,refs, strict=True)]
 
 
 def get_linea(id_linea_consumo: int) -> dict | None:
@@ -354,8 +416,32 @@ def get_documentos_por_ids(ids_compra: list[int]) -> list[dict]:
         return []
     marcas = ",".join("?" for _ in ids_compra)
     rows = fetch_all(f"{_SELECT_DOCUMENTO} WHERE w.IdDeuda IN ({marcas})", tuple(ids_compra))
-    por_id = {r["idCompra"]: _documento_dict(r) for r in rows}
+    por_id = {d["idCompra"]: d for d in _documentos_dict(rows)}
     return [por_id[i] for i in ids_compra if i in por_id]
+
+
+def get_documentos_impuestos_por_ids(ids_impuesto: list[int]) -> list[dict]:
+    """Pagos de Impuestos pedidos, en el mismo orden que `ids_impuesto`
+    (025-conciliacion-tarjetas-impuestos) — misma forma que
+    `get_documentos_por_ids`, `saldoPendiente` incluido."""
+    if not ids_impuesto:
+        return []
+    marcas = ",".join("?" for _ in ids_impuesto)
+    sql = f"""
+        SELECT NULL AS idCompra, i.IdImpuesto AS idImpuesto, 'Impuestos' AS origen,
+            i.Fecha AS fecha, ti.[Nombre Impuesto] AS tipoDocumento,
+            i.[Numero de documento] AS numeroDocumento, NULL AS moneda, NULL AS tipoDeCambio,
+            i.Importe AS importeOriginal, 0 AS compraParticular, c.[Razon Social] AS proveedor,
+            CAST(0 AS bit) AS ajustaTipoCambio,
+            i.Importe - ({_VINCULADO_IMPUESTO_SQL.format(id_impuesto_ref="i.IdImpuesto")}) AS saldoPendiente
+        FROM dbo.Impuestos i
+        LEFT JOIN dbo.Contactos c ON c.IdContacto = i.IdOrganismo
+        LEFT JOIN dbo.[Tipo Impuesto] ti ON ti.IdTipoImpuesto = i.IdTipoImpuesto
+        WHERE i.IdImpuesto IN ({marcas}) AND i.IdOrganismo IS NOT NULL
+    """
+    rows = fetch_all(sql, tuple(ids_impuesto))
+    por_id = {d["idImpuesto"]: d for d in _documentos_dict(rows)}
+    return [por_id[i] for i in ids_impuesto if i in por_id]
 
 
 def get_documentos_candidatos(id_linea_consumo: int, id_contacto: int, fecha_linea, limite: int = 60) -> list[dict]:
@@ -383,10 +469,44 @@ def get_documentos_candidatos(id_linea_consumo: int, id_contacto: int, fecha_lin
     rows = fetch_all(
         sql, (limite, id_linea_consumo, id_contacto, id_linea_consumo, as_sql_datetime(fecha_linea))
     )
-    return [_documento_dict(r) for r in rows]
+    return [d for d in _documentos_dict(rows) if abs(d['saldoPendiente']) >= .005]
 
 
-MOTIVOS_DIFERENCIA = {"AjusteTipoCambioSinNota", "Redondeo", "Otro"}
+# --- 025-conciliacion-tarjetas-impuestos: pagos de Impuestos como documento ---
+
+# Reusada tal cual en `buscar_documentos` (filtro de saldo pendiente > 0) y
+# en `saldo_pendiente_impuesto` (mismo cálculo) — remediación D1 de
+# /speckit-analyze: evita reimplementar el mismo SUM() en dos lugares.
+_VINCULADO_IMPUESTO_SQL = """
+    SELECT ISNULL(SUM(v.ImporteImputado), 0)
+    FROM dbo.Tarjetas_Resumenes_Lineas_Compras v
+    WHERE v.IdImpuesto = {id_impuesto_ref}
+"""
+
+
+def saldo_pendiente_impuesto(id_impuesto: int, excluir_id_linea: int | None = None) -> float:
+    """Importe real del pago de Impuestos menos lo ya imputado en otras
+    líneas — nunca se guarda, se recalcula siempre (data-model.md,
+    research.md §2). `excluir_id_linea` deja afuera del cálculo los
+    vínculos de la línea que se está editando ahora mismo (mismo criterio
+    que `vinculosPrevios` para Compras)."""
+    where_excluir = " AND v.IdLineaConsumo <> ?" if excluir_id_linea is not None else ""
+    sql = f"""
+        SELECT i.Importe AS importe, (
+            {_VINCULADO_IMPUESTO_SQL.format(id_impuesto_ref="i.IdImpuesto")}{where_excluir}
+        ) + ISNULL((SELECT SUM(ct.Importe) FROM dbo.ConciliacionesTesoreria ct
+            WHERE ct.TipoOrigenDocumento='Impuestos' AND ct.IdOrigenDocumento=i.IdImpuesto),0) AS vinculado
+        FROM dbo.Impuestos i
+        WHERE i.IdImpuesto = ?
+    """
+    params = (excluir_id_linea, id_impuesto) if excluir_id_linea is not None else (id_impuesto,)
+    fila = fetch_one(sql, params)
+    if fila is None:
+        raise ValueError(f"No existe ningún pago de Impuestos con id {id_impuesto}.")
+    return round(_f(fila["importe"]) - _f(fila["vinculado"]), 2)
+
+
+MOTIVOS_DIFERENCIA = {"AjusteTipoCambioSinNota", "Redondeo", "Impuesto", "Otro"}
 MOTIVOS_SIN_DOCUMENTO = {"Impuesto", "Interes", "CompraNoCargada", "Otro"}
 
 # Una línea "sin resolver" es la que todavía tiene saldo por cubrir (no
@@ -529,29 +649,52 @@ def get_candidatos_linea(id_linea_consumo: int) -> dict | None:
         "vinculos": get_compras_vinculadas(id_linea_consumo),
         "hermanas": get_lineas_hermanas(id_linea_consumo, id_contacto) if id_contacto else [],
         "documentos": documentos,
-        "sugerencias": sugerir(restante, documentos[:MAX_DOCS_SUGERENCIA]),
+        "sugerencias": sugerir(restante, [dict(d, importeOriginal=d["saldoPendiente"], tipoDeCambio=1) for d in documentos[:MAX_DOCS_SUGERENCIA]]),
     }
 
 
 def buscar_documentos(texto: str, limite: int = 40) -> list[dict]:
-    """Documentos por proveedor (razón social) o número de documento, para sumar
-    a una conciliación documentos de otros proveedores."""
+    """Documentos de Compras, o pagos de Impuestos con organismo asignado
+    (025-conciliacion-tarjetas-impuestos), por proveedor/organismo (razón
+    social) o número de documento — para sumar a una conciliación
+    documentos de otro origen. Un pago de Impuestos ya cubierto por
+    completo en otras líneas (saldo pendiente 0) no aparece (FR-005,
+    edge case de spec.md)."""
     patron = f"%{texto.strip()}%"
     sql = f"""
-        SELECT TOP (?) w.IdDeuda AS idCompra, w.Fecha AS fecha, w.[Tipo documento] AS tipoDocumento,
-            w.[Nro Documento] AS numeroDocumento, w.Moneda AS moneda, w.[Tipo de Cambio] AS tipoDeCambio,
-            {_IMPORTE_BRUTO} AS importeOriginal, pa.cp AS compraParticular, c.[Razon Social] AS proveedor,
-            cm.[Ajusta Tipo Cambio] AS ajustaTipoCambio,
-            (SELECT COUNT(*) FROM dbo.Tarjetas_Resumenes_Lineas_Compras v WHERE v.IdCompra = w.IdDeuda) AS vinculosPrevios
-        FROM dbo.vw_Compras_ImporteDocumento w
-        JOIN dbo.Compras cm ON cm.IdDeuda = w.IdDeuda
-        {_APLICA_PARTICULAR}
-        LEFT JOIN dbo.Contactos c ON c.IdContacto = w.IdContacto
-        WHERE {_CON_IMPORTE}
-          AND (c.[Razon Social] LIKE ? OR w.[Nro Documento] LIKE ?)
-        ORDER BY w.Fecha DESC, w.IdDeuda DESC
+        SELECT TOP (?) * FROM (
+            SELECT w.IdDeuda AS idCompra, NULL AS idImpuesto, 'Compras' AS origen,
+                w.Fecha AS fecha, w.[Tipo documento] AS tipoDocumento,
+                w.[Nro Documento] AS numeroDocumento, w.Moneda AS moneda, w.[Tipo de Cambio] AS tipoDeCambio,
+                {_IMPORTE_BRUTO} AS importeOriginal, pa.cp AS compraParticular, c.[Razon Social] AS proveedor,
+                cm.[Ajusta Tipo Cambio] AS ajustaTipoCambio, NULL AS saldoPendiente,
+                (SELECT COUNT(*) FROM dbo.Tarjetas_Resumenes_Lineas_Compras v WHERE v.IdCompra = w.IdDeuda) AS vinculosPrevios
+            FROM dbo.vw_Compras_ImporteDocumento w
+            JOIN dbo.Compras cm ON cm.IdDeuda = w.IdDeuda
+            {_APLICA_PARTICULAR}
+            LEFT JOIN dbo.Contactos c ON c.IdContacto = w.IdContacto
+            WHERE {_CON_IMPORTE}
+              AND (c.[Razon Social] LIKE ? OR w.[Nro Documento] LIKE ?)
+
+            UNION ALL
+
+            SELECT NULL AS idCompra, i.IdImpuesto AS idImpuesto, 'Impuestos' AS origen,
+                i.Fecha AS fecha, ti.[Nombre Impuesto] AS tipoDocumento,
+                i.[Numero de documento] AS numeroDocumento, NULL AS moneda, NULL AS tipoDeCambio,
+                i.Importe AS importeOriginal, 0 AS compraParticular, c.[Razon Social] AS proveedor,
+                CAST(0 AS bit) AS ajustaTipoCambio,
+                i.Importe - ({_VINCULADO_IMPUESTO_SQL.format(id_impuesto_ref="i.IdImpuesto")}) AS saldoPendiente,
+                (SELECT COUNT(*) FROM dbo.Tarjetas_Resumenes_Lineas_Compras v WHERE v.IdImpuesto = i.IdImpuesto) AS vinculosPrevios
+            FROM dbo.Impuestos i
+            LEFT JOIN dbo.Contactos c ON c.IdContacto = i.IdOrganismo
+            LEFT JOIN dbo.[Tipo Impuesto] ti ON ti.IdTipoImpuesto = i.IdTipoImpuesto
+            WHERE i.IdOrganismo IS NOT NULL
+              AND (c.[Razon Social] LIKE ? OR i.[Numero de documento] LIKE ?)
+              AND i.Importe - ({_VINCULADO_IMPUESTO_SQL.format(id_impuesto_ref="i.IdImpuesto")}) > 0.005
+        ) candidatos
+        ORDER BY fecha DESC, idCompra DESC, idImpuesto DESC
     """
-    return [_documento_dict(r) for r in fetch_all(sql, (limite, patron, patron))]
+    return [d for d in _documentos_dict(fetch_all(sql, (limite, patron, patron, patron, patron))) if abs(d['saldoPendiente']) >= .005]
 
 
 def get_documentos_de_contactos(ids_contacto: list[int]) -> dict[int, list[dict]]:
@@ -563,8 +706,8 @@ def get_documentos_de_contactos(ids_contacto: list[int]) -> dict[int, list[dict]
         tuple(ids_contacto),
     )
     por_contacto: dict[int, list[dict]] = {}
-    for r in rows:
-        por_contacto.setdefault(r["idContacto"], []).append(_documento_dict(r))
+    for r in _documentos_dict(rows):
+        por_contacto.setdefault(r["idContacto"], []).append(r)
     return por_contacto
 
 
@@ -623,7 +766,8 @@ def get_pendientes(
     for r in rows:
         importe = _f(r["importe"])
         docs = sorted(docs_por_contacto.get(r.get("idContacto"), []), key=lambda d: _cercania(d, r["fechaCompra"]))
-        sugerencias = sugerir(importe, docs[:MAX_DOCS_SUGERENCIA])
+        docs = [d for d in docs if abs(d['saldoPendiente']) >= .005]
+        sugerencias = sugerir(importe, [dict(d,importeOriginal=d['saldoPendiente'],tipoDeCambio=1) for d in docs[:MAX_DOCS_SUGERENCIA]])
         por_id = {d["idCompra"]: d for d in docs}
         mejor = None
         if sugerencias:
@@ -656,6 +800,7 @@ def get_exactas_propuestas() -> list[dict]:
     return [p for p in candidatas if all(uso[i] == 1 for i in p["sugerencia"]["idsCompra"])]
 
 
+@atomic_reconciliation
 def aceptar_exactas(ids_lineas: list[int]) -> dict:
     propuestas = {p["idLineaConsumo"]: p for p in get_exactas_propuestas()}
     aplicadas, omitidas = 0, []
@@ -672,42 +817,80 @@ def aceptar_exactas(ids_lineas: list[int]) -> dict:
     return {"aplicadas": aplicadas, "omitidas": omitidas}
 
 
-def calcular_conciliacion(id_linea_consumo: int, ids_compra: list[int]) -> dict:
+def calcular_conciliacion(
+    id_linea_consumo: int, ids_compra: list[int], ids_impuesto: list[int] | None = None
+) -> dict:
     """Cómo se repartiría lo que resta de la línea (importe menos lo ya
     vinculado — ver `_asegurar_pendiente`) entre los documentos elegidos
-    (ver `conciliacion_documentos`). `ValueError` si algo no existe o se
-    repite."""
-    if len(set(ids_compra)) != len(ids_compra):
+    (ver `conciliacion_documentos`), de Compras y/o Impuestos (025-
+    conciliacion-tarjetas-impuestos). `ValueError` si algo no existe, se
+    repite, o un pago de Impuestos ya no tiene saldo pendiente suficiente."""
+    ids_impuesto = ids_impuesto or []
+    if len(set(ids_compra)) != len(ids_compra) or len(set(ids_impuesto)) != len(ids_impuesto):
         raise ValueError(["Hay documentos repetidos en la selección."])
     linea = get_linea(id_linea_consumo)
     if linea is None:
         raise ValueError([f"La línea {id_linea_consumo} no existe."])
     restante = round(_f(linea["importe"]) - _total_imputado(id_linea_consumo), 2)
-    docs = get_documentos_por_ids(ids_compra)
-    faltantes = set(ids_compra) - {d["idCompra"] for d in docs}
+    docs_compra = get_documentos_por_ids(ids_compra)
+    faltantes = set(ids_compra) - {d["idCompra"] for d in docs_compra}
     if faltantes:
         raise ValueError([f"No existen las compras: {sorted(faltantes)}."])
-    calculo = calcular_imputacion(restante, docs)
+    docs_impuesto = get_documentos_impuestos_por_ids(ids_impuesto)
+    faltantes_impuesto = set(ids_impuesto) - {d["idImpuesto"] for d in docs_impuesto}
+    if faltantes_impuesto:
+        raise ValueError(
+            [f"No existen (o no tienen organismo asignado) los pagos de Impuestos: {sorted(faltantes_impuesto)}."]
+        )
+    docs = docs_compra + docs_impuesto
+    refs = [dict(d, idOrigen=d.get('idCompra') if d['origen']=='Compras' else d['idImpuesto']) for d in docs]
+    if any(abs(d['saldoPendiente']) < .005 for d in refs):
+        raise ValueError(['Un documento ya no tiene saldo documental compartido disponible.'])
+    calculo = documentos_adapter.calcular(restante, refs)
+    calculo['imputados'] = [dict(idCompra=i['idOrigen'] if i['origen']=='Compras' else None,
+                                idImpuesto=i['idOrigen'] if i['origen']=='Impuestos' else None,
+                                importeImputado=i['importeImputado']) for i in calculo['imputados']]
+    # FR-005/FR-009: cada pago de Impuestos solo puede imputarse hasta su
+    # saldo pendiente real, recalculado ahora mismo (no el que el cliente
+    # vio al abrir la pantalla) — concurrencia entre dos sesiones.
+    for imputado in calculo["imputados"]:
+        doc = next((d for d in docs_impuesto if d["idImpuesto"] == imputado.get("idImpuesto")), None)
+        if doc is not None and imputado["importeImputado"] > doc["saldoPendiente"] + tolerancia([doc]):
+            raise ValueError(
+                [
+                    f"El pago de Impuestos {doc['idImpuesto']} solo tiene "
+                    f"{formatear_moneda(doc['saldoPendiente'])} de saldo pendiente."
+                ]
+            )
     return {"documentos": docs, **calculo}
 
 
-def vincular_compras_lote(id_linea_consumo: int, ids_compra: list[int], aceptar_diferencia: dict | None = None) -> list[dict]:
-    """Vincula varios documentos al saldo restante de una línea (importe menos
-    lo ya vinculado) en una sola transacción (todo o nada). Si lo elegido no
-    cierra y vale MENOS que el restante (`permiteParcial` — línea "agrupada",
-    varios proveedores en un mismo resumen), se guarda igual sin pedir motivo:
-    la línea queda con saldo pendiente para seguir agregando documentos
-    después. Si lo elegido vale MÁS que el restante (o no es el caso "cuota"
-    de un único documento), hace falta `aceptar_diferencia` (`motivo`,
-    `detalle`), que además queda registrada como estado de la línea."""
-    if not ids_compra:
+@atomic_reconciliation
+def vincular_compras_lote(
+    id_linea_consumo: int,
+    ids_compra: list[int],
+    aceptar_diferencia: dict | None = None,
+    ids_impuesto: list[int] | None = None,
+) -> list[dict]:
+    """Vincula varios documentos (Compras y/o, desde 025-conciliacion-
+    tarjetas-impuestos, pagos de Impuestos) al saldo restante de una línea
+    (importe menos lo ya vinculado) en una sola transacción (todo o nada).
+    Si lo elegido no cierra y vale MENOS que el restante (`permiteParcial`
+    — línea "agrupada", varios proveedores/organismos en un mismo
+    resumen), se guarda igual sin pedir motivo: la línea queda con saldo
+    pendiente para seguir agregando documentos después. Si lo elegido vale
+    MÁS que el restante (o no es el caso "cuota"), hace falta
+    `aceptar_diferencia` (`motivo`, `detalle`), que además queda
+    registrada como estado de la línea."""
+    ids_impuesto = ids_impuesto or []
+    if not ids_compra and not ids_impuesto:
         raise ValueError(["Elegí al menos un documento."])
     _asegurar_pendiente(id_linea_consumo)
-    calculo = calcular_conciliacion(id_linea_consumo, ids_compra)
+    calculo = calcular_conciliacion(id_linea_consumo, ids_compra, ids_impuesto)
     statements: list = [
         (
-            "INSERT INTO dbo.Tarjetas_Resumenes_Lineas_Compras (IdLineaConsumo, IdCompra, ImporteImputado) VALUES (?, ?, ?)",
-            (id_linea_consumo, i["idCompra"], i["importeImputado"]),
+            "INSERT INTO dbo.Tarjetas_Resumenes_Lineas_Compras (IdLineaConsumo, IdCompra, IdImpuesto, ImporteImputado) VALUES (?, ?, ?, ?)",
+            (id_linea_consumo, i["idCompra"], i["idImpuesto"], i["importeImputado"]),
         )
         for i in calculo["imputados"]
     ]
@@ -726,12 +909,14 @@ def vincular_compras_lote(id_linea_consumo: int, ids_compra: list[int], aceptar_
     return get_compras_vinculadas(id_linea_consumo)
 
 
+@atomic_reconciliation
 def marcar_sin_documento(id_linea_consumo: int, motivo: str, detalle: str | None) -> None:
     _validar_motivo("SinDocumento", motivo, detalle)
     _asegurar_pendiente(id_linea_consumo)
     execute_write_transaction([_stmt_estado(id_linea_consumo, "SinDocumento", motivo, detalle, None)])
 
 
+@atomic_reconciliation
 def quitar_estado(id_linea_consumo: int) -> None:
     execute_write("DELETE FROM dbo.Tarjetas_Resumenes_Lineas_Estado WHERE IdLineaConsumo = ?", (id_linea_consumo,))
 
@@ -750,10 +935,11 @@ def proponer_reparto(ids_lineas: list[int], ids_compra: list[int]) -> dict:
     if faltantes:
         raise ValueError([f"No existen las compras: {sorted(faltantes)}."])
     lineas.sort(key=lambda l: (l["fechaCompra"], l["idLinea"]))
-    propuesta = repartir(lineas, docs)
+    propuesta = repartir(lineas, [dict(d, importeOriginal=d["saldoPendiente"], tipoDeCambio=1) for d in docs])
     return {"lineas": lineas, "documentos": docs, **propuesta}
 
 
+@atomic_reconciliation
 def conciliar_reparto(reparto: list[dict], aceptar_diferencia: dict | None = None) -> dict:
     """Guarda, en una transacción, el reparto de varias líneas entre varios
     documentos. Cada línea debe cerrar con lo asignado (±tolerancia); las que no,
@@ -766,6 +952,11 @@ def conciliar_reparto(reparto: list[dict], aceptar_diferencia: dict | None = Non
     if faltantes:
         raise ValueError([f"No existen las compras: {sorted(faltantes)}."])
 
+    for id_compra, doc in docs.items():
+        items_doc = [r['importe'] for r in reparto if r['idCompra']==id_compra]
+        for importe_item in items_doc:
+            documentos_compartidos.validar_imputacion(doc['saldoPendiente'], importe_item)
+        documentos_compartidos.validar_imputacion(doc['saldoPendiente'], round(sum(items_doc),2))
     statements: list = []
     no_cierran: list[tuple[int, float]] = []
     for id_linea, items in por_linea.items():
@@ -797,16 +988,39 @@ def conciliar_reparto(reparto: list[dict], aceptar_diferencia: dict | None = Non
     return {"lineas": len(por_linea), "vinculos": len(reparto)}
 
 
-def vincular_compra(id_linea_consumo: int, id_compra: int, importe_imputado: float) -> int:
-    if not existe_compra(id_compra):
-        raise ValueError([f"La compra {id_compra} no existe."])
+@atomic_reconciliation
+def vincular_compra(
+    id_linea_consumo: int,
+    id_compra: int | None,
+    importe_imputado: float,
+    id_impuesto: int | None = None,
+) -> int:
+    """Vincula un único documento — de Compras (`id_compra`) o, desde
+    025-conciliacion-tarjetas-impuestos, de Impuestos (`id_impuesto`).
+    Exactamente uno de los dos debe venir cargado."""
+    if (id_compra is None) == (id_impuesto is None):
+        raise ValueError(["Hay que indicar una compra o un pago de Impuestos, no los dos ni ninguno."])
+    if id_compra is not None:
+        if not existe_compra(id_compra):
+            raise ValueError([f"La compra {id_compra} no existe."])
+    else:
+        saldo = saldo_pendiente_impuesto(id_impuesto)
+        if importe_imputado > saldo + TOLERANCIA_PESOS_USD:
+            raise ValueError(
+                [f"El pago de Impuestos {id_impuesto} solo tiene {formatear_moneda(saldo)} de saldo pendiente."]
+            )
+    saldo_global = documentos_compartidos.saldo_documento(
+        'Compras' if id_compra is not None else 'Impuestos',
+        id_compra if id_compra is not None else id_impuesto)
+    documentos_compartidos.validar_imputacion(saldo_global, importe_imputado)
     return execute_insert_returning_id(
-        "INSERT INTO dbo.Tarjetas_Resumenes_Lineas_Compras (IdLineaConsumo, IdCompra, ImporteImputado) "
-        "OUTPUT INSERTED.IdVinculo VALUES (?, ?, ?)",
-        (id_linea_consumo, id_compra, importe_imputado),
+        "INSERT INTO dbo.Tarjetas_Resumenes_Lineas_Compras (IdLineaConsumo, IdCompra, IdImpuesto, ImporteImputado) "
+        "OUTPUT INSERTED.IdVinculo VALUES (?, ?, ?, ?)",
+        (id_linea_consumo, id_compra, id_impuesto, importe_imputado),
     )
 
 
+@atomic_reconciliation
 def quitar_vinculo_compra(id_vinculo: int) -> None:
     execute_write("DELETE FROM dbo.Tarjetas_Resumenes_Lineas_Compras WHERE IdVinculo = ?", (id_vinculo,))
 
@@ -896,7 +1110,7 @@ def _linea_insert_statement(linea: dict):
 
 
 def create_resumen(cabecera: dict, lineas: list[dict]) -> int:
-    errores = validar_resumen(cabecera["idTarjeta"])
+    errores = validar_resumen(cabecera["idTarjeta"], cabecera, lineas)
     if errores:
         raise ValueError(errores)
 
@@ -908,13 +1122,14 @@ def create_resumen(cabecera: dict, lineas: list[dict]) -> int:
     return results[0]
 
 
+@atomic_reconciliation
 def update_resumen(id_resumen: int, cabecera: dict, lineas: list[dict]) -> None:
     """Reemplazo total de líneas (mismo criterio que el resto de la app).
     Borra primero los vínculos a `Compras` (punto 4 del feedback,
     2026-09-19) — de lo contrario quedarían huérfanos apuntando a un
     `IdLineaConsumo` que ya no existe, perdiendo silenciosamente el
     vínculo cada vez que se edita un resumen."""
-    errores = validar_resumen(cabecera["idTarjeta"])
+    errores = validar_resumen(cabecera["idTarjeta"], cabecera, lineas)
     if errores:
         raise ValueError(errores)
 
@@ -952,6 +1167,7 @@ def update_resumen(id_resumen: int, cabecera: dict, lineas: list[dict]) -> None:
     execute_write_transaction(statements)
 
 
+@atomic_reconciliation
 def delete_resumen(id_resumen: int) -> None:
     statements = [
         (

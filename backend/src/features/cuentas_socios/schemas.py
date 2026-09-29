@@ -12,7 +12,7 @@ class CompraParticularCandidata(BaseModel):
     fecha: date
     proveedor: str | None = None
     numeroDocumento: str | None = None
-    importeBruto: float
+    importePersonal: float
 
 
 class MovimientoCuentaSocio(BaseModel):

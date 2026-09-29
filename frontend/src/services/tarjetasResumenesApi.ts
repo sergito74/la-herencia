@@ -17,7 +17,10 @@ export interface LineaConsumoInput {
 
 export interface CompraVinculada {
   idVinculo: number;
-  idCompra: number;
+  /** "Compras" | "Impuestos" (025-conciliacion-tarjetas-impuestos) — distingue siempre el origen (FR-004). */
+  origen: "Compras" | "Impuestos";
+  idCompra: number | null;
+  idImpuesto: number | null;
   proveedor: string | null;
   tipoDocumento: string | null;
   numeroDocumento: string | null;
@@ -155,6 +158,18 @@ export function vincularCompra(
   });
 }
 
+/** 025-conciliacion-tarjetas-impuestos: mismo endpoint, para un pago de Impuestos. */
+export function vincularImpuesto(
+  idLineaConsumo: number,
+  idImpuesto: number,
+  importeImputado: number
+): Promise<CompraVinculada> {
+  return apiPost<CompraVinculada>(`/api/tarjetas-resumenes/lineas/${idLineaConsumo}/compras`, {
+    idImpuesto,
+    importeImputado,
+  });
+}
+
 export function quitarVinculoCompra(idLineaConsumo: number, idVinculo: number): Promise<void> {
   return apiDelete(`/api/tarjetas-resumenes/lineas/${idLineaConsumo}/compras/${idVinculo}`);
 }
@@ -179,7 +194,10 @@ export function eliminarPagoResumen(idResumen: number, idPago: number): Promise<
 // --- Conciliación de una línea contra documentos (pesificados, uno o varios) ---
 
 export interface DocumentoCandidato {
-  idCompra: number;
+  /** "Compras" | "Impuestos" (025-conciliacion-tarjetas-impuestos) — nunca "proveedor" para un organismo (FR-004). */
+  origen: "Compras" | "Impuestos";
+  idCompra: number | null;
+  idImpuesto: number | null;
   fecha: string | null;
   tipoDocumento: string | null;
   numeroDocumento: string | null;
@@ -196,6 +214,8 @@ export interface DocumentoCandidato {
   ajustaTipoCambio: boolean;
   /** Línea negativa de compra particular (≤ 0): el importe mostrado ya es el bruto. */
   compraParticular: number;
+  /** Saldo documental en pesos compartido con Tesorería, también para Compras (026). */
+  saldoPendiente: number | null;
 }
 
 export interface ConciliacionCalculo {
@@ -209,7 +229,7 @@ export interface ConciliacionCalculo {
   tcImplicito: number | null;
   tcReferencia: number | null;
   desvioTc: number | null;
-  imputados: { idCompra: number; importeImputado: number }[];
+  imputados: { idCompra: number | null; idImpuesto: number | null; importeImputado: number }[];
 }
 
 export interface SugerenciaConciliacion extends ConciliacionCalculo {
@@ -272,9 +292,14 @@ export function fetchCandidatosLinea(idLineaConsumo: number): Promise<Candidatos
   return apiGet<CandidatosLinea>(`/api/tarjetas-resumenes/lineas/${idLineaConsumo}/candidatos`);
 }
 
-export function fetchConciliacionPreview(idLineaConsumo: number, idsCompra: number[]): Promise<ConciliacionPreview> {
+export function fetchConciliacionPreview(
+  idLineaConsumo: number,
+  idsCompra: number[],
+  idsImpuesto: number[] = []
+): Promise<ConciliacionPreview> {
   return apiGet<ConciliacionPreview>(`/api/tarjetas-resumenes/lineas/${idLineaConsumo}/conciliacion`, {
     idsCompra: idsCompra.map(String),
+    idsImpuesto: idsImpuesto.map(String),
   });
 }
 
@@ -286,10 +311,12 @@ export interface AceptarDiferencia {
 export function vincularComprasLote(
   idLineaConsumo: number,
   idsCompra: number[],
-  aceptarDiferencia?: AceptarDiferencia | null
+  aceptarDiferencia?: AceptarDiferencia | null,
+  idsImpuesto: number[] = []
 ): Promise<CompraVinculada[]> {
   return apiPost<CompraVinculada[]>(`/api/tarjetas-resumenes/lineas/${idLineaConsumo}/compras/lote`, {
     idsCompra,
+    idsImpuesto,
     aceptarDiferencia: aceptarDiferencia ?? null,
   });
 }
@@ -297,6 +324,11 @@ export function vincularComprasLote(
 export const MOTIVOS_DIFERENCIA: { value: string; label: string }[] = [
   { value: "AjusteTipoCambioSinNota", label: "Ajuste de tipo de cambio sin nota" },
   { value: "Redondeo", label: "Redondeo" },
+  // Impuesto al débito/crédito (Ley 25413) u otro cargo similar que la
+  // tarjeta/plataforma retiene y que no está en ninguna factura de compra
+  // (caso real confirmado 2026-09-29: diferencia de $22,17 entre lo
+  // facturado y lo pagado en una compra por Mercado Libre).
+  { value: "Impuesto", label: "Impuesto (ej. Ley 25413)" },
   { value: "Otro", label: "Otro (indicar detalle)" },
 ];
 

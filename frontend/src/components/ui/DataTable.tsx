@@ -11,6 +11,11 @@ export interface DataTableColumn<T> {
   align?: "left" | "right";
   /** Aplica `.font-data` (tabular-nums) — usar en toda columna numérica/fecha/moneda. */
   numeric?: boolean;
+  /** Por defecto ninguna celda envuelve su contenido a una segunda línea
+   * (pedido explícito del usuario, 2026-09-28: ningún valor debe cortarse
+   * o seguir en la fila de abajo). Marcar `wrap: true` solo en columnas de
+   * texto libre genuinamente largo (descripción, detalle, comentarios). */
+  wrap?: boolean;
   render: (row: T) => React.ReactNode;
   /** Si se define, la columna admite ordenamiento por click en el header. */
   sortValue?: (row: T) => string | number | null;
@@ -120,7 +125,7 @@ export function DataTable<T>({
                   <th
                     key={col.key}
                     title={col.sortValue ? "Ordenar por esta columna" : undefined}
-                    className={`px-3 py-1.5 font-medium text-ink-secondary ${
+                    className={`px-3 py-1.5 whitespace-nowrap font-medium text-ink-secondary ${
                       col.align === "right" ? "text-right" : "text-left"
                     } ${col.sortValue ? "cursor-pointer select-none hover:text-ink-primary" : ""}`}
                     onClick={() => toggleSort(col)}
@@ -153,7 +158,7 @@ export function DataTable<T>({
                       key={col.key}
                       className={`px-3 py-1.5 ${col.align === "right" ? "text-right" : ""} ${
                         col.numeric ? "font-data" : ""
-                      }`}
+                      } ${col.wrap ? "" : "whitespace-nowrap"}`}
                     >
                       {col.render(row)}
                     </td>

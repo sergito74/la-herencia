@@ -5,7 +5,7 @@ datos reales de `WC` (solo lectura) — misma fórmula ya validada en
 from __future__ import annotations
 
 from src.db.connection import fetch_all
-from src.features.compras.particular import importe_bruto_compra_particular
+from src.features.compras.particular import importe_bruto_compra_particular, importe_personal_compra_particular
 
 
 def _compra_de(razon_social_like: str) -> int:
@@ -48,3 +48,20 @@ def test_reconoce_cantidad_negativa_otro_caso_real():
 def test_devuelve_none_para_compra_sin_linea_particular():
     id_compra = _compra_de("Agüero Shamaim")
     assert importe_bruto_compra_particular(id_compra) is None
+
+
+def test_importe_personal_coincide_con_bruto_en_compra_100_por_ciento_particular():
+    """Cuando la compra queda neteada a $0 (100% personal, caso Cumo
+    Store), el importe personal y el bruto reconstruido son el mismo
+    número — la diferencia entre las dos funciones solo aparece en
+    splits parciales (con remanente de deuda real)."""
+    id_compra = _compra_de("Cumo Store")
+    bruto = importe_bruto_compra_particular(id_compra)
+    personal = importe_personal_compra_particular(id_compra)
+    assert bruto is not None and personal is not None
+    assert abs(bruto - personal) < 0.01
+
+
+def test_importe_personal_devuelve_none_para_compra_sin_linea_particular():
+    id_compra = _compra_de("Agüero Shamaim")
+    assert importe_personal_compra_particular(id_compra) is None

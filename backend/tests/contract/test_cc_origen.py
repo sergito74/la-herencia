@@ -229,7 +229,7 @@ def client():
 
 @pytest.mark.anyio
 async def test_movimientos_endpoint_includes_resolved_origen(client, monkeypatch):
-    def fake_movimientos(id_contacto, fecha_desde, fecha_hasta, page, page_size):
+    def fake_movimientos(id_contacto, fecha_desde, fecha_hasta, page, page_size, sort_by=None, sort_dir="asc"):
         return (
             [
                 {

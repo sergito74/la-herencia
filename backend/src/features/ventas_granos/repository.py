@@ -141,8 +141,10 @@ def get_venta_cabecera(id_venta: int) -> dict | None:
             COALESCE(v.[Honorarios Camara], 0) AS honorariosCamara,
             COALESCE(v.[A cuenta de Calidad], 0) AS aCuentaCalidad,
             COALESCE(v.[IIBB (1%)], 0) AS iibb,
-            v.[Documento Original] AS documentoOriginal
+            v.[Documento Original] AS documentoOriginal,
+            c.[Razon Social] AS consignatario
         FROM dbo.[Venta Granos] v
+        LEFT JOIN dbo.Contactos c ON c.IdContacto = v.IdConsignatario
         WHERE v.IdVenta = ?
     """
     return fetch_one(sql, (id_venta,))

@@ -364,7 +364,7 @@ async def test_delete_resumen_con_lock_elimina(client, monkeypatch):
 
 @pytest.mark.anyio
 async def test_vincular_compra_a_linea(client, monkeypatch):
-    monkeypatch.setattr(repository, "vincular_compra", lambda idl, idc, imp: 7)
+    monkeypatch.setattr(repository, "vincular_compra", lambda idl, idc, imp, idi=None: 7)
     monkeypatch.setattr(
         repository,
         "get_compras_vinculadas",
@@ -392,7 +392,7 @@ async def test_vincular_compra_a_linea(client, monkeypatch):
 
 @pytest.mark.anyio
 async def test_vincular_compra_inexistente_es_400(client, monkeypatch):
-    def fake_vincular(idl, idc, imp):
+    def fake_vincular(idl, idc, imp, idi=None):
         raise ValueError(["La compra 999999 no existe."])
 
     monkeypatch.setattr(repository, "vincular_compra", fake_vincular)
@@ -403,6 +403,106 @@ async def test_vincular_compra_inexistente_es_400(client, monkeypatch):
         )
 
     assert response.status_code == 400
+
+
+# --- 025-conciliacion-tarjetas-impuestos ---
+
+
+@pytest.mark.anyio
+async def test_documentos_buscar_incluye_impuestos(client, monkeypatch):
+    monkeypatch.setattr(
+        repository,
+        "buscar_documentos",
+        lambda texto, limite=40: [
+            {
+                "origen": "Impuestos",
+                "idCompra": None,
+                "idImpuesto": 14,
+                "fecha": "2026-08-10",
+                "tipoDocumento": "AFIP",
+                "numeroDocumento": "0001-00012345",
+                "moneda": None,
+                "tipoDeCambio": None,
+                "importeOriginal": 45000.0,
+                "importePesos": 45000.0,
+                "proveedor": "AFIP",
+                "saldoPendiente": 45000.0,
+                "vinculosPrevios": 0,
+                "compraParticular": 0.0,
+                "ajustaTipoCambio": False,
+            }
+        ],
+    )
+
+    async with httpx.AsyncClient(transport=client, base_url="http://test") as ac:
+        response = await ac.get("/api/tarjetas-resumenes/documentos-buscar", params={"q": "AFIP"})
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body[0]["origen"] == "Impuestos"
+    assert body[0]["idImpuesto"] == 14
+    assert body[0]["saldoPendiente"] == 45000.0
+
+
+@pytest.mark.anyio
+async def test_vincular_compras_lote_con_impuestos(client, monkeypatch):
+    monkeypatch.setattr(
+        repository,
+        "vincular_compras_lote",
+        lambda idl, ids_compra, aceptar_diferencia=None, ids_impuesto=None: [
+            {
+                "idVinculo": 9,
+                "origen": "Impuestos",
+                "idCompra": None,
+                "idImpuesto": ids_impuesto[0] if ids_impuesto else None,
+                "importeImputado": 45000.0,
+                "proveedor": "AFIP",
+                "tipoDocumento": "AFIP",
+                "numeroDocumento": "0001-00012345",
+                "fechaCompra": "2026-08-10",
+            }
+        ],
+    )
+
+    async with httpx.AsyncClient(transport=client, base_url="http://test") as ac:
+        response = await ac.post(
+            "/api/tarjetas-resumenes/lineas/1/compras/lote",
+            json={"idsCompra": [], "idsImpuesto": [14]},
+        )
+
+    assert response.status_code == 201
+    body = response.json()
+    assert body[0]["origen"] == "Impuestos"
+    assert body[0]["idImpuesto"] == 14
+
+
+@pytest.mark.anyio
+async def test_vincular_compras_lote_saldo_excedido_es_409(client, monkeypatch):
+    def _fake(idl, ids_compra, aceptar_diferencia=None, ids_impuesto=None):
+        raise ValueError(["El pago de Impuestos 14 solo tiene $ 300,00 de saldo pendiente."])
+
+    monkeypatch.setattr(repository, "vincular_compras_lote", _fake)
+
+    async with httpx.AsyncClient(transport=client, base_url="http://test") as ac:
+        response = await ac.post(
+            "/api/tarjetas-resumenes/lineas/1/compras/lote",
+            json={"idsCompra": [], "idsImpuesto": [14]},
+        )
+
+    assert response.status_code == 409
+
+
+@pytest.mark.anyio
+async def test_documentos_buscar_tarjetas_no_aplica_sigue_solo_compras_e_impuestos(client, monkeypatch):
+    """US2 — el endpoint no discrimina por medio de pago (Assumptions de
+    spec.md), sigue funcionando igual que antes para cualquier texto."""
+    monkeypatch.setattr(repository, "buscar_documentos", lambda texto, limite=40: [])
+
+    async with httpx.AsyncClient(transport=client, base_url="http://test") as ac:
+        response = await ac.get("/api/tarjetas-resumenes/documentos-buscar", params={"q": "xx"})
+
+    assert response.status_code == 200
+    assert response.json() == []
 
 
 @pytest.mark.anyio

@@ -25,6 +25,8 @@ import os
 import re
 from collections.abc import Generator
 from contextlib import contextmanager
+from contextvars import ContextVar
+from functools import wraps
 from datetime import date
 from decimal import Decimal
 
@@ -35,6 +37,66 @@ from src.db.params import as_sql_datetime
 DSN = os.environ.get("LA_HERENCIA_DSN", "SQL_LaHerencia")
 DATABASE = os.environ.get("LA_HERENCIA_DATABASE", "WC")
 CONNECTION_STRING = f"DSN={DSN};Trusted_Connection=Yes;DATABASE={DATABASE}"
+
+_reconciliation_connection: ContextVar = ContextVar("reconciliation_connection", default=None)
+
+
+@contextmanager
+def reconciliation_transaction():
+    """026: lectura/revalidación/escritura atómicas entre Tesorería y Tarjetas.
+
+    Recurso fijo, sin SQL externo. Serializa solo las confirmaciones; las
+    lecturas normales siguen independientes. La transacción exterior es dueña.
+    """
+    _assert_target_is_wc()
+    if _reconciliation_connection.get() is not None:
+        yield
+        return
+    conn = pyodbc.connect(CONNECTION_STRING, autocommit=False, readonly=False)
+    token = None
+    try:
+        cursor = conn.cursor()
+        # Sin `BEGIN TRANSACTION` explícito: pyodbc con `autocommit=False` ya
+        # abre una transacción implícita (@@TRANCOUNT=1) en la primera
+        # sentencia. Agregar un `BEGIN TRANSACTION` acá anidaba una segunda
+        # (@@TRANCOUNT=2); `conn.commit()` solo cierra un nivel, dejando la
+        # transacción exterior abierta — SQL Server la revierte sola al
+        # cerrar la conexión. Bug real encontrado 2026-09-29: las 3
+        # conciliaciones de un lote real (caso ASP/Mercado Libre) se
+        # insertaban, devolvían IdConciliacion válidos vía OUTPUT INSERTED,
+        # y desaparecían sin dejar rastro ni error — confirmado con
+        # `SELECT @@TRANCOUNT` antes/después de `conn.commit()` (1→2→1, nunca 0).
+        cursor.execute(
+            "SET NOCOUNT ON; DECLARE @r int; EXEC @r = sys.sp_getapplock "
+            "@Resource=N'LaHerencia:conciliacion-documental', "
+            "@LockMode='Exclusive', @LockOwner='Transaction', "
+            "@LockTimeout=10000; SELECT @r"
+        )
+        while cursor.description is None:
+            if not cursor.nextset():
+                raise RuntimeError("El bloqueo de conciliación no devolvió resultado.")
+        if cursor.fetchone()[0] < 0:
+            raise ValueError("Otra conciliación está en curso. Volvé a intentar.")
+        token = _reconciliation_connection.set(conn)
+        yield
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        if token is not None:
+            _reconciliation_connection.reset(token)
+        conn.close()
+
+
+def atomic_reconciliation(fn):
+    @wraps(fn)
+    def wrapped(*args, **kwargs):
+        with reconciliation_transaction():
+            return fn(*args, **kwargs)
+
+    return wrapped
+
 
 _DEVELOPMENT_DATABASE = "WC"
 
@@ -114,6 +176,10 @@ def get_connection(*, readonly: bool = True) -> Generator[pyodbc.Connection, Non
     another (FR-014).
     """
     _assert_target_is_wc()
+    active = _reconciliation_connection.get()
+    if active is not None:
+        yield active
+        return
     conn = pyodbc.connect(CONNECTION_STRING, autocommit=True, readonly=readonly)
     try:
         yield conn
@@ -248,7 +314,8 @@ def execute_write_transaction(statements: list) -> list:
         if not callable(item):
             _validate_write_statement(item[0])
 
-    conn = pyodbc.connect(CONNECTION_STRING, autocommit=False, readonly=False)
+    active = _reconciliation_connection.get()
+    conn = active or pyodbc.connect(CONNECTION_STRING, autocommit=False, readonly=False)
     try:
         cursor = conn.cursor()
         results: list = []
@@ -260,10 +327,13 @@ def execute_write_transaction(statements: list) -> list:
                 results.append(cursor.fetchone()[0])
             else:
                 results.append(cursor.rowcount)
-        conn.commit()
+        if active is None:
+            conn.commit()
         return results
     except Exception:
-        conn.rollback()
+        if active is None:
+            conn.rollback()
         raise
     finally:
-        conn.close()
+        if active is None:
+            conn.close()

@@ -15,6 +15,7 @@ from pydantic import BaseModel
 MEDIOS = (
     "bna",
     "galicia",
+    "mercado-libre",
     "efectivo",
     "valores-propios",
     "valores-recibidos",
@@ -36,6 +37,8 @@ class MovimientoBNA(BaseModel):
     idCarga: int | None = None
     numeroCuentaBancaria: str | None = None
     certezaCuenta: str | None = None
+    saldo: float | None = None
+    estadoConciliacion: str | None = None
 
 
 class MovimientoGalicia(BaseModel):
@@ -48,6 +51,19 @@ class MovimientoGalicia(BaseModel):
     idContacto: int | None = None
     contacto: str | None = None
     idCarga: int | None = None
+    estadoConciliacion: str | None = None
+
+
+class MovimientoMercadoLibre(BaseModel):
+    idMovimiento: int
+    fecha: date | None = None
+    descripcion: str | None = None
+    idOperacion: str | None = None
+    importe: float | None = None
+    saldo: float | None = None
+    idContacto: int | None = None
+    contacto: str | None = None
+    estadoConciliacion: str | None = None
 
 
 class PagoEfectivo(BaseModel):
@@ -59,6 +75,7 @@ class PagoEfectivo(BaseModel):
     numeroDocumento: float | None = None
     importeImputado: float | None = None
     idOperacion: int | None = None
+    estadoConciliacion: str | None = None
 
 
 class ValorPropio(BaseModel):
@@ -74,6 +91,7 @@ class ValorPropio(BaseModel):
     fechaCobro: date | None = None
     numeroCuenta: str | None = None
     comentarios: str | None = None
+    estadoConciliacion: str | None = None
 
 
 class ValorRecibido(BaseModel):
@@ -87,6 +105,7 @@ class ValorRecibido(BaseModel):
     idReceptor: int | None = None
     importe: float | None = None
     destino: str | None = None
+    estadoConciliacion: str | None = None
 
 
 class LineaResumenTarjeta(BaseModel):
@@ -108,6 +127,7 @@ class MovimientosResponse(BaseModel):
 
 class CompraCandidata(BaseModel):
     idCompra: int
+    idContacto: int | None = None
     numeroDocumento: str | None = None
     proveedor: str | None = None
     fecha: date | None = None

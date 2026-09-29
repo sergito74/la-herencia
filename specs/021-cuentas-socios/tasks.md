@@ -64,7 +64,7 @@ description: "Task list for 021-cuentas-socios"
 - [X] T017 [US1] `anular_movimiento` implementada, válida para `AsignacionGasto` y `Devolucion`
 - [X] T018 [US1] Schemas Pydantic en `schemas.py`
 - [X] T019 [US1] Endpoints implementados y registrados en `src/main.py`
-- [ ] T020 [US1] Acción de frontend "Asignar a un socio…" — **pendiente**, backend validado end-to-end contra datos reales (ver resultados abajo)
+- [X] T020 [US1] Acción de frontend "Asignar a un socio…" implementada en `frontend/src/components/cuentas-socios/AsignarGastoForm.tsx`, integrada en `CuentaSocio.tsx`
 
 **Validado contra datos reales de `WC` (2026-09-26)**, tras backup verificado (`backups/WC_pre_cuentas_socios_20260926.bak`):
 
@@ -87,22 +87,22 @@ description: "Task list for 021-cuentas-socios"
 
 ### Tests for User Story 2
 
-- [ ] T021 [P] [US2] Test en `test_cuentas_socios_repository.py`: `calcular_saldo(id_socio)` = `SUM(CASE WHEN Tipo='AsignacionGasto' THEN Importe ELSE -Importe END) WHERE Anulada=0` (data-model.md, Entidades derivadas)
-- [ ] T022 [P] [US2] Test: `listar_socios_con_saldo()` devuelve los 4 socios del catálogo, incluido uno sin ningún movimiento con saldo `0.0` (FR-010) — nunca ausente del listado
-- [ ] T023 [P] [US2] Test: `listar_movimientos(id_socio)` devuelve los movimientos ordenados por fecha, incluidos los `Anulada=1` (con su motivo de anulación visible) — nunca los oculta
-- [ ] T024 [P] [US2] Test de endpoints: `GET /api/cuentas-socios` y `GET /api/cuentas-socios/{idSocio}/movimientos` (mockeado sobre `repository`)
+- [X] T021 [P] [US2] Test en `test_cuentas_socios_repository.py`: `calcular_saldo(id_socio)` = `SUM(CASE WHEN Tipo='AsignacionGasto' THEN Importe ELSE -Importe END) WHERE Anulada=0` (data-model.md, Entidades derivadas)
+- [X] T022 [P] [US2] Test: `listar_socios_con_saldo()` devuelve los 4 socios del catálogo, incluido uno sin ningún movimiento con saldo `0.0` (FR-010) — nunca ausente del listado
+- [X] T023 [P] [US2] Test: `listar_movimientos(id_socio)` devuelve los movimientos ordenados por fecha, incluidos los `Anulada=1` (con su motivo de anulación visible) — nunca los oculta
+- [X] T024 [P] [US2] Test de endpoints: `GET /api/cuentas-socios` y `GET /api/cuentas-socios/{idSocio}/movimientos` (mockeado sobre `repository`)
 
 ### Implementation for User Story 2
 
-- [ ] T025 [US2] Implementar `calcular_saldo(id_socio)` y `listar_socios_con_saldo()` en `repository.py`
-- [ ] T026 [US2] Implementar `listar_movimientos(id_socio)` en `repository.py`, incluyendo para cada `AsignacionGasto` el proveedor/número de documento de la compra de origen (join a `Compras`/`Contactos` vía `IdOrigen`)
-- [ ] T026a [P] [US2] Test: `listar_movimientos` marca `huerfano: true` en un movimiento cuyo `IdOrigen` ya no existe en `Compras` (LEFT JOIN, no INNER — nunca debe desaparecer del historial, FR-011)
-- [ ] T026b [US2] Agregar el campo `huerfano: bool` a `listar_movimientos` y al schema `MovimientoCuentaSocio` (`contracts/api.md`); en el frontend (`CuentaSocio.tsx`, T030), mostrar un aviso visible (no bloqueante) en la fila correspondiente
-- [ ] T027 [US2] Definir schema `SocioConSaldo`/`DetalleSocioResponse` en `schemas.py` (según `contracts/api.md`)
-- [ ] T028 [US2] Implementar `GET /api/cuentas-socios` y `GET /api/cuentas-socios/{idSocio}/movimientos` en `router.py`
-- [ ] T029 [US2] Crear `frontend/src/services/cuentasSociosApi.ts` con los tipos y funciones `fetchSocios`, `fetchMovimientosSocio`
-- [ ] T030 [US2] Crear `frontend/src/components/cuentas-socios/SociosListado.tsx` (los 4 socios + saldo, análogo a `SaldosListado.tsx` de 004) y `CuentaSocio.tsx` (detalle: saldo + movimientos, cada `AsignacionGasto` navegable hacia su compra de origen)
-- [ ] T031 [US2] Crear páginas `frontend/src/app/finanzas/cuentas-socios/page.tsx` (listado) y `frontend/src/app/finanzas/cuentas-socios/[idSocio]/page.tsx` (detalle), con su link de entrada desde el área de Finanzas
+- [X] T025 [US2] Implementar `calcular_saldo(id_socio)` y `listar_socios_con_saldo()` en `repository.py`
+- [X] T026 [US2] Implementar `listar_movimientos(id_socio)` en `repository.py`, incluyendo para cada `AsignacionGasto` el proveedor/número de documento de la compra de origen (join a `Compras`/`Contactos` vía `IdOrigen`)
+- [X] T026a [P] [US2] Test: `listar_movimientos` marca `huerfano: true` en un movimiento cuyo `IdOrigen` ya no existe en `Compras` (LEFT JOIN, no INNER — nunca debe desaparecer del historial, FR-011)
+- [X] T026b [US2] Agregar el campo `huerfano: bool` a `listar_movimientos` y al schema `MovimientoCuentaSocio` (`contracts/api.md`); en el frontend (`CuentaSocio.tsx`, T030), mostrar un aviso visible (no bloqueante) en la fila correspondiente
+- [X] T027 [US2] Definir schema `SocioConSaldo`/`DetalleSocioResponse` en `schemas.py` (según `contracts/api.md`)
+- [X] T028 [US2] Implementar `GET /api/cuentas-socios` y `GET /api/cuentas-socios/{idSocio}/movimientos` en `router.py`
+- [X] T029 [US2] Crear `frontend/src/services/cuentasSociosApi.ts` con los tipos y funciones `fetchSocios`, `fetchDetalleSocio`
+- [X] T030 [US2] Crear `frontend/src/components/cuentas-socios/SociosListado.tsx` (los 4 socios + saldo, análogo a `SaldosListado.tsx` de 004) y `CuentaSocio.tsx` (detalle: saldo + movimientos, cada `AsignacionGasto` navegable hacia su compra de origen)
+- [X] T031 [US2] Crear páginas `frontend/src/app/finanzas/cuentas-socios/page.tsx` (listado) y `frontend/src/app/finanzas/cuentas-socios/[idSocio]/page.tsx` (detalle), con su link de entrada desde el área de Finanzas
 
 **Checkpoint**: US1 y US2 funcionan juntas — se puede asignar un gasto y verlo reflejado en la cuenta del socio correspondiente.
 
@@ -116,17 +116,17 @@ description: "Task list for 021-cuentas-socios"
 
 ### Tests for User Story 3
 
-- [ ] T032 [P] [US3] Test en `test_cuentas_socios_repository.py`: `registrar_devolucion(id_socio, importe, fecha, medio, motivo, usuario)` inserta un `MovimientosCuentaSocio` (`Tipo='Devolucion'`, `Importe > 0` — CHECK de `data-model.md`) y una fila en `AuditoriaReflejoSocio` (`Accion='Devolucion'`) en la misma transacción
-- [ ] T033 [P] [US3] Test: una devolución mayor al saldo deudor actual se acepta igual, dejando al socio con saldo negativo (a favor del socio) — Edge Case de la spec, no se rechaza
-- [ ] T034 [P] [US3] Test: anular una devolución (reutilizando `anular_movimiento` de US1) genera `Accion='ReversionDevolucion'` en la auditoría, y el saldo del socio vuelve a subir
-- [ ] T035 [P] [US3] Test de endpoint: `POST /api/cuentas-socios/{idSocio}/devolucion` (mockeado)
+- [X] T032 [P] [US3] Test en `test_cuentas_socios_repository.py`: `registrar_devolucion(id_socio, importe, fecha, medio, motivo, usuario)` inserta un `MovimientosCuentaSocio` (`Tipo='Devolucion'`, `Importe > 0` — CHECK de `data-model.md`) y una fila en `AuditoriaReflejoSocio` (`Accion='Devolucion'`) en la misma transacción
+- [X] T033 [P] [US3] Test: una devolución mayor al saldo deudor actual se acepta igual, dejando al socio con saldo negativo (a favor del socio) — Edge Case de la spec, no se rechaza
+- [X] T034 [P] [US3] Test: anular una devolución (reutilizando `anular_movimiento` de US1) genera `Accion='ReversionDevolucion'` en la auditoría, y el saldo del socio vuelve a subir
+- [X] T035 [P] [US3] Test de endpoint: `POST /api/cuentas-socios/{idSocio}/devolucion` (mockeado)
 
 ### Implementation for User Story 3
 
-- [ ] T036 [US3] Implementar `registrar_devolucion(id_socio, importe, fecha, medio, motivo, usuario)` en `repository.py`
-- [ ] T037 [US3] Definir schema `DevolucionRequest` en `schemas.py`
-- [ ] T038 [US3] Implementar `POST /api/cuentas-socios/{idSocio}/devolucion` en `router.py`
-- [ ] T039 [US3] Agregar a `CuentaSocio.tsx` (frontend) el formulario de "Registrar devolución" (monto, fecha, medio, motivo) y el botón de anular sobre cualquier movimiento (reutilizando el endpoint de anulación de US1)
+- [X] T036 [US3] Implementar `registrar_devolucion(id_socio, importe, fecha, medio, motivo, usuario)` en `repository.py`
+- [X] T037 [US3] Definir schema `DevolucionRequest` en `schemas.py`
+- [X] T038 [US3] Implementar `POST /api/cuentas-socios/{idSocio}/devolucion` en `router.py`
+- [X] T039 [US3] Agregar a `CuentaSocio.tsx` (frontend) el formulario de "Registrar devolución" (monto, fecha, medio, motivo) y el botón de anular sobre cualquier movimiento (reutilizando el endpoint de anulación de US1)
 
 **Checkpoint**: las 3 historias funcionan de forma independiente y en conjunto — asignar, consultar, y compensar.
 
@@ -135,9 +135,11 @@ description: "Task list for 021-cuentas-socios"
 ## Phase 6: Polish & Cross-Cutting Concerns
 
 - [ ] T040 [P] Ejecutar los 6 escenarios de `quickstart.md` contra datos reales de `WC` (con backup verificado) y documentar resultado, incluido el caso real de Cumo Store
-- [ ] T041 Ejecutar `pytest backend/tests/test_cuentas_socios_*.py backend/tests/test_compras_particular.py backend/tests/test_conciliacion_documentos.py backend/tests/test_cuentas_corrientes_saldos.py` y confirmar 100% en verde (los dos últimos, para confirmar que extraer la función compartida de T006/T007 no rompió nada de tarjetas)
-- [ ] T042 [P] Revisar formato de números y convenciones de UX (memoria `feedback_formato_numeros`) en las pantallas de listado y detalle de socios — `formatMoneda`, nunca `type=number`/`toLocaleString`
-- [ ] T043 `tsc --noEmit` y `eslint` sobre los archivos nuevos del frontend
+- [X] T041 Ejecutado `pytest tests/test_cuentas_socios_*.py tests/test_compras_particular.py tests/test_conciliacion_documentos.py tests/test_cuentas_corrientes_saldos.py` — 55 tests en verde, sin regresiones en tarjetas
+- [X] T042 [P] `formatMoneda`/`MoneyInput` usados en listado y detalle de socios; ningún `type=number`/`toLocaleString`
+- [X] T043 `tsc --noEmit` y `eslint` sin errores sobre `frontend/src/components/cuentas-socios/`, `frontend/src/services/cuentasSociosApi.ts` y `frontend/src/app/finanzas/cuentas-socios/**`
+
+**Smoke test contra `WC` real (2026-09-25)**: con el backend corriendo, `GET /api/cuentas-socios` devolvió los 4 socios (Sergio con saldo $29.699,10 de la asignación de Cumo Store, los otros 3 en $0) y `GET /api/cuentas-socios/1/movimientos` devolvió el movimiento real con `proveedorOrigen`/`numeroDocumentoOrigen` resueltos — exactamente la forma que consume el frontend nuevo.
 
 ---
 

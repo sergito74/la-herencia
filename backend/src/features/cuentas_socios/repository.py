@@ -14,7 +14,7 @@ from __future__ import annotations
 from datetime import date
 
 from src.db.connection import execute_write_transaction, fetch_all, fetch_one
-from src.features.compras.particular import APLICA_PARTICULAR_JOIN, importe_bruto_compra_particular
+from src.features.compras.particular import APLICA_PARTICULAR_JOIN, importe_personal_compra_particular
 
 TOLERANCIA_REDONDEO = 1.0
 
@@ -25,7 +25,10 @@ def _f(value) -> float:
 
 def listar_compras_particulares_candidatas(proveedor: str | None = None) -> list[dict]:
     """Compras "particular" (research.md §3) sin asignación vigente a
-    ningún socio — candidatas para `asignar_gasto`."""
+    ningún socio — candidatas para `asignar_gasto`. `importePersonal` es
+    el valor absoluto de la línea negativa (lo que se le asignaría al
+    socio), no el total reconstruido — puede ser menor al importe de la
+    compra cuando el descuento fue parcial (split, 2026-09-26)."""
     where = ["1 = 1"]
     params: list = []
     if proveedor:
@@ -34,7 +37,7 @@ def listar_compras_particulares_candidatas(proveedor: str | None = None) -> list
 
     sql = f"""
         SELECT w.IdDeuda AS idCompra, w.Fecha AS fecha, ct.[Razon Social] AS proveedor,
-               w.[Nro Documento] AS numeroDocumento, w.ImporteDocumento - pa.cp AS importeBruto
+               w.[Nro Documento] AS numeroDocumento, ABS(pa.cp) AS importePersonal
         FROM dbo.vw_Compras_ImporteDocumento w
         {APLICA_PARTICULAR_JOIN}
         JOIN dbo.Contactos ct ON ct.IdContacto = w.IdContacto
@@ -48,7 +51,7 @@ def listar_compras_particulares_candidatas(proveedor: str | None = None) -> list
         ORDER BY w.Fecha DESC
     """
     filas = fetch_all(sql, tuple(params))
-    return [{**f, "importeBruto": round(_f(f["importeBruto"]), 2)} for f in filas]
+    return [{**f, "importePersonal": round(_f(f["importePersonal"]), 2)} for f in filas]
 
 
 def _tiene_asignacion_vigente(id_compra: int) -> bool:
@@ -68,9 +71,9 @@ def asignar_gasto(id_socio: int, id_compra: int, usuario: str, motivo: str | Non
     if _tiene_asignacion_vigente(id_compra):
         raise ValueError(f"La compra {id_compra} ya tiene una asignación vigente a un socio.")
 
-    importe = importe_bruto_compra_particular(id_compra)
+    importe = importe_personal_compra_particular(id_compra)
     if importe is None:
-        raise ValueError(f"La compra {id_compra} no es una compra particular (no tiene línea negativa que la netee a $0).")
+        raise ValueError(f"La compra {id_compra} no es una compra particular (no tiene línea negativa 'particular').")
 
     resultados = execute_write_transaction(
         [

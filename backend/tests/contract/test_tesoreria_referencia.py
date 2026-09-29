@@ -77,14 +77,14 @@ async def test_referencia_ambigua(client, monkeypatch):
 
 
 @pytest.mark.anyio
-async def test_referencia_valores_propios_siempre_sin_coincidencia(client, monkeypatch):
-    called = {"count": 0}
-
-    def spy(medio, id_mov):
-        called["count"] += 1
-        return {"estado": "sin_coincidencia", "candidatas": []}
-
-    monkeypatch.setattr(matching, "buscar_referencia", spy)
+async def test_referencia_valores_propios_usa_el_mismo_endpoint(client, monkeypatch):
+    """valores-propios responde por la misma ruta que el resto de los
+    medios — el comportamiento real de matching (texto de Comentarios ->
+    contacto) se prueba en test_tesoreria_matching_unit.py, acá solo se
+    verifica el plumbing del router."""
+    monkeypatch.setattr(
+        matching, "buscar_referencia", lambda medio, id_mov: {"estado": "sin_coincidencia", "candidatas": []}
+    )
 
     response = await _get(client, "/api/tesoreria/valores-propios/movimientos/1/referencia")
     assert response.status_code == 200

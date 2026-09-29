@@ -53,6 +53,20 @@ export function formatCantidad(value: number): string {
   return formatNumero(value, { min: 0, max: 3 });
 }
 
+/** Fecha corta dd/mm/aaaa a partir de un ISO date o datetime — nunca
+ * muestra la hora (pedido explícito del usuario: es innecesaria en los
+ * listados). Parsea el string a mano (no `Date` + `toLocaleDateString`)
+ * para no depender del timezone del navegador corriendo un shift de día
+ * sobre fechas sin hora (ej. "2026-08-01" interpretado como UTC medianoche
+ * puede mostrar 31/07 en un navegador en UTC-3). */
+export function formatFecha(value: string | null | undefined): string {
+  if (!value) return "—";
+  const match = value.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (!match) return value;
+  const [, anio, mes, dia] = match;
+  return `${dia}/${mes}/${anio}`;
+}
+
 /** Convierte un `number` de JS a texto editable en convención local (coma
  * decimal, sin separador de miles) — ej. `60717.34` → `"60717,34"`. Usar
  * siempre esta función (nunca `String(numero)`) para precargar un input/

@@ -86,6 +86,12 @@ class MovimientoCuentaCorriente(BaseModel):
     # columna por fila, no solo el total.
     saldoParcial: float | None = None
     origen: Origen
+    # Valores crudos de `vw_MovimientosCuenta_Base.Origen`/`IdOrigen`
+    # (022-reasignacion-contacto, research.md §4) — el botón "Reasignar"
+    # los necesita tal cual, sin depender de que `origen_resolver` los
+    # exponga de forma amigable para cada tipo.
+    origenTipo: str | None = None
+    idOrigen: int | None = None
 
 
 class MovimientosListResponse(BaseModel):

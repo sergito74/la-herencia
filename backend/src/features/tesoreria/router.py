@@ -12,7 +12,8 @@ from fastapi import APIRouter, HTTPException, Query, Response, UploadFile
 from starlette.concurrency import run_in_threadpool
 
 from src.db.pagination import normalize_pagination
-from src.features.tesoreria import confirmacion_carga, excel_import, exportacion, matching, repository
+from src.features.conciliacion_tesoreria import repository as conciliacion_repository
+from src.features.tesoreria import confirmacion_carga, estado_resolucion, excel_import, exportacion, matching, repository
 from src.features.tesoreria.schemas import (
     MEDIOS,
     CargasResponse,
@@ -23,6 +24,7 @@ from src.features.tesoreria.schemas import (
     MediosResponse,
     MovimientoBNA,
     MovimientoGalicia,
+    MovimientoMercadoLibre,
     MovimientosResponse,
     PagoEfectivo,
     ReferenciaOrigen,
@@ -35,6 +37,7 @@ router = APIRouter(prefix="/api/tesoreria", tags=["tesoreria"])
 _MODEL_BY_MEDIO = {
     "bna": MovimientoBNA,
     "galicia": MovimientoGalicia,
+    "mercado-libre": MovimientoMercadoLibre,
     "efectivo": PagoEfectivo,
     "valores-propios": ValorPropio,
     "valores-recibidos": ValorRecibido,
@@ -65,6 +68,16 @@ async def list_movimientos(
     rows, total = await run_in_threadpool(
         repository.get_movimientos, medio, fechaDesde, fechaHasta, norm_page, norm_page_size
     )
+    if medio in conciliacion_repository.MEDIOS_SOPORTADOS:
+        id_field = repository.MEDIOS_CONFIG[medio].id_field
+        for row in rows:
+            try:
+                row["estadoConciliacion"] = await run_in_threadpool(estado_resolucion.esta_resuelto, medio, row[id_field])
+            except ValueError:
+                # No debe tumbar el listado completo por un movimiento
+                # puntual que calcular_estado no pueda resolver (FR-009 es
+                # una mejora visual, nunca condición para poder listar).
+                row["estadoConciliacion"] = None
     model = _MODEL_BY_MEDIO[medio]
     return MovimientosResponse(
         items=[model(**row) for row in rows],

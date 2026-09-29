@@ -55,6 +55,7 @@ class VentaGranosListResponse(BaseModel):
 class VentaGranosDetalleResponse(BaseModel):
     idVenta: int
     idConsignatario: int
+    consignatario: str | None = None
     idTipoDocumento: int
     numeroDocumento: str
     fecha: date

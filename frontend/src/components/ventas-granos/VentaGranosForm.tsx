@@ -65,7 +65,7 @@ export function VentaGranosForm({
 
   const [idConsignatario, setIdConsignatario] = useState<number | null>(initial?.idConsignatario ?? null);
   const [consignatarioNombre, setConsignatarioNombre] = useState<string | null>(
-    consignatarioNombreInicial ?? null
+    consignatarioNombreInicial ?? initial?.consignatario ?? null
   );
   const [idTipoDocumento, setIdTipoDocumento] = useState<string>(
     initial?.idTipoDocumento ? String(initial.idTipoDocumento) : ""

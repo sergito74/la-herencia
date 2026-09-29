@@ -20,12 +20,15 @@ class LineaConsumoInput(BaseModel):
 
 
 class CompraVinculada(BaseModel):
-    """Factura/NC/ND real (`Compras`, `IdDeuda`) que documenta total o
-    parcialmente una línea de consumo — puede haber varias por línea
-    (más de un proveedor, o cuotas de un mismo consumo)."""
+    """Documento real (`Compras`, `IdDeuda`, o desde 025-conciliacion-
+    tarjetas-impuestos un pago de `Impuestos`) que documenta total o
+    parcialmente una línea de consumo — puede haber varios por línea (más
+    de un proveedor/organismo, o cuotas de un mismo documento)."""
 
     idVinculo: int
-    idCompra: int
+    origen: str = "Compras"
+    idCompra: int | None = None
+    idImpuesto: int | None = None
     importeImputado: float = 0.0
     proveedor: str | None = None
     tipoDocumento: str | None = None
@@ -36,7 +39,9 @@ class CompraVinculada(BaseModel):
 
 
 class VincularCompraRequest(BaseModel):
-    idCompra: int
+    idCompra: int | None = None
+    # 025-conciliacion-tarjetas-impuestos: exactamente uno de los dos.
+    idImpuesto: int | None = None
     importeImputado: float
 
 
@@ -164,11 +169,17 @@ class LockResponse(BaseModel):
 
 
 class DocumentoCandidato(BaseModel):
-    """Factura/NC/ND del proveedor de una línea, con su importe pesificado
-    (con el tipo de cambio propio del documento) para poder compararlo con el
-    resumen, que siempre viene en pesos. Las NC tienen importe negativo."""
+    """Factura/NC/ND de Compras, o pago de Impuestos (025-conciliacion-
+    tarjetas-impuestos), candidato para vincularse a una línea de resumen.
+    Con su importe pesificado (con el tipo de cambio propio del documento)
+    para poder compararlo con el resumen, que siempre viene en pesos. Las
+    NC tienen importe negativo."""
 
-    idCompra: int
+    # "Compras" | "Impuestos" — distingue siempre el origen (FR-004): nunca
+    # ambiguo, nunca "proveedor" para lo que en realidad es un organismo.
+    origen: str = "Compras"
+    idCompra: int | None = None
+    idImpuesto: int | None = None
     fecha: date | None = None
     tipoDocumento: str | None = None
     numeroDocumento: str | None = None
@@ -178,6 +189,8 @@ class DocumentoCandidato(BaseModel):
     importePesos: float
     proveedor: str | None = None
     vinculosPrevios: int = 0
+    # 026: saldo compartido en pesos, también para Compras; conserva signo de NC.
+    saldoPendiente: float | None = None
     # Línea negativa de "compra particular" que deja la factura en ~$0 neto (el importe
     # mostrado ya es el bruto, que es lo que cobró la tarjeta). Negativo o 0.
     compraParticular: float = 0
@@ -186,7 +199,8 @@ class DocumentoCandidato(BaseModel):
 
 
 class ImputacionDocumento(BaseModel):
-    idCompra: int
+    idCompra: int | None = None
+    idImpuesto: int | None = None
     importeImputado: float
 
 
@@ -259,13 +273,16 @@ class ConciliacionPreviewResponse(ConciliacionCalculo):
 
 
 class AceptarDiferencia(BaseModel):
-    # AjusteTipoCambioSinNota | Redondeo | Otro (con detalle)
+    # AjusteTipoCambioSinNota | Redondeo | Impuesto | Otro (con detalle)
     motivo: str
     detalle: str | None = None
 
 
 class VincularLoteRequest(BaseModel):
-    idsCompra: list[int] = Field(min_length=1)
+    idsCompra: list[int] = []
+    # 025-conciliacion-tarjetas-impuestos: campo paralelo, aditivo — con
+    # `idsImpuesto` vacío el camino 100% Compras queda igual que antes.
+    idsImpuesto: list[int] = []
     aceptarDiferencia: AceptarDiferencia | None = None
 
 

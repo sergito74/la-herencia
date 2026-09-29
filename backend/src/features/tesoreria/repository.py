@@ -45,6 +45,17 @@ MEDIOS_CONFIG: dict[str, MedioConfig] = {
             # asignacion en vez de ocultar que son cuentas distintas.
             "numeroCuentaBancaria": "_cb_bna.NumeroCuenta",
             "certezaCuenta": "[Movimientos BNA].CertezaCuenta",
+            # Saldo corrido por cuenta bancaria (pedido explícito del
+            # usuario, 2026-09-28) — la tabla no trae un saldo propio, así
+            # que se calcula como acumulado de Importe ordenado por fecha
+            # dentro de cada IdCuentaBancaria (mismo criterio de
+            # separación de cuentas que `numeroCuentaBancaria`).
+            "saldo": (
+                "SUM([Movimientos BNA].Importe) OVER ("
+                "PARTITION BY [Movimientos BNA].IdCuentaBancaria "
+                "ORDER BY [Movimientos BNA].[Fecha / Hora Mov#], [Movimientos BNA].IdMovimientoBNA "
+                "ROWS UNBOUNDED PRECEDING)"
+            ),
         },
         extra_join=(
             "LEFT JOIN dbo.CargasResumenBancario_Movimientos _crm_bna "
@@ -76,6 +87,26 @@ MEDIOS_CONFIG: dict[str, MedioConfig] = {
         extra_join=(
             "LEFT JOIN dbo.CargasResumenBancario_Movimientos _crm_gal "
             "ON _crm_gal.Banco = 'Galicia' AND _crm_gal.IdMovimiento = [Movimientos Galicia].IdMovimiento"
+        ),
+    ),
+    "mercado-libre": MedioConfig(
+        table="dbo.[Movimientos Mercado Libre]",
+        id_column="[Movimientos Mercado Libre].IdMovimiento",
+        id_field="idMovimiento",
+        date_column="Fecha",
+        select_columns={
+            "idMovimiento": "[Movimientos Mercado Libre].IdMovimiento",
+            "fecha": "Fecha",
+            "descripcion": "Descripcion",
+            "idOperacion": "IdOperacion",
+            "importe": "Importe",
+            "saldo": "Saldo",
+            "idContacto": "[Movimientos Mercado Libre].IdContacto",
+            "contacto": "_c_ml.[Razon Social]",
+        },
+        extra_join=(
+            "LEFT JOIN dbo.Contactos _c_ml "
+            "ON _c_ml.IdContacto = [Movimientos Mercado Libre].IdContacto"
         ),
     ),
     "efectivo": MedioConfig(

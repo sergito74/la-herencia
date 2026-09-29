@@ -11,6 +11,7 @@ import type { Medio } from "@/services/tesoreriaApi";
 const MEDIOS: Medio[] = [
   "bna",
   "galicia",
+  "mercado-libre",
   "efectivo",
   "valores-propios",
   "valores-recibidos",
@@ -32,7 +33,7 @@ export default function TesoreriaPage() {
       <BackLink href="/">Volver al inicio</BackLink>
       <h1 className="mt-2 text-2xl font-semibold">Tesorería</h1>
       <p className="mt-1 text-ink-secondary">
-        Movimientos por banco, caja, valores y tarjetas (solo lectura).
+        Consulta y conciliación de movimientos por banco, caja, valores y tarjetas.
       </p>
 
       <div className="mt-6 flex flex-wrap gap-2">

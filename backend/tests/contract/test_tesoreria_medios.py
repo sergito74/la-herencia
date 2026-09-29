@@ -28,6 +28,7 @@ async def test_list_medios(client):
     assert set(body["medios"]) == {
         "bna",
         "galicia",
+        "mercado-libre",
         "efectivo",
         "valores-propios",
         "valores-recibidos",

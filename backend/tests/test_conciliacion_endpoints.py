@@ -45,7 +45,7 @@ def test_sin_documento_traduce_el_error_de_validacion_a_400(monkeypatch):
 def test_lote_pasa_la_diferencia_aceptada_al_repositorio(monkeypatch):
     visto = {}
 
-    def fake(id_linea, ids, aceptar):
+    def fake(id_linea, ids, aceptar, ids_impuesto=None):
         visto.update(id=id_linea, ids=ids, aceptar=aceptar)
         return []
 

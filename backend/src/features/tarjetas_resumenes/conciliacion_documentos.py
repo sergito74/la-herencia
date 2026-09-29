@@ -78,10 +78,17 @@ def calcular_imputacion(importe_linea: float, docs: list[dict]) -> dict:
     2026-09-26, caso "Agüero Shamaim SRL" — un resumen de MercadoLibre que
     agrupa el cobro de varios proveedores distintos):
 
-    - **Cuota** (`pagoParcial`): un único documento en pesos vale MÁS que la
-      línea (`diferencia < 0`, ej. una compra grande pagada en varias cuotas
-      mensuales de tarjeta) — se imputa toda la línea a ese documento; el
-      resto del documento se cubre con líneas futuras.
+    - **Cuota** (`pagoParcial`): lo elegido en pesos vale MÁS que la línea
+      (`diferencia < 0`, ej. una o varias compras grandes pagadas en varias
+      cuotas mensuales de tarjeta — caso real confirmado 2026-09-29,
+      proveedor "ASP", varias facturas financiadas a la vez) — se imputa
+      toda la línea entre los documentos elegidos, repartida en proporción
+      al importe de cada uno (sin otro dato para decidir cuánto le
+      corresponde a cada factura, repartir en proporción a su propio
+      importe es la única base neutral disponible — no favorece una
+      factura sobre otra sin motivo); el resto de cada documento se cubre
+      con líneas futuras. Con un solo documento, el reparto proporcional da
+      lo mismo que el caso ya validado (100% a ese documento).
     - **Agrupado** (`permiteParcial`): lo elegido vale MENOS que la línea
       (`diferencia > 0`, ej. esta línea agrupa el cobro de varios
       proveedores y solo se está vinculando uno) — se imputa el valor real
@@ -94,13 +101,35 @@ def calcular_imputacion(importe_linea: float, docs: list[dict]) -> dict:
     orientan sobre cuánto ajuste de cambio faltaría.
     """
     importe_linea = round(float(importe_linea), 2)
-    imputados = {d["idCompra"]: importe_pesos(d) for d in docs}
+    # Clave compuesta (idCompra, idImpuesto) en vez de solo `idCompra`:
+    # 025-conciliacion-tarjetas-impuestos agrega documentos cuyo `idCompra`
+    # es siempre `None` (un pago de Impuestos) — con una clave simple,
+    # varios pagos de Impuestos en la misma línea colisionarían todos bajo
+    # la clave `None`, perdiéndose entre sí. `idCompra`/`idImpuesto` nunca
+    # coinciden en valor real porque nunca están cargados los dos a la vez
+    # en el mismo doc (uno de los dos siempre es `None`).
+    imputados = {(d.get("idCompra"), d.get("idImpuesto")): importe_pesos(d) for d in docs}
     diferencia = round(importe_linea - sum(imputados.values()), 2)
     estado = "exacta" if abs(diferencia) <= tolerancia(docs) else "parcial"
 
     resultado: dict = {"tcImplicito": None, "tcReferencia": None, "desvioTc": None}
     usd = [d for d in docs if _es_dolar(d)]
-    if usd and estado == "parcial":
+
+    # "Cuota" (pago_parcial) ya NO excluye documentos en dólares (corregido
+    # 2026-09-29, caso real "ASP": facturas en dólares financiadas en cuotas
+    # mensuales de tarjeta — el caso más común de este escenario, no una
+    # excepción). El reparto proporcional usa `importePesos` (ya pesificado
+    # con el tipo de cambio propio de cada documento), así que funciona
+    # igual sea el documento en pesos o en dólares.
+    pago_parcial = estado == "parcial" and diferencia < 0 and sum(imputados.values()) > 0
+
+    # El "tipo de cambio implícito" solo tiene sentido cuando NO es una
+    # cuota legítima: ahí la línea es deliberadamente menor que el total en
+    # dólares (se está pagando una parte, no todo), así que "qué cambio
+    # haría cerrar todo junto" no es una pregunta válida — mostrarlo
+    # confundiría con una alerta de posible documento equivocado que no es
+    # tal (bug relacionado, mismo hallazgo 2026-09-29).
+    if usd and estado == "parcial" and not pago_parcial:
         implicito = _tc_implicito(importe_linea, docs)
         base = sum(abs(_usd(d)) for d in usd if _tc(d) > 0)
         if implicito is not None and base > 0:
@@ -108,10 +137,18 @@ def calcular_imputacion(importe_linea: float, docs: list[dict]) -> dict:
             resultado["tcImplicito"] = round(implicito, 4)
             resultado["tcReferencia"] = round(referencia, 4)
             resultado["desvioTc"] = round(implicito / referencia - 1, 4)
-
-    pago_parcial = not usd and len(docs) == 1 and estado == "parcial" and diferencia < 0
     if pago_parcial:
-        imputados = {docs[0]["idCompra"]: importe_linea}
+        total_docs = sum(imputados.values())
+        imputados = {
+            id_compra: round(importe_linea * (valor / total_docs), 2) for id_compra, valor in imputados.items()
+        }
+        # El redondeo por documento puede dejar la suma a un centavo de
+        # `importe_linea` — se ajusta el último para que cierre exacto,
+        # igual criterio que el resto de los repartos del sistema.
+        ids = list(imputados.keys())
+        ajuste = round(importe_linea - sum(imputados.values()), 2)
+        if ids and ajuste:
+            imputados[ids[-1]] = round(imputados[ids[-1]] + ajuste, 2)
 
     permite_parcial = estado == "parcial" and not pago_parcial and diferencia > 0
 
@@ -119,7 +156,9 @@ def calcular_imputacion(importe_linea: float, docs: list[dict]) -> dict:
         {
             "pagoParcial": pago_parcial,
             "permiteParcial": permite_parcial,
-            "imputados": [{"idCompra": k, "importeImputado": v} for k, v in imputados.items()],
+            "imputados": [
+                {"idCompra": k[0], "idImpuesto": k[1], "importeImputado": v} for k, v in imputados.items()
+            ],
             "diferencia": diferencia,
             "estado": estado,
         }

@@ -35,6 +35,27 @@ const nombreDoc = (d: { tipoDocumento: string | null; numeroDocumento: string | 
 
 const monedaDe = (d: { moneda: string | null }) => (d.moneda === "Dolares" ? "Dolares" : "Pesos");
 
+// 025-conciliacion-tarjetas-impuestos: `idCompra` deja de ser un identificador
+// único de documento (un pago de Impuestos también puede seleccionarse, con
+// `idCompra: null`) — se arma una clave compuesta para poder seguir usando un
+// único array de "seleccionados" en la UI, sin mezclar por accidente un
+// idCompra y un idImpuesto que numéricamente coincidan.
+function claveDoc(d: { origen: string; idCompra: number | null; idImpuesto: number | null }): string {
+  return d.origen === "Impuestos" ? `I${d.idImpuesto}` : `C${d.idCompra}`;
+}
+function esClaveImpuesto(clave: string): boolean {
+  return clave.startsWith("I");
+}
+function idDesdeClave(clave: string): number {
+  return Number(clave.slice(1));
+}
+function separarClaves(claves: string[]): { idsCompra: number[]; idsImpuesto: number[] } {
+  const idsCompra: number[] = [];
+  const idsImpuesto: number[] = [];
+  for (const c of claves) (esClaveImpuesto(c) ? idsImpuesto : idsCompra).push(idDesdeClave(c));
+  return { idsCompra, idsImpuesto };
+}
+
 
 /** Misma regla del backend: $0,10 en pesos, $1,00 si hay documentos en dólares. */
 const toleranciaDe = (docs: { moneda: string | null }[]) => (docs.some((d) => d.moneda === "Dolares") ? 1 : 0.1);
@@ -157,7 +178,7 @@ function ContenidoPanel({
   onChanged: () => void;
 }) {
   const { showToast } = useToast();
-  const [seleccion, setSeleccion] = useState<number[]>([]);
+  const [seleccion, setSeleccion] = useState<string[]>([]);
   const [extras, setExtras] = useState<DocumentoCandidato[]>([]);
   const [lineasExtra, setLineasExtra] = useState<number[]>([]);
   const [verPdf, setVerPdf] = useState(false);
@@ -176,21 +197,28 @@ function ContenidoPanel({
     gcTime: 0,
   });
 
-  const idsOrdenados = useMemo(() => [...seleccion].sort((a, b) => a - b), [seleccion]);
+  const { idsCompra: idsCompraSel, idsImpuesto: idsImpuestoSel } = useMemo(
+    () => separarClaves([...seleccion].sort()),
+    [seleccion]
+  );
   const modoReparto = lineasExtra.length > 0;
+  // El reparto entre varias líneas (proponerReparto/conciliarReparto) sigue
+  // siendo solo de Compras — fuera de alcance de 025 (Assumptions de
+  // spec.md); si el usuario seleccionó algún pago de Impuestos, no se pasa
+  // a esa llamada (se ignora en modoReparto, ver checkbox deshabilitado).
 
   const { data: preview } = useQuery({
-    queryKey: ["linea-conciliacion", idLineaConsumo, idsOrdenados],
-    queryFn: () => fetchConciliacionPreview(idLineaConsumo, idsOrdenados),
+    queryKey: ["linea-conciliacion", idLineaConsumo, idsCompraSel, idsImpuestoSel],
+    queryFn: () => fetchConciliacionPreview(idLineaConsumo, idsCompraSel, idsImpuestoSel),
     enabled: seleccion.length > 0 && !modoReparto,
     staleTime: 0,
   });
 
   const idsLineasReparto = useMemo(() => [idLineaConsumo, ...lineasExtra].sort((a, b) => a - b), [idLineaConsumo, lineasExtra]);
   const { data: propuesta } = useQuery({
-    queryKey: ["linea-reparto", idsLineasReparto, idsOrdenados],
-    queryFn: () => proponerReparto(idsLineasReparto, idsOrdenados),
-    enabled: modoReparto && seleccion.length > 0,
+    queryKey: ["linea-reparto", idsLineasReparto, idsCompraSel],
+    queryFn: () => proponerReparto(idsLineasReparto, idsCompraSel),
+    enabled: modoReparto && idsCompraSel.length > 0,
     staleTime: 0,
   });
   useEffect(() => {
@@ -199,18 +227,18 @@ function ContenidoPanel({
 
   const documentos = useMemo(() => {
     const base = data?.documentos ?? [];
-    const ids = new Set(base.map((d) => d.idCompra));
-    return [...base, ...extras.filter((d) => !ids.has(d.idCompra))];
+    const claves = new Set(base.map(claveDoc));
+    return [...base, ...extras.filter((d) => !claves.has(claveDoc(d)))];
   }, [data, extras]);
-  const porId = useMemo(() => new Map(documentos.map((d) => [d.idCompra, d])), [documentos]);
+  const porId = useMemo(() => new Map(documentos.map((d) => [claveDoc(d), d])), [documentos]);
 
-  const seleccionados = seleccion.map((id) => porId.get(id)).filter((d): d is DocumentoCandidato => d != null);
+  const seleccionados = seleccion.map((c) => porId.get(c)).filter((d): d is DocumentoCandidato => d != null);
   const hayFacturaUsd = seleccionados.some((d) => d.moneda === "Dolares" && !d.ajustaTipoCambio);
-  const ajustesSinTildar = documentos.filter((d) => d.ajustaTipoCambio && !seleccion.includes(d.idCompra));
+  const ajustesSinTildar = documentos.filter((d) => d.ajustaTipoCambio && !seleccion.includes(claveDoc(d)));
 
-  function alternar(id: number) {
+  function alternar(clave: string) {
     setError(null);
-    setSeleccion((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+    setSeleccion((prev) => (prev.includes(clave) ? prev.filter((x) => x !== clave) : [...prev, clave]));
   }
 
   function alternarLinea(id: number) {
@@ -231,8 +259,9 @@ function ContenidoPanel({
   }
 
   function agregar(d: DocumentoCandidato) {
-    setExtras((prev) => (prev.some((x) => x.idCompra === d.idCompra) ? prev : [...prev, d]));
-    setSeleccion((prev) => (prev.includes(d.idCompra) ? prev : [...prev, d.idCompra]));
+    const clave = claveDoc(d);
+    setExtras((prev) => (prev.some((x) => claveDoc(x) === clave) ? prev : [...prev, d]));
+    setSeleccion((prev) => (prev.includes(clave) ? prev : [...prev, clave]));
   }
 
   async function ejecutar(accion: () => Promise<unknown>, mensajeOk: string) {
@@ -304,7 +333,9 @@ function ContenidoPanel({
   const diferenciasReparto = lineasReparto.map((l) => {
     const items = repartoEdit.filter((r) => r.idLinea === l.idLinea);
     const asignado = items.reduce((a, i) => a + i.importe, 0);
-    const docs = items.map((i) => porId.get(i.idCompra) ?? propuesta?.documentos.find((d) => d.idCompra === i.idCompra)).filter(Boolean) as DocumentoCandidato[];
+    const docs = items
+      .map((i) => porId.get(`C${i.idCompra}`) ?? propuesta?.documentos.find((d) => d.idCompra === i.idCompra))
+      .filter(Boolean) as DocumentoCandidato[];
     const diferencia = Math.round((l.importe - asignado) * 100) / 100;
     return { idLinea: l.idLinea, importe: l.importe, diferencia, cierra: Math.abs(diferencia) <= toleranciaDe(docs) };
   });
@@ -344,6 +375,9 @@ function ContenidoPanel({
               {data.vinculos.map((v) => (
                 <li key={v.idVinculo} className="flex items-center justify-between gap-2">
                   <span>
+                    {v.origen === "Impuestos" && (
+                      <span className="mr-1 rounded-sm bg-status-warning-bg px-1 text-status-warning">Impuestos</span>
+                    )}
                     {v.proveedor ?? "—"} · {v.tipoDocumento ?? "Documento"} {v.numeroDocumento ?? ""}
                   </span>
                   <span className="flex items-center gap-2">
@@ -441,7 +475,7 @@ function ContenidoPanel({
                 <li key={s.idsCompra.join("-")} className="flex flex-wrap items-center justify-between gap-2 rounded-sm bg-surface-sunken px-2 py-1">
                   <span className="text-xs">
                     {s.idsCompra.map((id, i) => {
-                      const d = porId.get(id);
+                      const d = porId.get(`C${id}`);
                       return (
                         <span key={id}>
                           {i > 0 && <span className="text-ink-secondary"> + </span>}
@@ -454,7 +488,7 @@ function ContenidoPanel({
                     type="button"
                     onClick={() => {
                       setLineasExtra([]);
-                      setSeleccion(s.idsCompra);
+                      setSeleccion(s.idsCompra.map((id) => `C${id}`));
                       setError(null);
                     }}
                     className="rounded-sm border border-finance px-2 py-0.5 text-xs text-finance hover:bg-finance-light"
@@ -490,21 +524,27 @@ function ContenidoPanel({
                   <tbody>
                     {documentos.map((d) => (
                       <tr
-                        key={d.idCompra}
-                        onClick={() => alternar(d.idCompra)}
-                        className={`cursor-pointer border-t border-border hover:bg-surface-sunken ${seleccion.includes(d.idCompra) ? "bg-finance-light" : ""}`}
+                        key={claveDoc(d)}
+                        onClick={() => alternar(claveDoc(d))}
+                        className={`cursor-pointer border-t border-border hover:bg-surface-sunken ${seleccion.includes(claveDoc(d)) ? "bg-finance-light" : ""}`}
                       >
                         <td className="py-0.5 pl-1">
                           <input
                             type="checkbox"
-                            checked={seleccion.includes(d.idCompra)}
-                            onChange={() => alternar(d.idCompra)}
+                            checked={seleccion.includes(claveDoc(d))}
+                            onChange={() => alternar(claveDoc(d))}
                             onClick={(e) => e.stopPropagation()}
                             aria-label={`Elegir ${nombreDoc(d)}`}
                           />
                         </td>
                         <td className="py-0.5 pr-2 whitespace-nowrap">{d.fecha?.slice(0, 10) ?? "—"}</td>
                         <td className="pr-2">
+                          {/* Origen siempre distinguido (FR-004) — nunca "proveedor" para un organismo. */}
+                          {d.origen === "Impuestos" && (
+                            <span className="mr-1 rounded-sm bg-status-warning-bg px-1 text-status-warning" title="Pago de Impuestos, no un documento de Compras">
+                              Impuestos
+                            </span>
+                          )}
                           {nombreDoc(d)}
                           {d.ajustaTipoCambio && (
                             <span className="ml-1 rounded-sm bg-finance-light px-1 text-finance" title="Nota que ajusta el tipo de cambio de una factura en dólares">
@@ -519,10 +559,17 @@ function ContenidoPanel({
                               Compra particular
                             </span>
                           )}
-                          {d.proveedor && d.proveedor !== linea.proveedor && <span className="ml-1 text-ink-secondary">· {d.proveedor}</span>}
+                          {d.proveedor && d.proveedor !== linea.proveedor && (
+                            <span className="ml-1 text-ink-secondary">· {d.origen === "Impuestos" ? "organismo" : ""} {d.proveedor}</span>
+                          )}
                           {d.vinculosPrevios > 0 && (
                             <span className="ml-1 text-ink-secondary" title="Ya está vinculado a otras líneas (ej. cuotas)">
                               · en {d.vinculosPrevios} línea{d.vinculosPrevios > 1 ? "s" : ""}
+                            </span>
+                          )}
+                          {d.saldoPendiente != null && (
+                            <span className="ml-1 text-ink-secondary" title="Importe real menos lo ya vinculado en otras líneas">
+                              · saldo {formatMoneda(d.saldoPendiente)}
                             </span>
                           )}
                         </td>
@@ -560,18 +607,24 @@ function ContenidoPanel({
                 <div className="mt-1 max-h-40 overflow-auto">
                   {resultados.length === 0 && <p className="text-xs text-ink-secondary">Sin resultados.</p>}
                   {resultados.map((d) => (
-                    <div key={d.idCompra} className="flex items-center justify-between gap-2 border-t border-border py-0.5 text-xs">
+                    <div key={claveDoc(d)} className="flex items-center justify-between gap-2 border-t border-border py-0.5 text-xs">
                       <span>
+                        {d.origen === "Impuestos" && (
+                          <span className="mr-1 rounded-sm bg-status-warning-bg px-1 text-status-warning">Impuestos</span>
+                        )}
                         {d.proveedor} · {nombreDoc(d)} ({d.fecha?.slice(0, 10)}) · {formatMoneda(d.importeOriginal, monedaDe(d))}
                         {d.ajustaTipoCambio && <span className="ml-1 rounded-sm bg-finance-light px-1 text-finance">Ajuste TC</span>}
+                        {d.saldoPendiente != null && (
+                          <span className="ml-1 text-ink-secondary">· saldo {formatMoneda(d.saldoPendiente)}</span>
+                        )}
                       </span>
                       <button
                         type="button"
-                        disabled={seleccion.includes(d.idCompra)}
+                        disabled={seleccion.includes(claveDoc(d))}
                         onClick={() => agregar(d)}
                         className="rounded-sm border border-finance px-2 py-0.5 text-finance hover:bg-finance-light disabled:opacity-40"
                       >
-                        {seleccion.includes(d.idCompra) ? "Agregado" : "Agregar"}
+                        {seleccion.includes(claveDoc(d)) ? "Agregado" : "Agregar"}
                       </button>
                     </div>
                   ))}
@@ -592,7 +645,12 @@ function ContenidoPanel({
                     <button
                       type="button"
                       disabled={guardando}
-                      onClick={() => ejecutar(() => vincularComprasLote(idLineaConsumo, idsOrdenados), "Documentos vinculados.")}
+                      onClick={() =>
+                        ejecutar(
+                          () => vincularComprasLote(idLineaConsumo, idsCompraSel, undefined, idsImpuestoSel),
+                          "Documentos vinculados."
+                        )
+                      }
                       className="rounded-sm bg-finance px-3 py-1 text-xs text-white hover:opacity-90 disabled:opacity-40"
                     >
                       {preview.pagoParcial
@@ -616,7 +674,10 @@ function ContenidoPanel({
                     ocupado={guardando}
                     onCancel={() => setDialogo(null)}
                     onConfirm={(motivo, detalle) =>
-                      ejecutar(() => vincularComprasLote(idLineaConsumo, idsOrdenados, { motivo, detalle }), "Conciliada con diferencia aceptada.")
+                      ejecutar(
+                        () => vincularComprasLote(idLineaConsumo, idsCompraSel, { motivo, detalle }, idsImpuestoSel),
+                        "Conciliada con diferencia aceptada."
+                      )
                     }
                   />
                 )}
@@ -637,7 +698,7 @@ function ContenidoPanel({
                     </thead>
                     <tbody>
                       {repartoEdit.map((r, i) => {
-                        const d = porId.get(r.idCompra) ?? propuesta.documentos.find((x) => x.idCompra === r.idCompra);
+                        const d = porId.get(`C${r.idCompra}`) ?? propuesta.documentos.find((x) => x.idCompra === r.idCompra);
                         return (
                           <tr key={`${r.idLinea}-${r.idCompra}-${i}`} className="border-t border-border">
                             <td className="py-0.5 pr-2">#{r.idLinea}</td>

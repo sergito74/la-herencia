@@ -97,6 +97,34 @@ def test_exportar_endpoints_devuelven_xlsx(monkeypatch):
     assert r2.status_code == 200
 
 
+def test_get_movimientos_incluye_origentipo_e_idorigen_crudos():
+    """022-reasignacion-contacto (Foundational, T009/T009a): el botón
+    "Reasignar" necesita la clave real `(Origen, IdOrigen)` de
+    `vw_MovimientosCuenta_Base`, no solo el objeto `origen` ya resuelto
+    por `origen_resolver` — se agregan como campos adicionales, sin
+    quitar nada del contrato existente (004)."""
+    id_contacto = fetch_all("SELECT TOP 1 IdContacto FROM dbo.vw_MovimientosCuenta_Base")[0]["IdContacto"]
+    rows, total = repository.get_movimientos(id_contacto, None, None, 1, 5)
+    assert total >= 0
+    for row in rows:
+        assert "origenTipo" in row
+        assert "idOrigen" in row
+
+
+def test_vw_movimientos_cuenta_no_regresion_tras_agregar_conciliacion_tesoreria():
+    """023-conciliacion-tesoreria (T022, Constitution Check plan.md): el
+    `ALTER VIEW` que agrega la rama 'Conciliación Tesorería' es aditivo — no
+    debe cambiar el saldo de ningún contacto ya reconocido por otro origen
+    (Compras/Impuestos/Tarjetas), sin importar si esa rama nueva ya tiene
+    filas reales cargadas o no (desde 2026-09-29 puede tenerlas — la
+    funcionalidad ya se usa en producción)."""
+    fila = fetch_all("SELECT IdContacto FROM dbo.Contactos WHERE [Razon Social] = '2JM'")
+    id_contacto = fila[0]["IdContacto"]
+    saldo = repository.get_saldo(id_contacto)
+    assert saldo is not None
+    assert abs(saldo["saldoParcial"]) < 1.0  # mismo caso real que test_2jm_saldo_cierra_tras_incluir_pago_con_tarjeta
+
+
 def test_vw_movimientos_cuenta_incluye_origen_tarjetas():
     """Bug real encontrado 2026-09-25 (reportado por Sergio sobre el
     proveedor "2JM"): `vw_MovimientosCuenta_Base` nunca incluía los pagos

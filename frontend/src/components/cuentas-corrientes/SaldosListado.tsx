@@ -2,6 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
+import { useState } from "react";
 
 import { fetchSaldos, urlExportarSaldos, type SaldoContacto } from "@/services/cuentasCorrientesApi";
 import { DataTable, type DataTableColumn } from "@/components/ui/DataTable";
@@ -36,16 +37,39 @@ const COLUMNS: DataTableColumn<SaldoContacto>[] = [
   },
 ];
 
-/** Saldo de todos los proveedores con movimientos, de una sola vez (014 US2). */
+// Saldos dentro de +/- $500 se consideran redondeo de procesamiento, no
+// deuda real (pedido explícito del usuario, 2026-09-28).
+const TOLERANCIA_SALDADA = 500;
+
+/** Saldo de todos los proveedores con movimientos, de una sola vez (014 US2).
+ * Por defecto solo muestra las cuentas no saldadas (saldo con módulo mayor
+ * a la tolerancia de redondeo) — el listado completo, incluidas las
+ * cuentas en $0, sigue disponible destildando el filtro. */
 export function SaldosListado() {
+  const [soloNoSaldadas, setSoloNoSaldadas] = useState(true);
+
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ["cc-saldos"],
     queryFn: () => fetchSaldos("razonSocial"),
   });
 
+  const filas = data
+    ? soloNoSaldadas
+      ? data.items.filter((s) => Math.abs(s.saldoParcial ?? 0) > TOLERANCIA_SALDADA)
+      : data.items
+    : [];
+
   return (
     <div className="space-y-4">
-      <div className="flex justify-end">
+      <div className="flex items-center justify-between">
+        <label className="flex items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            checked={soloNoSaldadas}
+            onChange={(e) => setSoloNoSaldadas(e.target.checked)}
+          />
+          Solo cuentas no saldadas
+        </label>
         <a
           href={urlExportarSaldos("razonSocial")}
           className="rounded border border-border px-3 py-1.5 text-sm hover:bg-surface-sunken"
@@ -60,12 +84,16 @@ export function SaldosListado() {
       {data && (
         <DataTable
           columns={COLUMNS}
-          rows={data.items}
+          rows={filas}
           keyField={(s) => s.idContacto}
-          emptyMessage="No hay contactos con movimientos registrados."
+          emptyMessage={
+            soloNoSaldadas
+              ? "No hay cuentas pendientes — todas están saldadas."
+              : "No hay contactos con movimientos registrados."
+          }
           page={1}
-          pageSize={Math.max(data.items.length, 1)}
-          total={data.items.length}
+          pageSize={Math.max(filas.length, 1)}
+          total={filas.length}
           onPageChange={() => {}}
         />
       )}

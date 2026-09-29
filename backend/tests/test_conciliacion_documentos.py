@@ -53,7 +53,7 @@ def test_sin_la_nota_de_ajuste_no_cierra_y_orienta_con_el_tc_implicito():
 def test_un_documento_en_pesos_que_no_coincide_es_pago_parcial_e_imputa_la_linea():
     r = calcular_imputacion(250.0, [_doc(1, 1000.0)])
     assert r["pagoParcial"] and r["estado"] == "parcial" and r["diferencia"] == -750.0
-    assert r["imputados"] == [{"idCompra": 1, "importeImputado": 250.0}]
+    assert r["imputados"] == [{"idCompra": 1, "idImpuesto": None, "importeImputado": 250.0}]
 
 
 def test_linea_que_agrupa_varios_proveedores_imputa_el_valor_real_del_documento():
@@ -68,17 +68,52 @@ def test_linea_que_agrupa_varios_proveedores_imputa_el_valor_real_del_documento(
     assert not r["pagoParcial"]
     assert r["permiteParcial"]
     assert r["estado"] == "parcial" and r["diferencia"] == 106277.77
-    assert r["imputados"] == [{"idCompra": 1, "importeImputado": 23868.0}]
+    assert r["imputados"] == [{"idCompra": 1, "idImpuesto": None, "importeImputado": 23868.0}]
 
 
-def test_seleccionar_de_mas_no_permite_parcial_igual_que_antes():
-    """Cuando lo elegido vale MÁS que la línea (varios documentos, ninguno es
-    claramente "la cuota"), sigue requiriendo aceptar la diferencia — no es
-    el caso "agrupado" (ahí la línea es la que sobra, no lo elegido)."""
+def test_seleccionar_varios_documentos_grandes_reparte_proporcional():
+    """Caso real "ASP" (2026-09-29): una línea de tarjeta ($1.693,25) es una
+    cuota que corresponde a VARIAS facturas grandes financiadas a la vez
+    (no una sola, a diferencia del caso "cuota" de un único documento) —
+    generaliza `pagoParcial` a más de un documento, repartiendo la línea en
+    proporción al importe de cada uno (sin otro dato para decidir cuánto le
+    toca a cada factura). Antes esto exigía "aceptar diferencia con
+    motivo" aunque no fuera un desvío real, solo una compra en cuotas
+    repartida entre más de una factura."""
     r = calcular_imputacion(1000.0, [_doc(1, 700.0), _doc(2, 500.0)])
-    assert not r["pagoParcial"]
+    assert r["pagoParcial"]
     assert not r["permiteParcial"]
     assert r["estado"] == "parcial" and r["diferencia"] == -200.0
+    # 1000 repartido 700:500 → 583.33 y 416.67 (el redondeo se ajusta en el
+    # último para que la suma cierre exacto contra la línea).
+    imputados = {i["idCompra"]: i["importeImputado"] for i in r["imputados"]}
+    assert imputados[1] == 583.33
+    assert imputados[2] == 416.67
+    assert round(sum(imputados.values()), 2) == 1000.0
+
+
+def test_cuota_con_varios_documentos_en_dolares_reparte_proporcional_en_pesos():
+    """Caso real "ASP" verificado contra WC (2026-09-29), resumen 9258031
+    tarjeta Agronacion, línea IdLineaConsumo 5846 ($1.693,25): las 4 facturas
+    elegidas (0392-00000549/296/297/071) están TODAS en dólares, cada una con
+    su propio tipo de cambio. La primera versión de este fix excluía dólares
+    de `pagoParcial` (`not usd`), así que este caso real seguía cayendo en
+    "aceptar diferencia con motivo" pese a ser una cuota legítima. El reparto
+    proporcional debe usar el importe ya pesificado de cada documento, y no
+    debe mostrarse un tipo de cambio implícito (no es un desvío a explicar)."""
+    docs = [
+        _doc(1, 706.42, "Dolares", 5.096),
+        _doc(2, 425.0, "Dolares", 5.233),
+        _doc(3, 354.75, "Dolares", 5.233),
+        _doc(4, 67.8, "Dolares", 5.24),
+    ]
+    r = calcular_imputacion(1693.25, docs)
+    assert r["pagoParcial"]
+    assert not r["permiteParcial"]
+    assert r["estado"] == "parcial"
+    assert r["tcImplicito"] is None and r["desvioTc"] is None
+    imputados = {i["idCompra"]: i["importeImputado"] for i in r["imputados"]}
+    assert round(sum(imputados.values()), 2) == 1693.25
 
 
 def test_sugerir_encuentra_factura_usd_mas_nc_usd_que_saldan_la_cuenta():

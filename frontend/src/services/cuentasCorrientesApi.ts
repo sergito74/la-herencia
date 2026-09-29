@@ -35,7 +35,18 @@ export interface Origen {
   idCompra?: number | null;
   proveedor?: string | null;
   numeroDocumento?: string | null;
-  medio?: "bna" | "galicia" | "efectivo" | "valores_recibidos" | null;
+  medio?:
+    | "bna"
+    | "galicia"
+    | "efectivo"
+    | "valores_recibidos"
+    // 023-conciliacion-tesoreria: medios adicionales que solo llegan acá
+    // vía el origen sintético "Conciliación Tesorería" (los otros 4 ya
+    // podían llegar por su origen automático propio).
+    | "mercado-libre"
+    | "valores-propios"
+    | "valores-recibidos"
+    | null;
   idMovimiento?: number | null;
   fecha?: string | null;
   importe?: number | null;
@@ -64,6 +75,10 @@ export interface MovimientoCuentaCorriente {
    * muestra el formulario Access real (SbfrmMovCuenta). */
   saldoParcial: number | null;
   origen: Origen;
+  /** Valores crudos de `vw_MovimientosCuenta_Base.Origen`/`IdOrigen`
+   * (022-reasignacion-contacto) — usados por el botón "Reasignar". */
+  origenTipo: string | null;
+  idOrigen: number | null;
 }
 
 export interface MovimientosListResponse {
@@ -88,7 +103,14 @@ export function fetchSaldo(idContacto: number): Promise<Saldo> {
 
 export function fetchMovimientos(
   idContacto: number,
-  params: { fechaDesde?: string; fechaHasta?: string; page?: number; pageSize?: number }
+  params: {
+    fechaDesde?: string;
+    fechaHasta?: string;
+    page?: number;
+    pageSize?: number;
+    sortBy?: string;
+    sortDir?: "asc" | "desc";
+  }
 ): Promise<MovimientosListResponse> {
   return apiGet<MovimientosListResponse>(
     `/api/cuentas-corrientes/contactos/${idContacto}/movimientos`,
