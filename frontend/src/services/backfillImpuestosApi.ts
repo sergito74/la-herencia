@@ -17,7 +17,7 @@ import { apiPost,apiPatch,API_BASE_URL,ApiError } from '@/services/apiClient';
 export interface ArchivoBackfill {archivoId:string;nombre:string;idOrganismo:number|null;usado:boolean;fecha:string|null}
 export type TipoBackfill={modo:'generico'}|{modo:'existente';idTipoImpuesto:number};
 export interface DecisionBackfill {medio:string;idMovimiento:number;accion:'incluir'|'excluir';fuente?:'generada'|'comprobante';archivoId?:string;tipoImpuesto?:TipoBackfill;confirmacionDocumento?:boolean;periodoLiquidado?:string;numeroDocumento?:string}
-export interface PropuestaBackfill extends Omit<DiagnosticoBackfill,'items'> {items:(PagoBackfill&{fuente:string;candidatos:ArchivoBackfill[]})[];tipos:{idTipoImpuesto:number;nombre:string}[];archivos:ArchivoBackfill[];coberturaBusqueda:boolean}
+export interface PropuestaBackfill extends Omit<DiagnosticoBackfill,'items'> {items:(PagoBackfill&{fuente:string;candidatos:ArchivoBackfill[];tipoImpuesto?:TipoBackfill})[];tipos:{idTipoImpuesto:number;nombre:string}[];archivos:ArchivoBackfill[];coberturaBusqueda:boolean}
 export interface RevisionBackfill {huellaPropuesta:string;preparacion:string;cantidad:number;total:string;saldoProyectado:string}
 export const propuestaBackfill=(organismoId:number,page:number)=>apiGet<PropuestaBackfill>('/api/impuestos/backfill/propuesta',{organismoId,page});
 export const validarBackfill=(body:unknown)=>apiPost<RevisionBackfill>('/api/impuestos/backfill/validar',body);

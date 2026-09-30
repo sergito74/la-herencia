@@ -44,3 +44,9 @@ def test_usado_y_duplicado(tmp_path):
  (tmp_path/'20250102_ARBA.pdf').write_bytes(b'copy')
  result=documentos.inventario([dict(idOrganismo=12,organismo='ARBA')],[str(a)],[tmp_path])
  assert all(x['usado'] for x in result['items'])
+
+def test_percepcion_no_busca_comprobante_y_lleva_su_tipo():
+ pagos=[dict(medio='bna',idMovimiento=1,fecha='2025-01-01',estado='faltante',importe=Decimal('100'),sinBoletaPorNaturaleza=True)]
+ files=[dict(archivoId='a',idOrganismo=12,fecha='2025-01-01',usado=False)]
+ row=propuesta.emparejar(pagos,files,12,True,25)[0]
+ assert row['fuente']=='generada' and row['candidatos']==[] and row['tipoImpuesto']=={'modo':'existente','idTipoImpuesto':25}

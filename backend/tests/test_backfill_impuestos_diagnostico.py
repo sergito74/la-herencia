@@ -60,3 +60,10 @@ def test_otros_documentos_no_bloquean_la_generacion():
 def test_no_asignado_traspaso_y_fecha_nula():
     rows=diagnosticar([{**pago(),'idOrganismo':None},{**pago(2),'traspaso':True},{**pago(3),'fecha':None}],[],D('-300'))
     assert [r['estado'] for r in rows]==['pendiente','excluido','pendiente']
+
+def test_recaudacion_arba_no_se_empareja_ni_absorbe():
+    """Percepción IIBB: aunque haya una boleta del mismo importe, se registra desde el pago."""
+    boletas=[dict(idImpuesto=1,saldo=D('100'),fecha='2025-01-01')]
+    rows=diagnosticar([{**pago(),'sinBoletaPorNaturaleza':True},pago(2)],boletas,D('-100'))
+    assert rows[0]['estado']=='faltante' and rows[0]['importeAGenerar']==D('100') and rows[0]['boletaPorCoincidencia'] is None
+    assert rows[1]['estado']=='respaldado' and rows[1]['boletaPorCoincidencia']==1

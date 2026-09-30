@@ -3,11 +3,12 @@ from datetime import date
 from . import repository,documentos
 from .diagnostico import digest,money,ZERO
 
-def emparejar(pagos,files,org,complete):
+def emparejar(pagos,files,org,complete,tipo_percepcion=None):
     candidates={}
     for p in pagos:
         key=(p['medio'],p['idMovimiento'])
-        candidates[key]=[f for f in files if not f['usado'] and f['idOrganismo']==org and f['fecha'] and p['fecha'] and abs((date.fromisoformat(p['fecha'])-date.fromisoformat(f['fecha'])).days)<=7]
+        # Una percepción sin boleta por naturaleza nunca tiene comprobante que buscar.
+        candidates[key]=[] if p.get('sinBoletaPorNaturaleza') else [f for f in files if not f['usado'] and f['idOrganismo']==org and f['fecha'] and p['fecha'] and abs((date.fromisoformat(p['fecha'])-date.fromisoformat(f['fecha'])).days)<=7]
     counts=Counter(f['archivoId'] for values in candidates.values() for f in values)
     result=[]
     for p in pagos:
@@ -16,15 +17,19 @@ def emparejar(pagos,files,org,complete):
         if p['estado']=='faltante' and complete:
             if not fs: source='generada'
             elif len(fs)==1 and counts[fs[0]['archivoId']]==1: source='comprobante'
+        tipo={'modo':'generico'}
+        if p.get('sinBoletaPorNaturaleza') and tipo_percepcion:
+            tipo={'modo':'existente','idTipoImpuesto':tipo_percepcion}
         result.append(dict(**p,fuente=source,candidatos=[{k:v for k,v in f.items() if k!='ruta'} for f in fs],
-                           tipoImpuesto={'modo':'generico'}))
+                           tipoImpuesto=tipo))
     return result
 
 def full(org):
     s=repository.snapshot(org)
     usados=repository.read("SELECT [Documento Original] AS ruta FROM dbo.Impuestos WHERE [Documento Original] IS NOT NULL UNION ALL SELECT [Documento Original] FROM dbo.Compras WHERE [Documento Original] IS NOT NULL")
     files=documentos.inventario(repository.organismos(),[x['ruta'] for x in usados])
-    s['items']=emparejar(s['items'],files['items'],org,files['completo'])
+    percepcion=next((t['idTipoImpuesto'] for t in s['tipos'] if t['nombre']==repository.TIPO_PERCEPCION_IIBB),None)
+    s['items']=emparejar(s['items'],files['items'],org,files['completo'],percepcion)
     s['coberturaBusqueda']=files['completo'];s['advertencias']+=files['advertencias']
     s['archivos']=files['items']
     s['huellaFuente']=digest(dict(datos=s['huellaFuente'],archivos=files,politica=1))

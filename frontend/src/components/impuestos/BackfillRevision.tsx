@@ -23,7 +23,7 @@ function decisionInicial(p: Item): DecisionBackfill {
     idMovimiento: p.idMovimiento,
     accion: "incluir",
     fuente: p.candidatos.length ? "comprobante" : "generada",
-    tipoImpuesto: { modo: "generico" },
+    tipoImpuesto: p.tipoImpuesto ?? { modo: "generico" },
   };
 }
 

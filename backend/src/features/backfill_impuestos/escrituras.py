@@ -94,8 +94,8 @@ def propio(i,version):
 def cambiar_tipo(i,body,usuario):
     with reconciliation_transaction():
         b=propio(i,body.version);before=imagen(i)
-        types=repo.read('SELECT IdTipoImpuesto FROM dbo.[Tipo Impuesto] WHERE IdTipoImpuesto=? AND IdOrganismo=?',(body.idTipoImpuesto,before['IdOrganismo']))
-        if not types: raise ValueError('Tipo de impuesto ajeno al organismo')
+        if not any(t['idTipoImpuesto']==body.idTipoImpuesto for t in repo.tipos_del_organismo(before['IdOrganismo'])):
+            raise ValueError('Tipo de impuesto ajeno al organismo')
         if execute_write('UPDATE dbo.Impuestos SET IdTipoImpuesto=? WHERE IdImpuesto=?',(body.idTipoImpuesto,i))!=1: raise ValueError('La boleta cambió')
         execute_write('UPDATE dbo.BackfillImpuestosBoletas SET TieneComprobante=TieneComprobante WHERE IdImpuesto=?',(i,))
         event(b['IdLote'],b['IdRegistro'],'cambiar_tipo',usuario,before,imagen(i))

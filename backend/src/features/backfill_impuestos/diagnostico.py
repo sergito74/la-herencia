@@ -81,9 +81,13 @@ def diagnosticar(pagos, boletas, saldo, otros_documentos=False, documentos_extra
     abiertos = [b for b in boletas if money(b['saldo']) > TOL]
     base = [_clasificar_base(p) for p in pagos]
 
+    # Percepciones sin boleta por naturaleza (ej. "RECAUDACION ARBA"): no se
+    # emparejan ni se absorben — se registran desde el pago, por el total.
+    propios = {i for i, p in enumerate(pagos) if base[i] is None and p.get('sinBoletaPorNaturaleza')}
+
     pares = []
     for i, p in enumerate(pagos):
-        if base[i] is not None:
+        if base[i] is not None or i in propios:
             continue
         for b in abiertos:
             dias = _dias(p.get('fecha'), b.get('fecha'))
@@ -97,7 +101,7 @@ def diagnosticar(pagos, boletas, saldo, otros_documentos=False, documentos_extra
         asignada[i] = id_impuesto
         usadas.add(id_impuesto)
 
-    pendientes = [i for i in range(len(pagos)) if base[i] is None and i not in asignada]
+    pendientes = [i for i in range(len(pagos)) if base[i] is None and i not in asignada and i not in propios]
     absorbentes = [dict(id=f"impuesto:{b['idImpuesto']}", fecha=b.get('fecha'), importe=b['saldo'])
                    for b in abiertos if b['idImpuesto'] not in usadas]
     absorbentes += list(documentos_extra)
@@ -113,6 +117,11 @@ def diagnosticar(pagos, boletas, saldo, otros_documentos=False, documentos_extra
         a_generar = ZERO
         if base[i] is not None:
             state, reason = base[i]
+        elif i in propios:
+            if generacion_habilitada:
+                state, reason, a_generar = 'faltante', 'Percepción de Ingresos Brutos (recaudación bancaria): sin boleta, se registra desde el pago', amount
+            else:
+                state, reason = 'pendiente', motivo_bloqueo or 'Generación deshabilitada para este organismo'
         elif i in asignada:
             state, reason = 'respaldado', 'Boleta del mismo importe y fecha cercana (sin vínculo explícito)'
         elif amount - cubierto[i] <= TOL:

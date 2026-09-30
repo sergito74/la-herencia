@@ -1,4 +1,5 @@
 """Lectura parametrizada, acotada y con Decimal preservado. Nunca consulta Access."""
+import re
 from collections import defaultdict
 from datetime import datetime, timezone
 from src.db.connection import get_connection, _assert_read_only
@@ -13,6 +14,26 @@ NATIVOS={'bna':'Banco Nacion','galicia':'Galicia','efectivo':'Pagos efectivo',
 # certificado y no una boleta. Se diagnostica igual, pero no se generan
 # boletas hasta revisar ese ciclo aparte.
 ORGANISMOS_SIN_GENERACION={'AFIP'}
+
+# `[Tipo Impuesto].IdOrganismo` usa una numeración propia heredada de Access,
+# no `Contactos.IdContacto` — verificado contra los tipos que usa cada
+# organismo en sus boletas reales (2026-09-30). UATRE usa "Aporte Sindical"
+# (código 1) sin compartir el catálogo de AFIP, por eso no está acá.
+CODIGO_TIPO_LEGADO={119:1,12:2,72:3}
+
+# "RECAUDACION ARBA" en el extracto es percepción de Ingresos Brutos
+# (recaudación bancaria de la Provincia): no tiene boleta como
+# contrapartida — pedido del usuario 2026-09-30. Nunca la cubre otra
+# boleta ni documento; se registra desde el propio pago con su tipo.
+RECAUDACION_ARBA=re.compile(r'RECAUD\w*\s+ARBA',re.I)
+TIPO_PERCEPCION_IIBB='Percepción Ingresos Brutos'
+
+
+def tipos_del_organismo(organismo_id):
+    """Tipos de su catálogo heredado, los que ya usa en boletas reales y los creados por 029."""
+    return read("""SELECT IdTipoImpuesto AS idTipoImpuesto,[Nombre Impuesto] AS nombre FROM dbo.[Tipo Impuesto]
+        WHERE IdOrganismo=? OR IdOrganismo=? OR IdTipoImpuesto IN (SELECT IdTipoImpuesto FROM dbo.Impuestos WHERE IdOrganismo=?)
+        ORDER BY [Nombre Impuesto]""",(organismo_id,CODIGO_TIPO_LEGADO.get(organismo_id,-1),organismo_id))
 
 def read(sql,params=()):
     _assert_read_only(sql)
@@ -46,7 +67,7 @@ def snapshot(organismo_id):
     conciliaciones=read("SELECT IdConciliacion AS idConciliacion,Medio AS medio,IdMovimiento AS idMovimiento,IdContacto AS idContacto,Importe AS importe,TipoOrigenDocumento AS origenDocumento,IdOrigenDocumento AS idDocumento FROM dbo.ConciliacionesTesoreria")
     conc=defaultdict(list)
     for c in conciliaciones: conc[(c['medio'],c['idMovimiento'])].append(c)
-    tipos=read("SELECT IdTipoImpuesto AS idTipoImpuesto,[Nombre Impuesto] AS nombre FROM dbo.[Tipo Impuesto] WHERE IdOrganismo=? ORDER BY IdTipoImpuesto",(organismo_id,))
+    tipos=tipos_del_organismo(organismo_id)
     boletas=read("SELECT IdImpuesto AS idImpuesto,IdOrganismo AS idOrganismo,Fecha AS fecha,Importe AS importe,[Documento Original] AS archivo,IdTipoImpuesto AS idTipoImpuesto FROM dbo.Impuestos WHERE IdOrganismo=?",(organismo_id,))
     por_id={b['idImpuesto']:b for b in boletas}
     used=defaultdict(lambda: ZERO)
@@ -98,7 +119,8 @@ def snapshot(organismo_id):
                     fecha=fecha,concepto=m['concepto'] or '',importe=amount,respaldo=respaldo,
                     creditoContable=sum((money(c['credito'])-money(c['deuda']) for c in refs),ZERO),
                     filasContables=len(refs),referenciaContable=[dict(origen=c['origen'],idOrigen=c['idOrigen']) for c in refs],
-                    conflicto=conflict,traspaso=activos.get(key,False)))
+                    conflicto=conflict,traspaso=activos.get(key,False),
+                    sinBoletaPorNaturaleza=bool(RECAUDACION_ARBA.search(m['concepto'] or ''))))
             ultimo=rows[-1]['idMovimiento']
     saldo=sum((money(c['deuda'])-money(c['credito']) for c in cuentas),ZERO)
     origenes_pago=set(NATIVOS.values())|{'Conciliación Tesorería','Impuestos'}
