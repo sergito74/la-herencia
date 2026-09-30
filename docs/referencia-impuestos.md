@@ -15,6 +15,7 @@ Listado de referencia de los impuestos que la empresa paga a entidades públicas
 | Impuesto a las Ganancias | 3 · Impuesto a las ganancias | 3 | |
 | Anticipo Ganancias | 22 · Anticipo Ganancias | 25 | |
 | Intereses | 23 · Intereses | 11 | Intereses por pago fuera de término |
+| ART | 11 · ART | 2 | Es una aseguradora, pero se paga dentro de las cargas sociales: queda en AFIP |
 | Retenciones Ganancias | 20 · Retenciones Ganancias | 0 | Ver regla abajo: no es un impuesto propio |
 
 **Regla — Retenciones de Ganancias:** la empresa es agente de retención. Retiene el importe al pagarle a un proveedor y después lo deposita en AFIP/ARCA. Por eso la retención se imputa **al pago del proveedor**, porque es parte de lo que se le debe, y no se trata como un impuesto propio de la empresa. Las retenciones hoy viven en `dbo.Retenciones` (227 certificados, $4.848.584,19) y se reflejan como crédito en la cuenta del proveedor.
@@ -46,12 +47,16 @@ Listado de referencia de los impuestos que la empresa paga a entidades públicas
 |---|---|---|---|
 | Guías | — **no existe para Tapalqué** | 0 | El tipo 19 · Guias es de Bolívar (código 3); Tapalqué no tiene código propio |
 
-## En el catálogo pero fuera de la referencia (a revisar)
+## Aporte sindical — UATRE (contacto 315)
+
+| Concepto | Tipo en el catálogo | Boletas cargadas | Nota |
+|---|---|---|---|
+| Aporte Sindical | 15 · Aporte Sindical | 169 | Equivale a UATRE. El tipo figura con el código heredado 1 (AFIP), pero corresponde a UATRE |
+
+## En el catálogo pero fuera de la referencia
 
 | Organismo | Tipo | Boletas | Observación |
 |---|---|---|---|
-| AFIP | 11 · ART | 2 | La ART es una aseguradora, no AFIP |
-| UATRE (contacto 315) | 15 · Aporte Sindical | 169 | Es un sindicato, no una entidad pública; el tipo figura con el código de AFIP |
 | AFIP | 4 · Bienes Personales, 17 · Bienes Sustitutos, 21 · Retenciones IVA | 0 | Sin uso |
 | Bolívar | 18 · Permiso de Marca | 0 | Sin uso |
 | ARBA | 24 · Sin identificar (generada desde el pago) | 1 | Creado por el backfill 029, para boletas cuyo tipo no se pudo identificar |
@@ -59,4 +64,3 @@ Listado de referencia de los impuestos que la empresa paga a entidades públicas
 ## Pendiente de decidir
 
 1. Crear en el catálogo: **Patentes** (ARBA) y **Guías** para Tapalqué, con un código propio para Tapalqué.
-2. Revisar ART (11) y Aporte Sindical (15), que figuran como AFIP.
