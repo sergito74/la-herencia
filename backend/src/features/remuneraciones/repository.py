@@ -7,6 +7,10 @@ the source table) — see data-model.md Nota de implementación.
 
 from __future__ import annotations
 
+import glob
+import re
+from pathlib import Path
+
 from src.db.connection import fetch_all, fetch_one
 from src.db.pagination import offset_for
 
@@ -67,7 +71,8 @@ def search_remuneraciones(
             c.[Razon Social] AS empleado,
             r.[Fecha de pago] AS fechaPago,
             r.[Periodo liquidado] AS periodoLiquidado,
-            ({_IMPORTE_SQL}) AS importe
+            ({_IMPORTE_SQL}) AS importe,
+            r.Recibo AS recibo
         FROM dbo.Remuneraciones r
         LEFT JOIN dbo.Contactos c ON c.IdContacto = r.IdContacto
         {where_sql}
@@ -90,6 +95,53 @@ def get_remuneracion_referencia(id_salario: int) -> dict | None:
         WHERE r.IdSalario = ?
     """
     return fetch_one(sql, (id_salario,))
+
+
+# Backlog post-025, punto 3: carpeta real donde viven los recibos de
+# sueldo escaneados (PDF), confirmada contra el disco 2026-09-30 — un
+# archivo por empleado y período dentro de una carpeta por año, siempre
+# con prefijo "YYYY MM" pero con el nombre después muy inconsistente entre
+# años reales: "2026 01 Armando Mori.pdf" (espacios), "2025 11_MarceloSierra.pdf"
+# (guion bajo, nombre pegado), "2019 01_Armando Mori.pdf" (guion bajo +
+# espacio), "2023 01_DarioGuinea.PDF" (mayúsculas). Nunca asumir un único
+# formato — tokenizar por CamelCase (mayúscula = inicio de palabra) cubre
+# los tres casos sin depender del separador.
+CARPETA_RECIBOS = r"C:\Users\Sergio\Documents\La Herencia\Administracion y gestion\Personal\Recibos"
+
+_TOKEN_RE = re.compile(r"[A-ZÀ-Þ][a-zà-ÿ]*")
+
+
+def get_recibo_referencia(id_salario: int) -> dict | None:
+    return fetch_one(
+        "SELECT r.[Fecha de pago] AS fechaPago, c.[Razon Social] AS empleado "
+        "FROM dbo.Remuneraciones r LEFT JOIN dbo.Contactos c ON c.IdContacto = r.IdContacto "
+        "WHERE r.IdSalario = ?",
+        (id_salario,),
+    )
+
+
+def buscar_archivo_recibo(fecha_pago, empleado: str) -> Path | None:
+    """Ubica el PDF del recibo en `CARPETA_RECIBOS` para una liquidación.
+
+    El nombre del archivo no siempre coincide exacto con la [Razon Social]
+    del contacto (ej. "Armando Mori" en el archivo vs "Armando Oscar Mori"
+    en Contactos) — se resuelve tokenizando ambos por CamelCase (cada
+    palabra con mayúscula inicial) y exigiendo que todos los tokens del
+    archivo aparezcan como palabra completa entre los tokens del empleado.
+    Mismo criterio que `tesoreria/matching.py::_resolver_contacto_por_texto`:
+    nunca elige uno al azar — si hay 0 o más de 1 candidato, devuelve None.
+    """
+    patron = str(Path(CARPETA_RECIBOS) / f"{fecha_pago.year}" / f"{fecha_pago.year} {fecha_pago.month:02d}*.pdf")
+    candidatos = glob.glob(patron)
+    tokens_empleado = {t.lower() for t in _TOKEN_RE.findall(empleado)}
+    coincidencias = []
+    for ruta in candidatos:
+        tokens_archivo = [t.lower() for t in _TOKEN_RE.findall(Path(ruta).stem)]
+        if tokens_archivo and all(t in tokens_empleado for t in tokens_archivo):
+            coincidencias.append(ruta)
+    if len(coincidencias) != 1:
+        return None
+    return Path(coincidencias[0])
 
 
 def search_pagos_remuneracion(page: int, page_size: int) -> tuple[list[dict], int]:

@@ -24,6 +24,14 @@ export const BASE_DOCUMENTOS_COMPRAS = "C:\\Users\\Sergio\\Dropbox\\Giamigli de 
  * carpeta de Compras y hacia adentro de "Ventas"), nunca la ruta completa. */
 export const BASE_DOCUMENTOS_VENTAS = "C:\\Users\\Sergio\\Dropbox\\Giamigli de Bolivar SA\\";
 
+/** Carpeta base real donde vive el escaneo de recibos de sueldo en esta PC
+ * — `dbo.Remuneraciones.Recibo` trae la ruta relativa como
+ * `Personal\Recibos\{año}\{archivo}.pdf`, con el mismo formato roto
+ * duplicado con "#" que `documentoOriginal` de Compras/Ventas (confirmado
+ * contra datos reales 2026-09-30). */
+export const BASE_DOCUMENTOS_RECIBOS =
+  "C:\\Users\\Sergio\\Documents\\La Herencia\\Administracion y gestion\\";
+
 /** Los registros de Compras/Ventas migrados desde Access traen
  * `documentoOriginal` en un formato roto: ruta relativa (sin la carpeta
  * base) duplicada con "#" como separador, ej.
@@ -45,6 +53,16 @@ export function normalizarDocumentoOriginal(valor: string, base: string): string
   // la carpeta raíz — se quita antes de anteponer `base` (que ya es esa raíz).
   const relativa = v.startsWith("..\\") ? v.slice(3) : v;
   return base + relativa;
+}
+
+/** `dbo.Remuneraciones.Recibo` usa estos centinelas de texto libre en vez
+ * de NULL cuando se sabe explícitamente que no hay recibo escaneado (ej.
+ * "SIN RECIBO#http://SIN RECIBO#") — no son una ruta, no hay que
+ * intentar abrirlos como documento. */
+export function esReciboAusente(valor: string | null | undefined): boolean {
+  if (!valor) return true;
+  const v = limpiarRutaCopiada(valor).trim().toUpperCase();
+  return v === "" || v.startsWith("SIN RECIBO") || v.startsWith("SIN COPIA");
 }
 
 function esRutaCompleta(valor: string): boolean {

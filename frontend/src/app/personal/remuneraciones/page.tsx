@@ -14,6 +14,7 @@ export default function RemuneracionesPage() {
   const [tab, setTab] = useState<(typeof TABS)[number]>("Liquidaciones");
   const highlight = searchParams.get("highlight");
   const highlightKey = highlight ? Number(highlight) : undefined;
+  const empleadoInicial = searchParams.get("empleado");
 
   return (
     <main className="mx-auto max-w-none px-8 py-6">
@@ -41,7 +42,7 @@ export default function RemuneracionesPage() {
 
       <div className="mt-6">
         {tab === "Liquidaciones" ? (
-          <RemuneracionesListado highlightKey={highlightKey} />
+          <RemuneracionesListado highlightKey={highlightKey} empleadoInicial={empleadoInicial} />
         ) : (
           <PagosRemuneracionListado />
         )}

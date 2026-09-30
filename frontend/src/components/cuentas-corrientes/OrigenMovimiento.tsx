@@ -92,7 +92,11 @@ export function OrigenMovimiento({ origen }: { origen: Origen }) {
       return (
         <Link
           href={
-            origen.idSalario != null ? `/personal/remuneraciones?highlight=${origen.idSalario}` : "#"
+            origen.idSalario != null
+              ? `/personal/remuneraciones?highlight=${origen.idSalario}${
+                  origen.empleado ? `&empleado=${encodeURIComponent(origen.empleado)}` : ""
+                }`
+              : "#"
           }
           className="text-finance underline"
         >

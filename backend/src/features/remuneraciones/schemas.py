@@ -24,6 +24,12 @@ class Remuneracion(BaseModel):
     fechaPago: date | None = None
     periodoLiquidado: str | None = None
     importe: float | None = None
+    # Valor crudo de `dbo.Remuneraciones.Recibo` (formato roto "ruta#ruta#",
+    # mismo patrón que `documentoOriginal` en Compras/Ventas — ver
+    # `documentoLocal.ts`). El frontend lo normaliza igual que ese campo;
+    # cuando es NULL o "SIN RECIBO"/"SIN COPIA", cae al matching por
+    # nombre de archivo de `GET /api/remuneraciones/{id}/recibo`.
+    recibo: str | None = None
 
 
 class RemuneracionesListResponse(BaseModel):

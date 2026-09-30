@@ -3,13 +3,33 @@
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 
-import { fetchRemuneraciones, type Remuneracion } from "@/services/remuneracionesApi";
+import { fetchRemuneraciones, urlRecibo, type Remuneracion } from "@/services/remuneracionesApi";
+import { urlDocumentoLocal } from "@/services/comprasApi";
 import { ContactoLink } from "@/components/ui/ContactoLink";
 import { ContactoSelect } from "@/components/ui/ContactoSelect";
 import { DataTable, type DataTableColumn } from "@/components/ui/DataTable";
 import { FilterBar, FilterSubmitButton } from "@/components/ui/FilterBar";
-import { ErrorState, LoadingState } from "@/components/ui/States";
+import { EmptyState, ErrorState, LoadingState } from "@/components/ui/States";
 import { formatMoneda } from "@/lib/format";
+import {
+  BASE_DOCUMENTOS_RECIBOS,
+  esReciboAusente,
+  normalizarDocumentoOriginal,
+} from "@/lib/documentoLocal";
+
+/** El recibo se resuelve en dos pasos: primero `dbo.Remuneraciones.Recibo`
+ * (columna real, cargada a mano en ~40% de las liquidaciones — mismo
+ * patrón roto "ruta#ruta#" que `documentoOriginal` de Compras/Ventas), y
+ * si está vacía o es un centinela ("SIN RECIBO"), se cae al matching por
+ * nombre de archivo de `GET /api/remuneraciones/{id}/recibo` (backlog
+ * post-025, punto 3) — la columna manda cuando existe: es la fuente que
+ * cargó una persona a mano, más confiable que adivinar por nombre.*/
+function urlDelRecibo(r: Remuneracion): string {
+  if (!esReciboAusente(r.recibo)) {
+    return urlDocumentoLocal(normalizarDocumentoOriginal(r.recibo as string, BASE_DOCUMENTOS_RECIBOS));
+  }
+  return urlRecibo(r.idSalario);
+}
 
 const COLUMNS: DataTableColumn<Remuneracion>[] = [
   {
@@ -39,6 +59,20 @@ const COLUMNS: DataTableColumn<Remuneracion>[] = [
     sortValue: (r) => r.importe,
     render: (r) => (r.importe != null ? formatMoneda(r.importe) : "—"),
   },
+  {
+    key: "recibo",
+    header: "Recibo",
+    render: (r) => (
+      <a
+        href={urlDelRecibo(r)}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="text-finance underline"
+      >
+        Ver
+      </a>
+    ),
+  },
 ];
 
 /**
@@ -46,19 +80,25 @@ const COLUMNS: DataTableColumn<Remuneracion>[] = [
  * "Importe (calculado)": suma de ~15 conceptos monetarios en SQL, no un
  * campo directo — Principio IV, ver data-model.md.
  */
-export function RemuneracionesListado({ highlightKey }: { highlightKey?: number }) {
+export function RemuneracionesListado({
+  highlightKey,
+  empleadoInicial,
+}: {
+  highlightKey?: number;
+  empleadoInicial?: string | null;
+}) {
   const [empleado, setEmpleado] = useState<{ id: number | null; nombre: string | null }>({
     id: null,
-    nombre: null,
+    nombre: empleadoInicial ?? null,
   });
-  const [appliedEmpleado, setAppliedEmpleado] = useState("");
+  const [appliedEmpleado, setAppliedEmpleado] = useState(empleadoInicial ?? "");
   const [page, setPage] = useState(1);
   const pageSize = 50;
 
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ["remuneraciones", appliedEmpleado, page],
-    queryFn: () =>
-      fetchRemuneraciones({ empleado: appliedEmpleado || undefined, page, pageSize }),
+    queryFn: () => fetchRemuneraciones({ empleado: appliedEmpleado, page, pageSize }),
+    enabled: appliedEmpleado !== "",
   });
 
   function handleSubmit(e: React.FormEvent) {
@@ -81,12 +121,15 @@ export function RemuneracionesListado({ highlightKey }: { highlightKey?: number 
         <FilterSubmitButton />
       </FilterBar>
 
-      {isLoading && <LoadingState />}
-      {isError && (
+      {appliedEmpleado === "" && (
+        <EmptyState message="Elegí un empleado para ver sus liquidaciones." />
+      )}
+      {appliedEmpleado !== "" && isLoading && <LoadingState />}
+      {appliedEmpleado !== "" && isError && (
         <ErrorState message="Ocurrió un error al buscar liquidaciones." onRetry={() => refetch()} />
       )}
 
-      {data && (
+      {appliedEmpleado !== "" && data && (
         <DataTable
           columns={COLUMNS}
           rows={data.items}

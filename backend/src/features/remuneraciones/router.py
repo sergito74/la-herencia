@@ -5,7 +5,10 @@ Do not add POST/PUT/PATCH/DELETE routes to this router.
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Query
+import mimetypes
+
+from fastapi import APIRouter, HTTPException, Query
+from fastapi.responses import FileResponse
 from starlette.concurrency import run_in_threadpool
 
 from src.db.pagination import normalize_pagination
@@ -56,4 +59,26 @@ async def list_pagos_remuneracion(
         page=norm_page,
         pageSize=norm_page_size,
         total=total,
+    )
+
+
+@router.get("/{id_salario}/recibo")
+async def abrir_recibo(id_salario: int) -> FileResponse:
+    """Sirve el PDF del recibo de sueldo de una liquidación, si se puede
+    ubicar sin ambigüedad en `repository.CARPETA_RECIBOS` (ver
+    `buscar_archivo_recibo`). Lectura pura del filesystem local, no de una
+    tabla nueva — mismo patrón que `/api/compras/documento-local`."""
+    referencia = await run_in_threadpool(repository.get_recibo_referencia, id_salario)
+    if referencia is None or referencia.get("fechaPago") is None or not referencia.get("empleado"):
+        raise HTTPException(status_code=404, detail="Liquidación no encontrada o sin empleado/fecha.")
+    path = await run_in_threadpool(
+        repository.buscar_archivo_recibo, referencia["fechaPago"], referencia["empleado"]
+    )
+    if path is None:
+        raise HTTPException(status_code=404, detail="No se encontró el recibo para esta liquidación.")
+    media_type = mimetypes.guess_type(path.name)[0] or "application/octet-stream"
+    return FileResponse(
+        path=path,
+        media_type=media_type,
+        headers={"Content-Disposition": f'inline; filename="{path.name}"'},
     )
