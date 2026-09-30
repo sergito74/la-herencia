@@ -104,13 +104,17 @@ def test_anular_movimiento(monkeypatch):
 
 def test_detalle_socio_incluye_saldo_y_movimientos(monkeypatch):
     monkeypatch.setattr(repository, "listar_movimientos", lambda id_socio: [])
-    monkeypatch.setattr(repository, "calcular_saldo", lambda id_socio: 0.0)
+    monkeypatch.setattr(
+        repository, "calcular_saldo", lambda id_socio: {"saldoPesos": 0.0, "saldoUSD": 0.0, "saldoKgCarne": 0.0}
+    )
     monkeypatch.setattr("src.features.cuentas_socios.router.fetch_one", lambda sql, params=(): {"nombre": "Sergio"})
     response = client.get("/api/cuentas-socios/1/movimientos")
     assert response.status_code == 200
     body = response.json()
     assert body["nombre"] == "Sergio"
     assert body["saldo"] == 0.0
+    assert body["saldoUSD"] == 0.0
+    assert body["saldoKgCarne"] == 0.0
 
 
 def test_detalle_socio_inexistente_devuelve_404(monkeypatch):

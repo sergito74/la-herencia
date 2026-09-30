@@ -208,6 +208,15 @@ def atribuir_movimientos(movimientos: list[dict]) -> list[dict]:
         fecha = m["fecha"].date() if hasattr(m["fecha"], "date") else m["fecha"]
         importe_abs = round(abs(m["importe"]), 2)
 
+        if atribucion.es_ley_25413(m.get("concepto")):
+            m["rubro"] = atribucion.RUBRO_LEY_25413
+            m["centroCosto"] = atribucion.CENTRO_COSTO_LEY_25413
+            continue
+        if atribucion.es_arba_recaudacion(m.get("concepto")):
+            m["rubro"] = atribucion.RUBRO_ARBA_RECAUDACION
+            m["centroCosto"] = atribucion.CENTRO_COSTO_LEY_25413
+            continue
+
         # 019: las aplicaciones reales (pago/cobro -> documento) son la
         # fuente PRIMARIA de rubro — el matching exacto por importe/fecha
         # queda como fallback (research.md §7).

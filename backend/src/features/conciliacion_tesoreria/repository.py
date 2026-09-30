@@ -121,7 +121,15 @@ def _contacto_reconocido_por_origen_automatico(
     único que importa acá es si tiene un origen automático en absoluto."""
     info = _info(medio)
     if info.contacto_col:
-        return movimiento.get("idContacto")
+        # `IdContacto=0` es el centinela heredado de "sin asignar" (no un
+        # contacto real) en bna/galicia/mercado-libre/efectivo — bug real
+        # encontrado 2026-09-29 corriendo la conciliación masiva: `0 is not
+        # None` es `True` en Python, así que sin este chequeo CUALQUIER
+        # movimiento con ese centinela (incluidos ~350 candidatos reales sin
+        # LEY 25413) quedaba "ya_reconocido" con `idContactoReconocido=0` y
+        # `contactoReconocido=None`, bloqueado para siempre sin ningún error
+        # visible que lo explicara.
+        return movimiento.get("idContacto") or None
     if medio == "valores-recibidos":
         # La tabla no tiene columna de contacto propia; se resuelve hoy vía
         # dos ramas existentes de la vista (endoso a tercero). Se consulta

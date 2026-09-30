@@ -19,7 +19,7 @@ import { KpiCard } from "@/components/ui/KpiCard";
 import { ErrorState, LoadingState } from "@/components/ui/States";
 import { MoneyInput } from "@/components/ui/MoneyInput";
 import { useToast } from "@/components/ui/Toast";
-import { formatMoneda } from "@/lib/format";
+import { formatCantidad, formatMoneda } from "@/lib/format";
 
 const MEDIOS_DEVOLUCION = ["Transferencia", "Efectivo", "Cheque", "Otro"];
 
@@ -118,6 +118,22 @@ export function CuentaSocio({ idSocio }: { idSocio: number }) {
       ),
     },
     {
+      key: "importeUSD",
+      header: "USD",
+      align: "right",
+      numeric: true,
+      sortValue: (m) => m.importeUSD,
+      render: (m) => (m.importeUSD ? formatMoneda(m.importeUSD, "Dolares") : "—"),
+    },
+    {
+      key: "importeKgCarne",
+      header: "Kg. Carne",
+      align: "right",
+      numeric: true,
+      sortValue: (m) => m.importeKgCarne,
+      render: (m) => (m.importeKgCarne ? `${formatCantidad(m.importeKgCarne)} kg` : "—"),
+    },
+    {
       key: "estado",
       header: "Estado",
       render: (m) =>
@@ -149,11 +165,23 @@ export function CuentaSocio({ idSocio }: { idSocio: number }) {
                 Saldo positivo: el socio le debe a la empresa. Saldo negativo: a favor del socio.
               </p>
             </div>
-            <KpiCard
-              label="Saldo"
-              value={formatMoneda(data.saldo)}
-              tone={data.saldo > 0 ? "danger" : data.saldo < 0 ? "success" : "neutral"}
-            />
+            <div className="flex flex-wrap gap-3">
+              <KpiCard
+                label="Saldo pesos"
+                value={formatMoneda(data.saldo)}
+                tone={data.saldo > 0 ? "danger" : data.saldo < 0 ? "success" : "neutral"}
+              />
+              <KpiCard
+                label="Saldo USD"
+                value={formatMoneda(data.saldoUSD, "Dolares")}
+                tone={data.saldoUSD > 0 ? "danger" : data.saldoUSD < 0 ? "success" : "neutral"}
+              />
+              <KpiCard
+                label="Saldo Kg. Carne"
+                value={`${formatCantidad(data.saldoKgCarne)} kg`}
+                tone={data.saldoKgCarne > 0 ? "danger" : data.saldoKgCarne < 0 ? "success" : "neutral"}
+              />
+            </div>
           </div>
 
           <div className="flex flex-wrap gap-3">

@@ -281,8 +281,15 @@ def get_conciliacion_tesoreria_referencia(id_conciliacion: int) -> dict | None:
     al medio/movimiento de Tesorería original, para que el link "Origen"
     de cuentas corrientes lleve al mismo listado que cualquier otro
     movimiento de Tesorería (mismo criterio que get_bna_referencia/etc.)."""
+    # `Fecha` en ConciliacionesTesoreria es el timestamp de alta (insert-only,
+    # sin columna explícita seteada — la DB la completa con GETDATE()), no la
+    # fecha del movimiento. Trae hora (ej. '2026-09-29 18:23:27.116') y rompe
+    # la validación estricta de `Origen.fecha: date` en Pydantic (exige medianoche
+    # exacta) — bug real encontrado 2026-09-29: cualquier contacto con un
+    # movimiento origen "Conciliación Tesorería" resultante de la conciliación
+    # masiva de hoy tira 500 en /movimientos. Se trunca acá a solo fecha.
     sql = """
-        SELECT Medio AS medio, IdMovimiento AS idMovimiento, Fecha AS fecha, Importe AS importe
+        SELECT Medio AS medio, IdMovimiento AS idMovimiento, CAST(Fecha AS DATE) AS fecha, Importe AS importe
         FROM dbo.ConciliacionesTesoreria
         WHERE IdConciliacion = ?
     """

@@ -27,6 +27,7 @@ def test_listar_compras_particulares_candidatas_filtra_asignadas(monkeypatch):
 def test_asignar_gasto_inserta_movimiento_y_auditoria_en_una_transaccion(monkeypatch):
     monkeypatch.setattr(repository, "_tiene_asignacion_vigente", lambda id_compra: False)
     monkeypatch.setattr(repository, "importe_personal_compra_particular", lambda id_compra: 29699.10)
+    monkeypatch.setattr(repository, "fetch_one", lambda sql, params=(): {"Fecha": "2025-11-14"})
 
     statements_capturados = []
 
@@ -46,7 +47,7 @@ def test_asignar_gasto_inserta_movimiento_y_auditoria_en_una_transaccion(monkeyp
     assert len(statements_capturados) == 2
     sql_insert, params_insert = statements_capturados[0]
     assert "AsignacionGasto" in sql_insert
-    assert params_insert == (1, 29699.10, 2143515240, None, "sgiamberardini")
+    assert params_insert == (1, 29699.10, "2025-11-14", 2143515240, None, "sgiamberardini")
     sql_auditoria, params_auditoria = statements_capturados[1]([42])
     assert "Asignacion" in sql_auditoria
     assert params_auditoria[0] == 42
@@ -59,6 +60,7 @@ def test_asignar_gasto_usa_importe_personal_no_el_total_en_split_parcial(monkeyp
     Lucy, nunca el total de la compra."""
     monkeypatch.setattr(repository, "_tiene_asignacion_vigente", lambda id_compra: False)
     monkeypatch.setattr(repository, "importe_personal_compra_particular", lambda id_compra: 6080.51)
+    monkeypatch.setattr(repository, "fetch_one", lambda sql, params=(): {"Fecha": "2022-02-16"})
 
     statements_capturados = []
 
@@ -75,7 +77,7 @@ def test_asignar_gasto_usa_importe_personal_no_el_total_en_split_parcial(monkeyp
     repository.asignar_gasto(id_socio=2, id_compra=999, usuario="sgiamberardini")
 
     _, params_insert = statements_capturados[0]
-    assert params_insert == (2, 6080.51, 999, None, "sgiamberardini")
+    assert params_insert == (2, 6080.51, "2022-02-16", 999, None, "sgiamberardini")
 
 
 def test_asignar_gasto_rechaza_si_ya_tiene_asignacion_vigente(monkeypatch):
@@ -132,6 +134,7 @@ def test_permite_reasignar_tras_anular(monkeypatch):
     estado = {"vigente": True}
     monkeypatch.setattr(repository, "_tiene_asignacion_vigente", lambda id_compra: estado["vigente"])
     monkeypatch.setattr(repository, "importe_personal_compra_particular", lambda id_compra: 100.0)
+    monkeypatch.setattr(repository, "fetch_one", lambda sql, params=(): {"Fecha": "2025-01-01"})
     monkeypatch.setattr(repository, "execute_write_transaction", lambda statements: [1])
     monkeypatch.setattr(repository, "_movimiento_por_id", lambda idm: {"idMovimiento": idm})
 
@@ -144,13 +147,33 @@ def test_permite_reasignar_tras_anular(monkeypatch):
 
 
 def test_calcular_saldo_suma_asignaciones_y_resta_devoluciones(monkeypatch):
-    monkeypatch.setattr(repository, "fetch_one", lambda sql, params=(): {"saldo": 29699.10})
-    assert repository.calcular_saldo(1) == 29699.10
+    monkeypatch.setattr(
+        repository,
+        "fetch_one",
+        lambda sql, params=(): {"saldoPesos": 29699.10, "saldoUSD": 21.71, "saldoKgCarne": 8.49},
+    )
+    assert repository.calcular_saldo(1) == {"saldoPesos": 29699.10, "saldoUSD": 21.71, "saldoKgCarne": 8.49}
 
 
 def test_calcular_saldo_sin_movimientos_devuelve_cero(monkeypatch):
-    monkeypatch.setattr(repository, "fetch_one", lambda sql, params=(): {"saldo": None})
-    assert repository.calcular_saldo(1) == 0.0
+    monkeypatch.setattr(
+        repository, "fetch_one", lambda sql, params=(): {"saldoPesos": None, "saldoUSD": None, "saldoKgCarne": None}
+    )
+    assert repository.calcular_saldo(1) == {"saldoPesos": 0.0, "saldoUSD": 0.0, "saldoKgCarne": 0.0}
+
+
+def test_calcular_saldo_no_convierte_entre_monedas(monkeypatch):
+    """Spec 027 Clarifications: los 3 saldos se mantienen independientes,
+    nunca se suman/convierten entre sí."""
+    monkeypatch.setattr(
+        repository,
+        "fetch_one",
+        lambda sql, params=(): {"saldoPesos": 100.0, "saldoUSD": 50.0, "saldoKgCarne": 10.0},
+    )
+    saldo = repository.calcular_saldo(1)
+    assert saldo["saldoPesos"] == 100.0
+    assert saldo["saldoUSD"] == 50.0
+    assert saldo["saldoKgCarne"] == 10.0
 
 
 def test_listar_socios_con_saldo_devuelve_los_4_incluido_uno_en_cero(monkeypatch):
@@ -165,7 +188,9 @@ def test_listar_socios_con_saldo_devuelve_los_4_incluido_uno_en_cero(monkeypatch
         ],
     )
     saldos = {1: 29699.10, 2: 0.0, 3: 0.0, 4: 0.0}
-    monkeypatch.setattr(repository, "calcular_saldo", lambda idSocio: saldos[idSocio])
+    monkeypatch.setattr(
+        repository, "calcular_saldo", lambda idSocio: {"saldoPesos": saldos[idSocio], "saldoUSD": 0.0, "saldoKgCarne": 0.0}
+    )
 
     resultado = repository.listar_socios_con_saldo()
 
@@ -179,7 +204,8 @@ def test_listar_movimientos_incluye_anulados_y_marca_huerfano(monkeypatch):
         "fetch_all",
         lambda sql, params=(): [
             {
-                "idMovimiento": 1, "tipo": "AsignacionGasto", "importe": 100.0, "fecha": "2025-11-14",
+                "idMovimiento": 1, "tipo": "AsignacionGasto", "importe": 100.0,
+                "importeUSD": 0.0, "importeKgCarne": 0.0, "fecha": "2025-11-14",
                 "origen": "CompraParticular", "idOrigen": 999999999, "medio": None, "motivo": None,
                 "usuario": "u", "anulada": True, "motivoAnulacion": "Error de asignación",
                 "proveedorOrigen": None, "numeroDocumentoOrigen": None, "huerfano": 1,

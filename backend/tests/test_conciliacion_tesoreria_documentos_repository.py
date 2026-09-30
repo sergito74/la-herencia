@@ -303,17 +303,15 @@ class FakeConnection:
             self.lock.acquire()
             self.held = True
             self.pending = self.state["saldo"]
+        elif sql == "COMMIT TRANSACTION":
+            self.state["saldo"] = self.pending
+            self.commits += 1
+        elif sql == "IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION":
+            self.rollbacks += 1
         return self
 
     def fetchone(self):
         return (0,)
-
-    def commit(self):
-        self.state["saldo"] = self.pending
-        self.commits += 1
-
-    def rollback(self):
-        self.rollbacks += 1
 
     def close(self):
         self.closed = True

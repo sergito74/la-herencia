@@ -52,20 +52,25 @@ def reconciliation_transaction():
     if _reconciliation_connection.get() is not None:
         yield
         return
-    conn = pyodbc.connect(CONNECTION_STRING, autocommit=False, readonly=False)
+    # `autocommit=True` + `BEGIN/COMMIT/ROLLBACK TRANSACTION` explícitos por
+    # SQL, en vez de `autocommit=False` + `conn.commit()`/`conn.rollback()`
+    # de pyodbc: bug real encontrado 2026-09-29 corriendo la conciliación
+    # masiva, reproducido 30/30 veces — con `autocommit=False`, una conexión
+    # reciclada del *connection pooling* del driver ODBC (fuera del control
+    # de `pyodbc.pooling`) deja @@TRANCOUNT en un estado inconsistente según
+    # si la conexión es nueva o reciclada (a veces 0, a veces ya 1 antes de
+    # que corra la primera sentencia propia), así que ni un `BEGIN
+    # TRANSACTION` incondicional ni uno condicionado a `@@TRANCOUNT=0`
+    # evitan de forma confiable la doble anidación (`sp_getapplock`/inserts
+    # que devolvían éxito con un id válido y no persistían nada). Con
+    # `autocommit=True` pyodbc nunca abre una transacción implícita por su
+    # cuenta — el `BEGIN TRANSACTION` explícito es siempre el único, sin
+    # importar si la conexión es nueva o reciclada (confirmado 30/30).
+    conn = pyodbc.connect(CONNECTION_STRING, autocommit=True, readonly=False)
     token = None
     try:
         cursor = conn.cursor()
-        # Sin `BEGIN TRANSACTION` explícito: pyodbc con `autocommit=False` ya
-        # abre una transacción implícita (@@TRANCOUNT=1) en la primera
-        # sentencia. Agregar un `BEGIN TRANSACTION` acá anidaba una segunda
-        # (@@TRANCOUNT=2); `conn.commit()` solo cierra un nivel, dejando la
-        # transacción exterior abierta — SQL Server la revierte sola al
-        # cerrar la conexión. Bug real encontrado 2026-09-29: las 3
-        # conciliaciones de un lote real (caso ASP/Mercado Libre) se
-        # insertaban, devolvían IdConciliacion válidos vía OUTPUT INSERTED,
-        # y desaparecían sin dejar rastro ni error — confirmado con
-        # `SELECT @@TRANCOUNT` antes/después de `conn.commit()` (1→2→1, nunca 0).
+        cursor.execute("BEGIN TRANSACTION")
         cursor.execute(
             "SET NOCOUNT ON; DECLARE @r int; EXEC @r = sys.sp_getapplock "
             "@Resource=N'LaHerencia:conciliacion-documental', "
@@ -79,9 +84,9 @@ def reconciliation_transaction():
             raise ValueError("Otra conciliación está en curso. Volvé a intentar.")
         token = _reconciliation_connection.set(conn)
         yield
-        conn.commit()
+        cursor.execute("COMMIT TRANSACTION")
     except Exception:
-        conn.rollback()
+        conn.cursor().execute("IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION")
         raise
     finally:
         if token is not None:
@@ -315,9 +320,18 @@ def execute_write_transaction(statements: list) -> list:
             _validate_write_statement(item[0])
 
     active = _reconciliation_connection.get()
-    conn = active or pyodbc.connect(CONNECTION_STRING, autocommit=False, readonly=False)
+    # `autocommit=True` + `BEGIN/COMMIT/ROLLBACK TRANSACTION` explícitos: ver
+    # el comentario completo en `reconciliation_transaction` — con
+    # `autocommit=False` una conexión reciclada del connection pooling del
+    # driver ODBC deja @@TRANCOUNT en un estado inconsistente y ni siquiera
+    # `IF @@TRANCOUNT = 0 BEGIN TRANSACTION` evita de forma confiable que
+    # cada INSERT/UPDATE quede autocommiteado statement por statement (bug
+    # real, reproducido 2026-09-29 corriendo la conciliación masiva).
+    conn = active or pyodbc.connect(CONNECTION_STRING, autocommit=True, readonly=False)
     try:
         cursor = conn.cursor()
+        if active is None:
+            cursor.execute("BEGIN TRANSACTION")
         results: list = []
         for item in statements:
             sql, params = item(results) if callable(item) else item
@@ -328,11 +342,11 @@ def execute_write_transaction(statements: list) -> list:
             else:
                 results.append(cursor.rowcount)
         if active is None:
-            conn.commit()
+            cursor.execute("COMMIT TRANSACTION")
         return results
     except Exception:
         if active is None:
-            conn.rollback()
+            conn.cursor().execute("IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION")
         raise
     finally:
         if active is None:

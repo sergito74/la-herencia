@@ -51,7 +51,14 @@ async def detalle_socio(idSocio: int) -> DetalleSocioResponse:
         raise HTTPException(status_code=404, detail="Socio no encontrado")
     movimientos = await run_in_threadpool(repository.listar_movimientos, idSocio)
     saldo = await run_in_threadpool(repository.calcular_saldo, idSocio)
-    return DetalleSocioResponse(idSocio=idSocio, nombre=socio["nombre"], saldo=saldo, movimientos=movimientos)
+    return DetalleSocioResponse(
+        idSocio=idSocio,
+        nombre=socio["nombre"],
+        saldo=saldo["saldoPesos"],
+        saldoUSD=saldo["saldoUSD"],
+        saldoKgCarne=saldo["saldoKgCarne"],
+        movimientos=movimientos,
+    )
 
 
 @router.post("/{idSocio}/asignar-gasto", response_model=MovimientoCuentaSocio, status_code=201)

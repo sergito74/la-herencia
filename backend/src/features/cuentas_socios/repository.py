@@ -75,14 +75,22 @@ def asignar_gasto(id_socio: int, id_compra: int, usuario: str, motivo: str | Non
     if importe is None:
         raise ValueError(f"La compra {id_compra} no es una compra particular (no tiene línea negativa 'particular').")
 
+    # Bug real encontrado 2026-09-30 (al migrar Cajas Giamigli, 027): sin
+    # `Fecha` explícita en el INSERT, la columna caía en su default
+    # (SYSUTCDATETIME — el momento en que se corre este código), no la
+    # fecha real de la compra. Se usa acá la fecha de la compra, igual
+    # que cualquier otro movimiento con origen real.
+    compra = fetch_one("SELECT Fecha FROM dbo.Compras WHERE IdDeuda = ?", (id_compra,))
+    fecha_compra = compra["Fecha"] if compra else None
+
     resultados = execute_write_transaction(
         [
             (
                 "INSERT INTO dbo.MovimientosCuentaSocio "
-                "(IdSocio, Tipo, Importe, Origen, IdOrigen, Motivo, Usuario) "
+                "(IdSocio, Tipo, Importe, Fecha, Origen, IdOrigen, Motivo, Usuario) "
                 "OUTPUT INSERTED.IdMovimiento "
-                "VALUES (?, 'AsignacionGasto', ?, 'CompraParticular', ?, ?, ?)",
-                (id_socio, importe, id_compra, motivo, usuario),
+                "VALUES (?, 'AsignacionGasto', ?, ?, 'CompraParticular', ?, ?, ?)",
+                (id_socio, importe, fecha_compra, id_compra, motivo, usuario),
             ),
             lambda resultados: (
                 "INSERT INTO dbo.AuditoriaReflejoSocio (Accion, IdMovimiento, IdSocio, Usuario, Detalle) "
@@ -97,13 +105,14 @@ def asignar_gasto(id_socio: int, id_compra: int, usuario: str, motivo: str | Non
 def _movimiento_por_id(id_movimiento: int) -> dict:
     fila = fetch_one(
         "SELECT IdMovimiento AS idMovimiento, IdSocio AS idSocio, Tipo AS tipo, Importe AS importe, "
+        "ImporteUSD AS importeUSD, ImporteKgCarne AS importeKgCarne, "
         "Fecha AS fecha, Origen AS origen, IdOrigen AS idOrigen, Medio AS medio, Motivo AS motivo, "
         "Usuario AS usuario, Anulada AS anulada, MotivoAnulacion AS motivoAnulacion "
         "FROM dbo.MovimientosCuentaSocio WHERE IdMovimiento = ?",
         (id_movimiento,),
     )
     assert fila is not None
-    return {**fila, "importe": _f(fila["importe"])}
+    return {**fila, "importe": _f(fila["importe"]), "importeUSD": _f(fila["importeUSD"]), "importeKgCarne": _f(fila["importeKgCarne"])}
 
 
 def anular_movimiento(id_movimiento: int, motivo: str, usuario: str) -> dict:
@@ -139,18 +148,32 @@ def anular_movimiento(id_movimiento: int, motivo: str, usuario: str) -> dict:
     return _movimiento_por_id(id_movimiento)
 
 
-def calcular_saldo(id_socio: int) -> float:
+def calcular_saldo(id_socio: int) -> dict:
+    """Saldo del socio en las 3 monedas/unidades de la planilla "Cajas
+    Giamigli.xlsx" (027-migracion-cajas-giamigli), sin ninguna conversión
+    entre ellas (spec 027, Clarifications) — cada una se suma por
+    separado."""
     fila = fetch_one(
-        "SELECT SUM(CASE WHEN Tipo = 'AsignacionGasto' THEN Importe ELSE -Importe END) AS saldo "
+        "SELECT "
+        "SUM(CASE WHEN Tipo = 'AsignacionGasto' THEN Importe ELSE -Importe END) AS saldoPesos, "
+        "SUM(CASE WHEN Tipo = 'AsignacionGasto' THEN ImporteUSD ELSE -ImporteUSD END) AS saldoUSD, "
+        "SUM(CASE WHEN Tipo = 'AsignacionGasto' THEN ImporteKgCarne ELSE -ImporteKgCarne END) AS saldoKgCarne "
         "FROM dbo.MovimientosCuentaSocio WHERE IdSocio = ? AND Anulada = 0",
         (id_socio,),
     )
-    return round(_f(fila["saldo"] if fila else None), 2)
+    return {
+        "saldoPesos": round(_f(fila["saldoPesos"] if fila else None), 2),
+        "saldoUSD": round(_f(fila["saldoUSD"] if fila else None), 2),
+        "saldoKgCarne": round(_f(fila["saldoKgCarne"] if fila else None), 2),
+    }
 
 
 def listar_socios_con_saldo() -> list[dict]:
+    """Listado general (GET /api/cuentas-socios): mantiene `saldo` en
+    pesos únicamente, sin cambio de contrato — los saldos en USD/Kg carne
+    se muestran en el detalle por socio (`listar_movimientos`/`calcular_saldo`)."""
     socios = fetch_all("SELECT IdSocio AS idSocio, Nombre AS nombre FROM dbo.Socios ORDER BY IdSocio")
-    return [{**s, "saldo": calcular_saldo(s["idSocio"])} for s in socios]
+    return [{**s, "saldo": calcular_saldo(s["idSocio"])["saldoPesos"]} for s in socios]
 
 
 def listar_movimientos(id_socio: int) -> list[dict]:
@@ -160,7 +183,8 @@ def listar_movimientos(id_socio: int) -> list[dict]:
     (FR-011) — nunca desaparece del historial ni se recalcula como válido."""
     filas = fetch_all(
         """
-        SELECT m.IdMovimiento AS idMovimiento, m.Tipo AS tipo, m.Importe AS importe, m.Fecha AS fecha,
+        SELECT m.IdMovimiento AS idMovimiento, m.Tipo AS tipo, m.Importe AS importe,
+               m.ImporteUSD AS importeUSD, m.ImporteKgCarne AS importeKgCarne, m.Fecha AS fecha,
                m.Origen AS origen, m.IdOrigen AS idOrigen, m.Medio AS medio, m.Motivo AS motivo,
                m.Usuario AS usuario, m.Anulada AS anulada, m.MotivoAnulacion AS motivoAnulacion,
                ct.[Razon Social] AS proveedorOrigen, c.[Nro Documento] AS numeroDocumentoOrigen,
@@ -173,7 +197,10 @@ def listar_movimientos(id_socio: int) -> list[dict]:
         """,
         (id_socio,),
     )
-    return [{**f, "importe": _f(f["importe"]), "huerfano": bool(f["huerfano"])} for f in filas]
+    return [
+        {**f, "importe": _f(f["importe"]), "importeUSD": _f(f["importeUSD"]), "importeKgCarne": _f(f["importeKgCarne"]), "huerfano": bool(f["huerfano"])}
+        for f in filas
+    ]
 
 
 def registrar_devolucion(id_socio: int, importe: float, fecha: date, medio: str, motivo: str, usuario: str) -> dict:

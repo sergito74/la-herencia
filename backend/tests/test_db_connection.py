@@ -107,7 +107,7 @@ class _FakeCursor:
         self.executed = []
         self.fail_on_call = fail_on_call
 
-    def execute(self, sql, params):
+    def execute(self, sql, params=()):
         self.calls += 1
         self.executed.append((sql, params))
         if self.fail_on_call is not None and self.calls == self.fail_on_call:
@@ -124,26 +124,32 @@ class _FakeCursor:
 class _FakeConnection:
     def __init__(self, fail_on_call: int | None = None):
         self.cursor_obj = _FakeCursor(fail_on_call=fail_on_call)
-        self.committed = False
-        self.rolled_back = False
         self.closed = False
 
     def cursor(self):
         return self.cursor_obj
 
-    def commit(self):
-        self.committed = True
-
-    def rollback(self):
-        self.rolled_back = True
-
     def close(self):
         self.closed = True
+
+    # `committed`/`rolled_back` ya no vienen de `conn.commit()`/`rollback()`
+    # de pyodbc (ver connection.py: `autocommit=True` + `BEGIN/COMMIT/
+    # ROLLBACK TRANSACTION` explícitos por SQL) — se leen del texto de las
+    # sentencias que pasaron por el cursor.
+    @property
+    def committed(self) -> bool:
+        return any(sql == "COMMIT TRANSACTION" for sql, _ in self.cursor_obj.executed)
+
+    @property
+    def rolled_back(self) -> bool:
+        return any(
+            sql == "IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION" for sql, _ in self.cursor_obj.executed
+        )
 
 
 def test_execute_write_transaction_rolls_back_all_on_mid_batch_failure(monkeypatch):
     monkeypatch.setattr(connection, "DATABASE", "WC")
-    fake_conn = _FakeConnection(fail_on_call=2)
+    fake_conn = _FakeConnection(fail_on_call=3)
     monkeypatch.setattr(connection.pyodbc, "connect", lambda *a, **kw: fake_conn)
 
     statements = [
@@ -153,7 +159,6 @@ def test_execute_write_transaction_rolls_back_all_on_mid_batch_failure(monkeypat
     with pytest.raises(RuntimeError, match="simulated failure"):
         connection.execute_write_transaction(statements)
 
-    assert fake_conn.cursor_obj.calls == 2
     assert fake_conn.rolled_back is True
     assert fake_conn.committed is False
     assert fake_conn.closed is True
@@ -191,7 +196,7 @@ def test_execute_write_transaction_supports_callable_statements_using_prior_resu
     results = connection.execute_write_transaction(statements)
 
     assert results == [42, 1]
-    assert fake_conn.cursor_obj.executed[1] == (
+    assert fake_conn.cursor_obj.executed[-2] == (
         "INSERT INTO dbo.Det_Compras (IdCompra) VALUES (?)",
         connection._coerce_params((42,)),
     )

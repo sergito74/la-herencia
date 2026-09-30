@@ -19,6 +19,8 @@ class MovimientoCuentaSocio(BaseModel):
     idMovimiento: int
     tipo: str
     importe: float
+    importeUSD: float = 0.0
+    importeKgCarne: float = 0.0
     fecha: datetime
     origen: str | None = None
     idOrigen: int | None = None
@@ -50,6 +52,8 @@ class DetalleSocioResponse(BaseModel):
     idSocio: int
     nombre: str
     saldo: float
+    saldoUSD: float = 0.0
+    saldoKgCarne: float = 0.0
     movimientos: list[MovimientoCuentaSocio]
 
 

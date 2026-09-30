@@ -27,6 +27,24 @@ from src.features.ventas_hacienda.repository import calcular_totales
 SIN_RUBRO = "Sin rubro asignado"
 CENTRO_COSTO_SIN_ASIGNAR = "Sin centro de costos"
 
+# Pedido explícito de Sergio (2026-09-29): los movimientos "LEY 25413"
+# (impuesto al débito/crédito bancario) no son imputables a ningún contacto
+# — son un costo bancario propio, no un pago a un tercero — así que nunca
+# pasan por `atribuir_egreso`/`atribuir_ingreso` (que buscarían una compra o
+# venta inexistente): se les asigna este rubro fijo directamente, en una
+# cuenta/centro de costos aparte, para que aparezcan como su propia línea en
+# el flujo de caja en vez de mezclarse con "Sin rubro asignado".
+RUBRO_LEY_25413 = "Impuesto Ley 25413 (débitos/créditos bancarios)"
+CENTRO_COSTO_LEY_25413 = "Impuestos bancarios"
+
+# Mismo criterio que Ley 25413 (2026-09-29, revisión de casos "sin
+# candidata" de la conciliación masiva): "RECAUDACION ARBA" es Ingresos
+# Brutos retenido/percibido por el banco sobre el movimiento bancario en sí
+# — no una compra a un proveedor — así que va al mismo centro de costos de
+# impuestos bancarios, con su propio rubro para no perder de vista cuánto es
+# cada impuesto.
+RUBRO_ARBA_RECAUDACION = "Impuesto ARBA (recaudación bancaria)"
+
 # 019-aplicacion-pagos-cobros, FR-009/FR-010: fecha de corte confirmada por
 # Sergio. Antes de esta fecha no se exige aplicar retroactivamente — se
 # distingue explícitamente de "pendiente de aplicar" (posterior al corte,
@@ -116,6 +134,14 @@ def _candidatas_compra(id_contacto: int, fecha: date, importe_abs: float) -> lis
         (id_contacto, as_sql_datetime(fecha), importe_abs),
     )
     return [f["idCompra"] for f in filas]
+
+
+def es_ley_25413(concepto: str | None) -> bool:
+    return bool(concepto) and "25413" in concepto
+
+
+def es_arba_recaudacion(concepto: str | None) -> bool:
+    return bool(concepto) and "RECAUDACION ARBA" in concepto.upper()
 
 
 def atribuir_egreso(id_contacto: int | None, fecha: date | None, importe_abs: float) -> dict:

@@ -20,6 +20,7 @@ from src.features.auth.router import COOKIE_NAME
 from src.features.auth.router import router as auth_router
 from src.features.aplicaciones_pago.router import router as aplicaciones_pago_router
 from src.features.arrendamientos.router import router as arrendamientos_router
+from src.features.cajas_efectivo.router import router as cajas_efectivo_router
 from src.features.compras.router import router as compras_router
 from src.features.cuentas_socios.router import router as cuentas_socios_router
 from src.features.conciliacion_historico.router import router as conciliacion_historico_router
@@ -29,6 +30,7 @@ from src.features.documentos.router import router as documentos_router
 from src.features.flujo_caja.router import router as flujo_caja_router
 from src.features.imputacion.router import router as imputacion_router
 from src.features.impuestos.router import router as impuestos_router
+from src.features.migracion_cajas_giamigli.router import router as migracion_cajas_giamigli_router
 from src.features.ordenes.router import router as ordenes_router
 from src.features.planificacion.router import router as planificacion_router
 from src.features.conciliacion_tesoreria.router import router as conciliacion_tesoreria_router
@@ -137,6 +139,7 @@ app.add_middleware(AuthMiddleware)
 app.include_router(auth_router)
 app.include_router(aplicaciones_pago_router)
 app.include_router(arrendamientos_router)
+app.include_router(cajas_efectivo_router)
 app.include_router(compras_router)
 app.include_router(conciliacion_tesoreria_router)
 app.include_router(cuentas_socios_router)
@@ -147,6 +150,7 @@ app.include_router(documentos_router)
 app.include_router(flujo_caja_router)
 app.include_router(imputacion_router)
 app.include_router(impuestos_router)
+app.include_router(migracion_cajas_giamigli_router)
 app.include_router(remitos_router)
 app.include_router(ordenes_router)
 app.include_router(planificacion_router)

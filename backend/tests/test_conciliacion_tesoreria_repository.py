@@ -99,6 +99,21 @@ def test_calcular_estado_movimiento_con_contacto_original_es_ya_reconocido(monke
     assert estado["estado"] == "ya_reconocido"
 
 
+def test_calcular_estado_con_idcontacto_cero_no_es_ya_reconocido(monkeypatch):
+    """Bug real encontrado 2026-09-29 corriendo la conciliación masiva:
+    `IdContacto=0` es el centinela heredado de "sin asignar", no un contacto
+    real — bloqueaba ~350 movimientos candidatos sin ningún error visible."""
+    monkeypatch.setattr(
+        repository, "_movimiento_original", lambda medio, idm: _fake_movimiento_bna(id_contacto=0)
+    )
+    monkeypatch.setattr(repository, "listar_conciliaciones", lambda medio, idm: [])
+
+    estado = repository.calcular_estado("bna", 555)
+
+    assert estado["estado"] == "sin_conciliar"
+    assert estado["idContactoReconocido"] is None
+
+
 def test_aplicar_conciliacion_rechaza_movimiento_ya_reconocido(monkeypatch):
     monkeypatch.setattr(
         repository, "calcular_estado", lambda medio, idm: {"estado": "ya_reconocido", "saldoPendiente": 0.0}

@@ -17,6 +17,8 @@ export interface MovimientoCuentaSocio {
   idMovimiento: number;
   tipo: "AsignacionGasto" | "Devolucion";
   importe: number;
+  importeUSD: number;
+  importeKgCarne: number;
   fecha: string;
   origen: string | null;
   idOrigen: number | null;
@@ -40,6 +42,8 @@ export interface DetalleSocio {
   idSocio: number;
   nombre: string;
   saldo: number;
+  saldoUSD: number;
+  saldoKgCarne: number;
   movimientos: MovimientoCuentaSocio[];
 }
 
