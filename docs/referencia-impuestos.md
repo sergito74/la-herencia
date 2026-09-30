@@ -2,7 +2,7 @@
 
 Listado de referencia de los impuestos que la empresa paga a entidades públicas, agrupados por jurisdicción. Fuente: Sergio, 2026-09-30, ampliado ese mismo día con los tipos que ya estaban en uso. Cruzado con el catálogo real `dbo.[Tipo Impuesto]` y con las boletas cargadas en `dbo.Impuestos` a esa fecha.
 
-`Código` es `[Tipo Impuesto].IdOrganismo`, una numeración heredada de Access (1 = AFIP, 2 = ARBA, 3 = Municipalidad de Bolívar) que **no** coincide con `Contactos.IdContacto`.
+`Código` es `[Tipo Impuesto].IdOrganismo`, una numeración heredada de Access (1 = AFIP, 2 = ARBA, 3 = Municipalidad de Bolívar, 4 = Municipalidad de Tapalqué, este último creado el 2026-09-30) que **no** coincide con `Contactos.IdContacto`.
 
 ## Impuestos nacionales — AFIP / ARCA (contacto 119, código 1)
 
@@ -24,7 +24,7 @@ Listado de referencia de los impuestos que la empresa paga a entidades públicas
 
 | Impuesto | Tipos en el catálogo | Boletas cargadas | Nota |
 |---|---|---|---|
-| Patentes | — **no existe** | — | Falta en el catálogo |
+| Patentes | 26 · Patentes | 0 | Creado 2026-09-30 |
 | Inmobiliario | 6 · Impuesto Inmobiliario | 56 | |
 | Ingresos Brutos | 7 · Ingresos Brutos, 12 · Alta Ingresos Brutos, 25 · Percepción Ingresos Brutos | 14 + 1 + 0 | Los tres se agrupan como Ingresos Brutos |
 | Sellos | 16 · Imp. De Sellos | 2 | |
@@ -41,11 +41,11 @@ Listado de referencia de los impuestos que la empresa paga a entidades públicas
 | Transf. Prop. Hacienda | 10 · Transf. Prop. Hacienda | 1 | |
 | Alta Hacienda | 14 · Alta Hacienda | 1 | |
 
-## Impuestos municipales — Municipalidad de Tapalqué (contacto 422, sin código)
+## Impuestos municipales — Municipalidad de Tapalqué (contacto 422, código 4)
 
 | Impuesto | Tipo en el catálogo | Boletas cargadas | Nota |
 |---|---|---|---|
-| Guías | — **no existe para Tapalqué** | 0 | El tipo 19 · Guias es de Bolívar (código 3); Tapalqué no tiene código propio |
+| Guías | 27 · Guias | 0 | Creado 2026-09-30; el tipo 19 · Guias es el de Bolívar |
 
 ## Aporte sindical — UATRE (contacto 315)
 
@@ -60,7 +60,3 @@ Listado de referencia de los impuestos que la empresa paga a entidades públicas
 | AFIP | 4 · Bienes Personales, 17 · Bienes Sustitutos, 21 · Retenciones IVA | 0 | Sin uso |
 | Bolívar | 18 · Permiso de Marca | 0 | Sin uso |
 | ARBA | 24 · Sin identificar (generada desde el pago) | 1 | Creado por el backfill 029, para boletas cuyo tipo no se pudo identificar |
-
-## Pendiente de decidir
-
-1. Crear en el catálogo: **Patentes** (ARBA) y **Guías** para Tapalqué, con un código propio para Tapalqué.
