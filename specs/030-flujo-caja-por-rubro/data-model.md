@@ -20,6 +20,7 @@ Un movimiento bancario produce **una o más partes**. La suma de sus partes es i
 | `cotizacion` | `Dolar BNA.Vend_Divisa` del día o anterior (≤ 7 días) | `null` = sin tipo de cambio |
 | `fechaCotizacion` | fecha de la cotización usada | Puede ser anterior a `fecha` |
 | `importeUsd` | `importeArs / cotizacion` | `null` si no hay cotización |
+| `sinContraparte` | `emparejar_traspasos` | Solo en "Traspaso entre bancos": `true` si no se encontró el movimiento del otro banco (signo opuesto, mismo importe, ≤ 3 días) |
 
 **Reglas**:
 - La suma de `importeArs` de las partes de un movimiento es igual a su importe (tolerancia 0,01 por redondeo; la última parte absorbe la diferencia).

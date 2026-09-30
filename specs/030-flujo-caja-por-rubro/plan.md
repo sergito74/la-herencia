@@ -79,6 +79,7 @@ specs/030-flujo-caja-por-rubro/
 backend/src/features/flujo_caja/
 ├── atribucion.py      # atribuir_desde_aplicaciones -> devuelve PARTES (rubro, centro, importe), no un ganador
 ├── clasificacion.py   # + tipo_interno(): "Colocación FIMA" / "Rescate FIMA" / "Traspaso entre bancos"
+│                      # + emparejar_traspasos(): lado Galicia de un traspaso BNA (mismo importe, ≤ 3 días); sin pareja → sinContraparte
 ├── cotizacion.py      # NUEVO: cotización BNA vendedor divisa del día, con fallback de 7 días
 ├── repository.py      # partes por movimiento, agregación con sección de internos, saldo por cuenta, detalle de celda
 ├── exportacion.py     # NUEVO: xlsx de la vista (mismo patrón que cuentas_corrientes/exportacion.py)
