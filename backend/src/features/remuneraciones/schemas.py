@@ -52,3 +52,42 @@ class PagosRemuneracionListResponse(BaseModel):
     page: int
     pageSize: int
     total: int
+
+
+class NuevaLiquidacionRequest(BaseModel):
+    """Alta de una liquidación (028). Todos los conceptos monetarios se
+    cargan siempre en positivo, tal como figuran en el recibo real — el
+    backend resta internamente los de descuento (ver
+    `repository.calcular_importe_neto`, research.md §1)."""
+
+    idContacto: int
+    fechaPago: date
+    periodoLiquidado: str
+    sueldoBasico: float = 0
+    antiguedad: float = 0
+    adicFuturosAumentos: float = 0
+    diaGremio: float = 0
+    aguinaldo: float = 0
+    vacaciones: float = 0
+    ajuste: float = 0
+    ajusteNoRemunerativo: float = 0
+    redondeo: float = 0
+    bonificacionAdicional: float = 0
+    jubilacion: float = 0
+    ley19032: float = 0
+    obraSocial: float = 0
+    obraSocialAcuerdos: float = 0
+    aporteSindical: float = 0
+    servicioDeSepelio: float = 0
+    confirmarDuplicado: bool = False
+
+
+class NuevaLiquidacionResponse(BaseModel):
+    idSalario: int
+    importeNeto: float
+    recibo: str | None = None
+
+
+class AdjuntarReciboResponse(BaseModel):
+    idSalario: int
+    recibo: str

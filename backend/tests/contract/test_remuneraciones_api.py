@@ -3,6 +3,11 @@
 `Pagos Remuneraciones` is queried independently (no employee filter, no
 nested list under a liquidación) — confirmed against real data that
 `IdEmpleado` is not a FK into `Contactos` (see research.md).
+
+`POST /api/remuneraciones` (alta de liquidación, 028) es la única
+escritura del módulo — ver `tests/test_remuneraciones_alta_router.py`
+para su contrato completo (201/400/409). Acá solo se confirma que sigue
+sin existir PUT/DELETE/PATCH, y que POST exige sesión autenticada.
 """
 
 from __future__ import annotations
@@ -82,11 +87,25 @@ async def test_list_remuneraciones_empty_result(client, monkeypatch):
 
 
 @pytest.mark.anyio
-async def test_remuneraciones_rejects_write_methods(client):
+async def test_remuneraciones_rejects_put_delete_patch(client):
     async with httpx.AsyncClient(transport=client, base_url="http://test") as ac:
-        for method in ("post", "put", "delete", "patch"):
+        for method in ("put", "delete", "patch"):
             resp = await ac.request(method, "/api/remuneraciones")
             assert resp.status_code in (404, 405)
+
+
+@pytest.mark.anyio
+async def test_remuneraciones_post_requiere_sesion(client):
+    """028: POST "" (alta) es la única escritura del módulo — sin sesión,
+    `AuthMiddleware` la rechaza antes de llegar al router (401), nunca
+    404/405 como las demás escrituras no soportadas.
+
+    `cookies={}` explícito desactiva la cookie Administrador por defecto
+    que inyecta `tests/contract/conftest.py` para el resto de los tests
+    de este archivo."""
+    async with httpx.AsyncClient(transport=client, base_url="http://test", cookies={}) as ac:
+        resp = await ac.post("/api/remuneraciones", json={})
+        assert resp.status_code == 401
 
 
 @pytest.mark.anyio

@@ -1,23 +1,30 @@
-"""Remuneraciones endpoints. GET only — 100% read-only (FR-008).
+"""Remuneraciones endpoints. Lectura + alta (028) — ver contracts/api.md.
 
-Do not add POST/PUT/PATCH/DELETE routes to this router.
+Las escrituras (`POST`) quedan bloqueadas automáticamente para sesiones
+con rol `Lectura` por `AuthMiddleware` (src/main.py) — no requieren un
+chequeo de rol propio acá.
 """
 
 from __future__ import annotations
 
 import mimetypes
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, UploadFile
 from fastapi.responses import FileResponse
 from starlette.concurrency import run_in_threadpool
 
 from src.db.pagination import normalize_pagination
 from src.features.remuneraciones import repository
 from src.features.remuneraciones.schemas import (
+    AdjuntarReciboResponse,
+    NuevaLiquidacionRequest,
+    NuevaLiquidacionResponse,
     PagosRemuneracionListResponse,
     Remuneracion,
     RemuneracionesListResponse,
 )
+
+_TAMANIO_MAXIMO_RECIBO = 10 * 1024 * 1024  # 10 MB (SC-004)
 
 router = APIRouter(prefix="/api/remuneraciones", tags=["remuneraciones"])
 
@@ -43,6 +50,29 @@ async def list_remuneraciones(
         pageSize=norm_page_size,
         total=total,
     )
+
+
+@router.post("", response_model=NuevaLiquidacionResponse, status_code=201)
+async def crear_liquidacion(body: NuevaLiquidacionRequest) -> NuevaLiquidacionResponse:
+    """Alta de una liquidación nueva (contracts/api.md). `409` si ya existe
+    una liquidación para el mismo empleado+período y no se confirmó el
+    duplicado — FR-004, nunca bloquea, solo advierte."""
+    if not await run_in_threadpool(repository.existe_contacto_empleado, body.idContacto):
+        raise HTTPException(status_code=400, detail="El contacto elegido no es un Empleado válido.")
+
+    if not body.confirmarDuplicado:
+        id_existente = await run_in_threadpool(
+            repository.existe_liquidacion_periodo, body.idContacto, body.periodoLiquidado
+        )
+        if id_existente is not None:
+            raise HTTPException(
+                status_code=409,
+                detail=f"Ya existe una liquidación (IdSalario {id_existente}) para este empleado "
+                f"en el período '{body.periodoLiquidado}'.",
+            )
+
+    resultado = await run_in_threadpool(repository.crear_liquidacion, body)
+    return NuevaLiquidacionResponse(**resultado)
 
 
 @router.get("/pagos", response_model=PagosRemuneracionListResponse)
@@ -82,3 +112,30 @@ async def abrir_recibo(id_salario: int) -> FileResponse:
         media_type=media_type,
         headers={"Content-Disposition": f'inline; filename="{path.name}"'},
     )
+
+
+@router.post("/{id_salario}/recibo", response_model=AdjuntarReciboResponse)
+async def adjuntar_recibo(id_salario: int, archivo: UploadFile) -> AdjuntarReciboResponse:
+    """Adjunta o reemplaza el PDF del recibo de una liquidación ya
+    existente (US2, contracts/api.md) — `guardar_recibo` valida el
+    contenido y escribe la columna `Recibo`."""
+    referencia = await run_in_threadpool(repository.get_recibo_referencia, id_salario)
+    if referencia is None or referencia.get("fechaPago") is None or not referencia.get("empleado"):
+        raise HTTPException(status_code=404, detail="Liquidación no encontrada.")
+
+    contenido = await archivo.read()
+    if len(contenido) > _TAMANIO_MAXIMO_RECIBO:
+        raise HTTPException(status_code=400, detail="El archivo supera el límite de 10 MB.")
+
+    try:
+        ruta = await run_in_threadpool(
+            repository.guardar_recibo,
+            id_salario,
+            referencia["fechaPago"],
+            referencia["empleado"],
+            contenido,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+
+    return AdjuntarReciboResponse(idSalario=id_salario, recibo=ruta)
