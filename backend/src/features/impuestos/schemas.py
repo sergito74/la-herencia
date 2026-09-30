@@ -16,6 +16,7 @@ class Impuesto(BaseModel):
     importe: float | None = None
     idOrganismo: int | None = None
     organismo: str | None = None
+    generadaDesdePago: bool = False
 
 
 class ImpuestosListResponse(BaseModel):

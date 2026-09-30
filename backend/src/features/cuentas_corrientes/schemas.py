@@ -92,6 +92,8 @@ class MovimientoCuentaCorriente(BaseModel):
     # exponga de forma amigable para cada tipo.
     origenTipo: str | None = None
     idOrigen: int | None = None
+    # 029: boleta de impuesto reconstruida desde el pago, sin comprobante real.
+    generadaDesdePago: bool = False
 
 
 class MovimientosListResponse(BaseModel):

@@ -36,7 +36,7 @@ def anyio_backend():
 
 @pytest.mark.anyio
 async def test_concurrent_impuestos_requests_do_not_serialize(client, monkeypatch):
-    def slow_search(organismo, fecha_desde, fecha_hasta, page, page_size):
+    def slow_search(organismo, fecha_desde, fecha_hasta, page, page_size, origen=None):
         time.sleep(DELAY_SECONDS)
         return [], 0
 

@@ -36,7 +36,24 @@ const TIPOS_CONTACTO = [
 function buildColumns(onReasignado: () => void): DataTableColumn<MovimientoCuentaCorriente>[] {
   return [
   { key: "fecha", header: "Fecha", numeric: true, sortValue: (m) => m.fecha, render: (m) => m.fecha ?? "—" },
-  { key: "documento", header: "Documento", sortValue: (m) => m.documento ?? "", render: (m) => m.documento ?? "—" },
+  {
+    key: "documento",
+    header: "Documento",
+    sortValue: (m) => m.documento ?? "",
+    render: (m) => (
+      <span className="inline-flex items-center gap-2">
+        {m.documento ?? "—"}
+        {m.generadaDesdePago && (
+          <span
+            className="rounded bg-status-warning-bg px-1.5 py-0.5 text-xs text-status-warning"
+            title="Boleta reconstruida desde el pago: no hay comprobante real"
+          >
+            Generada desde el pago
+          </span>
+        )}
+      </span>
+    ),
+  },
   {
     key: "numeroDocumento",
     header: "Nro. documento",

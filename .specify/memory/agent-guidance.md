@@ -12,10 +12,9 @@ Este documento es la guía común de trabajo para Claude Code, Codex y cualquier
 
 ## Bases de datos y archivos Access
 
-- `WC` es la copia de trabajo del sistema. Es la base prevista para desarrollo, pruebas funcionales y las escrituras de la aplicación durante esta etapa. No pedir autorización de nuevo para cada escritura normal de desarrollo sobre `WC` cuando la tarea del usuario ya la implique.
-- La base SQL Server oficial `LaHerencia` debe preservarse intacta durante el desarrollo. No ejecutar escrituras, DDL, migraciones ni pruebas con efectos secundarios contra ella, ni configurar la aplicación nueva para usarla durante el desarrollo.
-- El paso futuro desde `WC` a la base oficial requiere una decisión explícita de puesta en marcha, reconciliación de cambios ingresados entretanto y un plan de respaldo/restauración. No asumir que la autorización para usar `WC` autoriza ese paso.
-- Los archivos Access locales pertenecen al sistema que sigue en uso. Son artefactos protegidos: no borrarlos, reemplazarlos, modificar sus datos ni ejecutar scripts que los alteren. Su eventual retiro requiere una decisión posterior del usuario.
+- Desde el corte del 2026-09-25, `WC` es producción y la única base operativa (Constitución 1.4.0). Las escrituras ordinarias dentro de una tarea autorizada no requieren nueva confirmación; los cambios de esquema, cargas masivas o escrituras riesgosas requieren respaldo verificado previo. Las pruebas automáticas deben usar mocks/fixtures y no alterar registros reales.
+- `LaHerencia` y los archivos Access están congelados como referencia histórica. No ejecutar escrituras, DDL ni pruebas con efectos secundarios contra ellos, ni borrarlos o reemplazarlos. La lectura de `LaHerencia` se limita a verificaciones puntuales justificadas según la Constitución.
+- Una futura migración a otro sistema requiere una decisión explícita, reconciliación, respaldo verificado y plan de reversión. No restaurar ni reemplazar `WC` usando las instrucciones históricas de `memory.md`.
 - La aplicación nueva usa SQL Server a través del backend Python. No agregar una conexión directa del navegador a SQL Server, nuevas dependencias de Access, ni persistencia paralela.
 
 ## Forma de trabajar con Spec Kit

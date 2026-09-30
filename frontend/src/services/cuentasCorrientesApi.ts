@@ -79,6 +79,8 @@ export interface MovimientoCuentaCorriente {
    * (022-reasignacion-contacto) — usados por el botón "Reasignar". */
   origenTipo: string | null;
   idOrigen: number | null;
+  /** 029: boleta de impuesto reconstruida desde el pago, sin comprobante real. */
+  generadaDesdePago?: boolean;
 }
 
 export interface MovimientosListResponse {

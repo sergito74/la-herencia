@@ -36,6 +36,11 @@ WITH documentos AS (
     SELECT CASE WHEN IdCompra IS NOT NULL THEN 'Compras' ELSE 'Impuestos' END,
         COALESCE(IdCompra,IdImpuesto), ImporteImputado
     FROM dbo.Tarjetas_Resumenes_Lineas_Compras
+    UNION ALL
+    -- 029: una boleta generada por el backfill ya nace aplicada a su pago
+    -- (el vínculo registra el pago completo), así que no debe ofrecerse
+    -- como documento pendiente de conciliar.
+    SELECT 'Impuestos', IdImpuesto, Importe FROM dbo.BackfillImpuestosVinculos
 ), totales AS (
     SELECT origen,idOrigen,SUM(importe) AS imputado,COUNT(*) AS vinculosPrevios
     FROM pagos GROUP BY origen,idOrigen
@@ -121,7 +126,9 @@ def totales_imputados(refs: list[tuple[str, int]]) -> dict[tuple[str, int], floa
             UNION ALL
             SELECT CASE WHEN IdCompra IS NOT NULL THEN 'Compras' ELSE 'Impuestos' END,
                 COALESCE(IdCompra,IdImpuesto),ImporteImputado
-            FROM dbo.Tarjetas_Resumenes_Lineas_Compras)
+            FROM dbo.Tarjetas_Resumenes_Lineas_Compras
+            UNION ALL
+            SELECT 'Impuestos',IdImpuesto,Importe FROM dbo.BackfillImpuestosVinculos)
             SELECT origen,idOrigen,SUM(importe) AS total FROM pagos WHERE """
             + where
             + " GROUP BY origen,idOrigen",

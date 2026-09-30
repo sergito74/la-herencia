@@ -15,7 +15,11 @@ export interface Impuesto {
   importe: number | null;
   idOrganismo: number | null;
   organismo: string | null;
+  /** 029: boleta creada por el backfill desde el pago, sin comprobante real. */
+  generadaDesdePago: boolean;
 }
+
+export type OrigenImpuesto = "generadas" | "sin-identificar";
 
 export interface ImpuestosListResponse {
   items: Impuesto[];
@@ -44,6 +48,7 @@ export function fetchImpuestos(params: {
   organismo?: string;
   fechaDesde?: string;
   fechaHasta?: string;
+  origen?: OrigenImpuesto;
   page?: number;
   pageSize?: number;
 }): Promise<ImpuestosListResponse> {

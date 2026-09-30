@@ -149,6 +149,8 @@ app.include_router(cuentas_corrientes_router)
 app.include_router(documentos_router)
 app.include_router(flujo_caja_router)
 app.include_router(imputacion_router)
+from src.features.backfill_impuestos.router import router as backfill_impuestos_router
+app.include_router(backfill_impuestos_router)
 app.include_router(impuestos_router)
 app.include_router(migracion_cajas_giamigli_router)
 app.include_router(remitos_router)

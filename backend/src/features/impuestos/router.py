@@ -5,6 +5,8 @@ Do not add POST/PUT/PATCH/DELETE routes to this router.
 
 from __future__ import annotations
 
+from typing import Literal
+
 from datetime import date
 
 from fastapi import APIRouter, Query
@@ -29,10 +31,11 @@ async def list_impuestos(
     fechaHasta: date | None = Query(default=None),
     page: int = Query(default=1, ge=1),
     pageSize: int = Query(default=50, ge=1, le=200),
+    origen: Literal["generadas", "sin-identificar"] | None = Query(default=None),
 ) -> ImpuestosListResponse:
     norm_page, norm_page_size = normalize_pagination(page, pageSize)
     rows, total = await run_in_threadpool(
-        repository.search_impuestos, organismo, fechaDesde, fechaHasta, norm_page, norm_page_size
+        repository.search_impuestos, organismo, fechaDesde, fechaHasta, norm_page, norm_page_size, origen
     )
     return ImpuestosListResponse(
         items=[Impuesto(**row) for row in rows],

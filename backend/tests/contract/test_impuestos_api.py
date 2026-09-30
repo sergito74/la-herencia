@@ -39,7 +39,7 @@ async def _get(transport, url):
 
 @pytest.mark.anyio
 async def test_list_impuestos_by_organismo(client, monkeypatch):
-    def fake_search(organismo, fecha_desde, fecha_hasta, page, page_size):
+    def fake_search(organismo, fecha_desde, fecha_hasta, page, page_size, origen=None):
         assert organismo == "ARBA"
         return [FIXTURE_IMPUESTO], 1
 
@@ -54,7 +54,7 @@ async def test_list_impuestos_by_organismo(client, monkeypatch):
 
 @pytest.mark.anyio
 async def test_list_impuestos_empty_result(client, monkeypatch):
-    def fake_search(organismo, fecha_desde, fecha_hasta, page, page_size):
+    def fake_search(organismo, fecha_desde, fecha_hasta, page, page_size, origen=None):
         return [], 0
 
     monkeypatch.setattr(repository, "search_impuestos", fake_search)
@@ -70,7 +70,7 @@ async def test_list_impuestos_empty_result(client, monkeypatch):
 async def test_list_impuestos_date_filters_forwarded(client, monkeypatch):
     captured = {}
 
-    def fake_search(organismo, fecha_desde, fecha_hasta, page, page_size):
+    def fake_search(organismo, fecha_desde, fecha_hasta, page, page_size, origen=None):
         captured["fecha_desde"] = fecha_desde
         captured["fecha_hasta"] = fecha_hasta
         return [], 0

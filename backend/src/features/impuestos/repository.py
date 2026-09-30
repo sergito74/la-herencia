@@ -14,12 +14,20 @@ from src.db.pagination import offset_for
 from src.db.params import as_sql_datetime
 
 
+# 029: boletas creadas por el backfill desde el propio pago, sin comprobante
+# real — deben distinguirse a simple vista (FR-007).
+TIPO_SIN_IDENTIFICAR = "Sin identificar (generada desde el pago)"
+_BACKFILL_JOIN = "LEFT JOIN dbo.BackfillImpuestosBoletas bf ON bf.IdImpuesto = i.IdImpuesto"
+_GENERADA_SQL = "CASE WHEN bf.OrigenCreacion = 'generada' AND bf.TieneComprobante = 0 THEN 1 ELSE 0 END"
+
+
 def search_impuestos(
     organismo: str | None,
     fecha_desde: date | None,
     fecha_hasta: date | None,
     page: int,
     page_size: int,
+    origen: str | None = None,
 ) -> tuple[list[dict], int]:
     where_clauses: list[str] = []
     params: list = []
@@ -33,13 +41,20 @@ def search_impuestos(
     if fecha_hasta:
         where_clauses.append("i.Fecha <= ?")
         params.append(as_sql_datetime(fecha_hasta))
+    if origen == "generadas":
+        where_clauses.append(_GENERADA_SQL + " = 1")
+    elif origen == "sin-identificar":
+        where_clauses.append("ti.[Nombre Impuesto] = ?")
+        params.append(TIPO_SIN_IDENTIFICAR)
 
     where_sql = f"WHERE {' AND '.join(where_clauses)}" if where_clauses else ""
 
     count_sql = f"""
         SELECT COUNT(*) AS total
         FROM dbo.Impuestos i
+        LEFT JOIN dbo.[Tipo Impuesto] ti ON ti.IdTipoImpuesto = i.IdTipoImpuesto
         LEFT JOIN dbo.Contactos c ON c.IdContacto = i.IdOrganismo
+        {_BACKFILL_JOIN}
         {where_sql}
     """
     total_row = fetch_one(count_sql, tuple(params))
@@ -55,10 +70,12 @@ def search_impuestos(
             i.[Numero de documento] AS numeroDocumento,
             i.Importe AS importe,
             c.IdContacto AS idOrganismo,
-            c.[Razon Social] AS organismo
+            c.[Razon Social] AS organismo,
+            CAST({_GENERADA_SQL} AS bit) AS generadaDesdePago
         FROM dbo.Impuestos i
         LEFT JOIN dbo.[Tipo Impuesto] ti ON ti.IdTipoImpuesto = i.IdTipoImpuesto
         LEFT JOIN dbo.Contactos c ON c.IdContacto = i.IdOrganismo
+        {_BACKFILL_JOIN}
         {where_sql}
         ORDER BY i.Fecha DESC, i.IdImpuesto DESC
         OFFSET ? ROWS FETCH NEXT ? ROWS ONLY

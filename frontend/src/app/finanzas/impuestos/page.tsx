@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useState } from "react";
 
@@ -31,6 +32,7 @@ export default function ImpuestosPage() {
         Impuestos y retenciones impositivas (solo lectura).
       </p>
 
+      <Link className="mt-4 inline-block text-finance underline" href="/finanzas/impuestos/backfill">Revisar boletas faltantes</Link>
       <div className="mt-6 flex gap-2">
         {TABS.map((t) => (
           <button

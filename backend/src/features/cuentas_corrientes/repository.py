@@ -201,10 +201,33 @@ def get_movimientos(
             "origenTipo": row.get("origenTipo"),
             "idOrigen": row.get("idOrigen"),
             "saldoParcial": row.get("saldoParcial"),
+            "generadaDesdePago": False,
         }
         for row in rows
     ]
+    _marcar_boletas_generadas(movimientos)
     return movimientos, total
+
+
+def _marcar_boletas_generadas(movimientos: list[dict]) -> None:
+    """029 (FR-007): una boleta que el backfill reconstruyó desde el pago,
+    sin comprobante real, se marca también en la cuenta corriente — la
+    vista no cambia, se consulta solo para los IdImpuesto de esta página."""
+    ids = [m["idOrigen"] for m in movimientos if m["origenTipo"] == "Impuestos" and m["idOrigen"] is not None]
+    if not ids:
+        return
+    marks = ",".join("?" for _ in ids)
+    generadas = {
+        r["idImpuesto"]
+        for r in fetch_all(
+            f"SELECT IdImpuesto AS idImpuesto FROM dbo.BackfillImpuestosBoletas "
+            f"WHERE OrigenCreacion = 'generada' AND TieneComprobante = 0 AND IdImpuesto IN ({marks})",
+            tuple(ids),
+        )
+    }
+    for m in movimientos:
+        if m["origenTipo"] == "Impuestos" and m["idOrigen"] in generadas:
+            m["generadaDesdePago"] = True
 
 
 def get_compra_referencia(id_compra: int) -> dict | None:
