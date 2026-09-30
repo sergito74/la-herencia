@@ -13,8 +13,8 @@ from src.features.flujo_caja import atribucion, repository
 def test_movimiento_con_aplicacion_usa_rubro_del_documento(monkeypatch):
     monkeypatch.setattr(
         aplicaciones_repository,
-        "aplicaciones_vigentes_de_movimiento",
-        lambda origen, id_mov: [{"tipoDocumento": "VentaGranos", "idDocumentoAplicado": 1, "importeAplicado": 500.0}],
+        "aplicaciones_vigentes_por_movimiento",
+        lambda: {("galicia", 1): [{"tipoDocumento": "VentaGranos", "idDocumentoAplicado": 1, "importeAplicado": 500.0}]},
     )
     monkeypatch.setattr(atribucion, "_rubro_de_venta", lambda tipo, id_doc: "Venta Maiz")
 
@@ -31,6 +31,7 @@ def test_movimiento_con_aplicacion_usa_rubro_del_documento(monkeypatch):
     ]
     resultado = repository.atribuir_movimientos(movimientos)
     assert resultado[0]["rubro"] == "Venta Maiz"
+    assert [(p["rubro"], p["importeArs"]) for p in resultado[0]["partes"]] == [("Venta Maiz", 500.0)]
 
 
 def test_movimiento_ley_25413_tiene_rubro_fijo_sin_pasar_por_aplicaciones(monkeypatch):

@@ -69,34 +69,56 @@ def _rubro_de_venta(tipo_documento: str, id_documento: int) -> str:
     return SIN_RUBRO
 
 
-def atribuir_desde_aplicaciones(origen_movimiento: str, id_movimiento_origen: int) -> dict | None:
-    """`None` si el movimiento no tiene aplicaciones vigentes (el llamador
-    decide el fallback: matching exacto o fecha de corte, 019 research.md
-    §7). Si las tiene, el Rubro/Centro de Costos sale de los documentos
-    aplicados, ponderado por `ImporteAplicado` si hay más de uno con rubro
-    distinto — nunca del matching exacto."""
-    from src.features.aplicaciones_pago.repository import aplicaciones_vigentes_de_movimiento
+def rubro_sin_aplicar(fecha) -> str:
+    """Remanente o movimiento sin aplicación: histórico antes del corte, pendiente después."""
+    return HISTORICO_SIN_APLICAR if _fecha(fecha) < FECHA_CORTE_APLICACION else PENDIENTE_DE_APLICAR
 
-    aplicaciones = aplicaciones_vigentes_de_movimiento(origen_movimiento, id_movimiento_origen)
+
+def partes_desde_aplicaciones(aplicaciones: list[dict], importe_movimiento: float, fecha, memo_compras: dict | None = None) -> list[dict] | None:
+    """030 (aclaración del usuario): el movimiento se reparte según lo
+    aplicado a cada documento — ya no va entero al rubro de mayor peso. Una
+    compra con renglones de varios rubros se reparte en proporción al
+    importe de cada renglón. Lo no aplicado va a Pendiente/Histórico. Si lo
+    aplicado supera el movimiento, se escala: el banco manda. Devuelve
+    partes `{rubro, centroCosto, importe, documentoAplicado}` con importe
+    en valor absoluto; `None` si no hay aplicaciones (el llamador usa el
+    fallback de 018 v2)."""
     if not aplicaciones:
         return None
+    memo = memo_compras if memo_compras is not None else {}
+    total_mov = round(abs(importe_movimiento), 2)
+    aplicado = sum(float(a["importeAplicado"]) for a in aplicaciones)
+    escala = total_mov / aplicado if aplicado > total_mov + 0.005 else 1.0
 
-    peso_por_rubro: dict[tuple[str, str], float] = defaultdict(float)
+    partes: list[dict] = []
     for a in aplicaciones:
-        importe = float(a["importeAplicado"])
+        importe = float(a["importeAplicado"]) * escala
+        doc = {"tipo": a["tipoDocumento"], "id": a["idDocumentoAplicado"]}
         if a["tipoDocumento"] == "CompraDeuda":
-            lineas = _rubros_de_compra(a["idDocumentoAplicado"])
-            rubros = {l["rubro"] for l in lineas if l["rubro"]}
-            centros = {l["centroCosto"] for l in lineas if l["centroCosto"]}
-            rubro = rubros.pop() if len(rubros) == 1 else "Compra con varios rubros"
-            centro = centros.pop() if len(centros) == 1 else CENTRO_COSTO_SIN_ASIGNAR
+            if a["idDocumentoAplicado"] not in memo:
+                memo[a["idDocumentoAplicado"]] = _rubros_de_compra(a["idDocumentoAplicado"])
+            grupos: dict[tuple, float] = defaultdict(float)
+            for l in memo[a["idDocumentoAplicado"]]:
+                grupos[(l["rubro"] or SIN_RUBRO, l["centroCosto"] or CENTRO_COSTO_SIN_ASIGNAR)] += max(float(l.get("peso") or 0), 0)
+            if not grupos:
+                grupos[(SIN_RUBRO, CENTRO_COSTO_SIN_ASIGNAR)] = 1.0
+            total_peso = sum(grupos.values())
+            for (rubro, centro), peso in grupos.items():
+                share = peso / total_peso if total_peso > 0 else 1 / len(grupos)
+                partes.append({"rubro": rubro, "centroCosto": centro, "importe": importe * share, "documentoAplicado": doc})
         else:
-            rubro = _rubro_de_venta(a["tipoDocumento"], a["idDocumentoAplicado"])
-            centro = None
-        peso_por_rubro[(rubro, centro)] += importe
+            partes.append({"rubro": _rubro_de_venta(a["tipoDocumento"], a["idDocumentoAplicado"]),
+                           "centroCosto": None, "importe": importe, "documentoAplicado": doc})
 
-    ((rubro, centro), _peso) = max(peso_por_rubro.items(), key=lambda kv: kv[1])
-    return {"rubro": rubro, "centroCosto": centro}
+    resto = total_mov - sum(p["importe"] for p in partes)
+    if resto > 0.005:
+        partes.append({"rubro": rubro_sin_aplicar(fecha), "centroCosto": None, "importe": resto, "documentoAplicado": None})
+
+    for p in partes:
+        p["importe"] = round(p["importe"], 2)
+    # La última parte absorbe el redondeo: la suma es exactamente el movimiento.
+    partes[-1]["importe"] = round(partes[-1]["importe"] + total_mov - sum(p["importe"] for p in partes), 2)
+    return [p for p in partes if abs(p["importe"]) >= 0.005] or partes[-1:]
 
 
 def _fecha(valor) -> date | None:
@@ -113,7 +135,8 @@ def _rubros_de_compra(id_compra: int) -> list[dict]:
     return fetch_all(
         """
         SELECT dc.IdRubro AS idRubro, r.Rubro AS rubro, dc.IdCentroCostos AS idCentroCostos,
-               cc.[Centro de costos] AS centroCosto
+               cc.[Centro de costos] AS centroCosto,
+               ISNULL(dc.Cantidad, 0) * ISNULL(dc.[Precio Unitario], 0) AS peso
         FROM dbo.Det_Compras dc
         LEFT JOIN dbo.Rubros r ON r.IdRubro = dc.IdRubro
         LEFT JOIN dbo.[Centro de costos] cc ON cc.IdCentro = dc.IdCentroCostos

@@ -69,6 +69,20 @@ def aplicaciones_vigentes_de_movimiento(origen_movimiento: str, id_movimiento_or
     )
 
 
+def aplicaciones_vigentes_por_movimiento() -> dict[tuple[str, int], list[dict]]:
+    """Todas las aplicaciones vigentes en una sola consulta, agrupadas por
+    movimiento — para el flujo de caja por rubro (030), que evita una
+    consulta por movimiento sobre rangos de 12-24 meses."""
+    resultado: dict[tuple[str, int], list[dict]] = {}
+    for f in fetch_all(
+        "SELECT OrigenMovimiento AS origen, IdMovimientoOrigen AS idMovimiento, IdAplicacion AS idAplicacion, "
+        "TipoDocumento AS tipoDocumento, IdDocumentoAplicado AS idDocumentoAplicado, "
+        "ImporteAplicado AS importeAplicado FROM dbo.AplicacionesPago WHERE Anulada = 0"
+    ):
+        resultado.setdefault((f["origen"], f["idMovimiento"]), []).append(f)
+    return resultado
+
+
 def estado_movimiento(origen_movimiento: str, id_movimiento_origen: int) -> dict:
     _id_contacto, importe = _contacto_e_importe(origen_movimiento, id_movimiento_origen)
     importe_abs = round(abs(importe), 2) if importe is not None else 0.0

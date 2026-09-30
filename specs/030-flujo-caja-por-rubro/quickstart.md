@@ -59,3 +59,12 @@ En Finanzas → "Flujo de caja por rubro":
 - Hacer clic en una celda y ver el panel de detalle.
 - Desde un movimiento "Pendiente de aplicar", abrir el flujo existente de aplicación de pagos.
 - Los negativos se ven con signo y en rojo.
+
+## Resultados de validación (2026-09-30, WC real)
+
+- SC-002: el neto del rango coincide exacto con el flujo real (018): $2.594.378,49 en ambos.
+- Rendimiento: consulta ARS ≈ 4,2 s sin contención.
+- USD: funciona; 800 movimientos posteriores al 23-04-2026 quedan en "sin tipo de cambio" porque la serie Dólar BNA termina ese día (hay que actualizarla).
+- Hallazgo de datos: el saldo Galicia calculado difiere del extracto en $208,63 constante desde 2026-03; desde el 02-03-2026 los movimientos Galicia se cargaron sin columna Saldo, así que no hay extracto contra el cual ubicar la diferencia.
+- FIMA: la cifra es "colocado menos rescatado", no el saldo real (rescates incluyen rendimiento).
+- T027 (revisión en navegador) queda pendiente: requiere login del usuario.

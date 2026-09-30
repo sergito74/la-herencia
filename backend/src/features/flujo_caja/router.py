@@ -4,12 +4,13 @@ from __future__ import annotations
 
 from datetime import date, timedelta
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Response
 from starlette.concurrency import run_in_threadpool
 
 from src.features.flujo_caja import repository
 from src.features.flujo_caja.repository import FECHA_PRIMER_SALDO_CONOCIDO
 from src.features.flujo_caja.schemas import (
+    DetalleCeldaRubroResponse,
     DetalleFlujoCajaResponse,
     FlujoCajaPorRubroResponse,
     ResumenFlujoCajaResponse,
@@ -70,29 +71,67 @@ async def detalle(
     return DetalleFlujoCajaResponse(movimientos=movimientos)
 
 
+_GRANULARIDAD_RUBRO = "^(semanal|mensual|trimestral|anual)$"
+_XLSX = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+
+
+def _rango(fechaDesde: date | None, fechaHasta: date | None) -> tuple[date, date]:
+    desde_default, hasta_default = _rango_por_defecto()
+    desde, hasta = fechaDesde or desde_default, fechaHasta or hasta_default
+    _validar_fecha_desde(desde)
+    if hasta < desde:
+        raise HTTPException(status_code=422, detail="fechaHasta es anterior a fechaDesde.")
+    return desde, hasta
+
+
 @router.get("/por-rubro", response_model=FlujoCajaPorRubroResponse)
 async def por_rubro(
     fechaDesde: date | None = Query(default=None),
     fechaHasta: date | None = Query(default=None),
-    granularidad: str = Query(default="mensual", pattern="^(semanal|mensual|trimestral|anual)$"),
+    granularidad: str = Query(default="mensual", pattern=_GRANULARIDAD_RUBRO),
+    moneda: str = Query(default="ARS", pattern="^(ARS|USD)$"),
 ) -> FlujoCajaPorRubroResponse:
-    """Ingresos y egresos de dinero REALES (movimientos bancarios, nunca
-    documentos de venta/compra) por rubro y por período, con egresos
-    agrupados por Centro de Costos. Se recalcula siempre al pedirse, sin
-    cachear (pedido explícito de Sergio)."""
-    desde_default, hasta_default = _rango_por_defecto()
-    desde = fechaDesde or desde_default
-    hasta = fechaHasta or hasta_default
-    _validar_fecha_desde(desde)
+    """Flujo de caja real por rubro (030): movimientos bancarios reales
+    repartidos por lo aplicado a cada documento, internos en sección propia,
+    saldos por cuenta, en ARS o USD por cotización del día. Se recalcula
+    siempre, sin cachear (pedido explícito de Sergio)."""
+    desde, hasta = _rango(fechaDesde, fechaHasta)
+    resultado = await run_in_threadpool(repository.flujo_por_rubro, desde, hasta, granularidad, moneda)
+    resultado.pop("_partes")
+    return FlujoCajaPorRubroResponse(**resultado)
 
-    movimientos = await run_in_threadpool(repository.get_movimientos_normalizados, desde, hasta)
-    movimientos = await run_in_threadpool(repository.atribuir_movimientos, movimientos)
-    agregado = await run_in_threadpool(repository.agregar_por_rubro, movimientos, granularidad)
-    saldo_inicial = await run_in_threadpool(repository.saldo_inicial_al, desde)
 
-    return FlujoCajaPorRubroResponse(
-        periodos=agregado["periodos"],
-        saldoInicial=saldo_inicial,
-        ingresos=agregado["ingresos"],
-        egresos=agregado["egresos"],
-    )
+@router.get("/por-rubro/detalle", response_model=DetalleCeldaRubroResponse)
+async def por_rubro_detalle(
+    periodo: str = Query(...),
+    seccion: str = Query(..., pattern="^(ingresos|egresos|internos)$"),
+    rubro: str = Query(...),
+    centroCosto: str | None = Query(default=None),
+    fechaDesde: date | None = Query(default=None),
+    fechaHasta: date | None = Query(default=None),
+    granularidad: str = Query(default="mensual", pattern=_GRANULARIDAD_RUBRO),
+    moneda: str = Query(default="ARS", pattern="^(ARS|USD)$"),
+) -> DetalleCeldaRubroResponse:
+    desde, hasta = _rango(fechaDesde, fechaHasta)
+    try:
+        resultado = await run_in_threadpool(
+            repository.detalle_celda, desde, hasta, granularidad, moneda, periodo, seccion, rubro, centroCosto
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    return DetalleCeldaRubroResponse(**resultado)
+
+
+@router.get("/por-rubro/exportar")
+async def por_rubro_exportar(
+    fechaDesde: date | None = Query(default=None),
+    fechaHasta: date | None = Query(default=None),
+    granularidad: str = Query(default="mensual", pattern=_GRANULARIDAD_RUBRO),
+    moneda: str = Query(default="ARS", pattern="^(ARS|USD)$"),
+) -> Response:
+    from src.features.flujo_caja import exportacion
+
+    desde, hasta = _rango(fechaDesde, fechaHasta)
+    contenido = await run_in_threadpool(exportacion.flujo_por_rubro_xlsx, desde, hasta, granularidad, moneda)
+    nombre = f"flujo-caja-por-rubro-{desde.isoformat()}-{hasta.isoformat()}-{moneda}.xlsx"
+    return Response(content=contenido, media_type=_XLSX, headers={"Content-Disposition": f'attachment; filename="{nombre}"'})

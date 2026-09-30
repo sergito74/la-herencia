@@ -46,3 +46,53 @@ def es_interno(banco: str, concepto: str | None, grupo_conceptos: str | None = N
     if banco == "Galicia":
         return _es_interno_galicia(grupo_conceptos)
     return False
+
+
+COLOCACION_FIMA = "Colocación FIMA"
+RESCATE_FIMA = "Rescate FIMA"
+TRASPASO_ENTRE_BANCOS = "Traspaso entre bancos"
+TIPOS_INTERNOS = (COLOCACION_FIMA, RESCATE_FIMA, TRASPASO_ENTRE_BANCOS)
+DIAS_PAREJA_TRASPASO = 3
+
+
+def tipo_interno(banco: str, importe: float, concepto: str | None, grupo_conceptos: str | None = None) -> str | None:
+    """Fila de "Movimientos entre cuentas propias" (030) de un movimiento
+    interno según `es_interno`; `None` si el movimiento es operativo."""
+    if banco == "Galicia" and _es_interno_galicia(grupo_conceptos):
+        return COLOCACION_FIMA if importe < 0 else RESCATE_FIMA
+    if banco == "BNA" and _es_interno_bna(concepto):
+        return TRASPASO_ENTRE_BANCOS
+    return None
+
+
+def _dia(fecha):
+    return fecha.date() if hasattr(fecha, "date") else fecha
+
+
+def emparejar_traspasos(movimientos: list[dict]) -> None:
+    """La regla de 018 solo reconoce el lado BNA de un traspaso BNA ↔ Galicia.
+    Para que el lado Galicia no infle ingresos/egresos operativos, se lo busca
+    (signo opuesto, mismo importe, ≤ 3 días, el más cercano, cada uno una
+    sola vez) y se lo marca como el mismo traspaso. Sin pareja → la pata BNA
+    queda con `sinContraparte=True`. Modifica `movimientos` en el lugar."""
+    usados: set[int] = set()
+    galicia = [
+        (i, m) for i, m in enumerate(movimientos) if m["banco"] == "Galicia" and not m.get("tipoInterno")
+    ]
+    for m in movimientos:
+        if m.get("tipoInterno") != TRASPASO_ENTRE_BANCOS or m["banco"] != "BNA":
+            continue
+        candidatos = [
+            (abs((_dia(g["fecha"]) - _dia(m["fecha"])).days), i)
+            for i, g in galicia
+            if i not in usados
+            and abs(round(g["importe"], 2) + round(m["importe"], 2)) < 0.005
+            and abs((_dia(g["fecha"]) - _dia(m["fecha"])).days) <= DIAS_PAREJA_TRASPASO
+        ]
+        if not candidatos:
+            m["sinContraparte"] = True
+            continue
+        _, i = min(candidatos)
+        usados.add(i)
+        movimientos[i]["esInterno"] = True
+        movimientos[i]["tipoInterno"] = TRASPASO_ENTRE_BANCOS

@@ -89,8 +89,75 @@ class SeccionEgresos(BaseModel):
     totalPorPeriodo: dict[str, float]
 
 
+class SaldoCuenta(BaseModel):
+    cuenta: str
+    importe: float | None
+    aclaracion: str | None = None
+
+
+class SaldoInicial(BaseModel):
+    cuentas: list[SaldoCuenta]
+    total: float | None
+
+
+class CeldaSinTipoCambio(BaseModel):
+    periodo: str
+    seccion: str
+    centroCosto: str | None = None
+    rubro: str
+    cantidad: int
+    importeArs: float
+
+
+class TraspasoSinContraparte(BaseModel):
+    fecha: date
+    cuenta: str
+    importe: float
+    idMovimiento: int | None = None
+
+
 class FlujoCajaPorRubroResponse(BaseModel):
+    """030 — contracts/api.md. `saldoInicial` pasó de número a objeto por cuenta."""
+
+    moneda: str
     periodos: list[str]
-    saldoInicial: float
+    saldoInicial: SaldoInicial
     ingresos: SeccionIngresos
     egresos: SeccionEgresos
+    netoOperativoPorPeriodo: dict[str, float]
+    internos: SeccionIngresos
+    saldoFinalPorPeriodo: dict[str, float | None]
+    saldoFinalPorCuenta: dict[str, dict[str, float | None]]
+    sinTipoCambio: list[CeldaSinTipoCambio]
+    saldosSinTipoCambio: list[str]
+    traspasosSinContraparte: list[TraspasoSinContraparte]
+    ultimaFechaCotizacion: date | None = None
+
+
+class DocumentoAplicado(BaseModel):
+    tipo: str
+    id: int
+
+
+class ParteMovimiento(BaseModel):
+    fecha: date
+    cuenta: str
+    concepto: str | None = None
+    contacto: str | None = None
+    seccion: str
+    rubro: str
+    centroCosto: str | None = None
+    importeArs: float
+    importeMovimiento: float
+    documentoAplicado: DocumentoAplicado | None = None
+    cotizacion: float | None = None
+    fechaCotizacion: date | None = None
+    importeUsd: float | None = None
+    origenMovimiento: str | None = None
+    idMovimiento: int | None = None
+    sinContraparte: bool = False
+
+
+class DetalleCeldaRubroResponse(BaseModel):
+    total: float
+    items: list[ParteMovimiento]
