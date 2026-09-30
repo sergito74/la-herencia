@@ -19,7 +19,7 @@ ORGANISMOS_SIN_GENERACION={'AFIP'}
 # no `Contactos.IdContacto` — verificado contra los tipos que usa cada
 # organismo en sus boletas reales (2026-09-30). UATRE usa "Aporte Sindical"
 # (código 1) sin compartir el catálogo de AFIP, por eso no está acá.
-CODIGO_TIPO_LEGADO={119:1,12:2,72:3}
+CODIGO_TIPO_LEGADO={119:1,12:2,72:3,422:4}  # 4 = Tapalqué, creado 2026-09-30
 
 # "RECAUDACION ARBA" en el extracto es percepción de Ingresos Brutos
 # (recaudación bancaria de la Provincia): no tiene boleta como
