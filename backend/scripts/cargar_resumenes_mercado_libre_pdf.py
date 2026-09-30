@@ -18,6 +18,14 @@ recibida X", "Pago de servicio UATRE", etc.) se intenta resolver contra
 match, `IdContacto` queda NULL (se vincula a mano después, igual que
 `cargar_resumenes_tarjetas_excel.py` — nunca adivina por similitud).
 
+Excepción explícita (pedido del usuario, backlog post-025): "UATRE" es un
+caso conocido y siempre igual — la descripción real nunca es exactamente
+"UATRE" (viene como "Pago de servicio(s) UATRE"), así que la coincidencia
+exacta nunca la resuelve. Si la palabra "UATRE" aparece en la descripción,
+se asigna directo al contacto "UATRE" (mismo criterio que backfillea
+`scripts/asignar_contacto_uatre_mercado_libre.py` sobre las filas ya
+cargadas). No se generaliza a un substring-match para cualquier proveedor.
+
 Por defecto corre en modo DRY-RUN. Requiere `--apply` para escribir, y aun
 así NO EJECUTAR sin backup de `WC` verificado (Constitución, Principio II).
 
@@ -159,7 +167,12 @@ def _mapa_contactos() -> dict[str, int]:
 
 
 def _resolver_contacto(descripcion: str, contactos: dict[str, int]) -> int | None:
-    return contactos.get(descripcion.strip().lower())
+    exacto = contactos.get(descripcion.strip().lower())
+    if exacto is not None:
+        return exacto
+    if "uatre" in descripcion.lower():
+        return contactos.get("uatre")
+    return None
 
 
 def main() -> None:
