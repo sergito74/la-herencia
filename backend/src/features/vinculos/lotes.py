@@ -33,12 +33,13 @@ def crear_lote(usuario: str) -> dict:
     )]
     for i in items:
         statements.append(lambda res, i=i: (
+            # Nada entra al lote hasta que Sergio apruebe el proveedor (Incluido = 0).
             "INSERT INTO dbo.CorreccionVinculosItem (IdLote, Grupo, Accion, IdAplicacion, OrigenMovimiento, "
-            "IdMovimientoOrigen, TipoDocumento, IdDocumento, Importe, Motivo, Candidatos, Elegido) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            "IdMovimientoOrigen, TipoDocumento, IdDocumento, Importe, Motivo, Candidatos, Elegido, Incluido, IdContacto) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?)",
             (res[0], i["grupo"], i["accion"], i["idAplicacion"], i["origenMovimiento"], i["idMovimientoOrigen"],
              i["tipoDocumento"], i["idDocumento"], i["importe"], i["motivo"][:400],
-             json.dumps(i["candidatos"]) if i["candidatos"] else None, 1 if i["elegido"] else 0)))
+             json.dumps(i["candidatos"]) if i["candidatos"] else None, 1 if i["elegido"] else 0, i.get("idContacto"))))
     id_lote = execute_write_transaction(statements)[0]
     return {"idLote": id_lote, **resumen_lote(id_lote)}
 
@@ -116,8 +117,11 @@ def actualizar_items(id_lote: int, incluir: list[int], excluir: list[int], elegi
         if usado:
             raise LoteConflicto("Ese candidato ya está elegido para otro reemplazo del lote")
         statements.append((
-            "UPDATE dbo.CorreccionVinculosItem SET OrigenMovimiento = ?, IdMovimientoOrigen = ?, TipoDocumento = ?, "
-            "IdDocumento = ?, Elegido = 1 WHERE IdLote = ? AND IdItem = ?",
+            # Si el proveedor ya está aprobado, el reemplazo elegido entra al lote.
+            "UPDATE i SET OrigenMovimiento = ?, IdMovimientoOrigen = ?, TipoDocumento = ?, IdDocumento = ?, Elegido = 1, "
+            "Incluido = CASE WHEN EXISTS (SELECT 1 FROM dbo.CorreccionVinculosRevision r WHERE r.IdLote = i.IdLote "
+            "AND r.IdContacto = ISNULL(i.IdContacto, 0) AND r.Estado = 'aprobado') THEN 1 ELSE i.Incluido END "
+            "FROM dbo.CorreccionVinculosItem i WHERE i.IdLote = ? AND i.IdItem = ?",
             (c["origenMovimiento"], c["idMovimientoOrigen"], c["tipoDocumento"], c["idDocumento"], id_lote, e["idItem"])))
     if statements:
         execute_write_transaction(statements)

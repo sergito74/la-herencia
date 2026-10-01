@@ -70,8 +70,10 @@ def _backfill(docs=None) -> list[dict]:
 
 def _lineas() -> dict[int, dict]:
     return {f["idLinea"]: f for f in fetch_all(
-        "SELECT IdLineaConsumo AS idLinea, IdResumen AS idResumen, FechaCompra AS fecha, Importe AS importe, "
-        "IdContacto AS idContacto FROM dbo.Tarjetas_Resumenes_Lineas")}
+        "SELECT l.IdLineaConsumo AS idLinea, l.IdResumen AS idResumen, l.FechaCompra AS fecha, l.Importe AS importe, "
+        "l.IdContacto AS idContacto, l.Detalle AS detalle, r.ResumenCodigo AS resumen, t.TarjetaNombre AS tarjeta "
+        "FROM dbo.Tarjetas_Resumenes_Lineas l LEFT JOIN dbo.Tarjetas_Resumenes r ON r.IdResumen = l.IdResumen "
+        "LEFT JOIN dbo.Tarjetas t ON t.IdTarjeta = r.IdTarjeta")}
 
 
 def _pagos_resumen() -> list[dict]:
@@ -121,25 +123,30 @@ def documentos(claves: set[tuple] | None = None) -> dict[tuple, dict]:
 
     docs: dict[tuple, dict] = {}
     for f in fetch_all("SELECT c.IdDeuda AS id, c.Fecha AS fecha, c.IdContacto AS idContacto, c.Moneda AS moneda, "
-                       "c.[Tipo de Cambio] AS tc, t.GranTotal AS total FROM dbo.Compras c "
+                       "c.[Tipo de Cambio] AS tc, t.GranTotal AS total, CONCAT(c.[Tipo documento], ' ', c.[Nro Documento]) AS numero "
+                       "FROM dbo.Compras c "
                        "JOIN dbo.vw_Cns_Total_Compra t ON t.IdDeuda = c.IdDeuda"):
         total = abs(float(f["total"] or 0))
         if f["moneda"] == "Dolares" and (f["tc"] or 0) > 1:
             total *= float(f["tc"])
         docs[("CompraDeuda", f["id"])] = {"fecha": f["fecha"], "idContacto": f["idContacto"], "moneda": f["moneda"],
-                                          "tc": f["tc"], "totalArs": round(total, 2)}
+                                          "tc": f["tc"], "totalArs": round(total, 2), "numero": f["numero"],
+                                          "totalOriginal": abs(float(f["total"] or 0))}
     for f in fetch_all("SELECT IdVenta AS id, Fecha AS fecha, IdConsignatario AS idContacto, "
-                       "[Importe Neto a percibir] AS total FROM dbo.[Venta Granos]"):
+                       "[Importe Neto a percibir] AS total, [Nro Documento] AS numero FROM dbo.[Venta Granos]"):
         docs[("VentaGranos", f["id"])] = {"fecha": f["fecha"], "idContacto": f["idContacto"], "moneda": "Pesos",
+                                          "numero": f"Venta granos {f['numero'] or ''}".strip(),
                                           "totalArs": None if f["total"] is None else round(float(f["total"]), 2)}
-    for f in fetch_all("SELECT IdVenta AS id, Fecha AS fecha, IdConsignatario AS idContacto FROM dbo.[Venta Hacienda]"):
+    for f in fetch_all("SELECT IdVenta AS id, Fecha AS fecha, IdConsignatario AS idContacto, [Nro documento] AS numero "
+                       "FROM dbo.[Venta Hacienda]"):
         clave = ("VentaHacienda", f["id"])
         total = None
         if claves is None or clave in claves:
             cabecera, lineas = get_venta_cabecera(f["id"]), get_lineas_venta(f["id"])
             if cabecera is not None and lineas:
                 total = round(calcular_totales(lineas, cabecera)["importeTotal"], 2)
-        docs[clave] = {"fecha": f["fecha"], "idContacto": f["idContacto"], "moneda": "Pesos", "totalArs": total}
+        docs[clave] = {"fecha": f["fecha"], "idContacto": f["idContacto"], "moneda": "Pesos", "totalArs": total,
+                       "numero": f"Venta hacienda {f['numero'] or ''}".strip()}
     for f in fetch_all("SELECT IdImpuesto AS id, Fecha AS fecha, Importe AS total FROM dbo.Impuestos"):
         docs[("Impuesto", f["id"])] = {"fecha": f["fecha"], "idContacto": None, "moneda": "Pesos",
                                        "totalArs": None if f["total"] is None else round(abs(float(f["total"])), 2)}

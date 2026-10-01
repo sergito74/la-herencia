@@ -10,7 +10,7 @@ from pydantic import BaseModel
 from starlette.concurrency import run_in_threadpool
 
 from src.db.connection import fetch_one
-from src.features.vinculos import control, fuente, lotes
+from src.features.vinculos import control, fuente, lotes, revision
 
 router = APIRouter(prefix="/api/integridad-vinculos", tags=["integridad-vinculos"])
 
@@ -119,3 +119,25 @@ async def descartar_endpoint(id_lote: int, request: Request) -> dict:
     _exigir_admin(request)
     await _escritura(lotes.descartar, id_lote)
     return {"ok": True}
+
+
+# --- Revisión por proveedor (unidad de decisión de Sergio) ---
+
+class DecisionRequest(BaseModel):
+    aprobar: bool
+
+
+@router.get("/lotes/{id_lote}/proveedores")
+async def proveedores_endpoint(id_lote: int) -> list[dict]:
+    return await run_in_threadpool(revision.proveedores, id_lote)
+
+
+@router.get("/lotes/{id_lote}/proveedores/{id_contacto}")
+async def detalle_proveedor_endpoint(id_lote: int, id_contacto: int) -> dict:
+    return await run_in_threadpool(revision.detalle, id_lote, id_contacto)
+
+
+@router.post("/lotes/{id_lote}/proveedores/{id_contacto}/decision")
+async def decidir_endpoint(id_lote: int, id_contacto: int, body: DecisionRequest, request: Request) -> dict:
+    _exigir_admin(request)
+    return await _escritura(revision.decidir, id_lote, id_contacto, body.aprobar, _usuario(request))

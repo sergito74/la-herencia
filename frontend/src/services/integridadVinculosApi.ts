@@ -110,3 +110,69 @@ export const revertirLote = (idLote: number) =>
   apiPost<{ reactivadas: number; anuladas: number }>(`${BASE}/lotes/${idLote}/revertir`, {});
 
 export const descartarLote = (idLote: number) => apiPost<{ ok: boolean }>(`${BASE}/lotes/${idLote}/descartar`, {});
+
+// --- Revisión por proveedor ---
+
+export interface ProveedorLote {
+  idContacto: number;
+  nombre: string;
+  cambios: number;
+  importe: number;
+  facturas: number;
+  reemplazosPorElegir: number;
+  estado: "pendiente" | "aprobado" | "rechazado";
+}
+
+export interface PagoDescripto {
+  medio: string;
+  fecha: string | null;
+  concepto: string;
+  importe: number | null;
+}
+
+export interface PagoFactura extends PagoDescripto {
+  via: string;
+  imputado: number;
+  imputadoDespues: number | null;
+  cambio: "se mantiene" | "se quita" | "se agrega" | "se pesifica";
+  motivo: string | null;
+}
+
+export interface FacturaRevision {
+  tipoDocumento: string;
+  idDocumento: number;
+  numero: string;
+  fecha: string | null;
+  moneda: string | null;
+  total: number | null;
+  totalOriginal: number | null;
+  tc: number | null;
+  pagadoAntes: number;
+  pagadoDespues: number;
+  saldoAntes: number | null;
+  saldoDespues: number | null;
+  pagos: PagoFactura[];
+}
+
+export interface DetalleProveedor {
+  idContacto: number;
+  nombre: string;
+  estado: ProveedorLote["estado"];
+  facturas: FacturaRevision[];
+  pagosLibres: (PagoDescripto & { liberado: number; motivo: string })[];
+  reemplazosPorElegir: {
+    idItem: number;
+    motivo: string;
+    importe: number;
+    elegido: boolean;
+    candidatos: (CandidatoReemplazo & { pago: PagoDescripto; numero: string | null; elegidoActual: boolean })[];
+  }[];
+}
+
+export const fetchProveedoresLote = (idLote: number) => apiGet<ProveedorLote[]>(`${BASE}/lotes/${idLote}/proveedores`);
+
+export const fetchDetalleProveedor = (idLote: number, idContacto: number) =>
+  apiGet<DetalleProveedor>(`${BASE}/lotes/${idLote}/proveedores/${idContacto}`);
+
+export const decidirProveedor = (idLote: number, idContacto: number, aprobar: boolean) =>
+  apiPost<{ estado: string }>(`${BASE}/lotes/${idLote}/proveedores/${idContacto}/decision`, { aprobar });

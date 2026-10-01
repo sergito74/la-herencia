@@ -175,7 +175,25 @@ def proponer(raw: dict, hallazgos: list[dict]) -> list[dict]:
             cands = sorted(_elegir_candidatos(cands, necesario), key=lambda c: abs((f_mov - c["fecha"]).days) if f_mov and c["fecha"] else 0)
             items.extend(_reemplazo(cands, necesario, grupo, id_ap, "Otra factura para el pago que quedó libre",
                                     libre_doc, lambda c: (c["tipoDocumento"], c["idDocumento"])))
+    for i in items:
+        i["idContacto"] = contacto_de_item(raw, i)
     return items
+
+
+def contacto_de_item(raw: dict, item: dict) -> int | None:
+    """Proveedor/cliente al que pertenece el ítem: el del documento; si no,
+    el del movimiento; en los ambiguos, el del primer candidato."""
+    documentos, movimientos = raw.get("documentos", {}), raw.get("movimientos", {})
+    refs = [item] + (item.get("candidatos") or [])
+    for r in refs:
+        d = documentos.get((r.get("tipoDocumento"), r.get("idDocumento")))
+        if d and d.get("idContacto"):
+            return d["idContacto"]
+    for r in refs:
+        m = movimientos.get((r.get("origenMovimiento"), r.get("idMovimientoOrigen")))
+        if m and m.get("idContacto"):
+            return m["idContacto"]
+    return None
 
 
 def _excedidos(raw: dict, hallazgos: list[dict], por_aplicacion: dict, accion: dict) -> dict[int, float]:
