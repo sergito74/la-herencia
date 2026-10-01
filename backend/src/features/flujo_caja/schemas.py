@@ -137,6 +137,7 @@ class FlujoCajaPorRubroResponse(BaseModel):
 class DocumentoAplicado(BaseModel):
     tipo: str
     id: int
+    via: str = "aplicacion"
 
 
 class ParteMovimiento(BaseModel):

@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { SoloLectura } from "@/components/auth/SoloLectura";
 import { useToast } from "@/components/ui/Toast";
 import { formatMonto } from "@/lib/format";
+import { ApiError } from "@/services/apiClient";
 import {
   anularAplicacion,
   confirmarAplicacion,
@@ -62,15 +63,17 @@ export function AplicarPagoPanel({
   async function confirmar() {
     setEnviando(true);
     try {
-      await confirmarAplicacion(
+      const r = await confirmarAplicacion(
         origenMovimiento,
         idMovimientoOrigen,
         filas.map((f) => ({ tipoDocumento: f.tipoDocumento, idDocumento: f.idDocumento, importeAplicado: Number(f.importeAplicado) }))
       );
-      showToast("Aplicación confirmada.", "success");
+      showToast(r.advertencia ? `Aplicación confirmada. ${r.advertencia}` : "Aplicación confirmada.", r.advertencia ? "neutral" : "success");
       onAplicado?.();
-    } catch {
-      showToast("No se pudo confirmar la aplicación — revisá que no quede ningún documento sobre-aplicado.", "danger");
+    } catch (e) {
+      // 031 (FR-012): el backend cuenta todas las vías (tarjeta, cheques, tesorería) y rechaza excesos > 2%.
+      const detalle = e instanceof ApiError ? e.message : "";
+      showToast(detalle || "No se pudo confirmar la aplicación — revisá que no quede ningún documento sobre-aplicado.", "danger");
     } finally {
       setEnviando(false);
     }

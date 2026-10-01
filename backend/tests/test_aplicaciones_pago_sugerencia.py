@@ -78,3 +78,22 @@ def test_sugerencia_fifo_cubre_el_importe_del_movimiento():
 def test_sugerir_sin_contacto_conocido_devuelve_vacio():
     resultado = sugerencia.sugerir("bna", -1)
     assert resultado["sugerencias"] == []
+
+
+def test_031_movimiento_de_2019_no_sugiere_factura_de_2023(monkeypatch):
+    """Causa raíz de 031: el FIFO tomaba facturas años posteriores al pago."""
+    from datetime import date
+
+    monkeypatch.setattr(sugerencia, "_contacto_fecha_importe", lambda o, i: (48, date(2019, 4, 11), -42930.0))
+    monkeypatch.setattr(sugerencia, "documentos_pendientes", lambda c, t: [
+        {"tipoDocumento": "CompraDeuda", "idDocumento": 1, "fecha": date(2023, 5, 1), "saldoPendiente": 255600.0},
+        {"tipoDocumento": "CompraDeuda", "idDocumento": 2, "fecha": date(2019, 5, 20), "saldoPendiente": 42930.0}])
+    resultado = sugerencia.sugerir("bna", 14980)
+    assert [s["idDocumento"] for s in resultado["sugerencias"]] == [2]
+
+
+def test_031_fecha_coherente_margen_60_dias():
+    from datetime import date
+
+    assert sugerencia.fecha_coherente(date(2026, 3, 1), date(2026, 1, 1))
+    assert not sugerencia.fecha_coherente(date(2026, 3, 3), date(2026, 1, 1))

@@ -47,6 +47,7 @@ from src.features.tarjetas_resumenes.router import router as tarjetas_resumenes_
 from src.features.tesoreria.router import router as tesoreria_router
 from src.features.ventas_granos.router import router as ventas_granos_router
 from src.features.ventas_hacienda.router import router as ventas_hacienda_router
+from src.features.vinculos.router import router as integridad_vinculos_router
 
 app = FastAPI(
     title="La Herencia API",
@@ -166,6 +167,7 @@ app.include_router(tesoreria_router)
 app.include_router(traspasos_internos_tesoreria_router)
 app.include_router(ventas_granos_router)
 app.include_router(ventas_hacienda_router)
+app.include_router(integridad_vinculos_router)
 
 
 @app.get("/health")

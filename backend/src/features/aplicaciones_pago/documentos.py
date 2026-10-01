@@ -9,8 +9,10 @@ el cálculo ya validado de `ventas_hacienda.repository.calcular_totales`
 para Hacienda, y la columna `[Importe Neto a percibir]` ya calculada para
 Granos.
 
-En ambos casos, `saldoPendiente = importeTotal - SUM(ImporteAplicado)`
-sobre las aplicaciones vigentes (`Anulada = 0`) de `AplicacionesPago`.
+En ambos casos, `saldoPendiente = importeTotal - pagado`. Desde 031 lo
+pagado sale de la fuente unificada de vínculos (aplicaciones, consumos de
+tarjeta, cheques propios, tesorería y backfill, sin contar dos veces) y
+los documentos en dólares se expresan en pesos con el TC de la factura.
 """
 
 from __future__ import annotations
@@ -18,6 +20,7 @@ from __future__ import annotations
 from datetime import date, datetime
 
 from src.db.connection import fetch_all
+from src.features.vinculos import fuente
 from src.features.ventas_hacienda.repository import calcular_totales, get_lineas_venta, get_venta_cabecera
 
 TOLERANCIA_REDONDEO_APLICACION = 1.0
@@ -30,19 +33,20 @@ def _fecha(valor) -> date | None:
 
 
 def _aplicado_de(tipo_documento: str, id_documento: int) -> float:
-    fila = fetch_all(
-        "SELECT SUM(ImporteAplicado) AS total FROM dbo.AplicacionesPago "
-        "WHERE TipoDocumento = ? AND IdDocumentoAplicado = ? AND Anulada = 0",
-        (tipo_documento, id_documento),
-    )
-    return float(fila[0]["total"] or 0) if fila else 0.0
+    """Pagado del documento contando todas las vías (031)."""
+    return fuente.pagado_de_documentos([(tipo_documento, id_documento)])[(tipo_documento, id_documento)]
+
+
+def _pagados(tipo_documento: str, ids: list[int]) -> dict[int, float]:
+    pagado = fuente.pagado_de_documentos([(tipo_documento, i) for i in ids])
+    return {i: pagado[(tipo_documento, i)] for i in ids}
 
 
 def _compras_pendientes(id_contacto: int) -> list[dict]:
     filas = fetch_all(
         """
         SELECT c.IdDeuda AS idDocumento, c.Fecha AS fecha, c.[Nro Documento] AS numeroDocumento,
-               tc.GranTotal AS importeTotal
+               tc.GranTotal AS importeTotal, c.Moneda AS moneda, c.[Tipo de Cambio] AS tc
         FROM dbo.Compras c
         JOIN dbo.vw_Cns_Total_Compra tc ON tc.IdDeuda = c.IdDeuda
         WHERE c.IdContacto = ?
@@ -51,9 +55,12 @@ def _compras_pendientes(id_contacto: int) -> list[dict]:
         (id_contacto,),
     )
     resultado = []
+    pagados = _pagados("CompraDeuda", [f["idDocumento"] for f in filas])
     for f in filas:
         importe_total = float(f["importeTotal"] or 0)
-        aplicado = _aplicado_de("CompraDeuda", f["idDocumento"])
+        if f["moneda"] == "Dolares" and (f["tc"] or 0) > 1:
+            importe_total *= float(f["tc"])
+        aplicado = pagados[f["idDocumento"]]
         saldo = round(importe_total - aplicado, 2)
         if saldo > TOLERANCIA_REDONDEO_APLICACION:
             resultado.append(
@@ -77,13 +84,14 @@ def _ventas_hacienda_pendientes(id_contacto: int) -> list[dict]:
         (id_contacto,),
     )
     resultado = []
+    pagados = _pagados("VentaHacienda", [f["idVenta"] for f in filas])
     for f in filas:
         cabecera = get_venta_cabecera(f["idVenta"])
         lineas = get_lineas_venta(f["idVenta"])
         if cabecera is None or not lineas:
             continue
         importe_total = round(calcular_totales(lineas, cabecera)["importeTotal"], 2)
-        aplicado = _aplicado_de("VentaHacienda", f["idVenta"])
+        aplicado = pagados[f["idVenta"]]
         saldo = round(importe_total - aplicado, 2)
         if saldo > TOLERANCIA_REDONDEO_APLICACION:
             resultado.append(
@@ -108,11 +116,12 @@ def _ventas_granos_pendientes(id_contacto: int) -> list[dict]:
         (id_contacto,),
     )
     resultado = []
+    pagados = _pagados("VentaGranos", [f["idVenta"] for f in filas])
     for f in filas:
         if f["importeTotal"] is None:
             continue
         importe_total = round(float(f["importeTotal"]), 2)
-        aplicado = _aplicado_de("VentaGranos", f["idVenta"])
+        aplicado = pagados[f["idVenta"]]
         saldo = round(importe_total - aplicado, 2)
         if saldo > TOLERANCIA_REDONDEO_APLICACION:
             resultado.append(

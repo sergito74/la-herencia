@@ -170,3 +170,31 @@ def test_excel_tiene_importes_numericos_y_las_filas_de_la_vista(monkeypatch):
     filas = {r[0]: r[1:] for r in wb.active.iter_rows(values_only=True) if r and r[0]}
     assert filas["Venta Soja"][:3] == (1000.0, 0.0, 1000.0)
     assert isinstance(filas["Total saldo final"][0], (int, float))
+
+
+# --- 031: la fuente unificada alimenta el reparto (T007) ---
+
+def test_debito_de_resumen_se_reparte_por_rubros_de_sus_compras(monkeypatch):
+    from src.features.vinculos import cadenas
+
+    monkeypatch.setattr(atribucion, "_rubros_de_compra", lambda i: [{"rubro": {10: "Semillas", 11: "Combustible"}[i],
+                                                                     "centroCosto": "Agricultura", "peso": 1}])
+    vinculos = cadenas.construir_vinculos({
+        "aplicaciones": [], "tesoreria": [], "backfill": [], "valores": [], "movimientos": {}, "documentos": {},
+        "lineasCompras": [{"idLinea": 1, "idCompra": 10, "importe": 300}, {"idLinea": 2, "idCompra": 11, "importe": 100}],
+        "lineas": {1: {"idResumen": 7}, 2: {"idResumen": 7}},
+        "pagosResumen": [{"idResumen": 7, "importe": 500, "origen": "bna", "idMovimiento": 99}]})
+    aplic = cadenas.documentos_de_movimiento(vinculos)[("bna", 99)]
+    partes = atribucion.partes_desde_aplicaciones(aplic, -500, date(2026, 5, 1))
+    assert sorted((p["rubro"], p["importe"]) for p in partes) == [("Combustible", 100), ("Pendiente de aplicar", 100), ("Semillas", 300)]
+    assert round(sum(p["importe"] for p in partes), 2) == 500
+    assert {p["documentoAplicado"]["via"] for p in partes if p["documentoAplicado"]} == {"tarjeta"}
+
+
+def test_impuesto_y_sueldo_caen_en_su_rubro(monkeypatch):
+    monkeypatch.setattr(atribucion, "_rubro_de_impuesto", lambda i, memo: "Ingresos Brutos")
+    partes = atribucion.partes_desde_aplicaciones(
+        [{"tipoDocumento": "Impuesto", "idDocumentoAplicado": 1, "importeAplicado": 60, "via": "tesoreria"},
+         {"tipoDocumento": "Remuneracion", "idDocumentoAplicado": 2, "importeAplicado": 40, "via": "tesoreria"}], -100, date(2026, 5, 1))
+    assert [(p["rubro"], p["centroCosto"], p["importe"]) for p in partes] == [
+        ("Ingresos Brutos", "Impuestos", 60), ("Sueldos", "Personal", 40)]

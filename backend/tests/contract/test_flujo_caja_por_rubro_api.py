@@ -10,7 +10,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from src.auth.tokens import crear_token
-from src.features.aplicaciones_pago import repository as aplicaciones_repository
+from src.features.vinculos import cadenas, fuente
 from src.features.flujo_caja import atribucion, repository
 from src.main import app
 
@@ -40,8 +40,9 @@ def datos(monkeypatch):
     monkeypatch.setattr(atribucion, "construir_indice_ingresos", lambda d, h: {})
     monkeypatch.setattr(atribucion, "_rubro_de_venta", lambda t, i: "Venta Soja")
     monkeypatch.setattr(atribucion, "atribuir_egreso", lambda *a: {"rubro": atribucion.SIN_RUBRO, "centroCosto": None})
-    monkeypatch.setattr(aplicaciones_repository, "aplicaciones_vigentes_por_movimiento",
-                        lambda: {("galicia", 1): [{"tipoDocumento": "VentaGranos", "idDocumentoAplicado": 1, "importeAplicado": 600.0}]})
+    monkeypatch.setattr(fuente, "cargar", lambda: {"vinculos": []})
+    monkeypatch.setattr(cadenas, "documentos_de_movimiento",
+                        lambda v: {("galicia", 1): [{"tipoDocumento": "VentaGranos", "idDocumentoAplicado": 1, "importeAplicado": 600.0}]})
     monkeypatch.setattr(repository, "saldos_por_cuenta_al",
                         lambda f: {"Nación": 100.0, "Galicia CC": 1000.0, "Galicia Fondo FIMA": 0.0})
 

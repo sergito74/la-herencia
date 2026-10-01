@@ -121,7 +121,7 @@ export interface ParteMovimiento {
   centroCosto: string | null;
   importeArs: number;
   importeMovimiento: number;
-  documentoAplicado: { tipo: string; id: number } | null;
+  documentoAplicado: { tipo: string; id: number; via: string } | null;
   cotizacion: number | null;
   fechaCotizacion: string | null;
   importeUsd: number | null;

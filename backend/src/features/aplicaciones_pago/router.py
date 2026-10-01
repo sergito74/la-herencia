@@ -8,6 +8,7 @@ from starlette.concurrency import run_in_threadpool
 
 from src.db.connection import fetch_one
 from src.features.aplicaciones_pago import documentos, repository, sugerencia
+from src.features.vinculos.validacion import ExcesoVinculo
 from src.features.aplicaciones_pago.schemas import (
     AnularAplicacionRequest,
     ConfirmarAplicacionRequest,
@@ -52,12 +53,15 @@ async def confirmar_aplicacion(body: ConfirmarAplicacionRequest, request: Reques
     aplicaciones = [a.model_dump() for a in body.aplicaciones]
     usuario = _usuario_actual(request)
     try:
-        ids = await run_in_threadpool(
-            repository.insertar_aplicaciones, body.origenMovimiento, body.idMovimientoOrigen, aplicaciones, usuario
+        ids, advertencias = await run_in_threadpool(
+            repository.insertar_aplicaciones_con_advertencias, body.origenMovimiento, body.idMovimientoOrigen,
+            aplicaciones, usuario
         )
+    except ExcesoVinculo as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
-    return {"idsAplicacion": ids}
+    return {"idsAplicacion": ids, "advertencia": " ".join(advertencias) or None}
 
 
 @router.post("/{id_aplicacion}/anular")

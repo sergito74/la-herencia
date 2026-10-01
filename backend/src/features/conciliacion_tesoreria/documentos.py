@@ -1,6 +1,14 @@
-"""Documentos y saldo de conciliación compartido (pesos, con signo)."""
+"""Documentos y saldo de conciliación compartido (pesos, con signo).
+
+031: lo imputado de Compras, Impuestos y Remuneraciones sale de la fuente
+unificada de vínculos (aplicaciones de pago, consumos de tarjeta, cheques,
+tesorería y backfill, sin contar dos veces). Antes solo sumaba tesorería
+y consumos, y no veía lo aplicado desde Aplicaciones de pago."""
 
 from src.db.connection import fetch_all
+from src.formatting import formatear_moneda
+from src.features.vinculos import fuente
+from src.features.vinculos.cadenas import TIPO_TESORERIA, TOLERANCIA
 from src.features.compras.particular import APLICA_PARTICULAR_JOIN
 from src.features.remuneraciones.repository import _IMPORTE_SQL
 
@@ -57,6 +65,23 @@ WITH documentos AS (
 """
 
 
+def _unificar(rows: list[dict]) -> list[dict]:
+    claves = [(TIPO_TESORERIA[r["origen"]], r["idOrigen"]) for r in rows if r["origen"] in TIPO_TESORERIA]
+    if not claves:
+        return rows
+    pagado = fuente.pagado_de_documentos(claves)
+    for r in rows:
+        if r["origen"] not in TIPO_TESORERIA:
+            continue
+        r["imputado"] = pagado[(TIPO_TESORERIA[r["origen"]], r["idOrigen"])]
+        total = r["importePesos"]
+        if total is None:
+            continue
+        resto = round(float(total) - r["imputado"], 2)
+        r["saldoPendiente"] = max(resto, 0.0) if total > 0 else min(resto, 0.0)
+    return rows
+
+
 def buscar(texto: str, *, importe: float | None = None, fecha=None) -> list[dict]:
     if importe is None and not 2 <= len(texto.strip()) <= 100:
         raise ValueError("La búsqueda debe tener entre 2 y 100 caracteres.")
@@ -65,16 +90,16 @@ def buscar(texto: str, *, importe: float | None = None, fecha=None) -> list[dict
         + "SELECT TOP (?) * FROM saldos WHERE idContacto IS NOT NULL AND importePesos IS NOT NULL AND ABS(saldoPendiente)>=0.005"
     )
     if importe is None:
-        return fetch_all(
+        return _unificar(fetch_all(
             base
             + " AND (contraparte LIKE ? OR numeroDocumento LIKE ?) ORDER BY fecha DESC,origen,idOrigen",
             (40, f"%{texto.strip()}%", f"%{texto.strip()}%"),
-        )
-    return fetch_all(
+        ))
+    return _unificar(fetch_all(
         base
         + " ORDER BY CASE WHEN ABS(saldoPendiente-?)<=0.10 THEN 0 ELSE 1 END, ABS(DATEDIFF(day,fecha,?)),ABS(saldoPendiente-?),origen,idOrigen",
         (60, importe, fecha, importe),
-    )
+    ))
 
 
 def por_referencias(refs: list[dict]) -> list[dict]:
@@ -84,9 +109,9 @@ def por_referencias(refs: list[dict]) -> list[dict]:
     if len(set(keys)) != len(keys) or any(o not in ORIGENES or not -(2**63) <= i < 2**63 for o, i in keys):
         raise ValueError("Referencias documentales inválidas o repetidas.")
     where = " OR ".join("(origen=? AND idOrigen=?)" for _ in refs)
-    rows = fetch_all(
+    rows = _unificar(fetch_all(
         SQL + "SELECT * FROM saldos WHERE " + where, tuple(v for key in keys for v in key)
-    )
+    ))
     by_key = {(r["origen"], r["idOrigen"]): r for r in rows}
     if any(key not in by_key for key in keys):
         raise LookupError("No existe uno de los documentos elegidos.")
@@ -100,11 +125,21 @@ def saldo_documento(origen: str, id_origen: int) -> float:
     return float(row["saldoPendiente"])
 
 
-def validar_imputacion(saldo: float, importe: float) -> None:
-    if importe == 0 or saldo * importe <= 0 or abs(importe) > abs(saldo) + 0.01:
+def validar_imputacion(saldo: float, importe: float) -> str | None:
+    """031 (FR-012): un exceso de más del 2% sobre el saldo del documento
+    (contando todas las vías) se rechaza; dentro del 2% se permite y se
+    devuelve una advertencia."""
+    if importe == 0 or (saldo != 0 and saldo * importe < 0):
+        raise ValueError("El importe tiene otro signo que el saldo del documento.")
+    exceso = abs(importe) - abs(saldo)
+    if exceso <= 0.01:
+        return None
+    if exceso > max(1.0, abs(importe) * TOLERANCIA):
         raise ValueError(
-            "El importe excede el saldo documental compartido disponible o tiene otro signo."
+            f"El importe excede el saldo documental compartido ({formatear_moneda(abs(saldo))}) en "
+            f"{formatear_moneda(exceso)}, más del 2% permitido."
         )
+    return f"El documento queda imputado {formatear_moneda(exceso)} por encima de su total (dentro del 2% de tolerancia)."
 
 
 def totales_imputados(refs: list[tuple[str, int]]) -> dict[tuple[str, int], float]:

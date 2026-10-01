@@ -57,8 +57,8 @@ export function confirmarAplicacion(
   origenMovimiento: string,
   idMovimientoOrigen: number,
   aplicaciones: AplicacionItem[]
-): Promise<{ idsAplicacion: number[] }> {
-  return apiPost<{ idsAplicacion: number[] }>("/api/aplicaciones-pago", {
+): Promise<{ idsAplicacion: number[]; advertencia: string | null }> {
+  return apiPost<{ idsAplicacion: number[]; advertencia: string | null }>("/api/aplicaciones-pago", {
     origenMovimiento,
     idMovimientoOrigen,
     aplicaciones,

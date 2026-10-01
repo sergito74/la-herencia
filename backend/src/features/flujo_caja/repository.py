@@ -241,9 +241,11 @@ def atribuir_movimientos(movimientos: list[dict]) -> list[dict]:
     if reales:
         fechas = [_dia(m["fecha"]) for m in reales]
         indice_ingresos = atribucion.construir_indice_ingresos(min(fechas), max(fechas))
-        from src.features.aplicaciones_pago.repository import aplicaciones_vigentes_por_movimiento
+        # 031: todas las vías de vinculación, con las cadenas de tarjeta y
+        # cheque, no solo AplicacionesPago.
+        from src.features.vinculos import cadenas, fuente
 
-        aplicaciones = aplicaciones_vigentes_por_movimiento()
+        aplicaciones = cadenas.documentos_de_movimiento(fuente.cargar()["vinculos"])
     memo_compras: dict = {}
 
     for m in movimientos:

@@ -60,9 +60,9 @@ def test_confirmar_aplicacion_editada_se_guarda_tal_cual(monkeypatch):
 
     def fake_insertar(origen, id_mov, aplicaciones, usuario):
         capturado["aplicaciones"] = aplicaciones
-        return [99]
+        return [99], []
 
-    monkeypatch.setattr(repository, "insertar_aplicaciones", fake_insertar)
+    monkeypatch.setattr(repository, "insertar_aplicaciones_con_advertencias", fake_insertar)
     response = client.post(
         "/api/aplicaciones-pago",
         json={
@@ -79,9 +79,9 @@ def test_confirmar_aplicacion_sobre_aplicada_devuelve_400(monkeypatch):
     """FR-008/SC-002 (hallazgo C1 de /speckit-analyze)."""
 
     def fake_insertar(origen, id_mov, aplicaciones, usuario):
-        raise ValueError("El documento CompraDeuda/5 quedaría sobre-aplicado")
+        raise ValueError("El movimiento quedaría sobre-aplicado")
 
-    monkeypatch.setattr(repository, "insertar_aplicaciones", fake_insertar)
+    monkeypatch.setattr(repository, "insertar_aplicaciones_con_advertencias", fake_insertar)
     response = client.post(
         "/api/aplicaciones-pago",
         json={
@@ -97,7 +97,7 @@ def test_confirmar_aplicacion_a_contacto_distinto_no_se_rechaza(monkeypatch):
     """FR-006 (hallazgo C2 de /speckit-analyze): el movimiento puede
     aplicarse a un documento de un contacto distinto al suyo — el
     endpoint no valida coincidencia de contacto."""
-    monkeypatch.setattr(repository, "insertar_aplicaciones", lambda *a, **k: [100])
+    monkeypatch.setattr(repository, "insertar_aplicaciones_con_advertencias", lambda *a, **k: ([100], []))
     response = client.post(
         "/api/aplicaciones-pago",
         json={
@@ -158,3 +158,17 @@ def test_aplicaciones_pago_requiere_sesion():
     sin_sesion = TestClient(app)
     response = sin_sesion.get("/api/aplicaciones-pago/documentos-pendientes?idContacto=1")
     assert response.status_code == 401
+
+
+def test_031_exceso_mayor_al_2_por_ciento_devuelve_422_y_dentro_advierte(monkeypatch):
+    from src.features.vinculos.validacion import ExcesoVinculo
+
+    def excede(*a):
+        raise ExcesoVinculo("El vínculo deja CompraDeuda #5 imputado por $1.100,00 sobre su total ($1.000,00).")
+
+    monkeypatch.setattr(repository, "insertar_aplicaciones_con_advertencias", excede)
+    cuerpo = {"origenMovimiento": "bna", "idMovimientoOrigen": 1,
+              "aplicaciones": [{"tipoDocumento": "CompraDeuda", "idDocumento": 5, "importeAplicado": 100.0}]}
+    assert client.post("/api/aplicaciones-pago", json=cuerpo).status_code == 422
+    monkeypatch.setattr(repository, "insertar_aplicaciones_con_advertencias", lambda *a: ([7], ["queda $10 por encima"]))
+    assert client.post("/api/aplicaciones-pago", json=cuerpo).json()["advertencia"] == "queda $10 por encima"

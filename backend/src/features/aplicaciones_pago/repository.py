@@ -8,14 +8,22 @@ from __future__ import annotations
 from src.db.connection import execute_write, execute_write_transaction, fetch_all
 from src.features.aplicaciones_pago.documentos import TOLERANCIA_REDONDEO_APLICACION, _aplicado_de
 from src.features.aplicaciones_pago.sugerencia import _contacto_e_importe
+from src.features.vinculos import validacion
 
 
 def _importe_total_documento(tipo_documento: str, id_documento: int) -> float:
     if tipo_documento == "CompraDeuda":
+        # 031 (FR-010): en pesos; las compras en dólares se pesifican con su TC.
         fila = fetch_all(
-            "SELECT GranTotal AS total FROM dbo.vw_Cns_Total_Compra WHERE IdDeuda = ?", (id_documento,)
+            "SELECT t.GranTotal AS total, c.Moneda AS moneda, c.[Tipo de Cambio] AS tc FROM dbo.vw_Cns_Total_Compra t "
+            "JOIN dbo.Compras c ON c.IdDeuda = t.IdDeuda WHERE t.IdDeuda = ?", (id_documento,)
         )
-        return float(fila[0]["total"]) if fila else 0.0
+        if not fila:
+            return 0.0
+        total = float(fila[0]["total"] or 0)
+        if fila[0]["moneda"] == "Dolares" and (fila[0]["tc"] or 0) > 1:
+            total *= float(fila[0]["tc"])
+        return total
     if tipo_documento == "VentaHacienda":
         from src.features.ventas_hacienda.repository import calcular_totales, get_lineas_venta, get_venta_cabecera
 
@@ -99,6 +107,12 @@ def estado_movimiento(origen_movimiento: str, id_movimiento_origen: int) -> dict
 def insertar_aplicaciones(
     origen_movimiento: str, id_movimiento_origen: int, aplicaciones: list[dict], usuario: str
 ) -> list[int]:
+    return insertar_aplicaciones_con_advertencias(origen_movimiento, id_movimiento_origen, aplicaciones, usuario)[0]
+
+
+def insertar_aplicaciones_con_advertencias(
+    origen_movimiento: str, id_movimiento_origen: int, aplicaciones: list[dict], usuario: str
+) -> tuple[list[int], list[str]]:
     """Valida que ningún documento ni el movimiento queden sobre-aplicados
     (FR-008) y, si todo cierra, inserta una fila por cada entrada de
     `aplicaciones` en una única transacción."""
@@ -119,13 +133,12 @@ def insertar_aplicaciones(
             f"El movimiento quedaría sobre-aplicado: {nuevo_total_movimiento:.2f} > {importe_movimiento_abs:.2f}"
         )
 
-    for aplicacion in aplicaciones:
-        importe_total_doc = _importe_total_documento(aplicacion["tipoDocumento"], aplicacion["idDocumento"])
-        ya_aplicado_doc = _aplicado_de(aplicacion["tipoDocumento"], aplicacion["idDocumento"])
-        if ya_aplicado_doc + aplicacion["importeAplicado"] - importe_total_doc > TOLERANCIA_REDONDEO_APLICACION:
-            raise ValueError(
-                f"El documento {aplicacion['tipoDocumento']}/{aplicacion['idDocumento']} quedaría sobre-aplicado"
-            )
+    # 031 (FR-012): cuenta todas las vías; > 2% se rechaza, ≤ 2% advierte.
+    advertencias = validacion.verificar_documentos(
+        [{"tipoDocumento": a["tipoDocumento"], "idDocumento": a["idDocumento"], "importe": a["importeAplicado"]}
+         for a in aplicaciones],
+        _importe_total_documento,
+    )
 
     statements = [
         (
@@ -143,7 +156,7 @@ def insertar_aplicaciones(
         )
         for aplicacion in aplicaciones
     ]
-    return execute_write_transaction(statements)
+    return execute_write_transaction(statements), advertencias
 
 
 def anular_aplicacion(id_aplicacion: int, motivo: str, usuario: str) -> None:

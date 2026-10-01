@@ -8,13 +8,15 @@ from datetime import date
 
 from src.features.aplicaciones_pago import repository as aplicaciones_repository
 from src.features.flujo_caja import atribucion, repository
+from src.features.vinculos import cadenas, fuente
 
 
 def test_movimiento_con_aplicacion_usa_rubro_del_documento(monkeypatch):
+    monkeypatch.setattr(fuente, "cargar", lambda: {"vinculos": []})
     monkeypatch.setattr(
-        aplicaciones_repository,
-        "aplicaciones_vigentes_por_movimiento",
-        lambda: {("galicia", 1): [{"tipoDocumento": "VentaGranos", "idDocumentoAplicado": 1, "importeAplicado": 500.0}]},
+        cadenas,
+        "documentos_de_movimiento",
+        lambda v: {("galicia", 1): [{"tipoDocumento": "VentaGranos", "idDocumentoAplicado": 1, "importeAplicado": 500.0}]},
     )
     monkeypatch.setattr(atribucion, "_rubro_de_venta", lambda tipo, id_doc: "Venta Maiz")
 

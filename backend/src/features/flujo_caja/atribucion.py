@@ -69,6 +69,23 @@ def _rubro_de_venta(tipo_documento: str, id_documento: int) -> str:
     return SIN_RUBRO
 
 
+# 031: vínculos de tesorería y backfill que apuntan a impuestos y sueldos.
+CENTRO_COSTO_IMPUESTOS = "Impuestos"
+CENTRO_COSTO_PERSONAL = "Personal"
+RUBRO_SUELDOS = "Sueldos"
+
+
+def _rubro_de_impuesto(id_impuesto: int, memo: dict) -> str:
+    clave = ("Impuesto", id_impuesto)
+    if clave not in memo:
+        fila = fetch_all(
+            "SELECT TOP 1 t.[Nombre Impuesto] AS nombre FROM dbo.Impuestos i "
+            "JOIN dbo.[Tipo Impuesto] t ON t.IdTipoImpuesto = i.IdTipoImpuesto AND t.IdOrganismo = i.IdOrganismo "
+            "WHERE i.IdImpuesto = ?", (id_impuesto,))
+        memo[clave] = (fila[0]["nombre"] if fila and fila[0]["nombre"] else "Impuestos varios")
+    return memo[clave]
+
+
 def rubro_sin_aplicar(fecha) -> str:
     """Remanente o movimiento sin aplicación: histórico antes del corte, pendiente después."""
     return HISTORICO_SIN_APLICAR if _fecha(fecha) < FECHA_CORTE_APLICACION else PENDIENTE_DE_APLICAR
@@ -93,8 +110,13 @@ def partes_desde_aplicaciones(aplicaciones: list[dict], importe_movimiento: floa
     partes: list[dict] = []
     for a in aplicaciones:
         importe = float(a["importeAplicado"]) * escala
-        doc = {"tipo": a["tipoDocumento"], "id": a["idDocumentoAplicado"]}
-        if a["tipoDocumento"] == "CompraDeuda":
+        doc = {"tipo": a["tipoDocumento"], "id": a["idDocumentoAplicado"], "via": a.get("via", "aplicacion")}
+        if a["tipoDocumento"] == "Impuesto":
+            partes.append({"rubro": _rubro_de_impuesto(a["idDocumentoAplicado"], memo), "centroCosto": CENTRO_COSTO_IMPUESTOS,
+                           "importe": importe, "documentoAplicado": doc})
+        elif a["tipoDocumento"] == "Remuneracion":
+            partes.append({"rubro": RUBRO_SUELDOS, "centroCosto": CENTRO_COSTO_PERSONAL, "importe": importe, "documentoAplicado": doc})
+        elif a["tipoDocumento"] == "CompraDeuda":
             if a["idDocumentoAplicado"] not in memo:
                 memo[a["idDocumentoAplicado"]] = _rubros_de_compra(a["idDocumentoAplicado"])
             grupos: dict[tuple, float] = defaultdict(float)

@@ -1,11 +1,19 @@
 """Sugerencia FIFO de aplicación (019, research.md §3): dado un movimiento
 bancario real, sugiere los documentos pendientes más antiguos del mismo
 contacto hasta cubrir su importe. Solo lectura — el usuario confirma o
-edita antes de guardar (FR-003/FR-004)."""
+edita antes de guardar (FR-003/FR-004).
+
+031: solo son candidatos los documentos con fecha ≤ fecha del movimiento +
+60 días (un pago más de 60 días anterior a la factura no la paga), y los
+saldos se comparan en pesos (los documentos en dólares vienen pesificados
+desde `documentos_pendientes`)."""
 
 from __future__ import annotations
 
+from datetime import date, datetime, timedelta
+
 from src.features.aplicaciones_pago.documentos import documentos_pendientes
+from src.features.vinculos.cadenas import MARGEN_DIAS
 from src.features.tesoreria.matching import _ANCHOR_BY_MEDIO
 from src.features.tesoreria.repository import get_movimiento
 
@@ -30,19 +38,33 @@ def _importe_con_signo(origen_movimiento: str, row: dict) -> float | None:
     return None
 
 
-def _contacto_e_importe(origen_movimiento: str, id_movimiento_origen: int) -> tuple[int | None, float | None]:
+def _contacto_fecha_importe(origen_movimiento: str, id_movimiento_origen: int):
     row = get_movimiento(origen_movimiento, id_movimiento_origen)
     if row is None:
-        return None, None
+        return None, None, None
     anchor = _ANCHOR_BY_MEDIO.get(origen_movimiento)
     if anchor is None:
-        return None, None
-    id_contacto, _fecha, _importe_abs = anchor(row)
-    return id_contacto, _importe_con_signo(origen_movimiento, row)
+        return None, None, None
+    id_contacto, fecha, _importe_abs = anchor(row)
+    if isinstance(fecha, datetime):
+        fecha = fecha.date()
+    return id_contacto, fecha, _importe_con_signo(origen_movimiento, row)
+
+
+def _contacto_e_importe(origen_movimiento: str, id_movimiento_origen: int) -> tuple[int | None, float | None]:
+    id_contacto, _fecha, importe = _contacto_fecha_importe(origen_movimiento, id_movimiento_origen)
+    return id_contacto, importe
+
+
+def fecha_coherente(fecha_documento: date | None, fecha_movimiento: date | None) -> bool:
+    """El movimiento no puede ser más de 60 días anterior al documento."""
+    if fecha_documento is None or fecha_movimiento is None:
+        return True
+    return fecha_documento <= fecha_movimiento + timedelta(days=MARGEN_DIAS)
 
 
 def sugerir(origen_movimiento: str, id_movimiento_origen: int) -> dict:
-    id_contacto, importe = _contacto_e_importe(origen_movimiento, id_movimiento_origen)
+    id_contacto, fecha_movimiento, importe = _contacto_fecha_importe(origen_movimiento, id_movimiento_origen)
     if id_contacto is None or importe is None:
         return {"importeMovimiento": importe or 0.0, "sugerencias": [], "saldoSinAsignar": importe or 0.0}
 
@@ -50,7 +72,7 @@ def sugerir(origen_movimiento: str, id_movimiento_origen: int) -> dict:
     tipo = "compra" if importe < 0 else "venta"
     importe_abs = round(abs(importe), 2)
 
-    pendientes = documentos_pendientes(id_contacto, tipo)
+    pendientes = [d for d in documentos_pendientes(id_contacto, tipo) if fecha_coherente(d["fecha"], fecha_movimiento)]
     sugerencias = []
     restante = importe_abs
     for doc in pendientes:

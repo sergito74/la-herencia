@@ -19,6 +19,15 @@ import {
   type SeccionRubro,
 } from "@/services/flujoCajaApi";
 
+// 031: desde dónde se vinculó el documento.
+const VIAS: Record<string, string> = {
+  aplicacion: "Aplicación",
+  tarjeta: "Tarjeta",
+  "valor-propio": "Cheque",
+  tesoreria: "Tesorería",
+  "backfill-impuesto": "Impuesto",
+};
+
 const SIN_APLICAR = new Set(["Pendiente de aplicar", "Histórico sin aplicar"]);
 const GRANULARIDADES: { valor: GranularidadRubro; etiqueta: string }[] = [
   { valor: "semanal", etiqueta: "Semana" },
@@ -143,7 +152,7 @@ export function FlujoCajaRubro() {
                   </p>
                   <p className="text-xs text-ink-secondary">
                     {p.documentoAplicado
-                      ? `Aplicado a ${p.documentoAplicado.tipo} #${p.documentoAplicado.id}`
+                      ? `Aplicado a ${p.documentoAplicado.tipo} #${p.documentoAplicado.id} · vía ${VIAS[p.documentoAplicado.via] ?? p.documentoAplicado.via}`
                       : "Sin aplicar"}
                     {p.importeArs !== p.importeMovimiento && ` · parte de un movimiento de ${formatMoneda(p.importeMovimiento)}`}
                   </p>
