@@ -1,10 +1,10 @@
-"""Pydantic contract models for the Impuestos module (read-only)."""
+"""Pydantic contract models for the Impuestos module (boletas: alta/edición/baja desde 033)."""
 
 from __future__ import annotations
 
 from datetime import date
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class Impuesto(BaseModel):
@@ -39,3 +39,44 @@ class RetencionesListResponse(BaseModel):
     page: int
     pageSize: int
     total: int
+
+
+# --- 033-alta-impuestos ---------------------------------------------------
+
+
+class TipoImpuestoOpcion(BaseModel):
+    idTipoImpuesto: int
+    nombre: str
+
+
+class OrganismoOpcion(BaseModel):
+    idContacto: int
+    nombre: str
+    tipos: list[TipoImpuestoOpcion]
+
+
+class CatalogoImpuestos(BaseModel):
+    organismos: list[OrganismoOpcion]
+
+
+class ImpuestoInput(BaseModel):
+    idOrganismo: int
+    idTipoImpuesto: int
+    fecha: date
+    periodoLiquidado: str | None = Field(default=None, max_length=255)
+    numeroDocumento: str | None = Field(default=None, max_length=255)
+    importe: float
+    documentoOriginal: str | None = None
+
+
+class ImpuestoDetalle(BaseModel):
+    idImpuesto: int
+    fecha: date | None = None
+    idOrganismo: int | None = None
+    organismo: str | None = None
+    idTipoImpuesto: int | None = None
+    tipoImpuesto: str | None = None
+    periodoLiquidado: str | None = None
+    numeroDocumento: str | None = None
+    importe: float | None = None
+    documentoOriginal: str | None = None

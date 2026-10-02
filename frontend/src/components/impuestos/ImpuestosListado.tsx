@@ -1,7 +1,10 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
+import Link from "next/link";
 import { useState } from "react";
+
+import { SoloLectura } from "@/components/auth/SoloLectura";
 
 import { fetchImpuestos, type Impuesto } from "@/services/impuestosApi";
 import { ContactoLink } from "@/components/ui/ContactoLink";
@@ -12,9 +15,20 @@ import { ErrorState, LoadingState } from "@/components/ui/States";
 import { formatMoneda } from "@/lib/format";
 
 const COLUMNS: DataTableColumn<Impuesto>[] = [
-  { key: "fecha", header: "Fecha", numeric: true, sortValue: (i) => i.fecha, render: (i) => i.fecha ?? "—" },
+  {
+    key: "fecha",
+    header: "Fecha",
+    numeric: true,
+    sortValue: (i) => i.fecha,
+    render: (i) => (
+      <Link href={`/finanzas/impuestos/${i.idImpuesto}/editar`} className="text-finance underline" title="Ver o editar la boleta">
+        {i.fecha ?? "—"}
+      </Link>
+    ),
+  },
   { key: "tipoImpuesto", header: "Tipo", sortValue: (i) => i.tipoImpuesto, render: (i) => i.tipoImpuesto ?? "—" },
   { key: "periodoLiquidado", header: "Período", render: (i) => i.periodoLiquidado ?? "—" },
+  { key: "numeroDocumento", header: "Nº documento", render: (i) => i.numeroDocumento ?? "—" },
   {
     key: "organismo",
     header: "Organismo",
@@ -34,8 +48,8 @@ const COLUMNS: DataTableColumn<Impuesto>[] = [
 ];
 
 /**
- * Listado de impuestos (005 US1: FR-001). Read-only: no hay affordance de
- * crear/editar/eliminar (FR-008).
+ * Listado de impuestos (005 US1: FR-001). Desde 033-alta-impuestos: botón
+ * "Nueva boleta"; la fecha abre la boleta para editarla o eliminarla.
  */
 export function ImpuestosListado({ highlightKey }: { highlightKey?: number }) {
   const [organismo, setOrganismo] = useState<{ id: number | null; nombre: string | null }>({
@@ -70,6 +84,14 @@ export function ImpuestosListado({ highlightKey }: { highlightKey?: number }) {
           placeholder="Buscar organismo…"
         />
         <FilterSubmitButton />
+        <SoloLectura>
+          <Link
+            href="/finanzas/impuestos/nueva"
+            className="ml-auto self-end rounded bg-finance px-3 py-1.5 text-sm text-white"
+          >
+            Nueva boleta
+          </Link>
+        </SoloLectura>
       </FilterBar>
 
       {isLoading && <LoadingState />}

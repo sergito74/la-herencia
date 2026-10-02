@@ -85,8 +85,12 @@ async def test_list_impuestos_date_filters_forwarded(client, monkeypatch):
 
 @pytest.mark.anyio
 async def test_impuestos_rejects_write_methods(client):
+    """033-alta-impuestos reemplaza el FR-008 de 005 para boletas: POST
+    existe (sin cuerpo válido → 422). PUT/DELETE solo sobre /{id}; sobre la
+    colección y PATCH siguen sin existir."""
     async with httpx.AsyncClient(transport=client, base_url="http://test") as ac:
-        for method in ("post", "put", "delete", "patch"):
+        assert (await ac.post("/api/impuestos", json={})).status_code == 422
+        for method in ("put", "delete", "patch"):
             resp = await ac.request(method, "/api/impuestos")
             assert resp.status_code in (404, 405)
 
@@ -122,7 +126,9 @@ async def test_retenciones_rejects_write_methods(client):
     async with httpx.AsyncClient(transport=client, base_url="http://test") as ac:
         for method in ("post", "put", "delete", "patch"):
             resp = await ac.request(method, "/api/impuestos/retenciones")
-            assert resp.status_code in (404, 405)
+            # Retenciones siguen de solo lectura. PUT/DELETE caen en la ruta
+            # de boletas /{id_impuesto} (033) y "retenciones" no es un id → 422.
+            assert resp.status_code in (404, 405, 422)
 
 
 @pytest.fixture

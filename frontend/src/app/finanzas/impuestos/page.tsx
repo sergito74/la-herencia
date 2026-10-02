@@ -28,7 +28,7 @@ export default function ImpuestosPage() {
       <BackLink href="/">Volver al inicio</BackLink>
       <h1 className="mt-2 text-2xl font-semibold">Impuestos</h1>
       <p className="mt-1 text-ink-secondary">
-        Impuestos y retenciones impositivas (solo lectura).
+        Boletas de impuestos (alta, edición y baja) y retenciones impositivas (solo lectura).
       </p>
 
       <div className="mt-6 flex gap-2">
