@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useState } from "react";
+import { useState } from "react";
 
 import type { FiltrosVentaHaciendaResponse, LineaVentaHaciendaInput } from "@/services/ventasHaciendaApi";
 import { formatMonto, parseNumeroLocal } from "@/lib/format";
@@ -30,7 +30,7 @@ export const FILA_VACIA_HACIENDA: GridRowHacienda = {
   compradorNombre: null,
   idTipoProducto: "",
   cantidad: "",
-  unidadMedida: "",
+  unidadMedida: "Kilos",
   pesoTotal: "",
   precioUnitarioA: "",
   precioUnitarioB: "",
@@ -45,6 +45,20 @@ function esFilaVacia(row: GridRowHacienda): boolean {
     !row.precioUnitarioA.trim() &&
     !row.precioUnitarioB.trim()
   );
+}
+
+// Unidad de venta (como en el formulario Access): por kilos o por cabeza.
+// En la base: "Kilos" o "Unidades". Por kilos, Cantidad = kg y Peso total =
+// cabezas; por cabeza, Cantidad = cabezas y Peso total = kg totales.
+// Importe = Cantidad × precio en los dos casos.
+export const UNIDADES_VENTA = [
+  { valor: "Kilos", texto: "Kilos" },
+  { valor: "Unidades", texto: "Cabezas" },
+];
+
+function porCabeza(unidad: string): boolean {
+  const u = (unidad || "").trim().toLowerCase();
+  return u === "unidades" || u === "cabezas" || u === "cabeza" || u === "toros";
 }
 
 export function calcularImporteLineaHacienda(row: GridRowHacienda): number {
@@ -81,8 +95,6 @@ export function VentaHaciendaGrid({
   onChange: (rows: GridRowHacienda[]) => void;
   filtros: FiltrosVentaHaciendaResponse | undefined;
 }) {
-  const listIdBase = useId();
-  const unidadesListId = `${listIdBase}-unidades`;
 
   function actualizarFila(rowIndex: number, patch: Partial<GridRowHacienda>) {
     const next = rows.map((r, i) => (i === rowIndex ? { ...r, ...patch } : r));
@@ -100,7 +112,6 @@ export function VentaHaciendaGrid({
 
   return (
     <div className="space-y-1">
-      <datalist id={unidadesListId} />
       <div className="overflow-x-auto rounded-md border border-border">
         <table className="min-w-full divide-y divide-border text-xs">
           <thead className="sticky top-0 bg-surface-sunken text-left">
@@ -108,11 +119,11 @@ export function VentaHaciendaGrid({
               {[
                 "Comprador",
                 "Categoría",
+                "Se vende por",
                 "Cantidad",
-                "Unidad",
-                "Peso total",
-                "Precio unit. (A)",
-                "Precio unit. (B)",
+                "Cabezas / Kg totales",
+                "Precio (A)",
+                "Precio (B)",
                 "Importe",
                 "",
               ].map((h) => (
@@ -152,26 +163,37 @@ export function VentaHaciendaGrid({
                       ))}
                     </select>
                   </td>
+                  <td className="w-28">
+                    <select
+                      className={inputClass}
+                      value={row.unidadMedida}
+                      onChange={(e) => actualizarFila(rowIndex, { unidadMedida: e.target.value })}
+                    >
+                      {UNIDADES_VENTA.map((u) => (
+                        <option key={u.valor} value={u.valor}>
+                          {u.texto}
+                        </option>
+                      ))}
+                      {row.unidadMedida && !UNIDADES_VENTA.some((u) => u.valor === row.unidadMedida) && (
+                        <option value={row.unidadMedida}>{row.unidadMedida}</option>
+                      )}
+                    </select>
+                  </td>
                   <td className="w-24">
                     <CeldaNumerica
                       className={`${inputClass} font-data text-right`}
                       value={row.cantidad}
                       onChange={(v) => actualizarFila(rowIndex, { cantidad: v })}
+                      placeholder={porCabeza(row.unidadMedida) ? "cabezas" : "kg"}
                     />
                   </td>
-                  <td className="w-24">
-                    <input
-                      className={inputClass}
-                      list={unidadesListId}
-                      value={row.unidadMedida}
-                      onChange={(e) => actualizarFila(rowIndex, { unidadMedida: e.target.value })}
-                    />
-                  </td>
+
                   <td className="w-24">
                     <CeldaNumerica
                       className={`${inputClass} font-data text-right`}
                       value={row.pesoTotal}
                       onChange={(v) => actualizarFila(rowIndex, { pesoTotal: v })}
+                      placeholder={porCabeza(row.unidadMedida) ? "kg totales" : "cabezas"}
                     />
                   </td>
                   <td className="w-28">
@@ -179,6 +201,7 @@ export function VentaHaciendaGrid({
                       className={`${inputClass} font-data text-right`}
                       value={row.precioUnitarioA}
                       onChange={(v) => actualizarFila(rowIndex, { precioUnitarioA: v })}
+                      placeholder={porCabeza(row.unidadMedida) ? "$/cabeza" : "$/kg"}
                       minDecimales={2}
                       maxDecimales={4}
                     />

@@ -17,6 +17,7 @@ export function CeldaNumerica({
   className,
   minDecimales = 0,
   maxDecimales = 3,
+  placeholder,
 }: {
   value: string;
   onChange: (value: string) => void;
@@ -24,6 +25,7 @@ export function CeldaNumerica({
   className?: string;
   minDecimales?: number;
   maxDecimales?: number;
+  placeholder?: string;
 }) {
   const [focused, setFocused] = useState(false);
   const mostrar =
@@ -37,6 +39,7 @@ export function CeldaNumerica({
       onBlur={() => setFocused(false)}
       onChange={(e) => onChange(e.target.value)}
       onPaste={onPaste}
+      placeholder={placeholder}
     />
   );
 }

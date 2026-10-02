@@ -511,6 +511,31 @@ def validar_compra(
     return errores
 
 
+CAMPOS_IMPORTE_CABECERA = (
+    "ingresosBrutos", "conceptosNoGravados", "guias", "comision", "financiacion",
+    "gastosVarios", "leyDeSellos", "resGral4169",
+)
+
+
+def normalizar_signo_nota_credito(cabecera: dict, lineas: list[dict]) -> tuple[dict, list[dict]]:
+    """Una Nota de Crédito se guarda con importes negativos (convención del
+    Access: 224 de las 233 NC históricas). El formulario guardaba lo que se
+    tipeaba, y una NC cargada en positivo sumaba como DEUDA en la cuenta
+    corriente (caso real 2026-10-02, Luvik S.A., NC "SIN DOCUMENTO" de
+    $11.998 que no se podía conciliar con su reintegro de tarjeta). Si el
+    total queda positivo, se invierte el signo de precios y montos de
+    cabecera; si ya es negativo (o cero), no se toca."""
+    if cabecera.get("tipoDocumento") != "Nota de Crédito":
+        return cabecera, lineas
+    if calcular_totales(lineas, cabecera)["importeTotal"] <= 0:
+        return cabecera, lineas
+    cabecera = dict(cabecera)
+    for campo in CAMPOS_IMPORTE_CABECERA:
+        if cabecera.get(campo):
+            cabecera[campo] = -cabecera[campo]
+    return cabecera, [{**l, "precioUnitario": -l["precioUnitario"]} for l in lineas]
+
+
 def calcular_totales(lineas: list[dict], cabecera: dict) -> dict:
     """Fórmulas confirmadas contra el formulario Access real (`Frm Compras`, ver data-model.md).
 
@@ -565,7 +590,15 @@ def buscar_documento_duplicado(
 ) -> dict | None:
     """Devuelve la compra existente con el mismo proveedor+nº de documento
     (o `None`), usada para el bloqueo duro al guardar (`_rechazar_si_duplicado`
-    en el router) — antes esto solo generaba un warning no bloqueante."""
+    en el router) — antes esto solo generaba un warning no bloqueante.
+
+    Un "número" sin ningún dígito ("SIN DOCUMENTO", "S/D", "SIN FACTURA",
+    "SIN COPIA", "FALTA FACTURA"...) no identifica un comprobante: es la
+    marca de que el original se perdió o el proveedor no lo mandó, y se
+    repite a propósito (pedido de Sergio, 2026-10-02 — bloqueaba cargar una
+    segunda nota de ajuste "SIN DOCUMENTO" del mismo proveedor)."""
+    if not re.search(r"\d", numero_documento or ""):
+        return None
     sql = (
         "SELECT IdDeuda AS idCompra FROM dbo.Compras "
         "WHERE IdContacto = ? AND [Nro Documento] = ?"

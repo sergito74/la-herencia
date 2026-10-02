@@ -86,6 +86,7 @@ const NAV_ITEMS: NavItem[] = [
       { href: "/finanzas/flujo-caja-real", label: "Flujo de caja real" },
       { href: "/finanzas/flujo-caja-rubro", label: "Flujo de caja por rubro" },
       { href: "/finanzas/integridad-vinculos", label: "Integridad de vínculos" },
+      { href: "/finanzas/recalculo-fifo", label: "Recálculo FIFO de cuentas" },
       { href: "/finanzas/cuentas-corrientes", label: "Cuentas corrientes" },
       { href: "/finanzas/cuentas-socios", label: "Cuentas de socios" },
       { href: "/finanzas/reasignacion-contacto", label: "Reasignación de contacto" },

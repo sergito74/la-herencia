@@ -89,10 +89,11 @@ def emparejar_cheques(movimientos: dict, valores: list[dict]) -> dict[tuple, int
 def _importe_ars(importe: float, doc: dict | None, origen_carga: str | None, importe_mov: float | None = None) -> tuple[float, bool]:
     """Una aplicación automática a un documento en dólares guardó el importe
     en us$ contra un movimiento en pesos: se pesifica con el TC de la
-    factura (FR-010). Solo se considera cargada en us$ si, pesificada,
+    factura (FR-010). Las manuales y las del recálculo FIFO (032) ya están
+    en pesos. Solo se considera cargada en us$ si, pesificada,
     sigue entrando en el movimiento (si no, ya estaba en pesos). Las
     manuales se toman como están."""
-    if doc and doc.get("moneda") == "Dolares" and origen_carga != "manual" and (doc.get("tc") or 0) > 1:
+    if doc and doc.get("moneda") == "Dolares" and origen_carga not in ("manual", "fifo-032") and (doc.get("tc") or 0) > 1:
         pesificado = importe * float(doc["tc"])
         if importe_mov is None or pesificado <= abs(importe_mov) * (1 + TOLERANCIA) + 1:
             return round(pesificado, 2), True

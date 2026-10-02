@@ -18,6 +18,10 @@ export default function IntegridadVinculosPage() {
       </section>
       <section>
         <h2 className="text-xl font-semibold">Corrección por lotes</h2>
+        <p className="mt-1 text-sm font-medium text-status-warning">
+          Reemplazada por el recálculo FIFO (Finanzas → Recálculo FIFO de cuentas). Los lotes anteriores quedan como
+          historial.
+        </p>
         <p className="mt-1 text-sm text-ink-secondary">
           La propuesta agrupa por motivo y certeza. Nada se borra: las aplicaciones erróneas se anulan con motivo, se
           toma un backup verificado antes de aplicar y cada lote se puede revertir. Las aplicaciones manuales nunca se

@@ -103,7 +103,8 @@ export function VentaHaciendaForm({
     visMunicipal: initial?.visMunicipal ?? 0,
     balanza: initial?.balanza ?? 0,
     gsVsNoGravados: initial?.gsVsNoGravados ?? 0,
-    alicuotaIVA: initial?.alicuotaIVA ?? 0,
+    // La hacienda tributa IVA 10,5%: es el valor por defecto en una venta nueva.
+    alicuotaIVA: initial?.alicuotaIVA ?? 10.5,
     retencionGanancias: initial?.retencionGanancias ?? 0,
     retencionIVA: initial?.retencionIVA ?? 0,
     ingresosBrutos: initial?.ingresosBrutos ?? 0,

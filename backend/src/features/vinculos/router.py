@@ -71,8 +71,10 @@ async def listar_lotes_endpoint() -> list[dict]:
 
 @router.post("/lotes", status_code=201)
 async def crear_lote_endpoint(request: Request) -> dict:
-    _exigir_admin(request)
-    return await run_in_threadpool(lotes.crear_lote, _usuario(request))
+    # 032 (FR-016): las correcciones por lotes se reemplazaron por el
+    # recálculo FIFO. Los lotes existentes se pueden consultar y revertir.
+    raise HTTPException(status_code=410, detail="Los lotes de corrección se reemplazaron por el recálculo FIFO "
+                                                "(Finanzas → Recálculo FIFO de cuentas).")
 
 
 @router.get("/lotes/{id_lote}")

@@ -3,12 +3,16 @@
 from src.features.tarjetas_resumenes import conciliacion_documentos as motor
 
 
-def _preparar(docs: list[dict]) -> list[dict]:
+def _preparar(docs: list[dict], signo: int = 1) -> list[dict]:
+    """`signo` = -1 para una línea negativa (reintegro de tarjeta contra nota
+    de crédito, caso real 2026-10-02 Luvik S.A.): el neto elegido debe tener
+    el mismo signo que la línea."""
     keys = [(d["origen"], d["idOrigen"]) for d in docs]
     if not 1 <= len(docs) <= 20 or len(set(keys)) != len(keys):
         raise ValueError("Elegí de 1 a 20 documentos, sin repetir.")
-    if sum(float(d["saldoPendiente"]) for d in docs) <= 0:
-        raise ValueError("La selección debe tener un importe neto positivo.")
+    if signo * sum(float(d["saldoPendiente"]) for d in docs) <= 0:
+        raise ValueError("La selección debe tener un importe neto positivo."
+                         if signo > 0 else "Para un reintegro, la selección debe sumar negativo (notas de crédito).")
     # Saldo ya convertido a pesos. Mantener la marca USD solo para que el
     # motor conserve su tolerancia; TC=1 evita convertir el saldo dos veces.
     return [
@@ -40,7 +44,7 @@ def _publico(result: dict, docs: list[dict]) -> dict:
 
 
 def calcular(importe: float, docs: list[dict]) -> dict:
-    prepared = _preparar(docs)
+    prepared = _preparar(docs, -1 if importe < 0 else 1)
     result = _publico(motor.calcular_imputacion(importe, prepared), docs)
     if all(abs(motor.importe_pesos(d) - d["saldoPendiente"]) < 0.005 for d in docs):
         originals = [dict(d, idCompra=i + 1, idImpuesto=None) for i, d in enumerate(docs)]

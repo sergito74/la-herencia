@@ -63,6 +63,17 @@ type ColumnaCatalogo = "rubro" | "centroCosto" | "destino" | "campania";
 
 const NUEVO_SENTINEL = "__nuevo__";
 
+/** Detalle copiado de un documento para pegarlo en otro (pedido de Sergio,
+ * 2026-10-02). Se guarda en el navegador (sobrevive a cambiar de compra) y
+ * además se copia al portapapeles como texto separado por tabulaciones, en
+ * el orden de las columnas, para pegarlo en una planilla o con Ctrl+V en la
+ * celda "Cantidad" de otra compra. */
+const CLAVE_DETALLE_COPIADO = "compras.detalleCopiado";
+
+function filaATexto(r: GridRow): string {
+  return COLUMNAS_EDITABLES.map((c) => r[c].replace(/[\t\n]/g, " ")).join("\t");
+}
+
 function esFilaVacia(row: GridRow): boolean {
   return Object.values(row).every((v) => v.trim() === "");
 }
@@ -230,6 +241,55 @@ export function ComprasGrid({
     onChange(next);
   }
 
+  function completarVacias(next: GridRow[]): GridRow[] {
+    const vacias = next.filter(esFilaVacia).length;
+    for (let i = vacias; i < 10; i++) next.push({ ...FILA_VACIA });
+    return next;
+  }
+
+  function eliminarFila(rowIndex: number) {
+    const row = rows[rowIndex];
+    const nombre = row.productoServicio.trim() || "este renglón";
+    if (!window.confirm(`¿Eliminar "${nombre}"? El cambio se guarda al guardar la compra.`)) return;
+    onChange(completarVacias(rows.filter((_, i) => i !== rowIndex)));
+  }
+
+  async function copiarDetalle() {
+    const cargadas = rows.filter((r) => !esFilaVacia(r));
+    if (!cargadas.length) {
+      showToast("No hay renglones para copiar.", "danger");
+      return;
+    }
+    try {
+      window.localStorage.setItem(CLAVE_DETALLE_COPIADO, JSON.stringify(cargadas));
+    } catch {
+      // Sin almacenamiento del navegador: queda el portapapeles.
+    }
+    try {
+      await navigator.clipboard.writeText(cargadas.map(filaATexto).join("\n"));
+    } catch {
+      // Sin permiso de portapapeles: queda el almacenamiento del navegador.
+    }
+    showToast(`Copiados ${cargadas.length} renglones. Abrí la otra compra y usá "Pegar detalle".`, "success");
+  }
+
+  function pegarDetalle() {
+    let copiadas: GridRow[] = [];
+    try {
+      copiadas = JSON.parse(window.localStorage.getItem(CLAVE_DETALLE_COPIADO) ?? "[]");
+    } catch {
+      copiadas = [];
+    }
+    if (!copiadas.length) {
+      showToast('No hay un detalle copiado. Usá "Copiar detalle" en la compra de origen.', "danger");
+      return;
+    }
+    const cargadas = rows.filter((r) => !esFilaVacia(r));
+    const nuevas = copiadas.map((r) => ({ ...FILA_VACIA, ...r }));
+    onChange(completarVacias([...cargadas, ...nuevas]));
+    showToast(`Pegados ${nuevas.length} renglones al final del detalle.`, "success");
+  }
+
   const totalSubtotal = rows.reduce((acc, r) => acc + calcularLinea(r).subtotal, 0);
   const totalIva = rows.reduce((acc, r) => acc + calcularLinea(r).importeIva, 0);
 
@@ -269,6 +329,14 @@ export function ComprasGrid({
         {filtros?.unidadesMedida.map((u) => <option key={u.unidad} value={u.unidad} />)}
       </datalist>
 
+      <div className="flex items-center justify-end gap-3 text-xs">
+        <button type="button" onClick={copiarDetalle} className="text-finance underline">
+          Copiar detalle
+        </button>
+        <button type="button" onClick={pegarDetalle} className="text-finance underline">
+          Pegar detalle
+        </button>
+      </div>
       <div className="overflow-x-auto rounded-md border border-border">
         <table className="min-w-full divide-y divide-border text-xs">
           <thead className="sticky top-0 bg-surface-sunken text-left">
@@ -285,6 +353,7 @@ export function ComprasGrid({
                 "IVA %",
                 "IVA $",
                 "Subtotal",
+                "",
               ].map((h) => (
                 <th key={h} className="whitespace-nowrap px-1.5 py-1 font-medium text-ink-secondary">
                   {h}
@@ -387,6 +456,19 @@ export function ComprasGrid({
                   <td className="w-24 px-1.5 py-0.5 text-right font-data text-ink-secondary">
                     {subtotal ? formatMoneda(subtotal, moneda) : ""}
                   </td>
+                  <td className="w-6 px-1 text-center">
+                    {filaIniciada && (
+                      <button
+                        type="button"
+                        onClick={() => eliminarFila(rowIndex)}
+                        title="Eliminar renglón"
+                        aria-label="Eliminar renglón"
+                        className="text-ink-secondary hover:text-status-danger"
+                      >
+                        ✕
+                      </button>
+                    )}
+                  </td>
                 </tr>
               );
             })}
@@ -398,6 +480,7 @@ export function ComprasGrid({
               </td>
               <td className="px-1.5 py-1 text-right font-data">{formatMoneda(totalIva, moneda)}</td>
               <td className="px-1.5 py-1 text-right font-data">{formatMoneda(totalSubtotal, moneda)}</td>
+              <td />
             </tr>
           </tfoot>
         </table>

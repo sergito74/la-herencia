@@ -121,7 +121,10 @@ def calcular_imputacion(importe_linea: float, docs: list[dict]) -> dict:
     # excepción). El reparto proporcional usa `importePesos` (ya pesificado
     # con el tipo de cambio propio de cada documento), así que funciona
     # igual sea el documento en pesos o en dólares.
-    pago_parcial = estado == "parcial" and diferencia < 0 and sum(imputados.values()) > 0
+    # Simétrico para líneas negativas (reintegro contra nota de crédito): con
+    # `signo` = -1 "vale más" significa más negativo.
+    signo = -1 if importe_linea < 0 else 1
+    pago_parcial = estado == "parcial" and signo * diferencia < 0 and signo * sum(imputados.values()) > 0
 
     # El "tipo de cambio implícito" solo tiene sentido cuando NO es una
     # cuota legítima: ahí la línea es deliberadamente menor que el total en
@@ -150,7 +153,7 @@ def calcular_imputacion(importe_linea: float, docs: list[dict]) -> dict:
         if ids and ajuste:
             imputados[ids[-1]] = round(imputados[ids[-1]] + ajuste, 2)
 
-    permite_parcial = estado == "parcial" and not pago_parcial and diferencia > 0
+    permite_parcial = estado == "parcial" and not pago_parcial and signo * diferencia > 0
 
     resultado.update(
         {

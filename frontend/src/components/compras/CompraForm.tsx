@@ -119,7 +119,7 @@ export function CompraForm({
   const [fecha, setFecha] = useState(initial?.fecha ?? prefill?.fecha ?? "");
   const [tipo, setTipo] = useState<TipoComprobante>(initial?.tipo ?? "A");
   const [tipoDocumento, setTipoDocumento] = useState<TipoDocumentoCompra>(
-    initial?.tipoDocumento ?? "Factura"
+    initial?.tipoDocumento ?? ((prefill?.importe ?? 0) < 0 ? "Nota de Crédito" : "Factura")
   );
   const [numeroDocumento, setNumeroDocumento] = useState(initial?.numeroDocumento ?? prefill?.numeroDocumento ?? "");
   const [moneda, setMonedaState] = useState<MonedaCompra>(initial?.moneda ?? "Pesos");

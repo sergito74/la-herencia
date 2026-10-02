@@ -17,6 +17,7 @@ from src.features.tarjetas_resumenes.repository import (
     TOLERANCIA_CONCILIACION,
     calcular_total,
     get_lineas,
+    linea_resuelta,
     get_pagos,
     get_resumen_detalle,
     registrar_pago,
@@ -71,7 +72,7 @@ def get_movimientos(id_tarjeta: int) -> list[dict]:
         )
         pagado = sum(float(p["importe"]) for p in pagos)
         diferencia_redondeo = round(total - pagado, 2)
-        lineas_vinculadas = sum(1 for l in lineas if l.get("comprasVinculadas"))
+        lineas_vinculadas = sum(1 for l in lineas if linea_resuelta(l))
         # Estado de conciliación por resumen — para que la cuenta corriente
         # de la tarjeta lo muestre de un vistazo, sin entrar resumen por
         # resumen (feedback 2026-09-21). Tolerancia de redondeo justificada

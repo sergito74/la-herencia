@@ -193,7 +193,7 @@ def search_resumenes(
         cabecera = get_resumen_detalle(id_resumen)
         lineas = get_lineas(id_resumen)
         total_calculado = calcular_total(cabecera, lineas) if cabecera else 0.0
-        lineas_vinculadas = sum(1 for l in lineas if l.get("comprasVinculadas"))
+        lineas_vinculadas = sum(1 for l in lineas if linea_resuelta(l))
         pagado = sum(_f(p.get("importe")) for p in get_pagos(id_resumen))
         diferencia_redondeo = round(total_calculado - pagado, 2)
         items.append(
@@ -260,6 +260,23 @@ def get_lineas(id_resumen: int) -> list[dict]:
     for linea in lineas:
         linea["comprasVinculadas"] = get_compras_vinculadas(linea["idLineaConsumo"])
     return lineas
+
+
+def linea_resuelta(linea: dict) -> bool:
+    """Una línea de `get_lineas` está conciliada si tiene una resolución
+    manual ("sin documento" / "diferencia aceptada") o si sus documentos
+    cubren su importe (±$1). Antes el contador del listado solo miraba si
+    tenía algún documento: las líneas resueltas "sin documento" (ej.
+    reintegros de Mercado Libre de productos nunca facturados, 2026-10-02)
+    quedaban como pendientes, y una línea vinculada en parte contaba como
+    lista."""
+    if linea.get("estadoLinea"):
+        return True
+    vinculos = linea.get("comprasVinculadas") or []
+    if not vinculos:
+        return False
+    imputado = sum(_f(v.get("importeImputado")) for v in vinculos)
+    return abs(_f(linea.get("importe")) - imputado) <= 1.0
 
 
 def get_compras_vinculadas(id_linea_consumo: int) -> list[dict]:
@@ -515,9 +532,18 @@ MOTIVOS_SIN_DOCUMENTO = {"Impuesto", "Interes", "CompraNoCargada", "Otro"}
 # desaparecía del listado de pendientes para siempre, aunque ese vínculo
 # fuera solo una parte de una línea "agrupada" (varios proveedores en un
 # mismo resumen, ej. MercadoLibre) y quedara saldo real sin vincular.
+# Las líneas negativas (reintegros, bonificaciones) se concilian con notas de
+# crédito: también quedan pendientes mientras les falte cubrir (bug real
+# 2026-10-02, Luvik S.A.: un reintegro de -$11.998 no aparecía como pendiente
+# y al vincularlo decía "ya está completamente vinculada").
 _SIN_RESOLVER = """
-    ISNULL((SELECT SUM(v.ImporteImputado) FROM dbo.Tarjetas_Resumenes_Lineas_Compras v
-            WHERE v.IdLineaConsumo = l.IdLineaConsumo), 0) < l.Importe - 1.00
+    (
+        (l.Importe > 0 AND ISNULL((SELECT SUM(v.ImporteImputado) FROM dbo.Tarjetas_Resumenes_Lineas_Compras v
+            WHERE v.IdLineaConsumo = l.IdLineaConsumo), 0) < l.Importe - 1.00)
+        OR
+        (l.Importe < 0 AND ISNULL((SELECT SUM(v.ImporteImputado) FROM dbo.Tarjetas_Resumenes_Lineas_Compras v
+            WHERE v.IdLineaConsumo = l.IdLineaConsumo), 0) > l.Importe + 1.00)
+    )
     AND NOT EXISTS (SELECT 1 FROM dbo.Tarjetas_Resumenes_Lineas_Estado e WHERE e.IdLineaConsumo = l.IdLineaConsumo)
 """
 
@@ -589,8 +615,9 @@ def _asegurar_pendiente(id_linea: int) -> dict:
         raise ValueError([f"La línea {id_linea} no existe."])
     if get_estado(id_linea):
         raise ValueError([f"La línea {id_linea} ya está resuelta."])
-    restante = round(_f(linea["importe"]) - _total_imputado(id_linea), 2)
-    if restante <= TOLERANCIA_PESOS_USD:
+    importe = _f(linea["importe"])
+    restante = round(importe - _total_imputado(id_linea), 2)
+    if restante * (1 if importe >= 0 else -1) <= TOLERANCIA_PESOS_USD:
         raise ValueError([f"La línea {id_linea} ya está completamente vinculada."])
     return {**linea, "importeRestante": restante}
 

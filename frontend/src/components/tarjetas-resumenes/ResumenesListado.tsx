@@ -56,7 +56,7 @@ const COLUMNS: DataTableColumn<ResumenListItem>[] = [
       ) : (
         <Semaforo
           ok={r.lineasVinculadas === r.lineasTotal}
-          label={`${r.lineasVinculadas}/${r.lineasTotal} vinculados`}
+          label={`${r.lineasVinculadas}/${r.lineasTotal} conciliados`}
         />
       ),
   },

@@ -61,7 +61,7 @@ const COLUMNS: DataTableColumn<MovimientoTarjeta>[] = [
       if (m.origen === "Pago" || m.lineasTotal == null || m.lineasVinculadas == null) return "—";
       if (m.lineasTotal === 0) return <Semaforo ok label="Solo cabecera" />;
       return (
-        <Semaforo ok={m.lineasVinculadas === m.lineasTotal} label={`${m.lineasVinculadas}/${m.lineasTotal} vinculados`} />
+        <Semaforo ok={m.lineasVinculadas === m.lineasTotal} label={`${m.lineasVinculadas}/${m.lineasTotal} conciliados`} />
       );
     },
   },

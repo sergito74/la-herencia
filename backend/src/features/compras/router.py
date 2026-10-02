@@ -252,6 +252,7 @@ async def crear_compra(body: CompraAltaRequest) -> CompraDetalleResponse:
 
     cabecera = _cabecera_dict(body)
     lineas = [linea.model_dump() for linea in body.lineas]
+    cabecera, lineas = repository.normalizar_signo_nota_credito(cabecera, lineas)
     vencimientos = [v.model_dump() for v in body.vencimientos]
 
     try:
@@ -301,6 +302,7 @@ async def editar_compra(
 
     cabecera = _cabecera_dict(body)
     lineas = [linea.model_dump() for linea in body.lineas]
+    cabecera, lineas = repository.normalizar_signo_nota_credito(cabecera, lineas)
     vencimientos = [v.model_dump() for v in body.vencimientos]
 
     try:
