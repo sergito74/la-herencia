@@ -235,4 +235,4 @@ description: "Task list for 008-tarjetas"
 
 ## Pagos bancarios anulados — 2026-10-06
 
-Los candidatos de pago excluyen movimientos con resolución vigente SinDocumento o DiferenciaAceptada en ConciliacionesTesoreriaEstado. Solo se considera el último evento; revocar la resolución permite volver a ofrecer el movimiento si no tiene pagos vinculados. Evita volver a aplicar débitos duplicados ya devueltos y documentados. No cambia importes ni crea pagos.
+- [x] Excluir de los candidatos de pago los movimientos con resolución vigente SinDocumento o DiferenciaAceptada (ver spec.md).

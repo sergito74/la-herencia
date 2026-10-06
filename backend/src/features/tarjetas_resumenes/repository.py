@@ -23,8 +23,8 @@ from src.features.conciliacion_tesoreria import documentos_adapter
 from src.db.pagination import offset_for
 from src.db.params import as_sql_datetime
 from src.features.compras.particular import APLICA_PARTICULAR_JOIN
-from src.formatting import formatear_moneda
 from src.features.tarjetas.compensaciones import get_compensaciones
+from src.formatting import formatear_moneda
 from src.features.tarjetas_resumenes.conciliacion_documentos import (
     MAX_DOCS_SUGERENCIA,
     TOLERANCIA_PESOS_USD,
