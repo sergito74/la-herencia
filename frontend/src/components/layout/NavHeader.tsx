@@ -88,6 +88,7 @@ const NAV_ITEMS: NavItem[] = [
       { href: "/finanzas/integridad-vinculos", label: "Integridad de vínculos" },
       { href: "/finanzas/recalculo-fifo", label: "Recálculo FIFO de cuentas" },
       { href: "/finanzas/cuentas-corrientes", label: "Cuentas corrientes" },
+      { href: "/finanzas/auditoria-cuentas", label: "Auditoría de cuentas" },
       { href: "/finanzas/cuentas-socios", label: "Cuentas de socios" },
       { href: "/finanzas/reasignacion-contacto", label: "Reasignación de contacto" },
       { href: "/finanzas/tarjetas", label: "Tarjetas" },

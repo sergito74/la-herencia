@@ -42,6 +42,7 @@ from src.features.remitos.stock_router import router as stock_router
 from src.features.remuneraciones.router import router as remuneraciones_router
 from src.features.sesion.router import router as sesion_router
 from src.features.tarjetas.router import router as tarjetas_router
+from src.features.auditoria_cuentas.router import router as auditoria_cuentas_router
 from src.features.tarjetas_cuenta.router import router as tarjetas_cuenta_router
 from src.features.tarjetas_cuotas.router import router as tarjetas_cuotas_router
 from src.features.tarjetas_resumenes.router import router as tarjetas_resumenes_router
@@ -163,6 +164,7 @@ app.include_router(stock_router)
 app.include_router(remuneraciones_router)
 app.include_router(sesion_router)
 app.include_router(tarjetas_router)
+app.include_router(auditoria_cuentas_router)
 app.include_router(tarjetas_cuenta_router)
 app.include_router(tarjetas_cuotas_router)
 app.include_router(tarjetas_resumenes_router)
