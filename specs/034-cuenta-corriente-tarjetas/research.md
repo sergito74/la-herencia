@@ -123,3 +123,5 @@ Veredicto: cierre aprobado con reservas menores, ya registradas aquí.
 **Reservas a vigilar:**
 - Conducto de Mercado Pago: se detecta con misma operación, mismo día e importe opuesto; si un ingreso y su pago cayeran en días distintos se contaría doble. Hoy hay 30 pares y ningún caso así.
 - UATRE 04/09/2024 (+$17.185,82): Sergio aclaró que los pagos de UATRE se debitan del Banco Galicia y que Mercado Pago solo lee el código de barras; este único pago es el que no tiene par de conducto. No se registró una confirmación expresa de que no exista un débito equivalente en Galicia: queda como punto a confirmar con Sergio.
+
+**UATRE 04/09/2024 — confirmado (06/10/2026):** se buscó en los movimientos del Banco Galicia (25/08 a 20/09/2024) y en toda la historia de Galicia un débito de $17.185,82 o con descripción UATRE: no existe, y tampoco hay un ingreso de dinero a la billetera que lo fondee (movimiento 23, operación 86673304977). Por indicación de Sergio, al no existir débito en Galicia el pago salió con fondos propios de Mercado Pago y se acredita una sola vez a UATRE (+$17.185,82). Reserva cerrada.
