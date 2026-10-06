@@ -96,12 +96,28 @@ def hallazgos(raw: dict) -> list[dict]:
                               f"Tarjeta activa cuyo último resumen cerró hace más de {DIAS_CONTINUIDAD} días",
                               **tarjeta(t["idTarjeta"]), fecha=ultimo))
 
+    # Las líneas negativas (devoluciones) del mismo resumen compensan el resto sin vincular de sus compras
+    devoluciones: dict[tuple, float] = {}
+    for c in raw["consumos"]:
+        if c["importe"] < 0:
+            k = (c["idTarjeta"], c["idResumen"])
+            devoluciones[k] = devoluciones.get(k, 0.0) + (-c["importe"] - c["vinculado"])
+    restos: dict[tuple, float] = {}
+    for c in raw["consumos"]:
+        if c["importe"] > 0 and not c["tieneProveedor"]:
+            k = (c["idTarjeta"], c["idResumen"])
+            restos[k] = restos.get(k, 0.0) + max(0.0, c["importe"] - c["vinculado"])
+
     # (h), (i), (l): consumos
     for c in raw["consumos"]:
         base = dict(**tarjeta(c["idTarjeta"]), idResumen=c["idResumen"], idLineaConsumo=c["idLineaConsumo"],
                     fecha=c["fecha"], importe=c["importe"])
-        if c["importe"] > 0 and not c["tieneProveedor"] and not c.get("cruzado"):
-            res.append(_h("consumo-sin-proveedor", "Consumo sin proveedor asignado", **base))
+        resto = c["importe"] - c["vinculado"]
+        k = (c["idTarjeta"], c["idResumen"])
+        compensado = restos.get(k, 0.0) - devoluciones.get(k, 0.0) <= TOLERANCIA_PENDIENTE
+        if c["importe"] > 0 and not c["tieneProveedor"] and not c.get("cruzado") and resto > TOLERANCIA_PENDIENTE                 and not compensado:
+            res.append(_h("consumo-sin-proveedor", "Parte del consumo sin proveedor ni factura vinculada", **base,
+                          ) | {"importe": round(resto, 2)})
         elif c["importe"] > 0 and c["tieneProveedor"] and c["importe"] - c["vinculado"] > TOLERANCIA_PENDIENTE \
                 and c.get("proveedorDebe"):
             res.append(_h("consumo-sin-vinculo-con-deuda-abierta",

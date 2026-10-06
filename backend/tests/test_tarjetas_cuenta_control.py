@@ -72,6 +72,8 @@ def test_consumos_sin_proveedor_con_deuda_abierta_y_moneda():
             "proveedorDebe": False}
     assert _cats(_raw(consumos=[base])) == ["consumo-sin-proveedor"]
     assert _cats(_raw(consumos=[{**base, "cruzado": True}])) == []
+    # conciliado por vínculos con facturas aunque la línea no tenga contacto: no es hallazgo
+    assert _cats(_raw(consumos=[{**base, "vinculado": 999.0}])) == []
     assert _cats(_raw(consumos=[{**base, "tieneProveedor": True, "proveedorDebe": True}])) == ["consumo-sin-vinculo-con-deuda-abierta"]
     assert _cats(_raw(consumos=[{**base, "tieneProveedor": True, "vinculado": 1000.0, "detalle": "Pago USD 100"}])) == ["indicios-de-otra-moneda"]
 
@@ -89,3 +91,12 @@ def test_continuidad_solo_para_tarjetas_activas_con_ultimo_resumen_viejo():
     assert _cats(inactiva) == []
     # tarjeta sin resúmenes: no se señalan meses vacíos
     assert _cats(_raw()) == []
+
+
+def test_devoluciones_del_mismo_resumen_compensan_el_resto():
+    base = {"idTarjeta": 1, "idResumen": 5, "fecha": date(2025, 11, 13), "detalle": "ML", "observaciones": None,
+            "tieneProveedor": False, "cruzado": False, "proveedorDebe": False}
+    compra = {**base, "idLineaConsumo": 1, "importe": 1000.0, "vinculado": 400.0}
+    devolucion = {**base, "idLineaConsumo": 2, "importe": -700.0, "vinculado": 0.0}
+    assert _cats(_raw(consumos=[compra, devolucion])) == []
+    assert _cats(_raw(consumos=[compra])) == ["consumo-sin-proveedor"]
