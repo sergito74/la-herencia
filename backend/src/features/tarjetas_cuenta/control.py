@@ -16,6 +16,9 @@ DIAS_CONTINUIDAD = 92
 DIAS_DEVOLUCION = 45
 PATRON_MONEDA = re.compile(r"\b(USD|U\$S|US\$|DOLAR(ES)?|DÓLAR(ES)?|EURO(S)?)\b", re.IGNORECASE)
 
+# Pagos de resumen que por naturaleza no tienen movimiento bancario (el total del resumen ya los incluye).
+ORIGENES_SIN_MOVIMIENTO = {"Crédito banco"}
+
 CATEGORIAS = (
     "pago-en-proveedor", "movimiento-sin-resumen", "pago-sin-origen-o-importe", "resumen-con-pendiente",
     "devolucion-sin-cruzar", "saldo-inicial-con-pagos", "tarjeta-sin-contacto",
@@ -52,7 +55,9 @@ def hallazgos(raw: dict) -> list[dict]:
     for p in raw["pagos"]:
         base = dict(**tarjeta(p["idTarjeta"]), medio=p.get("medio"), idMovimiento=p.get("idMovimientoOrigen"),
                     idResumen=p["idResumen"], fecha=p["fecha"], importe=p["importe"])
-        if p.get("idMovimientoOrigen") is None:
+        if p.get("idMovimientoOrigen") is None and p.get("origen") in ORIGENES_SIN_MOVIMIENTO:
+            pass  # el banco acredita dentro del propio resumen (bonificación o saldo a favor): no hay movimiento que vincular
+        elif p.get("idMovimientoOrigen") is None:
             res.append(_h("pago-sin-origen-o-importe", "Pago de resumen sin movimiento bancario de origen", **base))
         elif p.get("importeMovimiento") is None or                 abs(abs(p["importeMovimiento"]) - suma_por_mov[(p.get("medio"), p["idMovimientoOrigen"])]) > TOLERANCIA_CENTAVOS:
             res.append(_h("pago-sin-origen-o-importe", "Los pagos registrados no suman el importe del movimiento bancario", **base))
@@ -91,9 +96,12 @@ def hallazgos(raw: dict) -> list[dict]:
         lista = [r for r in por_tarjeta.get(t["idTarjeta"], []) if r["estado"] != "Cerrado" and r["fechaCierre"]]
         if lista:
             ultimo = max(r["fechaCierre"] for r in lista)
-            if (hoy - ultimo).days > DIAS_CONTINUIDAD:
+            # solo si hubo pagos del banco a la tarjeta mucho después del último resumen cargado (señal de resúmenes sin cargar)
+            actividad = [m for m in raw["movimientosTarjeta"] if m["idTarjeta"] == t["idTarjeta"] and m["importe"] < 0
+                         and (m["fecha"] - ultimo).days > DIAS_CONTINUIDAD]
+            if (hoy - ultimo).days > DIAS_CONTINUIDAD and actividad:
                 res.append(_h("continuidad-de-resumenes",
-                              f"Tarjeta activa cuyo último resumen cerró hace más de {DIAS_CONTINUIDAD} días",
+                              f"Hay pagos a la tarjeta posteriores a su último resumen cargado (cerró el {ultimo:%d/%m/%Y})",
                               **tarjeta(t["idTarjeta"]), fecha=ultimo))
 
     # Las líneas negativas (devoluciones) del mismo resumen compensan el resto sin vincular de sus compras

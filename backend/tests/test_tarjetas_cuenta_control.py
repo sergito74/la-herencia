@@ -84,13 +84,21 @@ def test_diferencia_y_sin_contacto():
     assert _cats(_raw(tarjetas=[{"idTarjeta": 1, "nombre": "T1", "activa": True, "idContacto": None}])) == ["tarjeta-sin-contacto"]
 
 
-def test_continuidad_solo_para_tarjetas_activas_con_ultimo_resumen_viejo():
+def test_continuidad_exige_pagos_posteriores_al_ultimo_resumen():
     viejo = {"idResumen": 1, "idTarjeta": 1, "fechaCierre": date(2018, 1, 1), "estado": "Abierto", "pendiente": 0.0}
-    assert _cats(_raw(resumenes=[viejo])) == ["continuidad-de-resumenes"]
-    inactiva = _raw(resumenes=[viejo], tarjetas=[{"idTarjeta": 1, "nombre": "T1", "activa": False, "idContacto": 10}])
+    pago = {"idTarjeta": 1, "medio": "bna", "idMovimiento": 3, "fecha": date(2018, 6, 1), "importe": -50.0,
+            "tieneResumen": True, "esCruzado": False}
+    # sin actividad posterior: la tarjeta dejó de usarse, no faltan resúmenes
+    assert _cats(_raw(resumenes=[viejo])) == []
+    assert _cats(_raw(resumenes=[viejo], movimientosTarjeta=[pago])) == ["continuidad-de-resumenes"]
+    inactiva = _raw(resumenes=[viejo], movimientosTarjeta=[pago],
+                    tarjetas=[{"idTarjeta": 1, "nombre": "T1", "activa": False, "idContacto": 10}])
     assert _cats(inactiva) == []
-    # tarjeta sin resúmenes: no se señalan meses vacíos
     assert _cats(_raw()) == []
+
+
+def test_credito_banco_no_es_pago_sin_origen():
+    assert _cats(_raw(pagos=[_pago(idMovimientoOrigen=None, importeMovimiento=None, origen="Crédito banco")])) == []
 
 
 def test_devoluciones_del_mismo_resumen_compensan_el_resto():

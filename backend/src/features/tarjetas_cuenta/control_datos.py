@@ -50,7 +50,7 @@ def cargar_control() -> dict:
         pagos.append({"idPago": p["IdPago"], "idResumen": p["IdResumen"], "idTarjeta": p["IdTarjeta"], "fecha": _dia(p["Fecha"]),
                       "importe": float(p["Importe"] or 0), "medio": medio, "idMovimientoOrigen": p["IdMovimientoOrigen"],
                       "importeMovimiento": float(imp) if imp is not None else None, "contactoMovimiento": contacto,
-                      "estadoResumen": p["EstadoResumen"]})
+                      "estadoResumen": p["EstadoResumen"], "origen": p["Origen"]})
 
     cruces: set = set()
     if fetch_one("SELECT OBJECT_ID('dbo.TarjetasCruces', 'U') AS t", ())["t"] is not None:

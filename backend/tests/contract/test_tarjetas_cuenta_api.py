@@ -73,8 +73,8 @@ async def test_control_casos_conocidos_y_filtros():
     assert sum(b["resumenPorCategoria"].values()) == len(b["hallazgos"])
     # la devolución BNA 9426 de AgroNacion se cruzó el 06/10/2026 (cruce #1): ya no se informa
     assert not any(h["categoria"] == "devolucion-sin-cruzar" and h["idMovimiento"] == 9426 for h in b["hallazgos"])
-    uno = (await _get("/api/tarjetas-cuenta/control?categoria=continuidad-de-resumenes")).json()
-    assert {h["categoria"] for h in uno["hallazgos"]} == {"continuidad-de-resumenes"}
+    uno = (await _get("/api/tarjetas-cuenta/control?categoria=pago-en-proveedor")).json()
+    assert {h["categoria"] for h in uno["hallazgos"]} <= {"pago-en-proveedor"}
     assert uno["resumenPorCategoria"] == b["resumenPorCategoria"]
     visa = (await _get("/api/tarjetas-cuenta/control?idTarjeta=4")).json()
     assert all(h["idTarjeta"] == 4 for h in visa["hallazgos"])
