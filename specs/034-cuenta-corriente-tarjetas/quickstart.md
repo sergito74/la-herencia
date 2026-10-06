@@ -13,10 +13,11 @@ Guía para comprobar que la funcionalidad cumple el [spec](spec.md). Contrato en
 ```text
 cd backend
 python -m scripts.vista_tarjeta_cuenta_corriente --verificar     # no escribe: muestra qué haría
-python -m scripts.vista_tarjeta_cuenta_corriente                 # backup, tablas, ramas, snapshot de saldos
+python -m scripts.vista_tarjeta_cuenta_corriente --ensayo        # todo dentro de una transacción con rollback: no deja cambios
+python -m scripts.vista_tarjeta_cuenta_corriente                 # backup, tablas, ramas, instantánea previa
 ```
 
-Esperado: backup verificado; `TarjetasContacto` con 5 filas; vista ampliada con las cuatro ramas; snapshot de saldos por contacto guardado antes de ampliar. Es idempotente: una segunda corrida no cambia nada.
+Esperado: backup verificado; `TarjetasContacto` con 5 filas; vista ampliada con las cuatro ramas; instantánea previa guardada antes de ampliar (saldo por contacto y totales mensuales del flujo de caja de 2024-01 a 2026-09). Es idempotente: una segunda corrida no cambia nada. Antes de la corrida real deben estar escritas las pruebas de las invariantes (tareas T027 y T028).
 
 ## 2. Preparar los datos de AgroNacion
 
@@ -30,21 +31,22 @@ Esperado: contacto "AgroNacion (administración anterior)" creado y 21 pagos de 
 ## 3. Comparación antes/después (SC-002, SC-008)
 
 ```text
-python -m scripts.preparar_tarjetas_cuenta_034 --comparar
+python -m scripts.vista_tarjeta_cuenta_corriente --comparar
 ```
 
 Esperado:
 - Ningún cambio de saldo en contactos que no son tarjetas, salvo UATRE (+$17.185,82).
-- Las cinco tarjetas con saldo coherente con su pendiente neto (diferencia menor a $1), una vez cruzadas las devoluciones (pasos 7 y 8).
-- El total general baja exactamente en los pagos de resumen netos de devoluciones, y en nada más.
+- Las cinco tarjetas con saldo coherente con su pendiente neto (diferencia menor a $1), una vez cruzada la devolución de AgroNacion (paso 7) y resuelto el pago de Mastercard BNA (tarea T053).
+- El total general cambia en la deuda vigente incorporada (hoy $58.336.654,56 menos), las devoluciones cruzadas ($966.654,20 menos) y el pago de UATRE (+$17.185,82), y en nada más.
+- Los totales mensuales del flujo de caja son idénticos a la instantánea.
 
 ## 4. Cuentas de las tarjetas (historia 1)
 
 1. Abrir `Finanzas > Tarjetas`: se ven las cinco tarjetas con su saldo y el total.
-2. Entrar a `Cuenta corriente` de Visa Galicia: consumos en su fecha, cargos en la fecha de cierre, pagos y saldo cronológico.
+2. Entrar a `Cuenta corriente` de AgroNacion y medir el tiempo de carga con la historia completa (objetivo: menos de 3 segundos); luego a la de Visa Galicia: consumos en su fecha, cargos en la fecha de cierre, pagos y saldo cronológico.
 3. Filtrar un período: el saldo inicial refleja todo lo anterior; exportar y comprobar que el archivo repite filas y saldos.
 4. Cambiar a "por resumen": el total de cada resumen coincide con el del módulo de tarjetas.
-5. En AgroNacion: los resúmenes 571 a 578 no aparecen como deuda; el saldo final es $0 (después de los cruces).
+5. En AgroNacion: los resúmenes 571 a 578 no aparecen como deuda; el saldo final es $0 (después del cruce del paso 7) y la cuenta muestra el bloque de apertura de la administración anterior con enlace a esa cuenta.
 
 Verificación por API: `GET /api/tarjetas-cuenta/resumen` y `GET /api/tarjetas-cuenta/4`.
 
@@ -59,7 +61,7 @@ Esperado: las invariantes de solo lectura pasan: consumos de tarjeta = vinculado
 ## 6. Control de integridad (historia 3)
 
 1. Abrir `Finanzas > Tarjetas > Control`.
-2. Esperado con los datos de partida: 22 movimientos de AgroNacion y 1 de Mastercard BNA sin resumen (b), la devolución sin cruzar (e), el pago con origen "Crédito banco" (c) y los consumos sin proveedor (i).
+2. Esperado con los datos ya preparados (después de reasignar los 21 pagos de la administración anterior): el débito 18093 de AgroNacion y el pago de Mastercard BNA sin resumen (b), la devolución sin cruzar (e), el pago con origen "Crédito banco" (c) y los consumos sin proveedor (i). Antes de la preparación, el control habría listado 22 movimientos de AgroNacion.
 3. Exportar el control y comprobar que reproduce la pantalla.
 
 ## 7. Cruce de la devolución del débito (historia 4)

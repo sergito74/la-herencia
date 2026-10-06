@@ -26,7 +26,7 @@ Enfoque técnico: un script idempotente con backup verificado crea dos tablas pe
 
 **Performance Goals**: cuenta completa de la tarjeta con más historia (AgroNacion: 113 resúmenes, 149 pagos, unas 1.800 líneas de consumo) en menos de 3 segundos (SC-005)
 
-**Constraints**: los saldos de contactos que no son tarjetas no cambian (salvo UATRE, FR-005); el flujo de caja real no cambia (FR-017); backup verificado antes de cambios de estructura o escrituras masivas; el módulo `flujo_caja` no consulta las ramas nuevas
+**Constraints**: los saldos de contactos que no son tarjetas no cambian (salvo UATRE, FR-005); el script de la vista se ensaya primero dentro de una transacción con rollback y se compara contra una instantánea previa (saldos y flujo de caja); el flujo de caja real no cambia (FR-017); backup verificado antes de cambios de estructura o escrituras masivas; el módulo `flujo_caja` no consulta las ramas nuevas
 
 **Scale/Scope**: 5 tarjetas, ~1.800 líneas de consumo vigentes, 318 resúmenes, 343 pagos de resumen; 1 contacto (UATRE) con efecto en saldos; 9 endpoints nuevos y 2 pantallas (extensión de la cuenta de la tarjeta y panel de control)
 
@@ -69,8 +69,8 @@ specs/034-cuenta-corriente-tarjetas/
 ```text
 backend/
 ├── scripts/
-│   ├── vista_tarjeta_cuenta_corriente.py      # tablas + ramas de la vista, idempotente, con backup y reversión
-│   └── preparar_tarjetas_cuenta_034.py        # reasignaciones de saldo inicial y verificación antes/después
+│   ├── vista_tarjeta_cuenta_corriente.py      # tablas + ramas de la vista, idempotente, con backup, ensayo con rollback, instantánea/comparación y reversión
+│   └── preparar_tarjetas_cuenta_034.py        # contacto de la administración anterior y reasignación de pagos de saldo inicial
 ├── src/features/
 │   ├── tarjetas_cuenta/                       # módulo nuevo
 │   │   ├── repository.py                      # cuenta por tarjeta, resumen de las cinco, cuotas a vencer

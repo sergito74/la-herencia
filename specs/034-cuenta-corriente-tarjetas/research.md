@@ -51,7 +51,7 @@ Investigación hecha el 2026-10-06 contra `WC` y el código vigente. No quedan p
 ## D8 — El control reutiliza el patrón de 031
 
 - **Decisión**: función pura `hallazgos(raw)` sobre lo que carga un lector de solo lectura, con las categorías (a)-(j) del spec; endpoint de lectura y exportación a Excel; UI como la de integridad de vínculos.
-- **Medición inicial** (debe coincidir con SC-003): categoría (b) 22 movimientos de AgroNacion y 1 de Mastercard BNA hoy sin resumen; (e) la devolución sin cruzar; (c) un pago con origen "Crédito banco" ($3.195,96); (i) $249.998,99 en consumos sin proveedor, que al cruzar el kit Starlink quedan en $0,01 de redondeo.
+- **Medición inicial** (debe coincidir con SC-003; los 21 pagos de la administración anterior dejan de figurar tras la preparación de datos): categoría (b) 22 movimientos de AgroNacion y 1 de Mastercard BNA hoy sin resumen; (e) la devolución sin cruzar; (c) un pago con origen "Crédito banco" ($3.195,96); (i) $249.998,99 en consumos sin proveedor, que al cruzar el kit Starlink quedan en $0,01 de redondeo.
 - **Invariante SC-008** (verificada en solo lectura): consumos $46.367.054,14 = vinculados $46.116.601,17 + resto acreditado $453,98 + sin proveedor $249.998,99.
 
 ## D9 — Cuenta de la tarjeta en pantalla: extender 008 en vez de crear otra
@@ -70,5 +70,5 @@ Investigación hecha el 2026-10-06 contra `WC` y el código vigente. No quedan p
 
 ## D12 — Verificación antes/después
 
-- **Decisión**: el script de migración guarda un snapshot de saldos por contacto antes de ampliar la vista y lo compara después. Esperado: ninguna diferencia en contactos que no son tarjetas salvo UATRE (+$17.185,82); las tarjetas pasan a su saldo real; el total general baja exactamente en los pagos de resumen netos de devoluciones (SC-008).
+- **Decisión**: el script de la vista se ensaya primero con `--ensayo` (transacción con rollback, sin cambios persistentes), guarda una instantánea antes de ampliar la vista (saldo por contacto y totales mensuales del flujo de caja de 2024-01 a 2026-09) y la compara después con `--comparar`. Esperado: ninguna diferencia en contactos que no son tarjetas salvo UATRE (+$17.185,82); las tarjetas pasan a su saldo real; el total general cambia solo por la deuda vigente incorporada (hoy $58.336.654,56 menos), las devoluciones cruzadas ($966.654,20 menos) y UATRE (+$17.185,82) (SC-008); los totales del flujo de caja no cambian.
 - **Reversión**: la definición previa de la vista se guarda en un archivo de respaldo y el script `--revertir` la restaura; las tablas nuevas se pueden quitar sin afectar nada más.

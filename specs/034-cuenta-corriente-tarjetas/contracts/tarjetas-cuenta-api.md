@@ -19,8 +19,7 @@ Prefijo: `/api/tarjetas-cuenta`. Los valores de los ejemplos son ilustrativos sa
       "idContacto": 373,
       "deuda": 30194174.94, "credito": 30193831.61, "saldo": -343.33,
       "pendienteNeto": 0.0, "diferenciaConModuloTarjetas": 0.0,
-      "ultimoMovimiento": "2026-08-14", "cuotasAVencer": 0,
-      "hallazgosControl": 24
+      "ultimoMovimiento": "2026-08-14", "cuotasAVencer": 0
     }
   ],
   "total": { "deuda": 58538417.16, "credito": 58341022.20, "saldo": -197394.96 },
