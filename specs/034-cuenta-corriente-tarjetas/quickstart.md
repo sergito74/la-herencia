@@ -36,7 +36,7 @@ python -m scripts.vista_tarjeta_cuenta_corriente --comparar
 
 Esperado:
 - Ningún cambio de saldo en contactos que no son tarjetas, salvo UATRE (+$17.185,82).
-- Las cinco tarjetas con saldo coherente con su pendiente neto (diferencia menor a $1), una vez cruzada la devolución de AgroNacion (paso 7) y resuelto el pago de Mastercard BNA (tarea T053).
+- Las cinco tarjetas con saldo coherente con su pendiente neto (diferencia menor a $1), una vez cruzada la devolución de AgroNacion (paso 7); el débito de Mastercard BNA ya está registrado como gasto bancario (tarea T053).
 - El total general cambia en la deuda vigente incorporada (hoy $58.336.654,56 menos), las devoluciones cruzadas ($966.654,20 menos) y el pago de UATRE (+$17.185,82), y en nada más.
 - Los totales mensuales del flujo de caja son idénticos a la instantánea.
 
@@ -61,7 +61,7 @@ Esperado: las invariantes de solo lectura pasan: consumos de tarjeta = vinculado
 ## 6. Control de integridad (historia 3)
 
 1. Abrir `Finanzas > Tarjetas > Control`.
-2. Esperado con los datos ya preparados (después de reasignar los 22 pagos de la administración anterior): el débito 18093 de AgroNacion y el pago de Mastercard BNA sin resumen (b), la devolución sin cruzar (e), el pago con origen "Crédito banco" (c) y los consumos sin proveedor (i). Antes de la preparación, el control habría listado 22 movimientos de AgroNacion.
+2. Esperado con los datos ya preparados (después de reasignar los 22 pagos de la administración anterior): el débito 18093 de AgroNacion sin resumen (b) (el de Mastercard ya se registró como gasto bancario), la devolución sin cruzar (e), el pago con origen "Crédito banco" (c) y los consumos sin proveedor (i). Antes de la preparación, el control habría listado 22 movimientos de AgroNacion.
 3. Exportar el control y comprobar que reproduce la pantalla.
 
 ## 7. Cruce de la devolución del débito (historia 4)
@@ -114,7 +114,7 @@ Esperado: todo en verde. Las pruebas de control y de cruces usan fixtures puros 
 
 | Contacto | Antes | Después |
 |---|---|---|
-| Mastercard BNA (372) | 1.047.760,41 | 15.180,47 (pago del 05/06/2024 sin resumen, pendiente de T053) |
+| Mastercard BNA (372) | 1.047.760,41 | 15.180,47 (débito indebido del 05/06/2024; luego registrado como gasto bancario: −0,03) |
 | AgroNacion (373) | 31.185.738,39 | 966.654,47 (el débito devuelto de $966.654,20, pendiente del cruce de T043) |
 | Corporativa Nación (503) | 1.987.011,83 | −0,02 |
 | Visa Galicia (532) | 19.784.427,06 | −0,20 |

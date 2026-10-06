@@ -61,8 +61,9 @@ Ramas existentes que no cambian: `Tarjetas` (vínculo consumo→compra, acredita
 ## Entidades derivadas (no se almacenan)
 
 - **Saldo de la tarjeta**: suma de `Credito − Deuda` sobre las filas del contacto de la tarjeta en la vista. Debe coincidir con el pendiente neto del módulo de tarjetas (diferencia menor a $1).
+- **Detalle del saldo**: a la fecha elegida, `exigible` (deuda de consumos y cargos de resúmenes con `FechaCierre` hasta esa fecha menos pagos) y `noResumido` (consumos con `FechaCompra` hasta esa fecha en resúmenes con `FechaCierre` posterior); `exigible + noResumido` = saldo de la cuenta.
 - **Cuota a vencer**: cuota no cobrada del cronograma de cuotas de tarjeta, informada aparte (hoy ninguna).
-- **Hallazgo de control**: `{categoria, idTarjeta, idResumen, medio, idMovimiento, idLineaConsumo, importe, fecha, motivo}` con categoría en: `pago-en-proveedor` (a), `movimiento-sin-resumen` (b), `pago-sin-origen-o-importe` (c), `resumen-con-pendiente` (d), `devolucion-sin-cruzar` (e), `saldo-inicial-con-pagos` (f), `tarjeta-sin-contacto` (g), `consumo-sin-vinculo-con-deuda-abierta` (h), `consumo-sin-proveedor` (i), `diferencia-contrapartida` (j).
+- **Hallazgo de control**: `{categoria, idTarjeta, idResumen, medio, idMovimiento, idLineaConsumo, importe, fecha, motivo}` con categoría en: `pago-en-proveedor` (a), `movimiento-sin-resumen` (b), `pago-sin-origen-o-importe` (c), `resumen-con-pendiente` (d), `devolucion-sin-cruzar` (e), `saldo-inicial-con-pagos` (f), `tarjeta-sin-contacto` (g), `consumo-sin-vinculo-con-deuda-abierta` (h), `consumo-sin-proveedor` (i), `diferencia-contrapartida` (j), `continuidad-de-resumenes` (k), `indicios-de-otra-moneda` (l).
 - **Sugerencia de cruce**: `{tipo, origen, destino, diasDiferencia, diferenciaImporte, puntaje}`; solo lectura.
 
 ## Reglas de validación

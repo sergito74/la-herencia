@@ -51,6 +51,8 @@ Prefijo: `/api/tarjetas-cuenta`. Los valores de los ejemplos son ilustrativos sa
     }
   ],
   "saldoFinal": -300000.00,
+  "detalleSaldo": { "exigible": -250000.00, "noResumido": -50000.00 },
+  "avisoSaldo": "El saldo es información de gestión: no sirve para IVA ni para impuestos.",
   "cuotasAVencer": [],
   "apertura": { "idContactoAnterior": null, "informativo": true }
 }
@@ -61,6 +63,8 @@ Prefijo: `/api/tarjetas-cuenta`. Los valores de los ejemplos son ilustrativos sa
 - `referencia.tipo`: `linea-consumo`, `resumen`, `movimiento-bancario` o `cruce`, para llegar al detalle (historia 6).
 - `cuotasAVencer` (FR-015): `[{ "fechaVencimiento", "importe", "idCompra"? }]`, aparte del saldo.
 - `saldoInicial` suma todo lo anterior a `desde`; las `filas` son solo las del período.
+- `detalleSaldo` (FR-023): a la fecha `hasta`, `exigible` (consumos y cargos de resúmenes cerrados hasta esa fecha menos los pagos) y `noResumido` (consumos hasta esa fecha que figuran en resúmenes que cierran después); `exigible + noResumido = saldoFinal` con diferencia menor a $1.
+- `avisoSaldo` (FR-024): texto fijo que la pantalla y la exportación muestran junto al saldo.
 
 `GET /api/tarjetas-cuenta/{idTarjeta}/exportar?desde=&hasta=&agrupar=` devuelve el `.xlsx` con las mismas filas y saldos.
 
@@ -83,7 +87,7 @@ Prefijo: `/api/tarjetas-cuenta`. Los valores de los ejemplos son ilustrativos sa
 }
 ```
 
-Categorías (FR-010): `pago-en-proveedor` (a), `movimiento-sin-resumen` (b), `pago-sin-origen-o-importe` (c), `resumen-con-pendiente` (d), `devolucion-sin-cruzar` (e), `saldo-inicial-con-pagos` (f), `tarjeta-sin-contacto` (g), `consumo-sin-vinculo-con-deuda-abierta` (h), `consumo-sin-proveedor` (i), `diferencia-contrapartida` (j).
+Categorías (FR-010): `pago-en-proveedor` (a), `movimiento-sin-resumen` (b), `pago-sin-origen-o-importe` (c), `resumen-con-pendiente` (d), `devolucion-sin-cruzar` (e), `saldo-inicial-con-pagos` (f), `tarjeta-sin-contacto` (g), `consumo-sin-vinculo-con-deuda-abierta` (h), `consumo-sin-proveedor` (i), `diferencia-contrapartida` (j), `continuidad-de-resumenes` (k), `indicios-de-otra-moneda` (l).
 
 `GET /api/tarjetas-cuenta/control/exportar?idTarjeta=&categoria=` devuelve el `.xlsx` de los hallazgos (FR-011).
 

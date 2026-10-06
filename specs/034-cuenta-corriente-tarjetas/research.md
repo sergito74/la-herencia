@@ -25,7 +25,7 @@ Investigación hecha el 2026-10-06 contra `WC` y el código vigente. No quedan p
 - **Decisión**: se crea un contacto "AgroNacion (administración anterior)" y se reasignan a él, con `ReasignacionesContacto` (el mecanismo ya usado 34 veces), los 22 pagos de 2010 a 2012 (21 del Banco Nación y 1 en efectivo). Los resúmenes `Cerrado` quedan fuera de la deuda por las ramas de D1.
 - **Razón**: cumple la apertura informativa de FR-004 sin modificar las ramas bancarias de la vista y de forma reversible; es lo que Sergio describió ("punto de inicio" de la administración de Oscar y Albina).
 - **Alternativas**: (a) filtrar por una fecha de apertura dentro de las ramas bancarias: toca ramas críticas de la vista; (b) contar la deuda de los resúmenes `Cerrado`: dejaría un saldo de unos $343,60 sin respaldo documental.
-- **Mastercard BNA**: el pago del 05/06/2024 ($15.180,50, "MASTER XXXX3813") no tiene resumen vigente (la tarjeta no tiene resúmenes desde 05/2023). No se decide acá: lo señala el control (FR-010b) para que Sergio resuelva su destino.
+- **Mastercard BNA**: el pago del 05/06/2024 ($15.180,50, "MASTER XXXX3813") no tiene resumen vigente (la tarjeta no tiene resúmenes desde 05/2023). Resuelto el 2026-10-06 por Sergio: fue un débito indebido del banco contra una tarjeta ya dada de baja, reclamado sin respuesta positiva; se registra como pérdida y gasto bancario (script `registrar_debito_indebido_mastercard_bna.py`: reasignación del movimiento BNA 18020 al contacto 369 "Banco Nacion" con la explicación en el motivo; Tesorería no admite una nota aparte porque, con el movimiento asignado al banco, lo da por resuelto). Mastercard BNA queda en −$0,03, igual a su pendiente.
 
 ## D4 — Devoluciones y cruces: tabla nueva y una rama de la vista
 
@@ -56,7 +56,7 @@ Investigación hecha el 2026-10-06 contra `WC` y el código vigente. No quedan p
 ## D8 — El control reutiliza el patrón de 031
 
 - **Decisión**: función pura `hallazgos(raw)` sobre lo que carga un lector de solo lectura, con las categorías (a)-(j) del spec; endpoint de lectura y exportación a Excel; UI como la de integridad de vínculos.
-- **Medición inicial** (debe coincidir con SC-003; los 22 pagos de la administración anterior dejan de figurar tras la preparación de datos): categoría (b) 22 movimientos de AgroNacion y 1 de Mastercard BNA hoy sin resumen; (e) la devolución sin cruzar; (c) un pago con origen "Crédito banco" ($3.195,96); (i) $249.998,99 en consumos sin proveedor, que al cruzar el kit Starlink quedan en $0,01 de redondeo.
+- **Medición inicial** (debe coincidir con SC-003; los 22 pagos de la administración anterior dejan de figurar tras la preparación de datos): categoría (b) 22 movimientos de AgroNacion (y 1 de Mastercard BNA, ya registrado como gasto bancario) hoy sin resumen; (e) la devolución sin cruzar; (c) un pago con origen "Crédito banco" ($3.195,96); (i) $249.998,99 en consumos sin proveedor, que al cruzar el kit Starlink quedan en $0,01 de redondeo.
 - **Invariante SC-008** (verificada en solo lectura): consumos $46.367.054,14 = vinculados $46.116.601,17 + resto acreditado $453,98 + sin proveedor $249.998,99.
 
 ## D9 — Cuenta de la tarjeta en pantalla: extender 008 en vez de crear otra
