@@ -68,6 +68,9 @@ export interface MovimientoMercadoLibre {
   idContacto: number | null;
   contacto: string | null;
   estadoConciliacion: EstadoConciliacion | null;
+  /** La billetera solo hace de puente entre un banco propio y el pago (034). */
+  esConducto?: boolean;
+  idOperacionPar?: string | null;
 }
 
 export interface PagoEfectivo {

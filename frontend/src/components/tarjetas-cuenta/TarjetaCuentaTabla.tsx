@@ -23,8 +23,13 @@ const VINCULO: Record<EstadoVinculo, string> = {
 
 function destino(f: FilaCuenta): string | null {
   const r = f.referencia;
-  if (!r || !r.idResumen) return null;
-  return `/finanzas/tarjetas/resumenes/${r.idResumen}`;
+  if (!r) return null;
+  if (r.tipo === "movimiento-bancario" && r.medio && r.idMovimiento) {
+    return `/finanzas/tesoreria?medio=${r.medio}&highlight=${r.idMovimiento}`;
+  }
+  if (r.tipo === "cruce") return "/finanzas/tarjetas/control";
+  if (r.idResumen) return `/finanzas/tarjetas/resumenes/${r.idResumen}`;
+  return null;
 }
 
 /** Cuenta de una tarjeta: movimientos cronológicos o por resumen, con filtros y exportación (034, FR-010/FR-011). */
@@ -109,7 +114,7 @@ export function TarjetaCuentaTabla({ idTarjeta }: { idTarjeta: number }) {
                     f.codigo
                   )}
                 </td>
-                <td>{f.detalle}</td>
+                <td>{href && !f.codigo ? <Link className="text-finance underline" href={href}>{f.detalle}</Link> : f.detalle}</td>
                 <td>{f.proveedor}</td>
                 <td className="text-right">{f.deuda ? formatMoneda(f.deuda) : "—"}</td>
                 <td className="text-right">{f.credito ? formatMoneda(f.credito) : "—"}</td>

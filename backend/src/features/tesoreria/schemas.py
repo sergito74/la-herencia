@@ -64,6 +64,9 @@ class MovimientoMercadoLibre(BaseModel):
     idContacto: int | None = None
     contacto: str | None = None
     estadoConciliacion: str | None = None
+    # 034: la billetera solo hace de puente entre un banco propio y el pago (no es un pago propio)
+    esConducto: bool = False
+    idOperacionPar: str | None = None
 
 
 class PagoEfectivo(BaseModel):

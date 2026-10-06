@@ -24,6 +24,19 @@ class MedioConfig(NamedTuple):
     extra_join: str | None = None  # optional JOIN appended after `table` (013)
 
 
+# Conducto de Mercado Pago (034, FR-017): ver `esConducto` en `MEDIOS_CONFIG["mercado-libre"]`.
+CONDUCTO_ML_SQL = (
+    "CASE WHEN [Movimientos Mercado Libre].IdOperacion IS NOT NULL AND EXISTS ("
+    "SELECT 1 FROM dbo.[Movimientos Mercado Libre] _p "
+    "WHERE _p.IdOperacion = [Movimientos Mercado Libre].IdOperacion "
+    "AND _p.IdMovimiento <> [Movimientos Mercado Libre].IdMovimiento "
+    "AND CAST(_p.Fecha AS date) = CAST([Movimientos Mercado Libre].Fecha AS date) "
+    "AND ABS(_p.Importe + [Movimientos Mercado Libre].Importe) < 0.01 "
+    "AND (_p.Descripcion LIKE 'Ingreso de dinero%' OR [Movimientos Mercado Libre].Descripcion LIKE 'Ingreso de dinero%')"
+    ") THEN 1 ELSE 0 END"
+)
+
+
 MEDIOS_CONFIG: dict[str, MedioConfig] = {
     "bna": MedioConfig(
         table="dbo.[Movimientos BNA]",
@@ -103,6 +116,10 @@ MEDIOS_CONFIG: dict[str, MedioConfig] = {
             "saldo": "Saldo",
             "idContacto": "[Movimientos Mercado Libre].IdContacto",
             "contacto": "_c_ml.[Razon Social]",
+            # 034: conducto = misma operación, mismo día, importe opuesto y uno de los dos es "Ingreso de dinero"
+            # (la billetera solo hace de puente entre un banco propio y el pago).
+            "esConducto": CONDUCTO_ML_SQL,
+            "idOperacionPar": f"CASE WHEN {CONDUCTO_ML_SQL} = 1 THEN [Movimientos Mercado Libre].IdOperacion END",
         },
         extra_join=(
             "LEFT JOIN dbo.Contactos _c_ml "

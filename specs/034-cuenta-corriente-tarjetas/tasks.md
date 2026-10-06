@@ -160,15 +160,15 @@ description: "Lista de tareas de 034-cuenta-corriente-tarjetas"
 
 ### Tests for User Story 5
 
-- [ ] T044 [P] [US5] Escribir en `backend/tests/test_mercado_pago_conducto.py` la detección de conducto con fixtures puros (mismo `IdOperacion`, mismo día, "Ingreso de dinero", importe opuesto con diferencia menor a $0,01; el pago de UATRE del 04/09/2024, operación 86673304977, no es conducto; un pago con QR sin ingreso emparejado no es conducto)
-- [ ] T045 [US5] Agregar a `backend/tests/test_tarjetas_cuenta_cruces.py` las sugerencias y validaciones de `consumo-devolucion` (ingreso de la billetera "Devolución de dinero…" contra un consumo sin proveedor del mismo importe en ±45 días; la línea debe ser de la tarjeta indicada)
+- [X] T044 [P] [US5] Escribir en `backend/tests/test_mercado_pago_conducto.py` la detección de conducto con fixtures puros (mismo `IdOperacion`, mismo día, "Ingreso de dinero", importe opuesto con diferencia menor a $0,01; el pago de UATRE del 04/09/2024, operación 86673304977, no es conducto; un pago con QR sin ingreso emparejado no es conducto)
+- [X] T045 [US5] Agregar a `backend/tests/test_tarjetas_cuenta_cruces.py` las sugerencias y validaciones de `consumo-devolucion` (ingreso de la billetera "Devolución de dinero…" contra un consumo sin proveedor del mismo importe en ±45 días; la línea debe ser de la tarjeta indicada)
 
 ### Implementation for User Story 5
 
-- [ ] T046 [US5] Agregar los campos `esConducto` e `idOperacionPar` a los movimientos de Mercado Libre en `backend/src/features/tesoreria/schemas.py` y `backend/src/features/tesoreria/repository.py` (endpoint `GET /api/tesoreria/mercado-libre/movimientos`), sin modificar ningún otro campo
-- [ ] T047 [US5] Extender `backend/src/features/tarjetas_cuenta/cruces.py` y `router.py` con la sugerencia y el alta del cruce `consumo-devolucion` (marca el consumo `cruzado-con-devolucion` y el ingreso de la billetera como devolución de compra; sin fila contable nueva)
-- [ ] T048 [US5] Mostrar la marca "Conducto" en la lista de movimientos de Mercado Libre de Tesorería (`frontend/src/components/tesoreria/`) y ofrecer el cruce `consumo-devolucion` (oculto para el rol `Lectura`) en `frontend/src/components/tarjetas-cuenta/DialogoCruce.tsx`
-- [ ] T049 [US5] Verificar en `WC`: la cuenta de UATRE muestra el pago del 04/09/2024 y cada otro pago mensual una sola vez, el saldo de la billetera es $0,14, y aprobar el cruce de la línea 505 de Visa Galicia con el movimiento 20 (SC-009, SC-010); registrar en `specs/034-cuenta-corriente-tarjetas/quickstart.md`
+- [X] T046 [US5] Agregar los campos `esConducto` e `idOperacionPar` a los movimientos de Mercado Libre en `backend/src/features/tesoreria/schemas.py` y `backend/src/features/tesoreria/repository.py` (endpoint `GET /api/tesoreria/mercado-libre/movimientos`), sin modificar ningún otro campo
+- [X] T047 [US5] Extender `backend/src/features/tarjetas_cuenta/cruces.py` y `router.py` con la sugerencia y el alta del cruce `consumo-devolucion` (marca el consumo `cruzado-con-devolucion` y el ingreso de la billetera como devolución de compra; sin fila contable nueva)
+- [X] T048 [US5] Mostrar la marca "Conducto" en la lista de movimientos de Mercado Libre de Tesorería (`frontend/src/components/tesoreria/`) y ofrecer el cruce `consumo-devolucion` (oculto para el rol `Lectura`) en `frontend/src/components/tarjetas-cuenta/DialogoCruce.tsx`
+- [X] T049 [US5] Verificar en `WC`: la cuenta de UATRE muestra el pago del 04/09/2024 y cada otro pago mensual una sola vez, el saldo de la billetera es $0,14, y aprobar el cruce de la línea 505 de Visa Galicia con el movimiento 20 (SC-009, SC-010); registrar en `specs/034-cuenta-corriente-tarjetas/quickstart.md`
 
 **Checkpoint**: Mercado Pago sigue las reglas de un banco y el caso Starlink queda resuelto.
 
@@ -180,20 +180,20 @@ description: "Lista de tareas de 034-cuenta-corriente-tarjetas"
 
 **Independent Test**: un clic en un resumen y en un pago de la cuenta abre el detalle correcto (quickstart paso 4).
 
-- [ ] T050 [US6] Agregar a `backend/tests/contract/test_tarjetas_cuenta_api.py` la prueba de la `referencia` de cada tipo de fila (`linea-consumo`, `resumen`, `movimiento-bancario`, `cruce`)
-- [ ] T051 [US6] Completar en `backend/src/features/tarjetas_cuenta/repository.py` la `referencia` de cada fila para llegar al resumen de `backend/src/features/tarjetas_resumenes/` o al movimiento de Tesorería
-- [ ] T052 [US6] Hacer clicables las filas en `frontend/src/components/tarjetas-cuenta/TarjetaCuentaTabla.tsx` (enlace al resumen en `frontend/src/app/finanzas/tarjetas/resumenes/` y al movimiento bancario de Tesorería) y verificar ambos recorridos
+- [X] T050 [US6] Agregar a `backend/tests/contract/test_tarjetas_cuenta_api.py` la prueba de la `referencia` de cada tipo de fila (`linea-consumo`, `resumen`, `movimiento-bancario`, `cruce`)
+- [X] T051 [US6] Completar en `backend/src/features/tarjetas_cuenta/repository.py` la `referencia` de cada fila para llegar al resumen de `backend/src/features/tarjetas_resumenes/` o al movimiento de Tesorería
+- [X] T052 [US6] Hacer clicables las filas en `frontend/src/components/tarjetas-cuenta/TarjetaCuentaTabla.tsx` (enlace al resumen en `frontend/src/app/finanzas/tarjetas/resumenes/` y al movimiento bancario de Tesorería) y verificar ambos recorridos
 
 ---
 
 ## Phase 9: Polish & Cross-Cutting Concerns
 
 - [X] T053 Destino del pago de Mastercard BNA del 05/06/2024 ($15.180,50, "MASTER XXXX3813"): decidido por Sergio el 2026-10-06 (débito indebido del banco contra una tarjeta dada de baja; pérdida y gasto bancario) y aplicado con `backend/scripts/registrar_debito_indebido_mastercard_bna.py` (reasignación al contacto "Banco Nacion", backup previo), registrado en `specs/034-cuenta-corriente-tarjetas/research.md`; con T043 y T053 aplicados se verifica SC-001 para las cinco tarjetas (diferencia menor a $1)
-- [ ] T054 Revisión final con el especialista financiero de los resultados medidos y de las diferencias aceptadas; registrar el cierre en `specs/034-cuenta-corriente-tarjetas/research.md`
-- [ ] T055 [P] Crear `frontend/tests/tarjetas-cuenta.e2e.cjs` (patrón de `frontend/tests/tarjetas-navegacion.e2e.cjs`) que recorra resumen de tarjetas, cuenta con filtro y exportación, control y aprobación de un cruce con la API simulada
-- [ ] T056 Ejecutar la suite completa de `backend/tests/` (`python -m pytest tests -q`), `npx tsc --noEmit` en `frontend/` y el script `frontend/tests/tarjetas-cuenta.e2e.cjs`; corregir lo que falle
-- [ ] T057 Actualizar la documentación: nota de la cuenta de tarjeta vigente en `specs/008-tarjetas/spec.md`, estado "implementado" y fecha en `specs/034-cuenta-corriente-tarjetas/spec.md` y resultados finales en `quickstart.md`
-- [ ] T058 Hacer el commit y el push a `main` de `backend/src/features/tarjetas_cuenta/`, `backend/scripts/`, `backend/tests/`, `frontend/src/` y `specs/034-cuenta-corriente-tarjetas/`
+- [X] T054 Revisión final con el especialista financiero de los resultados medidos y de las diferencias aceptadas; registrar el cierre en `specs/034-cuenta-corriente-tarjetas/research.md`
+- [X] T055 [P] Crear `frontend/tests/tarjetas-cuenta.e2e.cjs` (patrón de `frontend/tests/tarjetas-navegacion.e2e.cjs`) que recorra resumen de tarjetas, cuenta con filtro y exportación, control y aprobación de un cruce con la API simulada
+- [X] T056 Ejecutar la suite completa de `backend/tests/` (`python -m pytest tests -q`), `npx tsc --noEmit` en `frontend/` y el script `frontend/tests/tarjetas-cuenta.e2e.cjs`; corregir lo que falle
+- [X] T057 Actualizar la documentación: nota de la cuenta de tarjeta vigente en `specs/008-tarjetas/spec.md`, estado "implementado" y fecha en `specs/034-cuenta-corriente-tarjetas/spec.md` y resultados finales en `quickstart.md`
+- [X] T058 Hacer el commit y el push a `main` de `backend/src/features/tarjetas_cuenta/`, `backend/scripts/`, `backend/tests/`, `frontend/src/` y `specs/034-cuenta-corriente-tarjetas/`
 
 ---
 

@@ -4,7 +4,7 @@
 
 **Created**: 2026-10-06
 
-**Status**: Draft
+**Status**: Implementado (06/10/2026)
 
 **Input**: User description: "Cada entidad de tarjeta (AgroNacion, Corporativa Nación, Mastercard BNA, Visa Galicia, Galicia Rural) debe tener su propia cuenta corriente completa para controlar lo que se le debe. Hoy solo recibe los pagos bancarios como crédito y nunca la deuda del resumen. Debe haber además un control de integridad que detecte pagos duplicados." (Sergio, 2026-10-06)
 

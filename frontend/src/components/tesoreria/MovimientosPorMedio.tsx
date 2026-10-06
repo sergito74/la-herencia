@@ -121,7 +121,18 @@ function columnsFor(medio: Medio): ColumnDef[] {
     case "mercado-libre":
       return [
         { key: "fecha", header: "Fecha", numeric: true, render: (m: any) => formatFecha(m.fecha) },
-        { key: "descripcion", header: "Descripción", render: (m: any) => m.descripcion ?? "—" },
+        {
+          key: "descripcion", header: "Descripción",
+          render: (m: any) => (
+            <span>
+              {m.descripcion ?? "—"}
+              {m.esConducto && (
+                <span title="La billetera solo hizo de puente entre un banco propio y el pago: no es un pago propio de Mercado Pago"
+                  className="ml-2 rounded border border-line px-1 text-xs text-ink-secondary">Conducto</span>
+              )}
+            </span>
+          ),
+        },
         { key: "debe", header: "Debe", numeric: true, render: (m: any) => celdaDebe(m.importe) },
         { key: "haber", header: "Haber", numeric: true, render: (m: any) => celdaHaber(m.importe) },
         { key: "saldo", header: "Saldo", numeric: true, render: (m: any) => celdaMoneda(m.saldo) },

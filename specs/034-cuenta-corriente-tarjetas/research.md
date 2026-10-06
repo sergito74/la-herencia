@@ -107,3 +107,19 @@ Otros riesgos señalados sin regla hoy: devoluciones que llegan a un medio no mo
 ## Límite conocido: cuotas a vencer por tarjeta (US1, T020)
 
 El cronograma de cuotas (`dbo.[Tarjetas de Credito]`) guarda el proveedor de cada compra y no la tarjeta con la que se pagó, por lo que no se pueden atribuir cuotas futuras a una tarjeta. Hoy no hay cuotas pendientes (las 183 están cobradas; la última venció el 01/12/2016). La sección "Cuotas a vencer" queda vacía hasta que el cronograma registre la tarjeta. Medido el 06/10/2026: saldos de las cinco tarjetas calculados en ~1 s; cuenta de AgroNacion (779 movimientos) en 1,3 s; Visa Galicia saldo −$0,20 vs pendiente $0,20 (diferencia 0). AgroNacion muestra +$966.654,47 por la devolución BNA 9426 aún sin cruzar (se resuelve en US4).
+
+## Cierre y revisión final del especialista financiero (06/10/2026)
+
+Veredicto: cierre aprobado con reservas menores, ya registradas aquí.
+
+**Diferencias aceptadas (todas menores al umbral de $300 en pesos o decididas por Sergio):**
+- Saldos residuales de centavos: AgroNacion +$0,27, Visa Galicia −$0,20, Mastercard BNA −$0,03, Corporativa −$0,02; billetera de Mercado Pago $0,14.
+- Nota de débito "SIN DOCUMENTO" de $332,87 en Syngenta: ajuste de gestión por diferencia de cambio (línea 5915), con respaldo previo.
+- Mastercard BNA, $15.180,50 (05/06/2024): débito indebido del banco contra una tarjeta dada de baja, registrado como pérdida y gasto bancario por decisión de Sergio.
+- Los 22 pagos de 2010–2012 de la administración anterior de AgroNacion ($25.252,58) quedan como apertura informativa, reasignados de forma reversible.
+- Corporativa Nación: tarjeta vigente y activa por decisión de Sergio, sin uso desde 01/2026; no se desactiva.
+- "Crédito banco" de $3.195,96 (Visa Galicia): pago dentro del propio resumen, sin movimiento bancario; el control no lo marca, pero si aparece el débito real del banco deberá revisarse para no duplicarlo.
+
+**Reservas a vigilar:**
+- Conducto de Mercado Pago: se detecta con misma operación, mismo día e importe opuesto; si un ingreso y su pago cayeran en días distintos se contaría doble. Hoy hay 30 pares y ningún caso así.
+- UATRE 04/09/2024 (+$17.185,82): Sergio aclaró que los pagos de UATRE se debitan del Banco Galicia y que Mercado Pago solo lee el código de barras; este único pago es el que no tiene par de conducto. No se registró una confirmación expresa de que no exista un débito equivalente en Galicia: queda como punto a confirmar con Sergio.

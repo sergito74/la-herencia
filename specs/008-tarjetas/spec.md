@@ -163,3 +163,5 @@ La edición conserva idLineaConsumo, campos bancarios adicionales y vínculos/es
 ## Pagos bancarios anulados — 2026-10-06
 
 Los candidatos de pago excluyen movimientos con resolución vigente SinDocumento o DiferenciaAceptada en ConciliacionesTesoreriaEstado. Solo se considera el último evento; revocar la resolución permite volver a ofrecer el movimiento si no tiene pagos vinculados. Evita volver a aplicar débitos duplicados ya devueltos y documentados. No cambia importes ni crea pagos.
+
+> **Nota (06/10/2026, feature 034):** la cuenta corriente de cada tarjeta ya incluye la deuda de los consumos y cargos de cada resumen (en la fecha del consumo) y los pagos y devoluciones del banco. Las pantallas y reglas vigentes están en `specs/034-cuenta-corriente-tarjetas/`; el endpoint `GET /api/tarjetas/{id}/movimientos` de esta feature se mantiene sin cambios.

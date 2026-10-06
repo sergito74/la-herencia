@@ -113,3 +113,20 @@ async def test_alta_de_cruce_rechaza_sin_escribir():
     assert r.status_code == 404
     async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://t") as c:
         assert (await c.delete("/api/tarjetas-cuenta/cruces/99999999")).status_code == 404
+
+
+@pytest.mark.anyio
+async def test_cada_fila_trae_referencia_para_navegar():
+    tipos = set()
+    for id_t in (1, 2, 4):
+        for f in (await _get(f"/api/tarjetas-cuenta/{id_t}")).json()["filas"]:
+            r = f["referencia"]
+            if r:
+                tipos.add(r["tipo"])
+                if r["tipo"] == "movimiento-bancario":
+                    assert r["medio"] in ("bna", "galicia", "efectivo") and r["idMovimiento"]
+                if r["tipo"] == "linea-consumo":
+                    assert r["idLineaConsumo"]
+                if r["tipo"] == "cruce":
+                    assert r["idCruce"]
+    assert {"linea-consumo", "resumen", "movimiento-bancario", "cruce"} <= tipos

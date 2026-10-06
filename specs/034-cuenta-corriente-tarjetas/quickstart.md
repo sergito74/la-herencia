@@ -137,3 +137,11 @@ Aprobado por Sergio en la sesión: cruce #1, BNA 9426 (17/09/2025) con BNA 18093
 ## Cruce del Starlink (US5, 06/10/2026)
 
 Aprobado por Sergio en la sesión: cruce #2, Mercado Pago movimiento 20 con la línea de consumo 505 de Visa Galicia, $249.999,00. El consumo pasa a "cruzado con devolución" y deja de informarse como consumo sin proveedor (11 → 10). Saldo de Visa Galicia sin cambios (−$0,20).
+
+## Cierre (06/10/2026)
+
+- Suite completa del backend: 924 pruebas pasan. `npx tsc --noEmit` sin errores. Recorridos de navegador `tarjetas-cuenta.e2e.cjs` y `tarjetas-navegacion.e2e.cjs`: OK.
+- Mercado Pago: 60 movimientos (30 pares) marcados como conducto; el pago de UATRE del 04/09/2024 (operación 86673304977) no es conducto y suma una vez a su cuenta; saldo de la billetera $0,14.
+- Saldos de las cinco tarjetas: AgroNacion +$0,27, Corporativa −$0,02, Galicia Rural $0, Mastercard BNA −$0,03, Visa Galicia −$0,20 (total +$0,02, diferencias de centavos, menores al umbral de $300).
+- Control de integridad sin hallazgos abiertos (el "Crédito banco" de $3.195,96 y la inactividad de Corporativa Nación, tarjeta vigente y activa, no son faltantes).
+- Ajuste de cambio de Syngenta: nota de débito "SIN DOCUMENTO" de $332,87 (script `ajuste_cambio_syngenta_5915.py`, respaldo previo).

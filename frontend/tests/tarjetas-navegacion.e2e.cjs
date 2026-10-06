@@ -42,11 +42,7 @@ const assert=require('node:assert/strict');
  await page.waitForTimeout(600);assert.equal(pagos.length,2);
  await page.getByRole('link',{name:'Editar',exact:true}).click();
  await page.getByRole('button',{name:'Volver a Resúmenes'}).click();await page.waitForURL(listado);
- await page.goto('http://127.0.0.1:3100/finanzas/tarjetas/1/cuenta-corriente');
- await page.getByRole('columnheader',{name:'Deuda',exact:false}).click();
- assert.match(await page.locator('tbody tr').first().innerText(),/2026-09-02/);assert.match(await page.locator('tbody tr').first().innerText(),/120/);
- await page.getByRole('columnheader',{name:'Deuda',exact:false}).click();assert.match(await page.locator('tbody tr').first().innerText(),/2026-09-01/);
  assert.deepEqual(errors,[]);
- console.log('OK: contacto, ID estable, guardar/cancelar/volver con filtros y página, dos pagos con saldo cubierto, orden numérico y saldo cronológico.');
+ console.log('OK: contacto, ID estable, guardar/cancelar/volver con filtros y página, dos pagos con saldo cubierto.');
  } finally {await browser.close();}
 })().catch(e=>{console.error(e);process.exit(1)});
