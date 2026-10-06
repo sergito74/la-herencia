@@ -41,3 +41,12 @@ def test_pagos_fraccionados_con_decimales_y_recalculo_sin_pago():
     assert calcular_compensaciones([resumen(1, 785222.12, 536550.706 + 248671.414)])[1]["saldoPendiente"] == 0
     assert calcular_compensaciones([resumen(1, 785222.12)])[1]["saldoPendiente"] == 785222.12
     assert calcular_compensaciones([]) == {}
+
+
+def test_resumen_historico_no_deja_pendiente_ni_credito():
+    historico = {**resumen(1, 100, 40), "estado": "Cerrado"}
+    sobrante = {**resumen(2, 10, 50), "estado": "Cerrado"}
+    r = calcular_compensaciones([historico, sobrante, resumen(3, 20)])
+    assert r[1] == {"creditoAplicado": 0.0, "saldoPendiente": 0.0, "creditoDisponible": 0.0, "compensaciones": []}
+    assert r[2]["creditoDisponible"] == 0.0
+    assert r[3]["saldoPendiente"] == 20 and r[3]["creditoAplicado"] == 0

@@ -8,11 +8,19 @@ from decimal import Decimal, ROUND_HALF_UP
 from src.db.connection import fetch_all
 
 
+ESTADO_HISTORICO = "Cerrado"
+
+
 def calcular_compensaciones(resumenes: list[dict]) -> dict[int, dict]:
     centavo = Decimal("0.01")
     disponibles: list[dict] = []
     resultado = {}
     for r in sorted(resumenes, key=lambda r: (r["fechaCierre"], r["idResumen"])):
+        if r.get("estado") == ESTADO_HISTORICO:
+            # Saldo inicial de una administración anterior: no se concilia ni genera créditos.
+            resultado[r["idResumen"]] = {"creditoAplicado": 0.0, "saldoPendiente": 0.0,
+                                         "creditoDisponible": 0.0, "compensaciones": []}
+            continue
         diferencia = (Decimal(str(r["total"])) - Decimal(str(r["pagado"]))).quantize(
             centavo, rounding=ROUND_HALF_UP
         )
@@ -41,7 +49,7 @@ def calcular_compensaciones(resumenes: list[dict]) -> dict[int, dict]:
 def get_compensaciones(id_tarjeta: int) -> dict[int, dict]:
     rows = fetch_all("""
         SELECT r.IdResumen AS idResumen, r.ResumenCodigo AS codigo,
-               r.FechaCierre AS fechaCierre,
+               r.FechaCierre AS fechaCierre, r.EstadoResumen AS estado,
                COALESCE((SELECT SUM(l.Importe) FROM dbo.Tarjetas_Resumenes_Lineas l
                          WHERE l.IdResumen=r.IdResumen),0)
                +COALESCE(r.ImpuestoSellos,0)+COALESCE(r.GastosAdmin,0)
