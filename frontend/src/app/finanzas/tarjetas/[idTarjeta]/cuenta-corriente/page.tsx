@@ -2,7 +2,7 @@
 
 import { useParams, useRouter } from "next/navigation";
 
-import { TarjetaCuentaCorriente } from "@/components/tarjetas/TarjetaCuentaCorriente";
+import { TarjetaCuentaTabla } from "@/components/tarjetas-cuenta/TarjetaCuentaTabla";
 
 export default function TarjetaCuentaCorrientePage() {
   const params = useParams<{ idTarjeta: string }>();
@@ -20,7 +20,7 @@ export default function TarjetaCuentaCorrientePage() {
       </button>
       <h1 className="mt-1 text-base font-semibold">Cuenta corriente de tarjeta</h1>
       <div className="mt-2">
-        <TarjetaCuentaCorriente idTarjeta={idTarjeta} />
+        <TarjetaCuentaTabla idTarjeta={idTarjeta} />
       </div>
     </main>
   );

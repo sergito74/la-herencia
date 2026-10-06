@@ -125,3 +125,15 @@ Esperado: todo en verde. Las pruebas de control y de cruces usan fixtures puros 
 - Total general: 315.834.577,65 → 257.518.304,87 (Δ −58.316.272,78 = deuda vigente −58.336.654,56, UATRE +17.185,82 y pagos sin movimiento +3.195,96).
 - Ningún otro contacto cambió. Totales mensuales del flujo de caja idénticos a la instantánea.
 - `pytest tests/test_vista_cuenta_tarjetas.py`: 6 pruebas pasan (las 3 que se salteaban antes de ampliar la vista ya corren).
+
+## Resultado del control de integridad (US3, 06/10/2026)
+
+Corrida contra WC en ~1 s. Hallazgos: devolución sin cruzar 1 (BNA 9426, $966.654,20), movimiento sin resumen 1 (BNA 18093, el débito de AgroNacion del 01/09/2025), pago sin origen 1 (Visa Galicia "Crédito banco", $3.195,96), consumos sin proveedor 11 (incluye el Starlink de $249.999,00; total $1.014.212,34), consumo sin vínculo con deuda abierta 1 (AgroNacion línea 648), continuidad 1 (Corporativa Nación, último resumen 07/01/2026), diferencia de contrapartida 1 (AgroNacion, la devolución). Un pago repartido entre varios resúmenes no se marca; los movimientos reasignados (Mastercard BNA 18020, administración anterior) tampoco.
+
+## Cruce de la devolución de AgroNacion (US4, 06/10/2026)
+
+Aprobado por Sergio en la sesión: cruce #1, BNA 9426 (17/09/2025) con BNA 18093 (01/09/2025), $966.654,20. Antes: saldo de AgroNacion +$966.654,47. Después: +$0,27 (centavos de redondeo; diferencia con el módulo de tarjetas $0,27). La cuenta muestra la fila "Devolución" del 17/09/2025 y el control dejó de informar las categorías movimiento-sin-resumen, devolución-sin-cruzar y diferencia-contrapartida. Total de las cinco tarjetas: +$0,02. Se puede deshacer desde Tarjetas → Control.
+
+## Cruce del Starlink (US5, 06/10/2026)
+
+Aprobado por Sergio en la sesión: cruce #2, Mercado Pago movimiento 20 con la línea de consumo 505 de Visa Galicia, $249.999,00. El consumo pasa a "cruzado con devolución" y deja de informarse como consumo sin proveedor (11 → 10). Saldo de Visa Galicia sin cambios (−$0,20).

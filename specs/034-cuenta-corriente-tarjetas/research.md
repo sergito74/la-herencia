@@ -103,3 +103,7 @@ Revisión de solo lectura del especialista de dirección financiera sobre `spec.
 | 7 | Revisar la tolerancia de $300 si crece el volumen | Se mantiene la regla vigente de Sergio; se revisa si se agregan tarjetas. |
 
 Otros riesgos señalados sin regla hoy: devoluciones que llegan a un medio no modelado (efectivo u otra cuenta), qué pasa si se rechaza una sugerencia de cruce (queda pendiente en el control) y separación de funciones entre quien carga y quien aprueba (los cruces registran usuario y fecha).
+
+## Límite conocido: cuotas a vencer por tarjeta (US1, T020)
+
+El cronograma de cuotas (`dbo.[Tarjetas de Credito]`) guarda el proveedor de cada compra y no la tarjeta con la que se pagó, por lo que no se pueden atribuir cuotas futuras a una tarjeta. Hoy no hay cuotas pendientes (las 183 están cobradas; la última venció el 01/12/2016). La sección "Cuotas a vencer" queda vacía hasta que el cronograma registre la tarjeta. Medido el 06/10/2026: saldos de las cinco tarjetas calculados en ~1 s; cuenta de AgroNacion (779 movimientos) en 1,3 s; Visa Galicia saldo −$0,20 vs pendiente $0,20 (diferencia 0). AgroNacion muestra +$966.654,47 por la devolución BNA 9426 aún sin cruzar (se resuelve en US4).

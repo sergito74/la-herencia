@@ -30,7 +30,7 @@ export interface TarjetaSaldo {
   saldo: number;
   pendienteNeto: number;
   /** |saldo + pendienteNeto|; debe ser menor a $1 (FR-009). */
-  diferenciaConModuloTarjetas: number;
+  diferenciaConModuloTarjetas: number | null;
   ultimoMovimiento: string | null;
   cuotasAVencer: number;
 }
@@ -40,6 +40,7 @@ export interface ResumenTarjetasResponse {
   tarjetas: TarjetaSaldo[];
   total: { deuda: number; credito: number; saldo: number };
   tarjetasSinContacto: { idTarjeta: number; tarjeta: string; motivo: string }[];
+  avisoSaldo: string;
 }
 
 export interface FilaCuenta {
@@ -71,8 +72,11 @@ export interface CuentaTarjetaResponse {
   saldoInicial: number;
   filas: FilaCuenta[];
   saldoFinal: number;
+  /** exigible + noResumido = saldo de la cuenta (FR-023). */
+  detalleSaldo: { exigible: number; noResumido: number };
   cuotasAVencer: CuotaAVencer[];
   apertura: { idContactoAnterior: number | null; contactoAnterior: string | null; informativo: boolean };
+  avisoSaldo: string;
 }
 
 export function fetchResumenTarjetas(hasta?: string): Promise<ResumenTarjetasResponse> {
@@ -107,7 +111,9 @@ export type CategoriaControl =
   | "tarjeta-sin-contacto"
   | "consumo-sin-vinculo-con-deuda-abierta"
   | "consumo-sin-proveedor"
-  | "diferencia-contrapartida";
+  | "diferencia-contrapartida"
+  | "continuidad-de-resumenes"
+  | "indicios-de-otra-moneda";
 
 export interface HallazgoControl {
   categoria: CategoriaControl;
@@ -152,6 +158,7 @@ export interface MovimientoCruce {
   fecha: string | null;
   importe: number;
   concepto: string | null;
+  idLineaConsumo?: number;
 }
 
 export interface SugerenciaCruce {
@@ -187,6 +194,11 @@ export interface Cruce {
   sugerido: boolean;
   usuario: string;
   fecha: string;
+  medioOrigen?: string;
+  idMovimientoOrigen?: number;
+  medioDestino?: string | null;
+  idMovimientoDestino?: number | null;
+  idLineaConsumo?: number | null;
   deshecho: boolean;
   usuarioDeshecho: string | null;
   fechaDeshecho: string | null;

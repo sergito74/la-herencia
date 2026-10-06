@@ -8,6 +8,7 @@ const TABS = [
   { href: "/finanzas/tarjetas/resumenes", label: "Resúmenes" },
   { href: "/finanzas/tarjetas/compras-en-cuotas", label: "Compras en cuotas" },
   { href: "/finanzas/tarjetas/conciliacion", label: "Conciliación" },
+  { href: "/finanzas/tarjetas/control", label: "Control" },
 ] as const;
 
 /** Sub-navegación entre las secciones del módulo Tarjetas — antes solo
