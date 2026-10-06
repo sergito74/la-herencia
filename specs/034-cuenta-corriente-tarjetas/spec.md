@@ -1,4 +1,4 @@
-# Feature Specification: Cuenta corriente de tarjetas
+# Feature Specification: Cuentas de tarjetas y de Mercado Pago
 
 **Feature Branch**: `034-cuenta-corriente-tarjetas`
 
@@ -24,6 +24,8 @@ Situación medida el 2026-10-06 (en pesos, antes de esta funcionalidad):
 
 Hay además movimientos bancarios asignados a contactos de tarjeta que no están vinculados a ningún resumen (22 movimientos por $990.229,20 en AgroNacion, incluido el débito de $966.654,20 del 01/09/2025 que el banco devolvió el 17/09/2025, y 1 por $15.180,50 en Mastercard BNA), y la devolución de ese débito figura **sin contacto**.
 
+Medición de la contrapartida con proveedores (2026-10-06, sin contar los resúmenes de saldo inicial): de $46.367.054,14 de consumos con tarjeta, $46.116.601,17 ya están vinculados a documentos de proveedores u organismos, $453,98 quedan como resto acreditado al proveedor de la línea y $249.998,99 no tienen proveedor asignado (de los cuales $210.662,00 no tienen ni proveedor ni vínculo). Esos $249.998,99 corresponden al kit Starlink comprado en Mercado Libre y luego cancelado: Visa Galicia registra el consumo "MERPAGO*BESTBOUTIQUE" del 15/08/2024 por $249.999,00 (ya marcado sin documento, con la nota "Devuelto el importe en Mercado Libre") y la billetera de Mercado Libre recibió la devolución de $249.999,00 el 20/08/2024, movimiento que hoy no está cruzado con nada; el resto son siete devoluciones de noviembre de 2025 por $39.337,00 contra una compra de $110.760,27 que ya se compensan entre sí. La tarjeta conserva la deuda por el consumo (se paga con el resumen) y la devolución es un crédito en la cuenta de Mercado Pago, no una deuda de proveedor ni un gasto.
+
 ## Clarifications
 
 ### Session 2026-10-06
@@ -31,6 +33,13 @@ Hay además movimientos bancarios asignados a contactos de tarjeta que no están
 - Q: ¿En qué fecha se registra la deuda con la tarjeta? → A: En la fecha del consumo, que es cuando la tarjeta realmente procesó la operación. Los cargos propios del resumen (sin fecha de consumo) van en la fecha de cierre.
 - Q: ¿Cómo se cruzan las devoluciones con su débito? → A: De forma semi automática: el sistema sugiere el cruce y el usuario da el visto bueno.
 - Q: ¿Cómo se tratan los resúmenes de saldo inicial de una administración anterior? → A: Como apertura informativa, sin afectar el saldo ni generar pendientes.
+- Q: ¿La deuda con las tarjetas se suma también a los totales generales (cuentas a pagar) y al flujo de caja? → A: Sí a los totales generales de cuentas corrientes y sus exportaciones; el flujo de caja real no se modifica porque se arma con movimientos bancarios y ya refleja la salida de dinero cuando se paga el resumen (sumarle la deuda contaría la misma plata dos veces).
+- Q: ¿Mercado Pago necesita una pantalla nueva o alcanza con las reglas de datos de un banco? → A: Alcanza con las mismas reglas de datos que un banco (movimientos con contacto, conducto, traspasos y cruce de devoluciones) usando las pantallas de Tesorería existentes; no se crea una pantalla nueva para Mercado Pago.
+- Q: ¿Mercado Pago queda fuera del alcance? → A: No: es una entidad financiera como un banco y debe tratarse igual (movimientos, saldo, asignación de contactos, traspasos con bancos propios, sin contar dos veces un mismo pago).
+- Q: En los pagos mensuales de UATRE, ¿qué movimiento es el pago real? → A: El débito del Banco Galicia (DEBIN). Mercado Pago solo se usa para leer el código de barras y generar el DEBIN (conducto); en otros casos la billetera sí actúa como medio de pago.
+- Q: ¿Qué contrapartida tiene un consumo cancelado cuya devolución no volvió a la tarjeta sino a la billetera de Mercado Pago (caso Starlink)? → A: Un débito en la tarjeta (el consumo, que se sigue pagando con el resumen) y un crédito en la cuenta de Mercado Pago (la devolución); el cruce entre ambos se sugiere y el usuario lo aprueba.
+- Q: ¿Cómo se evita que la deuda de la tarjeta se duplique con la deuda de los proveedores? → A: Cada peso de consumo que la tarjeta registra como deuda debe tener como contrapartida un único crédito en el proveedor u organismo (vínculo con su documento o resto sin imputar), de modo que la obligación se cuente una sola vez, en la tarjeta; el control detecta los consumos donde esto no se cumple.
+- Q: Cuando una compra se paga en cuotas con la tarjeta, ¿la deuda incluye las cuotas futuras que todavía no llegaron en ningún resumen? → A: No se suman al saldo; se muestran aparte como "cuotas a vencer", solo informativas.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -100,7 +109,23 @@ Cuando el banco devuelve un débito de un resumen, el sistema sugiere el cruce d
 
 ---
 
-### User Story 5 - Navegar de la cuenta al detalle (Priority: P3)
+### User Story 5 - Mercado Pago tratado como un banco (Priority: P2)
+
+Los movimientos de la billetera de Mercado Pago siguen las mismas reglas de datos que los de Banco Nación y Galicia: un pago hecho con fondos de la billetera acredita al contacto asignado; un pago que solo usa la billetera como conducto (leer el código de barras y generar el DEBIN) se atribuye al banco de origen y no se cuenta dos veces; y la devolución de una compra pagada con tarjeta (kit Starlink) se cruza con su consumo. Todo se ve en las pantallas de Tesorería existentes, sin una pantalla nueva.
+
+**Why this priority**: corrige errores reales (el duplicado de UATRE y la devolución de $249.999,00 sin cruzar) y evita que vuelvan a ocurrir, pero las cuentas de las tarjetas ya son útiles sin esto.
+
+**Independent Test**: con los pagos mensuales de UATRE y el kit Starlink: cada pago de UATRE aparece una sola vez en la cuenta de UATRE y la devolución queda cruzada con su consumo de Visa Galicia.
+
+**Acceptance Scenarios**:
+
+1. **Given** un ingreso desde Galicia y un pago de UATRE con el mismo identificador de operación, importe y día en la billetera, **When** se consulta la cuenta de UATRE, **Then** el pago figura una sola vez, atribuido al débito de Galicia, y los dos movimientos de la billetera figuran como conducto sin efecto en su saldo.
+2. **Given** un movimiento de la billetera que paga con fondos propios y tiene un contacto asignado, **When** se consulta la cuenta de ese contacto, **Then** el movimiento la acredita sin necesidad de conciliación manual.
+3. **Given** la devolución de $249.999,00 del kit Starlink en la billetera y su consumo en Visa Galicia, **When** el usuario aprueba el cruce sugerido, **Then** la tarjeta conserva el débito, la billetera registra el ingreso y el consumo deja de figurar como "sin proveedor".
+
+---
+
+### User Story 6 - Navegar de la cuenta al detalle (Priority: P3)
 
 Desde cualquier fila de la cuenta de una tarjeta se llega al resumen (con sus consumos y vínculos) o al movimiento bancario que le dio origen.
 
@@ -122,6 +147,7 @@ Desde cualquier fila de la cuenta de una tarjeta se llega al resumen (con sus co
 - Resumen con total cero o solo cabecera (sin consumos): aparece con importe cero y no genera pendiente.
 - Pago parcial o excedente de pago de un resumen: el saldo refleja la diferencia; el excedente queda como crédito a favor de Sergio.
 - Un mismo movimiento bancario que paga varios resúmenes (distribución de un pago en varias asignaciones): se acredita una sola vez por cada asignación, nunca por el total en cada una.
+- Compra en cuotas cuyas cuotas futuras aún no llegaron en un resumen: se informan como "cuotas a vencer" y no modifican el saldo; cuando la cuota llega en un resumen, deja de ser "a vencer" y pasa a ser deuda en su fecha de consumo.
 - Tarjeta inactiva (Mastercard BNA): su historial se sigue pudiendo consultar.
 - Resúmenes marcados como saldo inicial (AgroNacion 571 a 578): son informativos; si recibieran pagos, el control lo informa.
 - Tarjeta sin contacto asociado o con más de un contacto: el control lo informa y la tarjeta no se muestra con un saldo engañoso.
@@ -138,13 +164,21 @@ Desde cualquier fila de la cuenta de una tarjeta se llega al resumen (con sus co
 - **FR-005**: Los saldos de todos los contactos que no son tarjetas MUST permanecer idénticos a los actuales; los proveedores MUST seguir acreditados una sola vez por los vínculos consumo→documento.
 - **FR-006**: Cada tarjeta MUST tener asociado de forma explícita y única el contacto de su cuenta; el sistema MUST informar cualquier tarjeta sin contacto asociado o con más de uno.
 - **FR-007**: Cada fila de la cuenta MUST indicar su origen (resumen o pago), su documento o movimiento, fecha, deuda, crédito y saldo acumulado, y MUST poder rastrearse a su registro de origen.
-- **FR-008**: La pantalla de la cuenta MUST permitir elegir la tarjeta, filtrar por período (el saldo inicial refleja todo lo anterior) y exportar las filas con sus saldos.
+- **FR-008**: La pantalla MUST abrir con un resumen de las cinco tarjetas (saldo de cada una y total) y MUST permitir elegir una tarjeta para ver su cuenta, filtrar por período (el saldo inicial refleja todo lo anterior) y exportar las filas con sus saldos.
 - **FR-009**: El saldo final de cada tarjeta MUST coincidir (diferencia menor a $1) con el pendiente neto que informa el módulo de tarjetas para la misma fecha.
-- **FR-010**: El control de integridad MUST detectar y listar: (a) pagos de resúmenes asignados a un proveedor; (b) movimientos bancarios asignados a una tarjeta sin resumen vinculado; (c) pagos de resumen sin movimiento bancario de origen o con importe distinto al movimiento; (d) resúmenes con saldo pendiente mayor a la tolerancia; (e) devoluciones sin cruzar; (f) resúmenes de saldo inicial con pagos; (g) tarjetas sin contacto asociado.
+- **FR-010**: El control de integridad MUST detectar y listar: (a) pagos de resúmenes asignados a un proveedor; (b) movimientos bancarios asignados a una tarjeta sin resumen vinculado; (c) pagos de resumen sin movimiento bancario de origen o con importe distinto al movimiento; (d) resúmenes con saldo pendiente mayor a la tolerancia; (e) devoluciones sin cruzar; (f) resúmenes de saldo inicial con pagos; (g) tarjetas sin contacto asociado; (h) consumos de tarjeta sin vincular a un documento cuyo proveedor tiene una deuda abierta por el mismo importe, que contarían la obligación dos veces en el total general; (i) consumos de tarjeta sin proveedor ni documento, para clasificarlos o cruzarlos con una devolución en otro medio propio (sugerencia con visto bueno); (j) diferencia entre la deuda de consumos de cada tarjeta y los créditos que recibieron los proveedores por esos mismos consumos.
 - **FR-011**: El control MUST mostrar para cada hallazgo la tarjeta, el resumen o movimiento, el importe y el motivo, y MUST permitir exportarlo.
 - **FR-012**: La tolerancia de pendiente MUST ser la misma que usa el módulo de tarjetas (diferencias menores a $300 en pesos se consideran cerradas; nunca se usa un umbral en dólares).
 - **FR-013**: Solo los usuarios con permiso de escritura MUST poder cruzar devoluciones y asociar contactos; la consulta y el control MUST estar disponibles para todos los roles que ya pueden ver cuentas corrientes.
 - **FR-014**: Las escrituras necesarias MUST realizarse únicamente en `WC`, con backup verificado previo a cualquier cambio de estructura o carga masiva, y sin alterar `LaHerencia` ni los archivos Access.
+- **FR-015**: Las cuotas futuras de compras pagadas en cuotas con la tarjeta, que todavía no figuran en ningún resumen cargado, MUST mostrarse aparte como "cuotas a vencer" (fecha de vencimiento e importe) y MUST NOT sumarse al saldo de la cuenta; el saldo solo incluye lo informado en resúmenes cargados.
+- **FR-016**: La deuda con las tarjetas MUST incluirse en el listado general de cuentas corrientes y en sus totales y exportaciones (cuentas a pagar), de modo que cada tarjeta aparezca con su saldo real y deje de distorsionar los totales con créditos sin contrapartida.
+- **FR-017**: El flujo de caja real (movimientos bancarios) MUST NOT cambiar: la salida de dinero por el pago de un resumen ya figura cuando se paga y no se le suma la deuda de la tarjeta, para no contarla dos veces.
+- **FR-018**: La obligación por un consumo con tarjeta MUST contarse una sola vez en el total general de cuentas corrientes: la deuda de la tarjeta por el consumo MUST tener como contrapartida un único crédito equivalente en la cuenta del proveedor u organismo (vínculo con su documento, o resto sin imputar de la línea); un consumo sin proveedor ni documento MUST quedar señalado y contarse solo en la tarjeta.
+- **FR-019**: Un consumo de tarjeta cancelado cuya devolución se acredita en otro medio propio (billetera de Mercado Pago) MUST poder cruzarse con el movimiento de devolución: la tarjeta conserva la deuda por el consumo, la cuenta de Mercado Pago registra el crédito por la devolución, y el consumo deja de figurar como "sin proveedor"; no es gasto ni deuda de proveedor. El sistema MUST sugerir el cruce (mismo importe y fechas cercanas) y el usuario MUST dar el visto bueno.
+- **FR-020**: La cuenta de Mercado Pago MUST recibir el mismo tratamiento que los bancos y distinguir dos usos. (a) **Medio de pago**: cuando la billetera paga con fondos propios (compras, pagos con QR, transferencias), el movimiento con contacto asignado MUST acreditar o debitar la cuenta de ese contacto sin conciliación manual. (b) **Conducto**: cuando la billetera solo se usa para leer el código de barras de una boleta y generar el DEBIN con el que se paga desde un banco propio (un ingreso desde ese banco y un pago de la misma operación, mismo importe y día), el pago MUST atribuirse al movimiento del banco de origen (por ejemplo el débito DEBIN de Galicia), y los dos movimientos de la billetera MUST reconocerse como conducto: ni pago a un tercero ni traspaso, con efecto neto cero en su saldo. En ningún caso un mismo pago a un proveedor u organismo se cuenta más de una vez. Estas reglas se aplican con las pantallas de Tesorería existentes; esta funcionalidad no crea una pantalla nueva para Mercado Pago.
+- **FR-021**: El saldo de la cuenta de Mercado Pago MUST coincidir con el saldo informado por la propia billetera en el último movimiento, y las devoluciones de compras pagadas con tarjeta MUST figurar como ingreso de la billetera (FR-019).
+- **FR-022**: Cada cruce aprobado (devolución con su débito, devolución de billetera con su consumo) MUST registrar quién lo aprobó, cuándo y qué sugerencia se aceptó, y MUST poder deshacerse con registro de quién lo deshizo y cuándo.
 
 ### Key Entities
 
@@ -152,6 +186,8 @@ Desde cualquier fila de la cuenta de una tarjeta se llega al resumen (con sus co
 - **Resumen de tarjeta**: documento mensual con consumos, cargos, fechas de cierre y vencimiento, estado (por ejemplo saldo inicial) y compensaciones; constituye la deuda con la entidad.
 - **Pago de resumen**: asignación de un movimiento bancario (Banco Nación o Galicia) a un resumen por un importe; constituye el crédito.
 - **Devolución de pago**: movimiento bancario que revierte un débito de resumen y se cruza con él.
+- **Cuota a vencer**: cuota futura de una compra en cuotas con tarjeta que aún no llegó en un resumen; se informa aparte, sin afectar el saldo.
+- **Cuenta de Mercado Pago (billetera)**: entidad financiera propia, tratada igual que un banco (hoy registrada como cuenta bancaria "Mercado Libre (CVU)"): sus movimientos de ingreso y egreso, su saldo, la asignación de contactos a sus pagos y sus traspasos con los bancos propios.
 - **Compensación**: saldo a favor de un resumen aplicado una sola vez a un resumen posterior de la misma tarjeta.
 - **Hallazgo de control**: anomalía detectada por el control de integridad, con su tarjeta, movimiento o resumen, importe y motivo.
 
@@ -160,18 +196,26 @@ Desde cualquier fila de la cuenta de una tarjeta se llega al resumen (con sus co
 ### Measurable Outcomes
 
 - **SC-001**: Para las cinco tarjetas, el saldo de su cuenta corriente coincide con el pendiente neto del módulo de tarjetas con una diferencia menor a $1 (hoy: AgroNacion $0, Corporativa Nación $0,02, Mastercard BNA $0,03, Visa Galicia $0,20, Galicia Rural $0).
-- **SC-002**: El saldo de los contactos que no son tarjetas es idéntico antes y después de la funcionalidad en el 100% de los contactos comparados.
+- **SC-002**: El saldo de los contactos que no son tarjetas es idéntico antes y después de la funcionalidad en el 100% de los contactos comparados, y el total general de cuentas corrientes deja de incluir los créditos sin contrapartida de las tarjetas (hoy unos $58 M).
 - **SC-003**: El control detecta el 100% de los casos conocidos de contexto: los 22 movimientos de AgroNacion y 1 de Mastercard BNA sin resumen vinculado, la devolución sin contacto y el pago con origen "Crédito banco".
 - **SC-004**: Sergio responde "cuánto se debe hoy a cada tarjeta" consultando una sola pantalla, sin cálculo manual, y la exportación reproduce los mismos saldos.
 - **SC-005**: La cuenta completa de la tarjeta con más historia (AgroNacion: 113 resúmenes y 149 pagos) se muestra en menos de 3 segundos.
 - **SC-006**: Tras cruzar la devolución del 17/09/2025, la cuenta de AgroNacion deja de tener movimientos asignados a su contacto sin resumen por el débito/devolución de $966.654,20.
+- **SC-007**: Los totales del flujo de caja real de cualquier período son idénticos antes y después de la funcionalidad.
+- **SC-008**: Después de la funcionalidad, el total general de cuentas corrientes cambia exactamente en el importe de los pagos de resúmenes netos de devoluciones (hoy unos $58,3 M menos, por los créditos sin contrapartida que se eliminan) y en nada más; para cada tarjeta, la deuda por consumos es igual a los créditos recibidos por proveedores y organismos por esos consumos más los consumos señalados como sin proveedor.
+- **SC-009**: Tras cruzar la devolución de $249.999,00 del kit Starlink con su consumo, el control deja de informar ese consumo como "sin proveedor" y los consumos sin proveedor ni cruce de la tarjeta Visa Galicia suman menos de $1.
+- **SC-010**: Cada pago mensual de UATRE figura una sola vez en la cuenta de UATRE, atribuido al débito de Galicia; los dos movimientos de la billetera del mismo pago se reconocen como conducto, con efecto neto cero (hoy 30 pares por $721.599), y el saldo de la billetera coincide con el informado por Mercado Pago (hoy $0,14). Los movimientos en que la billetera paga con fondos propios acreditan a su contacto sin conciliación manual.
 
 ## Assumptions
 
 - Los cargos del resumen que no tienen fecha de consumo (intereses, impuestos, gastos, percepciones, ajustes) se registran en la fecha de cierre; la fecha de vencimiento se muestra como dato informativo.
 - Todas las tarjetas operan en pesos; el soporte de resúmenes en dólares queda fuera de alcance.
 - La asociación tarjeta→contacto sigue la correspondencia actual por nombre (AgroNacion 373, Corporativa Nación 503, Mastercard BNA 372, Visa Galicia 532, Galicia Rural 533) y se registra de forma explícita.
+- Hoy el cronograma de cuotas del módulo de tarjetas contiene 183 cuotas, todas cobradas (la última venció el 01/12/2016): por ahora no habrá cuotas a vencer para mostrar, y la información aparecerá a medida que se carguen compras en cuotas nuevas.
+- El control de integridad se consulta a pedido desde su pantalla; no envía alertas automáticas en esta versión.
 - Los pagos y devoluciones se siguen cargando y vinculando desde los módulos de tarjetas y de conciliación de tesorería existentes; esta funcionalidad no agrega una nueva forma de cargar pagos.
 - El cruce de una devolución con su débito es semi automático: el sistema lo sugiere y el usuario lo aprueba; no hay cruce automático sin confirmación.
-- Fuera de alcance: recalcular o reasignar saldos de proveedores, Mercado Libre, caja de efectivo, pagos de sueldos, y la corrección de los 33 consumos o planes de cuotas históricos de Agronación (ya consolidados).
+- Los totales generales de cuentas corrientes son hoy el único consumidor de las cuentas de las tarjetas; no existe un reporte de cuentas a pagar separado ni un flujo de caja proyectado. Una proyección de vencimientos de resúmenes en el flujo de caja sería una funcionalidad aparte.
+- Mercado Pago es una entidad financiera y recibe el mismo tratamiento que Banco Nación y Galicia (Sergio, 2026-10-06). Su uso en los pagos de UATRE es de conducto: las 31 boletas mensuales se pagan desde Galicia con un DEBIN generado en la billetera, y 30 de ellas muestran en la billetera un ingreso desde Galicia y el pago con el mismo identificador de operación; la que no empareja se informa para revisión. Otros movimientos de la billetera (por ejemplo la compra de un Chromecast por $194.158 o un pago con QR por $125.554) son uso como medio de pago.
+- Fuera de alcance: recalcular o reasignar saldos de proveedores, caja de efectivo, pagos de sueldos, y la corrección de los 33 consumos o planes de cuotas históricos de Agronación (ya consolidados).
 - Depende de los módulos 008 (tarjetas), 009 (conciliación de tarjetas), 026 (conciliación de tesorería), 031 (integridad de vínculos) y de la vista compartida de movimientos de cuenta corriente, que alimenta a otras pantallas y reportes y no debe alterar sus resultados.
