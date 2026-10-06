@@ -78,6 +78,7 @@ def _to_detalle_response(
     cabecera_sin_id = {k: v for k, v in cabecera.items() if k != "idResumen"}
     return ResumenDetalleResponse(
         idResumen=id_resumen,
+        **repository.get_compensaciones(cabecera["idTarjeta"])[id_resumen],
         **cabecera_sin_id,
         totalCalculado=total,
         lineas=lineas_out,
@@ -113,7 +114,7 @@ async def crear_resumen(body: ResumenAltaRequest) -> ResumenDetalleResponse:
     await run_in_threadpool(tarjetas_repository.auto_vincular_pago, id_resumen)
     lineas_out = await run_in_threadpool(repository.get_lineas, id_resumen)
     pagos_out = await run_in_threadpool(repository.get_pagos, id_resumen)
-    return _to_detalle_response(id_resumen, cabecera, lineas_out, warnings, pagos_out)
+    return await run_in_threadpool(_to_detalle_response, id_resumen, cabecera, lineas_out, warnings, pagos_out)
 
 
 @router.post("/{id_resumen}/lock", response_model=LockResponse)
@@ -159,7 +160,7 @@ async def editar_resumen(id_resumen: int, body: ResumenEditRequest, x_lock_token
     lineas_out = await run_in_threadpool(repository.get_lineas, id_resumen)
     pagos_out = await run_in_threadpool(repository.get_pagos, id_resumen)
     warnings = await _warnings_duplicado(body.idTarjeta, body.codigo, id_resumen)
-    return _to_detalle_response(id_resumen, cabecera, lineas_out, warnings, pagos_out)
+    return await run_in_threadpool(_to_detalle_response, id_resumen, cabecera, lineas_out, warnings, pagos_out)
 
 
 @router.delete("/{id_resumen}", status_code=204)
@@ -304,7 +305,7 @@ async def get_resumen_detalle(id_resumen: int) -> ResumenDetalleResponse:
     await run_in_threadpool(tarjetas_repository.auto_vincular_pago, id_resumen)
     lineas_out = await run_in_threadpool(repository.get_lineas, id_resumen)
     pagos_out = await run_in_threadpool(repository.get_pagos, id_resumen)
-    return _to_detalle_response(id_resumen, cabecera, lineas_out, warnings=[], pagos_out=pagos_out)
+    return await run_in_threadpool(_to_detalle_response, id_resumen, cabecera, lineas_out, [], pagos_out)
 
 
 # --- Punto 4 del feedback (2026-09-19): vínculo línea de consumo -> Compras reales ---

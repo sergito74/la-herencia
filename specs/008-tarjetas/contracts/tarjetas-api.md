@@ -138,3 +138,17 @@ Mismo contrato que el de resúmenes, sobre `TarjetaCuotasEditLocks`.
 - Todos los `POST`/`PUT`/`DELETE` pasan por `execute_write`/`execute_write_transaction` (`backend/src/db/connection.py`, sin cambios) — `_assert_target_is_wc()` bloquea cualquier escritura si `LA_HERENCIA_DATABASE` no es `WC` (FR-015).
 - CORS ya acepta `PUT`/`DELETE`/`PATCH` (confirmado en 006/007, `research.md` de esta feature no necesita repetir la verificación salvo que se agregue un método nuevo — `PATCH` ya estaba habilitado, confirmar en quickstart igual que los otros métodos).
 - Advertencias no bloqueantes (`warnings: string[]`) siguen el mismo criterio que FR-009a/FR-012a de 007: nunca `400`, siempre `201`/`200` con el arreglo poblado.
+
+## Compensaciones de saldos a favor — 2026-10-05
+
+Las respuestas de movimientos, listado y detalle de resúmenes agregan creditoAplicado, saldoPendiente, creditoDisponible (números) y compensaciones (lista de {idResumen: entero, codigo: texto, importe: número}). Los movimientos bancarios usan valores vacíos/cero. pagoConciliado usa saldoPendiente <= 0.10; diferenciaRedondeo conserva su significado bruto. Estado calculado al consultar, sin persistir compensaciones. Excel agrega Crédito anterior aplicado y Saldo pendiente.
+
+## Mejoras de carga y navegación — 2026-10-05
+
+Se mantienen endpoints existentes: POST /{id}/pagos acepta pagos sucesivos; no introducir unicidad por resumen. La corrección de visibilidad de candidatos es de interfaz. returnTo es un parámetro de navegación limitado a /finanzas/tarjetas/resumenes y sus filtros, sin modificar el contrato de búsqueda.
+
+La edición conserva idLineaConsumo, campos bancarios adicionales y vínculos/estados de las líneas que permanecen. PUT admite idLineaConsumo opcional por línea (obligatorio para conservar una existente); se valida pertenencia y ausencia de duplicados. Líneas nuevas no llevan ID. Si una línea está conciliada, eliminarla o cambiar su importe requiere quitar primero la conciliación; cambiar tarjeta requiere quitar pagos y conciliaciones. Esta regla reemplaza el reemplazo destructivo de líneas documentado originalmente. El selector compartido conserva el texto al escribir para reemplazar un contacto seleccionado.
+
+## Pagos bancarios anulados — 2026-10-06
+
+Los candidatos de pago excluyen movimientos con resolución vigente SinDocumento o DiferenciaAceptada en ConciliacionesTesoreriaEstado. Solo se considera el último evento; revocar la resolución permite volver a ofrecer el movimiento si no tiene pagos vinculados. Evita volver a aplicar débitos duplicados ya devueltos y documentados. No cambia importes ni crea pagos.

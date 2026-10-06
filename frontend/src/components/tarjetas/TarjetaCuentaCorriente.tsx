@@ -23,7 +23,7 @@ function Semaforo({ ok, label }: { ok: boolean; label: string }) {
 
 const COLUMNS: DataTableColumn<MovimientoTarjeta>[] = [
   {
-    key: "fecha",
+    key: "fecha", sortValue: (m) => m.fecha,
     header: "Fecha",
     render: (m) => (
       <Link className="text-finance underline" href={`/finanzas/tarjetas/resumenes/${m.idResumen}`}>
@@ -31,9 +31,9 @@ const COLUMNS: DataTableColumn<MovimientoTarjeta>[] = [
       </Link>
     ),
   },
-  { key: "codigo", header: "Resumen", render: (m) => m.codigo },
+  { key: "codigo", sortValue: (m) => m.codigo, header: "Resumen", render: (m) => m.codigo },
   {
-    key: "origen",
+    key: "origen", sortValue: (m) => m.origen,
     header: "Tipo",
     render: (m) => (
       <span className={m.origen === "Pago" ? "text-status-success" : "text-ink-secondary"}>
@@ -41,21 +41,21 @@ const COLUMNS: DataTableColumn<MovimientoTarjeta>[] = [
       </span>
     ),
   },
-  { key: "deuda", header: "Deuda", numeric: true, render: (m) => (m.deuda ? formatMoneda(m.deuda) : "—") },
-  { key: "credito", header: "Crédito", numeric: true, render: (m) => (m.credito ? formatMoneda(m.credito) : "—") },
-  { key: "saldoAcumulado", header: "Saldo acumulado", numeric: true, render: (m) => formatMoneda(m.saldoAcumulado) },
+  { key: "deuda", sortValue: (m) => m.deuda, header: "Deuda", numeric: true, render: (m) => (m.deuda ? formatMoneda(m.deuda) : "—") },
+  { key: "credito", sortValue: (m) => m.credito, header: "Crédito", numeric: true, render: (m) => (m.credito ? formatMoneda(m.credito) : "—") },
+  { key: "saldoAcumulado", sortValue: (m) => m.saldoAcumulado, header: "Saldo acumulado", numeric: true, render: (m) => formatMoneda(m.saldoAcumulado) },
   {
-    key: "pagoConciliado",
+    key: "pagoConciliado", sortValue: (m) => m.pagoConciliado == null ? null : Number(m.pagoConciliado),
     header: "Pago",
     render: (m) =>
       m.origen === "Pago" || m.pagoConciliado == null ? (
         "—"
       ) : (
-        <Semaforo ok={m.pagoConciliado} label={m.pagoConciliado ? "Conciliado" : "Pendiente"} />
+        <Semaforo ok={m.pagoConciliado} label={m.pagoConciliado ? (m.creditoAplicado > 0 ? "Conciliado con saldo a favor" : "Conciliado") : "Pendiente"} />
       ),
   },
   {
-    key: "consumosConciliados",
+    key: "consumosConciliados", sortValue: (m) => m.lineasTotal == null ? null : m.lineasTotal === 0 ? 1 : (m.lineasVinculadas ?? 0) / m.lineasTotal,
     header: "Consumos",
     render: (m) => {
       if (m.origen === "Pago" || m.lineasTotal == null || m.lineasVinculadas == null) return "—";
@@ -88,6 +88,7 @@ export function TarjetaCuentaCorriente({ idTarjeta }: { idTarjeta: number }) {
   return (
     <div className="space-y-2">
       <h2 className="text-sm font-semibold text-ink-primary">{data?.tarjeta}</h2>
+      <p className="text-xs text-ink-secondary">El saldo acumulado corresponde al orden cronológico, aunque ordenes por otra columna.</p>
       <DataTable
         columns={COLUMNS}
         rows={movimientos}

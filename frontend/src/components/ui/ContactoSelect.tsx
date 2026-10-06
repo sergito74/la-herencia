@@ -44,8 +44,13 @@ export function ContactoSelect({
   const [highlightedIndex, setHighlightedIndex] = useState(0);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const listboxId = useId();
+  const editandoSeleccion = useRef(false);
 
   useEffect(() => {
+    if (editandoSeleccion.current && value == null) {
+      editandoSeleccion.current = false;
+      return;
+    }
     setQuery(razonSocial ?? "");
   }, [razonSocial, value]);
 
@@ -119,7 +124,10 @@ export function ContactoSelect({
           onChange={(e) => {
             setQuery(e.target.value);
             setIsOpen(true);
-            if (value != null) onChange(null, null);
+            if (value != null) {
+              editandoSeleccion.current = true;
+              onChange(null, null);
+            }
           }}
           onKeyDown={handleKeyDown}
           role="combobox"

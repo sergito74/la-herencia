@@ -7,6 +7,7 @@
 import { API_BASE_URL, apiDelete, apiGet, apiPost, apiPut } from "@/services/apiClient";
 
 export interface LineaConsumoInput {
+  idLineaConsumo?: number | null;
   fechaCompra: string;
   detalle: string;
   importe: number;
@@ -71,6 +72,10 @@ export interface ResumenAltaInput {
 }
 
 export interface ResumenDetalle extends ResumenAltaInput {
+  creditoAplicado: number;
+  saldoPendiente: number;
+  creditoDisponible: number;
+  compensaciones: { idResumen: number; codigo: string; importe: number }[];
   idResumen: number;
   tarjeta: string | null;
   totalCalculado: number;
@@ -80,6 +85,8 @@ export interface ResumenDetalle extends ResumenAltaInput {
 }
 
 export interface ResumenListItem {
+  creditoAplicado: number;
+  saldoPendiente: number;
   idResumen: number;
   idTarjeta: number;
   tarjeta: string | null;

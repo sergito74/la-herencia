@@ -13,6 +13,7 @@ from __future__ import annotations
 from itertools import combinations
 
 from src.db.connection import fetch_all, fetch_one
+from src.features.tarjetas.compensaciones import get_compensaciones
 from src.features.tarjetas_resumenes.repository import (
     TOLERANCIA_CONCILIACION,
     calcular_total,
@@ -62,6 +63,7 @@ def get_movimientos(id_tarjeta: int) -> list[dict]:
         (id_tarjeta,),
     )
     eventos: list[dict] = []
+    compensaciones = get_compensaciones(id_tarjeta)
     for resumen in resumenes:
         lineas = get_lineas(resumen["idResumen"])
         total = calcular_total(resumen, lineas)
@@ -87,7 +89,8 @@ def get_movimientos(id_tarjeta: int) -> list[dict]:
                 "origen": "Resumen",
                 "deuda": total if total > 0 else 0.0,
                 "credito": -total if total < 0 else 0.0,
-                "pagoConciliado": diferencia_redondeo <= TOLERANCIA_CONCILIACION,
+                **compensaciones[resumen["idResumen"]],
+                "pagoConciliado": compensaciones[resumen["idResumen"]]["saldoPendiente"] <= TOLERANCIA_CONCILIACION,
                 "diferenciaRedondeo": diferencia_redondeo,
                 "lineasTotal": len(lineas),
                 "lineasVinculadas": lineas_vinculadas,
@@ -113,7 +116,7 @@ def get_movimientos(id_tarjeta: int) -> list[dict]:
     saldo = 0.0
     movimientos: list[dict] = []
     for evento in eventos:
-        saldo += evento["deuda"] - evento["credito"]
+        saldo = round(saldo + evento["deuda"] - evento["credito"], 4)
         movimientos.append({**evento, "saldoAcumulado": saldo})
     return movimientos
 
@@ -147,8 +150,13 @@ def get_pagos_candidatos(id_tarjeta: int) -> list[dict]:
         row["idMovimientoOrigen"]
         for row in fetch_all(
             "SELECT IdMovimientoOrigen AS idMovimientoOrigen FROM dbo.Tarjetas_Resumenes_Pagos "
-            "WHERE Origen = ? AND IdMovimientoOrigen IS NOT NULL",
-            (tarjeta["banco"] == "Banco Nacion" and "BNA" or "Galicia",),
+            "WHERE Origen = ? AND IdMovimientoOrigen IS NOT NULL "
+            "UNION SELECT e.IdMovimiento AS idMovimientoOrigen FROM dbo.ConciliacionesTesoreriaEstado e "
+            "WHERE e.Medio = ? AND e.Estado IN ('SinDocumento', 'DiferenciaAceptada') "
+            "AND e.IdEstado = (SELECT MAX(u.IdEstado) FROM dbo.ConciliacionesTesoreriaEstado u "
+            "WHERE u.Medio=e.Medio AND u.IdMovimiento=e.IdMovimiento)",
+            ("BNA" if tarjeta["banco"] == "Banco Nacion" else "Galicia",
+             "bna" if tarjeta["banco"] == "Banco Nacion" else "galicia"),
         )
     }
 
@@ -219,6 +227,11 @@ def auto_vincular_pago(id_resumen: int) -> bool:
 
     resumen = fetch_one("SELECT IdTarjeta, FechaVencimiento FROM dbo.Tarjetas_Resumenes WHERE IdResumen = ?", (id_resumen,))
     if resumen is None or resumen["FechaVencimiento"] is None:
+        return False
+
+    # Un crédito anterior requiere considerar el neto; no buscar otro pago
+    # por los cargos brutos, que podría pertenecer a otro resumen.
+    if get_compensaciones(resumen["IdTarjeta"])[id_resumen]["creditoAplicado"] > 0:
         return False
 
     cabecera = get_resumen_detalle(id_resumen)

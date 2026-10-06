@@ -149,3 +149,17 @@ Un usuario necesita ver qué tarjetas existen en el sistema y cuáles están act
 - El cronograma de cuotas se genera con periodicidad mensual fija a partir de la fecha de compra y sin interés (cuota fija, ajuste de redondeo solo en la última) — no hay evidencia en los datos reales de periodicidades distintas (quincenal, bimestral), aunque sí existen compras históricas con cuotas de importe creciente por financiación con interés bancario que este generador no reproduce (ver Edge Cases).
 - La conciliación automática línea↔cuota y la distribución de una línea entre varios contactos (`Tarjetas_Conciliacion_Link`/`Propuesta`, `Tarjetas_Lineas_Distrib`) quedan explícitamente fuera de alcance: existen en el esquema pero tienen 0 filas en producción real — nunca se usaron en años de operación, y agregar esa complejidad sin evidencia de necesidad sería sobre-ingeniería.
 - Los catálogos de apoyo `Tarjetas_TipoLinea` (20 filas) y `Tarjetas_MapeoConceptos` (43 filas, sí tienen datos reales, a diferencia de las tablas de conciliación) no son necesarios en este alcance porque la carga de resúmenes es manual, no una importación automática de archivos bancarios.
+
+## Compensaciones de saldos a favor — 2026-10-05
+
+Los estados de pago de cuenta corriente, listado, detalle y exportación deben reconocer créditos de resúmenes anteriores de la misma tarjeta. Mayo de 2025 de Galicia Rural: total $605, pagos reales $229,98 y crédito previo $375,02; pendiente cero. No crear pagos ficticios ni modificar cargos para representar la compensación.
+
+## Mejoras de carga y navegación — 2026-10-05
+
+Aplicable a Agronación y todas las tarjetas: contacto de consumo opcional y orientativo, con nombre visible al seleccionar y reabrir. Conciliar mediante uno o varios documentos, incluso de otros contactos. Permitir múltiples pagos bancarios por resumen aunque ya esté cubierto (el excedente genera crédito). Ordenar cuenta corriente por cualquier encabezado conservando el saldo cronológico. Al guardar/cancelar/volver desde edición o detalle, restaurar filtros y página de la búsqueda original.
+
+La edición conserva idLineaConsumo, campos bancarios adicionales y vínculos/estados de las líneas que permanecen. PUT admite idLineaConsumo opcional por línea (obligatorio para conservar una existente); se valida pertenencia y ausencia de duplicados. Líneas nuevas no llevan ID. Si una línea está conciliada, eliminarla o cambiar su importe requiere quitar primero la conciliación; cambiar tarjeta requiere quitar pagos y conciliaciones. Esta regla reemplaza el reemplazo destructivo de líneas documentado originalmente. El selector compartido conserva el texto al escribir para reemplazar un contacto seleccionado.
+
+## Pagos bancarios anulados — 2026-10-06
+
+Los candidatos de pago excluyen movimientos con resolución vigente SinDocumento o DiferenciaAceptada en ConciliacionesTesoreriaEstado. Solo se considera el último evento; revocar la resolución permite volver a ofrecer el movimiento si no tiene pagos vinculados. Evita volver a aplicar débitos duplicados ya devueltos y documentados. No cambia importes ni crea pagos.

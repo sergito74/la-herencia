@@ -11,6 +11,7 @@ from pydantic import BaseModel, Field
 
 
 class LineaConsumoInput(BaseModel):
+    idLineaConsumo: int | None = Field(default=None, gt=0)
     fechaCompra: date
     detalle: str = Field(min_length=1, max_length=255)
     importe: float
@@ -91,6 +92,10 @@ class PagoResumen(BaseModel):
 
 
 class ResumenDetalleResponse(BaseModel):
+    creditoAplicado: float = 0
+    saldoPendiente: float = 0
+    creditoDisponible: float = 0
+    compensaciones: list[dict] = []
     idResumen: int
     idTarjeta: int
     tarjeta: str | None = None
@@ -119,6 +124,10 @@ class ResumenDetalleResponse(BaseModel):
 
 
 class ResumenListItem(BaseModel):
+    creditoAplicado: float = 0
+    saldoPendiente: float = 0
+    creditoDisponible: float = 0
+    compensaciones: list[dict] = []
     idResumen: int
     idTarjeta: int
     tarjeta: str | None = None

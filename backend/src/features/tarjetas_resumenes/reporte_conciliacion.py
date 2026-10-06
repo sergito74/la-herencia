@@ -21,6 +21,7 @@ from openpyxl.utils import get_column_letter
 
 from src.db.connection import fetch_all
 from src.db.params import as_sql_datetime
+from src.features.tarjetas.compensaciones import get_compensaciones
 from src.features.tarjetas_resumenes.conciliacion_documentos import importe_pesos
 from src.features.tarjetas_resumenes.repository import (
     _APLICA_PARTICULAR,
@@ -98,7 +99,7 @@ def obtener_datos(id_tarjeta: int | None = None, desde=None, hasta=None) -> dict
     cargos_sql = ", ".join(f"r.{col} AS {clave}" for col, clave, _ in CARGOS)
     resumenes = fetch_all(
         f"""
-        SELECT r.IdResumen AS idResumen, t.TarjetaNombre AS tarjeta, r.ResumenCodigo AS codigo,
+        SELECT r.IdResumen AS idResumen, r.IdTarjeta AS idTarjeta, t.TarjetaNombre AS tarjeta, r.ResumenCodigo AS codigo,
                r.FechaCierre AS fechaCierre, r.FechaVencimiento AS fechaVencimiento, {cargos_sql}
         FROM dbo.Tarjetas_Resumenes r
         LEFT JOIN dbo.Tarjetas t ON t.IdTarjeta = r.IdTarjeta
@@ -128,7 +129,8 @@ def obtener_datos(id_tarjeta: int | None = None, desde=None, hasta=None) -> dict
                w.[Tipo de Cambio] AS tipoDeCambio, (w.ImporteDocumento - pa.cp) AS importeOriginal,
                pa.cp AS compraParticular, cm.[Ajusta Tipo Cambio] AS ajustaTipoCambio,
                ISNULL(d.neto, 0) AS neto, ISNULL(d.iva, 0) AS iva,
-               ISNULL(cm.[Ingresos Brutos], 0) + ISNULL(cm.[Conceptos no gravados], 0) + ISNULL(cm.Guias, 0)
+               ISNULL(cm.[Ingresos Brutos], 0) + ISNULL(cm.PercepcionIVA, 0)
+                 + ISNULL(cm.[Conceptos no gravados], 0) + ISNULL(cm.Guias, 0)
                  + ISNULL(cm.Comision, 0) + ISNULL(cm.Financiacion, 0) + ISNULL(cm.[Gastos Varios], 0)
                  + ISNULL(cm.[Ley de Sellos], 0) + ISNULL(cm.[Res gral 4169/96], 0) AS otros,
                ct.[Razon Social] AS proveedor, ct.[CUIT/CUIL] AS cuit
@@ -165,7 +167,10 @@ def obtener_datos(id_tarjeta: int | None = None, desde=None, hasta=None) -> dict
     if id_tarjeta is not None:
         fila = fetch_all("SELECT TarjetaNombre AS n FROM dbo.Tarjetas WHERE IdTarjeta = ?", (id_tarjeta,))
         tarjeta = fila[0]["n"] if fila else None
-    return {"resumenes": resumenes, "lineas": lineas, "vinculos": vinculos, "pagos": pagos, "tarjeta": tarjeta}
+    compensaciones = {}
+    for tarjeta_id in {r["idTarjeta"] for r in resumenes}:
+        compensaciones.update(get_compensaciones(tarjeta_id))
+    return {"compensaciones": compensaciones, "resumenes": resumenes, "lineas": lineas, "vinculos": vinculos, "pagos": pagos, "tarjeta": tarjeta}
 
 
 def _estado_linea(linea: dict, vinculos: list[dict]) -> str:
@@ -211,7 +216,7 @@ def construir_libro(datos: dict, filtros: dict) -> Workbook:
     titulos = (
         ["Tarjeta", "Resumen", "Fecha de cierre", "Vencimiento", "Total consumos"]
         + [t for _, _, t in CARGOS]
-        + ["Total del resumen", "Pagado", "Diferencia de pago", "Pago", "Consumos", "Conciliados",
+        + ["Total del resumen", "Pagado", "Diferencia de pago", "Crédito anterior aplicado", "Saldo pendiente", "Pago", "Consumos", "Conciliados",
            "Con diferencia aceptada", "Sin documento", "Pendientes", "Estado"]
     )
     ws.append(titulos)
@@ -225,11 +230,15 @@ def construir_libro(datos: dict, filtros: dict) -> Workbook:
         total = round(consumos + sum(cargos), 2)
         pagado = round(sum(_f(p["importe"]) for p in pagos_por_resumen.get(r["idResumen"], [])), 2)
         diferencia = round(total - pagado, 2)
-        pago_ok = diferencia <= TOLERANCIA_CONCILIACION
+        compensacion = datos.get("compensaciones", {}).get(r["idResumen"], {})
+        credito = compensacion.get("creditoAplicado", 0)
+        saldo_pendiente = compensacion.get("saldoPendiente", max(diferencia, 0))
+        pago_ok = saldo_pendiente <= TOLERANCIA_CONCILIACION
         pendientes = estados.count(ESTADO_PENDIENTE)
         ws.append(
             [r["tarjeta"], r["codigo"], _d(r["fechaCierre"]), _d(r["fechaVencimiento"]), consumos, *cargos, total,
-             pagado, diferencia, "Conciliado" if pago_ok else "Pendiente", len(lineas),
+             pagado, diferencia, credito, saldo_pendiente,
+             ("Conciliado con saldo a favor" if credito else "Conciliado") if pago_ok else "Pendiente", len(lineas),
              estados.count(ESTADO_CONCILIADA), estados.count(ESTADO_DIFERENCIA), estados.count(ESTADO_SIN_DOC),
              pendientes, "Conciliado" if pago_ok and pendientes == 0 else "Pendiente de conciliar"]
         )
@@ -238,20 +247,20 @@ def construir_libro(datos: dict, filtros: dict) -> Workbook:
     for fila in ws.iter_rows(min_row=2, max_row=ultima):
         fila[2].number_format = _FMT_FECHA
         fila[3].number_format = _FMT_FECHA
-        for c in range(4, 6 + n_cargos + 3):  # consumos, cargos, total, pagado, diferencia
+        for c in range(4, 6 + n_cargos + 4):  # consumos, cargos, total, pagado, diferencia
             fila[c].number_format = _FMT_PESOS
     if ultima >= 2:
         ws.append(["Totales"] + [None] * 3 + [
-            f"=SUM({get_column_letter(c)}{fila_desde}:{get_column_letter(c)}{ultima})" for c in range(5, 6 + n_cargos + 3)
+            f"=SUM({get_column_letter(c)}{fila_desde}:{get_column_letter(c)}{ultima})" for c in range(5, 6 + n_cargos + 4)
         ])
         for c in range(1, len(titulos) + 1):
             ws.cell(row=ws.max_row, column=c).font = Font(bold=True)
-        for c in range(5, 6 + n_cargos + 3):
+        for c in range(5, 6 + n_cargos + 4):
             ws.cell(row=ws.max_row, column=c).number_format = _FMT_PESOS
     ws.freeze_panes = "C2"
     if ultima >= 2:
         ws.auto_filter.ref = f"A1:{get_column_letter(len(titulos))}{ultima}"
-    _anchos(ws, [18, 24, 13, 13, 16] + [15] * n_cargos + [17, 16, 15, 12, 10, 12, 13, 12, 11, 22])
+    _anchos(ws, [18, 24, 13, 13, 16] + [15] * n_cargos + [17, 16, 15, 18, 16, 28, 10, 12, 13, 12, 11, 22])
 
     # ------------------------- Conciliación (detalle) -------------------------
     wd = wb.create_sheet("Conciliación")

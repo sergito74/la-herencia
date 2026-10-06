@@ -66,3 +66,19 @@
 
 1. Abrir el nav y confirmar que "Tarjetas" aparece dentro de "Finanzas", entre "Cuentas corrientes" e "Impuestos y retenciones".
 2. Confirmar que el catálogo, resúmenes y compras en cuotas son accesibles desde ahí.
+
+## Compensaciones de saldos a favor — 2026-10-05
+
+Verificar Galicia Rural: 34 resúmenes con PDF, saldo final $0,00 y sin candidatos de pago pendientes. Resumen 567: crédito $375,02 originado en 565 ($3,72) y 566 ($371,30), pago $229,98 y pendiente cero. Crédito de 544: aplicaciones $399,30 en 545 y $511,66 en 546. Verificar que Excel y pantalla reconocen estas compensaciones, incluso al filtrar el período.
+
+## Mejoras de carga y navegación — 2026-10-05
+
+Con fixtures: buscar Agronación con fechas y página 2, editar y guardar/cancelar/volver, comprobar URL y resultados originales; repetir pasando por detalle. Seleccionar contacto y reabrir edición: nombre visible. Vincular dos pagos sucesivos incluso con saldo cubierto y verificar dos filas. Ordenar importes numéricamente y fechas; cada saldo conserva su valor original.
+
+La edición conserva idLineaConsumo, campos bancarios adicionales y vínculos/estados de las líneas que permanecen. PUT admite idLineaConsumo opcional por línea (obligatorio para conservar una existente); se valida pertenencia y ausencia de duplicados. Líneas nuevas no llevan ID. Si una línea está conciliada, eliminarla o cambiar su importe requiere quitar primero la conciliación; cambiar tarjeta requiere quitar pagos y conciliaciones. Esta regla reemplaza el reemplazo destructivo de líneas documentado originalmente. El selector compartido conserva el texto al escribir para reemplazar un contacto seleccionado.
+
+Validación ejecutada (2026-10-05): 59 pruebas backend aprobadas; TypeScript y ESLint de archivos modificados sin errores. `node frontend/tests/tarjetas-navegacion.e2e.cjs` contra Next local en puerto 3100, con todas las peticiones API interceptadas: contacto, IDs, guardar/cancelar/volver, dos pagos con saldo cubierto y orden numérico con saldo cronológico. No se escribieron datos de producción.
+
+## Pagos bancarios anulados — 2026-10-06
+
+Los candidatos de pago excluyen movimientos con resolución vigente SinDocumento o DiferenciaAceptada en ConciliacionesTesoreriaEstado. Solo se considera el último evento; revocar la resolución permite volver a ofrecer el movimiento si no tiene pagos vinculados. Evita volver a aplicar débitos duplicados ya devueltos y documentados. No cambia importes ni crea pagos.

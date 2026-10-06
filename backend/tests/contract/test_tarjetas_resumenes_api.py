@@ -7,6 +7,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+from collections import defaultdict
 
 import httpx
 import pytest
@@ -53,6 +54,10 @@ def sin_auto_vinculo_real(monkeypatch):
     nuevo con su propio valor dentro del test."""
     monkeypatch.setattr(repository, "auto_vincular_compras", lambda id_resumen: 0)
     monkeypatch.setattr(tarjetas_repository, "auto_vincular_pago", lambda id_resumen: False)
+    for modulo in (repository, tarjetas_repository):
+        monkeypatch.setattr(modulo, "get_compensaciones", lambda tarjeta: defaultdict(
+            lambda: {"creditoAplicado": 0, "saldoPendiente": 0,
+                     "creditoDisponible": 0, "compensaciones": []}))
 
 
 # --- FR-010: listado vacío por defecto ---
@@ -756,6 +761,9 @@ def test_search_resumenes_diferencia_fuera_de_tolerancia_es_pendiente(monkeypatc
     monkeypatch.setattr(repository, "get_lineas", lambda id_resumen: [])
     monkeypatch.setattr(repository, "calcular_total", lambda cab, lin: 1000.0)
     monkeypatch.setattr(repository, "get_pagos", lambda id_resumen: [{"importe": 999.5}])  # diferencia $0.50
+    monkeypatch.setattr(repository, "get_compensaciones", lambda tarjeta: {
+        1: {"creditoAplicado": 0, "saldoPendiente": 0.5,
+            "creditoDisponible": 0, "compensaciones": []}})
 
     items, _total = repository.search_resumenes(4, None, None, None, None, 1, 50)
 

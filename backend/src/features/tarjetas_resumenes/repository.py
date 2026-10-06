@@ -24,6 +24,7 @@ from src.db.pagination import offset_for
 from src.db.params import as_sql_datetime
 from src.features.compras.particular import APLICA_PARTICULAR_JOIN
 from src.formatting import formatear_moneda
+from src.features.tarjetas.compensaciones import get_compensaciones
 from src.features.tarjetas_resumenes.conciliacion_documentos import (
     MAX_DOCS_SUGERENCIA,
     TOLERANCIA_PESOS_USD,
@@ -183,6 +184,7 @@ def search_resumenes(
     """
     rows = fetch_all(list_sql, tuple(params) + (offset, page_size))
     items = []
+    compensaciones = {t: get_compensaciones(t) for t in {r["idTarjeta"] for r in rows}}
     for row in rows:
         id_resumen = row["idResumen"]
         # Intenta el auto-vínculo de facturas antes de reportar el estado
@@ -207,7 +209,8 @@ def search_resumenes(
                 "urlResumenOriginal": cabecera.get("urlResumenOriginal") if cabecera else None,
                 "totalCalculado": total_calculado,
                 "soloCabecera": len(lineas) == 0,
-                "pagoConciliado": diferencia_redondeo <= TOLERANCIA_CONCILIACION,
+                **compensaciones[row["idTarjeta"]][id_resumen],
+                "pagoConciliado": compensaciones[row["idTarjeta"]][id_resumen]["saldoPendiente"] <= TOLERANCIA_CONCILIACION,
                 "diferenciaRedondeo": diferencia_redondeo,
                 "lineasTotal": len(lineas),
                 "lineasVinculadas": lineas_vinculadas,
@@ -1151,46 +1154,42 @@ def create_resumen(cabecera: dict, lineas: list[dict]) -> int:
 
 @atomic_reconciliation
 def update_resumen(id_resumen: int, cabecera: dict, lineas: list[dict]) -> None:
-    """Reemplazo total de líneas (mismo criterio que el resto de la app).
-    Borra primero los vínculos a `Compras` (punto 4 del feedback,
-    2026-09-19) — de lo contrario quedarían huérfanos apuntando a un
-    `IdLineaConsumo` que ya no existe, perdiendo silenciosamente el
-    vínculo cada vez que se edita un resumen."""
+    """Conserva identificadores, campos bancarios y conciliaciones existentes."""
     errores = validar_resumen(cabecera["idTarjeta"], cabecera, lineas)
     if errores:
         raise ValueError(errores)
-
-    statements: list = [
-        (
-            "DELETE FROM dbo.Tarjetas_Resumenes_Lineas_Compras WHERE IdLineaConsumo IN "
-            "(SELECT IdLineaConsumo FROM dbo.Tarjetas_Resumenes_Lineas WHERE IdResumen = ?)",
-            (id_resumen,),
-        ),
-        (
-            "DELETE FROM dbo.Tarjetas_Resumenes_Lineas_Estado WHERE IdLineaConsumo IN "
-            "(SELECT IdLineaConsumo FROM dbo.Tarjetas_Resumenes_Lineas WHERE IdResumen = ?)",
-            (id_resumen,),
-        ),
-        ("DELETE FROM dbo.Tarjetas_Resumenes_Lineas WHERE IdResumen = ?", (id_resumen,)),
-        _cabecera_update_statement(id_resumen, cabecera),
-    ]
+    actuales = {l["idLineaConsumo"]: l for l in get_lineas(id_resumen)}
+    ids = [l["idLineaConsumo"] for l in lineas if l.get("idLineaConsumo") is not None]
+    if len(ids) != len(set(ids)) or any(i not in actuales for i in ids):
+        raise ValueError(["Las líneas no pertenecen al resumen o están repetidas."])
+    anterior = get_resumen_detalle(id_resumen)
+    if anterior["idTarjeta"] != cabecera["idTarjeta"] and (
+        get_pagos(id_resumen) or any(l.get("comprasVinculadas") or l.get("estadoLinea") for l in actuales.values())
+    ):
+        raise ValueError(["Quitá las conciliaciones y pagos antes de cambiar la tarjeta."])
+    for ident, actual in actuales.items():
+        nueva = next((l for l in lineas if l.get("idLineaConsumo") == ident), None)
+        if actual.get("comprasVinculadas") or actual.get("estadoLinea"):
+            if nueva is None or nueva["importe"] != actual["importe"]:
+                raise ValueError(["Quitá la conciliación de la línea antes de eliminarla o cambiar su importe."])
+    statements: list = [_cabecera_update_statement(id_resumen, cabecera)]
+    for ident in actuales.keys() - set(ids):
+        statements.append(("DELETE FROM dbo.Tarjetas_Resumenes_Lineas WHERE IdResumen=? AND IdLineaConsumo=?",
+                           (id_resumen, ident)))
     for linea in lineas:
-        statements.append(
-            (
+        params = (as_sql_datetime(linea["fechaCompra"]), linea["detalle"], linea["importe"],
+                  as_sql_datetime(linea["fechaVencimientoCompra"]) if linea.get("fechaVencimientoCompra") else None,
+                  linea.get("idContacto"), linea.get("nroDocumento"))
+        if linea.get("idLineaConsumo") is not None:
+            statements.append((
+                "UPDATE dbo.Tarjetas_Resumenes_Lineas SET FechaCompra=?, Detalle=?, Importe=?, "
+                "FechaVencimientoCompra=?, IdContacto=?, NroDocumento=? WHERE IdResumen=? AND IdLineaConsumo=?",
+                params + (id_resumen, linea["idLineaConsumo"])))
+        else:
+            statements.append((
                 "INSERT INTO dbo.Tarjetas_Resumenes_Lineas "
-                "(IdResumen, FechaCompra, Detalle, Importe, FechaVencimientoCompra, IdContacto, NroDocumento) "
-                "VALUES (?, ?, ?, ?, ?, ?, ?)",
-                (
-                    id_resumen,
-                    as_sql_datetime(linea["fechaCompra"]),
-                    linea["detalle"],
-                    linea["importe"],
-                    as_sql_datetime(linea["fechaVencimientoCompra"]) if linea.get("fechaVencimientoCompra") else None,
-                    linea.get("idContacto"),
-                    linea.get("nroDocumento"),
-                ),
-            )
-        )
+                "(FechaCompra, Detalle, Importe, FechaVencimientoCompra, IdContacto, NroDocumento, IdResumen) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?)", params + (id_resumen,)))
     execute_write_transaction(statements)
 
 

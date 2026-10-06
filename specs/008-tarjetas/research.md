@@ -108,3 +108,17 @@ Verificar contra las 5 tarjetas reales (mismo criterio que la validación manual
 `Tarjetas` entra en `frontend/src/components/layout/NavHeader.tsx`, dentro de `Finanzas`, como hermano de `Cuentas corrientes`/`Tesorería`/`Impuestos y retenciones`/`Arrendamientos`, entre "Cuentas corrientes" e "Impuestos y retenciones" (preserva el orden por volumen de uso ya implícito en la lista).
 
 No se reutiliza el componente de cuenta corriente de 004 (`frontend/src/app/finanzas/cuentas-corrientes/page.tsx`) filtrado por tarjeta — la fuente de datos es estructuralmente distinta (agregada por `IdTarjeta`, no por `IdContacto`). Se construye una pantalla propia que reusa el mismo patrón visual (tabla de movimientos + saldo acumulado + link al origen).
+
+## Compensaciones de saldos a favor — 2026-10-05
+
+Se conserva la diferencia bruta total menos pagos por trazabilidad; el semáforo usa saldoPendiente con tolerancia existente de $0,10. Los créditos no generan movimientos bancarios ni pagos. La vinculación automática por importe bruto se omite cuando existe crédito previo aplicado. Se preservan los decimales de movimientos bancarios divididos y se redondea el acumulado de cuenta corriente a cuatro decimales.
+
+## Mejoras de carga y navegación — 2026-10-05
+
+Causas identificadas: el editor pasaba razonSocial=null y descartaba el nombre devuelto por ContactoSelect; su efecto borraba la etiqueta al cambiar ID. Los pagos múltiples ya existen en persistencia, pero el detalle ocultaba candidatos cuando conciliado=true. Los encabezados no tenían sortValue. Guardar/cancelar redirigían al listado sin query string, perdiendo filtros aunque el listado sí los persiste en URL.
+
+La edición conserva idLineaConsumo, campos bancarios adicionales y vínculos/estados de las líneas que permanecen. PUT admite idLineaConsumo opcional por línea (obligatorio para conservar una existente); se valida pertenencia y ausencia de duplicados. Líneas nuevas no llevan ID. Si una línea está conciliada, eliminarla o cambiar su importe requiere quitar primero la conciliación; cambiar tarjeta requiere quitar pagos y conciliaciones. Esta regla reemplaza el reemplazo destructivo de líneas documentado originalmente. El selector compartido conserva el texto al escribir para reemplazar un contacto seleccionado.
+
+## Pagos bancarios anulados — 2026-10-06
+
+Los candidatos de pago excluyen movimientos con resolución vigente SinDocumento o DiferenciaAceptada en ConciliacionesTesoreriaEstado. Solo se considera el último evento; revocar la resolución permite volver a ofrecer el movimiento si no tiene pagos vinculados. Evita volver a aplicar débitos duplicados ya devueltos y documentados. No cambia importes ni crea pagos.

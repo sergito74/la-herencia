@@ -1,6 +1,7 @@
 "use client";
 
-import { useParams, useRouter } from "next/navigation";
+import { retornoResumenes, conRetornoResumenes } from "@/lib/tarjetasNavigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { useEffect, useState } from "react";
@@ -152,6 +153,8 @@ export default function ResumenDetallePage() {
   const params = useParams<{ idResumen: string }>();
   const idResumen = Number(params.idResumen);
   const router = useRouter();
+  const returnParam = useSearchParams().get("returnTo");
+  const retorno = retornoResumenes(returnParam);
   const queryClient = useQueryClient();
   const { showToast } = useToast();
 
@@ -166,22 +169,23 @@ export default function ResumenDetallePage() {
     enabled: data != null,
   });
 
-  function invalidar() {
-    refetch();
-    if (data) {
-      // `refetchType: "all"` fuerza el refetch ya mismo aunque la cuenta
-      // corriente de la tarjeta no esté montada en este momento — con el
-      // default ("active"), React Query solo la marca vieja y espera a
-      // que alguien vuelva a abrirla, y ese refetch en el remount no
-      // siempre se disparaba a tiempo (el semáforo quedaba desactualizado
-      // hasta un refresh manual, feedback 2026-09-21).
-      queryClient.invalidateQueries({ queryKey: ["tarjeta-movimientos", data.idTarjeta], refetchType: "all" });
-      queryClient.invalidateQueries({ queryKey: ["tarjeta-pagos-candidatos", data.idTarjeta], refetchType: "all" });
-    }
+  async function invalidar() {
+    await Promise.all([
+      refetch(),
+      queryClient.invalidateQueries({ queryKey: ["tarjetas-resumenes"] }),
+      queryClient.invalidateQueries({ queryKey: ["tarjeta-resumen-detalle-edicion", idResumen] }),
+      ...(data ? [
+        queryClient.invalidateQueries({ queryKey: ["tarjeta-movimientos", data.idTarjeta], refetchType: "all" }),
+        queryClient.invalidateQueries({ queryKey: ["tarjeta-pagos-candidatos", data.idTarjeta], refetchType: "all" }),
+      ] : []),
+    ]);
   }
+
+  const [vinculandoPago, setVinculandoPago] = useState(false);
 
   async function vincularPago(candidato: { origen: string; idMovimiento: number; fecha: string; importe: number }) {
     try {
+      setVinculandoPago(true);
       await registrarPagoResumen(idResumen, {
         fecha: candidato.fecha,
         importe: candidato.importe,
@@ -189,9 +193,11 @@ export default function ResumenDetallePage() {
         idMovimientoOrigen: candidato.idMovimiento,
       });
       showToast("Pago vinculado.", "success");
-      invalidar();
+      await invalidar();
     } catch {
       showToast("No se pudo vincular el pago.", "danger");
+    } finally {
+      setVinculandoPago(false);
     }
   }
 
@@ -214,13 +220,14 @@ export default function ResumenDetallePage() {
   // usuario") — el semáforo es binario, Conciliado o Falta conciliar.
   const TOLERANCIA_CONCILIACION = 0.1;
   const totalPagado = data?.pagos.reduce((acc, p) => acc + p.importe, 0) ?? 0;
-  const diferenciaRedondeo = data ? Math.round((data.totalCalculado - totalPagado) * 100) / 100 : 0;
-  const conciliado = data != null && diferenciaRedondeo <= TOLERANCIA_CONCILIACION;
-  const estadoLabel = conciliado ? "Pago conciliado" : "Falta conciliar el pago";
+  const conciliado = data != null && data.saldoPendiente <= TOLERANCIA_CONCILIACION;
+  const estadoLabel = conciliado
+    ? (data && data.creditoAplicado > 0 ? "Conciliado con saldo a favor" : "Pago conciliado")
+    : "Falta conciliar el pago";
 
   return (
     <main className="mx-auto max-w-none px-8 py-3">
-      <button type="button" onClick={() => router.back()} className="text-sm text-finance underline">
+      <button type="button" onClick={() => returnParam ? router.push(retorno) : router.back()} className="text-sm text-finance underline">
         ← Volver
       </button>
 
@@ -235,7 +242,7 @@ export default function ResumenDetallePage() {
             </h1>
             <div className="flex items-center gap-3">
               <Semaforo ok={conciliado} label={estadoLabel} />
-              <Link href={`/finanzas/tarjetas/resumenes/${idResumen}/editar`} className="text-sm text-finance underline">
+              <Link href={conRetornoResumenes(`/finanzas/tarjetas/resumenes/${idResumen}/editar`, retorno)} className="text-sm text-finance underline">
                 Editar
               </Link>
             </div>
@@ -300,6 +307,22 @@ export default function ResumenDetallePage() {
 
           <div className="rounded-md border border-border bg-surface p-2">
             <h2 className="text-xs font-medium text-ink-secondary">Pagos registrados</h2>
+              <p className="text-xs text-ink-secondary">Podés asociar varios pagos bancarios a este resumen. Un excedente queda como saldo a favor.</p>
+            <p className="mt-1 text-xs">
+              Pagos: {formatMoneda(totalPagado)} · Crédito anterior aplicado: {formatMoneda(data.creditoAplicado)}
+              {" · "}Pendiente: {formatMoneda(data.saldoPendiente)}
+            </p>
+            {data.compensaciones?.map((c) => (
+              <p key={c.idResumen} className="mt-1 text-xs">
+                Saldo a favor del resumen{" "}
+                <Link className="text-finance underline" href={`/finanzas/tarjetas/resumenes/${c.idResumen}`}>
+                  {c.codigo}
+                </Link>: {formatMoneda(c.importe)}
+              </p>
+            ))}
+            {data.creditoDisponible > 0 && (
+              <p className="mt-1 text-xs">Saldo a favor disponible: {formatMoneda(data.creditoDisponible)}</p>
+            )}
             {data.pagos.length === 0 && <p className="mt-1 text-xs text-ink-secondary">Ningún pago registrado todavía.</p>}
             {data.pagos.length > 0 && (
               <table className="mt-1 w-full text-xs">
@@ -324,7 +347,7 @@ export default function ResumenDetallePage() {
               </table>
             )}
 
-            {!conciliado && candidatos && candidatos.length > 0 && (
+            {candidatos && candidatos.length > 0 && (
               <div className="mt-2">
                 <h3 className="text-xs text-ink-secondary">
                   Movimientos bancarios candidatos (misma tarjeta, no vinculados todavía)
@@ -337,7 +360,8 @@ export default function ResumenDetallePage() {
                       </span>
                       <button
                         type="button"
-                        onClick={() => vincularPago(c)}
+                        disabled={vinculandoPago}
+                          onClick={() => vincularPago(c)}
                         className="rounded-sm border border-border px-2 py-0.5 text-ink-secondary hover:text-ink-primary"
                       >
                         Vincular como pago de este resumen

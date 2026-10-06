@@ -1,6 +1,7 @@
 "use client";
 
-import { useParams, useRouter } from "next/navigation";
+import { retornoResumenes } from "@/lib/tarjetasNavigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 
 import { fetchResumenDetalle } from "@/services/tarjetasResumenesApi";
@@ -11,6 +12,8 @@ export default function EditarResumenPage() {
   const params = useParams<{ idResumen: string }>();
   const idResumen = Number(params.idResumen);
   const router = useRouter();
+  const returnParam = useSearchParams().get("returnTo");
+  const retorno = retornoResumenes(returnParam);
 
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ["tarjeta-resumen-detalle-edicion", idResumen],
@@ -19,7 +22,7 @@ export default function EditarResumenPage() {
 
   return (
     <main className="mx-auto max-w-none px-8 py-3">
-      <button type="button" onClick={() => router.back()} className="text-sm text-finance underline">
+      <button type="button" onClick={() => returnParam ? router.push(retorno) : router.back()} className="text-sm text-finance underline">
         ← Volver a Resúmenes
       </button>
       <h1 className="mt-1 text-base font-semibold">Editar resumen</h1>

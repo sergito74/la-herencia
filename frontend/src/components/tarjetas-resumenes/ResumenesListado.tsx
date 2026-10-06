@@ -3,8 +3,9 @@
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
+import { conRetornoResumenes } from "@/lib/tarjetasNavigation";
 import { fetchResumenes } from "@/services/tarjetasResumenesApi";
 import { fetchTarjetas } from "@/services/tarjetasApi";
 import { formatMoneda } from "@/lib/format";
@@ -15,6 +16,12 @@ import { FilterBar, FilterField, FilterSubmitButton, filterInputClass } from "@/
 import { EmptyState, ErrorState, LoadingState } from "@/components/ui/States";
 import type { ResumenListItem } from "@/services/tarjetasResumenesApi";
 import { BotonExportarConciliacion } from "@/components/tarjetas-conciliacion/BotonExportarConciliacion";
+
+function EnlaceResumen({ id, editar = false, children }: { id: number; editar?: boolean; children: React.ReactNode }) {
+  const params = useSearchParams();
+  const retorno = `/finanzas/tarjetas/resumenes${params.toString() ? `?${params}` : ""}`;
+  return <Link className="text-finance underline" href={conRetornoResumenes(`/finanzas/tarjetas/resumenes/${id}${editar ? "/editar" : ""}`, retorno)}>{children}</Link>;
+}
 
 function Semaforo({ ok, label }: { ok: boolean; label: string }) {
   return (
@@ -33,9 +40,9 @@ const COLUMNS: DataTableColumn<ResumenListItem>[] = [
     key: "fechaCierre",
     header: "Fecha cierre",
     render: (r) => (
-      <Link className="text-finance underline" href={`/finanzas/tarjetas/resumenes/${r.idResumen}`}>
+      <EnlaceResumen id={r.idResumen}>
         {r.fechaCierre ?? "—"}
-      </Link>
+      </EnlaceResumen>
     ),
   },
   { key: "tarjeta", header: "Tarjeta", render: (r) => r.tarjeta ?? "—" },
@@ -45,7 +52,7 @@ const COLUMNS: DataTableColumn<ResumenListItem>[] = [
   {
     key: "pagoConciliado",
     header: "Pago",
-    render: (r) => <Semaforo ok={r.pagoConciliado} label={r.pagoConciliado ? "Conciliado" : "Pendiente"} />,
+    render: (r) => <Semaforo ok={r.pagoConciliado} label={r.pagoConciliado ? (r.creditoAplicado > 0 ? "Conciliado con saldo a favor" : "Conciliado") : "Pendiente"} />,
   },
   {
     key: "consumosConciliados",
@@ -86,9 +93,9 @@ const COLUMNS: DataTableColumn<ResumenListItem>[] = [
     key: "editar",
     header: "",
     render: (r) => (
-      <Link className="text-finance underline" href={`/finanzas/tarjetas/resumenes/${r.idResumen}/editar`}>
+      <EnlaceResumen id={r.idResumen} editar>
         Editar
-      </Link>
+      </EnlaceResumen>
     ),
   },
 ];
@@ -122,6 +129,12 @@ export function ResumenesListado() {
   const [idTarjeta, setIdTarjeta] = useState(urlFiltros.idTarjeta);
   const [fechaCierreDesde, setFechaCierreDesde] = useState(urlFiltros.fechaCierreDesde);
   const [fechaCierreHasta, setFechaCierreHasta] = useState(urlFiltros.fechaCierreHasta);
+
+  useEffect(() => {
+    setIdTarjeta(searchParams.get("idTarjeta") ?? "");
+    setFechaCierreDesde(searchParams.get("fechaCierreDesde") ?? "");
+    setFechaCierreHasta(searchParams.get("fechaCierreHasta") ?? "");
+  }, [searchParams]);
 
   const appliedFilters = urlFiltros;
   const page = urlPage;

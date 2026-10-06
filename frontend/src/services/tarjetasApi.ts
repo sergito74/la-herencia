@@ -17,6 +17,8 @@ export function fetchTarjetas(soloActivas = false): Promise<Tarjeta[]> {
 }
 
 export interface MovimientoTarjeta {
+  creditoAplicado: number;
+  saldoPendiente: number;
   idResumen: number;
   fecha: string | null;
   codigo: string;

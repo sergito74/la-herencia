@@ -215,3 +215,24 @@ description: "Task list for 008-tarjetas"
 4. US3 → demo: compras en cuotas con cronograma automático (dominio independiente).
 5. US4 → demo: catálogo de tarjetas como punto de entrada a la cuenta corriente.
 6. Polish → verificación final de no regresión y de la regla de oro (`WC`-only).
+
+## Corrección de compensaciones — 2026-10-05
+
+- [x] Calcular créditos anteriores por tarjeta sin crear movimientos ni duplicar crédito.
+- [x] Exponer pendientes netos y orígenes en API, listado, detalle, cuenta corriente y Excel.
+- [x] Verificar: 53 pruebas backend aprobadas, TypeScript sin errores; lectura real de Galicia Rural con 34 PDF accesibles y saldo cero.
+- [x] Documentar contrato, modelo, decisiones y casos de verificación.
+
+## Mejoras de carga y navegación — 2026-10-05
+
+- [x] Reparar visualización de contacto opcional y explicar conciliación múltiple.
+- [x] Mantener candidatos disponibles para pagos adicionales.
+- [x] Activar ordenamiento por encabezados sin recalcular saldos.
+- [x] Conservar filtros y página al volver/guardar/cancelar.
+- [x] Verificar flujos con datos simulados en navegador y TypeScript.
+
+- [x] Conservar IDs y conciliaciones al editar; rechazar pérdida de vínculos y IDs ajenos/repetidos. Seis pruebas específicas sin escrituras reales.
+
+## Pagos bancarios anulados — 2026-10-06
+
+Los candidatos de pago excluyen movimientos con resolución vigente SinDocumento o DiferenciaAceptada en ConciliacionesTesoreriaEstado. Solo se considera el último evento; revocar la resolución permite volver a ofrecer el movimiento si no tiene pagos vinculados. Evita volver a aplicar débitos duplicados ya devueltos y documentados. No cambia importes ni crea pagos.

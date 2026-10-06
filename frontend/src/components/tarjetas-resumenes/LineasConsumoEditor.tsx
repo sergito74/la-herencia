@@ -1,9 +1,26 @@
 "use client";
 
+import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
+import { fetchContacto } from "@/services/contactosApi";
+
 import type { LineaConsumoInput } from "@/services/tarjetasResumenesApi";
 import { ContactoSelect } from "@/components/ui/ContactoSelect";
 import { MoneyInput } from "@/components/ui/MoneyInput";
 import { filterInputClass } from "@/components/ui/FilterBar";
+
+function ContactoLinea({ value, onChange }: { value: number | null; onChange: (id: number | null) => void }) {
+  const [seleccion, setSeleccion] = useState<{ id: number | null; nombre: string | null } | null>(null);
+  const { data } = useQuery({
+    queryKey: ["contacto", value],
+    queryFn: () => fetchContacto(value!),
+    enabled: value != null && seleccion?.id !== value,
+  });
+  return <ContactoSelect value={value}
+    razonSocial={value == null ? null : seleccion?.id === value ? seleccion.nombre : data?.razonSocial}
+    onChange={(id, nombre) => { setSeleccion({ id, nombre }); onChange(id); }}
+    placeholder="Contacto orientativo" />;
+}
 
 const FILA_VACIA: LineaConsumoInput = {
   fechaCompra: "",
@@ -45,6 +62,7 @@ export function LineasConsumoEditor({
       <h3 className="text-xs font-medium text-ink-secondary">
         Líneas de consumo {lineas.length === 0 && "(ninguna — resumen solo cabecera)"}
       </h3>
+      <p className="text-xs text-ink-secondary">El contacto es opcional y orientativo. Después de guardar, usá Conciliar en cada línea para asociar uno o varios comprobantes, incluso de distintos proveedores.</p>
       <div className="mt-1 space-y-1">
         {lineas.map((l, i) => (
           <div key={i} className="flex flex-wrap items-center gap-1">
@@ -76,11 +94,9 @@ export function LineasConsumoEditor({
               title="Fecha de vencimiento (opcional)"
             />
             <div className="w-40">
-              <ContactoSelect
+              <ContactoLinea
                 value={l.idContacto ?? null}
-                razonSocial={null}
                 onChange={(id) => actualizar(i, { idContacto: id })}
-                placeholder="Contacto (opcional)"
               />
             </div>
             <input

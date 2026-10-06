@@ -175,3 +175,17 @@ Implementado: `TOLERANCIA_CONCILIACION = 0.10` (constante en `tarjetas_resumenes
 ### Historia 3 (compras en cuotas): solo lectura
 
 Evidencia real: las 18 filas de `[Tarjetas de Credito]` van de julio 2013 a diciembre 2015, ninguna posterior — el mecanismo está abandonado hace una década. El mecanismo de financiación en cuotas vigente (AgroNacion, hoja "Compras" de `Listado Resumenes.xlsx`) es otro: cada cuota se factura como una línea de consumo repetida en el resumen mensual, con `CreditoContingente`/`InteresPagoDiferido` calculados por línea — campos que ya existían sin usar en `Tarjetas_Resumenes_Lineas` (research.md §2, marcados entonces como "no confirmado si se usan"; ahora confirmado con el Excel real). No se implementó ese mecanismo de financiación por línea en este alcance (fuera de lo pedido); solo se bajó la escritura del módulo obsoleto.
+
+## Compensaciones de saldos a favor — 2026-10-05
+
+Sin cambios de esquema. Estado derivado actual por resumen: creditoAplicado, saldoPendiente, creditoDisponible y compensaciones [{idResumen,codigo,importe}]. Crédito = excedente de pagos sobre cargos (incluye cargos negativos). saldoPendiente = máximo(total - pagos - crédito aplicado, 0). Un crédito futuro no cubre deuda anterior. El crédito disponible representa lo restante al evaluar toda la historia, no un saldo histórico a una fecha.
+
+## Mejoras de carga y navegación — 2026-10-05
+
+El contacto opcional de la línea no equivale a una conciliación 1:1. Las relaciones existentes a documentos permiten múltiples vínculos y pagos. No se requieren tablas nuevas para las mejoras de interacción.
+
+La edición conserva idLineaConsumo, campos bancarios adicionales y vínculos/estados de las líneas que permanecen. PUT admite idLineaConsumo opcional por línea (obligatorio para conservar una existente); se valida pertenencia y ausencia de duplicados. Líneas nuevas no llevan ID. Si una línea está conciliada, eliminarla o cambiar su importe requiere quitar primero la conciliación; cambiar tarjeta requiere quitar pagos y conciliaciones. Esta regla reemplaza el reemplazo destructivo de líneas documentado originalmente. El selector compartido conserva el texto al escribir para reemplazar un contacto seleccionado.
+
+## Pagos bancarios anulados — 2026-10-06
+
+Los candidatos de pago excluyen movimientos con resolución vigente SinDocumento o DiferenciaAceptada en ConciliacionesTesoreriaEstado. Solo se considera el último evento; revocar la resolución permite volver a ofrecer el movimiento si no tiene pagos vinculados. Evita volver a aplicar débitos duplicados ya devueltos y documentados. No cambia importes ni crea pagos.

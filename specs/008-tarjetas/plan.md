@@ -127,3 +127,17 @@ frontend/
 ## Complexity Tracking
 
 *No hay violaciones de la Constitution Check que requieran justificación.*
+
+## Compensaciones de saldos a favor — 2026-10-05
+
+Calcular compensaciones en un servicio común de lectura con Decimal a centavos. Recorrer cierres e identificadores en orden, consumir créditos anteriores FIFO una sola vez y reutilizar el resultado en API, pantallas y Excel. Consultar la historia completa de cada tarjeta aunque el listado/exportación tenga filtros. Ejecutar consultas del detalle en threadpool.
+
+## Mejoras de carga y navegación — 2026-10-05
+
+Reutilizar ContactoSelect con estado de nombre y lectura por ID para edición. Exponer candidatos de pago independientemente del semáforo y bloquear botones durante el envío. Activar sortValue de DataTable en todas las columnas de cuenta corriente. Propagar returnTo local desde listado a detalle/edición; invalidar consultas después de guardar y sincronizar filtros con navegación de historial.
+
+La edición conserva idLineaConsumo, campos bancarios adicionales y vínculos/estados de las líneas que permanecen. PUT admite idLineaConsumo opcional por línea (obligatorio para conservar una existente); se valida pertenencia y ausencia de duplicados. Líneas nuevas no llevan ID. Si una línea está conciliada, eliminarla o cambiar su importe requiere quitar primero la conciliación; cambiar tarjeta requiere quitar pagos y conciliaciones. Esta regla reemplaza el reemplazo destructivo de líneas documentado originalmente. El selector compartido conserva el texto al escribir para reemplazar un contacto seleccionado.
+
+## Pagos bancarios anulados — 2026-10-06
+
+Los candidatos de pago excluyen movimientos con resolución vigente SinDocumento o DiferenciaAceptada en ConciliacionesTesoreriaEstado. Solo se considera el último evento; revocar la resolución permite volver a ofrecer el movimiento si no tiene pagos vinculados. Evita volver a aplicar débitos duplicados ya devueltos y documentados. No cambia importes ni crea pagos.

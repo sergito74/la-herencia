@@ -111,3 +111,15 @@ def test_hoja_de_proveedores_sin_cuit():
     assert fila == ["Proveedor SA", 3]
     textos = " ".join(str(c.value) for r in wb["Ayuda"].iter_rows() for c in r if c.value)
     assert "no tienen CUIT" in textos
+
+
+def test_credito_anterior_concilia_pago_sin_inventar_movimientos():
+    datos = _datos()
+    datos["pagos"][0]["importe"] = 1674.98
+    datos["compensaciones"] = {1: {"creditoAplicado": 375.02, "saldoPendiente": 0}}
+    ws = rc.construir_libro(datos, {"tarjeta": "Visa"})["Resúmenes"]
+    fila = dict(zip([c.value for c in ws[1]], [c.value for c in ws[2]]))
+    assert fila["Pagado"] == 1674.98
+    assert fila["Crédito anterior aplicado"] == 375.02
+    assert fila["Saldo pendiente"] == 0
+    assert fila["Pago"] == "Conciliado con saldo a favor"

@@ -17,6 +17,10 @@ class Tarjeta(BaseModel):
 
 
 class MovimientoTarjeta(BaseModel):
+    creditoAplicado: float = 0
+    saldoPendiente: float = 0
+    creditoDisponible: float = 0
+    compensaciones: list[dict] = []
     idResumen: int
     fecha: date | None = None
     codigo: str

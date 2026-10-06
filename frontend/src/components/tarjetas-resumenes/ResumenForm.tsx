@@ -1,7 +1,7 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
-import { useRouter } from "next/navigation";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useRouter, useSearchParams } from "next/navigation";
 
 import { useEffect, useRef, useState } from "react";
 
@@ -23,6 +23,8 @@ import { MoneyInput } from "@/components/ui/MoneyInput";
 import { filterInputClass } from "@/components/ui/FilterBar";
 import { useToast } from "@/components/ui/Toast";
 import { LineasConsumoEditor } from "@/components/tarjetas-resumenes/LineasConsumoEditor";
+
+import { retornoResumenes } from "@/lib/tarjetasNavigation";
 
 const inputCompacto = `${filterInputClass} w-full px-1.5 py-1 text-xs`;
 const labelCompacto = "flex flex-col gap-0.5 text-xs text-ink-secondary";
@@ -63,6 +65,8 @@ export function ResumenForm({
   initial?: ResumenDetalle;
 }) {
   const router = useRouter();
+  const retorno = retornoResumenes(useSearchParams().get("returnTo"));
+  const queryClient = useQueryClient();
   const { showToast } = useToast();
 
   const { data: tarjetas } = useQuery({
@@ -83,6 +87,7 @@ export function ResumenForm({
   });
   const [lineas, setLineas] = useState<LineaConsumoInput[]>(
     initial?.lineas.map((l) => ({
+      idLineaConsumo: l.idLineaConsumo,
       fechaCompra: l.fechaCompra,
       detalle: l.detalle,
       importe: l.importe,
@@ -170,12 +175,18 @@ export function ResumenForm({
       const resultado =
         mode === "alta" ? await crearResumen(input) : await actualizarResumen(idResumen!, input, lockToken);
 
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["tarjetas-resumenes"] }),
+        queryClient.invalidateQueries({ queryKey: ["tarjeta-resumen-detalle"] }),
+        queryClient.invalidateQueries({ queryKey: ["tarjeta-resumen-detalle-edicion"] }),
+        queryClient.invalidateQueries({ queryKey: ["tarjeta-movimientos"] }),
+      ]);
       resultado.warnings.forEach((w) => showToast(w, "neutral"));
       showToast(mode === "alta" ? "Resumen creado." : "Resumen actualizado.", "success");
       if (mode === "edicion" && idResumen != null) {
         await liberarLockResumen(idResumen, lockToken).catch(() => {});
       }
-      router.push("/finanzas/tarjetas/resumenes");
+      router.push(retorno);
     } catch (err) {
       const mensaje =
         err instanceof ApiError && err.status === 400 && err.message
@@ -196,7 +207,7 @@ export function ResumenForm({
     try {
       await eliminarResumen(idResumen, lockToken);
       showToast("Resumen eliminado.", "success");
-      router.push("/finanzas/tarjetas/resumenes");
+      router.push(retorno);
     } catch (err) {
       const mensaje = err instanceof ApiError && err.message ? err.message : "No se pudo eliminar el resumen.";
       showToast(mensaje, "danger");
@@ -298,7 +309,7 @@ export function ResumenForm({
         <div className="flex justify-end gap-2">
           <button
             type="button"
-            onClick={() => router.push("/finanzas/tarjetas/resumenes")}
+            onClick={() => router.push(retorno)}
             className="rounded-sm border border-border px-3 py-1.5 text-xs text-ink-secondary hover:text-ink-primary"
           >
             Cancelar
