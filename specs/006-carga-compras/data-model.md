@@ -14,7 +14,8 @@ Todas las tablas de negocio ya existen en `WC`/`LaHerencia` (confirmadas por `IN
 | numeroDocumento | [Nro Documento] | nvarchar(15), nullable | Sí | Máx. 15 caracteres; advertencia (no bloqueo) si se repite para el mismo proveedor (FR-014). |
 | moneda | Moneda | nvarchar(255), nullable | Sí | Enum: Pesos, Dolares. |
 | tipoDeCambio | [Tipo de Cambio] | money, nullable | Solo si moneda = Dolares | Obligatorio condicional (FR-007). |
-| ingresosBrutos | [Ingresos Brutos] | money, nullable | No (default 0) | |
+| ingresosBrutos | [Ingresos Brutos] | money, nullable | No (default 0) | Etiqueta «Percep. IIBB»; se conserva columna y contrato histórico. |
+| percepcionIva | PercepcionIVA | money, NOT NULL, DEFAULT 0 | No (default 0) | Percepción de IVA al pie; no genera IVA adicional. |
 | conceptosNoGravados | [Conceptos no gravados] | money, nullable | No (default 0) | |
 | guias | Guias | money, nullable | No (default 0) | |
 | comision | Comision | money, nullable | No (default 0) | Entra en el 10.5% de IVA sobre accesorios. |
@@ -30,7 +31,7 @@ Columnas del esquema real no expuestas en v1 (Assumptions del spec): `Fecha Vto`
 **Campos calculados (no se persisten como input directo del usuario, se derivan y se muestran)**:
 - `subtotalNeto` = Σ(línea.cantidad × línea.precioUnitario)
 - `ivaCabecera` = Σ(línea.subtotal × línea.iva / 100) + 0.105 × (comision + guias + financiacion + gastosVarios)
-- `importeTotal` = subtotalNeto + ivaCabecera + ingresosBrutos + conceptosNoGravados + guias + comision + financiacion + gastosVarios + leyDeSellos + resGral4169
+- `importeTotal` = subtotalNeto + ivaCabecera + ingresosBrutos + percepcionIva + conceptosNoGravados + guias + comision + financiacion + gastosVarios + leyDeSellos + resGral4169
 - Bloque `pesificado.*` = cada uno de los anteriores × tipoDeCambio, presente solo si moneda = Dolares (si moneda = Pesos, el contrato omite el bloque `pesificado` en vez de duplicar los mismos valores — más simple para el frontend que "tipo de cambio implícito 1").
 
 ## Línea de Detalle (tabla `dbo.Det_Compras`)

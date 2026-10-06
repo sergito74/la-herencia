@@ -77,8 +77,12 @@ export function DetalleCompra({ idCompra }: { idCompra: number }) {
             <dd className="font-data">{data.conceptosNoGravados ?? "—"}</dd>
           </div>
           <div>
-            <dt className="text-ink-secondary">Ingresos brutos</dt>
+            <dt className="text-ink-secondary">Percep. IIBB</dt>
             <dd className="font-data">{data.ingresosBrutos ?? "—"}</dd>
+          </div>
+          <div>
+            <dt className="text-ink-secondary">Percep. IVA</dt>
+            <dd className="font-data">{data.percepcionIva ?? 0}</dd>
           </div>
         </dl>
       </section>

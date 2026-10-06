@@ -78,6 +78,7 @@ class CompraDetalle(BaseModel):
     tipoDeCambio: float | None = None
     conceptosNoGravados: float | None = None
     ingresosBrutos: float | None = None
+    percepcionIva: float = 0
     guias: float | None = None
     comision: float | None = None
     financiacion: float | None = None
@@ -225,6 +226,7 @@ class CompraAltaRequest(BaseModel):
     moneda: Moneda
     tipoDeCambio: float | None = None
     ingresosBrutos: float = 0
+    percepcionIva: float = 0
     conceptosNoGravados: float = 0
     guias: float = 0
     comision: float = 0
@@ -268,6 +270,7 @@ class CompraDetalleResponse(BaseModel):
     moneda: Moneda
     tipoDeCambio: float | None = None
     ingresosBrutos: float
+    percepcionIva: float = 0
     conceptosNoGravados: float
     guias: float
     comision: float

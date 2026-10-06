@@ -90,6 +90,7 @@ export interface CompraDetalle {
   tipoDeCambio: number | null;
   conceptosNoGravados: number | null;
   ingresosBrutos: number | null;
+  percepcionIva: number;
   guias: number | null;
   comision: number | null;
   financiacion: number | null;
@@ -225,6 +226,7 @@ export interface CompraAltaInput {
   moneda: MonedaCompra;
   tipoDeCambio?: number | null;
   ingresosBrutos?: number;
+  percepcionIva?: number;
   conceptosNoGravados?: number;
   guias?: number;
   comision?: number;

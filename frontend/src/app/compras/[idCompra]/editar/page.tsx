@@ -93,6 +93,7 @@ function compraDetalleAInput(
     moneda: (data.moneda as CompraDetalleCompleto["moneda"]) ?? "Pesos",
     tipoDeCambio: data.tipoDeCambio ?? null,
     ingresosBrutos: data.ingresosBrutos ?? 0,
+    percepcionIva: data.percepcionIva ?? 0,
     conceptosNoGravados: data.conceptosNoGravados ?? 0,
     guias: data.guias ?? 0,
     comision: data.comision ?? 0,

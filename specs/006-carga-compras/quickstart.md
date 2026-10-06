@@ -71,3 +71,17 @@ Verificación aplicada: (a) `ivaCabecera` en cada caso es consistente con la sum
 - `cd backend && python -m pytest -q` sigue en verde (incluye los tests nuevos de esta feature).
 - `cd frontend && npx tsc --noEmit -p . && npx eslint .` sin errores.
 - El listado y los filtros de `/compras` (002-compras) siguen funcionando sin cambios sobre las compras nuevas (SC-002): filtrar por el Centro de Costos/Rubro usado en el Escenario 1 debe encontrar esa compra.
+
+## Extensión 2026-10-02 — Percepciones al pie
+
+Con fixtures (sin escrituras de prueba en WC): una línea neta de 100 con IVA 21%, Percep. IIBB 3 y Percep. IVA 5 debe dar neto 100, IVA 21, total 129. Con TC 1000, total pesificado 129000. Alta, consulta y edición deben conservar ambos importes; la NC invierte los importes. Omitir Percep. IVA equivale a cero.
+
+Verificar en alta/edición que los controles «Percep. IIBB» y «Percep. IVA» aparecen al pie, y en consulta que se muestran por separado. Aplicar la migración con backup verificado, comprobar esquema y ambas vistas, y confirmar que los totales previos y la factura Coto se conservan.
+
+### Resultado verificado (2026-10-02)
+
+- Migración aplicada en WC con backup `WC_percepcion-iva-compras_20261002_185115_610405.bak`, COPY_ONLY/CHECKSUM + RESTORE VERIFYONLY. Registro local excluido de Git: `backups/percepcion_iva_20261002_185116.json`.
+- Columna `PercepcionIVA`: money, NOT NULL, default 0; 6.457 compras anteriores en cero. Se compararon antes/después todos los importes de las dos vistas dentro de la transacción: sin cambios. Las definiciones posteriores pasan la comprobación de idempotencia.
+- Simulación de solo SELECT sobre las definiciones vigentes: una percepción de 123,45 incrementa exactamente 123,45 el total en ambas vistas, sin escribir compras de prueba. Lectura y validación del detalle real de Coto correctas; sus datos no se reclasificaron.
+- 81 pruebas focalizadas aprobadas: 63 de Compras/contratos/NC/particulares/percepciones y 18 de migración/reporte de conciliación.
+- TypeScript y ESLint de los cuatro archivos frontend modificados aprobados. `npm run build` completado; advertencia previa ajena al cambio en `CuentaCorriente.tsx:186` sobre dependencia de useMemo.

@@ -157,3 +157,11 @@ description: "Task list for 006-carga-compras"
 3. US2 → demo: edición con bloqueo exclusivo.
 4. US3 → demo: sugerencia de rubro.
 5. Polish → verificación final de no regresión y de la regla de oro (`WC`-only).
+
+## Extensión 2026-10-02 — Percepciones al pie (FR-018)
+
+- [X] T041 Actualizar especificación, modelo, contrato y plan para Percep. IIBB / Percep. IVA, sin reclasificar histórico.
+- [X] T042 Agregar migración idempotente con backup verificado: columna `Compras.PercepcionIVA` y actualización acotada de las dos vistas de totales.
+- [X] T043 Extender API, persistencia, totales, notas de crédito y reporte de conciliación para `percepcionIva`.
+- [X] T044 Extender formulario, precarga de edición, tipos, total y detalle; etiquetas «Percep. IIBB» y «Percep. IVA».
+- [X] T045 Verificar contratos/cálculos con mocks, migración, esquema y totales históricos; ejecutar TypeScript/lint pertinente y registrar resultado.

@@ -48,3 +48,9 @@
 
 **Alternatives considered**:
 - *Agregar FKs reales a `WC`*: rechazada para esta feature — es un cambio de esquema con impacto más amplio (afectaría también el histórico migrado, que puede tener huérfanos reales) y no fue pedido; queda como posible mejora de infraestructura a proponer aparte, no dentro de este spec.
+
+## Extensión 2026-10-02: inspección de percepciones
+
+`WC.dbo.Compras` tiene `[Ingresos Brutos] money NULL` pero no un campo separado para percepción de IVA. La etiqueta cambia; la columna existente no se renombra. Se agrega `PercepcionIVA money NOT NULL DEFAULT 0`, consistente con los importes de cabecera existentes. La percepción es un importe al pie, no una alícuota ni una línea gravada.
+
+Las vistas vigentes `vw_Compras_ImporteDocumento` y `vw_Cns_Total_Compra` suman los conceptos de cabecera; ambas necesitan el término nuevo. `vw_MovimientosCuenta_Base` consume la segunda para Compras, por lo que no requiere reescribir sus ramas. El reporte `tarjetas_resumenes/reporte_conciliacion.py` reconstruye «otros» y debe sumar el nuevo campo. La migración modifica las definiciones vigentes con una sustitución acotada y validada, evitando reinstalar versiones antiguas de vistas. El campo inicia en cero; no se infiere ni mueve automáticamente ninguna percepción anterior.

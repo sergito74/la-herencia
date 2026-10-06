@@ -138,6 +138,7 @@ export function CompraForm({
   const [documentoOriginalLink, setDocumentoOriginalLink] = useState(initial?.documentoOriginal ?? "");
   const [conceptos, setConceptos] = useState({
     ingresosBrutos: initial?.ingresosBrutos ?? 0,
+    percepcionIva: initial?.percepcionIva ?? 0,
     conceptosNoGravados: initial?.conceptosNoGravados ?? 0,
     guias: initial?.guias ?? 0,
     comision: initial?.comision ?? 0,
@@ -262,6 +263,7 @@ export function CompraForm({
     subtotalNeto +
     ivaCabecera +
     conceptos.ingresosBrutos +
+    conceptos.percepcionIva +
     conceptos.conceptosNoGravados +
     conceptos.guias +
     conceptos.comision +
@@ -614,7 +616,8 @@ export function CompraForm({
           <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs">
             {(
               [
-                ["ingresosBrutos", "Ingresos Brutos"],
+                ["ingresosBrutos", "Percep. IIBB"],
+                ["percepcionIva", "Percep. IVA"],
                 ["conceptosNoGravados", "Conceptos no gravados"],
                 ["guias", "Guías"],
                 ["comision", "Comisión"],

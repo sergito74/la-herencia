@@ -101,3 +101,9 @@ frontend/
 ## Complexity Tracking
 
 *No hay violaciones de la Constitution Check que requieran justificación.*
+
+## Extensión 2026-10-02: percepciones al pie (FR-018)
+
+Se conserva `ingresosBrutos` / `[Ingresos Brutos]` para compatibilidad, cambiando únicamente la etiqueta a «Percep. IIBB». Agregar `percepcionIva` / `Compras.PercepcionIVA money NOT NULL DEFAULT 0`. Migración idempotente en WC con backup verificado previo: nueva columna y suma en las definiciones vigentes de `vw_Compras_ImporteDocumento` y `vw_Cns_Total_Compra`, preservando el resto de su lógica. La cuenta corriente hereda el total de esta última vista. Actualizar también la composición de «otros» del reporte de conciliación de tarjetas. Sin reclasificación de datos históricos.
+
+Backend: contratos de alta/edición/detalle, SELECT/INSERT/UPDATE, cálculo y signo de NC. Frontend: tipo, precarga, control al pie, envío, total y consulta. Pruebas con mocks para persistencia/contrato/cálculo/NC/pesificación; verificación SQL de esquema, definiciones y conservación de importes anteriores sin cargar compras de prueba en producción; TypeScript y lint de archivos afectados.

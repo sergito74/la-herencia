@@ -185,6 +185,7 @@ def get_compra_cabecera(id_compra: int) -> dict | None:
             cmp.[Tipo de Cambio] AS tipoDeCambio,
             cmp.[Conceptos no gravados] AS conceptosNoGravados,
             cmp.[Ingresos Brutos] AS ingresosBrutos,
+            cmp.PercepcionIVA AS percepcionIva,
             cmp.Guias AS guias,
             cmp.Comision AS comision,
             cmp.Financiacion AS financiacion,
@@ -207,6 +208,7 @@ def get_compra_cabecera(id_compra: int) -> dict | None:
         "tipoDeCambio",
         "conceptosNoGravados",
         "ingresosBrutos",
+        "percepcionIva",
         "guias",
         "comision",
         "financiacion",
@@ -512,7 +514,7 @@ def validar_compra(
 
 
 CAMPOS_IMPORTE_CABECERA = (
-    "ingresosBrutos", "conceptosNoGravados", "guias", "comision", "financiacion",
+    "ingresosBrutos", "percepcionIva", "conceptosNoGravados", "guias", "comision", "financiacion",
     "gastosVarios", "leyDeSellos", "resGral4169",
 )
 
@@ -558,6 +560,7 @@ def calcular_totales(lineas: list[dict], cabecera: dict) -> dict:
         subtotal_neto
         + iva_cabecera
         + (cabecera.get("ingresosBrutos") or 0)
+        + (cabecera.get("percepcionIva") or 0)
         + (cabecera.get("conceptosNoGravados") or 0)
         + (cabecera.get("guias") or 0)
         + (cabecera.get("comision") or 0)
@@ -634,12 +637,12 @@ def _cabecera_insert_statement(cabecera: dict):
         sql = """
             INSERT INTO dbo.Compras (
                 Fecha, IdContacto, Tipo, [Tipo documento], [Nro Documento], Moneda,
-                [Tipo de Cambio], [Ingresos Brutos], [Conceptos no gravados], Guias,
+                [Tipo de Cambio], [Ingresos Brutos], PercepcionIVA, [Conceptos no gravados], Guias,
                 Comision, Financiacion, [Gastos Varios], [Ley de Sellos],
                 [Res gral 4169/96], [Ajusta Tipo Cambio], [Documento Original]
             )
             OUTPUT INSERTED.IdDeuda
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """
         params = (
             cabecera["fecha"],
@@ -650,6 +653,7 @@ def _cabecera_insert_statement(cabecera: dict):
             cabecera["moneda"],
             cabecera.get("tipoDeCambio"),
             cabecera.get("ingresosBrutos") or 0,
+            cabecera.get("percepcionIva") or 0,
             cabecera.get("conceptosNoGravados") or 0,
             cabecera.get("guias") or 0,
             cabecera.get("comision") or 0,
@@ -669,7 +673,7 @@ def _cabecera_update_statement(id_compra: int, cabecera: dict) -> tuple[str, tup
     sql = """
         UPDATE dbo.Compras SET
             Fecha = ?, IdContacto = ?, Tipo = ?, [Tipo documento] = ?, [Nro Documento] = ?,
-            Moneda = ?, [Tipo de Cambio] = ?, [Ingresos Brutos] = ?, [Conceptos no gravados] = ?,
+            Moneda = ?, [Tipo de Cambio] = ?, [Ingresos Brutos] = ?, PercepcionIVA = ?, [Conceptos no gravados] = ?,
             Guias = ?, Comision = ?, Financiacion = ?, [Gastos Varios] = ?, [Ley de Sellos] = ?,
             [Res gral 4169/96] = ?, [Ajusta Tipo Cambio] = ?, [Documento Original] = ?
         WHERE IdDeuda = ?
@@ -683,6 +687,7 @@ def _cabecera_update_statement(id_compra: int, cabecera: dict) -> tuple[str, tup
         cabecera["moneda"],
         cabecera.get("tipoDeCambio"),
         cabecera.get("ingresosBrutos") or 0,
+        cabecera.get("percepcionIva") or 0,
         cabecera.get("conceptosNoGravados") or 0,
         cabecera.get("guias") or 0,
         cabecera.get("comision") or 0,

@@ -16,6 +16,7 @@ Extiende `/api/compras` (spec 002, hoy solo GET) con endpoints de escritura, exc
   "moneda": "Pesos",
   "tipoDeCambio": null,
   "ingresosBrutos": 0,
+  "percepcionIva": 0,
   "conceptosNoGravados": 0,
   "guias": 0,
   "comision": 0,
@@ -101,3 +102,7 @@ Mismo body que `POST`, reemplaza cabecera completa y el conjunto de líneas/venc
 - `GET /api/compras/filtros` (002-compras) ya expone `centrosCosto`/`rubros` — se reutiliza tal cual para poblar los combos de línea.
 - `GET /api/contactos` (`ContactoSelect`) para el combo de proveedor, filtrando por los 5 tipos permitidos (FR-001) desde el frontend, no un parámetro nuevo del backend.
 - Catálogos sin endpoint propio todavía (`DestinoCompras`, `UnidadesMedida`, `Campañas`) se agregan a la respuesta de `GET /api/compras/filtros` en esta feature (amplía el contrato existente de forma aditiva, no rompe a los consumidores actuales de 002-compras).
+
+## Extensión 2026-10-02 — Percepciones (FR-018)
+
+POST y PUT aceptan `percepcionIva: number` opcional, default `0`; sus respuestas y GET del detalle lo devuelven. `ingresosBrutos` mantiene su nombre de contrato y pasa a mostrarse como «Percep. IIBB». Ambos importes son independientes. `percepcionIva` suma una vez a `importeTotal`, no afecta `subtotalNeto` ni `ivaCabecera`, integra el total pesificado y se invierte con los demás importes de una NC ingresada en positivo. Los clientes anteriores que omiten el campo conservan el comportamiento de alta con cero; PUT continúa siendo reemplazo total.
