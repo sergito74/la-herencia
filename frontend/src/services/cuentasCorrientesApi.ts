@@ -30,6 +30,9 @@ export interface Origen {
     | "remuneracion"
     | "arrendamiento"
     | "venta_hacienda"
+    | "tarjeta_consumo"
+    | "tarjeta_resumen"
+    | "tarjeta_cruce"
     | "fuera_de_alcance"
     | "no_disponible";
   idCompra?: number | null;
@@ -63,6 +66,11 @@ export interface Origen {
   idAlquiler?: number | null;
   contacto?: string | null;
   importeTotalContrato?: number | null;
+  // 034-cuenta-corriente-tarjetas
+  idLineaConsumo?: number | null;
+  idResumen?: number | null;
+  idCruce?: number | null;
+  idTarjeta?: number | null;
 }
 
 export interface MovimientoCuentaCorriente {

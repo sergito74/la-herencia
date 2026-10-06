@@ -8,7 +8,7 @@
 
 Cada entidad de tarjeta pasa a tener en la cuenta corriente compartida (`vw_MovimientosCuenta_Base`) su **pata deuda**: cada consumo en su fecha de consumo y los cargos propios de cada resumen en la fecha de cierre, además de los pagos bancarios que ya recibía como crédito. Los saldos de proveedores no cambian, salvo el pago real de UATRE hecho con fondos de la billetera de Mercado Pago (+$17.185,82). Mercado Pago recibe las reglas de un banco (movimientos con contacto acreditan, "conducto" se atribuye al banco de origen) sin pantalla nueva. Se agregan un **control de integridad** (anomalías y posibles duplicaciones) y **cruces con visto bueno** (devolución↔débito de tarjeta y devolución de billetera↔consumo), ambos semi automáticos. La UI extiende las pantallas de 008 (cuenta de la tarjeta) y suma una pantalla de control; no hay pantalla nueva para Mercado Pago.
 
-Enfoque técnico: un script idempotente con backup verificado crea dos tablas pequeñas y amplía la vista con cuatro ramas nuevas (sin tocar las existentes); un módulo backend nuevo (`tarjetas_cuenta`) expone lectura, control y cruces; el frontend reutiliza los componentes de tarjetas y el patrón de integridad de 031.
+Enfoque técnico: un script idempotente con backup verificado crea dos tablas pequeñas y amplía la vista con cinco ramas nuevas (sin tocar las existentes); un módulo backend nuevo (`tarjetas_cuenta`) expone lectura, control y cruces; el frontend reutiliza los componentes de tarjetas y el patrón de integridad de 031.
 
 ## Technical Context
 
@@ -16,7 +16,7 @@ Enfoque técnico: un script idempotente con backup verificado crea dos tablas pe
 
 **Primary Dependencies**: FastAPI, pyodbc, openpyxl (exportación); React, TanStack Query, Tailwind CSS
 
-**Storage**: SQL Server, base `WC` (producción). Dos tablas nuevas y cuatro ramas nuevas en la vista compartida; `LaHerencia` y los archivos Access no se tocan
+**Storage**: SQL Server, base `WC` (producción). Dos tablas nuevas y cinco ramas nuevas en la vista compartida; `LaHerencia` y los archivos Access no se tocan
 
 **Testing**: pytest (contratos con `httpx.AsyncClient`, fixtures puros para el cálculo y el control, pruebas de solo lectura sobre `WC` para las invariantes); `tsc --noEmit` y script e2e con Playwright para el frontend
 

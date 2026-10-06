@@ -13,11 +13,16 @@ Investigación hecha el 2026-10-06 contra `WC` y el código vigente. No quedan p
 
 - **Decisión**: los 343 pagos de resumen ($58,3 M) ya acreditan la cuenta de la tarjeta porque `Movimientos BNA`/`Movimientos Galicia` tienen `IdContacto` de la tarjeta. No se agrega una rama de pagos.
 - **Razón**: evita duplicar un crédito que ya existe; verificado el 2026-10-06 que ninguno de esos pagos está asignado a un proveedor.
-- **Efecto a corregir con datos**, no con código: 21 pagos de 2010 a 2012 de la administración anterior de AgroNacion ($23.575,00, "PM/TOT. RES. AGRONACION") y el débito devuelto del 01/09/2025 ($966.654,20) hoy inflan el crédito de AgroNacion (ver D3 y D4).
+- **Efecto a corregir con datos**, no con código: 22 pagos de la administración anterior de AgroNacion (21 del Banco Nación de 2010 a 2012 por $23.575,00, "PM/TOT. RES. AGRONACION", y 1 pago en efectivo del 26/06/2012 por $1.677,58 que figura en `Pagos efectivo` y que Codex no había encontrado en los bancos) y el débito devuelto del 01/09/2025 ($966.654,20) hoy inflan el crédito de AgroNacion (ver D3 y D4).
+
+## D2b — Pagos de resumen sin movimiento bancario
+
+- **Decisión**: una quinta rama `Tarjeta pago` acredita la cuenta de la tarjeta con los pagos de resumen que no tienen movimiento bancario de origen (hoy uno: "Crédito banco", $3.195,96, Visa Galicia, 31/01/2025). El control sigue señalándolos (categoría c).
+- **Razón**: descubierto en el ensayo con rollback del 2026-10-06: sin esa rama, Visa Galicia mostraba una deuda de $3.196,16 contra un pendiente de $0,20; con la rama cierra en −$0,20.
 
 ## D3 — Saldo inicial: cuenta separada para la administración anterior
 
-- **Decisión**: se crea un contacto "AgroNacion (administración anterior)" y se reasignan a él, con `ReasignacionesContacto` (el mecanismo ya usado 34 veces), los 21 pagos de 2010 a 2012. Los resúmenes `Cerrado` quedan fuera de la deuda por las ramas de D1.
+- **Decisión**: se crea un contacto "AgroNacion (administración anterior)" y se reasignan a él, con `ReasignacionesContacto` (el mecanismo ya usado 34 veces), los 22 pagos de 2010 a 2012 (21 del Banco Nación y 1 en efectivo). Los resúmenes `Cerrado` quedan fuera de la deuda por las ramas de D1.
 - **Razón**: cumple la apertura informativa de FR-004 sin modificar las ramas bancarias de la vista y de forma reversible; es lo que Sergio describió ("punto de inicio" de la administración de Oscar y Albina).
 - **Alternativas**: (a) filtrar por una fecha de apertura dentro de las ramas bancarias: toca ramas críticas de la vista; (b) contar la deuda de los resúmenes `Cerrado`: dejaría un saldo de unos $343,60 sin respaldo documental.
 - **Mastercard BNA**: el pago del 05/06/2024 ($15.180,50, "MASTER XXXX3813") no tiene resumen vigente (la tarjeta no tiene resúmenes desde 05/2023). No se decide acá: lo señala el control (FR-010b) para que Sergio resuelva su destino.
@@ -51,7 +56,7 @@ Investigación hecha el 2026-10-06 contra `WC` y el código vigente. No quedan p
 ## D8 — El control reutiliza el patrón de 031
 
 - **Decisión**: función pura `hallazgos(raw)` sobre lo que carga un lector de solo lectura, con las categorías (a)-(j) del spec; endpoint de lectura y exportación a Excel; UI como la de integridad de vínculos.
-- **Medición inicial** (debe coincidir con SC-003; los 21 pagos de la administración anterior dejan de figurar tras la preparación de datos): categoría (b) 22 movimientos de AgroNacion y 1 de Mastercard BNA hoy sin resumen; (e) la devolución sin cruzar; (c) un pago con origen "Crédito banco" ($3.195,96); (i) $249.998,99 en consumos sin proveedor, que al cruzar el kit Starlink quedan en $0,01 de redondeo.
+- **Medición inicial** (debe coincidir con SC-003; los 22 pagos de la administración anterior dejan de figurar tras la preparación de datos): categoría (b) 22 movimientos de AgroNacion y 1 de Mastercard BNA hoy sin resumen; (e) la devolución sin cruzar; (c) un pago con origen "Crédito banco" ($3.195,96); (i) $249.998,99 en consumos sin proveedor, que al cruzar el kit Starlink quedan en $0,01 de redondeo.
 - **Invariante SC-008** (verificada en solo lectura): consumos $46.367.054,14 = vinculados $46.116.601,17 + resto acreditado $453,98 + sin proveedor $249.998,99.
 
 ## D9 — Cuenta de la tarjeta en pantalla: extender 008 en vez de crear otra
@@ -72,3 +77,29 @@ Investigación hecha el 2026-10-06 contra `WC` y el código vigente. No quedan p
 
 - **Decisión**: el script de la vista se ensaya primero con `--ensayo` (transacción con rollback, sin cambios persistentes), guarda una instantánea antes de ampliar la vista (saldo por contacto y totales mensuales del flujo de caja de 2024-01 a 2026-09) y la compara después con `--comparar`. Esperado: ninguna diferencia en contactos que no son tarjetas salvo UATRE (+$17.185,82); las tarjetas pasan a su saldo real; el total general cambia solo por la deuda vigente incorporada (hoy $58.336.654,56 menos), las devoluciones cruzadas ($966.654,20 menos) y UATRE (+$17.185,82) (SC-008); los totales del flujo de caja no cambian.
 - **Reversión**: la definición previa de la vista se guarda en un archivo de respaldo y el script `--revertir` la restaura; las tablas nuevas se pueden quitar sin afectar nada más.
+
+## Revisión de especialista (T001, 2026-10-06)
+
+Revisión de solo lectura del especialista de dirección financiera sobre `spec.md`, `research.md` y `data-model.md` (no leyó `plan.md`). Es una opinión de apoyo: las decisiones siguen siendo de Sergio.
+
+**Conclusiones**
+
+| Punto | Conclusión | Reparos |
+|---|---|---|
+| Deuda por consumo en su fecha y cargos en el cierre | De acuerdo | El saldo por fecha de consumo no coincide con lo exigible en cada vencimiento; un resumen faltante subestima la deuda sin aviso; es información de gestión, no de IVA ni de impuestos. |
+| Mercado Pago como banco y regla de conducto | De acuerdo | Si el ingreso y el pago caen en días distintos el par no se detecta y se contaría dos veces; confirmar que el pago de UATRE del 04/09/2024 ($17.185,82) no tiene un débito real en otro banco; conciliar el saldo de la billetera con su propio extracto. |
+| Apertura de la administración anterior de AgroNacion | De acuerdo | Confirmar que los 22 pagos de 2010-2012 son de esa administración; decir explícitamente que se abandonan los ~$343,60 de los resúmenes cerrados. |
+
+**Recomendaciones y tratamiento**
+
+| # | Recomendación | Tratamiento |
+|---|---|---|
+| 1 | Mostrar el saldo exigible (resúmenes cerrados) separado del consumo aún no resumido | A decidir con Sergio. Es una columna/subtotal adicional en la cuenta; no cambia el saldo. |
+| 2 | Control de continuidad de resúmenes (meses faltantes por tarjeta) | A decidir con Sergio. Sería una categoría nueva (k) del control. |
+| 3 | Qué hacer con el par de conducto que no coincide en el día | El par no emparejado se informa en el control; hoy hay un caso (UATRE 04/09/2024) y es el pago con fondos propios. Pendiente definir quién lo resuelve. |
+| 4 | Confirmar con Sergio los 22 pagos de 2010-2012 y el pago de UATRE del 04/09/2024 | A confirmar con Sergio antes de ejecutar T012/T013 en `WC`. |
+| 5 | Control que marque un resumen en moneda distinta de pesos | A decidir con Sergio (categoría nueva del control). |
+| 6 | Documentar que el saldo es de gestión | Aplicado: el saldo de estas cuentas es de gestión y no sirve para IVA ni impuestos. |
+| 7 | Revisar la tolerancia de $300 si crece el volumen | Se mantiene la regla vigente de Sergio; se revisa si se agregan tarjetas. |
+
+Otros riesgos señalados sin regla hoy: devoluciones que llegan a un medio no modelado (efectivo u otra cuenta), qué pasa si se rechaza una sugerencia de cruce (queda pendiente en el control) y separación de funciones entre quien carga y quien aprueba (los cruces registran usuario y fecha).

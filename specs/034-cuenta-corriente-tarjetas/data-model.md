@@ -1,6 +1,6 @@
 # Data Model: Cuentas de tarjetas y de Mercado Pago
 
-Todo en la base `WC`. Se agregan dos tablas y cuatro ramas a la vista compartida; no se modifican las tablas heredadas ni las ramas existentes.
+Todo en la base `WC`. Se agregan dos tablas y cinco ramas a la vista compartida; no se modifican las tablas heredadas ni las ramas existentes.
 
 ## Tablas nuevas
 
@@ -49,6 +49,7 @@ Formato común de la vista: `Fecha, IdContacto, [Razon Social], Documento, [Nro 
 | `Tarjeta consumo` | `Tarjetas_Resumenes_Lineas` de resúmenes con estado distinto de `Cerrado` | `FechaCompra` | `TarjetasContacto.IdContacto` de la tarjeta del resumen | Importe positivo = Deuda; negativo = Crédito (por el valor absoluto) | `IdLineaConsumo` |
 | `Tarjeta cargo` | Las 14 columnas de cargos de `Tarjetas_Resumenes`, no nulas y distintas de cero, de resúmenes distintos de `Cerrado` | `FechaCierre` | Ídem | Positivo = Deuda; negativo = Crédito | `IdResumen * 100 + n`, n de 1 a 14 |
 | `Tarjeta devolución` | `TarjetasCruces` de tipo `devolucion-debito` no deshechas | Fecha del movimiento de la devolución | Contacto de la tarjeta | Deuda por `Importe` | `IdCruce` |
+| `Tarjeta pago` | `Tarjetas_Resumenes_Pagos` sin movimiento bancario de origen (`IdMovimientoOrigen` nulo) de resúmenes distintos de `Cerrado` (hoy uno: "Crédito banco", $3.195,96, Visa Galicia, 31/01/2025) | `Fecha` del pago | Contacto de la tarjeta del resumen | Crédito por el importe | `IdPago` |
 | `Mercado Pago` | `Movimientos Mercado Libre` con `IdContacto` asignado, que no sean conducto y sin conciliación en `ConciliacionesTesoreria` | `Fecha` del movimiento | `IdContacto` del movimiento | Importe negativo = Crédito; positivo = Deuda | `IdMovimiento` |
 
 **Conducto**: el movimiento tiene otro de la misma `IdOperacion`, del mismo día, de descripción que empieza con "Ingreso de dinero" y de importe opuesto (diferencia menor a $0,01).

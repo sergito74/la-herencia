@@ -17,7 +17,7 @@ python -m scripts.vista_tarjeta_cuenta_corriente --ensayo        # todo dentro d
 python -m scripts.vista_tarjeta_cuenta_corriente                 # backup, tablas, ramas, instantánea previa
 ```
 
-Esperado: backup verificado; `TarjetasContacto` con 5 filas; vista ampliada con las cuatro ramas; instantánea previa guardada antes de ampliar (saldo por contacto y totales mensuales del flujo de caja de 2024-01 a 2026-09). Es idempotente: una segunda corrida no cambia nada. Antes de la corrida real deben estar escritas las pruebas de las invariantes (tareas T027 y T028).
+Esperado: backup verificado; `TarjetasContacto` con 5 filas; vista ampliada con las cinco ramas; instantánea previa guardada antes de ampliar (saldo por contacto y totales mensuales del flujo de caja de 2024-01 a 2026-09). Es idempotente: una segunda corrida no cambia nada. Antes de la corrida real deben estar escritas las pruebas de las invariantes (tareas T027 y T028).
 
 ## 2. Preparar los datos de AgroNacion
 
@@ -26,7 +26,7 @@ python -m scripts.preparar_tarjetas_cuenta_034 --verificar
 python -m scripts.preparar_tarjetas_cuenta_034
 ```
 
-Esperado: contacto "AgroNacion (administración anterior)" creado y 21 pagos de 2010 a 2012 ($23.575,00) reasignados a él; ninguna otra reasignación.
+Esperado: contacto "AgroNacion (administración anterior)" creado y 22 pagos de la administración anterior reasignados a él (21 del Banco Nación de 2010 a 2012 por $23.575,00 y 1 en efectivo del 26/06/2012 por $1.677,58; total $25.252,58); ninguna otra reasignación.
 
 ## 3. Comparación antes/después (SC-002, SC-008)
 
@@ -61,7 +61,7 @@ Esperado: las invariantes de solo lectura pasan: consumos de tarjeta = vinculado
 ## 6. Control de integridad (historia 3)
 
 1. Abrir `Finanzas > Tarjetas > Control`.
-2. Esperado con los datos ya preparados (después de reasignar los 21 pagos de la administración anterior): el débito 18093 de AgroNacion y el pago de Mastercard BNA sin resumen (b), la devolución sin cruzar (e), el pago con origen "Crédito banco" (c) y los consumos sin proveedor (i). Antes de la preparación, el control habría listado 22 movimientos de AgroNacion.
+2. Esperado con los datos ya preparados (después de reasignar los 22 pagos de la administración anterior): el débito 18093 de AgroNacion y el pago de Mastercard BNA sin resumen (b), la devolución sin cruzar (e), el pago con origen "Crédito banco" (c) y los consumos sin proveedor (i). Antes de la preparación, el control habría listado 22 movimientos de AgroNacion.
 3. Exportar el control y comprobar que reproduce la pantalla.
 
 ## 7. Cruce de la devolución del débito (historia 4)
@@ -101,3 +101,27 @@ Esperado: todo en verde. Las pruebas de control y de cruces usan fixtures puros 
 ## Reversión
 
 `python -m scripts.vista_tarjeta_cuenta_corriente --revertir` restaura la definición previa de la vista y quita las ramas nuevas; las tablas nuevas pueden eliminarse sin efecto en el resto. Los pagos reasignados se devuelven con `python -m scripts.preparar_tarjetas_cuenta_034 --revertir`.
+
+## Resultados de la corrida (2026-10-06)
+
+**Pasos 1 y 2 (tareas T013 y T014), ejecutados en `WC`:**
+
+- Ensayo con `--ensayo` (transacción con rollback): sin cambios persistentes; mostró dos hallazgos que se incorporaron (quinta rama `Tarjeta pago` y el pago en efectivo de AgroNacion del 26/06/2012).
+- Corrida real: respaldo `WC_cuentas-tarjetas-034_20261006_164352_320809.bak`; `TarjetasContacto` con 5 filas; vista ampliada con las cinco ramas; instantánea previa y definición previa de la vista guardadas en la carpeta "Auditoria cuentas corrientes".
+- Preparación de AgroNacion: respaldo `WC_preparar-tarjetas-034_20261006_164356_557117.bak`; contacto "AgroNacion (administración anterior)" creado (id 5662); 22 pagos reasignados (21 del Banco Nación por $23.575,00 y 1 en efectivo por $1.677,58; total $25.252,58).
+
+**Paso 3 (comparación contra la instantánea previa), antes de cruzar la devolución:**
+
+| Contacto | Antes | Después |
+|---|---|---|
+| Mastercard BNA (372) | 1.047.760,41 | 15.180,47 (pago del 05/06/2024 sin resumen, pendiente de T053) |
+| AgroNacion (373) | 31.185.738,39 | 966.654,47 (el débito devuelto de $966.654,20, pendiente del cruce de T043) |
+| Corporativa Nación (503) | 1.987.011,83 | −0,02 |
+| Visa Galicia (532) | 19.784.427,06 | −0,20 |
+| Galicia Rural (533) | 5.335.608,21 | 0,00 |
+| AgroNacion (administración anterior, 5662) | — | 25.252,58 |
+| UATRE (315) | 734.224,36 | 751.410,18 (+17.185,82, esperado por FR-005) |
+
+- Total general: 315.834.577,65 → 257.518.304,87 (Δ −58.316.272,78 = deuda vigente −58.336.654,56, UATRE +17.185,82 y pagos sin movimiento +3.195,96).
+- Ningún otro contacto cambió. Totales mensuales del flujo de caja idénticos a la instantánea.
+- `pytest tests/test_vista_cuenta_tarjetas.py`: 6 pruebas pasan (las 3 que se salteaban antes de ampliar la vista ya corren).

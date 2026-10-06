@@ -49,6 +49,9 @@ class Origen(BaseModel):
     - "arrendamiento": idAlquiler, contacto, importeTotalContrato
     - "venta_hacienda": idRetencion, numeroDocumento, importe (referencia a la
       retención, no a la venta — ver specs/005-egresos-y-ventas-menores)
+    - "tarjeta_consumo": idLineaConsumo, idResumen, numeroDocumento (código del resumen)
+    - "tarjeta_resumen": idResumen, numeroDocumento, importe (cargos y pagos de un resumen)
+    - "tarjeta_cruce": idCruce, idTarjeta, importe
     - "fuera_de_alcance": origenTipo
     - "no_disponible": motivo
     """
@@ -73,6 +76,11 @@ class Origen(BaseModel):
     idAlquiler: int | None = None
     contacto: str | None = None
     importeTotalContrato: float | None = None
+    # 034-cuenta-corriente-tarjetas
+    idLineaConsumo: int | None = None
+    idResumen: int | None = None
+    idCruce: int | None = None
+    idTarjeta: int | None = None
 
 
 class MovimientoCuentaCorriente(BaseModel):

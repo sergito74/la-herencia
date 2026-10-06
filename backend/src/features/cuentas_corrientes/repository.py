@@ -294,3 +294,46 @@ def get_conciliacion_tesoreria_referencia(id_conciliacion: int) -> dict | None:
         WHERE IdConciliacion = ?
     """
     return fetch_one(sql, (id_conciliacion,))
+
+
+# --- 034-cuenta-corriente-tarjetas: referencias de los orígenes nuevos de la vista ---
+
+def get_tarjeta_consumo_referencia(id_linea_consumo: int) -> dict | None:
+    return fetch_one(
+        "SELECT l.IdLineaConsumo AS idLineaConsumo, l.IdResumen AS idResumen, r.ResumenCodigo AS numeroDocumento "
+        "FROM dbo.Tarjetas_Resumenes_Lineas l JOIN dbo.Tarjetas_Resumenes r ON r.IdResumen = l.IdResumen "
+        "WHERE l.IdLineaConsumo = ?",
+        (id_linea_consumo,),
+    )
+
+
+def get_tarjeta_resumen_referencia(id_resumen: int) -> dict | None:
+    return fetch_one(
+        "SELECT IdResumen AS idResumen, ResumenCodigo AS numeroDocumento "
+        "FROM dbo.Tarjetas_Resumenes WHERE IdResumen = ?",
+        (id_resumen,),
+    )
+
+
+def get_tarjeta_pago_referencia(id_pago: int) -> dict | None:
+    return fetch_one(
+        "SELECT p.IdResumen AS idResumen, r.ResumenCodigo AS numeroDocumento, p.Importe AS importe "
+        "FROM dbo.Tarjetas_Resumenes_Pagos p JOIN dbo.Tarjetas_Resumenes r ON r.IdResumen = p.IdResumen "
+        "WHERE p.IdPago = ?",
+        (id_pago,),
+    )
+
+
+def get_tarjeta_cruce_referencia(id_cruce: int) -> dict | None:
+    return fetch_one(
+        "SELECT IdCruce AS idCruce, IdTarjeta AS idTarjeta, Importe AS importe FROM dbo.TarjetasCruces WHERE IdCruce = ?",
+        (id_cruce,),
+    )
+
+
+def get_mercado_libre_referencia(id_movimiento: int) -> dict | None:
+    return fetch_one(
+        "SELECT IdMovimiento AS idMovimiento, Fecha AS fecha, Importe AS importe "
+        "FROM dbo.[Movimientos Mercado Libre] WHERE IdMovimiento = ?",
+        (id_movimiento,),
+    )

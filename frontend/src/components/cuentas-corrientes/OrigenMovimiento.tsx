@@ -131,6 +131,22 @@ export function OrigenMovimiento({ origen }: { origen: Origen }) {
           Retención venta de hacienda · {origen.numeroDocumento ?? "—"}
         </Link>
       );
+    case "tarjeta_consumo":
+    case "tarjeta_resumen":
+      return (
+        <Link
+          href={origen.idResumen != null ? `/finanzas/tarjetas/resumenes/${origen.idResumen}` : "#"}
+          className="text-finance underline"
+        >
+          Resumen de tarjeta · {origen.numeroDocumento ?? "—"}
+        </Link>
+      );
+    case "tarjeta_cruce":
+      return (
+        <Link href="/finanzas/tarjetas/control" className="text-finance underline">
+          Cruce de devolución #{origen.idCruce ?? "—"}
+        </Link>
+      );
     case "fuera_de_alcance":
       return (
         <span title="Fuera del alcance de este sistema">

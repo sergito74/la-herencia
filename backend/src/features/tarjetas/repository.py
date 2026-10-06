@@ -122,12 +122,18 @@ def get_movimientos(id_tarjeta: int) -> list[dict]:
 
 
 def get_id_contacto_tarjeta(id_tarjeta: int) -> int | None:
-    """Vínculo por coincidencia de nombre (research.md §3, sin FK real):
-    `Tarjetas.TarjetaNombre` = `Contactos.[Razon Social]` con
-    `Tipo Contacto = 'Tarjeta de Credito'`."""
+    """Contacto de la cuenta de la tarjeta. 034 lo registra de forma explícita
+    en `dbo.TarjetasContacto` (una fila por tarjeta, contacto único); mientras
+    esa tabla no exista o la tarjeta no tenga fila, rige la regla anterior de
+    008 (research.md §3): `Tarjetas.TarjetaNombre` = `Contactos.[Razon Social]`
+    con `Tipo Contacto = 'Tarjeta de Credito'`."""
     tarjeta = get_tarjeta(id_tarjeta)
     if tarjeta is None:
         return None
+    if fetch_one("SELECT OBJECT_ID('dbo.TarjetasContacto', 'U') AS existe", ())["existe"] is not None:
+        explicito = fetch_one("SELECT IdContacto FROM dbo.TarjetasContacto WHERE IdTarjeta = ?", (id_tarjeta,))
+        if explicito:
+            return explicito["IdContacto"]
     row = fetch_one(
         "SELECT IdContacto FROM dbo.Contactos WHERE [Tipo Contacto] = 'Tarjeta de Credito' AND [Razon Social] = ?",
         (tarjeta["nombre"],),

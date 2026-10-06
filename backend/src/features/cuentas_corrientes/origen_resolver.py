@@ -140,6 +140,54 @@ def resolve_origen(origen_tipo: str | None, id_origen: int | None) -> dict:
             "importe": retencion_venta.get("importe"),
         }
 
+    # 034-cuenta-corriente-tarjetas: ramas de la pata deuda de las tarjetas y de Mercado Pago.
+    if origen_tipo == "Tarjeta consumo":
+        consumo = repository.get_tarjeta_consumo_referencia(id_origen)
+        if consumo is None:
+            return dict(_NO_DISPONIBLE_SIN_REGISTRO)
+        return {
+            "tipo": "tarjeta_consumo",
+            "idLineaConsumo": consumo["idLineaConsumo"],
+            "idResumen": consumo["idResumen"],
+            "numeroDocumento": consumo.get("numeroDocumento"),
+        }
+
+    if origen_tipo == "Tarjeta cargo":
+        # `IdOrigen = IdResumen * 100 + n` (n = número de cargo, 1 a 14).
+        resumen = repository.get_tarjeta_resumen_referencia(id_origen // 100)
+        if resumen is None:
+            return dict(_NO_DISPONIBLE_SIN_REGISTRO)
+        return {"tipo": "tarjeta_resumen", "idResumen": resumen["idResumen"], "numeroDocumento": resumen.get("numeroDocumento")}
+
+    if origen_tipo == "Tarjeta pago":
+        pago = repository.get_tarjeta_pago_referencia(id_origen)
+        if pago is None:
+            return dict(_NO_DISPONIBLE_SIN_REGISTRO)
+        return {
+            "tipo": "tarjeta_resumen",
+            "idResumen": pago["idResumen"],
+            "numeroDocumento": pago.get("numeroDocumento"),
+            "importe": pago.get("importe"),
+        }
+
+    if origen_tipo == "Tarjeta devolución":
+        cruce = repository.get_tarjeta_cruce_referencia(id_origen)
+        if cruce is None:
+            return dict(_NO_DISPONIBLE_SIN_REGISTRO)
+        return {"tipo": "tarjeta_cruce", "idCruce": cruce["idCruce"], "idTarjeta": cruce["idTarjeta"], "importe": cruce.get("importe")}
+
+    if origen_tipo == "Mercado Pago":
+        movimiento = repository.get_mercado_libre_referencia(id_origen)
+        if movimiento is None:
+            return dict(_NO_DISPONIBLE_SIN_REGISTRO)
+        return {
+            "tipo": "tesoreria",
+            "medio": "mercado-libre",
+            "idMovimiento": movimiento["idMovimiento"],
+            "fecha": movimiento.get("fecha"),
+            "importe": movimiento.get("importe"),
+        }
+
     # Incluye "Ret. IVA Granos" (dominio de Agricultura, fuera de alcance)
     # y cualquier valor de `Origen` no relevado (ej. "Valores propios",
     # "Tarjetas") — tratado como fuera de alcance por defecto per
