@@ -81,3 +81,8 @@ async def test_aplicar_una_ejecucion_descartada_responde_409():
             pytest.skip("No hay ejecuciones descartadas")
         r = await c.post(f"{BASE}/ejecuciones/{descartadas[0]['idEjecucion']}/aplicar", json={})
         assert r.status_code == 409
+
+
+@pytest.fixture
+def anyio_backend():
+    return "asyncio"
