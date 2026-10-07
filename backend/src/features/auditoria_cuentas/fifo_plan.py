@@ -53,7 +53,9 @@ def contactos_aplicados_desde(id_base: int) -> set[int]:
     aplicados: set[int] = set()
     for f in fetch_all("SELECT Resumen AS r FROM dbo.RecalculoFifoEjecucion WHERE Estado = 'aplicada' AND IdEjecucion > ?", (id_base,)):
         try:
-            aplicados |= set(json.loads(f["r"] or "{}").get("aplicados", []))
+            resumen = json.loads(f["r"] or "{}")
+            # una cuenta que no necesitó cambios también quedó resuelta por esa tanda
+            aplicados |= set(resumen.get("aplicados", [])) | set(resumen.get("sinCambios", []))
         except ValueError:
             continue
     return aplicados

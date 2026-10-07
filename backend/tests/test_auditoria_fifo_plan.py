@@ -29,3 +29,11 @@ def test_plan_real_de_la_ultima_simulacion():
     assert len(ids) == len(set(ids)) and all(len(t["contactos"]) <= f.TAMANO_TANDA for t in p["tandas"])
     assert p["tandas"][0]["rango"] == "hasta $ 250.000" and p["tandas"][-1]["rango"] == "cuentas en dólares"
     assert all(e["idContacto"] not in ids for e in p["excepciones"])
+
+
+def test_una_cuenta_sin_cambios_cuenta_como_resuelta_en_su_tanda(monkeypatch):
+    import json
+
+    filas = [{"r": json.dumps({"aplicados": [1, 2], "sinCambios": [3]})}, {"r": json.dumps({"aplicados": [4]})}, {"r": "no es json"}]
+    monkeypatch.setattr(f, "fetch_all", lambda *a, **k: filas)
+    assert f.contactos_aplicados_desde(10) == {1, 2, 3, 4}
