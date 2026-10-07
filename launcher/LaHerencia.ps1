@@ -140,8 +140,12 @@ if (-not (Test-Path $EnvLocal) -or (Get-Content $EnvLocal -Raw) -match 'localhos
 # (bug real, 2026-10-07: se reabrio 3 veces y seguia la version vieja). Ahora, si el codigo es mas nuevo que el
 # servidor que esta corriendo, se detiene ese servidor y arranca uno nuevo.
 function Get-ListenerStart($port) {
-    $c = Get-NetTCPConnection -LocalPort $port -State Listen -ErrorAction SilentlyContinue | Select-Object -First 1
-    if ($c) { $pr = Get-Process -Id $c.OwningProcess -ErrorAction SilentlyContinue; if ($pr) { return $pr.StartTime } }
+    # netstat tarda ~0,1 s; Get-NetTCPConnection tarda ~1,3 s en cada llamada y haria lento cada arranque.
+    if (-not (Test-PortBusy $port)) { return $null }
+    $linea = netstat -ano -p tcp | Select-String -Pattern ":$port\s+\S+\s+LISTENING\s+(\d+)" | Select-Object -First 1
+    if (-not $linea) { return $null }
+    $pr = Get-Process -Id ([int]$linea.Matches[0].Groups[1].Value) -ErrorAction SilentlyContinue
+    if ($pr) { return $pr.StartTime }
     return $null
 }
 
