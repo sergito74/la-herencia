@@ -191,7 +191,10 @@ export function RevisionCuenta({ idContacto }: { idContacto: number }) {
                 const ruta = m.origen.tipo === "compra" && m.origen.idCompra != null ? comprobantes.data?.[String(m.origen.idCompra)] : undefined;
                 return (
                   <tr key={`${m.origenTipo}-${m.idOrigen}-${i}`} className="border-t border-line">
-                    <td className="py-1">{formatFecha(m.fecha)}</td>
+                    <td className="py-1">
+                      {formatFecha(m.fecha)}
+                      {m.fechaEntrega && <span className="block text-xs text-ink-secondary" title="El cheque se entregó antes de cobrarse: el dólar se toma del día de la entrega">cheque entregado el {formatFecha(m.fechaEntrega)}</span>}
+                    </td>
                     <td>{m.documento ?? "—"}</td>
                     <td>{m.numeroDocumento ?? "—"}</td>
                     <td className="text-right text-xs">

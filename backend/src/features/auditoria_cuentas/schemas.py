@@ -211,6 +211,7 @@ class MovimientoRevision(BaseModel):
     creditoOriginal: float
     tipoDeCambio: float | None = None
     tcEstimado: bool = False
+    fechaEntrega: date | None = None  # fecha en que se entregó el cheque con el que se pagó
     deudaPesos: float
     creditoPesos: float
     saldoPesos: float

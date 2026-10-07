@@ -54,6 +54,10 @@ Referencia del Access fila a fila hasta la fecha de corte (copia de `LaHerencia.
 
 Reglas de lo ya conocido (FR-019). `IdConocido` int identity PK; `Tipo` varchar(30) CHECK en `concepto-movimiento` o `cuenta`; `Clave` varchar(200) (texto del concepto, o el número de contacto); `ImporteRef` money NULL (diferencia documentada de una cuenta); `Motivo` varchar(300) NOT NULL; `Usuario`, `Fecha`; `Activo` bit (baja lógica con `UsuarioBaja` y `FechaBaja`). Carga inicial: 11 conceptos normales (impuesto al débito y crédito, comisiones, fondos comunes, plazos fijos, transferencias entre cuentas propias, depósitos de efectivo).
 
+### `dbo.ChequesEntregados`
+
+Base de cheques entregados a proveedores (FR-025): `IdEntrega` int identity PK; `Tipo` varchar(10) CHECK en `emitido`, `endoso` o `papel`; `Numero`; `Importe` money; `FechaEntrega` date (emisión del e-cheq o fecha del endoso) con `FechaEntregaEstimada` bit (se usó la fecha del archivo); `FechaPago`; `Beneficiario`, `CuitBeneficiario`, `Descripcion`; `Documento`, `ImporteUsd`, `TcEmision` (de la planilla); `Estado`; `Fuente` (`pdf`, `excel` o `pdf+excel`); `Archivo`; `MedioMovimiento` e `IdMovimiento` (débito de Galicia con el que se cruzó, por importe, fecha de pago y número). Se carga con `scripts/cargar_cheques_entregados_035.py`.
+
 ## Tablas existentes que se leen o se usan
 
 - `SaldosReferenciaAccess` (`IdContacto`, `SaldoAccess`, `FechaCorte`, `FechaCarga`): referencia y fecha de corte.

@@ -70,11 +70,13 @@ def moneda_que_gobierna(filas: list[dict], compras: dict[int, dict]) -> str:
     return "Mixta" if en_dolares else "Pesos"
 
 
-def construir(filas: list[dict], compras: dict[int, dict], cotizacion: CotizacionBNA) -> dict:
+def construir(filas: list[dict], compras: dict[int, dict], cotizacion: CotizacionBNA, entregas: dict[tuple[str, int], date] | None = None) -> dict:
     """Movimientos de una cuenta con su moneda, importes en pesos, saldo acumulado en pesos y en dólares.
 
     `filas`: filas de la vista ya ordenadas por (Fecha, Origen, IdOrigen) con Fecha, Documento, Nro Documento,
     Deuda, Credito, Origen, IdOrigen. `compras`: IdDeuda -> {moneda, tc} de los renglones `Compras`.
+    `entregas`: (Origen, IdOrigen) de un débito bancario -> fecha en que se entregó el cheque. El pago con cheque queda
+    fijado en pesos el día de la entrega, no el del débito: para pasarlo a dólares se usa el dólar de ese día.
     """
     saldo_pesos = saldo_dolares = 0.0
     salida, avisos = [], []
@@ -83,10 +85,11 @@ def construir(filas: list[dict], compras: dict[int, dict], cotizacion: Cotizacio
         fecha = _dia(f["Fecha"])
         compra = compras.get(int(f["IdOrigen"])) if f["Origen"] == "Compras" else None
         en_dolares = bool(compra and compra.get("moneda") == DOLARES)
-        tc_dia = cotizacion.dia_anterior(fecha)
+        entrega = (entregas or {}).get((f["Origen"], int(f["IdOrigen"])))
+        tc_dia = cotizacion.dia_anterior(entrega or fecha)
         fila = {"fecha": fecha, "documento": f["Documento"], "numeroDocumento": f["Nro Documento"], "origenTipo": f["Origen"],
                 "idOrigen": int(f["IdOrigen"]), "moneda": DOLARES if en_dolares else "Pesos", "deudaOriginal": deuda, "creditoOriginal": credito,
-                "tipoDeCambio": None, "tcEstimado": False}
+                "tipoDeCambio": None, "tcEstimado": False, "fechaEntrega": entrega}
         if en_dolares:
             tc = float(compra["tc"]) if (compra.get("tc") or 0) > 1 else None
             if tc is None:
@@ -106,6 +109,8 @@ def construir(filas: list[dict], compras: dict[int, dict], cotizacion: Cotizacio
     gobierna = moneda_que_gobierna(filas, compras)
     return {"filas": salida, "saldoPesos": round(saldo_pesos, 2), "saldoDolares": round(saldo_dolares, 2), "gobierna": gobierna,
             "saldoGobierna": round(saldo_dolares if gobierna == DOLARES else saldo_pesos, 2),
+            # una diferencia de cambio chica no es un problema: hasta US$ 1 o el 0,5 % de lo facturado en dólares (tolerancia del FIFO)
+            "toleranciaDolares": round(max(1.0, 0.005 * sum(x["deudaOriginal"] for x in salida if x["moneda"] == DOLARES)), 2),
             "bimonetaria": any(x["moneda"] == DOLARES for x in salida)
             and any(x["moneda"] == "Pesos" and x["origenTipo"] == "Compras" and x["deudaOriginal"] > 0 for x in salida),
             "tieneDolares": any(x["moneda"] == DOLARES for x in salida), "avisos": sorted(set(avisos))}
@@ -124,7 +129,7 @@ def cotizacion_bna() -> CotizacionBNA:
     return _COTIZACION["v"]
 
 
-_VISTA: dict = {"t": 0.0, "filas": None, "compras": None}
+_VISTA: dict = {"t": 0.0, "filas": None, "compras": None, "entregas": None}
 TTL_VISTA = 120
 
 
@@ -132,7 +137,7 @@ def invalidar() -> None:
     _VISTA["filas"] = None
 
 
-def _vista_en_memoria(refrescar: bool = False) -> tuple[dict[int, list], dict[int, dict]]:
+def _vista_en_memoria(refrescar: bool = False) -> tuple[dict[int, list], dict[int, dict], dict[tuple[str, int], date]]:
     """La vista completa y las compras, una sola vez cada 2 minutos: leer la vista de un contacto tarda ~1 s y la completa ~0,4 s."""
     import time
     from collections import defaultdict
@@ -147,20 +152,27 @@ def _vista_en_memoria(refrescar: bool = False) -> tuple[dict[int, list], dict[in
             por_contacto[f["IdContacto"]].append(f)
         compras = {int(c["id"]): {"moneda": c["moneda"], "tc": c["tc"], "ajusta": bool(c["ajusta"])} for c in fetch_all(
             "SELECT IdDeuda AS id, Moneda AS moneda, [Tipo de Cambio] AS tc, [Ajusta Tipo Cambio] AS ajusta FROM dbo.Compras", ())}
-        _VISTA.update(t=time.time(), filas=dict(por_contacto), compras=compras)
-    return _VISTA["filas"], _VISTA["compras"]
+        entregas: dict[tuple[str, int], date] = {}
+        try:
+            for e in fetch_all("SELECT IdMovimiento AS i, FechaEntrega AS f FROM dbo.ChequesEntregados "
+                               "WHERE MedioMovimiento = 'galicia' AND IdMovimiento IS NOT NULL AND FechaEntrega IS NOT NULL", ()):
+                entregas[("Galicia", int(e["i"]))] = _dia(e["f"])
+        except Exception:
+            pass  # todavía no se cargaron los cheques entregados
+        _VISTA.update(t=time.time(), filas=dict(por_contacto), compras=compras, entregas=entregas)
+    return _VISTA["filas"], _VISTA["compras"], _VISTA["entregas"]
 
 
 def cargar_cuenta(id_contacto: int, refrescar: bool = False) -> dict:
     """La cuenta de la vista con el criterio bimonetario (solo lectura, desde la copia en memoria)."""
-    filas, compras = _vista_en_memoria(refrescar)
-    return construir(filas.get(id_contacto, []), compras, cotizacion_bna())
+    filas, compras, entregas = _vista_en_memoria(refrescar)
+    return construir(filas.get(id_contacto, []), compras, cotizacion_bna(), entregas)
 
 
 def cargar_cuentas(ids: list[int]) -> dict[int, dict]:
     """Varias cuentas con el mismo criterio."""
     if not ids:
         return {}
-    filas, compras = _vista_en_memoria()
+    filas, compras, entregas = _vista_en_memoria()
     cot = cotizacion_bna()
-    return {i: construir(filas.get(i, []), compras, cot) for i in ids}
+    return {i: construir(filas.get(i, []), compras, cot, entregas) for i in ids}

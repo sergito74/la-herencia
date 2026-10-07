@@ -254,6 +254,8 @@ export interface MovimientoRevision {
   creditoOriginal: number;
   tipoDeCambio: number | null;
   tcEstimado: boolean;
+  /** Fecha en que se entregó el cheque con el que se pagó (el dólar se toma de ese día). */
+  fechaEntrega: string | null;
   deudaPesos: number;
   creditoPesos: number;
   saldoPesos: number;

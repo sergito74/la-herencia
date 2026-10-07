@@ -84,6 +84,7 @@ def _con_criterio_bimonetario(cuentas: list[dict]) -> None:
             r = todas[c["idContacto"]]
             c["saldoPesos"], c["saldoDolares"], c["gobierna"] = r["saldoPesos"], r["saldoDolares"], r["gobierna"]
             c["saldoRevision"] = r["saldoGobierna"]
+            c["toleranciaRevision"] = r["toleranciaDolares"] if r["gobierna"] == "Dolares" else None
 
 
 def _calcular() -> tuple[dict, list[dict], list[dict], dict]:

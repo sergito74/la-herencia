@@ -32,6 +32,10 @@ def _saldo(cuenta: dict) -> float:
     return cuenta.get("saldoRevision", cuenta["saldoSistema"])
 
 
+def _tolerancia(cuenta: dict) -> float:
+    return cuenta.get("toleranciaRevision") or TOLERANCIA_REDONDEO
+
+
 def dificultad(cuenta: dict, saldo_esperado: str | None = None) -> int:
     """0 = sin avisos (fácil), 1 = diferencia explicada o menor, 2 = con excepciones o saldo inesperado."""
     extras = set(cuenta.get("causasExtra", []))
@@ -39,7 +43,7 @@ def dificultad(cuenta: dict, saldo_esperado: str | None = None) -> int:
         return 2
     if saldo_esperado == "cero" and abs(_saldo(cuenta)) >= TOLERANCIA_REDONDEO:
         return 2
-    if cuenta.get("gobierna") == "Dolares" and abs(_saldo(cuenta)) >= TOLERANCIA_REDONDEO:
+    if cuenta.get("gobierna") == "Dolares" and abs(_saldo(cuenta)) >= _tolerancia(cuenta):
         return 2  # diferencia de cambio por ajustar con una nota
     if cuenta["causa"] != "coincide" or extras:
         return 1
@@ -51,7 +55,7 @@ def avisos_de_cuenta(cuenta: dict, saldo_esperado: str | None) -> list[dict]:
     if saldo_esperado == "cero" and abs(_saldo(cuenta)) >= TOLERANCIA_REDONDEO:
         avisos.append({"tipo": "saldo-esperado", "motivo": "Marcaste que esta cuenta debe estar en cero y no lo está",
                        "importe": _saldo(cuenta)})
-    if cuenta.get("gobierna") == "Dolares" and abs(_saldo(cuenta)) >= TOLERANCIA_REDONDEO:
+    if cuenta.get("gobierna") == "Dolares" and abs(_saldo(cuenta)) >= _tolerancia(cuenta):
         saldo = _saldo(cuenta)
         # Regla de Sergio (07/10/2026): el tipo de cambio se ajusta con notas. Si se debe más de lo pagado, una nota de crédito
         # lo cierra; si se pagó de más, una nota de débito. Cuál corresponde depende del acuerdo con el proveedor.

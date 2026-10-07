@@ -176,8 +176,14 @@ async def test_revision_de_una_cuenta_en_dolares_usa_la_moneda_que_gobierna():
 
 @pytest.mark.anyio
 async def test_cuenta_en_dolares_con_diferencia_de_cambio_sugiere_la_nota():
-    r = (await _get("/api/auditoria-cuentas/cuentas/450/revision")).json()
+    # Palaversich: los e-cheqs se entregaron el 24/04/2023; con el dólar de esa fecha quedan US$ 42 de diferencia (y no US$ 342)
+    r = (await _get("/api/auditoria-cuentas/cuentas/440/revision")).json()
     av = next(a for a in r["avisos"] if a["tipo"] == "diferencia-de-cambio")
     assert av["sugerencia"]["moneda"] == "Dolares" and av["sugerencia"]["tipo"] == "credito"
-    assert abs(av["sugerencia"]["importe"] - 1123.19) < 0.05 and av["sugerencia"]["tipoDeCambio"] > 1000
+    assert 30 < av["sugerencia"]["importe"] < 60 and av["sugerencia"]["tipoDeCambio"] > 1000
     assert r["dificultad"] == 2
+    # Tierras de Henderson: el cheque se entregó el 10/06/2021, el día de la factura: queda en centavos y no hay aviso
+    t = (await _get("/api/auditoria-cuentas/cuentas/450/revision")).json()
+    assert not [a for a in t["avisos"] if a["tipo"] == "diferencia-de-cambio"]
+    m = (await _get("/api/auditoria-cuentas/cuentas/450/movimientos")).json()
+    assert any(x["fechaEntrega"] == "2021-06-10" for x in m["items"])

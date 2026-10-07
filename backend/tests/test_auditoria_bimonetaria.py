@@ -85,3 +85,20 @@ def test_cargar_varias_cuentas_da_lo_mismo_que_una_por_una():
         una = b.cargar_cuenta(i)
         assert varias[i]["saldoPesos"] == una["saldoPesos"] and varias[i]["saldoDolares"] == una["saldoDolares"] and varias[i]["gobierna"] == una["gobierna"]
     assert b.cargar_cuentas([]) == {}
+
+
+def test_un_pago_con_cheque_se_pasa_a_dolares_con_el_dolar_del_dia_de_entrega():
+    serie = {date(2023, 4, 23): 218.0, date(2023, 5, 15): 230.0}
+    filas = [_fila(date(2023, 4, 13), "Factura", "F", 2129.6, 0, "Compras", 1), _fila(date(2023, 5, 16), "Resumen Bancario", "R", 0, 456245.52, "Galicia", 9)]
+    compras = {1: {"moneda": "Dolares", "tc": 214.24, "ajusta": False}}
+    sin = b.construir(filas, compras, b.CotizacionBNA(serie))
+    con = b.construir(filas, compras, b.CotizacionBNA(serie), {("Galicia", 9): date(2023, 4, 24)})
+    assert round(sin["saldoDolares"], 2) == round(-2129.6 + 456245.52 / 230.0, 2)       # con el día del débito
+    assert round(con["saldoDolares"], 2) == round(-2129.6 + 456245.52 / 218.0, 2)       # con el día de la entrega
+    assert con["filas"][1]["fechaEntrega"] == date(2023, 4, 24)
+
+
+def test_tolerancia_en_dolares_es_el_mayor_entre_un_dolar_y_el_medio_por_ciento():
+    chica = b.construir([_fila(date(2021, 8, 1), "Factura", "F", 100.0, 0, "Compras", 1)], {1: {"moneda": "Dolares", "tc": 100.0, "ajusta": False}}, b.CotizacionBNA(SERIE))
+    grande = b.construir([_fila(date(2021, 8, 1), "Factura", "F", 5251.42, 0, "Compras", 1)], {1: {"moneda": "Dolares", "tc": 95.0, "ajusta": False}}, b.CotizacionBNA(SERIE))
+    assert chica["toleranciaDolares"] == 1.0 and grande["toleranciaDolares"] == 26.26
