@@ -278,6 +278,6 @@ export interface MovimientosRevision {
   avisos: string[];
 }
 
-export function fetchMovimientosRevision(idContacto: number, page: number, pageSize = 100): Promise<MovimientosRevision> {
-  return apiGet<MovimientosRevision>(`/api/auditoria-cuentas/cuentas/${idContacto}/movimientos`, { page, pageSize });
+export function fetchMovimientosRevision(idContacto: number, page: number, pageSize = 100, refrescar = false): Promise<MovimientosRevision> {
+  return apiGet<MovimientosRevision>(`/api/auditoria-cuentas/cuentas/${idContacto}/movimientos`, { page, pageSize, refrescar: refrescar ? "true" : undefined });
 }

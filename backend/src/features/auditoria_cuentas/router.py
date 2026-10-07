@@ -54,6 +54,17 @@ TTL_SEGUNDOS = 600  # los cambios hechos desde esta pantalla la invalidan; el re
 
 def invalidar_cache() -> None:
     _CACHE["v"] = None
+    bimonetaria.invalidar()
+
+
+def precalentar() -> None:
+    """Deja listo el cálculo al arrancar para que la primera cuenta que se abra no espere."""
+    try:
+        _cuentas()
+        bimonetaria.cargar_cuentas([])
+        bimonetaria._vista_en_memoria()
+    except Exception:
+        pass  # sin base todavía: se calcula al primer pedido
 
 
 def _cuentas(refrescar: bool = False) -> tuple[dict, list[dict], list[dict], dict]:
@@ -295,9 +306,10 @@ async def nota_ajuste(id_contacto: int, body: PedidoNotaAjuste, request: Request
 
 
 @router.get("/cuentas/{id_contacto}/movimientos", response_model=MovimientosRevision)
-async def movimientos_de_cuenta(id_contacto: int, page: int = Query(default=1, ge=1), pageSize: int = Query(default=100, ge=1, le=200)) -> dict:
+async def movimientos_de_cuenta(id_contacto: int, page: int = Query(default=1, ge=1), pageSize: int = Query(default=100, ge=1, le=200),
+                                refrescar: bool = False) -> dict:
     """Movimientos con un solo criterio de moneda: saldo en pesos (documentos en dólares al TC de su factura) y en dólares."""
-    cuenta = await run_in_threadpool(bimonetaria.cargar_cuenta, id_contacto)
+    cuenta = await run_in_threadpool(bimonetaria.cargar_cuenta, id_contacto, refrescar)
     filas = list(reversed(cuenta["filas"]))  # los más nuevos primero; el saldo acumulado sigue siendo el cronológico
     desde = (page - 1) * pageSize
     pagina = filas[desde:desde + pageSize]

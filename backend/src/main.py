@@ -60,6 +60,16 @@ app = FastAPI(
 
 register_error_handlers(app)
 
+
+@app.on_event("startup")
+def _precalentar_auditoria() -> None:
+    """Calcula la auditoría de cuentas en segundo plano al arrancar (tarda unos segundos): así la primera cuenta que se abre no espera."""
+    import threading
+
+    from src.features.auditoria_cuentas.router import precalentar
+
+    threading.Thread(target=precalentar, daemon=True, name="precalentar-auditoria").start()
+
 # El frontend Next.js corre en un origen distinto (localhost:3000/3001) en
 # desarrollo. Sin esto, el navegador bloquea toda llamada a /api/* por
 # CORS aunque el backend responda 200 — nunca se detectó porque las

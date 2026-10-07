@@ -2,7 +2,7 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 import { SoloLectura } from "@/components/auth/SoloLectura";
 import { OrigenMovimiento } from "@/components/cuentas-corrientes/OrigenMovimiento";
@@ -28,11 +28,16 @@ export function RevisionCuenta({ idContacto }: { idContacto: number }) {
   const [nota, setNota] = useState("");
   const [verHistorial, setVerHistorial] = useState(false);
   const [sugerida, setSugerida] = useState<SugerenciaNota | null>(null);
+  const forzar = useRef(false);
 
   const rev = useQuery({ queryKey: ["auditoria-revision", idContacto], queryFn: () => fetchRevision(idContacto) });
   const movs = useQuery({
     queryKey: ["auditoria-movimientos", idContacto, pagina],
-    queryFn: () => fetchMovimientosRevision(idContacto, pagina, POR_PAGINA),
+    queryFn: () => {
+      const refrescar = forzar.current;
+      forzar.current = false;
+      return fetchMovimientosRevision(idContacto, pagina, POR_PAGINA, refrescar);
+    },
   });
   const comprobantes = useQuery({ queryKey: ["auditoria-comprobantes", idContacto], queryFn: () => fetchComprobantes(idContacto) });
 
@@ -214,7 +219,7 @@ export function RevisionCuenta({ idContacto }: { idContacto: number }) {
                         </a>
                       ) : "—"}
                     </td>
-                    <td><ReasignarMovimientoButton origenTipo={m.origenTipo} idOrigen={m.idOrigen} onReasignado={refrescar} /></td>
+                    <td><ReasignarMovimientoButton origenTipo={m.origenTipo} idOrigen={m.idOrigen} onReasignado={() => { forzar.current = true; refrescar(); }} /></td>
                   </tr>
                 );
               })}

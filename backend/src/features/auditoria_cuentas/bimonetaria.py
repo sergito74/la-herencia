@@ -124,37 +124,43 @@ def cotizacion_bna() -> CotizacionBNA:
     return _COTIZACION["v"]
 
 
-def cargar_cuenta(id_contacto: int) -> dict:
-    """Lee la cuenta de la vista y la deja con el criterio bimonetario (solo lectura)."""
-    from src.db.connection import fetch_all
-
-    filas = fetch_all(
-        "SELECT Fecha, Documento, [Nro Documento], Deuda, Credito, Origen, IdOrigen FROM dbo.vw_MovimientosCuenta_Base "
-        "WHERE IdContacto = ? ORDER BY Fecha, Origen, IdOrigen", (id_contacto,))
-    compras = {int(c["id"]): {"moneda": c["moneda"], "tc": c["tc"], "ajusta": bool(c["ajusta"])} for c in fetch_all(
-        "SELECT IdDeuda AS id, Moneda AS moneda, [Tipo de Cambio] AS tc, [Ajusta Tipo Cambio] AS ajusta FROM dbo.Compras WHERE IdContacto = ?", (id_contacto,))}
-    return construir(filas, compras, cotizacion_bna())
+_VISTA: dict = {"t": 0.0, "filas": None, "compras": None}
+TTL_VISTA = 120
 
 
-def cargar_cuentas(ids: list[int]) -> dict[int, dict]:
-    """Varias cuentas con una sola lectura de la vista (la vista es lenta: una consulta por cuenta tardaba medio segundo cada una)."""
+def invalidar() -> None:
+    _VISTA["filas"] = None
+
+
+def _vista_en_memoria(refrescar: bool = False) -> tuple[dict[int, list], dict[int, dict]]:
+    """La vista completa y las compras, una sola vez cada 2 minutos: leer la vista de un contacto tarda ~1 s y la completa ~0,4 s."""
+    import time
     from collections import defaultdict
 
     from src.db.connection import fetch_all
 
+    if refrescar or _VISTA["filas"] is None or time.time() - _VISTA["t"] > TTL_VISTA:
+        por_contacto: dict[int, list] = defaultdict(list)
+        for f in fetch_all(
+                "SELECT IdContacto, Fecha, Documento, [Nro Documento], Deuda, Credito, Origen, IdOrigen FROM dbo.vw_MovimientosCuenta_Base "
+                "WHERE IdContacto IS NOT NULL ORDER BY IdContacto, Fecha, Origen, IdOrigen", ()):
+            por_contacto[f["IdContacto"]].append(f)
+        compras = {int(c["id"]): {"moneda": c["moneda"], "tc": c["tc"], "ajusta": bool(c["ajusta"])} for c in fetch_all(
+            "SELECT IdDeuda AS id, Moneda AS moneda, [Tipo de Cambio] AS tc, [Ajusta Tipo Cambio] AS ajusta FROM dbo.Compras", ())}
+        _VISTA.update(t=time.time(), filas=dict(por_contacto), compras=compras)
+    return _VISTA["filas"], _VISTA["compras"]
+
+
+def cargar_cuenta(id_contacto: int, refrescar: bool = False) -> dict:
+    """La cuenta de la vista con el criterio bimonetario (solo lectura, desde la copia en memoria)."""
+    filas, compras = _vista_en_memoria(refrescar)
+    return construir(filas.get(id_contacto, []), compras, cotizacion_bna())
+
+
+def cargar_cuentas(ids: list[int]) -> dict[int, dict]:
+    """Varias cuentas con el mismo criterio."""
     if not ids:
         return {}
-    marcas = ",".join("?" * len(ids))
-    filas = fetch_all(
-        "SELECT IdContacto, Fecha, Documento, [Nro Documento], Deuda, Credito, Origen, IdOrigen FROM dbo.vw_MovimientosCuenta_Base "
-        f"WHERE IdContacto IN ({marcas}) ORDER BY IdContacto, Fecha, Origen, IdOrigen", tuple(ids))
-    por_contacto: dict[int, list] = defaultdict(list)
-    for f in filas:
-        por_contacto[f["IdContacto"]].append(f)
-    compras: dict[int, dict] = {}
-    for c in fetch_all(
-            f"SELECT IdDeuda AS id, Moneda AS moneda, [Tipo de Cambio] AS tc, [Ajusta Tipo Cambio] AS ajusta FROM dbo.Compras WHERE IdContacto IN ({marcas})",
-            tuple(ids)):
-        compras[int(c["id"])] = {"moneda": c["moneda"], "tc": c["tc"], "ajusta": bool(c["ajusta"])}
+    filas, compras = _vista_en_memoria()
     cot = cotizacion_bna()
-    return {i: construir(por_contacto.get(i, []), compras, cot) for i in ids}
+    return {i: construir(filas.get(i, []), compras, cot) for i in ids}
