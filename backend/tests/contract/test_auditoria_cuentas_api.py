@@ -212,3 +212,12 @@ async def test_asignacion_de_contacto_validaciones_sin_escribir():
     assert (await _enviar("POST", url, json={"items": [], "idContacto": 61, "motivo": "x"})).status_code == 422
     assert (await _enviar("POST", url, json={"items": [{"medio": "bna", "idMovimiento": lista[0]["idMovimiento"]}], "idContacto": 61, "motivo": " "})).status_code == 422
     assert (await _enviar("POST", url, json={"items": [{"medio": "bna", "idMovimiento": 1}], "idContacto": 99999999, "motivo": "x"})).status_code == 404
+
+
+@pytest.mark.anyio
+async def test_plan_del_fifo_por_tandas_y_validaciones():
+    p = (await _get("/api/auditoria-cuentas/fifo/plan")).json()
+    assert p["base"]["resumen"]["contactos"] > 400 and p["tandas"] and p["excepciones"]
+    assert all(t["estado"] in ("pendiente", "parcial", "aplicada") for t in p["tandas"])
+    assert (await _enviar("POST", "/api/auditoria-cuentas/fifo/tandas/simular", json={"contactos": []})).status_code in (403, 422)
+    assert (await _enviar("POST", "/api/auditoria-cuentas/fifo/tandas/99999999/aplicar", json={"contactos": [1]})).status_code in (403, 404)

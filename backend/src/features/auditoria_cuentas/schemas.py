@@ -259,3 +259,39 @@ class PedidoAsignacion(BaseModel):
     items: list[ItemMovimiento]
     idContacto: int
     motivo: str
+
+
+class PedidoTanda(BaseModel):
+    contactos: list[int]
+
+
+class ContactoTanda(BaseModel):
+    idContacto: int
+    nombre: str | None = None
+    moneda: str
+    volumen: float
+    saldo: float
+
+
+class Tanda(BaseModel):
+    numero: int
+    rango: str
+    parte: str
+    desde: str | None = None
+    hasta: str | None = None
+    estado: str  # pendiente | parcial | aplicada
+    aplicados: int
+    contactos: list[ContactoTanda]
+
+
+class BaseFifo(BaseModel):
+    idEjecucion: int
+    fecha: datetime | None = None
+    resumen: dict
+
+
+class PlanFifo(BaseModel):
+    base: BaseFifo | None = None
+    yaCierran: int = 0
+    tandas: list[Tanda] = []
+    excepciones: list[ContactoTanda] = []

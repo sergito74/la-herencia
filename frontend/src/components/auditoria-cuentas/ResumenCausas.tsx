@@ -10,6 +10,7 @@ import { fetchResumenAuditoria, type CausaCuenta } from "@/services/auditoriaCue
 import { GrupoExcepciones } from "./GrupoExcepciones";
 import { ParametrosAuditoria } from "./ParametrosAuditoria";
 import { EmpezarRevision } from "./EmpezarRevision";
+import { FifoTandas } from "./FifoTandas";
 import { ReglasConocidas } from "./ReglasConocidas";
 
 export const NOMBRES_CAUSA: Record<CausaCuenta, string> = {
@@ -77,6 +78,7 @@ export function ResumenCausas() {
         <ul className="divide-y divide-line">{resto.map(fila)}</ul>
       </section>
       <EmpezarRevision />
+      <FifoTandas />
       <ReglasConocidas />
       <ParametrosAuditoria parametros={data.parametros} />
     </div>

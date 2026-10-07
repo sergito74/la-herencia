@@ -9,10 +9,12 @@ from src.db.connection import fetch_all, fetch_one
 import time
 
 from src.features.cuentas_corrientes import origen_resolver
-from src.features.auditoria_cuentas import ajustes, asignacion, bimonetaria, clasificacion, conocidos, correcciones, datos, hallazgos as detectores, parametros, revision
+from src.features.auditoria_cuentas import ajustes, asignacion, bimonetaria, fifo_plan, clasificacion, conocidos, correcciones, datos, hallazgos as detectores, parametros, revision
 from src.features.auditoria_cuentas.schemas import (
     AltaConocido,
     CambioRevision,
+    PedidoTanda,
+    PlanFifo,
     MovimientoSinContacto,
     PedidoAsignacion,
     MovimientosRevision,
@@ -410,5 +412,57 @@ async def asignar_contacto(body: PedidoAsignacion, request: Request) -> dict:
     res = await _escribir(asignacion.asignar, [i.model_dump() for i in body.items], body.idContacto, body.motivo, usuario)
     await run_in_threadpool(revision.registrar, body.idContacto, "asignar-movimientos",
                             {"idCorreccion": res["idCorreccion"], "movimientos": res["movimientos"], "motivo": body.motivo}, usuario)
+    invalidar_cache()
+    return res
+
+
+# ---- FIFO de todos los contactos por tandas ----
+
+@router.get("/fifo/plan", response_model=PlanFifo)
+async def fifo_plan_endpoint() -> dict:
+    return await run_in_threadpool(fifo_plan.plan)
+
+
+@router.post("/fifo/tandas/simular", status_code=201)
+async def fifo_simular_tanda(body: PedidoTanda, request: Request) -> dict:
+    from src.features.recalculo_fifo import ejecuciones as fifo
+
+    _admin(request)
+    if not body.contactos or len(body.contactos) > fifo_plan.TAMANO_TANDA * 2:
+        raise HTTPException(status_code=422, detail="La tanda está vacía o es demasiado grande")
+    try:
+        return await run_in_threadpool(fifo.simular, sorted(set(body.contactos)), _usuario_actual(request))
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+
+@router.post("/fifo/tandas/{id_ejecucion}/aplicar")
+async def fifo_aplicar_tanda(id_ejecucion: int, body: PedidoTanda, request: Request) -> dict:
+    from src.features.recalculo_fifo import ejecuciones as fifo
+
+    _admin(request)
+    try:
+        res = await run_in_threadpool(fifo.aplicar, id_ejecucion, sorted(set(body.contactos)), False, _usuario_actual(request))
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=f"No existe la ejecución {id_ejecucion}") from exc
+    except fifo.Conflicto as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    except (fifo.RequiereConfirmacion, ValueError) as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    invalidar_cache()
+    return res
+
+
+@router.post("/fifo/tandas/{id_ejecucion}/revertir")
+async def fifo_revertir_tanda(id_ejecucion: int, request: Request) -> dict:
+    from src.features.recalculo_fifo import ejecuciones as fifo
+
+    _admin(request)
+    try:
+        res = await run_in_threadpool(fifo.revertir, id_ejecucion, _usuario_actual(request))
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=f"No existe la ejecución {id_ejecucion}") from exc
+    except fifo.Conflicto as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
     invalidar_cache()
     return res

@@ -337,3 +337,47 @@ export function asignarContacto(
 ): Promise<{ idCorreccion: number; movimientos: number; contacto: string }> {
   return apiPost("/api/auditoria-cuentas/movimientos-sin-contacto/asignar", { items, idContacto, motivo });
 }
+
+// ---- FIFO de todos los contactos por tandas -----------------------------------------
+
+export interface ContactoTanda {
+  idContacto: number;
+  nombre: string | null;
+  moneda: string;
+  volumen: number;
+  saldo: number;
+}
+
+export interface Tanda {
+  numero: number;
+  rango: string;
+  parte: string;
+  desde: string | null;
+  hasta: string | null;
+  estado: "pendiente" | "parcial" | "aplicada";
+  aplicados: number;
+  contactos: ContactoTanda[];
+}
+
+export interface PlanFifo {
+  base: { idEjecucion: number; fecha: string | null; resumen: Record<string, number> } | null;
+  yaCierran: number;
+  tandas: Tanda[];
+  excepciones: ContactoTanda[];
+}
+
+export function fetchPlanFifo(): Promise<PlanFifo> {
+  return apiGet<PlanFifo>("/api/auditoria-cuentas/fifo/plan");
+}
+
+export function simularTanda(contactos: number[]): Promise<{ idEjecucion: number; resumen: Record<string, number> }> {
+  return apiPost("/api/auditoria-cuentas/fifo/tandas/simular", { contactos });
+}
+
+export function aplicarTanda(idEjecucion: number, contactos: number[]): Promise<{ aplicados: number[]; sinCambios: number[]; backup: string }> {
+  return apiPost(`/api/auditoria-cuentas/fifo/tandas/${idEjecucion}/aplicar`, { contactos });
+}
+
+export function revertirTanda(idEjecucion: number): Promise<unknown> {
+  return apiPost(`/api/auditoria-cuentas/fifo/tandas/${idEjecucion}/revertir`, {});
+}
