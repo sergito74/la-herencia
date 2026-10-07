@@ -6,6 +6,8 @@ Un mismo mecanismo para todas las cuentas y todos los movimientos, sin umbral de
     explicado (impuestos del banco, fondos propios, ...), de cualquier monto.
   * `cuenta`: Sergio documenta la diferencia de una cuenta con el Access (con su motivo); mientras la diferencia
     siga siendo la documentada deja de contar como excepción, y si cambia vuelve a aparecer.
+  * `tc-pactado`: el proveedor factura en dólares a un tipo de cambio pactado (la clave es el contacto): sus pagos
+    en pesos se pasan a dólares con el tipo de cambio de las facturas y no con el dólar BNA, sin diferencia de cambio.
 
 Nada se borra: dar de baja una regla la marca inactiva con usuario y fecha.
 """
@@ -14,7 +16,7 @@ from __future__ import annotations
 
 from src.db.connection import execute_insert_returning_id, execute_write, fetch_all, fetch_one
 
-TIPOS = ("concepto-movimiento", "cuenta")
+TIPOS = ("concepto-movimiento", "cuenta", "tc-pactado")
 
 
 class ConocidoError(Exception):
@@ -47,7 +49,7 @@ def crear(tipo: str, clave: str, motivo: str, importe_ref: float | None, usuario
     else:
         if not clave.isdigit():
             raise ConocidoError(422, "La cuenta debe ser un número de contacto")
-        if importe_ref is None:
+        if tipo == "cuenta" and importe_ref is None:
             raise ConocidoError(422, "Falta la diferencia que se documenta")
     if fetch_one("SELECT 1 AS x FROM dbo.AuditoriaConocidos WHERE Activo = 1 AND Tipo = ? AND Clave = ?", (tipo, clave)):
         raise ConocidoError(409, "Ya existe una regla igual")

@@ -29,7 +29,7 @@ from src.db.connection import execute_write_transaction, fetch_all
 CARPETA = Path(r"C:\Users\Sergio\Documents\La Herencia\Administracion y gestion\Personal\Recibos")
 
 EMPLEADOS = {  # nombre en el archivo (sin espacios, minúsculas) → IdContacto
-    "armandomori": 376, "irmamiranda": 46, "marcelosierra": 374, "sergiogiamberardini": 375, "diegopardo": 632,
+    "armandomori": 376, "irmamiranda": 46, "marcelosierra": 374, "sergiogiamberardini": 375, "diegopardo": 632, "pardodiego": 632,
     "albertogorosito": 519, "francorodriguez": 379,
 }
 

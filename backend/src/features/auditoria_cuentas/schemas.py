@@ -232,6 +232,7 @@ class MovimientosRevision(BaseModel):
     bimonetaria: bool
     gobierna: str  # Pesos | Dolares | Mixta
     saldoGobierna: float
+    tcPactado: bool = False
     avisos: list[str]
 
 

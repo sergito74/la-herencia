@@ -102,3 +102,23 @@ def test_tolerancia_en_dolares_es_el_mayor_entre_un_dolar_y_el_medio_por_ciento(
     chica = b.construir([_fila(date(2021, 8, 1), "Factura", "F", 100.0, 0, "Compras", 1)], {1: {"moneda": "Dolares", "tc": 100.0, "ajusta": False}}, b.CotizacionBNA(SERIE))
     grande = b.construir([_fila(date(2021, 8, 1), "Factura", "F", 5251.42, 0, "Compras", 1)], {1: {"moneda": "Dolares", "tc": 95.0, "ajusta": False}}, b.CotizacionBNA(SERIE))
     assert chica["toleranciaDolares"] == 1.0 and grande["toleranciaDolares"] == 26.26
+
+
+def test_tc_pactado_pasa_los_pagos_a_dolares_con_el_tipo_de_cambio_de_la_factura():
+    """Seguros Galicia: US$ 1.795,54 a $ 1.200 pagados con $ 2.154.648. Sin declarar el tipo de cambio pactado se usa el dólar BNA
+    (diferencia de cambio); declarado por Sergio no hay diferencia. Nunca se deduce solo: el caso Palaversich tiene la misma forma."""
+    serie = {date(2024, 9, 10): 960.0}
+    filas = [_fila(date(2024, 9, 16), "Factura", "F", 1795.54, 0, "Compras", 1), _fila(date(2024, 9, 16), "Tarjeta", "T", 0, 2154648.0, "Tarjetas", 5)]
+    compras = {1: {"moneda": "Dolares", "tc": 1200.0, "ajusta": False}}
+    sin = b.construir(filas, compras, b.CotizacionBNA(serie))
+    con = b.construir(filas, compras, b.CotizacionBNA(serie), None, True)
+    assert sin["tcPactado"] is False and abs(sin["saldoDolares"] - (-1795.54 + 2154648.0 / 960.0)) < 0.02
+    assert con["tcPactado"] is True and abs(con["saldoDolares"]) < 0.01 and con["saldoGobierna"] == con["saldoDolares"]
+    assert con["saldoPesos"] == sin["saldoPesos"]  # el saldo en pesos no cambia
+
+
+def test_tc_pactado_no_aplica_si_la_cuenta_tiene_documentos_en_pesos():
+    filas = [_fila(date(2021, 8, 1), "Factura", "F1", 10.0, 0, "Compras", 1), _fila(date(2021, 8, 1), "Factura", "F2", 1000.0, 0, "Compras", 2)]
+    compras = {1: {"moneda": "Dolares", "tc": 100.0, "ajusta": False}, 2: {"moneda": "Pesos", "tc": 1.0, "ajusta": False}}
+    r = b.construir(filas, compras, b.CotizacionBNA(SERIE), None, True)
+    assert r["gobierna"] == "Mixta" and r["tcPactado"] is False

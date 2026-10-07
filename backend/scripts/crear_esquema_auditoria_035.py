@@ -82,7 +82,7 @@ DDL = [
     IF OBJECT_ID('dbo.AuditoriaConocidos', 'U') IS NULL
     CREATE TABLE dbo.AuditoriaConocidos (
         IdConocido int IDENTITY(1,1) NOT NULL CONSTRAINT PK_AuditoriaConocidos PRIMARY KEY,
-        Tipo varchar(30) NOT NULL CONSTRAINT CK_AuditoriaConocidos_Tipo CHECK (Tipo IN ('concepto-movimiento', 'cuenta')),
+        Tipo varchar(30) NOT NULL CONSTRAINT CK_AuditoriaConocidos_Tipo CHECK (Tipo IN ('concepto-movimiento', 'cuenta', 'tc-pactado')),
         Clave varchar(200) NOT NULL,
         ImporteRef money NULL,
         Motivo varchar(300) NOT NULL,

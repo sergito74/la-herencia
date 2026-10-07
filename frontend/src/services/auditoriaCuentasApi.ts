@@ -123,7 +123,7 @@ export interface ConceptoSinContacto {
 
 export interface Conocido {
   idConocido: number;
-  tipo: "concepto-movimiento" | "cuenta";
+  tipo: "concepto-movimiento" | "cuenta" | "tc-pactado";
   clave: string;
   importeRef: number | null;
   motivo: string;
@@ -277,6 +277,8 @@ export interface MovimientosRevision {
   /** Moneda que gobierna: Dolares si todos sus documentos están en dólares, Pesos si ninguno, Mixta si tiene de las dos. */
   gobierna: "Pesos" | "Dolares" | "Mixta";
   saldoGobierna: number;
+  /** Sergio declaró un tipo de cambio pactado: los pagos en pesos se pasan a dólares al tipo de cambio de las facturas. */
+  tcPactado?: boolean;
   avisos: string[];
 }
 

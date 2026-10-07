@@ -88,6 +88,7 @@ def _con_criterio_bimonetario(cuentas: list[dict]) -> None:
             r = todas[c["idContacto"]]
             c["saldoPesos"], c["saldoDolares"], c["gobierna"] = r["saldoPesos"], r["saldoDolares"], r["gobierna"]
             c["saldoRevision"] = r["saldoGobierna"]
+            c["tcPactado"] = r.get("tcPactado", False)
             c["toleranciaRevision"] = r["toleranciaDolares"] if r["gobierna"] == "Dolares" else None
 
 
@@ -335,7 +336,7 @@ async def movimientos_de_cuenta(id_contacto: int, page: int = Query(default=1, g
     items = await run_in_threadpool(_resolver)
     return {"items": items, "total": len(filas), "page": page, "pageSize": pageSize, "saldoPesos": cuenta["saldoPesos"],
             "saldoDolares": cuenta["saldoDolares"], "tieneDolares": cuenta["tieneDolares"], "bimonetaria": cuenta["bimonetaria"],
-            "gobierna": cuenta["gobierna"], "saldoGobierna": cuenta["saldoGobierna"],
+            "gobierna": cuenta["gobierna"], "saldoGobierna": cuenta["saldoGobierna"], "tcPactado": cuenta.get("tcPactado", False),
             "avisos": cuenta["avisos"]}
 
 

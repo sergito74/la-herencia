@@ -70,7 +70,7 @@ export function ReglasConocidas() {
         {lista.map((k) => (
           <li key={k.idConocido} className="flex items-center gap-2 py-1">
             <span>
-              {k.tipo === "cuenta" ? `Cuenta ${k.clave}` : `Concepto «${k.clave}»`} — {k.motivo}
+              {k.tipo === "cuenta" ? `Cuenta ${k.clave}` : k.tipo === "tc-pactado" ? `Cuenta ${k.clave}: tipo de cambio pactado` : `Concepto «${k.clave}»`} — {k.motivo}
               {k.importeRef != null && ` (diferencia documentada ${formatMoneda(k.importeRef)})`}
             </span>
             <SoloLectura>

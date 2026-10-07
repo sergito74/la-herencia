@@ -81,10 +81,15 @@ export function RevisionCuenta({ idContacto }: { idContacto: number }) {
               )}
             </p>
           )}
-          {movs.data?.gobierna === "Dolares" && (
+          {movs.data?.gobierna === "Dolares" && !movs.data.tcPactado && (
             <p className="text-xs text-ink-secondary">
               Este proveedor emite sus documentos en dólares: gobierna el dólar. Cada pago en pesos se pasa a dólares con el dólar BNA del día anterior; si el proveedor
               aceptó el pago en pesos al tipo de cambio de su factura, la diferencia que quede es diferencia de cambio y se cierra con una nota de ajuste.
+            </p>
+          )}
+          {movs.data?.gobierna === "Dolares" && movs.data.tcPactado && (
+            <p className="text-xs text-ink-secondary">
+              Este proveedor emite sus documentos en dólares a un tipo de cambio pactado: cada pago en pesos se pasa a dólares con el tipo de cambio de sus facturas, así que no hay diferencia de cambio.
             </p>
           )}
           {movs.data?.gobierna === "Mixta" && (
