@@ -44,14 +44,17 @@ function UnaTanda({ tanda }: { tanda: Tanda }) {
         )}
       </div>
       {abierta && (
-        <ul className="mt-1 columns-2 gap-4">
-          {tanda.contactos.map((c) => (
-            <li key={c.idContacto}>
-              <Link className="text-finance underline" href={`/finanzas/auditoria-cuentas/cuenta/${c.idContacto}`}>{c.nombre ?? c.idContacto}</Link>{" "}
-              <span className="text-ink-secondary">{formatMoneda(c.volumen, c.moneda === "ARS" ? "Pesos" : "Dolares")}</span>
-            </li>
-          ))}
-        </ul>
+        <div>
+          <p className="mt-1 text-ink-secondary">Los importes son el volumen de cada cuenta en pesos (facturado más pagado; los documentos en dólares, al tipo de cambio de su factura).</p>
+          <ul className="mt-1 columns-2 gap-4">
+            {tanda.contactos.map((c) => (
+              <li key={c.idContacto}>
+                <Link className="text-finance underline" href={`/finanzas/auditoria-cuentas/cuenta/${c.idContacto}`}>{c.nombre ?? c.idContacto}</Link>{" "}
+                <span className="text-ink-secondary">{formatMoneda(c.volumen)}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
       )}
       {error && <p role="alert" className="mt-1 text-status-danger">{error}</p>}
       {r && (
@@ -103,7 +106,7 @@ export function FifoTandas() {
           {data.excepciones.map((c) => (
             <li key={c.idContacto}>
               <Link className="text-finance underline" href={`/finanzas/auditoria-cuentas/cuenta/${c.idContacto}`}>{c.nombre ?? c.idContacto}</Link>{" "}
-              <span className="text-ink-secondary">{formatMoneda(c.volumen, c.moneda === "ARS" ? "Pesos" : "Dolares")}</span>
+              <span className="text-ink-secondary">{formatMoneda(c.volumen)}</span>
             </li>
           ))}
         </ul>
