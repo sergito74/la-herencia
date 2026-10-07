@@ -150,3 +150,25 @@ async def test_correcciones_validaciones_sin_escribir():
     assert (await _enviar("POST", f"{base}/nota-ajuste", json={"tipo": "otro", "fecha": "2026-01-01", "importe": 10, "motivo": "x"})).status_code == 422
     assert (await _enviar("POST", f"{base}/nota-ajuste", json={"tipo": "debito", "fecha": "2026-01-01", "importe": 0, "motivo": "x"})).status_code == 422
     assert (await _get(f"{base}/correcciones")).status_code == 200
+
+
+@pytest.mark.anyio
+async def test_movimientos_de_revision_muestran_cada_documento_en_su_moneda():
+    r = (await _get("/api/auditoria-cuentas/cuentas/454/movimientos")).json()
+    assert r["tieneDolares"] and abs(r["saldoPesos"]) < 1.0 and r["total"] == 2
+    assert r["gobierna"] == "Dolares" and r["saldoGobierna"] == r["saldoDolares"] and abs(r["saldoGobierna"]) < 1.0
+    pago = next(x for x in r["items"] if x["origenTipo"] != "Compras")
+    factura = next(x for x in r["items"] if x["origenTipo"] == "Compras")
+    assert pago["moneda"] == "Pesos" and pago["creditoPesos"] == 20952.45
+    assert factura["moneda"] == "Dolares" and factura["tipoDeCambio"] == 96.69 and abs(factura["deudaPesos"] - 20952.45) < 0.01
+    # una cuenta solo en pesos no cambia
+    p = (await _get("/api/auditoria-cuentas/cuentas/12/movimientos?pageSize=5")).json()
+    assert not p["tieneDolares"] and len(p["items"]) <= 5
+
+
+@pytest.mark.anyio
+async def test_revision_de_una_cuenta_en_dolares_usa_la_moneda_que_gobierna():
+    r = (await _get("/api/auditoria-cuentas/cuentas/454/revision")).json()
+    assert r["gobierna"] == "Dolares" and abs(r["saldo"]) < 1.0
+    m = (await _get("/api/auditoria-cuentas/cuentas/61/movimientos?pageSize=1")).json()
+    assert m["gobierna"] == "Mixta"

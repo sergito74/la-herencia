@@ -4,6 +4,7 @@
  */
 
 import { apiDelete, apiGet, apiPost, apiPut } from "@/services/apiClient";
+import type { Origen } from "@/services/cuentasCorrientesApi";
 
 export type CausaCuenta =
   | "coincide"
@@ -170,6 +171,7 @@ export interface RevisionCuenta {
   razonSocial: string | null;
   moneda: string;
   saldo: number;
+  gobierna?: "Pesos" | "Dolares" | "Mixta";
   saldoEsperado: "cero" | "puede-tener-saldo" | null;
   estado: EstadoRevision;
   fechaRevision: string | null;
@@ -230,4 +232,44 @@ export function cargarNotaAjuste(
   nota: { tipo: "debito" | "credito"; fecha: string; importe: number; moneda: "Pesos" | "Dolares"; tipoDeCambio?: number; motivo: string }
 ): Promise<{ idCompra: number }> {
   return apiPost(`/api/auditoria-cuentas/cuentas/${idContacto}/nota-ajuste`, nota);
+}
+
+// ---- Movimientos con un solo criterio de moneda -----------------------------------
+
+export interface MovimientoRevision {
+  fecha: string | null;
+  documento: string | null;
+  numeroDocumento: string | null;
+  /** Moneda del documento. Los pagos y cobros son siempre en pesos. */
+  moneda: "Pesos" | "Dolares";
+  deudaOriginal: number;
+  creditoOriginal: number;
+  tipoDeCambio: number | null;
+  tcEstimado: boolean;
+  deudaPesos: number;
+  creditoPesos: number;
+  saldoPesos: number;
+  saldoDolares: number;
+  origen: Origen;
+  origenTipo: string | null;
+  idOrigen: number | null;
+}
+
+export interface MovimientosRevision {
+  items: MovimientoRevision[];
+  total: number;
+  page: number;
+  pageSize: number;
+  saldoPesos: number;
+  saldoDolares: number;
+  tieneDolares: boolean;
+  bimonetaria: boolean;
+  /** Moneda que gobierna: Dolares si todos sus documentos están en dólares, Pesos si ninguno, Mixta si tiene de las dos. */
+  gobierna: "Pesos" | "Dolares" | "Mixta";
+  saldoGobierna: number;
+  avisos: string[];
+}
+
+export function fetchMovimientosRevision(idContacto: number, page: number, pageSize = 100): Promise<MovimientosRevision> {
+  return apiGet<MovimientosRevision>(`/api/auditoria-cuentas/cuentas/${idContacto}/movimientos`, { page, pageSize });
 }

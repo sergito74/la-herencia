@@ -20,9 +20,9 @@ const assert=require('node:assert/strict');
   if(path==='/api/auditoria-cuentas/cuentas/7/comprobantes')return json({'100':'04 2026 - 03 2027\\a.pdf#04 2026 - 03 2027\\a.pdf#'});
   if(path==='/api/auditoria-cuentas/cuentas/7/correcciones')return json([]);
   if(path==='/api/auditoria-cuentas/cuentas/7/anular-aplicaciones'){const b=req.postDataJSON();anulaciones.push(b);anuladas=true;return json({idCorreccion:1,aplicaciones:b.idsAplicacion.length,importe:5000},201);}
-  if(path==='/api/cuentas-corrientes/contactos/7/movimientos')return json({page:1,pageSize:100,total:2,items:[
-   {fecha:'2026-09-01',documento:'Factura',numeroDocumento:'0001-1',deuda:1500,credito:0,saldoParcial:-1500,origen:{tipo:'compra',idCompra:100,numeroDocumento:'0001-1',proveedor:'Agroneyer'},origenTipo:'Compras',idOrigen:100},
-   {fecha:'2026-08-01',documento:'Pago',numeroDocumento:null,deuda:0,credito:500,saldoParcial:0,origen:{tipo:'tesoreria',medio:'galicia',idMovimiento:3240},origenTipo:'Galicia',idOrigen:3240}]});
+  if(path==='/api/auditoria-cuentas/cuentas/7/movimientos')return json({page:1,pageSize:100,total:2,saldoPesos:-1500,saldoDolares:-1.2,tieneDolares:true,bimonetaria:true,gobierna:'Mixta',saldoGobierna:-1500,avisos:[],items:[
+   {fecha:'2026-09-01',documento:'Factura',numeroDocumento:'0001-1',moneda:'Dolares',deudaOriginal:15,creditoOriginal:0,tipoDeCambio:100,tcEstimado:false,deudaPesos:1500,creditoPesos:0,saldoPesos:-1500,saldoDolares:-15,origen:{tipo:'compra',idCompra:100,numeroDocumento:'0001-1',proveedor:'Agroneyer'},origenTipo:'Compras',idOrigen:100},
+   {fecha:'2026-08-01',documento:'Pago',numeroDocumento:null,moneda:'Pesos',deudaOriginal:0,creditoOriginal:500,tipoDeCambio:null,tcEstimado:false,deudaPesos:0,creditoPesos:500,saldoPesos:0,saldoDolares:-9,origen:{tipo:'tesoreria',medio:'galicia',idMovimiento:3240},origenTipo:'Galicia',idOrigen:3240}]});
   return json({items:[],total:0});
  });
  await page.goto('http://127.0.0.1:3100/finanzas/auditoria-cuentas/cuenta/7');
@@ -31,7 +31,10 @@ const assert=require('node:assert/strict');
  await page.getByText('Hay pagos aplicados a facturas de hace mucho tiempo').first().waitFor();
  // movimientos con saldo acumulado y enlace al comprobante
  const filas=await page.locator('tbody tr').allInnerTexts();
- assert.ok(filas.some(f=>/0001-1/.test(f)&&/1\.500/.test(f)));
+ assert.ok(filas.some(f=>/0001-1/.test(f)&&/1\.500/.test(f)&&/TC/.test(f)));
+ assert.ok(filas.some(f=>/Pago/.test(f)&&/500/.test(f)&&!/TC/.test(f)));
+ await page.getByText(/En dólares/).first().waitFor();
+ await page.getByText(/cada documento gobierna en su moneda/).waitFor();
  const pdf=await page.getByRole('link',{name:'Abrir PDF'}).first().getAttribute('href');
  assert.match(pdf,/a\.pdf/);
  // pasar a la siguiente

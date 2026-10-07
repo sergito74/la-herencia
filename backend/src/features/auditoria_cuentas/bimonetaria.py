@@ -1,0 +1,136 @@
+"""Cuentas con documentos en dólares y en pesos: un solo criterio — 035 (Historia 0, FR-024).
+
+La vista compartida `vw_MovimientosCuenta_Base` guarda cada documento en su moneda de origen: una factura en
+dólares figura por su importe en dólares y un pago bancario por su importe en pesos, y el saldo suma ambos como
+si fueran lo mismo. Para las cuentas con documentos en dólares esta capa (solo lectura, no toca la vista) muestra:
+
+  * el saldo en PESOS: cada documento en dólares se pesifica con el tipo de cambio de su factura
+    (`Compras.[Tipo de Cambio]`); los pagos, que son siempre en pesos, quedan como están. Es el mismo criterio
+    que usa el recálculo FIFO. Con él, una factura de US$ 216,70 a $ 96,69 queda en $ 20.952,45 y un pago de
+    $ 20.952,45 la cierra.
+  * un saldo en DÓLARES informativo: los documentos en dólares tal cual y cada importe en pesos dividido por el
+    dólar BNA vendedor divisa del día anterior (decisión del 01/10/2026 para pagos en pesos de documentos en
+    dólares). La diferencia entre ambos saldos es diferencia de cambio.
+"""
+
+from __future__ import annotations
+
+from bisect import bisect_left
+from datetime import date, datetime
+
+DOLARES = "Dolares"
+
+
+def _dia(valor) -> date | None:
+    if valor is None:
+        return None
+    if isinstance(valor, datetime):
+        return valor.date()
+    if isinstance(valor, date):
+        return valor
+    return datetime.fromisoformat(str(valor)[:19]).date()
+
+
+class CotizacionBNA:
+    """Dólar BNA vendedor divisa por día (tabla `Dolar BNA`). `dia_anterior(f)` es la cotización más reciente anterior a `f`."""
+
+    def __init__(self, serie: dict[date, float]):
+        self._fechas = sorted(serie)
+        self._valores = [serie[f] for f in self._fechas]
+
+    def dia_anterior(self, fecha: date | None) -> float | None:
+        if fecha is None or not self._fechas:
+            return None
+        i = bisect_left(self._fechas, fecha)  # primera fecha >= fecha: la anterior es i-1
+        return self._valores[i - 1] if i > 0 else None
+
+
+def tiene_documentos_en_dolares(compras: dict[int, dict]) -> bool:
+    return any(c.get("moneda") == DOLARES for c in compras.values())
+
+
+def moneda_que_gobierna(filas: list[dict], compras: dict[int, dict]) -> str:
+    """Moneda que gobierna la cuenta según cómo emite sus documentos el proveedor (decisión de Sergio, 07/10/2026).
+
+    `Dolares` si todos sus documentos están en dólares, `Pesos` si ninguno lo está y `Mixta` si tiene de las dos
+    (en ese caso cada documento gobierna en su moneda y, para separar los pagos por moneda, hace falta que el FIFO
+    haya asignado cada pago a su documento). Las notas de ajuste de tipo de cambio no cuentan como documentos en pesos.
+    """
+    en_dolares = en_pesos = False
+    for f in filas:
+        if f["Origen"] != "Compras":
+            continue
+        c = compras.get(int(f["IdOrigen"]), {})
+        if c.get("moneda") == DOLARES:
+            en_dolares = True
+        elif not c.get("ajusta"):
+            en_pesos = True
+    if en_dolares and not en_pesos:
+        return DOLARES
+    return "Mixta" if en_dolares else "Pesos"
+
+
+def construir(filas: list[dict], compras: dict[int, dict], cotizacion: CotizacionBNA) -> dict:
+    """Movimientos de una cuenta con su moneda, importes en pesos, saldo acumulado en pesos y en dólares.
+
+    `filas`: filas de la vista ya ordenadas por (Fecha, Origen, IdOrigen) con Fecha, Documento, Nro Documento,
+    Deuda, Credito, Origen, IdOrigen. `compras`: IdDeuda -> {moneda, tc} de los renglones `Compras`.
+    """
+    saldo_pesos = saldo_dolares = 0.0
+    salida, avisos = [], []
+    for f in filas:
+        deuda, credito = float(f["Deuda"] or 0), float(f["Credito"] or 0)
+        fecha = _dia(f["Fecha"])
+        compra = compras.get(int(f["IdOrigen"])) if f["Origen"] == "Compras" else None
+        en_dolares = bool(compra and compra.get("moneda") == DOLARES)
+        tc_dia = cotizacion.dia_anterior(fecha)
+        fila = {"fecha": fecha, "documento": f["Documento"], "numeroDocumento": f["Nro Documento"], "origenTipo": f["Origen"],
+                "idOrigen": int(f["IdOrigen"]), "moneda": DOLARES if en_dolares else "Pesos", "deudaOriginal": deuda, "creditoOriginal": credito,
+                "tipoDeCambio": None, "tcEstimado": False}
+        if en_dolares:
+            tc = float(compra["tc"]) if (compra.get("tc") or 0) > 1 else None
+            if tc is None:
+                tc, fila["tcEstimado"] = tc_dia, True
+                avisos.append(f"El documento {f['Nro Documento']} está en dólares y no tiene tipo de cambio: se usó el dólar BNA del día anterior"
+                              if tc_dia else f"El documento {f['Nro Documento']} está en dólares y no tiene tipo de cambio")
+            fila["tipoDeCambio"] = tc
+            deuda_p, credito_p = (round(deuda * tc, 2), round(credito * tc, 2)) if tc else (0.0, 0.0)
+            deuda_d, credito_d = deuda, credito
+        else:
+            deuda_p, credito_p = deuda, credito
+            deuda_d, credito_d = (round(deuda / tc_dia, 4), round(credito / tc_dia, 4)) if tc_dia else (0.0, 0.0)
+        saldo_pesos = round(saldo_pesos + credito_p - deuda_p, 4)
+        saldo_dolares = round(saldo_dolares + credito_d - deuda_d, 4)
+        fila.update(deudaPesos=deuda_p, creditoPesos=credito_p, saldoPesos=round(saldo_pesos, 2), saldoDolares=round(saldo_dolares, 2))
+        salida.append(fila)
+    gobierna = moneda_que_gobierna(filas, compras)
+    return {"filas": salida, "saldoPesos": round(saldo_pesos, 2), "saldoDolares": round(saldo_dolares, 2), "gobierna": gobierna,
+            "saldoGobierna": round(saldo_dolares if gobierna == DOLARES else saldo_pesos, 2),
+            "bimonetaria": any(x["moneda"] == DOLARES for x in salida)
+            and any(x["moneda"] == "Pesos" and x["origenTipo"] == "Compras" and x["deudaOriginal"] > 0 for x in salida),
+            "tieneDolares": any(x["moneda"] == DOLARES for x in salida), "avisos": sorted(set(avisos))}
+
+
+_COTIZACION: dict = {"v": None}
+
+
+def cotizacion_bna() -> CotizacionBNA:
+    """Serie del dólar BNA vendedor divisa (se lee una vez por proceso: se completa de a un día)."""
+    from src.db.connection import fetch_all
+
+    if _COTIZACION["v"] is None:
+        _COTIZACION["v"] = CotizacionBNA({_dia(f["f"]): float(f["v"]) for f in fetch_all(
+            "SELECT Fecha AS f, Vend_Divisa AS v FROM dbo.[Dolar BNA] WHERE Vend_Divisa IS NOT NULL", ())})
+    return _COTIZACION["v"]
+
+
+def cargar_cuenta(id_contacto: int) -> dict:
+    """Lee la cuenta de la vista y la deja con el criterio bimonetario (solo lectura)."""
+    from src.db.connection import fetch_all
+
+    filas = fetch_all(
+        "SELECT Fecha, Documento, [Nro Documento], Deuda, Credito, Origen, IdOrigen FROM dbo.vw_MovimientosCuenta_Base "
+        "WHERE IdContacto = ? ORDER BY Fecha, Origen, IdOrigen", (id_contacto,))
+    compras = {int(c["id"]): {"moneda": c["moneda"], "tc": c["tc"], "ajusta": bool(c["ajusta"])} for c in fetch_all(
+        "SELECT IdDeuda AS id, Moneda AS moneda, [Tipo de Cambio] AS tc, [Ajusta Tipo Cambio] AS ajusta FROM dbo.Compras WHERE IdContacto = ?", (id_contacto,))}
+    return construir(filas, compras, cotizacion_bna())

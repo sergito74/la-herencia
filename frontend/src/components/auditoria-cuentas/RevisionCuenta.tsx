@@ -10,9 +10,8 @@ import { ReasignarMovimientoButton } from "@/components/cuentas-corrientes/Reasi
 import { ErrorState, LoadingState } from "@/components/ui/States";
 import { BASE_DOCUMENTOS_COMPRAS, esRutaLocalWindows, urlParaAbrirDocumento } from "@/lib/documentoLocal";
 import { formatFecha, formatMoneda } from "@/lib/format";
-import { fetchComprobantes, fetchRevision, guardarRevision, type EstadoRevision } from "@/services/auditoriaCuentasApi";
+import { fetchComprobantes, fetchMovimientosRevision, fetchRevision, guardarRevision, type EstadoRevision } from "@/services/auditoriaCuentasApi";
 import { HistorialCorrecciones, ImputacionesSospechosas, NotaDeAjuste } from "./CorreccionesCuenta";
-import { fetchMovimientos } from "@/services/cuentasCorrientesApi";
 import { urlDocumentoLocal } from "@/services/comprasApi";
 
 const ESTADOS: Record<EstadoRevision, { texto: string; clase: string }> = {
@@ -32,7 +31,7 @@ export function RevisionCuenta({ idContacto }: { idContacto: number }) {
   const rev = useQuery({ queryKey: ["auditoria-revision", idContacto], queryFn: () => fetchRevision(idContacto) });
   const movs = useQuery({
     queryKey: ["auditoria-movimientos", idContacto, pagina],
-    queryFn: () => fetchMovimientos(idContacto, { page: pagina, pageSize: POR_PAGINA, sortBy: "fecha", sortDir: "desc" }),
+    queryFn: () => fetchMovimientosRevision(idContacto, pagina, POR_PAGINA),
   });
   const comprobantes = useQuery({ queryKey: ["auditoria-comprobantes", idContacto], queryFn: () => fetchComprobantes(idContacto) });
 
@@ -51,8 +50,7 @@ export function RevisionCuenta({ idContacto }: { idContacto: number }) {
   if (rev.isLoading) return <LoadingState />;
   if (rev.isError || !rev.data) return <ErrorState message="No se pudo cargar la cuenta." onRetry={() => rev.refetch()} />;
   const r = rev.data;
-  const moneda = r.moneda === "Dolares" ? "Dolares" : "Pesos";
-  const paginas = Math.max(1, Math.ceil((movs.data?.total ?? 0) / POR_PAGINA));
+    const paginas = Math.max(1, Math.ceil((movs.data?.total ?? 0) / POR_PAGINA));
   const estado = ESTADOS[r.estado];
 
   return (
@@ -60,9 +58,37 @@ export function RevisionCuenta({ idContacto }: { idContacto: number }) {
       <header className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="text-xl font-semibold">{r.razonSocial ?? `Contacto ${r.idContacto}`}</h1>
-          <p className="text-sm">
-            Saldo: <b>{formatMoneda(r.saldo, moneda)}</b> <span className="text-ink-secondary">(crédito menos deuda; negativo = se le debe)</span>
-          </p>
+          {movs.data?.gobierna === "Dolares" ? (
+            <p className="text-sm">
+              Saldo en dólares: <b>{formatMoneda(movs.data.saldoDolares, "Dolares")}</b>{" "}
+              <span className="text-ink-secondary">(crédito menos deuda; negativo = se le debe) · En pesos: {formatMoneda(movs.data.saldoPesos)}</span>
+            </p>
+          ) : (
+            <p className="text-sm">
+              Saldo en pesos: <b>{formatMoneda(movs.data?.saldoPesos ?? r.saldo)}</b>{" "}
+              <span className="text-ink-secondary">(crédito menos deuda; negativo = se le debe)</span>
+              {movs.data?.tieneDolares && (
+                <>
+                  {" "}· En dólares: <b>{formatMoneda(movs.data.saldoDolares, "Dolares")}</b>
+                </>
+              )}
+            </p>
+          )}
+          {movs.data?.gobierna === "Dolares" && (
+            <p className="text-xs text-ink-secondary">
+              Este proveedor emite sus documentos en dólares: gobierna el dólar. Cada pago en pesos se pasa a dólares con el dólar BNA del día anterior; si el proveedor
+              aceptó el pago en pesos al tipo de cambio de su factura, la diferencia que quede es diferencia de cambio y se cierra con una nota de ajuste.
+            </p>
+          )}
+          {movs.data?.gobierna === "Mixta" && (
+            <p className="text-xs text-ink-secondary">
+              Este proveedor tiene documentos en dólares y en pesos: cada documento gobierna en su moneda. Para saber qué pago cubrió cada documento hay que completar el FIFO de esta
+              cuenta; mientras tanto se muestran los dos saldos (en pesos, los documentos en dólares valen lo que decía su factura).
+            </p>
+          )}
+          {movs.data?.avisos.map((a) => (
+            <p key={a} className="text-xs text-status-danger">{a}</p>
+          ))}
           <p className={`text-xs ${estado.clase}`}>
             {estado.texto}
             {r.fechaRevision && ` — ${formatFecha(r.fechaRevision)} por ${r.usuarioRevision ?? "?"}${r.nota ? `: ${r.nota}` : ""}`}
@@ -90,7 +116,7 @@ export function RevisionCuenta({ idContacto }: { idContacto: number }) {
             {r.avisos.map((a, i) => (
               <li key={i}>
                 {a.motivo}
-                {a.importe != null && <b className="ml-2">{formatMoneda(a.importe, moneda)}</b>}
+                {a.importe != null && <b className="ml-2">{formatMoneda(a.importe)}</b>}
               </li>
             ))}
           </ul>
@@ -125,7 +151,7 @@ export function RevisionCuenta({ idContacto }: { idContacto: number }) {
 
       <ImputacionesSospechosas idContacto={idContacto} />
       <div className="flex flex-wrap items-center gap-2">
-        <NotaDeAjuste idContacto={idContacto} moneda={moneda === "Dolares" ? "Dolares" : "Pesos"} />
+        <NotaDeAjuste idContacto={idContacto} permiteDolares={movs.data?.tieneDolares ?? false} />
       </div>
       <HistorialCorrecciones idContacto={idContacto} />
 
@@ -141,7 +167,9 @@ export function RevisionCuenta({ idContacto }: { idContacto: number }) {
             <thead>
               <tr className="text-left text-xs text-ink-secondary">
                 <th className="py-1">Fecha</th><th>Documento</th><th>Nro.</th>
-                <th className="text-right">Deuda</th><th className="text-right">Crédito</th><th className="text-right">Saldo</th>
+                <th className="text-right">Importe original</th>
+                <th className="text-right">Deuda ($)</th><th className="text-right">Crédito ($)</th><th className="text-right">Saldo ($)</th>
+                {movs.data?.tieneDolares && <th className="text-right">Saldo (US$)</th>}
                 <th>Origen</th><th>Comprobante</th><th />
               </tr>
             </thead>
@@ -153,9 +181,17 @@ export function RevisionCuenta({ idContacto }: { idContacto: number }) {
                     <td className="py-1">{formatFecha(m.fecha)}</td>
                     <td>{m.documento ?? "—"}</td>
                     <td>{m.numeroDocumento ?? "—"}</td>
-                    <td className="text-right text-status-danger">{m.deuda ? formatMoneda(m.deuda, moneda) : "—"}</td>
-                    <td className="text-right">{m.credito ? formatMoneda(m.credito, moneda) : "—"}</td>
-                    <td className="text-right font-medium">{m.saldoParcial != null ? formatMoneda(m.saldoParcial, moneda) : "—"}</td>
+                    <td className="text-right text-xs">
+                      {m.moneda === "Dolares" ? (
+                        <span title={m.tcEstimado ? "Sin tipo de cambio propio: se estimó con el dólar BNA del día anterior" : undefined}>
+                          {formatMoneda(m.deudaOriginal || m.creditoOriginal, "Dolares")} · TC {m.tipoDeCambio != null ? formatMoneda(m.tipoDeCambio) : "?"}{m.tcEstimado ? " (estimado)" : ""}
+                        </span>
+                      ) : "—"}
+                    </td>
+                    <td className="text-right text-status-danger">{m.deudaPesos ? formatMoneda(m.deudaPesos) : "—"}</td>
+                    <td className="text-right">{m.creditoPesos ? formatMoneda(m.creditoPesos) : "—"}</td>
+                    <td className="text-right font-medium">{formatMoneda(m.saldoPesos)}</td>
+                    {movs.data?.tieneDolares && <td className="text-right text-xs">{formatMoneda(m.saldoDolares, "Dolares")}</td>}
                     <td><OrigenMovimiento origen={m.origen} /></td>
                     <td>
                       {ruta ? (

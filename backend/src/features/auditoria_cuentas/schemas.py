@@ -6,6 +6,8 @@ from datetime import date, datetime
 
 from pydantic import BaseModel
 
+from src.features.cuentas_corrientes.schemas import Origen
+
 
 class ParametrosAuditoria(BaseModel):
     plazoMaximoMeses: int
@@ -146,6 +148,7 @@ class RevisionCuenta(BaseModel):
     razonSocial: str | None = None
     moneda: str
     saldo: float
+    gobierna: str = "Pesos"  # moneda que gobierna la cuenta: Pesos | Dolares | Mixta
     saldoEsperado: str | None = None
     estado: str  # pendiente | revisada | revision-vieja
     fechaRevision: datetime | None = None
@@ -189,3 +192,35 @@ class CorreccionCuenta(BaseModel):
     usuario: str | None = None
     fecha: datetime | None = None
     detalle: str | None = None
+
+
+class MovimientoRevision(BaseModel):
+    fecha: date | None = None
+    documento: str | None = None
+    numeroDocumento: str | None = None
+    moneda: str  # Pesos | Dolares: la moneda del documento; los pagos y cobros son siempre en pesos
+    deudaOriginal: float
+    creditoOriginal: float
+    tipoDeCambio: float | None = None
+    tcEstimado: bool = False
+    deudaPesos: float
+    creditoPesos: float
+    saldoPesos: float
+    saldoDolares: float
+    origen: Origen
+    origenTipo: str | None = None
+    idOrigen: int | None = None
+
+
+class MovimientosRevision(BaseModel):
+    items: list[MovimientoRevision]
+    total: int
+    page: int
+    pageSize: int
+    saldoPesos: float
+    saldoDolares: float
+    tieneDolares: bool
+    bimonetaria: bool
+    gobierna: str  # Pesos | Dolares | Mixta
+    saldoGobierna: float
+    avisos: list[str]

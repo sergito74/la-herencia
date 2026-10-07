@@ -81,7 +81,8 @@ export function ImputacionesSospechosas({ idContacto }: { idContacto: number }) 
 }
 
 /** Carga de una nota de ajuste (de débito o de crédito) para que la cuenta cierre. */
-export function NotaDeAjuste({ idContacto, moneda }: { idContacto: number; moneda: "Pesos" | "Dolares" }) {
+export function NotaDeAjuste({ idContacto, permiteDolares }: { idContacto: number; permiteDolares: boolean }) {
+  const [moneda, setMoneda] = useState<"Pesos" | "Dolares">("Pesos");
   const refrescar = useRefrescarCuenta(idContacto);
   const [abierto, setAbierto] = useState(false);
   const [tipo, setTipo] = useState<"debito" | "credito">("debito");
@@ -119,6 +120,14 @@ export function NotaDeAjuste({ idContacto, moneda }: { idContacto: number; moned
             <label className="flex flex-col">Fecha
               <input type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} className="rounded border border-line px-1 py-1" />
             </label>
+            {permiteDolares && (
+              <label className="flex flex-col">Moneda
+                <select value={moneda} onChange={(e) => setMoneda(e.target.value as "Pesos" | "Dolares")} className="rounded border border-line px-1 py-1">
+                  <option value="Pesos">Pesos</option>
+                  <option value="Dolares">Dólares</option>
+                </select>
+              </label>
+            )}
             <label className="flex flex-col">Importe ({moneda === "Dolares" ? "us$" : "$"})
               <MoneyInput value={importe} onChange={setImporte} moneda={moneda} className="w-36 rounded border border-line px-1 py-1" />
             </label>

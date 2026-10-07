@@ -27,12 +27,17 @@ NOMBRES_AVISO = {
 }
 
 
+def _saldo(cuenta: dict) -> float:
+    """Saldo para revisar, en la moneda que gobierna la cuenta (dólares si todos sus documentos son en dólares)."""
+    return cuenta.get("saldoRevision", cuenta["saldoSistema"])
+
+
 def dificultad(cuenta: dict, saldo_esperado: str | None = None) -> int:
     """0 = sin avisos (fácil), 1 = diferencia explicada o menor, 2 = con excepciones o saldo inesperado."""
     extras = set(cuenta.get("causasExtra", []))
     if cuenta["causa"] in ("otros",) or extras & EXCEPCIONES_EXTRA:
         return 2
-    if saldo_esperado == "cero" and abs(cuenta["saldoSistema"]) >= TOLERANCIA_REDONDEO:
+    if saldo_esperado == "cero" and abs(_saldo(cuenta)) >= TOLERANCIA_REDONDEO:
         return 2
     if cuenta["causa"] != "coincide" or extras:
         return 1
@@ -41,9 +46,9 @@ def dificultad(cuenta: dict, saldo_esperado: str | None = None) -> int:
 
 def avisos_de_cuenta(cuenta: dict, saldo_esperado: str | None) -> list[dict]:
     avisos = []
-    if saldo_esperado == "cero" and abs(cuenta["saldoSistema"]) >= TOLERANCIA_REDONDEO:
+    if saldo_esperado == "cero" and abs(_saldo(cuenta)) >= TOLERANCIA_REDONDEO:
         avisos.append({"tipo": "saldo-esperado", "motivo": "Marcaste que esta cuenta debe estar en cero y no lo está",
-                       "importe": cuenta["saldoSistema"]})
+                       "importe": _saldo(cuenta)})
     if cuenta["causa"] == "otros":
         avisos.append({"tipo": "diferencia-sin-explicar", "motivo": "Hay una diferencia con el Access que nadie explicó (solo es una referencia)",
                        "importe": cuenta["sinExplicar"]})

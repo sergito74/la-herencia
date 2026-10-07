@@ -8,10 +8,12 @@ from starlette.concurrency import run_in_threadpool
 from src.db.connection import fetch_all, fetch_one
 import time
 
-from src.features.auditoria_cuentas import ajustes, clasificacion, conocidos, correcciones, datos, hallazgos as detectores, parametros, revision
+from src.features.cuentas_corrientes import origen_resolver
+from src.features.auditoria_cuentas import ajustes, bimonetaria, clasificacion, conocidos, correcciones, datos, hallazgos as detectores, parametros, revision
 from src.features.auditoria_cuentas.schemas import (
     AltaConocido,
     CambioRevision,
+    MovimientosRevision,
     CorreccionCuenta,
     PedidoAnulacion,
     PedidoNotaAjuste,
@@ -62,6 +64,16 @@ def _cuentas(refrescar: bool = False) -> tuple[dict, list[dict], list[dict], dic
     return _CACHE["v"]
 
 
+def _con_criterio_bimonetario(cuentas: list[dict]) -> None:
+    """Para las cuentas con documentos en dólares, el saldo de la revisión es el saldo en pesos (documentos al TC de su factura)."""
+    con_dolares = {f["c"] for f in fetch_all("SELECT DISTINCT IdContacto AS c FROM dbo.Compras WHERE Moneda = 'Dolares'", ())}
+    for c in cuentas:
+        if c["idContacto"] in con_dolares:
+            r = bimonetaria.cargar_cuenta(c["idContacto"])
+            c["saldoPesos"], c["saldoDolares"], c["gobierna"] = r["saldoPesos"], r["saldoDolares"], r["gobierna"]
+            c["saldoRevision"] = r["saldoGobierna"]
+
+
 def _calcular() -> tuple[dict, list[dict], list[dict], dict]:
     d = datos.cargar()
     p = parametros.obtener()
@@ -70,6 +82,7 @@ def _calcular() -> tuple[dict, list[dict], list[dict], dict]:
     h = datos.cargar_hallazgos(d["corte"])
     lista = [x for x in detectores.todos(h, p) if x["idContacto"] in ids]
     clasificacion.agregar_hallazgos(cuentas, lista)
+    _con_criterio_bimonetario(cuentas)
     reglas = [k["clave"] for k in conocidos.listar() if k["tipo"] == "concepto-movimiento"]
     return d, cuentas, lista, detectores.hallazgos_movimiento_sin_contacto(h["movimientosSinContacto"], reglas)
 
@@ -159,7 +172,7 @@ def _vecina(c: dict | None) -> dict | None:
 
 
 def _estados(cuentas: list[dict], filas: dict) -> dict[int, str]:
-    return {c["idContacto"]: revision.estado_de_revision(filas.get(c["idContacto"]), c["saldoSistema"]) for c in cuentas}
+    return {c["idContacto"]: revision.estado_de_revision(filas.get(c["idContacto"]), c.get("saldoRevision", c["saldoSistema"])) for c in cuentas}
 
 
 @router.get("/revision/siguiente", response_model=CuentaVecina | None)
@@ -185,7 +198,7 @@ async def ver_revision(id_contacto: int, refrescar: bool = False) -> dict:
     estados = _estados(cuentas, filas)
     fila = filas.get(id_contacto)
     return {
-        "idContacto": id_contacto, "razonSocial": cuenta["razonSocial"], "moneda": cuenta["moneda"], "saldo": cuenta["saldoSistema"],
+        "idContacto": id_contacto, "razonSocial": cuenta["razonSocial"], "moneda": cuenta["moneda"], "saldo": cuenta.get("saldoRevision", cuenta["saldoSistema"]), "gobierna": cuenta.get("gobierna", "Pesos"),
         "saldoEsperado": fila["SaldoEsperado"] if fila else None, "estado": estados[id_contacto],
         "fechaRevision": fila["FechaRevision"] if fila else None, "usuarioRevision": fila["Usuario"] if fila else None,
         "nota": fila["Nota"] if fila else None, "saldoAlRevisar": float(fila["SaldoAlRevisar"]) if fila and fila["SaldoAlRevisar"] is not None else None,
@@ -205,7 +218,7 @@ async def cambiar_revision(id_contacto: int, body: CambioRevision, request: Requ
     if cuenta is None:
         raise HTTPException(status_code=404, detail="La cuenta no está en la auditoría")
     try:
-        await run_in_threadpool(revision.guardar, id_contacto, cuenta["saldoSistema"], _usuario_actual(request), body.estado, body.nota,
+        await run_in_threadpool(revision.guardar, id_contacto, cuenta.get("saldoRevision", cuenta["saldoSistema"]), _usuario_actual(request), body.estado, body.nota,
                                 body.saldoEsperado, body.quitarSaldoEsperado)
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
@@ -233,7 +246,7 @@ def _saldo_de(id_contacto: int) -> float:
     cuenta = next((c for c in cuentas if c["idContacto"] == id_contacto), None)
     if cuenta is None:
         raise correcciones.CorreccionError(404, "La cuenta no está en la auditoría")
-    return cuenta["saldoSistema"]
+    return cuenta.get("saldoRevision", cuenta["saldoSistema"])
 
 
 @router.post("/cuentas/{id_contacto}/anular-aplicaciones", status_code=201)
@@ -269,3 +282,21 @@ async def nota_ajuste(id_contacto: int, body: PedidoNotaAjuste, request: Request
                             {"idCompra": id_compra, "tipo": body.tipo, "importe": body.importe, "moneda": body.moneda, "motivo": body.motivo}, usuario)
     invalidar_cache()
     return {"idCompra": id_compra}
+
+
+@router.get("/cuentas/{id_contacto}/movimientos", response_model=MovimientosRevision)
+async def movimientos_de_cuenta(id_contacto: int, page: int = Query(default=1, ge=1), pageSize: int = Query(default=100, ge=1, le=200)) -> dict:
+    """Movimientos con un solo criterio de moneda: saldo en pesos (documentos en dólares al TC de su factura) y en dólares."""
+    cuenta = await run_in_threadpool(bimonetaria.cargar_cuenta, id_contacto)
+    filas = list(reversed(cuenta["filas"]))  # los más nuevos primero; el saldo acumulado sigue siendo el cronológico
+    desde = (page - 1) * pageSize
+    pagina = filas[desde:desde + pageSize]
+
+    def _resolver() -> list[dict]:
+        return [{**f, "origen": origen_resolver.resolve_origen(f["origenTipo"], f["idOrigen"])} for f in pagina]
+
+    items = await run_in_threadpool(_resolver)
+    return {"items": items, "total": len(filas), "page": page, "pageSize": pageSize, "saldoPesos": cuenta["saldoPesos"],
+            "saldoDolares": cuenta["saldoDolares"], "tieneDolares": cuenta["tieneDolares"], "bimonetaria": cuenta["bimonetaria"],
+            "gobierna": cuenta["gobierna"], "saldoGobierna": cuenta["saldoGobierna"],
+            "avisos": cuenta["avisos"]}
