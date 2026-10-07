@@ -76,6 +76,8 @@ def plan() -> dict:
         hechos = sum(1 for c in t["contactos"] if c["idContacto"] in aplicados)
         t["aplicados"] = hechos
         t["estado"] = "aplicada" if hechos == len(t["contactos"]) else ("parcial" if hechos else "pendiente")
+    from src.features.recalculo_fifo.entrada import EXCLUIDOS
+
     excepciones = [{"idContacto": f["id"], "nombre": f["n"], "moneda": f["m"], "volumen": float(f["v"]), "saldo": float(f["s"])}
-                   for f in sorted(filas, key=lambda f: -float(f["v"])) if not f["cd"]]
+                   for f in sorted(filas, key=lambda f: -float(f["v"])) if not f["cd"] and f["id"] not in EXCLUIDOS]
     return {"base": base, "yaCierran": sum(1 for f in filas if f["t"] == "igual" and f["cd"]), "tandas": tandas, "excepciones": excepciones}

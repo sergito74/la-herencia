@@ -78,6 +78,7 @@ EXCLUIDOS = {
     532: "Visa Galicia", 372: "Mastercard BNA",
     # Familia y empresa propia
     375: "Sergio Giamberardini", 564: "Virginia Giamberardini", 390: "Albina Iglina", 386: "Giamigli de Bolívar",
+    549: "Condominio LSC",  # caja particular de los tres socios (Lucy, Cecilia y Sergio); decisión de Sergio, 07/10/2026
     46: "Irma Miranda",  # empleada de casas particulares de Albina: se le paga desde cuentas particulares
 }
 

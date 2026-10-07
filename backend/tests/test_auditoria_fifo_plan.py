@@ -37,3 +37,10 @@ def test_una_cuenta_sin_cambios_cuenta_como_resuelta_en_su_tanda(monkeypatch):
     filas = [{"r": json.dumps({"aplicados": [1, 2], "sinCambios": [3]})}, {"r": json.dumps({"aplicados": [4]})}, {"r": "no es json"}]
     monkeypatch.setattr(f, "fetch_all", lambda *a, **k: filas)
     assert f.contactos_aplicados_desde(10) == {1, 2, 3, 4}
+
+
+def test_las_entidades_excluidas_no_figuran_entre_las_que_no_cierran():
+    from src.features.recalculo_fifo.entrada import EXCLUIDOS
+
+    assert 549 in EXCLUIDOS                                           # Condominio LSC: caja de los tres socios
+    assert 549 not in [e["idContacto"] for e in f.plan()["excepciones"]]
