@@ -134,6 +134,52 @@ if (-not (Test-Path $EnvLocal) -or (Get-Content $EnvLocal -Raw) -match 'localhos
     Set-Content -Path $EnvLocal -Value $ApiUrlLine -Encoding utf8
 }
 
+# --- Servidores desactualizados ---
+# Si el sistema ya estaba abierto, antes se reutilizaban los servidores que estaban corriendo aunque el codigo
+# hubiera cambiado: el backend viejo seguia en memoria con la version anterior y los reinicios no cambiaban nada
+# (bug real, 2026-10-07: se reabrio 3 veces y seguia la version vieja). Ahora, si el codigo es mas nuevo que el
+# servidor que esta corriendo, se detiene ese servidor y arranca uno nuevo.
+function Get-ListenerStart($port) {
+    $c = Get-NetTCPConnection -LocalPort $port -State Listen -ErrorAction SilentlyContinue | Select-Object -First 1
+    if ($c) { $pr = Get-Process -Id $c.OwningProcess -ErrorAction SilentlyContinue; if ($pr) { return $pr.StartTime } }
+    return $null
+}
+
+function Get-NewestWrite($dir, $exts) {
+    $f = Get-ChildItem $dir -Recurse -File -ErrorAction SilentlyContinue |
+        Where-Object { $exts -contains $_.Extension -and $_.FullName -notmatch '__pycache__|node_modules|\\.next\\|\\.venv\\' } |
+        Sort-Object LastWriteTime -Descending | Select-Object -First 1
+    if ($f) { return $f.LastWriteTime }
+    return $null
+}
+
+$reinicioServidores = $false
+$apiDesde = Get-ListenerStart $ApiPort
+if ($apiDesde) {
+    $codigoApi = Get-NewestWrite (Join-Path $Backend 'src') @('.py')
+    if ($codigoApi -and $codigoApi -gt $apiDesde) {
+        Write-Output "Backend desactualizado (codigo $codigoApi, servidor desde $apiDesde): se reinicia."
+        Stop-Port $ApiPort
+        $reinicioServidores = $true
+    }
+}
+$webDesde = Get-ListenerStart $WebPort
+if ($webDesde -and -not $Dev) {
+    $idCompilacion = Join-Path $Frontend '.next/BUILD_ID'
+    $codigoWeb = Get-NewestWrite (Join-Path $Frontend 'src') @('.ts', '.tsx', '.css', '.js')
+    $compilado = $null
+    if (Test-Path $idCompilacion) { $compilado = (Get-Item $idCompilacion).LastWriteTime }
+    if (($compilado -and $compilado -gt $webDesde) -or ($codigoWeb -and (-not $compilado -or $codigoWeb -gt $compilado))) {
+        Write-Output "Frontend desactualizado: se reinicia (se recompila si hace falta)."
+        Stop-Port $WebPort
+        $reinicioServidores = $true
+    }
+}
+if ($reinicioServidores) {
+    Stop-Watchers
+    Start-Sleep -Seconds 2
+}
+
 $WebMode = if ($Dev) { 'dev' } else { 'start' }
 # Produccion por defecto ("npm run start" sobre el build ya compilado): es
 # notablemente mas rapido que "next dev" (que compila cada pagina la primera
