@@ -172,3 +172,12 @@ async def test_revision_de_una_cuenta_en_dolares_usa_la_moneda_que_gobierna():
     assert r["gobierna"] == "Dolares" and abs(r["saldo"]) < 1.0
     m = (await _get("/api/auditoria-cuentas/cuentas/61/movimientos?pageSize=1")).json()
     assert m["gobierna"] == "Mixta"
+
+
+@pytest.mark.anyio
+async def test_cuenta_en_dolares_con_diferencia_de_cambio_sugiere_la_nota():
+    r = (await _get("/api/auditoria-cuentas/cuentas/450/revision")).json()
+    av = next(a for a in r["avisos"] if a["tipo"] == "diferencia-de-cambio")
+    assert av["sugerencia"]["moneda"] == "Dolares" and av["sugerencia"]["tipo"] == "credito"
+    assert abs(av["sugerencia"]["importe"] - 1123.19) < 0.05 and av["sugerencia"]["tipoDeCambio"] > 1000
+    assert r["dificultad"] == 2

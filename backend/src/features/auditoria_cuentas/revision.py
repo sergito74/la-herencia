@@ -39,6 +39,8 @@ def dificultad(cuenta: dict, saldo_esperado: str | None = None) -> int:
         return 2
     if saldo_esperado == "cero" and abs(_saldo(cuenta)) >= TOLERANCIA_REDONDEO:
         return 2
+    if cuenta.get("gobierna") == "Dolares" and abs(_saldo(cuenta)) >= TOLERANCIA_REDONDEO:
+        return 2  # diferencia de cambio por ajustar con una nota
     if cuenta["causa"] != "coincide" or extras:
         return 1
     return 0
@@ -49,6 +51,14 @@ def avisos_de_cuenta(cuenta: dict, saldo_esperado: str | None) -> list[dict]:
     if saldo_esperado == "cero" and abs(_saldo(cuenta)) >= TOLERANCIA_REDONDEO:
         avisos.append({"tipo": "saldo-esperado", "motivo": "Marcaste que esta cuenta debe estar en cero y no lo está",
                        "importe": _saldo(cuenta)})
+    if cuenta.get("gobierna") == "Dolares" and abs(_saldo(cuenta)) >= TOLERANCIA_REDONDEO:
+        saldo = _saldo(cuenta)
+        # Regla de Sergio (07/10/2026): el tipo de cambio se ajusta con notas. Si se debe más de lo pagado, una nota de crédito
+        # lo cierra; si se pagó de más, una nota de débito. Cuál corresponde depende del acuerdo con el proveedor.
+        avisos.append({"tipo": "diferencia-de-cambio",
+                       "motivo": f"Este proveedor emite en dólares y la cuenta no cierra: diferencia de US$ {abs(saldo):,.2f}. Es diferencia de cambio y se ajusta con una nota",
+                       "importe": saldo,
+                       "sugerencia": {"tipo": "credito" if saldo < 0 else "debito", "importe": round(abs(saldo), 2), "moneda": "Dolares"}})
     if cuenta["causa"] == "otros":
         avisos.append({"tipo": "diferencia-sin-explicar", "motivo": "Hay una diferencia con el Access que nadie explicó (solo es una referencia)",
                        "importe": cuenta["sinExplicar"]})

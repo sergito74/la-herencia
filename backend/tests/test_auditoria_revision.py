@@ -54,3 +54,16 @@ def test_avisos_de_cuenta():
     assert r.avisos_de_cuenta(_cuenta(1, "A"), None) == []
     doc = r.avisos_de_cuenta(_cuenta(1, "A", causa="coincide-causa-conocida", documentada="Pago de Mercado Pago"), None)
     assert doc[0]["tipo"] == "diferencia-documentada"
+
+
+def test_diferencia_de_cambio_en_cuentas_en_dolares_sugiere_una_nota():
+    c = _cuenta(450, "Tierras", saldo=-0.13)
+    c.update(gobierna="Dolares", saldoRevision=-1123.19)
+    av = [a for a in r.avisos_de_cuenta(c, None) if a["tipo"] == "diferencia-de-cambio"]
+    assert len(av) == 1 and av[0]["sugerencia"] == {"tipo": "credito", "importe": 1123.19, "moneda": "Dolares"}
+    c.update(saldoRevision=250.5)
+    assert [a for a in r.avisos_de_cuenta(c, None) if a["tipo"] == "diferencia-de-cambio"][0]["sugerencia"]["tipo"] == "debito"
+    c.update(saldoRevision=-0.94)                                      # redondeo: no es diferencia
+    assert not [a for a in r.avisos_de_cuenta(c, None) if a["tipo"] == "diferencia-de-cambio"]
+    c.update(gobierna="Pesos", saldoRevision=-5000.0)                   # en pesos no corresponde
+    assert not [a for a in r.avisos_de_cuenta(c, None) if a["tipo"] == "diferencia-de-cambio"]

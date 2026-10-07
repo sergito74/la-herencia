@@ -147,10 +147,18 @@ export function darDeBajaConocido(idConocido: number): Promise<void> {
 
 export type EstadoRevision = "pendiente" | "revisada" | "revision-vieja";
 
+export interface SugerenciaNota {
+  tipo: "credito" | "debito";
+  importe: number;
+  moneda: "Pesos" | "Dolares";
+  tipoDeCambio: number | null;
+}
+
 export interface AvisoCuenta {
   tipo: string;
   motivo: string;
   importe: number | null;
+  sugerencia?: SugerenciaNota | null;
 }
 
 export interface CuentaVecina {

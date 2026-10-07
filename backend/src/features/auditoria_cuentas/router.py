@@ -167,6 +167,15 @@ async def dar_de_baja_conocido(id_conocido: int, request: Request) -> Response:
     return Response(status_code=204)
 
 
+def _con_tipo_de_cambio(avisos: list[dict]) -> list[dict]:
+    from datetime import date
+
+    for a in avisos:
+        if a.get("sugerencia"):
+            a["sugerencia"]["tipoDeCambio"] = bimonetaria.cotizacion_bna().dia_anterior(date.today())
+    return avisos
+
+
 def _vecina(c: dict | None) -> dict | None:
     return None if c is None else {"idContacto": c["idContacto"], "razonSocial": c["razonSocial"]}
 
@@ -203,7 +212,7 @@ async def ver_revision(id_contacto: int, refrescar: bool = False) -> dict:
         "fechaRevision": fila["FechaRevision"] if fila else None, "usuarioRevision": fila["Usuario"] if fila else None,
         "nota": fila["Nota"] if fila else None, "saldoAlRevisar": float(fila["SaldoAlRevisar"]) if fila and fila["SaldoAlRevisar"] is not None else None,
         "dificultad": revision.dificultad(cuenta, fila["SaldoEsperado"] if fila else None),
-        "avisos": revision.avisos_de_cuenta(cuenta, fila["SaldoEsperado"] if fila else None),
+        "avisos": _con_tipo_de_cambio(revision.avisos_de_cuenta(cuenta, fila["SaldoEsperado"] if fila else None)),
         "siguiente": _vecina(revision.siguiente_sin_revisar(orden, estados, id_contacto)),
         "anterior": _vecina(orden[pos - 1]) if pos > 0 else None,
         "revisadas": sum(1 for e in estados.values() if e == "revisada"), "totalCuentas": len(cuentas),

@@ -13,6 +13,7 @@ import {
   fetchHallazgos,
   revertirCorreccion,
   type Hallazgo,
+  type SugerenciaNota,
 } from "@/services/auditoriaCuentasApi";
 
 function useRefrescarCuenta(idContacto: number) {
@@ -81,15 +82,16 @@ export function ImputacionesSospechosas({ idContacto }: { idContacto: number }) 
 }
 
 /** Carga de una nota de ajuste (de débito o de crédito) para que la cuenta cierre. */
-export function NotaDeAjuste({ idContacto, permiteDolares }: { idContacto: number; permiteDolares: boolean }) {
-  const [moneda, setMoneda] = useState<"Pesos" | "Dolares">("Pesos");
+export function NotaDeAjuste({ idContacto, permiteDolares, sugerencia }: { idContacto: number; permiteDolares: boolean; sugerencia?: SugerenciaNota | null }) {
+  const [moneda, setMoneda] = useState<"Pesos" | "Dolares">(sugerencia?.moneda ?? "Pesos");
   const refrescar = useRefrescarCuenta(idContacto);
-  const [abierto, setAbierto] = useState(false);
-  const [tipo, setTipo] = useState<"debito" | "credito">("debito");
+  const [abierto, setAbierto] = useState(!!sugerencia);
+  const [tipo, setTipo] = useState<"debito" | "credito">(sugerencia?.tipo ?? "debito");
   const [fecha, setFecha] = useState(new Date().toISOString().slice(0, 10));
-  const [importe, setImporte] = useState(0);
-  const [cambio, setCambio] = useState(0);
-  const [motivo, setMotivo] = useState("");
+  const [importe, setImporte] = useState(sugerencia?.importe ?? 0);
+  const [cambio, setCambio] = useState(sugerencia?.tipoDeCambio ?? 0);
+  const [motivoInicial] = useState(sugerencia ? "Diferencia de cambio" : "");
+  const [motivo, setMotivo] = useState(motivoInicial);
   const [error, setError] = useState<string | null>(null);
   const cargar = useMutation({
     mutationFn: () => cargarNotaAjuste(idContacto, { tipo, fecha, importe, moneda, tipoDeCambio: moneda === "Dolares" ? cambio || undefined : undefined, motivo }),

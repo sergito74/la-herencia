@@ -10,7 +10,7 @@ import { ReasignarMovimientoButton } from "@/components/cuentas-corrientes/Reasi
 import { ErrorState, LoadingState } from "@/components/ui/States";
 import { BASE_DOCUMENTOS_COMPRAS, esRutaLocalWindows, urlParaAbrirDocumento } from "@/lib/documentoLocal";
 import { formatFecha, formatMoneda } from "@/lib/format";
-import { fetchComprobantes, fetchMovimientosRevision, fetchRevision, guardarRevision, type EstadoRevision } from "@/services/auditoriaCuentasApi";
+import { fetchComprobantes, fetchMovimientosRevision, fetchRevision, guardarRevision, type EstadoRevision, type SugerenciaNota } from "@/services/auditoriaCuentasApi";
 import { HistorialCorrecciones, ImputacionesSospechosas, NotaDeAjuste } from "./CorreccionesCuenta";
 import { urlDocumentoLocal } from "@/services/comprasApi";
 
@@ -27,6 +27,7 @@ export function RevisionCuenta({ idContacto }: { idContacto: number }) {
   const [pagina, setPagina] = useState(1);
   const [nota, setNota] = useState("");
   const [verHistorial, setVerHistorial] = useState(false);
+  const [sugerida, setSugerida] = useState<SugerenciaNota | null>(null);
 
   const rev = useQuery({ queryKey: ["auditoria-revision", idContacto], queryFn: () => fetchRevision(idContacto) });
   const movs = useQuery({
@@ -116,7 +117,14 @@ export function RevisionCuenta({ idContacto }: { idContacto: number }) {
             {r.avisos.map((a, i) => (
               <li key={i}>
                 {a.motivo}
-                {a.importe != null && <b className="ml-2">{formatMoneda(a.importe)}</b>}
+                {a.importe != null && !a.sugerencia && <b className="ml-2">{formatMoneda(a.importe)}</b>}
+                {a.sugerencia && (
+                  <SoloLectura>
+                    <button type="button" onClick={() => setSugerida(a.sugerencia ?? null)} className="ml-2 rounded border border-line px-2 py-0.5">
+                      Cargar nota de {a.sugerencia.tipo === "credito" ? "crédito" : "débito"} por esta diferencia
+                    </button>
+                  </SoloLectura>
+                )}
               </li>
             ))}
           </ul>
@@ -151,7 +159,7 @@ export function RevisionCuenta({ idContacto }: { idContacto: number }) {
 
       <ImputacionesSospechosas idContacto={idContacto} />
       <div className="flex flex-wrap items-center gap-2">
-        <NotaDeAjuste idContacto={idContacto} permiteDolares={movs.data?.tieneDolares ?? false} />
+        <NotaDeAjuste key={sugerida ? `s-${sugerida.importe}-${sugerida.tipo}` : "normal"} idContacto={idContacto} permiteDolares={movs.data?.tieneDolares ?? false} sugerencia={sugerida} />
       </div>
       <HistorialCorrecciones idContacto={idContacto} />
 

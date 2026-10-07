@@ -124,10 +124,18 @@ class HallazgosCuenta(BaseModel):
     hallazgos: list[Hallazgo]
 
 
+class SugerenciaNota(BaseModel):
+    tipo: str  # credito | debito
+    importe: float
+    moneda: str
+    tipoDeCambio: float | None = None  # dólar BNA vendedor del día anterior, para sugerir el de la nota
+
+
 class AvisoCuenta(BaseModel):
     tipo: str
     motivo: str
     importe: float | None = None
+    sugerencia: SugerenciaNota | None = None
 
 
 class CuentaVecina(BaseModel):
