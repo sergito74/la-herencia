@@ -187,3 +187,28 @@ async def test_cuenta_en_dolares_con_diferencia_de_cambio_sugiere_la_nota():
     assert not [a for a in t["avisos"] if a["tipo"] == "diferencia-de-cambio"]
     m = (await _get("/api/auditoria-cuentas/cuentas/450/movimientos")).json()
     assert any(x["fechaEntrega"] == "2021-06-10" for x in m["items"])
+
+
+@pytest.mark.anyio
+async def test_campo_y_tecnologia_avisa_que_los_pagos_estan_mal_imputados():
+    r = (await _get("/api/auditoria-cuentas/cuentas/493/revision")).json()
+    av = next(a for a in r["avisos"] if a["tipo"] == "imputaciones-incompletas")
+    assert 20000 < av["importe"] < 21000 and abs(r["saldo"]) < 10
+
+
+@pytest.mark.anyio
+async def test_fifo_de_una_cuenta_exige_administrador_o_valida_sin_escribir():
+    # sin usuario con rol Administrador la simulación se rechaza; con una cuenta inexistente la aplicación no existe
+    r = await _enviar("POST", "/api/auditoria-cuentas/cuentas/493/fifo/simular")
+    assert r.status_code in (201, 403)
+    assert (await _enviar("POST", "/api/auditoria-cuentas/cuentas/493/fifo/99999999/aplicar")).status_code in (403, 404)
+
+
+@pytest.mark.anyio
+async def test_asignacion_de_contacto_validaciones_sin_escribir():
+    lista = (await _get("/api/auditoria-cuentas/movimientos-sin-contacto?limite=3")).json()
+    assert lista and set(lista[0]) >= {"medio", "idMovimiento", "importe", "concepto"}
+    url = "/api/auditoria-cuentas/movimientos-sin-contacto/asignar"
+    assert (await _enviar("POST", url, json={"items": [], "idContacto": 61, "motivo": "x"})).status_code == 422
+    assert (await _enviar("POST", url, json={"items": [{"medio": "bna", "idMovimiento": lista[0]["idMovimiento"]}], "idContacto": 61, "motivo": " "})).status_code == 422
+    assert (await _enviar("POST", url, json={"items": [{"medio": "bna", "idMovimiento": 1}], "idContacto": 99999999, "motivo": "x"})).status_code == 404

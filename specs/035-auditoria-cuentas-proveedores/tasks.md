@@ -50,7 +50,7 @@
 - [X] T051 [US0] Crear en `backend/src/features/auditoria_cuentas/ajustes.py` `cargar_nota_ajuste(idContacto, tipo, fecha, importe, moneda, motivo, usuario)` que cargue una nota de débito o de crédito "SIN DOCUMENTO" con la marca de ajuste (con `compras.repository.create_compra`) y su `POST /cuentas/{idContacto}/nota-ajuste`
 - [X] T052 [US0] Agregar a `RevisionCuenta.tsx` los diálogos "Anular imputaciones" (desde un aviso), "Cargar nota de ajuste" y el historial de cambios de la cuenta (ocultos para el rol `Lectura`)
 - [X] T055 [US0] Criterio único de moneda en cuentas con documentos en dólares y en pesos (FR-024): `backend/src/features/auditoria_cuentas/bimonetaria.py` (saldo en pesos al TC de la factura, saldo en dólares con el dólar BNA del día anterior, aviso de documentos sin tipo de cambio), `GET /cuentas/{idContacto}/movimientos` y la pantalla de revisión con importe original, TC y ambos saldos; pruebas en `backend/tests/test_auditoria_bimonetaria.py`
-- [ ] T053 [US0] Asignación de contacto a movimientos del banco sin contacto uno a uno, varios a la vez y por regla desde el grupo `movimiento-sin-contacto` (reutiliza `reasignacion_contacto`)
+- [X] T053 [US0] Asignación de contacto a movimientos del banco sin contacto uno a uno, varios a la vez y por regla desde el grupo `movimiento-sin-contacto` (reutiliza `reasignacion_contacto`)
 - [X] T054 [US0] Prueba de navegador `frontend/tests/auditoria-cuentas.e2e.cjs`: abrir una cuenta, ver saldo acumulado, marcar revisada y pasar a la siguiente; y registrar en `quickstart.md`
 
 **Checkpoint**: Sergio entra a una cuenta, la revisa, corrige y avanza a la siguiente.
@@ -116,7 +116,7 @@
 
 ### Implementation for User Story 3
 
-- [ ] T024 [US3] Implementar `GET /fifo/estado` en `backend/src/features/auditoria_cuentas/router.py` leyendo `RecalculoFifoEjecucion`, `RecalculoFifoAplicacion`, `RecalculoFifoContacto` y `CuentasARevisar`, sin escribir
+- [X] T024 [US3] Implementar `GET /fifo/estado` en `backend/src/features/auditoria_cuentas/router.py` leyendo `RecalculoFifoEjecucion`, `RecalculoFifoAplicacion`, `RecalculoFifoContacto` y `CuentasARevisar`, sin escribir
 - [ ] T025 [US3] Escribir `backend/scripts/fifo_completo_035.py` que calcule el alcance (todos los contactos menos exclusiones), cree la simulación con `recalculo_fifo.ejecuciones.simular` por tandas ordenadas por volumen, imprima por tanda cuántas cierran, mejoran o empeoran y la lista de excepciones, y NO aplique nada (solo simula)
 - [ ] T026 [US3] Correr T025 contra `WC`, revisar con Sergio la simulación (cuentas que empeoran o no cierran) y registrar el resumen en `quickstart.md` (SC-004: saldo antes y después idéntico en todas)
 - [ ] T027 [US3] Con la aprobación explícita de Sergio de cada tanda, aplicar desde Finanzas → Recálculo FIFO (respaldo verificado previo) y verificar que el saldo de todas las cuentas es idéntico y que revertir deja todo como estaba; cerrar o dejar en `CuentasARevisar` cada excepción con su motivo (FR-009, FR-011)
@@ -227,3 +227,8 @@ Task: "T013 [P] [US1] Componentes ResumenCausas.tsx y GrupoExcepciones.tsx"
 - Un frente a la vez; no reabrir lo cerrado (tarjetas y Mercado Pago, 034).
 - Impuestos sin boleta y residuos menores quedan fuera de alcance.
 - Nada se escribe en `LaHerencia`; toda aplicación es reversible y con respaldo.
+
+## Avance (07/10/2026)
+
+- **T053 hecho**: `backend/src/features/auditoria_cuentas/asignacion.py` y la pantalla `AsignarContacto.tsx`: los movimientos del banco sin contacto (de cualquier monto, agrupados por concepto) se asignan a un contacto uno a uno, varios a la vez o todos los de un concepto, con respaldo verificado, registro en `AuditoriaCorrecciones` y reversión desde la cuenta del contacto. Solo se asignan movimientos que no tienen contacto.
+- **FIFO por cuenta**: desde la revisión de una cuenta se simula y se aplica el recálculo de imputaciones de esa cuenta (reutiliza `recalculo_fifo`), con "Deshacer"; aviso "imputaciones incompletas" cuando el saldo cierra pero hay facturas con pagos sin imputar (caso Campo y Tecnología). El FIFO de todos los contactos (T025/T026) sigue pendiente de tu revisión por tandas.

@@ -142,3 +142,25 @@ def guardar(id_contacto: int, saldo_actual: float, usuario: str, estado: str | N
     elif nota is not None:
         execute_write("UPDATE dbo.AuditoriaRevisiones SET Nota = ? WHERE IdContacto = ?", ((nota or "")[:500] or None, id_contacto))
         registrar(id_contacto, "nota", nota, usuario)
+
+
+def imputaciones(id_contacto: int) -> dict:
+    """Lo facturado en pesos y lo que tiene pagos imputados (aplicaciones vigentes), para detectar pagos sin imputar a sus facturas."""
+    f = fetch_one(
+        "SELECT SUM(CASE WHEN v.ImporteDocumento > 0 THEN v.ImporteDocumento ELSE 0 END) AS facturado, "
+        "(SELECT SUM(a.ImporteAplicado) FROM dbo.AplicacionesPago a JOIN dbo.Compras c2 ON c2.IdDeuda = a.IdDocumentoAplicado "
+        " WHERE a.Anulada = 0 AND a.TipoDocumento = 'CompraDeuda' AND c2.IdContacto = ? AND c2.Moneda <> 'Dolares') AS aplicado "
+        "FROM dbo.Compras c JOIN dbo.vw_Compras_ImporteDocumento v ON v.IdDeuda = c.IdDeuda "
+        "WHERE c.IdContacto = ? AND c.Moneda <> 'Dolares'", (id_contacto, id_contacto))
+    return {"facturado": float(f["facturado"] or 0) if f else 0.0, "aplicado": float(f["aplicado"] or 0) if f else 0.0}
+
+
+def aviso_imputaciones(cuenta: dict, datos: dict) -> dict | None:
+    """Si la cuenta no debe nada pero hay facturas con pagos sin imputar, los pagos están mal asignados (no el saldo)."""
+    if cuenta.get("gobierna") == "Dolares" or cuenta.get("gobierna") == "Mixta":
+        return None
+    sin_imputar = round(datos["facturado"] - datos["aplicado"], 2)
+    if sin_imputar > TOLERANCIA_REDONDEO and _saldo(cuenta) >= -TOLERANCIA_REDONDEO:
+        return {"tipo": "imputaciones-incompletas", "importe": sin_imputar,
+                "motivo": "El saldo cierra pero hay facturas con pagos sin imputar: los pagos quedaron mal asignados a las facturas. Se corrige recalculando las imputaciones (FIFO) de esta cuenta"}
+    return None

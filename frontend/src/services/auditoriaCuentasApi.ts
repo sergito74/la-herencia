@@ -283,3 +283,57 @@ export interface MovimientosRevision {
 export function fetchMovimientosRevision(idContacto: number, page: number, pageSize = 100, refrescar = false): Promise<MovimientosRevision> {
   return apiGet<MovimientosRevision>(`/api/auditoria-cuentas/cuentas/${idContacto}/movimientos`, { page, pageSize, refrescar: refrescar ? "true" : undefined });
 }
+
+// ---- Recalcular las imputaciones de una cuenta (FIFO) -------------------------
+
+export interface ResultadoFifo {
+  idEjecucion: number;
+  contacto: {
+    facturadoAntes: number;
+    pagadoAntes: number;
+    aplicadoAntes: number;
+    aplicadoDespues: number;
+    anticipoAbierto: number;
+    saldo: number;
+    cerrabaAntes: boolean;
+    cierraDespues: boolean;
+    tendencia: "mejora" | "igual" | "empeora";
+    marcas: { codigo: string; descripcion: string }[];
+  };
+  aplicaciones: number;
+  aplicacionesVigentes: number;
+}
+
+export function simularFifo(idContacto: number): Promise<ResultadoFifo> {
+  return apiPost<ResultadoFifo>(`/api/auditoria-cuentas/cuentas/${idContacto}/fifo/simular`, {});
+}
+
+export function aplicarFifo(idContacto: number, idEjecucion: number): Promise<{ aplicados: number[]; sinCambios: number[]; backup: string }> {
+  return apiPost(`/api/auditoria-cuentas/cuentas/${idContacto}/fifo/${idEjecucion}/aplicar`, {});
+}
+
+export function revertirFifo(idContacto: number, idEjecucion: number): Promise<unknown> {
+  return apiPost(`/api/auditoria-cuentas/cuentas/${idContacto}/fifo/${idEjecucion}/revertir`, {});
+}
+
+// ---- Asignar contacto a movimientos del banco sin contacto ---------------------------
+
+export interface MovimientoSinContacto {
+  medio: "bna" | "galicia";
+  idMovimiento: number;
+  fecha: string | null;
+  importe: number;
+  concepto: string | null;
+}
+
+export function fetchMovimientosSinContacto(concepto?: string, limite = 300): Promise<MovimientoSinContacto[]> {
+  return apiGet<MovimientoSinContacto[]>("/api/auditoria-cuentas/movimientos-sin-contacto", { concepto, limite });
+}
+
+export function asignarContacto(
+  items: { medio: string; idMovimiento: number }[],
+  idContacto: number,
+  motivo: string
+): Promise<{ idCorreccion: number; movimientos: number; contacto: string }> {
+  return apiPost("/api/auditoria-cuentas/movimientos-sin-contacto/asignar", { items, idContacto, motivo });
+}

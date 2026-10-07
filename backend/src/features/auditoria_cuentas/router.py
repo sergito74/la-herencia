@@ -9,10 +9,12 @@ from src.db.connection import fetch_all, fetch_one
 import time
 
 from src.features.cuentas_corrientes import origen_resolver
-from src.features.auditoria_cuentas import ajustes, bimonetaria, clasificacion, conocidos, correcciones, datos, hallazgos as detectores, parametros, revision
+from src.features.auditoria_cuentas import ajustes, asignacion, bimonetaria, clasificacion, conocidos, correcciones, datos, hallazgos as detectores, parametros, revision
 from src.features.auditoria_cuentas.schemas import (
     AltaConocido,
     CambioRevision,
+    MovimientoSinContacto,
+    PedidoAsignacion,
     MovimientosRevision,
     CorreccionCuenta,
     PedidoAnulacion,
@@ -189,6 +191,12 @@ def _con_tipo_de_cambio(avisos: list[dict]) -> list[dict]:
     return avisos
 
 
+async def _aviso_imputaciones(cuenta: dict) -> list[dict]:
+    datos_ = await run_in_threadpool(revision.imputaciones, cuenta["idContacto"])
+    aviso = revision.aviso_imputaciones(cuenta, datos_)
+    return [aviso] if aviso else []
+
+
 def _vecina(c: dict | None) -> dict | None:
     return None if c is None else {"idContacto": c["idContacto"], "razonSocial": c["razonSocial"]}
 
@@ -225,7 +233,7 @@ async def ver_revision(id_contacto: int, refrescar: bool = False) -> dict:
         "fechaRevision": fila["FechaRevision"] if fila else None, "usuarioRevision": fila["Usuario"] if fila else None,
         "nota": fila["Nota"] if fila else None, "saldoAlRevisar": float(fila["SaldoAlRevisar"]) if fila and fila["SaldoAlRevisar"] is not None else None,
         "dificultad": revision.dificultad(cuenta, fila["SaldoEsperado"] if fila else None),
-        "avisos": _con_tipo_de_cambio(revision.avisos_de_cuenta(cuenta, fila["SaldoEsperado"] if fila else None)),
+        "avisos": _con_tipo_de_cambio(revision.avisos_de_cuenta(cuenta, fila["SaldoEsperado"] if fila else None)) + await _aviso_imputaciones(cuenta),
         "siguiente": _vecina(revision.siguiente_sin_revisar(orden, estados, id_contacto)),
         "anterior": _vecina(orden[pos - 1]) if pos > 0 else None,
         "revisadas": sum(1 for e in estados.values() if e == "revisada"), "totalCuentas": len(cuentas),
@@ -259,7 +267,7 @@ async def comprobantes(id_contacto: int) -> dict:
 async def _escribir(fn, *args):
     try:
         return await run_in_threadpool(fn, *args)
-    except (correcciones.CorreccionError, ajustes.AjusteError) as exc:
+    except (correcciones.CorreccionError, ajustes.AjusteError, asignacion.AsignacionError) as exc:
         raise HTTPException(status_code=exc.codigo, detail=str(exc)) from exc
 
 
@@ -285,7 +293,11 @@ async def anular_aplicaciones(id_contacto: int, body: PedidoAnulacion, request: 
 @router.post("/correcciones/{id_correccion}/revertir")
 async def revertir_correccion(id_correccion: int, request: Request) -> dict:
     usuario = _usuario_actual(request)
-    res = await _escribir(correcciones.revertir, id_correccion, usuario)
+    regla = await run_in_threadpool(fetch_one, "SELECT Regla AS r FROM dbo.AuditoriaCorrecciones WHERE IdCorreccion = ?", (id_correccion,))
+    if regla and regla["r"] == asignacion.REGLA:
+        res = await _escribir(asignacion.revertir, id_correccion, usuario)
+    else:
+        res = await _escribir(correcciones.revertir, id_correccion, usuario)
     invalidar_cache()
     return res
 
@@ -323,3 +335,80 @@ async def movimientos_de_cuenta(id_contacto: int, page: int = Query(default=1, g
             "saldoDolares": cuenta["saldoDolares"], "tieneDolares": cuenta["tieneDolares"], "bimonetaria": cuenta["bimonetaria"],
             "gobierna": cuenta["gobierna"], "saldoGobierna": cuenta["saldoGobierna"],
             "avisos": cuenta["avisos"]}
+
+
+# ---- Recalcular las imputaciones de una cuenta (FIFO), con la misma simulación, aplicación y reversión del recálculo FIFO ----
+
+def _admin(request: Request) -> None:
+    from src.features.recalculo_fifo.router import _exigir_admin
+
+    _exigir_admin(request)
+
+
+@router.post("/cuentas/{id_contacto}/fifo/simular", status_code=201)
+async def fifo_simular(id_contacto: int, request: Request) -> dict:
+    from src.features.recalculo_fifo import ejecuciones as fifo
+
+    _admin(request)
+    try:
+        res = await run_in_threadpool(fifo.simular, [id_contacto], _usuario_actual(request))
+        det = await run_in_threadpool(fifo.detalle, res["idEjecucion"], id_contacto)
+    except (ValueError, KeyError) as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    vigentes = await run_in_threadpool(
+        fetch_one, "SELECT COUNT(*) AS n FROM dbo.AplicacionesPago a JOIN dbo.Compras c ON c.IdDeuda = a.IdDocumentoAplicado "
+                   "WHERE a.Anulada = 0 AND c.IdContacto = ?", (id_contacto,))
+    return {"idEjecucion": res["idEjecucion"], "contacto": det["contacto"], "aplicaciones": len(det["aplicaciones"]),
+            "aplicacionesVigentes": vigentes["n"]}
+
+
+@router.post("/cuentas/{id_contacto}/fifo/{id_ejecucion}/aplicar")
+async def fifo_aplicar(id_contacto: int, id_ejecucion: int, request: Request) -> dict:
+    from src.features.recalculo_fifo import ejecuciones as fifo
+
+    _admin(request)
+    usuario = _usuario_actual(request)
+    try:
+        res = await run_in_threadpool(fifo.aplicar, id_ejecucion, [id_contacto], False, usuario)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=f"No existe la ejecución {id_ejecucion}") from exc
+    except fifo.Conflicto as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    except (fifo.RequiereConfirmacion, ValueError) as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    await run_in_threadpool(revision.registrar, id_contacto, "fifo-aplicado", {"idEjecucion": id_ejecucion}, usuario)
+    invalidar_cache()
+    return res
+
+
+@router.post("/cuentas/{id_contacto}/fifo/{id_ejecucion}/revertir")
+async def fifo_revertir(id_contacto: int, id_ejecucion: int, request: Request) -> dict:
+    from src.features.recalculo_fifo import ejecuciones as fifo
+
+    _admin(request)
+    usuario = _usuario_actual(request)
+    try:
+        res = await run_in_threadpool(fifo.revertir, id_ejecucion, usuario)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=f"No existe la ejecución {id_ejecucion}") from exc
+    except fifo.Conflicto as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    await run_in_threadpool(revision.registrar, id_contacto, "fifo-revertido", {"idEjecucion": id_ejecucion}, usuario)
+    invalidar_cache()
+    return res
+
+
+@router.get("/movimientos-sin-contacto", response_model=list[MovimientoSinContacto])
+async def movimientos_sin_contacto(concepto: str | None = None, limite: int = Query(default=300, ge=1, le=1000)) -> list[dict]:
+    """Movimientos del banco sin contacto de cualquier monto (los que ninguna regla explica), para asignarles uno."""
+    return await run_in_threadpool(asignacion.movimientos_sin_contacto, concepto, limite)
+
+
+@router.post("/movimientos-sin-contacto/asignar", status_code=201)
+async def asignar_contacto(body: PedidoAsignacion, request: Request) -> dict:
+    usuario = _usuario_actual(request)
+    res = await _escribir(asignacion.asignar, [i.model_dump() for i in body.items], body.idContacto, body.motivo, usuario)
+    await run_in_threadpool(revision.registrar, body.idContacto, "asignar-movimientos",
+                            {"idCorreccion": res["idCorreccion"], "movimientos": res["movimientos"], "motivo": body.motivo}, usuario)
+    invalidar_cache()
+    return res

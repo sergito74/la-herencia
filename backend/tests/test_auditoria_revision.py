@@ -67,3 +67,14 @@ def test_diferencia_de_cambio_en_cuentas_en_dolares_sugiere_una_nota():
     assert not [a for a in r.avisos_de_cuenta(c, None) if a["tipo"] == "diferencia-de-cambio"]
     c.update(gobierna="Pesos", saldoRevision=-5000.0)                   # en pesos no corresponde
     assert not [a for a in r.avisos_de_cuenta(c, None) if a["tipo"] == "diferencia-de-cambio"]
+
+
+def test_aviso_de_pagos_sin_imputar_cuando_la_cuenta_no_debe_nada():
+    c = _cuenta(493, "Campo y Tecnologia", saldo=6.92)
+    av = r.aviso_imputaciones(c, {"facturado": 2102329.86, "aplicado": 2081822.12})
+    assert av["tipo"] == "imputaciones-incompletas" and av["importe"] == 20507.74
+    assert r.aviso_imputaciones(c, {"facturado": 100.0, "aplicado": 100.0}) is None           # todo imputado
+    assert r.aviso_imputaciones(_cuenta(1, "A", saldo=-5000.0), {"facturado": 9000.0, "aplicado": 4000.0}) is None   # debe plata: es normal
+    d = _cuenta(2, "B", saldo=0.0)
+    d["gobierna"] = "Dolares"
+    assert r.aviso_imputaciones(d, {"facturado": 9000.0, "aplicado": 0.0}) is None            # en dólares no se mide así

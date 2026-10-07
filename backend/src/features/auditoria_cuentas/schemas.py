@@ -233,3 +233,29 @@ class MovimientosRevision(BaseModel):
     gobierna: str  # Pesos | Dolares | Mixta
     saldoGobierna: float
     avisos: list[str]
+
+
+class ResultadoFifo(BaseModel):
+    idEjecucion: int
+    contacto: dict
+    aplicaciones: int
+    aplicacionesVigentes: int
+
+
+class MovimientoSinContacto(BaseModel):
+    medio: str
+    idMovimiento: int
+    fecha: date | None = None
+    importe: float
+    concepto: str | None = None
+
+
+class ItemMovimiento(BaseModel):
+    medio: str
+    idMovimiento: int
+
+
+class PedidoAsignacion(BaseModel):
+    items: list[ItemMovimiento]
+    idContacto: int
+    motivo: str

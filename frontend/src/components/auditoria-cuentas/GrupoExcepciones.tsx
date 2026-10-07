@@ -7,6 +7,7 @@ import { Fragment, useState } from "react";
 import { ErrorState, LoadingState } from "@/components/ui/States";
 import { formatFecha, formatMoneda } from "@/lib/format";
 
+import { AsignarContacto } from "./AsignarContacto";
 import { NuevaRegla } from "./ReglasConocidas";
 import { fetchGrupo, fetchHallazgos, type CausaCuenta, type CuentaAuditada } from "@/services/auditoriaCuentasApi";
 
@@ -68,6 +69,7 @@ export function GrupoExcepciones({ causa, titulo }: { causa: CausaCuenta; titulo
                   <b>{g.concepto}</b>
                   <span>{g.movimientos} movimientos · {formatMoneda(g.importe)}</span>
                   <NuevaRegla tipo="concepto-movimiento" claveInicial={g.concepto} etiqueta="Dar por explicado" />
+                  <AsignarContacto concepto={g.concepto} />
                 </div>
                 <ul className="mt-1 text-ink-secondary">
                   {g.ejemplos.map((m) => (

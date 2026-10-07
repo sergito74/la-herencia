@@ -11,6 +11,7 @@ import { ErrorState, LoadingState } from "@/components/ui/States";
 import { BASE_DOCUMENTOS_COMPRAS, esRutaLocalWindows, urlParaAbrirDocumento } from "@/lib/documentoLocal";
 import { formatFecha, formatMoneda } from "@/lib/format";
 import { fetchComprobantes, fetchMovimientosRevision, fetchRevision, guardarRevision, type EstadoRevision, type SugerenciaNota } from "@/services/auditoriaCuentasApi";
+import { FifoCuenta } from "./FifoCuenta";
 import { HistorialCorrecciones, ImputacionesSospechosas, NotaDeAjuste } from "./CorreccionesCuenta";
 import { urlDocumentoLocal } from "@/services/comprasApi";
 
@@ -163,6 +164,7 @@ export function RevisionCuenta({ idContacto }: { idContacto: number }) {
       </section>
 
       <ImputacionesSospechosas idContacto={idContacto} />
+      <FifoCuenta idContacto={idContacto} />
       <div className="flex flex-wrap items-center gap-2">
         <NotaDeAjuste key={sugerida ? `s-${sugerida.importe}-${sugerida.tipo}` : "normal"} idContacto={idContacto} permiteDolares={movs.data?.tieneDolares ?? false} sugerencia={sugerida} />
       </div>
