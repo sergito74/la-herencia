@@ -49,7 +49,7 @@ def _usuario_actual(request: Request) -> str:
 
 
 _CACHE: dict = {"t": 0.0, "v": None}
-TTL_SEGUNDOS = 90
+TTL_SEGUNDOS = 600  # los cambios hechos desde esta pantalla la invalidan; el resto se ve a los 10 minutos o con ?refrescar=true
 
 
 def invalidar_cache() -> None:
@@ -67,9 +67,10 @@ def _cuentas(refrescar: bool = False) -> tuple[dict, list[dict], list[dict], dic
 def _con_criterio_bimonetario(cuentas: list[dict]) -> None:
     """Para las cuentas con documentos en dólares, el saldo de la revisión es el saldo en pesos (documentos al TC de su factura)."""
     con_dolares = {f["c"] for f in fetch_all("SELECT DISTINCT IdContacto AS c FROM dbo.Compras WHERE Moneda = 'Dolares'", ())}
+    todas = bimonetaria.cargar_cuentas(sorted(con_dolares & {c["idContacto"] for c in cuentas}))
     for c in cuentas:
-        if c["idContacto"] in con_dolares:
-            r = bimonetaria.cargar_cuenta(c["idContacto"])
+        if c["idContacto"] in todas:
+            r = todas[c["idContacto"]]
             c["saldoPesos"], c["saldoDolares"], c["gobierna"] = r["saldoPesos"], r["saldoDolares"], r["gobierna"]
             c["saldoRevision"] = r["saldoGobierna"]
 

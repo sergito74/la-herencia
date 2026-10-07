@@ -77,3 +77,11 @@ def test_saldo_que_gobierna_es_el_de_la_moneda():
     filas = [_fila(date(2021, 8, 1), "Factura", "F1", 216.6972, 0, "Compras", 1), _fila(date(2021, 8, 17), "Pago", "R1", 0, 20952.45, "Galicia", 7)]
     r = b.construir(filas, {1: {"moneda": "Dolares", "tc": 96.69, "ajusta": False}}, b.CotizacionBNA(SERIE))
     assert r["gobierna"] == "Dolares" and r["saldoGobierna"] == r["saldoDolares"]
+
+
+def test_cargar_varias_cuentas_da_lo_mismo_que_una_por_una():
+    varias = b.cargar_cuentas([454, 450])
+    for i in (454, 450):
+        una = b.cargar_cuenta(i)
+        assert varias[i]["saldoPesos"] == una["saldoPesos"] and varias[i]["saldoDolares"] == una["saldoDolares"] and varias[i]["gobierna"] == una["gobierna"]
+    assert b.cargar_cuentas([]) == {}

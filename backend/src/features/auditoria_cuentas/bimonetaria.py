@@ -134,3 +134,27 @@ def cargar_cuenta(id_contacto: int) -> dict:
     compras = {int(c["id"]): {"moneda": c["moneda"], "tc": c["tc"], "ajusta": bool(c["ajusta"])} for c in fetch_all(
         "SELECT IdDeuda AS id, Moneda AS moneda, [Tipo de Cambio] AS tc, [Ajusta Tipo Cambio] AS ajusta FROM dbo.Compras WHERE IdContacto = ?", (id_contacto,))}
     return construir(filas, compras, cotizacion_bna())
+
+
+def cargar_cuentas(ids: list[int]) -> dict[int, dict]:
+    """Varias cuentas con una sola lectura de la vista (la vista es lenta: una consulta por cuenta tardaba medio segundo cada una)."""
+    from collections import defaultdict
+
+    from src.db.connection import fetch_all
+
+    if not ids:
+        return {}
+    marcas = ",".join("?" * len(ids))
+    filas = fetch_all(
+        "SELECT IdContacto, Fecha, Documento, [Nro Documento], Deuda, Credito, Origen, IdOrigen FROM dbo.vw_MovimientosCuenta_Base "
+        f"WHERE IdContacto IN ({marcas}) ORDER BY IdContacto, Fecha, Origen, IdOrigen", tuple(ids))
+    por_contacto: dict[int, list] = defaultdict(list)
+    for f in filas:
+        por_contacto[f["IdContacto"]].append(f)
+    compras: dict[int, dict] = {}
+    for c in fetch_all(
+            f"SELECT IdDeuda AS id, Moneda AS moneda, [Tipo de Cambio] AS tc, [Ajusta Tipo Cambio] AS ajusta FROM dbo.Compras WHERE IdContacto IN ({marcas})",
+            tuple(ids)):
+        compras[int(c["id"])] = {"moneda": c["moneda"], "tc": c["tc"], "ajusta": bool(c["ajusta"])}
+    cot = cotizacion_bna()
+    return {i: construir(por_contacto.get(i, []), compras, cot) for i in ids}
