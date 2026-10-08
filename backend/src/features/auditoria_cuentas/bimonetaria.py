@@ -173,9 +173,9 @@ def _vista_en_memoria(refrescar: bool = False) -> tuple[dict[int, list], dict[in
             "SELECT IdDeuda AS id, Moneda AS moneda, [Tipo de Cambio] AS tc, [Ajusta Tipo Cambio] AS ajusta FROM dbo.Compras", ())}
         entregas: dict[tuple[str, int], date] = {}
         try:
-            for e in fetch_all("SELECT IdMovimiento AS i, FechaEntrega AS f FROM dbo.ChequesEntregados "
-                               "WHERE MedioMovimiento = 'galicia' AND IdMovimiento IS NOT NULL AND FechaEntrega IS NOT NULL", ()):
-                entregas[("Galicia", int(e["i"]))] = _dia(e["f"])
+            for e in fetch_all("SELECT MedioMovimiento AS m, IdMovimiento AS i, FechaEntrega AS f FROM dbo.ChequesEntregados "
+                               "WHERE MedioMovimiento IN ('galicia', 'bna') AND IdMovimiento IS NOT NULL AND FechaEntrega IS NOT NULL", ()):
+                entregas[("Galicia" if e["m"] == "galicia" else "Banco Nacion", int(e["i"]))] = _dia(e["f"])
         except Exception:
             pass  # todavía no se cargaron los cheques entregados
         _VISTA.update(t=time.time(), filas=dict(por_contacto), compras=compras, entregas=entregas)
