@@ -22,6 +22,11 @@ FECHA = datetime(2020, 6, 18)
 
 
 def main(apply: bool) -> None:
+    # REEMPLAZADO el 2026-10-08: con los mails de SUNANCO se comprobó que Syngenta emitió la ND real 0272-00025845 ($675,39) que
+    # incluye estos $332,87. La ND "SIN DOCUMENTO" se eliminó y el pago de tarjeta de $332,87 quedó vinculado a esa ND real.
+    # No volver a correr este script: re-crearía la ND duplicada.
+    print("Script reemplazado: la ND real 0272-00025845 de Syngenta ya recibe este pago. No se hace nada.")
+    return
     if fetch_all("SELECT 1 AS x FROM dbo.Compras WHERE IdContacto = ? AND [Nro Documento] = 'SIN DOCUMENTO' AND Fecha = ? "
                  "AND [Ajusta Tipo Cambio] = 1", (CONTACTO, FECHA)):
         print("La nota de ajuste ya existe: no se hace nada.")

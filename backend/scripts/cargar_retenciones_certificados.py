@@ -50,6 +50,12 @@ ESCANEADOS = [
      "comprobante": "00002-00000060", "archivo": "0000-2026-000007_FideicomisoLaEsperanza (bis).pdf"},
 ]
 
+# Certificados que NO se completan aunque la fila de la tabla esté en 0: la retención nunca se descontó en plata.
+OMITIDOS = {
+    "0000-2021-000001": "Syngenta: certificado con base de $603.180,90 que no es la de la ND 0274-2567 ($8.723,40); el pago del 18/01/2021 "
+                        "fue el total sin descontar retención. Sergio la dejó en $0 a propósito (2026-10-08).",
+}
+
 # (IdRetencionSQL, columna, valor esperado antes, valor nuevo, motivo)
 CORRECCIONES = [
     (None, "IdContacto", 458, 562, "Certificado 0000-2024-000030 B: el retenido es Fideicomiso La Esperanza "
@@ -103,6 +109,8 @@ def main(aplicar: bool) -> None:
     nuevas, sin_contacto, completar = [], [], []
     numeros = {t["n"].strip() for t in tabla}
     for c in sorted(certs, key=lambda c: c["f"]):
+        if c["numero"] in OMITIDOS:
+            continue
         t = next((t for t in tabla if t["id"] not in usadas and coincide(c, t)), None)
         if t:
             usadas.add(t["id"])

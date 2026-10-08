@@ -42,7 +42,10 @@ def cargar_nota_ajuste(id_contacto: int, tipo: str, fecha: date, importe: float,
     validar(tipo, importe, motivo, moneda, fecha)
     cabecera = {"fecha": fecha, "idContacto": id_contacto, "tipo": "A", "tipoDocumento": TIPOS[tipo], "numeroDocumento": "SIN DOCUMENTO",
                 "moneda": moneda, "tipoDeCambio": tipo_de_cambio if moneda == "Dolares" else 1, "ajustaTipoCambio": False}
-    linea = {"productoServicio": f"Ajuste de cuenta: {motivo.strip()}"[:100], "cantidad": 1, "precioUnitario": neto_de_iva(importe),
+    # la columna Det_Compras.[Producto/Servicio] admite 50 caracteres
+    # una nota de crédito se guarda con importe negativo (así la vista de saldos la lee como crédito)
+    signo = -1 if tipo == "credito" else 1
+    linea = {"productoServicio": f"Ajuste de cuenta: {motivo.strip()}"[:50], "cantidad": 1, "precioUnitario": signo * neto_de_iva(importe),
              "iva": IVA_AJUSTE}
     try:
         return compras.create_compra(cabecera, [linea], [])

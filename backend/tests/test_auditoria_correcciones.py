@@ -32,3 +32,15 @@ def test_validar_nota_de_ajuste():
 def test_el_neto_mas_iva_da_el_importe():
     assert round(a.neto_de_iva(1210.0) * 1.21, 2) == 1210.0
     assert round(a.neto_de_iva(332.87) * 1.21, 2) == 332.87
+
+
+def test_la_nota_de_credito_de_ajuste_se_guarda_con_importe_negativo(monkeypatch):
+    """Las notas de crédito del sistema tienen importe negativo: la vista de saldos las lee como crédito."""
+    from src.features.auditoria_cuentas import ajustes as a
+
+    capturado = {}
+    monkeypatch.setattr(a.compras, "create_compra", lambda cab, lineas, venc: capturado.update(cab=cab, lineas=lineas) or 1)
+    a.cargar_nota_ajuste(1, "credito", date(2020, 8, 31), 225.30, "Pesos", "motivo")
+    assert capturado["lineas"][0]["precioUnitario"] < 0 and round(-capturado["lineas"][0]["precioUnitario"] * 1.21, 2) == 225.30
+    a.cargar_nota_ajuste(1, "debito", date(2020, 8, 31), 225.30, "Pesos", "motivo")
+    assert capturado["lineas"][0]["precioUnitario"] > 0
