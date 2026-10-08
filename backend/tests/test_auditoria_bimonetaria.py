@@ -122,3 +122,23 @@ def test_tc_pactado_no_aplica_si_la_cuenta_tiene_documentos_en_pesos():
     compras = {1: {"moneda": "Dolares", "tc": 100.0, "ajusta": False}, 2: {"moneda": "Pesos", "tc": 1.0, "ajusta": False}}
     r = b.construir(filas, compras, b.CotizacionBNA(SERIE), None, True)
     assert r["gobierna"] == "Mixta" and r["tcPactado"] is False
+
+
+def test_una_nota_de_diferencia_de_cambio_en_pesos_no_mueve_los_dolares():
+    """Los documentos en pesos marcados como ajuste de tipo de cambio corrigen solo la cuenta en pesos (Sergio, 08/10/2026)."""
+    filas = [_fila(date(2021, 8, 1), "Factura", "F1", 100.0, 0, "Compras", 1),
+             _fila(date(2021, 8, 2), "Nota de Débito", "ND", 3000.0, 0, "Compras", 2),
+             _fila(date(2021, 8, 17), "Pago", "P", 0, 13000.0, "Galicia", 7)]
+    compras = {1: {"moneda": "Dolares", "tc": 100.0}, 2: {"moneda": "Pesos", "tc": 1, "ajusta": True}}
+    r = b.construir(filas, compras, b.CotizacionBNA(SERIE))
+    assert r["saldoPesos"] == 0.0
+    assert r["filas"][1]["deudaPesos"] == 3000.0 and r["filas"][1]["saldoDolares"] == -100.0        # la nota no suma deuda en dólares
+    assert round(r["saldoDolares"], 2) == round(-100.0 + 13000.0 / 98.0, 2)
+
+
+def test_la_venta_de_granos_se_pasa_a_dolares_con_su_propio_tipo_de_cambio():
+    filas = [_fila(date(2021, 8, 17), "Venta Granos", "LIQ", 0, 15000.0, "Venta Granos", 5)]
+    r = b.construir(filas, {}, b.CotizacionBNA(SERIE), tc_ventas={5: 100.0})
+    assert r["filas"][0]["creditoPesos"] == 15000.0 and round(r["saldoDolares"], 2) == 150.0     # 15.000 / 100, no / 98
+    r2 = b.construir(filas, {}, b.CotizacionBNA(SERIE))
+    assert round(r2["saldoDolares"], 2) == round(15000.0 / 98.0, 2)

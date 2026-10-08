@@ -71,9 +71,13 @@ def moneda_que_gobierna(filas: list[dict], compras: dict[int, dict]) -> str:
 
 
 def _recorrer(filas: list[dict], compras: dict[int, dict], cotizacion: CotizacionBNA, entregas: dict[tuple[str, int], date] | None,
-              tc_pagos: float | None) -> tuple[list[dict], list[str], float, float]:
+              tc_pagos: float | None, tc_ventas: dict[int, float] | None = None) -> tuple[list[dict], list[str], float, float]:
     """Pasa las filas a pesos y dólares. `tc_pagos`: si viene, los importes en pesos se pasan a dólares con ese tipo de cambio
-    (el pactado en las facturas) en vez del dólar BNA del día anterior."""
+    (el pactado en las facturas) en vez del dólar BNA del día anterior.
+
+    Dos criterios (decisión de Sergio, 08/10/2026, hallados en FEDEA contra su libro en dólares): (1) un documento en pesos marcado
+    como ajuste de tipo de cambio (`Ajusta Tipo Cambio`) corrige solo la cuenta en pesos y no mueve los dólares; (2) una venta de
+    granos se pasa a dólares con el tipo de cambio de la propia venta (`tc_ventas`: IdVenta -> TC) y no con el dólar BNA."""
     saldo_pesos = saldo_dolares = 0.0
     salida, avisos = [], []
     for f in filas:
@@ -82,7 +86,9 @@ def _recorrer(filas: list[dict], compras: dict[int, dict], cotizacion: Cotizacio
         compra = compras.get(int(f["IdOrigen"])) if f["Origen"] == "Compras" else None
         en_dolares = bool(compra and compra.get("moneda") == DOLARES)
         entrega = (entregas or {}).get((f["Origen"], int(f["IdOrigen"])))
-        tc_dia = tc_pagos or cotizacion.dia_anterior(entrega or fecha)
+        tc_venta = (tc_ventas or {}).get(int(f["IdOrigen"])) if f["Origen"] == "Venta Granos" else None
+        tc_dia = tc_pagos or tc_venta or cotizacion.dia_anterior(entrega or fecha)
+        ajuste_pesos = bool(compra and compra.get("ajusta") and not en_dolares)
         fila = {"fecha": fecha, "documento": f["Documento"], "numeroDocumento": f["Nro Documento"], "origenTipo": f["Origen"],
                 "idOrigen": int(f["IdOrigen"]), "moneda": DOLARES if en_dolares else "Pesos", "deudaOriginal": deuda, "creditoOriginal": credito,
                 "tipoDeCambio": None, "tcEstimado": False, "fechaEntrega": entrega}
@@ -98,6 +104,8 @@ def _recorrer(filas: list[dict], compras: dict[int, dict], cotizacion: Cotizacio
         else:
             deuda_p, credito_p = deuda, credito
             deuda_d, credito_d = (round(deuda / tc_dia, 4), round(credito / tc_dia, 4)) if tc_dia else (0.0, 0.0)
+            if ajuste_pesos:
+                deuda_d = credito_d = 0.0
         saldo_pesos = round(saldo_pesos + credito_p - deuda_p, 4)
         saldo_dolares = round(saldo_dolares + credito_d - deuda_d, 4)
         fila.update(deudaPesos=deuda_p, creditoPesos=credito_p, saldoPesos=round(saldo_pesos, 2), saldoDolares=round(saldo_dolares, 2))
@@ -106,7 +114,7 @@ def _recorrer(filas: list[dict], compras: dict[int, dict], cotizacion: Cotizacio
 
 
 def construir(filas: list[dict], compras: dict[int, dict], cotizacion: CotizacionBNA, entregas: dict[tuple[str, int], date] | None = None,
-              tc_pactado: bool = False) -> dict:
+              tc_pactado: bool = False, tc_ventas: dict[int, float] | None = None) -> dict:
     """Movimientos de una cuenta con su moneda, importes en pesos, saldo acumulado en pesos y en dólares.
 
     `filas`: filas de la vista ya ordenadas por (Fecha, Origen, IdOrigen) con Fecha, Documento, Nro Documento,
@@ -119,12 +127,12 @@ def construir(filas: list[dict], compras: dict[int, dict], cotizacion: Cotizacio
     la misma forma (pago exacto en pesos al tipo de cambio de la factura) pueden tener o no un tipo de cambio pactado.
     """
     gobierna = moneda_que_gobierna(filas, compras)
-    salida, avisos, saldo_pesos, saldo_dolares = _recorrer(filas, compras, cotizacion, entregas, None)
+    salida, avisos, saldo_pesos, saldo_dolares = _recorrer(filas, compras, cotizacion, entregas, None, tc_ventas)
     facturado_usd = sum(x["deudaOriginal"] for x in salida if x["moneda"] == DOLARES)
     facturado_pesos = sum(x["deudaPesos"] for x in salida if x["moneda"] == DOLARES)
     pactado = False
     if tc_pactado and gobierna == DOLARES and facturado_usd:
-        salida, avisos, saldo_pesos, saldo_dolares = _recorrer(filas, compras, cotizacion, entregas, round(facturado_pesos / facturado_usd, 6))
+        salida, avisos, saldo_pesos, saldo_dolares = _recorrer(filas, compras, cotizacion, entregas, round(facturado_pesos / facturado_usd, 6), tc_ventas)
         pactado = True
     return {"filas": salida, "saldoPesos": round(saldo_pesos, 2), "saldoDolares": round(saldo_dolares, 2), "gobierna": gobierna,
             "saldoGobierna": round(saldo_dolares if gobierna == DOLARES else saldo_pesos, 2),
@@ -148,7 +156,7 @@ def cotizacion_bna() -> CotizacionBNA:
     return _COTIZACION["v"]
 
 
-_VISTA: dict = {"t": 0.0, "filas": None, "compras": None, "entregas": None}
+_VISTA: dict = {"t": 0.0, "filas": None, "compras": None, "entregas": None, "tc_ventas": {}}
 TTL_VISTA = 120
 
 
@@ -178,7 +186,9 @@ def _vista_en_memoria(refrescar: bool = False) -> tuple[dict[int, list], dict[in
                 entregas[("Galicia" if e["m"] == "galicia" else "Banco Nacion", int(e["i"]))] = _dia(e["f"])
         except Exception:
             pass  # todavía no se cargaron los cheques entregados
-        _VISTA.update(t=time.time(), filas=dict(por_contacto), compras=compras, entregas=entregas)
+        tc_ventas = {int(v["i"]): float(v["tc"]) for v in fetch_all(
+            "SELECT IdVenta AS i, [Tipo Cambio] AS tc FROM dbo.[Venta Granos] WHERE ISNULL([Tipo Cambio], 0) > 1", ())}
+        _VISTA.update(t=time.time(), filas=dict(por_contacto), compras=compras, entregas=entregas, tc_ventas=tc_ventas)
     return _VISTA["filas"], _VISTA["compras"], _VISTA["entregas"]
 
 
@@ -192,7 +202,7 @@ def cuentas_con_tc_pactado() -> set[int]:
 def cargar_cuenta(id_contacto: int, refrescar: bool = False) -> dict:
     """La cuenta de la vista con el criterio bimonetario (solo lectura, desde la copia en memoria)."""
     filas, compras, entregas = _vista_en_memoria(refrescar)
-    return construir(filas.get(id_contacto, []), compras, cotizacion_bna(), entregas, id_contacto in cuentas_con_tc_pactado())
+    return construir(filas.get(id_contacto, []), compras, cotizacion_bna(), entregas, id_contacto in cuentas_con_tc_pactado(), _VISTA.get("tc_ventas"))
 
 
 def cargar_cuentas(ids: list[int]) -> dict[int, dict]:
@@ -202,4 +212,4 @@ def cargar_cuentas(ids: list[int]) -> dict[int, dict]:
     filas, compras, entregas = _vista_en_memoria()
     cot = cotizacion_bna()
     pactados = cuentas_con_tc_pactado()
-    return {i: construir(filas.get(i, []), compras, cot, entregas, i in pactados) for i in ids}
+    return {i: construir(filas.get(i, []), compras, cot, entregas, i in pactados, _VISTA.get("tc_ventas")) for i in ids}
