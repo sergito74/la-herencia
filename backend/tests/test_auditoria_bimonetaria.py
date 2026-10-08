@@ -142,3 +142,14 @@ def test_la_venta_de_granos_se_pasa_a_dolares_con_su_propio_tipo_de_cambio():
     assert r["filas"][0]["creditoPesos"] == 15000.0 and round(r["saldoDolares"], 2) == 150.0     # 15.000 / 100, no / 98
     r2 = b.construir(filas, {}, b.CotizacionBNA(SERIE))
     assert round(r2["saldoDolares"], 2) == round(15000.0 / 98.0, 2)
+
+
+def test_la_valuacion_del_proveedor_manda_sobre_el_dolar_bna_y_conserva_el_signo():
+    filas = [_fila(date(2021, 8, 17), "Pago", "P", 0, 15000.0, "Banco Nacion", 5),
+             _fila(date(2021, 8, 17), "Cobro", "C", 0, -1000.0, "Pagos efectivo", 6),
+             _fila(date(2021, 8, 17), "ND", "N", 98.0, 0, "Compras", 7)]
+    compras = {7: {"moneda": "Pesos", "tc": 1, "ajusta": True}}
+    r = b.construir(filas, compras, b.CotizacionBNA(SERIE), valuaciones={("Banco Nacion", 5): 151.0, ("Pagos efectivo", 6): 9.0, ("Compras", 7): 1.0})
+    por = {f["origenTipo"]: f for f in r["filas"]}
+    assert por["Banco Nacion"]["saldoDolares"] == 151.0 and r["filas"][1]["saldoDolares"] == 142.0       # el cobro negativo resta
+    assert round(r["saldoDolares"], 2) == 141.0 and r["saldoPesos"] == 15000.0 - 1000.0 - 98.0
