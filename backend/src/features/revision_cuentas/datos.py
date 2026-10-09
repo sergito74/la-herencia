@@ -122,8 +122,10 @@ def imputaciones_de_cuentas(ids: list[int] | None = None, hasta: date | None = N
     aplicado = fetch_all(
         "SELECT c.IdContacto AS i, SUM(a.ImporteAplicado) AS s FROM dbo.AplicacionesPago a JOIN dbo.Compras c ON c.IdDeuda = a.IdDocumentoAplicado "
         "WHERE a.Anulada = 0 AND a.TipoDocumento = 'CompraDeuda' AND c.Moneda <> 'Dolares'" + filtro + " GROUP BY c.IdContacto", params)
+    # Solo lo imputado a facturas (positivo): una nota de crédito imputada a la línea baja lo que cobró la tarjeta, no deja la factura sin imputar
     tarjeta = fetch_all(
-        "SELECT c.IdContacto AS i, SUM(t.ImporteImputado) AS s FROM dbo.Tarjetas_Resumenes_Lineas_Compras t JOIN dbo.Compras c ON c.IdDeuda = t.IdCompra "
+        "SELECT c.IdContacto AS i, SUM(CASE WHEN t.ImporteImputado > 0 THEN t.ImporteImputado ELSE 0 END) AS s "
+        "FROM dbo.Tarjetas_Resumenes_Lineas_Compras t JOIN dbo.Compras c ON c.IdDeuda = t.IdCompra "
         "WHERE c.Moneda <> 'Dolares'" + filtro + " GROUP BY c.IdContacto", params)
     # Mercado Libre y valores propios no generan AplicacionesPago (el FIFO solo lee banco, efectivo y tarjeta): su vínculo vive en la conciliación de tesorería
     tesoreria = fetch_all(

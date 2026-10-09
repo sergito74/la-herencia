@@ -154,9 +154,9 @@ def lote_en_memoria(monkeypatch):
                         estado["corrs"][i].update(estado=e, respaldo=respaldo or estado["corrs"][i]["respaldo"]) or estado["llamadas"].append((i, e, usuario)))
     monkeypatch.setattr(fichas, "corte_vigente", lambda: {"corte": CORTE})
     monkeypatch.setattr(lotes, "_candidatas", lambda cola, regla, corte, usuario: (
-        lotes.candidatas_aprobar_cierre({1: _ctx(1, "Uno", saldo=100.0), 2: _ctx(2, "Dos", saldo=-50.0)}, {}), {}))
+        lotes.candidatas_aprobar_cierre({1: _ctx(1, "Uno", saldo=1.0), 2: _ctx(2, "Dos", saldo=-1.5)}, {}), {}))
     monkeypatch.setattr("src.features.vinculos.backup.backup_verificado", lambda etiqueta: f"C:\\respaldos\\{etiqueta}.bak")
-    monkeypatch.setattr(lotes.datos, "saldos_al_corte", lambda corte: {1: 100.0, 2: -50.0})
+    monkeypatch.setattr(lotes.datos, "saldos_al_corte", lambda corte: {1: 1.0, 2: -1.5})
     estado["cierres"] = []
     monkeypatch.setattr(lotes, "_aplicar_cierre", lambda lote, tildadas, corte, usuario: estado["cierres"].append([c["idContacto"] for c in tildadas]))
     estado["reversiones"] = []
@@ -270,12 +270,12 @@ def _tilde(i: int) -> dict:
 def test_cerrar_en_bloque_guarda_el_inventario_access_la_ficha_previa_y_el_historial(monkeypatch):
     operaciones: list = []
     monkeypatch.setattr(fichas, "execute_write_transaction", lambda ops: operaciones.extend(ops))
-    contextos = {1: _ctx(1, "Sin ficha", saldo=-3.31), 2: _ctx(2, "Con ficha", saldo=0.0, fila={"Estado": "en-proceso", "InventarioFuentes": None, "Nota": "x"})}
+    contextos = {1: _ctx(1, "Sin ficha", saldo=-1.31), 2: _ctx(2, "Con ficha", saldo=0.0, fila={"Estado": "en-proceso", "InventarioFuentes": None, "Nota": "x"})}
     fichas.cerrar_en_bloque(100, contextos, [_tilde(1), _tilde(2)], CORTE, "Sergio")
     sqls = [o[0] for o in operaciones]
     assert sum(1 for s in sqls if s.startswith("INSERT INTO dbo.RevisionFichas")) == 1 and sum(1 for s in sqls if s.startswith("UPDATE dbo.RevisionFichas")) == 1
     insertar = next(o for o in operaciones if o[0].startswith("INSERT INTO dbo.RevisionFichas"))
-    assert "access" in insertar[1][1] and insertar[1][3] == CORTE and insertar[1][4] == -3.31
+    assert "access" in insertar[1][1] and insertar[1][3] == CORTE and insertar[1][4] == -1.31
     previas = [json.loads(o[1][0]).get("previa") for o in operaciones if o[0].startswith("UPDATE dbo.AuditoriaCorreccionesCuentas")]
     assert previas[0] is None and previas[1]["Estado"] == "en-proceso"
     hist = [json.loads(o[1][1]) for o in operaciones if "AuditoriaRevisionesHistorial" in o[0]]

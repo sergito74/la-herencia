@@ -14,16 +14,16 @@ CORTE = date(2026, 9, 30)
 def _ctx(estado: str | None = None, **cambios_criterios) -> dict:
     base = {"pagos_pendientes": 0, "pagos_importe_pendiente": 0.0, "pagos_antiguos": 0, "detector_cierra": True, "hallazgos": set(),
             "retenciones_sin_certificado": 0, "imputaciones": {"sanas": True}, "tiene_inventario": True, "reabierta": False,
-            "referencia_access": {"tiene": True, "explica": True, "diferencia": 0.0}, "saldo_externo": None, "sin_estado": False, "saldo": -3.31}
+            "referencia_access": {"tiene": True, "explica": True, "diferencia": 0.0}, "saldo_externo": None, "sin_estado": False, "saldo": -1.31}
     base.update(cambios_criterios)
     fila = None if estado is None else {"Estado": estado, "InventarioFuentes": '[{"tipo": "access", "disponible": true}]', "Corte": CORTE,
-                                          "SaldoAlCierre": -3.31, "Moneda": "Pesos", "UsuarioCierre": "Sergio", "FechaCierre": None,
+                                          "SaldoAlCierre": -1.31, "Moneda": "Pesos", "UsuarioCierre": "Sergio", "FechaCierre": None,
                                           "PreguntaBloqueante": None, "MotivoExcepcion": None}
-    return {"idContacto": 48, "corte": CORTE, "fila": fila or {"InventarioFuentes": '[{"tipo": "access", "disponible": true}]'}, "saldo": -3.31,
+    return {"idContacto": 48, "corte": CORTE, "fila": fila or {"InventarioFuentes": '[{"tipo": "access", "disponible": true}]'}, "saldo": -1.31,
             "gobierna": "Pesos", "sentido": "proveedor", "cuenta": {"razonSocial": "Jauregui y Morales"}, "pagos": [], "marcas": {},
             "consistencia": {"cierra": True}, "criterios_ctx": base, "externos": [], "reabierta": base["reabierta"],
             "colas_ctx": {"es_h": False, "pagos_pendientes": base["pagos_pendientes"], "detector_cierra": True, "hallazgos": base["hallazgos"],
-                          "retenciones_sin_certificado": 0, "gobierna": "Pesos", "saldo_revision": -3.31, "tolerancia": None,
+                          "retenciones_sin_certificado": 0, "gobierna": "Pesos", "saldo_revision": -1.31, "tolerancia": None,
                           "causa": "coincide", "cuenta_a_revisar": False, "imputaciones_sanas": True}}
 
 
@@ -49,9 +49,9 @@ def test_cerrar_con_los_siete_criterios_guarda_corte_saldo_moneda_y_usuario(simu
     assert r["devuelta"] is True
     id_contacto, estado, nota, pregunta, motivo, usuario, cierre = simulada["guardado"][0]
     assert (id_contacto, estado, usuario) == (48, "cerrada", "Sergio")
-    assert cierre == {"corte": CORTE, "saldo": -3.31, "moneda": "Pesos"}
+    assert cierre == {"corte": CORTE, "saldo": -1.31, "moneda": "Pesos"}
     accion, detalle, _ = simulada["historial"][0]
-    assert accion == "ficha-cierre" and detalle["saldoAlCierre"] == -3.31 and detalle["evidencia"] == "access"
+    assert accion == "ficha-cierre" and detalle["saldoAlCierre"] == -1.31 and detalle["evidencia"] == "access"
 
 
 def test_cerrar_con_un_criterio_sin_cumplir_devuelve_409_con_la_lista(simulada):
@@ -107,12 +107,12 @@ def test_cerrar_cuando_la_cuenta_esta_reabierta_es_posible_si_los_criterios_cump
 
 # ---- reapertura al corte
 
-def _fila(estado="cerrada", saldo=-3.31, moneda="Pesos") -> dict:
+def _fila(estado="cerrada", saldo=-1.31, moneda="Pesos") -> dict:
     return {"Estado": estado, "SaldoAlCierre": saldo, "Moneda": moneda, "Corte": CORTE}
 
 
 def test_un_cambio_de_redondeo_no_reabre_la_cuenta():
-    assert fichas.esta_reabierta(_fila(), -3.9) is False
+    assert fichas.esta_reabierta(_fila(), -1.9) is False
 
 
 def test_un_cambio_de_saldo_al_corte_mayor_a_un_peso_reabre_la_cuenta():
@@ -121,7 +121,7 @@ def test_un_cambio_de_saldo_al_corte_mayor_a_un_peso_reabre_la_cuenta():
 
 def test_los_movimientos_posteriores_al_corte_no_reabren_porque_el_saldo_se_mide_al_corte_del_cierre():
     # el mismo saldo al corte aunque la cuenta tenga movimientos nuevos después: no cambia
-    assert fichas.esta_reabierta(_fila(), -3.31) is False
+    assert fichas.esta_reabierta(_fila(), -1.31) is False
 
 
 def test_una_cuenta_no_cerrada_o_sin_ficha_nunca_figura_reabierta():
@@ -154,7 +154,7 @@ def test_la_ficha_sin_inventario_esta_en_e0():
 
 def test_la_ficha_de_una_cuenta_cerrada_trae_los_datos_del_cierre_y_se_muestra_reabierta_si_cambio_el_saldo():
     ficha = fichas.armar_ficha(_ctx(estado="cerrada"))
-    assert ficha["estado"] == "cerrada" and ficha["cierre"]["corte"] == CORTE and ficha["cierre"]["saldoAlCierre"] == -3.31
+    assert ficha["estado"] == "cerrada" and ficha["cierre"]["corte"] == CORTE and ficha["cierre"]["saldoAlCierre"] == -1.31
     assert ficha["estadoEfectivo"] == "cerrada"
     ctx = _ctx(estado="cerrada")
     ctx["reabierta"] = True

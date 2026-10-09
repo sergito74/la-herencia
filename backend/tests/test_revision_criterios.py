@@ -157,3 +157,14 @@ def test_las_imputaciones_de_tarjeta_duplicadas_incumplen_c4_y_la_etapa_es_e3():
     assert c4["cumple"] is False and "5 imputaciones de tarjeta que sobran" in c4["medido"]
     assert criterios.etapa_de(criterios.evaluar(ctx), True) == "E3"
     assert _por_codigo(_sana(tarjetas_duplicadas=0))["C4"]["cumple"] is True
+
+
+def test_c3_con_el_access_no_alcanza_si_el_saldo_no_es_cero():
+    """Regla de Sergio (09/10/2026): coincidir con el Access solo cierra cuentas con saldo cero o de redondeo."""
+    assert _por_codigo(_sana(saldo=1.5))["C3"]["cumple"] is True
+    con_saldo = _por_codigo(_sana(saldo=-5000.0))["C3"]
+    assert con_saldo["cumple"] is False and "no es cero" in con_saldo["medido"]
+    # con saldo, cierra con evidencia externa o con la decisión de no pedir estado de cuenta
+    assert _por_codigo(_sana(saldo=-5000.0, sin_estado=True))["C3"]["cumple"] is True
+    externo = {"clasificacion": "cierra", "fuente": "portal", "diferencia": 0.0, "fechaSaldo": "2026-09-30"}
+    assert _por_codigo(_sana(saldo=-5000.0, saldo_externo=externo))["C3"]["cumple"] is True

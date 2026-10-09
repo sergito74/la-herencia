@@ -6,6 +6,7 @@ que pertenece. La etapa de una cuenta es la primera cuyo criterio no se cumple (
 
 from __future__ import annotations
 
+SALDO_CERO = 2.0  # hasta este saldo (en la moneda de la cuenta) se da por cero: redondeo
 UMBRAL_PESOS = 300.0  # una diferencia menor se da por cerrada (en dólares rige la tolerancia relativa de la cuenta)
 
 ETAPA_DE_CRITERIO = {"C1": "E1", "C2": "E2", "C3": "E4", "C4": "E3", "C5": "E5", "C6": "E4", "C7": "E6"}
@@ -62,6 +63,11 @@ def _c3(ctx: dict) -> dict:
     if ctx.get("sin_estado"):
         return _criterio("C3", True, "Se decidió no pedir estado de cuenta", "Cierra con la evidencia disponible, anotado como excepción", "sin-estado")
     sin_problemas = not (set(ctx.get("hallazgos", ())) & HALLAZGOS_DE_SALDO) and int(ctx.get("pagos_pendientes", 0)) == 0
+    saldo = abs(float(ctx.get("saldo") or 0))
+    if ref.get("tiene") and ref.get("explica") and sin_problemas and saldo > SALDO_CERO:
+        # Regla de Sergio (09/10/2026): coincidir con el Access no alcanza si hay saldo; hace falta evidencia externa o explicar por qué queda (no venció, falta el resumen del proveedor)
+        return _criterio("C3", False, f"Coincide con el Access, pero el saldo no es cero ({_dinero(saldo)})",
+                         "Con saldo, hace falta saldo externo o explicar por qué queda pendiente (no venció, falta el resumen)")
     if ref.get("tiene") and ref.get("explica") and sin_problemas:
         return _criterio("C3", True, "El saldo coincide con la referencia del Access al corte, sin hallazgos de saldo ni pagos sin factura",
                          "Respaldado por la referencia del Access (cierre en bloque)", "access")
