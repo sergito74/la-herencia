@@ -89,3 +89,11 @@ Todo en `WC`. Desde `backend/`, con `PYTHONIOENCODING=utf-8`. Referencias: [data
 | SC-009 ningún comprobante legible sin cargar y sin informar | Cumple en la carpeta real: 21 archivos por revisar en todos los períodos, 12 comprobantes legibles con extensión incorrecta y los 12 ya cargados. |
 | SC-010 saber el avance en menos de 30 segundos | Cumple: tablero en 5,2 s la primera vez y al instante después. |
 | SC-011 todas las cuentas cerradas o cerradas con excepción | **En curso**: 1 de 518 cerrada (Jauregui y Morales). Es el objetivo del trabajo que sigue. |
+
+### Cierre en bloque, tramo 1 (09/10/2026, decisión de Sergio)
+
+- **Qué se cerró**: las **326 cuentas** de la cola A que cumplen la regla y tienen saldo cero o de centavos (hasta $1), en un solo lote (**lote 45**), con respaldo verificado `WC_lote-036-45_20261009_165056_515885.bak`. Se aplicó en 4,4 s. Fuente de evidencia: `access` (referencia del Access al corte), inventario `access`.
+- **Verificación**: 327 fichas cerradas en total (las 326 más Jauregui y Morales); **ningún saldo cambió** en las 326 cuentas; Jauregui sigue cerrada.
+- **Decisión de Sergio** ("Cerrá todas. Confiemos en que están correctas"): se cerró el tramo completo y no solo el subgrupo de menor riesgo que se propuso (183 cuentas que coinciden exacto con el Access y sin movimientos desde antes de 2023). **Riesgo conocido y aceptado**: una factura faltante junto con su pago también faltante no la detecta ningún control; se concentra en las 63 cuentas del tramo con movimientos en 2025 o 2026, y en las 104 que coinciden con el Access solo "con causa conocida". Cerrar es una marca reversible: el lote se deshace entero (probado) y una cuenta se reabre sola si cambia su saldo al corte.
+- Perfil del tramo (solo lectura): 151 cuentas con 1 o 2 movimientos; 221 sin movimientos desde antes de 2023; 218 coinciden exacto con el Access, 104 con causa conocida y 4 con diferencia menor al umbral; 26 pagos anteriores a 2021 sin emparejar.
+- Quedan abiertas las 33 cuentas restantes de la cola A (saldo mayor a $1: 12 hasta $1.000, 4 de $1.000 a $10.000, 3 de $10.000 a $100.000, 10 de $100.000 a $1 M y 4 de más de $1 M).
