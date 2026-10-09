@@ -125,11 +125,18 @@ def imputaciones_de_cuentas(ids: list[int] | None = None, hasta: date | None = N
     tarjeta = fetch_all(
         "SELECT c.IdContacto AS i, SUM(t.ImporteImputado) AS s FROM dbo.Tarjetas_Resumenes_Lineas_Compras t JOIN dbo.Compras c ON c.IdDeuda = t.IdCompra "
         "WHERE c.Moneda <> 'Dolares'" + filtro + " GROUP BY c.IdContacto", params)
+    # Mercado Libre y valores propios no generan AplicacionesPago (el FIFO solo lee banco, efectivo y tarjeta): su vínculo vive en la conciliación de tesorería
+    tesoreria = fetch_all(
+        "SELECT c.IdContacto AS i, SUM(ct.Importe) AS s FROM dbo.ConciliacionesTesoreria ct JOIN dbo.Compras c ON c.IdDeuda = ct.IdOrigenDocumento "
+        "WHERE ct.TipoOrigenDocumento = 'Compras' AND ct.Medio IN ('mercado-libre', 'valores-propios') AND c.Moneda <> 'Dolares'" + filtro + " GROUP BY c.IdContacto", params)
     r: dict[int, dict] = {int(f["i"]): {"facturado": round(float(f["s"] or 0), 2), "facturas": int(f["n"]), "aplicado": 0.0, "tarjeta": 0.0} for f in facturado}
     for f in aplicado:
         r.setdefault(int(f["i"]), {"facturado": 0.0, "facturas": 0, "aplicado": 0.0, "tarjeta": 0.0})["aplicado"] = round(float(f["s"] or 0), 2)
     for f in tarjeta:
         r.setdefault(int(f["i"]), {"facturado": 0.0, "facturas": 0, "aplicado": 0.0, "tarjeta": 0.0})["tarjeta"] = round(float(f["s"] or 0), 2)
+    for f in tesoreria:
+        d = r.setdefault(int(f["i"]), {"facturado": 0.0, "facturas": 0, "aplicado": 0.0, "tarjeta": 0.0})
+        d["aplicado"] = round(d["aplicado"] + float(f["s"] or 0), 2)
     return r
 
 
