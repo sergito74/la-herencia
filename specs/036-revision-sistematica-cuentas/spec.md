@@ -4,7 +4,7 @@
 
 **Created**: 2026-10-09
 
-**Status**: Implementado (09/10/2026). Pendientes: T057 (guía de agentes, requiere la aprobación de Sergio) y el cierre en bloque de la cola A (decisión de Sergio, ver `research.md` D16).
+**Status**: Implementado (09/10/2026). Pendiente: el cierre en bloque de la cola A, por tramos de saldo y sin muestra externa (decisión de Sergio del 09/10/2026, ver `research.md` D16).
 
 **Input**: User description: "Método sistemático de revisión, conciliación y FIFO de todas las cuentas de Giamigli (036): plasmar la realidad financiera de cada cuenta (proveedores, clientes y otros contactos; socios y entidades aparte) desde el inicio de cada cuenta, con criterios de cierre medibles, etapas iguales para toda cuenta, colas por tipo de problema trabajadas de las más fáciles a las más complejas, detector de pagos sin factura, saldos externos del proveedor, control de archivos incompletos en Dropbox y FIFO como última etapa. Solo Sergio audita y aprueba."
 

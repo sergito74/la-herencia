@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useState } from "react";
 
 import { SoloLectura } from "@/components/auth/SoloLectura";
-import { formatMoneda } from "@/lib/format";
+import { formatMoneda, parseNumeroLocal } from "@/lib/format";
 import { revisionCuentasApi, type Cola, type Lote } from "@/services/revisionCuentasApi";
 
 /**
@@ -19,6 +19,7 @@ export function LoteCola({ cola }: { cola: Cola }) {
   const [lote, setLote] = useState<Lote | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [confirmar, setConfirmar] = useState(false);
+  const [tope, setTope] = useState("");
   const alFallar = (e: unknown) => setError(e instanceof Error ? e.message : "No se pudo completar.");
   const refrescar = () => {
     for (const k of ["revision-cola", "revision-tablero", "revision-ficha"]) qc.invalidateQueries({ queryKey: [k] });
@@ -88,6 +89,23 @@ export function LoteCola({ cola }: { cola: Cola }) {
                 <button type="button" disabled={tildar.isPending || tildadas.length === 0} onClick={() => tildar.mutate({ idsContacto: [] })} className="rounded border border-line px-3 py-1">
                   Desmarcar todas
                 </button>
+                <span className="flex items-center gap-1">
+                  <label>
+                    Tildar solo las de saldo hasta ${" "}
+                    <input inputMode="decimal" value={tope} onChange={(e) => setTope(e.target.value)} placeholder="por ejemplo 10.000" className="w-28 rounded border border-line px-1 py-0.5" aria-label="Saldo máximo para tildar" />
+                  </label>
+                  <button
+                    type="button"
+                    disabled={tildar.isPending || !tope.trim()}
+                    onClick={() => {
+                      const max = Math.abs(parseNumeroLocal(tope));
+                      tildar.mutate({ idsContacto: lote.cuentas.filter((c) => c.cumple && Math.abs(c.saldoAntes ?? 0) <= max).map((c) => c.idContacto) });
+                    }}
+                    className="rounded border border-line px-3 py-1"
+                  >
+                    Tildar ese tramo
+                  </button>
+                </span>
                 <button type="button" disabled={tildadas.length === 0} onClick={() => setConfirmar(true)} className="rounded bg-finance px-3 py-1 text-white disabled:opacity-40">
                   Aplicar a las tildadas
                 </button>

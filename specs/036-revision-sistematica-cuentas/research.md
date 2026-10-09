@@ -133,7 +133,13 @@ Revisión de solo lectura del agente 07 sobre `criterios.py`, `detector.py` y el
 | C7 no aporta en el cierre en bloque (la regla confirma el inventario sola). | Anotado: C7 solo agrega trazabilidad real en cierres individuales. |
 | Banco Nación (369): la consistencia no cierra. | Es una entidad de la cola H (excluida del método de proveedores); se revisa con sus reglas propias. |
 
-## D17. Propuesta para la guía de agentes (T057, pendiente de aprobación de Sergio)
+**Decisiones de Sergio sobre el cierre en bloque de la cola A (09/10/2026)**: (1) se cierra **por tramos de saldo**, empezando por los chicos y dejando los grandes para después (la pantalla del lote permite tildar solo las cuentas hasta un saldo máximo); (2) **no se exige muestra de 15 cuentas contra un estado de cuenta real** (impracticable: no hay tantos estados disponibles); (3) se **prueba antes el "deshacer"**.
+
+**Prueba del deshacer sobre `WC` (09/10/2026)**: lote real 43 de la cola A (364 cuentas, 359 cumplen) con una sola cuenta tildada (Aberturas Rodríguez, saldo cero, sin ficha previa): se aplicó en 5,1 s con respaldo verificado (`WC_lote-036-43_...bak`), la cuenta quedó cerrada al corte del 30/09/2026 con inventario `access`, y al revertir (0,0 s) la ficha volvió a `pendiente` con todos los campos del cierre vacíos. Jauregui siguió cerrada. El lote 43 queda como registro `revertida`.
+
+**Reparto de las 359 cuentas que cumplen, por saldo absoluto**: 326 con saldo cero o de centavos (hasta $1) · 12 hasta $1.000 · 4 de $1.000 a $10.000 · 3 de $10.000 a $100.000 · 10 de $100.000 a $1 M · 4 de más de $1 M (la mayor, $9,67 M).
+
+## D17. Propuesta para la guía de agentes (T057, aprobada y aplicada el 09/10/2026)
 
 `.specify/memory/agent-guidance.md` todavía llama a `WC` "copia de trabajo" y a `LaHerencia` "oficial", y dice que no se escribe en `LaHerencia` "durante el desarrollo". La Constitución v1.4.0 (25/09/2026) dice que `WC` es la base de producción y `LaHerencia` está congelada. **Cambio propuesto (no aplicado)**: en la sección "Bases de datos y archivos Access", reemplazar el primer y el tercer punto por: "`WC` es la base de producción (corte del 25/09/2026): las escrituras normales de la tarea van ahí, con respaldo verificado antes de cualquier cambio no trivial. `LaHerencia` está congelada: no se escribe ni se usa para nada salvo lecturas puntuales de verificación." y quitar la frase sobre una futura "puesta en marcha desde `WC` a la base oficial", que ya ocurrió.
 

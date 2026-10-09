@@ -12,9 +12,9 @@ Este documento es la guía común de trabajo para Claude Code, Codex y cualquier
 
 ## Bases de datos y archivos Access
 
-- `WC` es la copia de trabajo del sistema. Es la base prevista para desarrollo, pruebas funcionales y las escrituras de la aplicación durante esta etapa. No pedir autorización de nuevo para cada escritura normal de desarrollo sobre `WC` cuando la tarea del usuario ya la implique.
-- La base SQL Server oficial `LaHerencia` debe preservarse intacta durante el desarrollo. No ejecutar escrituras, DDL, migraciones ni pruebas con efectos secundarios contra ella, ni configurar la aplicación nueva para usarla durante el desarrollo.
-- El paso futuro desde `WC` a la base oficial requiere una decisión explícita de puesta en marcha, reconciliación de cambios ingresados entretanto y un plan de respaldo/restauración. No asumir que la autorización para usar `WC` autoriza ese paso.
+- `WC` es la base de producción del sistema (desde el corte del 25/09/2026, según la Constitución v1.4.0). Es donde van las escrituras de la aplicación y del trabajo de las tareas. No pedir autorización de nuevo para cada escritura normal sobre `WC` cuando la tarea del usuario ya la implique, pero tomar un respaldo verificado antes de cualquier cambio de esquema o escritura masiva, y no dejar que las pruebas automáticas escriban datos reales (usar datos simulados).
+- La base SQL Server `LaHerencia` está congelada: no se escribe en ella, no se ejecutan DDL, migraciones ni pruebas con efectos secundarios, y la aplicación no se configura para usarla. Solo se permiten lecturas puntuales de verificación, con justificación explícita.
+- El paso desde `WC` a la base `LaHerencia` ya ocurrió en sentido inverso (se congeló `LaHerencia`): no existe una "puesta en marcha futura" pendiente. Cualquier cambio de sistema de registro vuelve a requerir una decisión explícita del usuario, un respaldo y un plan de restauración.
 - Los archivos Access locales pertenecen al sistema que sigue en uso. Son artefactos protegidos: no borrarlos, reemplazarlos, modificar sus datos ni ejecutar scripts que los alteren. Su eventual retiro requiere una decisión posterior del usuario.
 - La aplicación nueva usa SQL Server a través del backend Python. No agregar una conexión directa del navegador a SQL Server, nuevas dependencias de Access, ni persistencia paralela.
 
