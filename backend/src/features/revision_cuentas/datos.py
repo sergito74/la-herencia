@@ -128,9 +128,23 @@ def imputaciones_de_cuentas(ids: list[int] | None = None, hasta: date | None = N
         "FROM dbo.Tarjetas_Resumenes_Lineas_Compras t JOIN dbo.Compras c ON c.IdDeuda = t.IdCompra "
         "WHERE c.Moneda <> 'Dolares'" + filtro + " GROUP BY c.IdContacto", params)
     # Mercado Libre y valores propios no generan AplicacionesPago (el FIFO solo lee banco, efectivo y tarjeta): su vínculo vive en la conciliación de tesorería
+    # (con o sin documento). Los ajustes internos de crédito también cubren facturas sin pasar por AplicacionesPago.
+    f_ids = " AND IdContacto IN (" + ",".join("?" * len(ids)) + ")" if ids else ""
+    p_ids = tuple(ids) if ids else ()
+    f_hasta = " AND Fecha < ?" if hasta is not None else ""
+    p_hasta = (_dia_siguiente(hasta),) if hasta is not None else ()
+    f_c = " AND ct.IdContacto IN (" + ",".join("?" * len(ids)) + ")" if ids else ""
+    f_cd = " AND c.Fecha < ?" if hasta is not None else ""
+    f_ml = " AND ml.Fecha < ?" if hasta is not None else ""
+    # la fecha que cuenta es la del documento o la del movimiento, no la de la conciliación (que se carga después)
     tesoreria = fetch_all(
-        "SELECT c.IdContacto AS i, SUM(ct.Importe) AS s FROM dbo.ConciliacionesTesoreria ct JOIN dbo.Compras c ON c.IdDeuda = ct.IdOrigenDocumento "
-        "WHERE ct.TipoOrigenDocumento = 'Compras' AND ct.Medio IN ('mercado-libre', 'valores-propios') AND c.Moneda <> 'Dolares'" + filtro + " GROUP BY c.IdContacto", params)
+        "SELECT ct.IdContacto AS i, SUM(ct.Importe) AS s FROM dbo.ConciliacionesTesoreria ct JOIN dbo.Compras c ON c.IdDeuda = ct.IdOrigenDocumento "
+        "WHERE ct.Medio IN ('mercado-libre', 'valores-propios') AND ct.TipoOrigenDocumento = 'Compras'" + f_c + f_cd + " GROUP BY ct.IdContacto", p_ids + p_hasta)
+    tesoreria += fetch_all(
+        "SELECT ct.IdContacto AS i, SUM(ct.Importe) AS s FROM dbo.ConciliacionesTesoreria ct JOIN dbo.[Movimientos Mercado Libre] ml ON ml.IdMovimiento = ct.IdMovimiento "
+        "WHERE ct.Medio = 'mercado-libre' AND ct.TipoOrigenDocumento IS NULL" + f_c + f_ml + " GROUP BY ct.IdContacto", p_ids + p_hasta)
+    tesoreria += fetch_all(
+        "SELECT IdContacto AS i, SUM(Importe) AS s FROM dbo.AjustesCuentaCorriente WHERE Lado = 'Credito'" + f_ids + f_hasta + " GROUP BY IdContacto", p_ids + p_hasta)
     r: dict[int, dict] = {int(f["i"]): {"facturado": round(float(f["s"] or 0), 2), "facturas": int(f["n"]), "aplicado": 0.0, "tarjeta": 0.0} for f in facturado}
     for f in aplicado:
         r.setdefault(int(f["i"]), {"facturado": 0.0, "facturas": 0, "aplicado": 0.0, "tarjeta": 0.0})["aplicado"] = round(float(f["s"] or 0), 2)

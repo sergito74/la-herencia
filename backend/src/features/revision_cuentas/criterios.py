@@ -155,10 +155,10 @@ def imputaciones_sanas(sentido: str, gobierna: str | None, facturado: float, apl
 
     Compara lo facturado y no imputado con lo que el saldo dice que se debe. Solo mide las facturas **sin imputar de más**:
     el exceso de imputación es el hallazgo `sobrepago`, que ya tiene su propio criterio. `None` si no aplica (clientes, cuentas
-    mixtas o en dólares). Tolerancia de $1 más un centavo por factura (redondeos).
+    mixtas o en dólares). Tolerancia de $1 más 3 centavos por factura (redondeos).
     """
     if sentido != "proveedor" or gobierna in ("Dolares", "Mixta"):
         return None
     deuda_abierta = max(-saldo, 0.0)
     sin_imputar = facturado - aplicado - tarjeta
-    return (sin_imputar - deuda_abierta) <= 1.0 + 0.01 * facturas
+    return (sin_imputar - deuda_abierta) <= 1.0 + 0.03 * facturas
