@@ -67,8 +67,10 @@ DDL = [
         Medio varchar(20) NOT NULL,
         IdMovimiento int NOT NULL,
         Estado varchar(24) NOT NULL CONSTRAINT CK_RevisionPagosSinFactura_Estado
-            CHECK (Estado IN ('pendiente', 'factura-cargada', 'sin-documento', 'anticipo')),
+            CHECK (Estado IN ('pendiente', 'factura-cargada', 'sin-documento', 'anticipo', 'venta-cargada')),
         IdCompra int NULL,
+        TipoVenta varchar(20) NULL,
+        IdVenta int NULL,
         FuenteRespaldo varchar(20) NULL CONSTRAINT CK_RevisionPagosSinFactura_Fuente
             CHECK (FuenteRespaldo IN ('portal', 'estado-de-cuenta', 'pdf')),
         Nota varchar(500) NULL,

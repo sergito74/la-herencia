@@ -13,6 +13,7 @@ from src.db.connection import fetch_all, fetch_one
 from src.features.revision_cuentas import archivos, colas, datos, detector, evidencia, fichas, lotes, tablero
 from src.features.revision_cuentas.schemas import (
     CambioCorte,
+    VentaDeCuenta,
     ArchivosIncompletos,
     CambioFicha,
     ColaCuentas,
@@ -108,7 +109,8 @@ async def marcar_pago_sin_factura(id_contacto: int, medio: str, id_movimiento: i
     if not any(datos.medio_de_origen(m["origen"]) == medio and m["idOrigen"] == id_movimiento for m in todos):
         raise HTTPException(status_code=404, detail="El movimiento no existe en esta cuenta")
     try:
-        await run_in_threadpool(evidencia.validar_marca, id_contacto, body.estado, body.nota, body.idCompra, body.fuenteRespaldo)
+        await run_in_threadpool(evidencia.validar_marca, id_contacto, body.estado, body.nota, body.idCompra, body.fuenteRespaldo,
+                                body.tipoVenta, body.idVenta)
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     _, resultado, marcas = await run_in_threadpool(_detectar_cuenta, id_contacto, corte)
@@ -116,8 +118,14 @@ async def marcar_pago_sin_factura(id_contacto: int, medio: str, id_movimiento: i
     if pago is None:
         raise HTTPException(status_code=409, detail="El movimiento tiene una factura que lo respalda: no es un pago sin factura")
     marca = await run_in_threadpool(evidencia.guardar_marca, id_contacto, medio, id_movimiento, body.estado, body.idCompra,
-                                    body.fuenteRespaldo, body.nota, _usuario_actual(request))
+                                    body.fuenteRespaldo, body.nota, _usuario_actual(request), body.tipoVenta, body.idVenta)
     return {**pago, "marca": marca}
+
+
+@router.get("/cuentas/{id_contacto}/ventas", response_model=list[VentaDeCuenta])
+async def ventas_de_la_cuenta(id_contacto: int) -> list[dict]:
+    """Ventas de hacienda y de granos de la cuenta: respaldan un pago de un cliente (por ejemplo, una retención)."""
+    return await run_in_threadpool(evidencia.ventas_de_cuenta, id_contacto)
 
 
 # ---- Ficha de la cuenta

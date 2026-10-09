@@ -85,3 +85,53 @@ def test_validar_marca_no_necesita_la_base_cuando_no_hay_factura_asociada():
         evidencia.validar_marca(48, "inventado", None, None, None)
     with pytest.raises(ValueError):
         evidencia.validar_marca(48, "factura-cargada", None, None, "telepatia")
+
+
+# ---- Un pago de un cliente puede estar respaldado por una venta de hacienda o de granos
+
+def test_una_venta_respalda_un_pago_si_existe_y_es_de_la_cuenta(monkeypatch):
+    consultas = []
+    monkeypatch.setattr(evidencia, "fetch_one", lambda sql, params=(): consultas.append((sql, params)) or {"x": 1})
+    assert evidencia.validar_marca(551, "venta-cargada", None, None, None, "venta-hacienda", 67) is False
+    assert "Venta Hacienda" in consultas[0][0] and consultas[0][1] == (67, 551)
+    evidencia.validar_marca(551, "venta-cargada", None, None, None, "venta-granos", 12)
+    assert "Venta Granos" in consultas[1][0]
+
+
+def test_la_venta_de_otra_cuenta_o_inexistente_se_rechaza(monkeypatch):
+    monkeypatch.setattr(evidencia, "fetch_one", lambda sql, params=(): None)
+    with pytest.raises(ValueError, match="no existe o no es de esta cuenta"):
+        evidencia.validar_marca(551, "venta-cargada", None, None, None, "venta-hacienda", 999)
+
+
+def test_venta_cargada_exige_el_tipo_y_el_numero_de_la_venta():
+    with pytest.raises(ValueError, match="cuál venta"):
+        evidencia.validar_marca(551, "venta-cargada", None, None, None)
+    with pytest.raises(ValueError, match="cuál venta"):
+        evidencia.validar_marca(551, "venta-cargada", None, None, None, "venta-hacienda", None)
+    with pytest.raises(ValueError, match="cuál venta"):
+        evidencia.validar_marca(551, "venta-cargada", None, None, None, "otra-cosa", 5)
+
+
+def test_la_venta_solo_se_indica_con_el_estado_venta_cargada():
+    with pytest.raises(ValueError, match="solo se indica"):
+        evidencia.validar_marca(551, "sin-documento", "nota", None, None, "venta-hacienda", 67)
+
+
+def test_el_respaldo_se_muestra_como_venta_de_hacienda_con_su_numero(monkeypatch):
+    monkeypatch.setattr(evidencia, "fetch_one", lambda sql, params=(): {"n": "00003-00000014"})
+    assert evidencia.texto_de_venta("venta-hacienda", 67) == "venta de hacienda 00003-00000014"
+    monkeypatch.setattr(evidencia, "fetch_one", lambda sql, params=(): {"n": None})
+    assert evidencia.texto_de_venta("venta-granos", 12) == "venta de granos #12"
+    assert evidencia.texto_de_venta(None, None) is None
+
+
+def test_las_ventas_de_la_cuenta_traen_hacienda_y_granos_ordenadas_por_fecha(monkeypatch):
+    def falso(sql, params=()):
+        if "Venta Hacienda" in sql:
+            return [{"i": 67, "f": "2024-05-28", "n": "00003-00000014"}]
+        return [{"i": 12, "f": "2025-01-10", "n": None}]
+    monkeypatch.setattr(evidencia, "fetch_all", falso)
+    ventas = evidencia.ventas_de_cuenta(551)
+    assert [v["rotulo"] for v in ventas] == ["venta de granos #12", "venta de hacienda 00003-00000014"]
+    assert [v["tipo"] for v in ventas] == ["venta-granos", "venta-hacienda"]

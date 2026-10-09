@@ -100,8 +100,9 @@ def marcas_en_memoria(monkeypatch):
     def leer(id_contacto):
         return {k[1:]: v for k, v in guardadas.items() if k[0] == id_contacto}
 
-    def guardar(id_contacto, medio, id_movimiento, estado, id_compra, fuente_respaldo, nota, usuario):
-        marca = {"estado": estado, "nota": nota, "idCompra": id_compra, "fuenteRespaldo": fuente_respaldo}
+    def guardar(id_contacto, medio, id_movimiento, estado, id_compra, fuente_respaldo, nota, usuario, tipo_venta=None, id_venta=None):
+        marca = {"estado": estado, "nota": nota, "idCompra": id_compra, "fuenteRespaldo": fuente_respaldo, "tipoVenta": tipo_venta, "idVenta": id_venta,
+                 "respaldo": f"venta de hacienda #{id_venta}" if tipo_venta else None}
         guardadas[(id_contacto, medio, id_movimiento)] = marca
         llamadas.append((id_contacto, medio, id_movimiento, estado, usuario))
         return marca
@@ -268,3 +269,36 @@ async def test_registrar_y_listar_decisiones(monkeypatch):
 async def test_rol_lectura_no_puede_registrar_decisiones():
     r = await _post(f"{BASE}/cuentas/{CUENTA_JAUREGUI}/decisiones", {"tipo": "otro", "texto": "x"}, rol="Lectura")
     assert r.status_code == 403
+
+
+@pytest.mark.anyio
+async def test_un_pago_se_respalda_con_una_venta_de_hacienda_y_la_ficha_lo_muestra(marcas_en_memoria, monkeypatch):
+    from src.features.revision_cuentas import evidencia
+
+    monkeypatch.setattr(evidencia, "fetch_one", lambda sql, params=(): {"x": 1})  # la venta existe y es de la cuenta
+    pago = (await _get(f"{BASE}/cuentas/{CUENTA_JAUREGUI}/pagos-sin-factura")).json()["pagos"][0]
+    url = f"{BASE}/cuentas/{CUENTA_JAUREGUI}/pagos-sin-factura/{pago['medio']}/{pago['idMovimiento']}"
+    r = await _put(url, {"estado": "venta-cargada", "tipoVenta": "venta-hacienda", "idVenta": 67})
+    assert r.status_code == 200
+    marca = r.json()["marca"]
+    assert marca["estado"] == "venta-cargada" and marca["tipoVenta"] == "venta-hacienda" and marca["idVenta"] == 67
+    assert marca["respaldo"] == "venta de hacienda #67"
+
+
+@pytest.mark.anyio
+async def test_venta_cargada_sin_la_venta_devuelve_422(marcas_en_memoria):
+    pago = (await _get(f"{BASE}/cuentas/{CUENTA_JAUREGUI}/pagos-sin-factura")).json()["pagos"][0]
+    url = f"{BASE}/cuentas/{CUENTA_JAUREGUI}/pagos-sin-factura/{pago['medio']}/{pago['idMovimiento']}"
+    assert (await _put(url, {"estado": "venta-cargada"})).status_code == 422
+    assert (await _put(url, {"estado": "venta-cargada", "tipoVenta": "venta-hacienda", "idVenta": 987654321})).status_code == 422  # no es de esta cuenta
+
+
+@pytest.mark.anyio
+async def test_las_ventas_de_la_cuenta_se_listan_para_elegir_el_respaldo(monkeypatch):
+    from src.features.revision_cuentas import evidencia
+
+    monkeypatch.setattr(evidencia, "ventas_de_cuenta", lambda i: [{"tipo": "venta-hacienda", "idVenta": 67, "fecha": date(2024, 5, 28), "numero": "00003-00000014",
+                                                                    "rotulo": "venta de hacienda 00003-00000014"}])
+    r = await _get(f"{BASE}/cuentas/551/ventas")
+    assert r.status_code == 200
+    assert r.json() == [{"tipo": "venta-hacienda", "idVenta": 67, "fecha": "2024-05-28", "numero": "00003-00000014", "rotulo": "venta de hacienda 00003-00000014"}]

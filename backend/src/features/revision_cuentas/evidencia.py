@@ -13,7 +13,10 @@ from datetime import date
 
 from src.db.connection import execute_write_transaction, fetch_all, fetch_one
 
-ESTADOS_MARCA = ("pendiente", "factura-cargada", "sin-documento", "anticipo")
+ESTADOS_MARCA = ("pendiente", "factura-cargada", "sin-documento", "anticipo", "venta-cargada")
+# Una venta (de hacienda o de granos) también respalda un pago de un cliente: la retención o el cobro es parte de esa venta
+TIPOS_VENTA = {"venta-hacienda": ("Venta Hacienda", "[Nro documento]", "venta de hacienda"),
+               "venta-granos": ("Venta Granos", "[Nro Documento]", "venta de granos")}
 FUENTES_RESPALDO = ("portal", "estado-de-cuenta", "pdf")
 _EXTENSION_DE_ARCHIVO = re.compile(r"\.(pdf|jpe?g|png|tiff?|crdownload)\b", re.IGNORECASE)
 
@@ -26,7 +29,8 @@ def tiene_archivo(documento_original: str | None) -> bool:
 
 # --------------------------------------------------------------------------- marcas de pagos sin factura
 
-def validar_marca(id_contacto: int, estado: str, nota: str | None, id_compra: int | None, fuente_respaldo: str | None) -> bool:
+def validar_marca(id_contacto: int, estado: str, nota: str | None, id_compra: int | None, fuente_respaldo: str | None,
+                  tipo_venta: str | None = None, id_venta: int | None = None) -> bool:
     """Valida el pedido de una marca (ValueError si no corresponde) y dice si la factura quedó sin archivo.
 
     `sin-documento` exige nota. `factura-cargada` exige la fuente de respaldo cuando la factura no tiene archivo o no se
@@ -38,6 +42,15 @@ def validar_marca(id_contacto: int, estado: str, nota: str | None, id_compra: in
         raise ValueError("Falta la nota: explicá por qué no hay documento")
     if fuente_respaldo is not None and fuente_respaldo not in FUENTES_RESPALDO:
         raise ValueError("Fuente de respaldo desconocida")
+    if estado == "venta-cargada":
+        if tipo_venta not in TIPOS_VENTA or id_venta is None:
+            raise ValueError("Indicá cuál venta respalda el pago: de hacienda o de granos, y su número")
+        tabla = TIPOS_VENTA[tipo_venta][0]
+        if fetch_one(f"SELECT 1 AS x FROM dbo.[{tabla}] WHERE IdVenta = ? AND IdConsignatario = ?", (id_venta, id_contacto)) is None:
+            raise ValueError("La venta no existe o no es de esta cuenta")
+        return False
+    if tipo_venta is not None or id_venta is not None:
+        raise ValueError("La venta solo se indica cuando el pago está respaldado por una venta")
     sin_archivo = False
     if estado == "factura-cargada":
         if id_compra is None:
@@ -52,11 +65,30 @@ def validar_marca(id_contacto: int, estado: str, nota: str | None, id_compra: in
     return sin_archivo
 
 
+def texto_de_venta(tipo_venta: str | None, id_venta: int | None) -> str | None:
+    """Rótulo legible de la venta que respalda un pago, por ejemplo "venta de hacienda 00003-00000014"."""
+    if tipo_venta not in TIPOS_VENTA or id_venta is None:
+        return None
+    tabla, columna_nro, rotulo = TIPOS_VENTA[tipo_venta]
+    fila = fetch_one(f"SELECT {columna_nro} AS n FROM dbo.[{tabla}] WHERE IdVenta = ?", (id_venta,))
+    return f"{rotulo} {fila['n']}" if fila and fila["n"] else f"{rotulo} #{id_venta}"
+
+
+def ventas_de_cuenta(id_contacto: int) -> list[dict]:
+    """Ventas de hacienda y de granos de la cuenta, para elegir cuál respalda un pago."""
+    salida = []
+    for tipo, (tabla, columna_nro, rotulo) in TIPOS_VENTA.items():
+        for f in fetch_all(f"SELECT IdVenta AS i, Fecha AS f, {columna_nro} AS n FROM dbo.[{tabla}] WHERE IdConsignatario = ? ORDER BY Fecha DESC", (id_contacto,)):
+            salida.append({"tipo": tipo, "idVenta": int(f["i"]), "fecha": f["f"], "numero": f["n"], "rotulo": f"{rotulo} {f['n'] or '#' + str(f['i'])}"})
+    return sorted(salida, key=lambda v: str(v["fecha"]), reverse=True)
+
+
 def leer_marcas(id_contacto: int) -> dict[tuple[str, int], dict]:
     """Marcas vigentes de la cuenta, por (medio, idMovimiento)."""
-    filas = fetch_all("SELECT Medio AS medio, IdMovimiento AS mov, Estado AS estado, IdCompra AS compra, FuenteRespaldo AS fuente, Nota AS nota "
-                      "FROM dbo.RevisionPagosSinFactura WHERE IdContacto = ?", (id_contacto,))
-    return {(f["medio"], int(f["mov"])): {"estado": f["estado"], "nota": f["nota"], "idCompra": f["compra"], "fuenteRespaldo": f["fuente"]}
+    filas = fetch_all("SELECT Medio AS medio, IdMovimiento AS mov, Estado AS estado, IdCompra AS compra, FuenteRespaldo AS fuente, Nota AS nota, "
+                      "TipoVenta AS tv, IdVenta AS iv FROM dbo.RevisionPagosSinFactura WHERE IdContacto = ?", (id_contacto,))
+    return {(f["medio"], int(f["mov"])): {"estado": f["estado"], "nota": f["nota"], "idCompra": f["compra"], "fuenteRespaldo": f["fuente"],
+                                          "tipoVenta": f["tv"], "idVenta": f["iv"], "respaldo": texto_de_venta(f["tv"], f["iv"])}
             for f in filas}
 
 
@@ -73,25 +105,26 @@ def leer_marcas_todas(ids: list[int] | None = None) -> dict[int, dict[tuple[str,
 
 
 def guardar_marca(id_contacto: int, medio: str, id_movimiento: int, estado: str, id_compra: int | None,
-                  fuente_respaldo: str | None, nota: str | None, usuario: str) -> dict:
+                  fuente_respaldo: str | None, nota: str | None, usuario: str,
+                  tipo_venta: str | None = None, id_venta: int | None = None) -> dict:
     """Crea o cambia la marca de un pago sin factura (una sola por movimiento) y deja el cambio en el historial.
 
     Si la factura queda sin archivo, el "documento original" de la compra dice en qué se respalda (FR-020).
     """
     anterior = leer_marcas(id_contacto).get((medio, id_movimiento))
     nota = (nota or "").strip()[:500] or None
-    sin_archivo = validar_marca(id_contacto, estado, nota, id_compra, fuente_respaldo)
+    sin_archivo = validar_marca(id_contacto, estado, nota, id_compra, fuente_respaldo, tipo_venta, id_venta)
     detalle = json.dumps({"medio": medio, "idMovimiento": id_movimiento, "anterior": anterior,
-                          "nuevo": {"estado": estado, "idCompra": id_compra, "fuenteRespaldo": fuente_respaldo, "nota": nota}},
+                          "nuevo": {"estado": estado, "idCompra": id_compra, "fuenteRespaldo": fuente_respaldo, "nota": nota, "tipoVenta": tipo_venta, "idVenta": id_venta}},
                          ensure_ascii=False, default=str)
     if anterior is not None:
-        marca_sql = ("UPDATE dbo.RevisionPagosSinFactura SET Estado = ?, IdCompra = ?, FuenteRespaldo = ?, Nota = ?, Usuario = ?, "
+        marca_sql = ("UPDATE dbo.RevisionPagosSinFactura SET Estado = ?, IdCompra = ?, FuenteRespaldo = ?, Nota = ?, Usuario = ?, TipoVenta = ?, IdVenta = ?, "
                      "Fecha = SYSDATETIME() WHERE IdContacto = ? AND Medio = ? AND IdMovimiento = ?",
-                     (estado, id_compra, fuente_respaldo, nota, usuario, id_contacto, medio, id_movimiento))
+                     (estado, id_compra, fuente_respaldo, nota, usuario, tipo_venta, id_venta, id_contacto, medio, id_movimiento))
     else:
-        marca_sql = ("INSERT INTO dbo.RevisionPagosSinFactura (IdContacto, Medio, IdMovimiento, Estado, IdCompra, FuenteRespaldo, Nota, Usuario) "
-                     "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-                     (id_contacto, medio, id_movimiento, estado, id_compra, fuente_respaldo, nota, usuario))
+        marca_sql = ("INSERT INTO dbo.RevisionPagosSinFactura (IdContacto, Medio, IdMovimiento, Estado, IdCompra, FuenteRespaldo, Nota, Usuario, TipoVenta, IdVenta) "
+                     "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                     (id_contacto, medio, id_movimiento, estado, id_compra, fuente_respaldo, nota, usuario, tipo_venta, id_venta))
     operaciones: list = [
         marca_sql,
         ("INSERT INTO dbo.AuditoriaRevisionesHistorial (IdContacto, Accion, Detalle, Usuario) VALUES (?, 'pago-sin-factura', ?, ?)",
@@ -105,7 +138,8 @@ def guardar_marca(id_contacto: int, medio: str, id_movimiento: int, estado: str,
     from src.features.revision_cuentas import cache
 
     cache.invalidar()
-    return {"estado": estado, "nota": nota, "idCompra": id_compra, "fuenteRespaldo": fuente_respaldo}
+    return {"estado": estado, "nota": nota, "idCompra": id_compra, "fuenteRespaldo": fuente_respaldo,
+            "tipoVenta": tipo_venta, "idVenta": id_venta, "respaldo": texto_de_venta(tipo_venta, id_venta)}
 
 
 # --------------------------------------------------------------------------- saldos externos (RevisionSaldosExternos)

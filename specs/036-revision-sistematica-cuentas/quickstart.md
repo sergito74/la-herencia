@@ -120,3 +120,8 @@ Todo en `WC`. Desde `backend/`, con `PYTHONIOENCODING=utf-8`. Referencias: [data
 
 - FIFO recalculado en las 29 cuentas de la cola B (todas con saldo cero o centavos, ninguna cambió de saldo; respaldo `WC_lote-036-56_20261009_201456_758939.bak`) y cierre de las 29. Total de fichas cerradas: 383.
 - Cuatro no cerraban por la medición de imputaciones (C5), no por los datos. Se corrigió la medición: la tarjeta cuenta solo lo imputado a facturas; los vínculos de Mercado Libre y valores propios de la conciliación de tesorería (con o sin documento, por la fecha del documento o del movimiento) y los ajustes internos de crédito cuentan como imputados; la tolerancia de redondeo pasó de 1 centavo a 3 centavos por factura. Efecto sobre las 518 cuentas: 4 pasan de falso problema a sano, ninguna empeora.
+
+### Marca "respaldada por una venta" (09/10/2026)
+
+- Un pago de un cliente (por ejemplo una retención de Ganancias) que es parte del cobro de una venta de hacienda o de granos ya no se marca "sin documento": se marca `venta-cargada` con la venta que lo respalda, y la ficha muestra "Respaldada por la venta de hacienda 00003-00000014". Tabla ampliada con `TipoVenta` e `IdVenta` y el estado nuevo (script `ampliar_marcas_ventas_036.py`, con respaldo; idempotente). Endpoint nuevo `GET /cuentas/{id}/ventas`. Aplicado a Sarciat Gómez y Transcom. Pruebas del backend y de navegador pasan.
+- Cola D, grupo A (lote 57, 10 cuentas) y sueldos (lote 58, 3 cuentas) cerrados: 396 fichas cerradas.

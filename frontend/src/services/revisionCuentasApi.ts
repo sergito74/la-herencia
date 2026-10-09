@@ -17,7 +17,8 @@ export type EstadoFicha =
   | "cerrada"
   | "cerrada-con-excepcion";
 export type EstadoEfectivo = EstadoFicha | "reabierta";
-export type EstadoMarca = "pendiente" | "factura-cargada" | "sin-documento" | "anticipo";
+export type EstadoMarca = "pendiente" | "factura-cargada" | "sin-documento" | "anticipo" | "venta-cargada";
+export type TipoVenta = "venta-hacienda" | "venta-granos";
 export type FuenteSaldoExterno = "portal" | "pdf" | "mail" | "banco" | "tarjeta" | "sin-estado";
 export type FuenteRespaldo = "portal" | "estado-de-cuenta" | "pdf";
 export type Moneda = "Pesos" | "Dolares";
@@ -196,7 +197,15 @@ export interface PagoSinFactura {
   fechaEsperadaHasta: string;
   confianza: "alta" | "media";
   anteriorA2021: boolean;
-  marca: { estado: EstadoMarca; nota: string | null; idCompra: number | null; fuenteRespaldo: FuenteRespaldo | null } | null;
+  marca: {
+    estado: EstadoMarca;
+    nota: string | null;
+    idCompra: number | null;
+    fuenteRespaldo: FuenteRespaldo | null;
+    tipoVenta?: TipoVenta | null;
+    idVenta?: number | null;
+    respaldo?: string | null; // por ejemplo "venta de hacienda 00003-00000014"
+  } | null;
 }
 
 export interface FacturaSinPago {
@@ -218,7 +227,17 @@ export interface MarcaPagoSinFactura {
   estado: EstadoMarca;
   idCompra?: number | null;
   fuenteRespaldo?: FuenteRespaldo | null;
+  tipoVenta?: TipoVenta | null;
+  idVenta?: number | null;
   nota?: string | null;
+}
+
+export interface VentaDeCuenta {
+  tipo: TipoVenta;
+  idVenta: number;
+  fecha: string;
+  numero: string | null;
+  rotulo: string;
 }
 
 // ---- Evidencia externa
@@ -307,6 +326,7 @@ export const revisionCuentasApi = {
   marcarPagoSinFactura: (idContacto: number, medio: string, idMovimiento: number, marca: MarcaPagoSinFactura) =>
     apiPut<PagoSinFactura>(`${BASE}/cuentas/${idContacto}/pagos-sin-factura/${medio}/${idMovimiento}`, marca),
 
+  ventasDeCuenta: (idContacto: number) => apiGet<VentaDeCuenta[]>(`${BASE}/cuentas/${idContacto}/ventas`),
   saldosExternos: (idContacto: number) => apiGet<SaldoExterno[]>(`${BASE}/cuentas/${idContacto}/saldos-externos`),
   cargarSaldoExterno: (idContacto: number, saldo: NuevoSaldoExterno) =>
     apiPost<SaldoExterno>(`${BASE}/cuentas/${idContacto}/saldos-externos`, saldo),

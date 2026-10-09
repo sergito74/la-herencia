@@ -10,12 +10,14 @@ import {
   type EstadoMarca,
   type FuenteRespaldo,
   type PagoSinFactura,
+  type TipoVenta,
 } from "@/services/revisionCuentasApi";
 
 const NOMBRE_ESTADO: Record<EstadoMarca, string> = {
   pendiente: "Pendiente",
   "factura-cargada": "Factura cargada",
   "sin-documento": "Sin documento",
+  "venta-cargada": "Respaldado por una venta",
   anticipo: "Anticipo",
 };
 
@@ -38,6 +40,7 @@ function FilaPago({ idContacto, pago, alMarcar }: { idContacto: number; pago: Pa
   const [estado, setEstado] = useState<EstadoMarca>("sin-documento");
   const [nota, setNota] = useState("");
   const [fuente, setFuente] = useState<FuenteRespaldo | "">("");
+  const [venta, setVenta] = useState(""); // "tipo:idVenta"
   const [error, setError] = useState<string | null>(null);
   const marcar = useMutation({
     mutationFn: () =>
@@ -45,10 +48,18 @@ function FilaPago({ idContacto, pago, alMarcar }: { idContacto: number; pago: Pa
         estado,
         nota: nota.trim() || null,
         fuenteRespaldo: estado === "factura-cargada" && fuente ? fuente : null,
+        tipoVenta: estado === "venta-cargada" && venta ? (venta.split(":")[0] as TipoVenta) : null,
+        idVenta: estado === "venta-cargada" && venta ? Number(venta.split(":")[1]) : null,
       }),
     onSuccess: () => { setAbierta(false); setError(null); alMarcar(); },
     onError: (e) => setError(e instanceof Error ? e.message : "No se pudo guardar la marca."),
   });
+  const { data: ventasRespuesta } = useQuery({
+    queryKey: ["revision-ventas", idContacto],
+    queryFn: () => revisionCuentasApi.ventasDeCuenta(idContacto),
+    enabled: abierta && estado === "venta-cargada",
+  });
+  const ventas = Array.isArray(ventasRespuesta) ? ventasRespuesta : [];
   const marca = pago.marca;
   return (
     <li className="rounded border border-line p-2">
@@ -62,7 +73,10 @@ function FilaPago({ idContacto, pago, alMarcar }: { idContacto: number; pago: Pa
         </span>
         {pago.confianza === "media" && <span className="text-status-warning">Se cubrió en parte con facturas viejas</span>}
         {marca && marca.estado !== "pendiente" && (
-          <span className="rounded bg-surface-muted px-1.5">{NOMBRE_ESTADO[marca.estado]}{marca.nota ? `: ${marca.nota}` : ""}</span>
+          <span className="rounded bg-surface-muted px-1.5">
+            {marca.estado === "venta-cargada" && marca.respaldo ? `Respaldada por la ${marca.respaldo}` : NOMBRE_ESTADO[marca.estado]}
+            {marca.nota ? `: ${marca.nota}` : ""}
+          </span>
         )}
       </div>
       <SoloLectura>
@@ -74,6 +88,7 @@ function FilaPago({ idContacto, pago, alMarcar }: { idContacto: number; pago: Pa
               Qué pasó con este pago{" "}
               <select value={estado} onChange={(e) => setEstado(e.target.value as EstadoMarca)} className="rounded border border-line px-1 py-0.5">
                 <option value="factura-cargada">Ya cargué la factura</option>
+                <option value="venta-cargada">Lo respalda una venta (hacienda o granos)</option>
                 <option value="sin-documento">No hay documento (decisión mía)</option>
                 <option value="anticipo">Es un anticipo</option>
                 <option value="pendiente">Dejarlo pendiente</option>
@@ -88,6 +103,18 @@ function FilaPago({ idContacto, pago, alMarcar }: { idContacto: number; pago: Pa
                   <option value="estado-de-cuenta">Estado de cuenta</option>
                   <option value="pdf">PDF</option>
                 </select>
+              </label>
+            )}
+            {estado === "venta-cargada" && (
+              <label className="block">
+                ¿Cuál venta?{" "}
+                <select value={venta} onChange={(e) => setVenta(e.target.value)} className="rounded border border-line px-1 py-0.5">
+                  <option value="">Elegí una venta</option>
+                  {ventas.map((v) => (
+                    <option key={`${v.tipo}:${v.idVenta}`} value={`${v.tipo}:${v.idVenta}`}>{formatFecha(v.fecha)} · {v.rotulo}</option>
+                  ))}
+                </select>
+                {ventas.length === 0 && <span className="ml-2 text-ink-secondary">Esta cuenta no tiene ventas de hacienda ni de granos.</span>}
               </label>
             )}
             <label className="block">

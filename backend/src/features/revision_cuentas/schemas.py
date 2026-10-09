@@ -11,7 +11,8 @@ Cola = Literal["A", "B", "C", "D", "E", "F", "G", "H", "I"]
 Etapa = Literal["E0", "E1", "E2", "E3", "E4", "E5", "E6"]
 EstadoFicha = Literal["pendiente", "en-proceso", "esperando-evidencia", "esperando-sergio", "cerrada", "cerrada-con-excepcion"]
 EstadoEfectivo = Literal["pendiente", "en-proceso", "esperando-evidencia", "esperando-sergio", "cerrada", "cerrada-con-excepcion", "reabierta"]
-EstadoMarca = Literal["pendiente", "factura-cargada", "sin-documento", "anticipo"]
+EstadoMarca = Literal["pendiente", "factura-cargada", "sin-documento", "anticipo", "venta-cargada"]
+TipoVenta = Literal["venta-hacienda", "venta-granos"]
 FuenteRespaldo = Literal["portal", "estado-de-cuenta", "pdf"]
 FuenteSaldoExterno = Literal["portal", "pdf", "mail", "banco", "tarjeta", "sin-estado"]
 Moneda = Literal["Pesos", "Dolares"]
@@ -234,6 +235,17 @@ class MarcaPago(BaseModel):
     nota: str | None = None
     idCompra: int | None = None
     fuenteRespaldo: FuenteRespaldo | None = None
+    tipoVenta: TipoVenta | None = None
+    idVenta: int | None = None
+    respaldo: str | None = None  # texto legible, por ejemplo "venta de hacienda 00003-00000014"
+
+
+class VentaDeCuenta(BaseModel):
+    tipo: TipoVenta
+    idVenta: int
+    fecha: date
+    numero: str | None = None
+    rotulo: str
 
 
 class PagoSinFactura(BaseModel):
@@ -280,6 +292,8 @@ class PedidoMarca(BaseModel):
     estado: EstadoMarca
     idCompra: int | None = None
     fuenteRespaldo: FuenteRespaldo | None = None
+    tipoVenta: TipoVenta | None = None
+    idVenta: int | None = None
     nota: str | None = Field(default=None, max_length=500)
 
 

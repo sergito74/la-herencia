@@ -137,8 +137,11 @@ Parámetros: `desde` (opcional), `incluirMarcados` (por defecto `true`).
 ```
 Si `consistencia.cierra` es falso, la respuesta lo informa como "detector sin cerrar" y no oculta la diferencia.
 
+### `GET /cuentas/{idContacto}/ventas`
+Ventas de hacienda y de granos de la cuenta, más nuevas primero: `[ { "tipo": "venta-hacienda", "idVenta": 67, "fecha": "2024-05-28", "numero": "00003-00000014", "rotulo": "venta de hacienda 00003-00000014" } ]`. Sirve para elegir el respaldo de un pago.
+
 ### `PUT /cuentas/{idContacto}/pagos-sin-factura/{medio}/{idMovimiento}`
-`{ "estado": "factura-cargada|sin-documento|anticipo|pendiente", "idCompra": null, "fuenteRespaldo": null, "nota": "..." }`. `sin-documento` exige `nota` (422). `factura-cargada` exige `fuenteRespaldo` (`portal`, `estado-de-cuenta` o `pdf`) cuando la factura no tiene archivo (422). `factura-cargada` admite `idCompra`. La marca se conserva en las recomputaciones (FR-015).
+`{ "estado": "factura-cargada|sin-documento|anticipo|venta-cargada|pendiente", "idCompra": null, "fuenteRespaldo": null, "tipoVenta": null, "idVenta": null, "nota": "..." }`. `venta-cargada` (pagos de clientes, por ejemplo una retención que es parte del cobro de una venta) exige `tipoVenta` (`venta-hacienda` o `venta-granos`) e `idVenta`, y la venta tiene que existir y ser de esa cuenta (422); la marca devuelve `respaldo` con el texto "venta de hacienda 00003-00000014". `tipoVenta`/`idVenta` solo se aceptan con `venta-cargada` (422). `sin-documento` exige `nota` (422). `factura-cargada` exige `fuenteRespaldo` (`portal`, `estado-de-cuenta` o `pdf`) cuando la factura no tiene archivo (422). `factura-cargada` admite `idCompra`. La marca se conserva en las recomputaciones (FR-015).
 
 ## Evidencia externa
 
