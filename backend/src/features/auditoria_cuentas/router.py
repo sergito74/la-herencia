@@ -348,11 +348,26 @@ def _admin(request: Request) -> None:
     _exigir_admin(request)
 
 
+def _bloqueo_fifo(puerta: dict):
+    """Respuesta 409 de la puerta del FIFO (036, FR-007): la cuenta no completó E1 a E4, con la etapa pendiente y los criterios que faltan."""
+    from fastapi.encoders import jsonable_encoder
+    from fastapi.responses import JSONResponse
+    from src.features.revision_cuentas import fichas as fichas_036
+
+    return JSONResponse(status_code=409, content={"detail": fichas_036.mensaje_de_puerta(puerta), "etapaPendiente": puerta["etapaPendiente"],
+                                                  "criterios": jsonable_encoder(puerta["criterios"])})
+
+
 @router.post("/cuentas/{id_contacto}/fifo/simular", status_code=201)
 async def fifo_simular(id_contacto: int, request: Request) -> dict:
     from src.features.recalculo_fifo import ejecuciones as fifo
 
     _admin(request)
+    from src.features.revision_cuentas import fichas as fichas_036
+
+    puerta = await run_in_threadpool(fichas_036.puerta_fifo, id_contacto)
+    if not puerta["puede"]:
+        return _bloqueo_fifo(puerta)
     try:
         res = await run_in_threadpool(fifo.simular, [id_contacto], _usuario_actual(request))
         det = await run_in_threadpool(fifo.detalle, res["idEjecucion"], id_contacto)
@@ -371,6 +386,11 @@ async def fifo_aplicar(id_contacto: int, id_ejecucion: int, request: Request) ->
 
     _admin(request)
     usuario = _usuario_actual(request)
+    from src.features.revision_cuentas import fichas as fichas_036
+
+    puerta = await run_in_threadpool(fichas_036.puerta_fifo, id_contacto)
+    if not puerta["puede"]:
+        return _bloqueo_fifo(puerta)
     try:
         res = await run_in_threadpool(fifo.aplicar, id_ejecucion, [id_contacto], False, usuario)
     except KeyError as exc:
@@ -431,10 +451,19 @@ async def fifo_simular_tanda(body: PedidoTanda, request: Request) -> dict:
     _admin(request)
     if not body.contactos or len(body.contactos) > fifo_plan.TAMANO_TANDA * 2:
         raise HTTPException(status_code=422, detail="La tanda está vacía o es demasiado grande")
+    from src.features.revision_cuentas import fichas as fichas_036
+
+    pedidas = sorted(set(body.contactos))
+    puertas = await run_in_threadpool(fichas_036.puerta_fifo_varias, pedidas)
+    listas = [i for i in pedidas if puertas[i]["puede"]]
+    omitidas = [{"idContacto": i, "etapaPendiente": puertas[i]["etapaPendiente"], "motivo": fichas_036.mensaje_de_puerta(puertas[i])} for i in pedidas if not puertas[i]["puede"]]
+    if not listas:
+        return _bloqueo_fifo(puertas[pedidas[0]])
     try:
-        return await run_in_threadpool(fifo.simular, sorted(set(body.contactos)), _usuario_actual(request))
+        res = await run_in_threadpool(fifo.simular, listas, _usuario_actual(request))
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
+    return {**res, "omitidas": omitidas}
 
 
 @router.post("/fifo/tandas/{id_ejecucion}/aplicar")
@@ -442,8 +471,15 @@ async def fifo_aplicar_tanda(id_ejecucion: int, body: PedidoTanda, request: Requ
     from src.features.recalculo_fifo import ejecuciones as fifo
 
     _admin(request)
+    from src.features.revision_cuentas import fichas as fichas_036
+
+    pedidas = sorted(set(body.contactos))
+    puertas = await run_in_threadpool(fichas_036.puerta_fifo_varias, pedidas)
+    bloqueadas = [i for i in pedidas if not puertas[i]["puede"]]
+    if bloqueadas:
+        return _bloqueo_fifo(puertas[bloqueadas[0]])
     try:
-        res = await run_in_threadpool(fifo.aplicar, id_ejecucion, sorted(set(body.contactos)), False, _usuario_actual(request))
+        res = await run_in_threadpool(fifo.aplicar, id_ejecucion, pedidas, False, _usuario_actual(request))
     except KeyError as exc:
         raise HTTPException(status_code=404, detail=f"No existe la ejecución {id_ejecucion}") from exc
     except fifo.Conflicto as exc:

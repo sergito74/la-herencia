@@ -71,10 +71,13 @@ async def test_casos_conocidos_aparecen_solos():
     h = (await _get("/api/auditoria-cuentas/cuentas/258/hallazgos")).json()["hallazgos"]
     cargill = [x for x in h if x["causa"] == "aplicacion-fuera-de-plazo" and x.get("idMovimiento") == 3240 and x.get("medio") == "galicia"]
     assert cargill and cargill[0]["cantidadFacturas"] > 50 and cargill[0]["facturaMasVieja"] == "2019-05-07"
-    # Cooperativa (22) y Lartirigoyen (61): doble descuento con tarjeta
+    # Doble descuento con tarjeta. Cooperativa (22) y Lartirigoyen (61) ya se corrigieron el 09/10/2026 (FIFO y anulación de imputaciones,
+    # corrección 41): ya no figuran. Coto (465) sigue con el caso y lo encuentra solo.
     for contacto in (22, 61):
         hs = (await _get(f"/api/auditoria-cuentas/cuentas/{contacto}/hallazgos")).json()["hallazgos"]
-        assert any(x["causa"] == "doble-descuento-tarjeta" for x in hs)
+        assert not any(x["causa"] == "doble-descuento-tarjeta" for x in hs)
+    coto = (await _get("/api/auditoria-cuentas/cuentas/465/hallazgos")).json()["hallazgos"]
+    assert any(x["causa"] == "doble-descuento-tarjeta" for x in coto)
 
 
 @pytest.mark.anyio
@@ -190,18 +193,19 @@ async def test_cuenta_en_dolares_con_diferencia_de_cambio_sugiere_la_nota():
 
 
 @pytest.mark.anyio
-async def test_campo_y_tecnologia_avisa_que_los_pagos_estan_mal_imputados():
+async def test_campo_y_tecnologia_ya_no_tiene_pagos_mal_imputados():
+    """El 07/10/2026 se aplicó el FIFO a Campo y Tecnología (T-simulación 34): el saldo sigue en cero y el aviso de imputaciones incompletas desapareció."""
     r = (await _get("/api/auditoria-cuentas/cuentas/493/revision")).json()
-    av = next(a for a in r["avisos"] if a["tipo"] == "imputaciones-incompletas")
-    assert 20000 < av["importe"] < 21000 and abs(r["saldo"]) < 10
+    assert abs(r["saldo"]) < 10
+    assert not any(a["tipo"] == "imputaciones-incompletas" for a in r["avisos"])
 
 
 @pytest.mark.anyio
 async def test_fifo_de_una_cuenta_exige_administrador_o_valida_sin_escribir():
     # sin usuario con rol Administrador la simulación se rechaza; con una cuenta inexistente la aplicación no existe
     r = await _enviar("POST", "/api/auditoria-cuentas/cuentas/493/fifo/simular")
-    assert r.status_code in (201, 403)
-    assert (await _enviar("POST", "/api/auditoria-cuentas/cuentas/493/fifo/99999999/aplicar")).status_code in (403, 404)
+    assert r.status_code in (201, 403, 409)    # 409: la puerta del FIFO (036) todavía no la deja pasar
+    assert (await _enviar("POST", "/api/auditoria-cuentas/cuentas/493/fifo/99999999/aplicar")).status_code in (403, 404, 409)
 
 
 @pytest.mark.anyio

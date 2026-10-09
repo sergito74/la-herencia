@@ -372,7 +372,20 @@ export function fetchPlanFifo(): Promise<PlanFifo> {
   return apiGet<PlanFifo>("/api/auditoria-cuentas/fifo/plan");
 }
 
-export function simularTanda(contactos: number[]): Promise<{ idEjecucion: number; resumen: Record<string, number> }> {
+/** Cuenta que la puerta del FIFO (036) dejó afuera de la tanda porque todavía no completó E1 a E4. */
+export interface CuentaOmitida {
+  idContacto: number;
+  etapaPendiente: string;
+  motivo: string;
+}
+
+export interface SimulacionTanda {
+  idEjecucion: number;
+  resumen: Record<string, number>;
+  omitidas?: CuentaOmitida[];
+}
+
+export function simularTanda(contactos: number[]): Promise<SimulacionTanda> {
   return apiPost("/api/auditoria-cuentas/fifo/tandas/simular", { contactos });
 }
 

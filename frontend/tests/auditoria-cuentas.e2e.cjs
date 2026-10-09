@@ -23,6 +23,7 @@ const assert=require('node:assert/strict');
   if(path==='/api/auditoria-cuentas/cuentas/7/movimientos')return json({page:1,pageSize:100,total:2,saldoPesos:-1500,saldoDolares:-1.2,tieneDolares:true,bimonetaria:true,gobierna:'Mixta',saldoGobierna:-1500,avisos:[],items:[
    {fecha:'2026-09-01',documento:'Factura',numeroDocumento:'0001-1',moneda:'Dolares',deudaOriginal:15,creditoOriginal:0,tipoDeCambio:100,tcEstimado:false,deudaPesos:1500,creditoPesos:0,saldoPesos:-1500,saldoDolares:-15,origen:{tipo:'compra',idCompra:100,numeroDocumento:'0001-1',proveedor:'Agroneyer'},origenTipo:'Compras',idOrigen:100},
    {fecha:'2026-08-01',documento:'Pago',numeroDocumento:null,moneda:'Pesos',deudaOriginal:0,creditoOriginal:500,tipoDeCambio:null,tcEstimado:false,deudaPesos:0,creditoPesos:500,saldoPesos:0,saldoDolares:-9,origen:{tipo:'tesoreria',medio:'galicia',idMovimiento:3240},origenTipo:'Galicia',idOrigen:3240}]});
+  if(path.startsWith('/api/revision-cuentas'))return json({detail:'sin datos en esta prueba'},404);
   return json({items:[],total:0});
  });
  await page.goto('http://127.0.0.1:3100/finanzas/auditoria-cuentas/cuenta/7');

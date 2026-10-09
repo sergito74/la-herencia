@@ -1,0 +1,5433 @@
+{
+ "idContacto": 48,
+ "nota": "Sin las 10 compras cargadas el 09/10/2026",
+ "movimientos": [
+  {
+   "fecha": "2011-01-01",
+   "documento": "Factura",
+   "nro": "S/D",
+   "deuda": 20.0,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143512365
+  },
+  {
+   "fecha": "2011-01-03",
+   "documento": "Factura",
+   "nro": "0003-00062005",
+   "deuda": 245.0,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 1085127950
+  },
+  {
+   "fecha": "2011-01-03",
+   "documento": "Factura",
+   "nro": "0003-00062004",
+   "deuda": 23.0,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 1305230185
+  },
+  {
+   "fecha": "2011-01-27",
+   "documento": "Factura",
+   "nro": "0003-00063195",
+   "deuda": 70.0,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 1305317909
+  },
+  {
+   "fecha": "2011-02-01",
+   "documento": "Resumen Bancario",
+   "nro": "13826520",
+   "deuda": 0.0,
+   "credito": 288.0,
+   "origen": "Banco Nacion",
+   "idOrigen": 14881
+  },
+  {
+   "fecha": "2011-02-09",
+   "documento": "Factura",
+   "nro": "0001-00063866",
+   "deuda": 245.0,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": -1466084786
+  },
+  {
+   "fecha": "2011-02-26",
+   "documento": "Factura",
+   "nro": "0003-00064862",
+   "deuda": 20.0,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 1539029556
+  },
+  {
+   "fecha": "2011-03-02",
+   "documento": "Factura",
+   "nro": "0003-00065068",
+   "deuda": 90.0,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 302945664
+  },
+  {
+   "fecha": "2011-03-09",
+   "documento": "Resumen Bancario",
+   "nro": "15635639",
+   "deuda": 0.0,
+   "credito": 70.0,
+   "origen": "Banco Nacion",
+   "idOrigen": 14882
+  },
+  {
+   "fecha": "2011-03-09",
+   "documento": "Factura",
+   "nro": "0003-00065422",
+   "deuda": 52.0,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": -359335523
+  },
+  {
+   "fecha": "2011-04-04",
+   "documento": "Factura",
+   "nro": "0003-00066996",
+   "deuda": 160.0,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 1772432877
+  },
+  {
+   "fecha": "2011-04-07",
+   "documento": "Factura",
+   "nro": "0003-00067204",
+   "deuda": 130.0,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": -1157819548
+  },
+  {
+   "fecha": "2011-04-12",
+   "documento": "Factura",
+   "nro": "0003-00067534",
+   "deuda": 4178.97,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": -1455120356
+  },
+  {
+   "fecha": "2011-04-12",
+   "documento": "La Herencia",
+   "nro": null,
+   "deuda": 0.0,
+   "credito": -11079.5,
+   "origen": "Pagos efectivo",
+   "idOrigen": 27
+  },
+  {
+   "fecha": "2011-05-05",
+   "documento": "Factura",
+   "nro": "0003-00068946",
+   "deuda": 180.01,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 1308673534
+  },
+  {
+   "fecha": "2011-05-10",
+   "documento": "Resumen Bancario",
+   "nro": "18853075",
+   "deuda": 0.0,
+   "credito": 15955.5,
+   "origen": "Banco Nacion",
+   "idOrigen": 14883
+  },
+  {
+   "fecha": "2011-05-19",
+   "documento": "Factura",
+   "nro": "0003-00070087",
+   "deuda": 150.0,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 98167839
+  },
+  {
+   "fecha": "2011-06-08",
+   "documento": "Factura",
+   "nro": "0003-00071599",
+   "deuda": 230.0,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2001418609
+  },
+  {
+   "fecha": "2011-07-05",
+   "documento": "Resumen Bancario",
+   "nro": "20502079",
+   "deuda": 0.0,
+   "credito": 330.0,
+   "origen": "Banco Nacion",
+   "idOrigen": 14884
+  },
+  {
+   "fecha": "2011-07-11",
+   "documento": "Factura",
+   "nro": "0003-00073635",
+   "deuda": 90.0,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 268542139
+  },
+  {
+   "fecha": "2011-07-30",
+   "documento": "Factura",
+   "nro": "0004-00000260",
+   "deuda": 41.11,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": -1808892629
+  },
+  {
+   "fecha": "2011-08-01",
+   "documento": "Factura",
+   "nro": "0004-00000350",
+   "deuda": 36.0,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": -351669423
+  },
+  {
+   "fecha": "2011-08-02",
+   "documento": "Factura",
+   "nro": "0004-00000454",
+   "deuda": 4464.01,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 1304702439
+  },
+  {
+   "fecha": "2011-08-12",
+   "documento": "Factura",
+   "nro": "0004-00001279",
+   "deuda": 231.0,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 1496220269
+  },
+  {
+   "fecha": "2011-08-23",
+   "documento": "Factura",
+   "nro": "0004-00002118",
+   "deuda": 251.99,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 1286761630
+  },
+  {
+   "fecha": "2011-09-12",
+   "documento": "Factura",
+   "nro": "0004-00003098",
+   "deuda": 183.0,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 1320072117
+  },
+  {
+   "fecha": "2011-09-16",
+   "documento": "Resumen Bancario",
+   "nro": "24051765",
+   "deuda": 0.0,
+   "credito": 5344.15,
+   "origen": "Banco Nacion",
+   "idOrigen": 14885
+  },
+  {
+   "fecha": "2011-10-04",
+   "documento": "Factura",
+   "nro": "0004-00004626",
+   "deuda": 5199.06,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": -316813727
+  },
+  {
+   "fecha": "2011-10-06",
+   "documento": "Factura",
+   "nro": "0004-00004791",
+   "deuda": 105.0,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 321290792
+  },
+  {
+   "fecha": "2011-10-12",
+   "documento": "Factura",
+   "nro": "0004-00005178",
+   "deuda": 180.0,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": -1824430924
+  },
+  {
+   "fecha": "2011-10-20",
+   "documento": "Resumen Bancario",
+   "nro": "24051784",
+   "deuda": 0.0,
+   "credito": 2456.0,
+   "origen": "Banco Nacion",
+   "idOrigen": 14886
+  },
+  {
+   "fecha": "2011-10-25",
+   "documento": "Condominio",
+   "nro": "87678128",
+   "deuda": 0.0,
+   "credito": 2926.0,
+   "origen": "Pagos efectivo",
+   "idOrigen": 28
+  },
+  {
+   "fecha": "2011-10-27",
+   "documento": "Factura",
+   "nro": "0004-00006030",
+   "deuda": 133.0,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 161063375
+  },
+  {
+   "fecha": "2011-11-11",
+   "documento": "Factura",
+   "nro": "0004-00007176",
+   "deuda": 188.0,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 1060451317
+  },
+  {
+   "fecha": "2011-11-21",
+   "documento": "Resumen Bancario",
+   "nro": "27685632",
+   "deuda": 0.0,
+   "credito": 133.0,
+   "origen": "Banco Nacion",
+   "idOrigen": 14887
+  },
+  {
+   "fecha": "2011-11-21",
+   "documento": "Resumen Bancario",
+   "nro": "24051792",
+   "deuda": 0.0,
+   "credito": 285.0,
+   "origen": "Banco Nacion",
+   "idOrigen": 14888
+  },
+  {
+   "fecha": "2011-11-25",
+   "documento": "Factura",
+   "nro": "0004-00008152",
+   "deuda": 260.01,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 679447165
+  },
+  {
+   "fecha": "2011-12-20",
+   "documento": "Factura",
+   "nro": "0004-00009979",
+   "deuda": 265.0,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": -1749676810
+  },
+  {
+   "fecha": "2011-12-28",
+   "documento": "Factura",
+   "nro": "0004-00010673",
+   "deuda": 289.99,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 1330354836
+  },
+  {
+   "fecha": "2011-12-29",
+   "documento": "Resumen Bancario",
+   "nro": "27685644",
+   "deuda": 0.0,
+   "credito": 448.0,
+   "origen": "Banco Nacion",
+   "idOrigen": 14889
+  },
+  {
+   "fecha": "2012-01-04",
+   "documento": "Resumen Bancario",
+   "nro": "27685654",
+   "deuda": 0.0,
+   "credito": 265.0,
+   "origen": "Banco Nacion",
+   "idOrigen": 14890
+  },
+  {
+   "fecha": "2012-01-06",
+   "documento": "Factura",
+   "nro": "0004-00011092",
+   "deuda": 28.0,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": -281609911
+  },
+  {
+   "fecha": "2012-01-11",
+   "documento": "Factura",
+   "nro": "0004-00011295",
+   "deuda": 170.0,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": -1412075198
+  },
+  {
+   "fecha": "2012-01-18",
+   "documento": "Factura",
+   "nro": "0004-00011771",
+   "deuda": 150.0,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 1700903788
+  },
+  {
+   "fecha": "2012-01-18",
+   "documento": "Condominio",
+   "nro": null,
+   "deuda": 0.0,
+   "credito": 150.0,
+   "origen": "Pagos efectivo",
+   "idOrigen": 76
+  },
+  {
+   "fecha": "2012-02-01",
+   "documento": "Factura",
+   "nro": "0004-00012627",
+   "deuda": 260.0,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 314691902
+  },
+  {
+   "fecha": "2012-02-29",
+   "documento": "Resumen Bancario",
+   "nro": "30990479",
+   "deuda": 0.0,
+   "credito": 748.0,
+   "origen": "Banco Nacion",
+   "idOrigen": 14891
+  },
+  {
+   "fecha": "2012-03-06",
+   "documento": "Factura",
+   "nro": "0001-00014972",
+   "deuda": 270.84,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": -1434485311
+  },
+  {
+   "fecha": "2012-03-13",
+   "documento": "Factura",
+   "nro": "0004-00015516",
+   "deuda": 132.86,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 243860837
+  },
+  {
+   "fecha": "2012-03-20",
+   "documento": "Factura",
+   "nro": "0004-00015950",
+   "deuda": 265.72,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 914578971
+  },
+  {
+   "fecha": "2012-03-28",
+   "documento": "Factura",
+   "nro": "0004-00016476",
+   "deuda": 279.02,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143509358
+  },
+  {
+   "fecha": "2012-03-30",
+   "documento": "Factura",
+   "nro": "0004-00016620",
+   "deuda": 153.31,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143509361
+  },
+  {
+   "fecha": "2012-04-04",
+   "documento": "Factura",
+   "nro": "0004-00016963",
+   "deuda": 255.49,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143509364
+  },
+  {
+   "fecha": "2012-04-10",
+   "documento": "Resumen Bancario",
+   "nro": "30990454",
+   "deuda": 0.0,
+   "credito": 669.42,
+   "origen": "Banco Nacion",
+   "idOrigen": 14892
+  },
+  {
+   "fecha": "2012-04-17",
+   "documento": "Factura",
+   "nro": "0004-00017834",
+   "deuda": 250.39,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143509386
+  },
+  {
+   "fecha": "2012-04-24",
+   "documento": "Factura",
+   "nro": "0004-00018262",
+   "deuda": 296.35,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143509384
+  },
+  {
+   "fecha": "2012-04-24",
+   "documento": "Factura",
+   "nro": "0004-00018250",
+   "deuda": 9660.23,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143509385
+  },
+  {
+   "fecha": "2012-04-26",
+   "documento": "Resumen Bancario",
+   "nro": "30990462",
+   "deuda": 0.0,
+   "credito": 687.83,
+   "origen": "Banco Nacion",
+   "idOrigen": 14893
+  },
+  {
+   "fecha": "2012-05-03",
+   "documento": "Factura",
+   "nro": "0004-00018839",
+   "deuda": 265.73,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143509413
+  },
+  {
+   "fecha": "2012-05-15",
+   "documento": "Factura",
+   "nro": "0004-00019620",
+   "deuda": 273.91,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143509412
+  },
+  {
+   "fecha": "2012-05-21",
+   "documento": "Resumen Bancario",
+   "nro": "30990469",
+   "deuda": 0.0,
+   "credito": 10206.97,
+   "origen": "Banco Nacion",
+   "idOrigen": 14894
+  },
+  {
+   "fecha": "2012-06-06",
+   "documento": "Factura",
+   "nro": "0001-00020821",
+   "deuda": 280.01,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143509465
+  },
+  {
+   "fecha": "2012-06-12",
+   "documento": "Factura",
+   "nro": "0003-00075240",
+   "deuda": 2205.01,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143509464
+  },
+  {
+   "fecha": "2012-06-19",
+   "documento": "Resumen Bancario",
+   "nro": "34236076",
+   "deuda": 0.0,
+   "credito": 539.64,
+   "origen": "Banco Nacion",
+   "idOrigen": 14895
+  },
+  {
+   "fecha": "2012-06-28",
+   "documento": "Factura",
+   "nro": "0004-00022142",
+   "deuda": 175.0,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143509467
+  },
+  {
+   "fecha": "2012-07-11",
+   "documento": "Factura",
+   "nro": "0004-00022727",
+   "deuda": 275.95,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143509491
+  },
+  {
+   "fecha": "2012-07-23",
+   "documento": "Resumen Bancario",
+   "nro": "34236098",
+   "deuda": 0.0,
+   "credito": 2660.0,
+   "origen": "Banco Nacion",
+   "idOrigen": 14896
+  },
+  {
+   "fecha": "2012-07-24",
+   "documento": "Factura",
+   "nro": "0004-00023564",
+   "deuda": 320.93,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143509493
+  },
+  {
+   "fecha": "2012-08-10",
+   "documento": "Factura",
+   "nro": "0004-00024497",
+   "deuda": 319.89,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143509513
+  },
+  {
+   "fecha": "2012-08-16",
+   "documento": "Resumen Bancario",
+   "nro": "36450185",
+   "deuda": 0.0,
+   "credito": 596.87,
+   "origen": "Banco Nacion",
+   "idOrigen": 14897
+  },
+  {
+   "fecha": "2012-08-30",
+   "documento": "Factura",
+   "nro": "0004-00025463",
+   "deuda": 71.54,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143509506
+  },
+  {
+   "fecha": "2012-09-12",
+   "documento": "Factura",
+   "nro": "0004-00026108",
+   "deuda": 300.0,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143509559
+  },
+  {
+   "fecha": "2012-09-21",
+   "documento": "Resumen Bancario",
+   "nro": "36450191",
+   "deuda": 0.0,
+   "credito": 391.44,
+   "origen": "Banco Nacion",
+   "idOrigen": 14898
+  },
+  {
+   "fecha": "2012-09-24",
+   "documento": "Factura",
+   "nro": "0004-00026679",
+   "deuda": 65.0,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143509561
+  },
+  {
+   "fecha": "2012-10-03",
+   "documento": "Factura",
+   "nro": "0004-00027228",
+   "deuda": 255.0,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143509554
+  },
+  {
+   "fecha": "2012-10-16",
+   "documento": "Factura",
+   "nro": "0003-00075816",
+   "deuda": 9028.58,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143509556
+  },
+  {
+   "fecha": "2012-10-17",
+   "documento": "Factura",
+   "nro": "0004-00028080",
+   "deuda": 140.0,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143509570
+  },
+  {
+   "fecha": "2012-10-18",
+   "documento": "Factura",
+   "nro": "0004-00028101",
+   "deuda": 290.0,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143509576
+  },
+  {
+   "fecha": "2012-11-07",
+   "documento": "Resumen Bancario",
+   "nro": "37939773",
+   "deuda": 0.0,
+   "credito": 8000.0,
+   "origen": "Banco Nacion",
+   "idOrigen": 14899
+  },
+  {
+   "fecha": "2012-11-07",
+   "documento": "Factura",
+   "nro": "0004-00029344",
+   "deuda": 245.3,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143509599
+  },
+  {
+   "fecha": "2012-11-13",
+   "documento": "Factura",
+   "nro": "0004-00029758",
+   "deuda": 153.3,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143509603
+  },
+  {
+   "fecha": "2012-11-19",
+   "documento": "Factura",
+   "nro": "0004-00030716",
+   "deuda": 428.68,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143509601
+  },
+  {
+   "fecha": "2012-11-19",
+   "documento": "Factura",
+   "nro": "0004-00030177",
+   "deuda": 336.82,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143509602
+  },
+  {
+   "fecha": "2012-11-21",
+   "documento": "Factura",
+   "nro": "0004-00030304",
+   "deuda": 323.98,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143509605
+  },
+  {
+   "fecha": "2012-11-28",
+   "documento": "Resumen Bancario",
+   "nro": "37939774",
+   "deuda": 0.0,
+   "credito": 3667.59,
+   "origen": "Banco Nacion",
+   "idOrigen": 14900
+  },
+  {
+   "fecha": "2012-11-28",
+   "documento": "La Herencia",
+   "nro": "37939774",
+   "deuda": 0.0,
+   "credito": -2018.99,
+   "origen": "Pagos efectivo",
+   "idOrigen": 677
+  },
+  {
+   "fecha": "2012-12-04",
+   "documento": "Resumen Bancario",
+   "nro": "37939734",
+   "deuda": 0.0,
+   "credito": 430.0,
+   "origen": "Banco Nacion",
+   "idOrigen": 14901
+  },
+  {
+   "fecha": "2012-12-05",
+   "documento": "Factura",
+   "nro": "0004-00031180",
+   "deuda": 260.61,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143509606
+  },
+  {
+   "fecha": "2012-12-28",
+   "documento": "Factura",
+   "nro": "0004-00032677",
+   "deuda": 485.44,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143509622
+  },
+  {
+   "fecha": "2013-01-02",
+   "documento": "Resumen Bancario",
+   "nro": "37939745",
+   "deuda": 0.0,
+   "credito": 1488.07,
+   "origen": "Banco Nacion",
+   "idOrigen": 14902
+  },
+  {
+   "fecha": "2013-01-10",
+   "documento": "Factura",
+   "nro": "0004-00033444",
+   "deuda": 235.0,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143509631
+  },
+  {
+   "fecha": "2013-01-15",
+   "documento": "Resumen Bancario",
+   "nro": "41922130",
+   "deuda": 0.0,
+   "credito": 260.61,
+   "origen": "Banco Nacion",
+   "idOrigen": 14903
+  },
+  {
+   "fecha": "2013-01-15",
+   "documento": "Factura",
+   "nro": "0004-00034336",
+   "deuda": 310.0,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143509649
+  },
+  {
+   "fecha": "2013-01-29",
+   "documento": "Factura",
+   "nro": "0004-00034581",
+   "deuda": 150.0,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143509642
+  },
+  {
+   "fecha": "2013-02-06",
+   "documento": "Resumen Bancario",
+   "nro": "41922136",
+   "deuda": 0.0,
+   "credito": 485.45,
+   "origen": "Banco Nacion",
+   "idOrigen": 14904
+  },
+  {
+   "fecha": "2013-02-13",
+   "documento": "Factura",
+   "nro": "0004-00035358",
+   "deuda": 269.99,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143509668
+  },
+  {
+   "fecha": "2013-02-18",
+   "documento": "Resumen Bancario",
+   "nro": "41922141",
+   "deuda": 0.0,
+   "credito": 235.0,
+   "origen": "Banco Nacion",
+   "idOrigen": 14905
+  },
+  {
+   "fecha": "2013-03-06",
+   "documento": "Resumen Bancario",
+   "nro": "41922144",
+   "deuda": 0.0,
+   "credito": 460.0,
+   "origen": "Banco Nacion",
+   "idOrigen": 14906
+  },
+  {
+   "fecha": "2013-03-07",
+   "documento": "Factura",
+   "nro": "0004-00036653",
+   "deuda": 335.0,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143509686
+  },
+  {
+   "fecha": "2013-03-12",
+   "documento": "Resumen Bancario",
+   "nro": "41922166",
+   "deuda": 0.0,
+   "credito": 270.0,
+   "origen": "Banco Nacion",
+   "idOrigen": 14907
+  },
+  {
+   "fecha": "2013-03-12",
+   "documento": "Factura",
+   "nro": "0003-00076770",
+   "deuda": 6759.01,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143509687
+  },
+  {
+   "fecha": "2013-03-21",
+   "documento": "Factura",
+   "nro": "0004-00037417",
+   "deuda": 265.0,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143509698
+  },
+  {
+   "fecha": "2013-03-25",
+   "documento": "Factura",
+   "nro": "0004-00037638",
+   "deuda": 518.0,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143509696
+  },
+  {
+   "fecha": "2013-03-25",
+   "documento": "Factura",
+   "nro": "0004-00037639",
+   "deuda": 140.0,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143509697
+  },
+  {
+   "fecha": "2013-04-09",
+   "documento": "Factura",
+   "nro": "0004-00038432",
+   "deuda": 242.0,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143509724
+  },
+  {
+   "fecha": "2013-04-16",
+   "documento": "Resumen Bancario",
+   "nro": "46010555",
+   "deuda": 0.0,
+   "credito": 3500.0,
+   "origen": "Banco Nacion",
+   "idOrigen": 14908
+  },
+  {
+   "fecha": "2013-04-23",
+   "documento": "Factura",
+   "nro": "0004-00039399",
+   "deuda": 110.0,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143509717
+  },
+  {
+   "fecha": "2013-04-23",
+   "documento": "Factura",
+   "nro": "0004-00039398",
+   "deuda": 100.0,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143509721
+  },
+  {
+   "fecha": "2013-05-07",
+   "documento": "Factura",
+   "nro": "0004-00040175",
+   "deuda": 250.0,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143509758
+  },
+  {
+   "fecha": "2013-05-08",
+   "documento": "Resumen Bancario",
+   "nro": "46010556",
+   "deuda": 0.0,
+   "credito": 3594.0,
+   "origen": "Banco Nacion",
+   "idOrigen": 14909
+  },
+  {
+   "fecha": "2013-05-08",
+   "documento": "Factura",
+   "nro": "0004-00040277",
+   "deuda": 202.0,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143509750
+  },
+  {
+   "fecha": "2013-05-21",
+   "documento": "Resumen Bancario",
+   "nro": "46010566",
+   "deuda": 0.0,
+   "credito": 923.0,
+   "origen": "Banco Nacion",
+   "idOrigen": 14910
+  },
+  {
+   "fecha": "2013-06-04",
+   "documento": "Factura",
+   "nro": "0004-00041846",
+   "deuda": 410.0,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143509786
+  },
+  {
+   "fecha": "2013-06-11",
+   "documento": "Resumen Bancario",
+   "nro": "46010573",
+   "deuda": 0.0,
+   "credito": 452.0,
+   "origen": "Banco Nacion",
+   "idOrigen": 14911
+  },
+  {
+   "fecha": "2013-06-14",
+   "documento": "Resumen Bancario",
+   "nro": "46010590",
+   "deuda": 0.0,
+   "credito": 452.0,
+   "origen": "Banco Nacion",
+   "idOrigen": 14912
+  },
+  {
+   "fecha": "2013-07-17",
+   "documento": "Factura",
+   "nro": "0005-00001313",
+   "deuda": 400.0,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143509795
+  },
+  {
+   "fecha": "2013-07-30",
+   "documento": "Resumen Bancario",
+   "nro": "48535496",
+   "deuda": 0.0,
+   "credito": 410.0,
+   "origen": "Banco Nacion",
+   "idOrigen": 14913
+  },
+  {
+   "fecha": "2013-07-30",
+   "documento": "Factura",
+   "nro": "0005-00002110",
+   "deuda": 7589.0,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143509796
+  },
+  {
+   "fecha": "2013-07-31",
+   "documento": "Factura",
+   "nro": "0005-00002224",
+   "deuda": 300.0,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143509810
+  },
+  {
+   "fecha": "2013-08-21",
+   "documento": "Resumen Bancario",
+   "nro": "48535506",
+   "deuda": 0.0,
+   "credito": 4000.0,
+   "origen": "Banco Nacion",
+   "idOrigen": 14914
+  },
+  {
+   "fecha": "2013-08-21",
+   "documento": "Factura",
+   "nro": "0005-00003481",
+   "deuda": 335.0,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143509824
+  },
+  {
+   "fecha": "2013-09-11",
+   "documento": "Factura",
+   "nro": "0005-00004865",
+   "deuda": 330.0,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143509840
+  },
+  {
+   "fecha": "2013-09-12",
+   "documento": "Resumen Bancario",
+   "nro": "48535511",
+   "deuda": 0.0,
+   "credito": 300.0,
+   "origen": "Banco Nacion",
+   "idOrigen": 14915
+  },
+  {
+   "fecha": "2013-09-23",
+   "documento": "Resumen Bancario",
+   "nro": "48535507",
+   "deuda": 0.0,
+   "credito": 3989.0,
+   "origen": "Banco Nacion",
+   "idOrigen": 14916
+  },
+  {
+   "fecha": "2013-09-23",
+   "documento": "Resumen Bancario",
+   "nro": "48535525",
+   "deuda": 0.0,
+   "credito": 335.0,
+   "origen": "Banco Nacion",
+   "idOrigen": 14917
+  },
+  {
+   "fecha": "2013-09-24",
+   "documento": "Factura",
+   "nro": "0005-00005576",
+   "deuda": 465.01,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143509844
+  },
+  {
+   "fecha": "2013-10-03",
+   "documento": "Factura",
+   "nro": "0005-00006187",
+   "deuda": 220.0,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143509847
+  },
+  {
+   "fecha": "2013-10-11",
+   "documento": "Resumen Bancario",
+   "nro": "51575379",
+   "deuda": 0.0,
+   "credito": 330.0,
+   "origen": "Banco Nacion",
+   "idOrigen": 14918
+  },
+  {
+   "fecha": "2013-10-15",
+   "documento": "La Herencia",
+   "nro": null,
+   "deuda": 0.0,
+   "credito": -2310.0,
+   "origen": "Pagos efectivo",
+   "idOrigen": 245
+  },
+  {
+   "fecha": "2013-10-22",
+   "documento": "Factura",
+   "nro": "0005-00007446",
+   "deuda": 290.0,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143509871
+  },
+  {
+   "fecha": "2013-11-05",
+   "documento": "Factura",
+   "nro": "0005-00008316",
+   "deuda": 168.0,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143509884
+  },
+  {
+   "fecha": "2013-11-05",
+   "documento": "Factura",
+   "nro": "0005-00008315",
+   "deuda": 300.0,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143509885
+  },
+  {
+   "fecha": "2013-11-11",
+   "documento": "Resumen Bancario",
+   "nro": "51575384",
+   "deuda": 0.0,
+   "credito": 1500.0,
+   "origen": "Banco Nacion",
+   "idOrigen": 14919
+  },
+  {
+   "fecha": "2013-11-19",
+   "documento": "Factura",
+   "nro": "0005-00009120",
+   "deuda": 290.0,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143509921
+  },
+  {
+   "fecha": "2013-11-27",
+   "documento": "Resumen Bancario",
+   "nro": "51575394",
+   "deuda": 0.0,
+   "credito": 290.0,
+   "origen": "Banco Nacion",
+   "idOrigen": 14920
+  },
+  {
+   "fecha": "2013-12-02",
+   "documento": "Resumen Bancario",
+   "nro": "51575385",
+   "deuda": 0.0,
+   "credito": 1495.0,
+   "origen": "Banco Nacion",
+   "idOrigen": 14921
+  },
+  {
+   "fecha": "2013-12-02",
+   "documento": "Factura",
+   "nro": "0003-00078511",
+   "deuda": 8299.0,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143509919
+  },
+  {
+   "fecha": "2013-12-08",
+   "documento": "Factura",
+   "nro": "0005-00010359",
+   "deuda": 610.0,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143509940
+  },
+  {
+   "fecha": "2013-12-16",
+   "documento": "Factura",
+   "nro": "0005-00010850",
+   "deuda": 190.0,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143509945
+  },
+  {
+   "fecha": "2013-12-20",
+   "documento": "Resumen Bancario",
+   "nro": "51575401",
+   "deuda": 0.0,
+   "credito": 468.0,
+   "origen": "Banco Nacion",
+   "idOrigen": 14922
+  },
+  {
+   "fecha": "2013-12-30",
+   "documento": "Resumen Bancario",
+   "nro": "51575406",
+   "deuda": 0.0,
+   "credito": 4300.0,
+   "origen": "Banco Nacion",
+   "idOrigen": 14923
+  },
+  {
+   "fecha": "2014-01-08",
+   "documento": "Factura",
+   "nro": "0005-00012232",
+   "deuda": 230.0,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143509964
+  },
+  {
+   "fecha": "2014-01-15",
+   "documento": "Factura",
+   "nro": "0005-00012602",
+   "deuda": 350.0,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143509961
+  },
+  {
+   "fecha": "2014-01-16",
+   "documento": "Factura",
+   "nro": "0005-00012667",
+   "deuda": 234.99,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143509960
+  },
+  {
+   "fecha": "2014-01-21",
+   "documento": "Resumen Bancario",
+   "nro": "51575407",
+   "deuda": 0.0,
+   "credito": 4289.0,
+   "origen": "Banco Nacion",
+   "idOrigen": 14924
+  },
+  {
+   "fecha": "2014-01-28",
+   "documento": "Factura",
+   "nro": "0005-00013294",
+   "deuda": 420.0,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143509977
+  },
+  {
+   "fecha": "2014-02-04",
+   "documento": "Resumen Bancario",
+   "nro": "51575424",
+   "deuda": 0.0,
+   "credito": 800.0,
+   "origen": "Banco Nacion",
+   "idOrigen": 14925
+  },
+  {
+   "fecha": "2014-02-10",
+   "documento": "Factura",
+   "nro": "0005-00014042",
+   "deuda": 220.0,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143509974
+  },
+  {
+   "fecha": "2014-02-18",
+   "documento": "Factura",
+   "nro": "0005-00014473",
+   "deuda": 445.01,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143509992
+  },
+  {
+   "fecha": "2014-02-21",
+   "documento": "Resumen Bancario",
+   "nro": "56149431",
+   "deuda": 0.0,
+   "credito": 815.0,
+   "origen": "Banco Nacion",
+   "idOrigen": 14926
+  },
+  {
+   "fecha": "2014-03-12",
+   "documento": "Resumen Bancario",
+   "nro": "56149437",
+   "deuda": 0.0,
+   "credito": 640.0,
+   "origen": "Banco Nacion",
+   "idOrigen": 14927
+  },
+  {
+   "fecha": "2014-03-13",
+   "documento": "Factura",
+   "nro": "0005-00015754",
+   "deuda": 500.0,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143510010
+  },
+  {
+   "fecha": "2014-03-29",
+   "documento": "Factura",
+   "nro": "0005-00016703",
+   "deuda": 220.0,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143510023
+  },
+  {
+   "fecha": "2014-04-01",
+   "documento": "Factura",
+   "nro": "0005-00016865",
+   "deuda": 570.0,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143510025
+  },
+  {
+   "fecha": "2014-04-15",
+   "documento": "Factura",
+   "nro": "0003-00079718",
+   "deuda": 5345.0,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143510026
+  },
+  {
+   "fecha": "2014-04-15",
+   "documento": "Factura",
+   "nro": "0003-00079719",
+   "deuda": 5345.0,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143510027
+  },
+  {
+   "fecha": "2014-04-21",
+   "documento": "Resumen Bancario",
+   "nro": "56149450",
+   "deuda": 0.0,
+   "credito": 500.0,
+   "origen": "Banco Nacion",
+   "idOrigen": 14928
+  },
+  {
+   "fecha": "2014-04-21",
+   "documento": "Factura",
+   "nro": "0005-00017918",
+   "deuda": 445.0,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143510059
+  },
+  {
+   "fecha": "2014-04-22",
+   "documento": "Resumen Bancario",
+   "nro": "56149451",
+   "deuda": 0.0,
+   "credito": 445.0,
+   "origen": "Banco Nacion",
+   "idOrigen": 14929
+  },
+  {
+   "fecha": "2014-05-07",
+   "documento": "Factura",
+   "nro": "0005-00018935",
+   "deuda": 570.0,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143510079
+  },
+  {
+   "fecha": "2014-05-16",
+   "documento": "Resumen Bancario",
+   "nro": "56149463",
+   "deuda": 0.0,
+   "credito": 5740.0,
+   "origen": "Banco Nacion",
+   "idOrigen": 14930
+  },
+  {
+   "fecha": "2014-05-29",
+   "documento": "Resumen Bancario",
+   "nro": "56149465",
+   "deuda": 0.0,
+   "credito": 445.0,
+   "origen": "Banco Nacion",
+   "idOrigen": 14931
+  },
+  {
+   "fecha": "2014-05-29",
+   "documento": "Resumen Bancario",
+   "nro": "56149465",
+   "deuda": 445.0,
+   "credito": 0.0,
+   "origen": "Banco Nacion",
+   "idOrigen": 14932
+  },
+  {
+   "fecha": "2014-06-02",
+   "documento": "Resumen Bancario",
+   "nro": "56149465",
+   "deuda": 0.0,
+   "credito": 445.0,
+   "origen": "Banco Nacion",
+   "idOrigen": 14933
+  },
+  {
+   "fecha": "2014-06-04",
+   "documento": "Factura",
+   "nro": "0005-00020593",
+   "deuda": 380.0,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143510083
+  },
+  {
+   "fecha": "2014-06-09",
+   "documento": "Resumen Bancario",
+   "nro": "56149464",
+   "deuda": 0.0,
+   "credito": 5740.0,
+   "origen": "Banco Nacion",
+   "idOrigen": 14934
+  },
+  {
+   "fecha": "2014-06-17",
+   "documento": "Resumen Bancario",
+   "nro": "60623251",
+   "deuda": 0.0,
+   "credito": 570.0,
+   "origen": "Banco Nacion",
+   "idOrigen": 14935
+  },
+  {
+   "fecha": "2014-06-24",
+   "documento": "Factura",
+   "nro": "0005-00021698",
+   "deuda": 400.0,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143510099
+  },
+  {
+   "fecha": "2014-07-14",
+   "documento": "Resumen Bancario",
+   "nro": "60623268",
+   "deuda": 0.0,
+   "credito": 380.0,
+   "origen": "Banco Nacion",
+   "idOrigen": 14936
+  },
+  {
+   "fecha": "2014-07-15",
+   "documento": "Factura",
+   "nro": "0005-00022792",
+   "deuda": 195.01,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143510111
+  },
+  {
+   "fecha": "2014-07-22",
+   "documento": "Resumen Bancario",
+   "nro": "60623269",
+   "deuda": 0.0,
+   "credito": 400.0,
+   "origen": "Banco Nacion",
+   "idOrigen": 14937
+  },
+  {
+   "fecha": "2014-08-05",
+   "documento": "Factura",
+   "nro": "0005-00023842",
+   "deuda": 419.99,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143510121
+  },
+  {
+   "fecha": "2014-08-06",
+   "documento": "La Herencia",
+   "nro": "0",
+   "deuda": 0.0,
+   "credito": 195.0,
+   "origen": "Pagos efectivo",
+   "idOrigen": 626
+  },
+  {
+   "fecha": "2014-08-13",
+   "documento": "La Herencia",
+   "nro": null,
+   "deuda": 0.0,
+   "credito": -4056.5,
+   "origen": "Pagos efectivo",
+   "idOrigen": 246
+  },
+  {
+   "fecha": "2014-08-16",
+   "documento": "Factura",
+   "nro": "0005-00024513",
+   "deuda": 575.0,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143510124
+  },
+  {
+   "fecha": "2014-08-16",
+   "documento": "Factura",
+   "nro": "0005-00024514",
+   "deuda": 260.0,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143510125
+  },
+  {
+   "fecha": "2014-08-26",
+   "documento": "Factura",
+   "nro": "0005-00024948",
+   "deuda": 510.0,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143510137
+  },
+  {
+   "fecha": "2014-09-04",
+   "documento": "Resumen Bancario",
+   "nro": "60623285",
+   "deuda": 0.0,
+   "credito": 420.0,
+   "origen": "Banco Nacion",
+   "idOrigen": 14938
+  },
+  {
+   "fecha": "2014-09-08",
+   "documento": "Resumen Bancario",
+   "nro": "60623283",
+   "deuda": 0.0,
+   "credito": 2500.0,
+   "origen": "Banco Nacion",
+   "idOrigen": 14939
+  },
+  {
+   "fecha": "2014-09-19",
+   "documento": "Factura",
+   "nro": "0005-00026178",
+   "deuda": 270.0,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143510144
+  },
+  {
+   "fecha": "2014-09-22",
+   "documento": "Factura",
+   "nro": "0003-00081165",
+   "deuda": 550.0,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143510145
+  },
+  {
+   "fecha": "2014-09-23",
+   "documento": "Resumen Bancario",
+   "nro": "60623284",
+   "deuda": 0.0,
+   "credito": 2391.5,
+   "origen": "Banco Nacion",
+   "idOrigen": 14940
+  },
+  {
+   "fecha": "2014-10-07",
+   "documento": "Factura",
+   "nro": "0005-00027124",
+   "deuda": 440.0,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143510171
+  },
+  {
+   "fecha": "2014-10-08",
+   "documento": "Factura",
+   "nro": "0005-00027229",
+   "deuda": 305.01,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143510170
+  },
+  {
+   "fecha": "2014-10-14",
+   "documento": "Resumen Bancario",
+   "nro": "60623297",
+   "deuda": 0.0,
+   "credito": 510.0,
+   "origen": "Banco Nacion",
+   "idOrigen": 14941
+  },
+  {
+   "fecha": "2014-10-14",
+   "documento": "Factura",
+   "nro": "0003-00081327",
+   "deuda": 5995.02,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143510172
+  },
+  {
+   "fecha": "2014-10-14",
+   "documento": "Factura",
+   "nro": "0003-00081328",
+   "deuda": 5995.02,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143510173
+  },
+  {
+   "fecha": "2014-10-21",
+   "documento": "Resumen Bancario",
+   "nro": "60623299",
+   "deuda": 0.0,
+   "credito": 790.01,
+   "origen": "Banco Nacion",
+   "idOrigen": 14942
+  },
+  {
+   "fecha": "2014-11-05",
+   "documento": "Factura",
+   "nro": "0005-00028970",
+   "deuda": 203.0,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143510195
+  },
+  {
+   "fecha": "2014-11-11",
+   "documento": "Factura",
+   "nro": "0005-00029471",
+   "deuda": 440.01,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143510200
+  },
+  {
+   "fecha": "2014-11-25",
+   "documento": "Resumen Bancario",
+   "nro": "3619908",
+   "deuda": 0.0,
+   "credito": 6300.0,
+   "origen": "Banco Nacion",
+   "idOrigen": 14943
+  },
+  {
+   "fecha": "2014-11-25",
+   "documento": "Factura",
+   "nro": "0003-00081729",
+   "deuda": 1798.49,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143510199
+  },
+  {
+   "fecha": "2014-12-03",
+   "documento": "Factura",
+   "nro": "0005-00030999",
+   "deuda": 203.0,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143510203
+  },
+  {
+   "fecha": "2014-12-10",
+   "documento": "Factura",
+   "nro": "0005-00031428",
+   "deuda": 550.0,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143510222
+  },
+  {
+   "fecha": "2014-12-10",
+   "documento": "La Herencia",
+   "nro": "0",
+   "deuda": 0.0,
+   "credito": 203.0,
+   "origen": "Pagos efectivo",
+   "idOrigen": 699
+  },
+  {
+   "fecha": "2014-12-18",
+   "documento": "Factura",
+   "nro": "0005-00031981",
+   "deuda": 270.0,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143510225
+  },
+  {
+   "fecha": "2014-12-22",
+   "documento": "Resumen Bancario",
+   "nro": "3619909",
+   "deuda": 0.0,
+   "credito": 6465.02,
+   "origen": "Banco Nacion",
+   "idOrigen": 14944
+  },
+  {
+   "fecha": "2015-01-02",
+   "documento": "Resumen Bancario",
+   "nro": "3619923",
+   "deuda": 0.0,
+   "credito": 2441.51,
+   "origen": "Banco Nacion",
+   "idOrigen": 14945
+  },
+  {
+   "fecha": "2015-01-07",
+   "documento": "Factura",
+   "nro": "0005-00033123",
+   "deuda": 728.0,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143510244
+  },
+  {
+   "fecha": "2015-01-12",
+   "documento": "Factura",
+   "nro": "0003-00082133",
+   "deuda": 11990.02,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143510245
+  },
+  {
+   "fecha": "2015-01-29",
+   "documento": "Resumen Bancario",
+   "nro": "3619935",
+   "deuda": 0.0,
+   "credito": 820.0,
+   "origen": "Banco Nacion",
+   "idOrigen": 14946
+  },
+  {
+   "fecha": "2015-01-30",
+   "documento": "Factura",
+   "nro": "0005-00034395",
+   "deuda": 257.02,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143510262
+  },
+  {
+   "fecha": "2015-02-03",
+   "documento": "Factura",
+   "nro": "0005-00034614",
+   "deuda": 560.0,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143510261
+  },
+  {
+   "fecha": "2015-02-16",
+   "documento": "Factura",
+   "nro": "0005-00035311",
+   "deuda": 260.0,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143510257
+  },
+  {
+   "fecha": "2015-02-26",
+   "documento": "Resumen Bancario",
+   "nro": "3619943",
+   "deuda": 0.0,
+   "credito": 6359.0,
+   "origen": "Banco Nacion",
+   "idOrigen": 14947
+  },
+  {
+   "fecha": "2015-03-01",
+   "documento": "Factura",
+   "nro": "0005-00035973",
+   "deuda": 259.99,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143510274
+  },
+  {
+   "fecha": "2015-03-17",
+   "documento": "Resumen Bancario",
+   "nro": "3619944",
+   "deuda": 0.0,
+   "credito": 6359.0,
+   "origen": "Banco Nacion",
+   "idOrigen": 14948
+  },
+  {
+   "fecha": "2015-03-30",
+   "documento": "Factura",
+   "nro": "0005-00036097",
+   "deuda": 419.99,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143510276
+  },
+  {
+   "fecha": "2015-03-31",
+   "documento": "Factura",
+   "nro": "0005-00036704",
+   "deuda": 259.99,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143510277
+  },
+  {
+   "fecha": "2015-04-02",
+   "documento": "Factura",
+   "nro": "0005-00037905",
+   "deuda": 365.99,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143510306
+  },
+  {
+   "fecha": "2015-04-02",
+   "documento": "Factura",
+   "nro": "0005-00037904",
+   "deuda": 259.99,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143510307
+  },
+  {
+   "fecha": "2015-04-07",
+   "documento": "Factura",
+   "nro": "0005-00038166",
+   "deuda": 555.0,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143510303
+  },
+  {
+   "fecha": "2015-04-09",
+   "documento": "Factura",
+   "nro": "0005-00038321",
+   "deuda": 299.99,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143510304
+  },
+  {
+   "fecha": "2015-04-21",
+   "documento": "Factura",
+   "nro": "0005-00038948",
+   "deuda": 418.0,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143510305
+  },
+  {
+   "fecha": "2015-04-22",
+   "documento": "Resumen Bancario",
+   "nro": "7403102",
+   "deuda": 0.0,
+   "credito": 1077.01,
+   "origen": "Banco Nacion",
+   "idOrigen": 14949
+  },
+  {
+   "fecha": "2015-05-04",
+   "documento": "Resumen Bancario",
+   "nro": "7403110",
+   "deuda": 0.0,
+   "credito": 940.0,
+   "origen": "Banco Nacion",
+   "idOrigen": 14950
+  },
+  {
+   "fecha": "2015-05-05",
+   "documento": "Factura",
+   "nro": "0005-00039696",
+   "deuda": 500.0,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143510323
+  },
+  {
+   "fecha": "2015-05-12",
+   "documento": "Factura",
+   "nro": "0005-00040083",
+   "deuda": 200.0,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143510325
+  },
+  {
+   "fecha": "2015-05-19",
+   "documento": "Factura",
+   "nro": "0005-00040486",
+   "deuda": 189.99,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143510340
+  },
+  {
+   "fecha": "2015-06-02",
+   "documento": "Factura",
+   "nro": "0005-00041148",
+   "deuda": 440.0,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143510343
+  },
+  {
+   "fecha": "2015-06-04",
+   "documento": "Factura",
+   "nro": "0005-00041248",
+   "deuda": 240.0,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143510342
+  },
+  {
+   "fecha": "2015-06-06",
+   "documento": "Factura",
+   "nro": "0005-00041385",
+   "deuda": 518.0,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143510341
+  },
+  {
+   "fecha": "2015-06-08",
+   "documento": "Factura",
+   "nro": "0003-00083155",
+   "deuda": 6244.99,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143510344
+  },
+  {
+   "fecha": "2015-06-19",
+   "documento": "Resumen Bancario",
+   "nro": "7403128",
+   "deuda": 0.0,
+   "credito": 1898.99,
+   "origen": "Banco Nacion",
+   "idOrigen": 14951
+  },
+  {
+   "fecha": "2015-06-23",
+   "documento": "Resumen Bancario",
+   "nro": "7403134",
+   "deuda": 0.0,
+   "credito": 700.0,
+   "origen": "Banco Nacion",
+   "idOrigen": 14952
+  },
+  {
+   "fecha": "2015-06-23",
+   "documento": "Factura",
+   "nro": "0005-00042237",
+   "deuda": 433.01,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143510355
+  },
+  {
+   "fecha": "2015-07-14",
+   "documento": "Factura",
+   "nro": "0005-00043297",
+   "deuda": 495.01,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143510375
+  },
+  {
+   "fecha": "2015-07-14",
+   "documento": "La Herencia",
+   "nro": "0",
+   "deuda": 0.0,
+   "credito": 433.0,
+   "origen": "Pagos efectivo",
+   "idOrigen": 764
+  },
+  {
+   "fecha": "2015-07-16",
+   "documento": "Resumen Bancario",
+   "nro": "7403141",
+   "deuda": 0.0,
+   "credito": 3816.5,
+   "origen": "Banco Nacion",
+   "idOrigen": 14953
+  },
+  {
+   "fecha": "2015-08-03",
+   "documento": "Resumen Bancario",
+   "nro": "7403142",
+   "deuda": 0.0,
+   "credito": 3816.5,
+   "origen": "Banco Nacion",
+   "idOrigen": 14954
+  },
+  {
+   "fecha": "2015-08-04",
+   "documento": "Factura",
+   "nro": "0005-00044237",
+   "deuda": 440.0,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143510384
+  },
+  {
+   "fecha": "2015-08-04",
+   "documento": "La Herencia",
+   "nro": "0",
+   "deuda": 0.0,
+   "credito": 495.01,
+   "origen": "Pagos efectivo",
+   "idOrigen": 774
+  },
+  {
+   "fecha": "2015-08-19",
+   "documento": "Factura",
+   "nro": "0005-00044977",
+   "deuda": 212.25,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143510407
+  },
+  {
+   "fecha": "2015-08-19",
+   "documento": "Factura",
+   "nro": "0005-00044981",
+   "deuda": 500.0,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143510411
+  },
+  {
+   "fecha": "2015-08-19",
+   "documento": "La Herencia",
+   "nro": "0",
+   "deuda": 0.0,
+   "credito": 440.0,
+   "origen": "Pagos efectivo",
+   "idOrigen": 786
+  },
+  {
+   "fecha": "2015-08-24",
+   "documento": "Factura",
+   "nro": "0003-00083770",
+   "deuda": 12990.0,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143510410
+  },
+  {
+   "fecha": "2015-09-01",
+   "documento": "Factura",
+   "nro": "0005-00045639",
+   "deuda": 520.0,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143510421
+  },
+  {
+   "fecha": "2015-09-01",
+   "documento": "La Herencia",
+   "nro": "0",
+   "deuda": 0.0,
+   "credito": 712.25,
+   "origen": "Pagos efectivo",
+   "idOrigen": 797
+  },
+  {
+   "fecha": "2015-09-02",
+   "documento": "Factura",
+   "nro": "0005-00045708",
+   "deuda": 333.0,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143510423
+  },
+  {
+   "fecha": "2015-09-13",
+   "documento": "Factura",
+   "nro": "0005-00046288",
+   "deuda": 200.0,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143510429
+  },
+  {
+   "fecha": "2015-09-16",
+   "documento": "La Herencia",
+   "nro": "0",
+   "deuda": 0.0,
+   "credito": 853.0,
+   "origen": "Pagos efectivo",
+   "idOrigen": 823
+  },
+  {
+   "fecha": "2015-09-21",
+   "documento": "Factura",
+   "nro": "0003-00083970",
+   "deuda": 489.0,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143510430
+  },
+  {
+   "fecha": "2015-09-28",
+   "documento": "Resumen Bancario",
+   "nro": "13133932",
+   "deuda": 0.0,
+   "credito": 6000.0,
+   "origen": "Banco Nacion",
+   "idOrigen": 14955
+  },
+  {
+   "fecha": "2015-10-01",
+   "documento": "Factura",
+   "nro": "0005-00047139",
+   "deuda": 500.0,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143510458
+  },
+  {
+   "fecha": "2015-10-01",
+   "documento": "La Herencia",
+   "nro": "0",
+   "deuda": 0.0,
+   "credito": 689.0,
+   "origen": "Pagos efectivo",
+   "idOrigen": 828
+  },
+  {
+   "fecha": "2015-10-07",
+   "documento": "La Herencia",
+   "nro": "15405",
+   "deuda": 0.0,
+   "credito": 1.0,
+   "origen": "Pagos efectivo",
+   "idOrigen": 247
+  },
+  {
+   "fecha": "2015-10-14",
+   "documento": "Factura",
+   "nro": "0005-00047796",
+   "deuda": 520.0,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143510471
+  },
+  {
+   "fecha": "2015-10-14",
+   "documento": "Condominio",
+   "nro": "0",
+   "deuda": 0.0,
+   "credito": 500.0,
+   "origen": "Pagos efectivo",
+   "idOrigen": 850
+  },
+  {
+   "fecha": "2015-10-22",
+   "documento": "Resumen Bancario",
+   "nro": "13133933",
+   "deuda": 0.0,
+   "credito": 6990.0,
+   "origen": "Banco Nacion",
+   "idOrigen": 14956
+  },
+  {
+   "fecha": "2015-10-27",
+   "documento": "Factura",
+   "nro": "0005-00048292",
+   "deuda": 284.99,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143510527
+  },
+  {
+   "fecha": "2015-11-04",
+   "documento": "Factura",
+   "nro": "0005-00048756",
+   "deuda": 429.99,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143510526
+  },
+  {
+   "fecha": "2015-11-10",
+   "documento": "Resumen Bancario",
+   "nro": "13133941",
+   "deuda": 0.0,
+   "credito": 520.0,
+   "origen": "Banco Nacion",
+   "idOrigen": 14957
+  },
+  {
+   "fecha": "2015-11-10",
+   "documento": "Factura",
+   "nro": "0005-00049431",
+   "deuda": 459.98,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143510525
+  },
+  {
+   "fecha": "2015-12-02",
+   "documento": "Factura",
+   "nro": "0005-00050058",
+   "deuda": 534.99,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143510544
+  },
+  {
+   "fecha": "2015-12-15",
+   "documento": "Factura",
+   "nro": "0005-00050795",
+   "deuda": 449.99,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143510565
+  },
+  {
+   "fecha": "2015-12-22",
+   "documento": "Factura",
+   "nro": "0005-00051222",
+   "deuda": 295.78,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143510566
+  },
+  {
+   "fecha": "2016-01-05",
+   "documento": "Factura",
+   "nro": "0005-00051851",
+   "deuda": 548.99,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143510592
+  },
+  {
+   "fecha": "2016-01-05",
+   "documento": "Factura",
+   "nro": "0005-00051850",
+   "deuda": 449.98,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143510594
+  },
+  {
+   "fecha": "2016-01-08",
+   "documento": "Resumen Bancario",
+   "nro": "13133956",
+   "deuda": 0.0,
+   "credito": 535.0,
+   "origen": "Banco Nacion",
+   "idOrigen": 14958
+  },
+  {
+   "fecha": "2016-01-08",
+   "documento": "Resumen Bancario",
+   "nro": "13133953",
+   "deuda": 0.0,
+   "credito": 1175.0,
+   "origen": "Banco Nacion",
+   "idOrigen": 14959
+  },
+  {
+   "fecha": "2016-01-24",
+   "documento": "Factura",
+   "nro": "0005-00126941",
+   "deuda": 330.0,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143510584
+  },
+  {
+   "fecha": "2016-01-24",
+   "documento": "La Herencia",
+   "nro": "0",
+   "deuda": 0.0,
+   "credito": 330.0,
+   "origen": "Pagos efectivo",
+   "idOrigen": 902
+  },
+  {
+   "fecha": "2016-01-27",
+   "documento": "Resumen Bancario",
+   "nro": "13133965",
+   "deuda": 0.0,
+   "credito": 745.6,
+   "origen": "Banco Nacion",
+   "idOrigen": 14960
+  },
+  {
+   "fecha": "2016-01-29",
+   "documento": "Factura",
+   "nro": "0005-00053104",
+   "deuda": 424.0,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143510593
+  },
+  {
+   "fecha": "2016-02-03",
+   "documento": "Factura",
+   "nro": "0005-00053376",
+   "deuda": 569.99,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143510621
+  },
+  {
+   "fecha": "2016-02-03",
+   "documento": "Factura",
+   "nro": "0005-00053377",
+   "deuda": 205.0,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143510624
+  },
+  {
+   "fecha": "2016-02-18",
+   "documento": "Factura",
+   "nro": "0005-00054151",
+   "deuda": 510.01,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143510620
+  },
+  {
+   "fecha": "2016-02-22",
+   "documento": "Factura",
+   "nro": "0003-00085221",
+   "deuda": 315.0,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143510619
+  },
+  {
+   "fecha": "2016-03-02",
+   "documento": "Factura",
+   "nro": "0006-00000087",
+   "deuda": 160.0,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143510644
+  },
+  {
+   "fecha": "2016-03-04",
+   "documento": "Resumen Bancario",
+   "nro": "13133972",
+   "deuda": 0.0,
+   "credito": 1423.0,
+   "origen": "Banco Nacion",
+   "idOrigen": 14961
+  },
+  {
+   "fecha": "2016-03-07",
+   "documento": "Factura",
+   "nro": "0003-00085357",
+   "deuda": 15189.98,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143510643
+  },
+  {
+   "fecha": "2016-03-08",
+   "documento": "Factura",
+   "nro": "0005-00054872",
+   "deuda": 464.99,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143510642
+  },
+  {
+   "fecha": "2016-03-16",
+   "documento": "Factura",
+   "nro": "0006-00000677",
+   "deuda": 259.99,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143510641
+  },
+  {
+   "fecha": "2016-03-29",
+   "documento": "Factura",
+   "nro": "0005-00055333",
+   "deuda": 519.98,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143510664
+  },
+  {
+   "fecha": "2016-03-31",
+   "documento": "Resumen Bancario",
+   "nro": "13133975",
+   "deuda": 0.0,
+   "credito": 1600.0,
+   "origen": "Banco Nacion",
+   "idOrigen": 14962
+  },
+  {
+   "fecha": "2016-04-11",
+   "documento": "Resumen Bancario",
+   "nro": "6218432",
+   "deuda": 0.0,
+   "credito": 9000.0,
+   "origen": "Banco Nacion",
+   "idOrigen": 14963
+  },
+  {
+   "fecha": "2016-04-13",
+   "documento": "Factura",
+   "nro": "0005-00055678",
+   "deuda": 470.01,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143510715
+  },
+  {
+   "fecha": "2016-04-22",
+   "documento": "Factura",
+   "nro": "0006-00001795",
+   "deuda": 569.99,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143510716
+  },
+  {
+   "fecha": "2016-04-25",
+   "documento": "Factura",
+   "nro": "0006-00001866",
+   "deuda": 600.0,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143510717
+  },
+  {
+   "fecha": "2016-04-29",
+   "documento": "Resumen Bancario",
+   "nro": "6218438",
+   "deuda": 0.0,
+   "credito": 520.0,
+   "origen": "Banco Nacion",
+   "idOrigen": 14964
+  },
+  {
+   "fecha": "2016-05-03",
+   "documento": "Factura",
+   "nro": "0005-00056229",
+   "deuda": 629.99,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143510743
+  },
+  {
+   "fecha": "2016-05-05",
+   "documento": "Factura",
+   "nro": "0006-00002188",
+   "deuda": 190.01,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143510744
+  },
+  {
+   "fecha": "2016-05-11",
+   "documento": "Resumen Bancario",
+   "nro": "6218441",
+   "deuda": 0.0,
+   "credito": 1640.0,
+   "origen": "Banco Nacion",
+   "idOrigen": 14965
+  },
+  {
+   "fecha": "2016-05-18",
+   "documento": "Resumen Bancario",
+   "nro": "6218433",
+   "deuda": 0.0,
+   "credito": 7075.0,
+   "origen": "Banco Nacion",
+   "idOrigen": 14966
+  },
+  {
+   "fecha": "2016-06-01",
+   "documento": "Factura",
+   "nro": "0006-00002769",
+   "deuda": 315.27,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143510782
+  },
+  {
+   "fecha": "2016-06-01",
+   "documento": "Factura",
+   "nro": "0006-00002829",
+   "deuda": 240.0,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143510783
+  },
+  {
+   "fecha": "2016-06-06",
+   "documento": "Resumen Bancario",
+   "nro": "6218447",
+   "deuda": 0.0,
+   "credito": 820.0,
+   "origen": "Banco Nacion",
+   "idOrigen": 14967
+  },
+  {
+   "fecha": "2016-06-06",
+   "documento": "Factura",
+   "nro": "0003-00086284",
+   "deuda": 682.92,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143510785
+  },
+  {
+   "fecha": "2016-06-22",
+   "documento": "La Herencia",
+   "nro": "0",
+   "deuda": 0.0,
+   "credito": 240.0,
+   "origen": "Pagos efectivo",
+   "idOrigen": 993
+  },
+  {
+   "fecha": "2016-07-02",
+   "documento": "Factura",
+   "nro": "0003-00086634",
+   "deuda": 567.98,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143510804
+  },
+  {
+   "fecha": "2016-07-02",
+   "documento": "Factura",
+   "nro": "0003-00086673",
+   "deuda": 16990.0,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143510805
+  },
+  {
+   "fecha": "2016-07-06",
+   "documento": "Factura",
+   "nro": "0006-00003415",
+   "deuda": 649.98,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143510792
+  },
+  {
+   "fecha": "2016-07-06",
+   "documento": "Tarjeta",
+   "nro": "99999999923",
+   "deuda": 0.0,
+   "credito": 650.0,
+   "origen": "Tarjetas",
+   "idOrigen": 1324
+  },
+  {
+   "fecha": "2016-07-26",
+   "documento": "Factura",
+   "nro": "0006-00004007",
+   "deuda": 390.6,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143510844
+  },
+  {
+   "fecha": "2016-08-03",
+   "documento": "Factura",
+   "nro": "0005-00057875",
+   "deuda": 650.0,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143510838
+  },
+  {
+   "fecha": "2016-08-03",
+   "documento": "Tarjeta",
+   "nro": "99999999924",
+   "deuda": 0.0,
+   "credito": 650.0,
+   "origen": "Tarjetas",
+   "idOrigen": 1318
+  },
+  {
+   "fecha": "2016-08-08",
+   "documento": "Resumen Bancario",
+   "nro": "6218461",
+   "deuda": 0.0,
+   "credito": 9556.16,
+   "origen": "Banco Nacion",
+   "idOrigen": 14968
+  },
+  {
+   "fecha": "2016-08-12",
+   "documento": "Factura",
+   "nro": "0006-00004550",
+   "deuda": 479.99,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143510864
+  },
+  {
+   "fecha": "2016-08-16",
+   "documento": "Resumen Bancario",
+   "nro": "6218466",
+   "deuda": 0.0,
+   "credito": 390.6,
+   "origen": "Banco Nacion",
+   "idOrigen": 14969
+  },
+  {
+   "fecha": "2016-08-29",
+   "documento": "Factura",
+   "nro": "0006-00005136",
+   "deuda": 247.75,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143510862
+  },
+  {
+   "fecha": "2016-09-01",
+   "documento": "Resumen Bancario",
+   "nro": "6218462",
+   "deuda": 0.0,
+   "credito": 9000.0,
+   "origen": "Banco Nacion",
+   "idOrigen": 14970
+  },
+  {
+   "fecha": "2016-09-06",
+   "documento": "Factura",
+   "nro": "0006-00005422",
+   "deuda": 680.02,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143510874
+  },
+  {
+   "fecha": "2016-09-06",
+   "documento": "Tarjeta sin imputar",
+   "nro": "6694562",
+   "deuda": 0.02,
+   "credito": 0.0,
+   "origen": "Tarjeta sin imputar",
+   "idOrigen": 5866
+  },
+  {
+   "fecha": "2016-09-06",
+   "documento": "Tarjeta",
+   "nro": "6694562",
+   "deuda": 0.0,
+   "credito": 680.02,
+   "origen": "Tarjetas",
+   "idOrigen": 5538
+  },
+  {
+   "fecha": "2016-09-12",
+   "documento": "Resumen Bancario",
+   "nro": "6218468",
+   "deuda": 0.0,
+   "credito": 727.76,
+   "origen": "Banco Nacion",
+   "idOrigen": 14971
+  },
+  {
+   "fecha": "2016-09-23",
+   "documento": "Factura",
+   "nro": "0006-00005882",
+   "deuda": 1354.99,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143510899
+  },
+  {
+   "fecha": "2016-09-26",
+   "documento": "Factura",
+   "nro": "0006-00006039",
+   "deuda": 17290.01,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143510898
+  },
+  {
+   "fecha": "2016-09-28",
+   "documento": "Factura",
+   "nro": "0005-00058789",
+   "deuda": 550.0,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143510891
+  },
+  {
+   "fecha": "2016-09-28",
+   "documento": "Tarjeta",
+   "nro": "99999999926",
+   "deuda": 0.0,
+   "credito": 550.0,
+   "origen": "Tarjetas",
+   "idOrigen": 1309
+  },
+  {
+   "fecha": "2016-10-11",
+   "documento": "Factura",
+   "nro": "0006-00006589",
+   "deuda": 384.0,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143510913
+  },
+  {
+   "fecha": "2016-10-18",
+   "documento": "Factura",
+   "nro": "0005-00058993",
+   "deuda": 629.99,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143510911
+  },
+  {
+   "fecha": "2016-10-18",
+   "documento": "La Herencia",
+   "nro": "0",
+   "deuda": 0.0,
+   "credito": 384.0,
+   "origen": "Pagos efectivo",
+   "idOrigen": 1054
+  },
+  {
+   "fecha": "2016-10-18",
+   "documento": "Tarjeta",
+   "nro": "99999999926",
+   "deuda": 0.0,
+   "credito": 630.0,
+   "origen": "Tarjetas",
+   "idOrigen": 1313
+  },
+  {
+   "fecha": "2016-10-31",
+   "documento": "Resumen Bancario",
+   "nro": "6218475",
+   "deuda": 0.0,
+   "credito": 18644.44,
+   "origen": "Banco Nacion",
+   "idOrigen": 14972
+  },
+  {
+   "fecha": "2016-10-31",
+   "documento": "Factura",
+   "nro": "0005-00059221",
+   "deuda": 600.0,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143510930
+  },
+  {
+   "fecha": "2016-10-31",
+   "documento": "Tarjeta",
+   "nro": "99999999927",
+   "deuda": 0.0,
+   "credito": 600.0,
+   "origen": "Tarjetas",
+   "idOrigen": 1298
+  },
+  {
+   "fecha": "2016-11-11",
+   "documento": "Factura",
+   "nro": "0005-00059486",
+   "deuda": 1000.0,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143510947
+  },
+  {
+   "fecha": "2016-11-11",
+   "documento": "Tarjeta",
+   "nro": "99999999927",
+   "deuda": 0.0,
+   "credito": 1000.0,
+   "origen": "Tarjetas",
+   "idOrigen": 1300
+  },
+  {
+   "fecha": "2016-11-15",
+   "documento": "Factura",
+   "nro": "0006-00007880",
+   "deuda": 279.99,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143511026
+  },
+  {
+   "fecha": "2016-11-23",
+   "documento": "Factura",
+   "nro": "0005-00059729",
+   "deuda": 580.0,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143510965
+  },
+  {
+   "fecha": "2016-11-23",
+   "documento": "Tarjeta",
+   "nro": "99999999927",
+   "deuda": 0.0,
+   "credito": 580.0,
+   "origen": "Tarjetas",
+   "idOrigen": 1306
+  },
+  {
+   "fecha": "2016-12-01",
+   "documento": "Factura",
+   "nro": "0005-00059888",
+   "deuda": 569.99,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143510991
+  },
+  {
+   "fecha": "2016-12-01",
+   "documento": "Tarjeta",
+   "nro": "99999999928",
+   "deuda": 0.0,
+   "credito": 570.0,
+   "origen": "Tarjetas",
+   "idOrigen": 1287
+  },
+  {
+   "fecha": "2016-12-07",
+   "documento": "Factura",
+   "nro": "0006-00008732",
+   "deuda": 189.99,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143511024
+  },
+  {
+   "fecha": "2016-12-07",
+   "documento": "Factura",
+   "nro": "0006-00008733",
+   "deuda": 385.01,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143511025
+  },
+  {
+   "fecha": "2016-12-28",
+   "documento": "Factura",
+   "nro": "0005-00060399",
+   "deuda": 630.0,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143511032
+  },
+  {
+   "fecha": "2016-12-28",
+   "documento": "Tarjeta",
+   "nro": "99999999929",
+   "deuda": 0.0,
+   "credito": 630.0,
+   "origen": "Tarjetas",
+   "idOrigen": 1273
+  },
+  {
+   "fecha": "2017-01-09",
+   "documento": "Resumen Bancario",
+   "nro": "10215638",
+   "deuda": 0.0,
+   "credito": 855.0,
+   "origen": "Banco Nacion",
+   "idOrigen": 14973
+  },
+  {
+   "fecha": "2017-01-24",
+   "documento": "Factura",
+   "nro": "0006-00011298",
+   "deuda": 400.0,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143511105
+  },
+  {
+   "fecha": "2017-01-30",
+   "documento": "Factura",
+   "nro": "0006-00011616",
+   "deuda": 590.0,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143511061
+  },
+  {
+   "fecha": "2017-01-30",
+   "documento": "Tarjeta",
+   "nro": "99999999930",
+   "deuda": 0.0,
+   "credito": 590.0,
+   "origen": "Tarjetas",
+   "idOrigen": 1257
+  },
+  {
+   "fecha": "2017-02-02",
+   "documento": "Factura",
+   "nro": "0006-00011741",
+   "deuda": 580.0,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143511069
+  },
+  {
+   "fecha": "2017-02-02",
+   "documento": "Tarjeta",
+   "nro": "99999999930",
+   "deuda": 0.0,
+   "credito": 580.0,
+   "origen": "Tarjetas",
+   "idOrigen": 1259
+  },
+  {
+   "fecha": "2017-02-21",
+   "documento": "Factura",
+   "nro": "0005-00061243",
+   "deuda": 690.0,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143511097
+  },
+  {
+   "fecha": "2017-02-21",
+   "documento": "La Herencia",
+   "nro": "0",
+   "deuda": 0.0,
+   "credito": 400.0,
+   "origen": "Pagos efectivo",
+   "idOrigen": 1108
+  },
+  {
+   "fecha": "2017-02-21",
+   "documento": "Tarjeta",
+   "nro": "99999999931",
+   "deuda": 0.0,
+   "credito": 690.0,
+   "origen": "Tarjetas",
+   "idOrigen": 1245
+  },
+  {
+   "fecha": "2017-03-07",
+   "documento": "Factura",
+   "nro": "0006-00013384",
+   "deuda": 709.99,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143511121
+  },
+  {
+   "fecha": "2017-03-07",
+   "documento": "Tarjeta",
+   "nro": "99999999931",
+   "deuda": 0.0,
+   "credito": 710.0,
+   "origen": "Tarjetas",
+   "idOrigen": 1247
+  },
+  {
+   "fecha": "2017-03-13",
+   "documento": "Factura",
+   "nro": "0006-00013710",
+   "deuda": 18090.0,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143511158
+  },
+  {
+   "fecha": "2017-03-21",
+   "documento": "Factura",
+   "nro": "0006-00014200",
+   "deuda": 289.99,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143511161
+  },
+  {
+   "fecha": "2017-03-26",
+   "documento": "Factura",
+   "nro": "0006-00014450",
+   "deuda": 810.0,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143511160
+  },
+  {
+   "fecha": "2017-04-05",
+   "documento": "Factura",
+   "nro": "0005-00061865",
+   "deuda": 829.99,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143511166
+  },
+  {
+   "fecha": "2017-04-05",
+   "documento": "Tarjeta",
+   "nro": "99999999932",
+   "deuda": 0.0,
+   "credito": 830.0,
+   "origen": "Tarjetas",
+   "idOrigen": 1237
+  },
+  {
+   "fecha": "2017-04-17",
+   "documento": "Resumen Bancario",
+   "nro": "10215646",
+   "deuda": 0.0,
+   "credito": 9095.0,
+   "origen": "Banco Nacion",
+   "idOrigen": 14974
+  },
+  {
+   "fecha": "2017-04-26",
+   "documento": "Factura",
+   "nro": "0005-00062142",
+   "deuda": 820.01,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143511195
+  },
+  {
+   "fecha": "2017-04-26",
+   "documento": "La Herencia",
+   "nro": "0",
+   "deuda": 0.0,
+   "credito": 820.0,
+   "origen": "Pagos efectivo",
+   "idOrigen": 1140
+  },
+  {
+   "fecha": "2017-05-09",
+   "documento": "Factura",
+   "nro": "0006-00016880",
+   "deuda": 300.0,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143511238
+  },
+  {
+   "fecha": "2017-05-15",
+   "documento": "Resumen Bancario",
+   "nro": "10215647",
+   "deuda": 0.0,
+   "credito": 9095.0,
+   "origen": "Banco Nacion",
+   "idOrigen": 14975
+  },
+  {
+   "fecha": "2017-05-17",
+   "documento": "Factura",
+   "nro": "0005-00062487",
+   "deuda": 500.0,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143511219
+  },
+  {
+   "fecha": "2017-05-17",
+   "documento": "La Herencia",
+   "nro": "0",
+   "deuda": 0.0,
+   "credito": 500.0,
+   "origen": "Pagos efectivo",
+   "idOrigen": 1154
+  },
+  {
+   "fecha": "2017-06-07",
+   "documento": "Factura",
+   "nro": "0005-00062802",
+   "deuda": 740.01,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143511237
+  },
+  {
+   "fecha": "2017-06-07",
+   "documento": "La Herencia",
+   "nro": "0",
+   "deuda": 0.0,
+   "credito": 1300.0,
+   "origen": "Pagos efectivo",
+   "idOrigen": 1166
+  },
+  {
+   "fecha": "2017-06-07",
+   "documento": "La Herencia",
+   "nro": "0",
+   "deuda": 0.0,
+   "credito": 740.0,
+   "origen": "Pagos efectivo",
+   "idOrigen": 1167
+  },
+  {
+   "fecha": "2017-06-09",
+   "documento": "Factura",
+   "nro": "0006-00018520",
+   "deuda": 200.01,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143511266
+  },
+  {
+   "fecha": "2017-06-28",
+   "documento": "Factura",
+   "nro": "0006-00019641",
+   "deuda": 310.01,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143511300
+  },
+  {
+   "fecha": "2017-07-02",
+   "documento": "La Herencia",
+   "nro": "0",
+   "deuda": 0.0,
+   "credito": 200.0,
+   "origen": "Pagos efectivo",
+   "idOrigen": 1220
+  },
+  {
+   "fecha": "2017-07-06",
+   "documento": "Factura",
+   "nro": "0005-00063183",
+   "deuda": 650.01,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143511274
+  },
+  {
+   "fecha": "2017-07-06",
+   "documento": "La Herencia",
+   "nro": "0",
+   "deuda": 0.0,
+   "credito": 650.0,
+   "origen": "Pagos efectivo",
+   "idOrigen": 1219
+  },
+  {
+   "fecha": "2017-07-20",
+   "documento": "Factura",
+   "nro": "0006-00020730",
+   "deuda": 315.0,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143511293
+  },
+  {
+   "fecha": "2017-07-26",
+   "documento": "Factura",
+   "nro": "0006-00021060",
+   "deuda": 224.0,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143511332
+  },
+  {
+   "fecha": "2017-07-26",
+   "documento": "Factura",
+   "nro": "0006-00021061",
+   "deuda": 140.0,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143511333
+  },
+  {
+   "fecha": "2017-08-01",
+   "documento": "Factura",
+   "nro": "0005-00063549",
+   "deuda": 1010.02,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143511286
+  },
+  {
+   "fecha": "2017-08-01",
+   "documento": "La Herencia",
+   "nro": "0",
+   "deuda": 0.0,
+   "credito": 625.0,
+   "origen": "Pagos efectivo",
+   "idOrigen": 1217
+  },
+  {
+   "fecha": "2017-08-01",
+   "documento": "La Herencia",
+   "nro": "0",
+   "deuda": 0.0,
+   "credito": 1010.0,
+   "origen": "Pagos efectivo",
+   "idOrigen": 1221
+  },
+  {
+   "fecha": "2017-08-21",
+   "documento": "Factura",
+   "nro": "0006-00022424",
+   "deuda": 18679.98,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143511311
+  },
+  {
+   "fecha": "2017-08-29",
+   "documento": "La Herencia",
+   "nro": "0",
+   "deuda": 0.0,
+   "credito": 364.0,
+   "origen": "Pagos efectivo",
+   "idOrigen": 1218
+  },
+  {
+   "fecha": "2017-08-30",
+   "documento": "Factura",
+   "nro": "0005-00064033",
+   "deuda": 719.99,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143511328
+  },
+  {
+   "fecha": "2017-08-30",
+   "documento": "La Herencia",
+   "nro": "0",
+   "deuda": 0.0,
+   "credito": 720.0,
+   "origen": "Pagos efectivo",
+   "idOrigen": 1216
+  },
+  {
+   "fecha": "2017-08-31",
+   "documento": "Factura",
+   "nro": "0006-00023018",
+   "deuda": 449.99,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143511349
+  },
+  {
+   "fecha": "2017-09-08",
+   "documento": "Resumen Bancario",
+   "nro": "10215659",
+   "deuda": 0.0,
+   "credito": 9340.0,
+   "origen": "Banco Nacion",
+   "idOrigen": 14976
+  },
+  {
+   "fecha": "2017-09-28",
+   "documento": "Factura",
+   "nro": "0006-00024640",
+   "deuda": 740.01,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143511342
+  },
+  {
+   "fecha": "2017-09-28",
+   "documento": "La Herencia",
+   "nro": "0",
+   "deuda": 0.0,
+   "credito": 450.0,
+   "origen": "Pagos efectivo",
+   "idOrigen": 1214
+  },
+  {
+   "fecha": "2017-09-28",
+   "documento": "La Herencia",
+   "nro": "0",
+   "deuda": 0.0,
+   "credito": 740.0,
+   "origen": "Pagos efectivo",
+   "idOrigen": 1215
+  },
+  {
+   "fecha": "2017-10-05",
+   "documento": "Resumen Bancario",
+   "nro": "10215660",
+   "deuda": 0.0,
+   "credito": 9340.0,
+   "origen": "Banco Nacion",
+   "idOrigen": 14977
+  },
+  {
+   "fecha": "2017-10-10",
+   "documento": "Factura",
+   "nro": "0006-00025352",
+   "deuda": 499.99,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143511543
+  },
+  {
+   "fecha": "2017-10-10",
+   "documento": "Factura",
+   "nro": "0006-00025351",
+   "deuda": 200.0,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143511544
+  },
+  {
+   "fecha": "2017-11-07",
+   "documento": "Factura",
+   "nro": "0006-00027226",
+   "deuda": 490.0,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143511556
+  },
+  {
+   "fecha": "2017-11-07",
+   "documento": "La Herencia",
+   "nro": "0",
+   "deuda": 0.0,
+   "credito": 200.0,
+   "origen": "Pagos efectivo",
+   "idOrigen": 1309
+  },
+  {
+   "fecha": "2017-11-07",
+   "documento": "La Herencia",
+   "nro": "0",
+   "deuda": 0.0,
+   "credito": 500.0,
+   "origen": "Pagos efectivo",
+   "idOrigen": 1310
+  },
+  {
+   "fecha": "2017-12-05",
+   "documento": "La Herencia",
+   "nro": "0",
+   "deuda": 0.0,
+   "credito": 490.0,
+   "origen": "Pagos efectivo",
+   "idOrigen": 1311
+  },
+  {
+   "fecha": "2017-12-06",
+   "documento": "Factura",
+   "nro": "0006-00029396",
+   "deuda": 749.98,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143511567
+  },
+  {
+   "fecha": "2017-12-21",
+   "documento": "Factura",
+   "nro": "0006-00030333",
+   "deuda": 382.66,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143511403
+  },
+  {
+   "fecha": "2017-12-27",
+   "documento": "La Herencia",
+   "nro": "0",
+   "deuda": 0.0,
+   "credito": 750.0,
+   "origen": "Pagos efectivo",
+   "idOrigen": 1312
+  },
+  {
+   "fecha": "2018-01-04",
+   "documento": "Factura",
+   "nro": "0006-00031261",
+   "deuda": 425.0,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143511404
+  },
+  {
+   "fecha": "2018-01-17",
+   "documento": "Factura",
+   "nro": "0006-00032069",
+   "deuda": 849.98,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143511402
+  },
+  {
+   "fecha": "2018-01-17",
+   "documento": "La Herencia",
+   "nro": "0",
+   "deuda": 0.0,
+   "credito": 382.65,
+   "origen": "Pagos efectivo",
+   "idOrigen": 1313
+  },
+  {
+   "fecha": "2018-01-17",
+   "documento": "La Herencia",
+   "nro": "0",
+   "deuda": 0.0,
+   "credito": 425.0,
+   "origen": "Pagos efectivo",
+   "idOrigen": 1314
+  },
+  {
+   "fecha": "2018-01-17",
+   "documento": "La Herencia",
+   "nro": "0",
+   "deuda": 0.0,
+   "credito": 850.0,
+   "origen": "Pagos efectivo",
+   "idOrigen": 1315
+  },
+  {
+   "fecha": "2018-01-23",
+   "documento": "Factura",
+   "nro": "0006-00032428",
+   "deuda": 399.99,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143511590
+  },
+  {
+   "fecha": "2018-02-06",
+   "documento": "Factura",
+   "nro": "0006-00033151",
+   "deuda": 830.02,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143511592
+  },
+  {
+   "fecha": "2018-02-06",
+   "documento": "La Herencia",
+   "nro": "0",
+   "deuda": 0.0,
+   "credito": 400.0,
+   "origen": "Pagos efectivo",
+   "idOrigen": 1316
+  },
+  {
+   "fecha": "2018-02-06",
+   "documento": "La Herencia",
+   "nro": "0",
+   "deuda": 0.0,
+   "credito": 830.0,
+   "origen": "Pagos efectivo",
+   "idOrigen": 1317
+  },
+  {
+   "fecha": "2018-02-21",
+   "documento": "Factura",
+   "nro": "0005-00065772",
+   "deuda": 1125.01,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143511600
+  },
+  {
+   "fecha": "2018-02-21",
+   "documento": "La Herencia",
+   "nro": "0",
+   "deuda": 0.0,
+   "credito": 1125.0,
+   "origen": "Pagos efectivo",
+   "idOrigen": 1318
+  },
+  {
+   "fecha": "2018-03-04",
+   "documento": "Factura",
+   "nro": "0006-00034723",
+   "deuda": 500.0,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143511606
+  },
+  {
+   "fecha": "2018-03-08",
+   "documento": "La Herencia",
+   "nro": "0",
+   "deuda": 0.0,
+   "credito": 500.0,
+   "origen": "Pagos efectivo",
+   "idOrigen": 1319
+  },
+  {
+   "fecha": "2018-03-19",
+   "documento": "Factura",
+   "nro": "0006-00035776",
+   "deuda": 2689.0,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143511615
+  },
+  {
+   "fecha": "2018-04-04",
+   "documento": "La Herencia",
+   "nro": "0",
+   "deuda": 0.0,
+   "credito": 2689.0,
+   "origen": "Pagos efectivo",
+   "idOrigen": 1320
+  },
+  {
+   "fecha": "2018-04-05",
+   "documento": "Factura",
+   "nro": "0005-00066293",
+   "deuda": 400.01,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143512296
+  },
+  {
+   "fecha": "2018-04-05",
+   "documento": "Tarjeta sin imputar",
+   "nro": "7478066",
+   "deuda": 0.02,
+   "credito": 0.0,
+   "origen": "Tarjeta sin imputar",
+   "idOrigen": 5885
+  },
+  {
+   "fecha": "2018-04-05",
+   "documento": "Tarjeta",
+   "nro": "7478066",
+   "deuda": 0.0,
+   "credito": 400.01,
+   "origen": "Tarjetas",
+   "idOrigen": 5548
+  },
+  {
+   "fecha": "2018-04-09",
+   "documento": "Factura",
+   "nro": "0006-00037046",
+   "deuda": 24250.0,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143512297
+  },
+  {
+   "fecha": "2018-04-09",
+   "documento": "Tarjeta",
+   "nro": "7478066",
+   "deuda": 0.0,
+   "credito": 24249.0,
+   "origen": "Tarjetas",
+   "idOrigen": 5574
+  },
+  {
+   "fecha": "2018-05-17",
+   "documento": "Factura",
+   "nro": "0005-00066804",
+   "deuda": 949.99,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143511748
+  },
+  {
+   "fecha": "2018-05-17",
+   "documento": "Tarjeta",
+   "nro": "99999999945",
+   "deuda": 0.0,
+   "credito": 950.0,
+   "origen": "Tarjetas",
+   "idOrigen": 1176
+  },
+  {
+   "fecha": "2018-05-24",
+   "documento": "Factura",
+   "nro": "0006-00039698",
+   "deuda": 573.39,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143511746
+  },
+  {
+   "fecha": "2018-06-05",
+   "documento": "Factura",
+   "nro": "0005-00067167",
+   "deuda": 400.0,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143511744
+  },
+  {
+   "fecha": "2018-06-05",
+   "documento": "La Herencia",
+   "nro": "0",
+   "deuda": 0.0,
+   "credito": 573.39,
+   "origen": "Pagos efectivo",
+   "idOrigen": 1455
+  },
+  {
+   "fecha": "2018-06-05",
+   "documento": "Tarjeta",
+   "nro": "99999999946",
+   "deuda": 0.0,
+   "credito": 400.0,
+   "origen": "Tarjetas",
+   "idOrigen": 1168
+  },
+  {
+   "fecha": "2018-06-11",
+   "documento": "Factura",
+   "nro": "0006-00040738",
+   "deuda": 24988.07,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143511861
+  },
+  {
+   "fecha": "2018-06-11",
+   "documento": "Tarjeta",
+   "nro": "7598879",
+   "deuda": 0.0,
+   "credito": 24988.07,
+   "origen": "Tarjetas",
+   "idOrigen": 5550
+  },
+  {
+   "fecha": "2018-06-21",
+   "documento": "Factura",
+   "nro": "0006-00041309",
+   "deuda": 459.98,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143511857
+  },
+  {
+   "fecha": "2018-06-21",
+   "documento": "Tarjeta sin imputar",
+   "nro": "7598879",
+   "deuda": 0.04,
+   "credito": 0.0,
+   "origen": "Tarjeta sin imputar",
+   "idOrigen": 5892
+  },
+  {
+   "fecha": "2018-06-21",
+   "documento": "Tarjeta",
+   "nro": "7598879",
+   "deuda": 0.0,
+   "credito": 459.98,
+   "origen": "Tarjetas",
+   "idOrigen": 5551
+  },
+  {
+   "fecha": "2018-07-11",
+   "documento": "Factura",
+   "nro": "0006-00042409",
+   "deuda": 490.02,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143511869
+  },
+  {
+   "fecha": "2018-07-11",
+   "documento": "Tarjeta sin imputar",
+   "nro": "7598879",
+   "deuda": 0.04,
+   "credito": 0.0,
+   "origen": "Tarjeta sin imputar",
+   "idOrigen": 5893
+  },
+  {
+   "fecha": "2018-07-11",
+   "documento": "Tarjeta",
+   "nro": "7598879",
+   "deuda": 0.0,
+   "credito": 490.02,
+   "origen": "Tarjetas",
+   "idOrigen": 5552
+  },
+  {
+   "fecha": "2018-07-24",
+   "documento": "Factura",
+   "nro": "0006-00043473",
+   "deuda": 180.0,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143511901
+  },
+  {
+   "fecha": "2018-08-07",
+   "documento": "La Herencia",
+   "nro": "0",
+   "deuda": 0.0,
+   "credito": 180.0,
+   "origen": "Pagos efectivo",
+   "idOrigen": 1584
+  },
+  {
+   "fecha": "2018-08-31",
+   "documento": "Factura",
+   "nro": "0006-00045938",
+   "deuda": 521.25,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143511931
+  },
+  {
+   "fecha": "2018-09-05",
+   "documento": "Factura",
+   "nro": "0005-00068466",
+   "deuda": 1150.0,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143511934
+  },
+  {
+   "fecha": "2018-09-05",
+   "documento": "La Herencia",
+   "nro": "0",
+   "deuda": 0.0,
+   "credito": 521.25,
+   "origen": "Pagos efectivo",
+   "idOrigen": 1583
+  },
+  {
+   "fecha": "2018-09-05",
+   "documento": "Tarjeta",
+   "nro": "99999999949",
+   "deuda": 0.0,
+   "credito": 1150.0,
+   "origen": "Tarjetas",
+   "idOrigen": 1146
+  },
+  {
+   "fecha": "2018-09-20",
+   "documento": "Factura",
+   "nro": "0006-00047201",
+   "deuda": 768.4,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143511976
+  },
+  {
+   "fecha": "2018-10-10",
+   "documento": "Factura",
+   "nro": "0006-00048596",
+   "deuda": 1299.97,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143511969
+  },
+  {
+   "fecha": "2018-10-10",
+   "documento": "Tarjeta",
+   "nro": "99999999950",
+   "deuda": 0.0,
+   "credito": 1300.0,
+   "origen": "Tarjetas",
+   "idOrigen": 1137
+  },
+  {
+   "fecha": "2018-10-23",
+   "documento": "Factura",
+   "nro": "0006-00049384",
+   "deuda": 750.01,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143511993
+  },
+  {
+   "fecha": "2018-11-02",
+   "documento": "Resumen Bancario",
+   "nro": "3620002",
+   "deuda": 0.0,
+   "credito": 768.4,
+   "origen": "Banco Nacion",
+   "idOrigen": 14978
+  },
+  {
+   "fecha": "2018-11-06",
+   "documento": "La Herencia",
+   "nro": "0",
+   "deuda": 0.0,
+   "credito": 750.0,
+   "origen": "Pagos efectivo",
+   "idOrigen": 1614
+  },
+  {
+   "fecha": "2018-11-22",
+   "documento": "Factura",
+   "nro": "0006-00051057",
+   "deuda": 700.0,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143512029
+  },
+  {
+   "fecha": "2018-11-22",
+   "documento": "Tarjeta",
+   "nro": "7806761",
+   "deuda": 0.0,
+   "credito": 700.0,
+   "origen": "Tarjetas",
+   "idOrigen": 5557
+  },
+  {
+   "fecha": "2018-11-26",
+   "documento": "Factura",
+   "nro": "0006-00051290",
+   "deuda": 39249.99,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143512046
+  },
+  {
+   "fecha": "2018-11-26",
+   "documento": "Tarjeta sin imputar",
+   "nro": "7806761",
+   "deuda": 0.0,
+   "credito": 0.01,
+   "origen": "Tarjeta sin imputar",
+   "idOrigen": 5899
+  },
+  {
+   "fecha": "2018-11-26",
+   "documento": "Tarjeta",
+   "nro": "7806761",
+   "deuda": 0.0,
+   "credito": 39249.99,
+   "origen": "Tarjetas",
+   "idOrigen": 5558
+  },
+  {
+   "fecha": "2018-12-04",
+   "documento": "Factura",
+   "nro": "0006-00051837",
+   "deuda": 1339.98,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143512061
+  },
+  {
+   "fecha": "2018-12-19",
+   "documento": "Factura",
+   "nro": "0006-00052751",
+   "deuda": 2600.0,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143512063
+  },
+  {
+   "fecha": "2018-12-26",
+   "documento": "Factura",
+   "nro": "0006-00053260",
+   "deuda": 600.0,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143512073
+  },
+  {
+   "fecha": "2019-01-03",
+   "documento": "La Herencia",
+   "nro": "0",
+   "deuda": 0.0,
+   "credito": 600.0,
+   "origen": "Pagos efectivo",
+   "idOrigen": 1629
+  },
+  {
+   "fecha": "2019-01-14",
+   "documento": "Resumen Bancario",
+   "nro": "3620021",
+   "deuda": 0.0,
+   "credito": 3940.0,
+   "origen": "Banco Nacion",
+   "idOrigen": 14979
+  },
+  {
+   "fecha": "2019-02-08",
+   "documento": "Factura",
+   "nro": "0007-00001063",
+   "deuda": 628.2,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143512121
+  },
+  {
+   "fecha": "2019-02-27",
+   "documento": "Factura",
+   "nro": "0007-00002065",
+   "deuda": 1200.01,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143512172
+  },
+  {
+   "fecha": "2019-02-27",
+   "documento": "Factura",
+   "nro": "0007-00002066",
+   "deuda": 1340.01,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143512173
+  },
+  {
+   "fecha": "2019-02-27",
+   "documento": "La Herencia",
+   "nro": "0",
+   "deuda": 0.0,
+   "credito": 628.2,
+   "origen": "Pagos efectivo",
+   "idOrigen": 1628
+  },
+  {
+   "fecha": "2019-03-04",
+   "documento": "Factura",
+   "nro": "0007-00002353",
+   "deuda": 40389.98,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143512171
+  },
+  {
+   "fecha": "2019-03-27",
+   "documento": "Factura",
+   "nro": "0007-00003674",
+   "deuda": 650.0,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143512170
+  },
+  {
+   "fecha": "2019-03-27",
+   "documento": "La Herencia",
+   "nro": "0",
+   "deuda": 0.0,
+   "credito": 700.0,
+   "origen": "Pagos efectivo",
+   "idOrigen": 1672
+  },
+  {
+   "fecha": "2019-04-11",
+   "documento": "Resumen Bancario",
+   "nro": "3620027",
+   "deuda": 0.0,
+   "credito": 42930.0,
+   "origen": "Banco Nacion",
+   "idOrigen": 14980
+  },
+  {
+   "fecha": "2019-07-18",
+   "documento": "Factura",
+   "nro": "0006-00058905",
+   "deuda": 485.7,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143512414
+  },
+  {
+   "fecha": "2019-09-02",
+   "documento": "Factura",
+   "nro": "0007-00012021",
+   "deuda": 46240.01,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143512413
+  },
+  {
+   "fecha": "2019-09-16",
+   "documento": "La Herencia",
+   "nro": "0",
+   "deuda": 0.0,
+   "credito": 485.75,
+   "origen": "Pagos efectivo",
+   "idOrigen": 1728
+  },
+  {
+   "fecha": "2019-09-26",
+   "documento": "Resumen Bancario",
+   "nro": "3620053",
+   "deuda": 0.0,
+   "credito": 46239.98,
+   "origen": "Banco Nacion",
+   "idOrigen": 14981
+  },
+  {
+   "fecha": "2019-10-07",
+   "documento": "Factura",
+   "nro": "0007-00013695",
+   "deuda": 760.0,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143512505
+  },
+  {
+   "fecha": "2019-10-29",
+   "documento": "Factura",
+   "nro": "0007-00014775",
+   "deuda": 799.99,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143512504
+  },
+  {
+   "fecha": "2019-11-05",
+   "documento": "La Herencia",
+   "nro": "0",
+   "deuda": 0.0,
+   "credito": 760.0,
+   "origen": "Pagos efectivo",
+   "idOrigen": 1727
+  },
+  {
+   "fecha": "2019-12-03",
+   "documento": "La Herencia",
+   "nro": "0",
+   "deuda": 0.0,
+   "credito": 800.0,
+   "origen": "Pagos efectivo",
+   "idOrigen": 1726
+  },
+  {
+   "fecha": "2019-12-05",
+   "documento": "Factura",
+   "nro": "0007-00016747",
+   "deuda": 900.0,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143512559
+  },
+  {
+   "fecha": "2019-12-23",
+   "documento": "Factura",
+   "nro": "0007-00017721",
+   "deuda": 1800.0,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143512560
+  },
+  {
+   "fecha": "2020-01-30",
+   "documento": "Factura",
+   "nro": "0007-00019541",
+   "deuda": 900.0,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143512676
+  },
+  {
+   "fecha": "2020-02-04",
+   "documento": "Factura",
+   "nro": "0007-00019801",
+   "deuda": 1150.0,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143512583
+  },
+  {
+   "fecha": "2020-02-04",
+   "documento": "Tarjeta",
+   "nro": "99999999966",
+   "deuda": 0.0,
+   "credito": 1150.0,
+   "origen": "Tarjetas",
+   "idOrigen": 986
+  },
+  {
+   "fecha": "2020-02-06",
+   "documento": "Resumen Bancario",
+   "nro": "3620070",
+   "deuda": 0.0,
+   "credito": 2700.0,
+   "origen": "Banco Nacion",
+   "idOrigen": 14982
+  },
+  {
+   "fecha": "2020-02-11",
+   "documento": "Factura",
+   "nro": "0007-00020142",
+   "deuda": 1150.0,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143512638
+  },
+  {
+   "fecha": "2020-03-12",
+   "documento": "Resumen Bancario",
+   "nro": "3620071",
+   "deuda": 0.0,
+   "credito": 2050.0,
+   "origen": "Banco Nacion",
+   "idOrigen": 14983
+  },
+  {
+   "fecha": "2020-05-04",
+   "documento": "Factura",
+   "nro": "0007-00022397",
+   "deuda": 56789.99,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143512795
+  },
+  {
+   "fecha": "2020-05-08",
+   "documento": "Factura",
+   "nro": "0006-00067732",
+   "deuda": 2349.94,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143512733
+  },
+  {
+   "fecha": "2020-05-08",
+   "documento": "Tarjeta sin imputar",
+   "nro": "99999999969",
+   "deuda": 0.0,
+   "credito": 0.06,
+   "origen": "Tarjeta sin imputar",
+   "idOrigen": 1458
+  },
+  {
+   "fecha": "2020-05-08",
+   "documento": "Tarjeta",
+   "nro": "99999999969",
+   "deuda": 0.0,
+   "credito": 2349.94,
+   "origen": "Tarjetas",
+   "idOrigen": 5212
+  },
+  {
+   "fecha": "2020-05-27",
+   "documento": "Factura",
+   "nro": "0006-00068599",
+   "deuda": 930.0,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143512796
+  },
+  {
+   "fecha": "2020-07-01",
+   "documento": "Factura",
+   "nro": "0007-00023561",
+   "deuda": 1149.98,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143512794
+  },
+  {
+   "fecha": "2020-07-15",
+   "documento": "Factura",
+   "nro": "0007-00024018",
+   "deuda": 2299.97,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143512813
+  },
+  {
+   "fecha": "2020-07-15",
+   "documento": "Factura",
+   "nro": "0007-00024017",
+   "deuda": 799.99,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143512814
+  },
+  {
+   "fecha": "2020-07-16",
+   "documento": "Resumen Bancario",
+   "nro": "6856",
+   "deuda": 0.0,
+   "credito": 58869.96,
+   "origen": "Banco Nacion",
+   "idOrigen": 14984
+  },
+  {
+   "fecha": "2020-08-11",
+   "documento": "Resumen Bancario",
+   "nro": "6934",
+   "deuda": 0.0,
+   "credito": 3099.96,
+   "origen": "Banco Nacion",
+   "idOrigen": 14985
+  },
+  {
+   "fecha": "2020-08-11",
+   "documento": "Factura",
+   "nro": "0007-00024574",
+   "deuda": 7509.99,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143512926
+  },
+  {
+   "fecha": "2020-08-11",
+   "documento": "Factura",
+   "nro": "0007-00024575",
+   "deuda": 599.97,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143512927
+  },
+  {
+   "fecha": "2020-09-11",
+   "documento": "Factura",
+   "nro": "0006-00073044",
+   "deuda": 925.38,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143513005
+  },
+  {
+   "fecha": "2020-10-21",
+   "documento": "Factura",
+   "nro": "0006-00074690",
+   "deuda": 999.94,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143513011
+  },
+  {
+   "fecha": "2020-11-17",
+   "documento": "Factura",
+   "nro": "0006-00075980",
+   "deuda": 999.94,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143513012
+  },
+  {
+   "fecha": "2020-12-03",
+   "documento": "Factura",
+   "nro": "0006-00076744",
+   "deuda": 1000.02,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143513013
+  },
+  {
+   "fecha": "2020-12-28",
+   "documento": "Resumen Bancario",
+   "nro": "7200",
+   "deuda": 0.0,
+   "credito": 15083.6,
+   "origen": "Banco Nacion",
+   "idOrigen": 14986
+  },
+  {
+   "fecha": "2021-02-05",
+   "documento": "Factura",
+   "nro": "0006-00079963",
+   "deuda": 1239.98,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143513067
+  },
+  {
+   "fecha": "2021-03-01",
+   "documento": "Factura",
+   "nro": "0007-00029851",
+   "deuda": 79199.95,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143513176
+  },
+  {
+   "fecha": "2021-03-18",
+   "documento": "Factura",
+   "nro": "0006-00081802",
+   "deuda": 1500.01,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143513177
+  },
+  {
+   "fecha": "2021-04-21",
+   "documento": "Factura",
+   "nro": "0006-00083324",
+   "deuda": 1701.35,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143513178
+  },
+  {
+   "fecha": "2021-05-10",
+   "documento": "Resumen Bancario",
+   "nro": "7628",
+   "deuda": 0.0,
+   "credito": 80541.43,
+   "origen": "Banco Nacion",
+   "idOrigen": 14987
+  },
+  {
+   "fecha": "2021-05-20",
+   "documento": "Factura",
+   "nro": "0007-00031972",
+   "deuda": 1500.04,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143513323
+  },
+  {
+   "fecha": "2021-07-07",
+   "documento": "Factura",
+   "nro": "0006-00087140",
+   "deuda": 2000.46,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143513322
+  },
+  {
+   "fecha": "2021-08-29",
+   "documento": "Factura",
+   "nro": "0007-00034535",
+   "deuda": 1020.26,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143513324
+  },
+  {
+   "fecha": "2021-09-02",
+   "documento": "Resumen Bancario",
+   "nro": "110608218",
+   "deuda": 0.0,
+   "credito": 4520.77,
+   "origen": "Galicia",
+   "idOrigen": 165
+  },
+  {
+   "fecha": "2021-09-14",
+   "documento": "Factura",
+   "nro": "0006-00090815",
+   "deuda": 1524.46,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143513344
+  },
+  {
+   "fecha": "2021-09-28",
+   "documento": "Resumen Bancario",
+   "nro": "112319396",
+   "deuda": 0.0,
+   "credito": 1524.46,
+   "origen": "Galicia",
+   "idOrigen": 208
+  },
+  {
+   "fecha": "2021-10-09",
+   "documento": "Factura",
+   "nro": "0006-00092546",
+   "deuda": 1524.81,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143513364
+  },
+  {
+   "fecha": "2021-10-18",
+   "documento": "Factura",
+   "nro": "0007-00036008",
+   "deuda": 95900.05,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143513380
+  },
+  {
+   "fecha": "2021-10-19",
+   "documento": "Resumen Bancario",
+   "nro": "113790597",
+   "deuda": 0.0,
+   "credito": 97424.82,
+   "origen": "Galicia",
+   "idOrigen": 257
+  },
+  {
+   "fecha": "2021-11-30",
+   "documento": "Factura",
+   "nro": "0006-00096047",
+   "deuda": 1721.1,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143513452
+  },
+  {
+   "fecha": "2021-12-09",
+   "documento": "Resumen Bancario",
+   "nro": "117350499",
+   "deuda": 0.0,
+   "credito": 1721.1,
+   "origen": "Galicia",
+   "idOrigen": 316
+  },
+  {
+   "fecha": "2021-12-26",
+   "documento": "Factura",
+   "nro": "0006-00097753",
+   "deuda": 4185.57,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143513477
+  },
+  {
+   "fecha": "2021-12-27",
+   "documento": "Factura",
+   "nro": "0007-00037476",
+   "deuda": 400.0,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143513478
+  },
+  {
+   "fecha": "2021-12-29",
+   "documento": "Factura",
+   "nro": "0006-00098017",
+   "deuda": 2100.28,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143513481
+  },
+  {
+   "fecha": "2022-01-05",
+   "documento": "Resumen Bancario",
+   "nro": "119251645",
+   "deuda": 0.0,
+   "credito": 6685.83,
+   "origen": "Galicia",
+   "idOrigen": 345
+  },
+  {
+   "fecha": "2022-02-04",
+   "documento": "Factura",
+   "nro": "0007-00038279",
+   "deuda": 4400.04,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143513513
+  },
+  {
+   "fecha": "2022-02-04",
+   "documento": "Factura",
+   "nro": "0006-00100228",
+   "deuda": 2340.17,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143513514
+  },
+  {
+   "fecha": "2022-02-16",
+   "documento": "Resumen Bancario",
+   "nro": "122079915",
+   "deuda": 0.0,
+   "credito": 6740.21,
+   "origen": "Galicia",
+   "idOrigen": 405
+  },
+  {
+   "fecha": "2022-03-04",
+   "documento": "Factura",
+   "nro": "0007-00038731",
+   "deuda": 4450.02,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143513594
+  },
+  {
+   "fecha": "2022-03-08",
+   "documento": "Factura",
+   "nro": "0006-00102163",
+   "deuda": 2300.63,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143513595
+  },
+  {
+   "fecha": "2022-03-31",
+   "documento": "Factura",
+   "nro": "0006-00103678",
+   "deuda": 2600.5,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143513596
+  },
+  {
+   "fecha": "2022-04-13",
+   "documento": "Resumen Bancario",
+   "nro": "126131142",
+   "deuda": 0.0,
+   "credito": 9351.11,
+   "origen": "Galicia",
+   "idOrigen": 485
+  },
+  {
+   "fecha": "2022-05-31",
+   "documento": "Factura",
+   "nro": "0006-00107907",
+   "deuda": 5101.0,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143513653
+  },
+  {
+   "fecha": "2022-05-31",
+   "documento": "Tarjeta",
+   "nro": "480393",
+   "deuda": 0.0,
+   "credito": 5100.0,
+   "origen": "Tarjetas",
+   "idOrigen": 120
+  },
+  {
+   "fecha": "2022-06-10",
+   "documento": "Factura",
+   "nro": "0006-00108620",
+   "deuda": 2944.06,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143513663
+  },
+  {
+   "fecha": "2022-06-14",
+   "documento": "Resumen Bancario",
+   "nro": "130802648",
+   "deuda": 0.0,
+   "credito": 2944.02,
+   "origen": "Galicia",
+   "idOrigen": 588
+  },
+  {
+   "fecha": "2022-06-24",
+   "documento": "Factura",
+   "nro": "00008-00000099",
+   "deuda": 1350.0,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143513678
+  },
+  {
+   "fecha": "2022-07-13",
+   "documento": "Factura",
+   "nro": "00009-00001420",
+   "deuda": 3300.0,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143513680
+  },
+  {
+   "fecha": "2022-07-13",
+   "documento": "Resumen Bancario",
+   "nro": null,
+   "deuda": 0.0,
+   "credito": 3300.0,
+   "origen": "Galicia",
+   "idOrigen": 645
+  },
+  {
+   "fecha": "2022-07-15",
+   "documento": "Resumen Bancario",
+   "nro": "133406122",
+   "deuda": 0.0,
+   "credito": 1350.0,
+   "origen": "Galicia",
+   "idOrigen": 649
+  },
+  {
+   "fecha": "2022-08-03",
+   "documento": "Factura",
+   "nro": "00008-00000445",
+   "deuda": 28000.0,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143513731
+  },
+  {
+   "fecha": "2022-08-03",
+   "documento": "Factura",
+   "nro": "00008-00000448",
+   "deuda": 6800.0,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143513732
+  },
+  {
+   "fecha": "2022-08-09",
+   "documento": "Factura",
+   "nro": "0007-00041198",
+   "deuda": 190000.0,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143513733
+  },
+  {
+   "fecha": "2022-08-11",
+   "documento": "Factura",
+   "nro": "00008-00000491",
+   "deuda": 990.0,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143513735
+  },
+  {
+   "fecha": "2022-08-17",
+   "documento": "Nota de Crédito",
+   "nro": "0007-00000294",
+   "deuda": 0.0,
+   "credito": 28000.01,
+   "origen": "Compras",
+   "idOrigen": 2143513734
+  },
+  {
+   "fecha": "2022-08-17",
+   "documento": "Factura",
+   "nro": "00009-00003569",
+   "deuda": 3010.21,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143513736
+  },
+  {
+   "fecha": "2022-08-19",
+   "documento": "Resumen Bancario",
+   "nro": "136071664",
+   "deuda": 0.0,
+   "credito": 200800.21,
+   "origen": "Galicia",
+   "idOrigen": 721
+  },
+  {
+   "fecha": "2022-10-10",
+   "documento": "Factura",
+   "nro": "00009-00007071",
+   "deuda": 3381.21,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143513825
+  },
+  {
+   "fecha": "2022-11-22",
+   "documento": "Factura",
+   "nro": "00009-00010042",
+   "deuda": 3801.02,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143513879
+  },
+  {
+   "fecha": "2022-12-06",
+   "documento": "Resumen Bancario",
+   "nro": "145122030",
+   "deuda": 0.0,
+   "credito": 7182.23,
+   "origen": "Galicia",
+   "idOrigen": 890
+  },
+  {
+   "fecha": "2022-12-15",
+   "documento": "Factura",
+   "nro": "00009-00011697",
+   "deuda": 3601.82,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143514049
+  },
+  {
+   "fecha": "2023-01-11",
+   "documento": "Factura",
+   "nro": "00008-00001462",
+   "deuda": 16200.0,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143513943
+  },
+  {
+   "fecha": "2023-01-19",
+   "documento": "Resumen Bancario",
+   "nro": "148896149",
+   "deuda": 0.0,
+   "credito": 16200.0,
+   "origen": "Galicia",
+   "idOrigen": 983
+  },
+  {
+   "fecha": "2023-03-07",
+   "documento": "Factura",
+   "nro": "00009-00017433",
+   "deuda": 4001.8,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143514047
+  },
+  {
+   "fecha": "2023-03-07",
+   "documento": "Factura",
+   "nro": "00008-00001462",
+   "deuda": 11200.0,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143514048
+  },
+  {
+   "fecha": "2023-03-28",
+   "documento": "Resumen Bancario",
+   "nro": null,
+   "deuda": 0.0,
+   "credito": 15201.8,
+   "origen": "Galicia",
+   "idOrigen": 1101
+  },
+  {
+   "fecha": "2023-03-28",
+   "documento": "Resumen Bancario",
+   "nro": null,
+   "deuda": 0.0,
+   "credito": 3601.81,
+   "origen": "Galicia",
+   "idOrigen": 1102
+  },
+  {
+   "fecha": "2023-03-29",
+   "documento": "Factura",
+   "nro": "00008-00001887",
+   "deuda": 6200.0,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143514064
+  },
+  {
+   "fecha": "2023-04-19",
+   "documento": "Resumen Bancario",
+   "nro": null,
+   "deuda": 0.0,
+   "credito": 6200.0,
+   "origen": "Galicia",
+   "idOrigen": 1148
+  },
+  {
+   "fecha": "2023-05-01",
+   "documento": "Factura",
+   "nro": "0007-00043556",
+   "deuda": 255600.01,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143514084
+  },
+  {
+   "fecha": "2023-05-05",
+   "documento": "Factura",
+   "nro": "00009-00021872",
+   "deuda": 4400.0,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143514085
+  },
+  {
+   "fecha": "2023-05-05",
+   "documento": "Tarjeta",
+   "nro": "11241922",
+   "deuda": 0.0,
+   "credito": 4400.0,
+   "origen": "Tarjetas",
+   "idOrigen": 5568
+  },
+  {
+   "fecha": "2023-05-10",
+   "documento": "Tarjeta sin imputar",
+   "nro": "11241922",
+   "deuda": 0.01,
+   "credito": 0.0,
+   "origen": "Tarjeta sin imputar",
+   "idOrigen": 5941
+  },
+  {
+   "fecha": "2023-05-10",
+   "documento": "Tarjeta",
+   "nro": "11241922",
+   "deuda": 0.0,
+   "credito": 255600.01,
+   "origen": "Tarjetas",
+   "idOrigen": 5569
+  },
+  {
+   "fecha": "2023-06-21",
+   "documento": "Factura",
+   "nro": "00009-00025375",
+   "deuda": 5000.35,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143514137
+  },
+  {
+   "fecha": "2023-06-28",
+   "documento": "Resumen Bancario",
+   "nro": null,
+   "deuda": 0.0,
+   "credito": 5000.32,
+   "origen": "Galicia",
+   "idOrigen": 1277
+  },
+  {
+   "fecha": "2023-07-20",
+   "documento": "Factura",
+   "nro": "00008-00002726",
+   "deuda": 17200.0,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143514191
+  },
+  {
+   "fecha": "2023-07-25",
+   "documento": "Resumen Bancario",
+   "nro": null,
+   "deuda": 0.0,
+   "credito": 17200.0,
+   "origen": "Galicia",
+   "idOrigen": 1319
+  },
+  {
+   "fecha": "2023-08-30",
+   "documento": "Factura",
+   "nro": "00009-00030596",
+   "deuda": 6000.05,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143514225
+  },
+  {
+   "fecha": "2023-09-05",
+   "documento": "Resumen Bancario",
+   "nro": null,
+   "deuda": 0.0,
+   "credito": 6000.07,
+   "origen": "Galicia",
+   "idOrigen": 1392
+  },
+  {
+   "fecha": "2023-11-05",
+   "documento": "Factura",
+   "nro": "00009-00036746",
+   "deuda": 6907.03,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143514310
+  },
+  {
+   "fecha": "2023-11-08",
+   "documento": "Resumen Bancario",
+   "nro": null,
+   "deuda": 0.0,
+   "credito": 6907.05,
+   "origen": "Galicia",
+   "idOrigen": 1525
+  },
+  {
+   "fecha": "2023-11-28",
+   "documento": "Factura",
+   "nro": "0008-00003711",
+   "deuda": 28000.01,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143514340
+  },
+  {
+   "fecha": "2023-12-05",
+   "documento": "Factura",
+   "nro": "0009-00039283",
+   "deuda": 10000.58,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143514341
+  },
+  {
+   "fecha": "2023-12-13",
+   "documento": "Factura",
+   "nro": "0009-00040093",
+   "deuda": 13382.67,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143514342
+  },
+  {
+   "fecha": "2023-12-14",
+   "documento": "Nota de Débito",
+   "nro": "0011-00000033",
+   "deuda": 22800.01,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143514343
+  },
+  {
+   "fecha": "2023-12-19",
+   "documento": "Nota de Crédito",
+   "nro": "0011-00000003",
+   "deuda": 0.0,
+   "credito": 22800.01,
+   "origen": "Compras",
+   "idOrigen": 2143514365
+  },
+  {
+   "fecha": "2023-12-19",
+   "documento": "Resumen Bancario",
+   "nro": null,
+   "deuda": 0.0,
+   "credito": 51383.26,
+   "origen": "Galicia",
+   "idOrigen": 1606
+  },
+  {
+   "fecha": "2024-01-08",
+   "documento": "Factura",
+   "nro": "0011-00000325",
+   "deuda": 929000.0,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143514366
+  },
+  {
+   "fecha": "2024-01-10",
+   "documento": "Resumen Bancario",
+   "nro": "612",
+   "deuda": 0.0,
+   "credito": 929000.0,
+   "origen": "Banco Nacion",
+   "idOrigen": 14880
+  },
+  {
+   "fecha": "2024-03-22",
+   "documento": "Factura",
+   "nro": "0009-00048496",
+   "deuda": 18001.0,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143514542
+  },
+  {
+   "fecha": "2024-04-25",
+   "documento": "Factura",
+   "nro": "0008-00004623",
+   "deuda": 52000.0,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143514541
+  },
+  {
+   "fecha": "2024-05-09",
+   "documento": "Factura",
+   "nro": "0009-00052613",
+   "deuda": 20003.01,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143514477
+  },
+  {
+   "fecha": "2024-05-29",
+   "documento": "Resumen Bancario",
+   "nro": "4111786",
+   "deuda": 0.0,
+   "credito": 90004.01,
+   "origen": "Galicia",
+   "idOrigen": 1909
+  },
+  {
+   "fecha": "2024-08-09",
+   "documento": "Factura",
+   "nro": "0008-00006813",
+   "deuda": 20011.97,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143514772
+  },
+  {
+   "fecha": "2024-08-21",
+   "documento": "Resumen Bancario",
+   "nro": "5597548",
+   "deuda": 0.0,
+   "credito": 20011.98,
+   "origen": "Galicia",
+   "idOrigen": 2069
+  },
+  {
+   "fecha": "2024-08-29",
+   "documento": "Factura",
+   "nro": "0008-00007875",
+   "deuda": 51000.0,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143514784
+  },
+  {
+   "fecha": "2024-09-04",
+   "documento": "Resumen Bancario",
+   "nro": "5833362",
+   "deuda": 0.0,
+   "credito": 51000.0,
+   "origen": "Galicia",
+   "idOrigen": 2084
+  },
+  {
+   "fecha": "2024-09-16",
+   "documento": "Factura",
+   "nro": "00008-00008936",
+   "deuda": 23870.99,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143514799
+  },
+  {
+   "fecha": "2024-09-24",
+   "documento": "Resumen Bancario",
+   "nro": "6273858",
+   "deuda": 0.0,
+   "credito": 23870.99,
+   "origen": "Galicia",
+   "idOrigen": 2115
+  },
+  {
+   "fecha": "2024-11-15",
+   "documento": "Resumen Bancario",
+   "nro": "7876455",
+   "deuda": 0.0,
+   "credito": 20000.04,
+   "origen": "Galicia",
+   "idOrigen": 2219
+  },
+  {
+   "fecha": "2024-12-09",
+   "documento": "Factura",
+   "nro": "00011-00006045",
+   "deuda": 1299000.05,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143514896
+  },
+  {
+   "fecha": "2024-12-16",
+   "documento": "Resumen Bancario",
+   "nro": "9534779",
+   "deuda": 0.0,
+   "credito": 1299000.0,
+   "origen": "Galicia",
+   "idOrigen": 2274
+  },
+  {
+   "fecha": "2024-12-16",
+   "documento": "Retención",
+   "nro": "0000-2024-000039",
+   "deuda": 0.0,
+   "credito": 14405.49,
+   "origen": "Retenciones",
+   "idOrigen": 182
+  },
+  {
+   "fecha": "2025-01-03",
+   "documento": "Factura",
+   "nro": "00011-00007426",
+   "deuda": 25000.04,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143514932
+  },
+  {
+   "fecha": "2025-01-06",
+   "documento": "Resumen Bancario",
+   "nro": "10458117",
+   "deuda": 0.0,
+   "credito": 10594.55,
+   "origen": "Galicia",
+   "idOrigen": 2324
+  },
+  {
+   "fecha": "2025-01-26",
+   "documento": "Factura",
+   "nro": "00008-00010792",
+   "deuda": 28000.01,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143514938
+  },
+  {
+   "fecha": "2025-01-27",
+   "documento": "Resumen Bancario",
+   "nro": "11466640",
+   "deuda": 0.0,
+   "credito": 28000.0,
+   "origen": "Galicia",
+   "idOrigen": 2366
+  },
+  {
+   "fecha": "2025-03-19",
+   "documento": "Factura",
+   "nro": "0009-00061691",
+   "deuda": 26003.96,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143515009
+  },
+  {
+   "fecha": "2025-03-26",
+   "documento": "Resumen Bancario",
+   "nro": "14408747",
+   "deuda": 0.0,
+   "credito": 26003.96,
+   "origen": "Galicia",
+   "idOrigen": 2475
+  },
+  {
+   "fecha": "2025-05-27",
+   "documento": "Resumen Bancario",
+   "nro": "17857327",
+   "deuda": 0.0,
+   "credito": 79114.02,
+   "origen": "Galicia",
+   "idOrigen": 2578
+  },
+  {
+   "fecha": "2025-07-18",
+   "documento": "Factura",
+   "nro": "0009-00071676",
+   "deuda": 27399.03,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143514967
+  },
+  {
+   "fecha": "2025-07-21",
+   "documento": "Factura",
+   "nro": "0009-00071957",
+   "deuda": 8050.0,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143515128
+  },
+  {
+   "fecha": "2025-07-21",
+   "documento": "Factura",
+   "nro": "0012-00000473",
+   "deuda": 56000.0,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143515129
+  },
+  {
+   "fecha": "2025-07-28",
+   "documento": "Resumen Bancario",
+   "nro": null,
+   "deuda": 0.0,
+   "credito": 91449.03,
+   "origen": "Galicia",
+   "idOrigen": 2702
+  },
+  {
+   "fecha": "2025-09-16",
+   "documento": "Retención",
+   "nro": "0000-2025-000027",
+   "deuda": 0.0,
+   "credito": 18515.27,
+   "origen": "Retenciones",
+   "idOrigen": 209
+  },
+  {
+   "fecha": "2025-09-18",
+   "documento": "Resumen Bancario",
+   "nro": "32367293",
+   "deuda": 0.0,
+   "credito": 1563484.73,
+   "origen": "Galicia",
+   "idOrigen": 2794
+  },
+  {
+   "fecha": "2025-10-07",
+   "documento": "Resumen Bancario",
+   "nro": "33653739",
+   "deuda": 0.0,
+   "credito": 30017.03,
+   "origen": "Galicia",
+   "idOrigen": 2821
+  },
+  {
+   "fecha": "2025-10-09",
+   "documento": "Factura",
+   "nro": "00009-00078832",
+   "deuda": 24000.05,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143515168
+  },
+  {
+   "fecha": "2025-10-24",
+   "documento": "Resumen Bancario",
+   "nro": "34945461",
+   "deuda": 0.0,
+   "credito": 24000.05,
+   "origen": "Galicia",
+   "idOrigen": 2845
+  },
+  {
+   "fecha": "2025-11-20",
+   "documento": "Resumen Bancario",
+   "nro": "37112469",
+   "deuda": 0.0,
+   "credito": 33000.0,
+   "origen": "Galicia",
+   "idOrigen": 2902
+  },
+  {
+   "fecha": "2025-12-12",
+   "documento": "Factura",
+   "nro": "0009-00084834",
+   "deuda": 38021.92,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143515312
+  },
+  {
+   "fecha": "2025-12-16",
+   "documento": "Resumen Bancario",
+   "nro": "39094087",
+   "deuda": 0.0,
+   "credito": 38021.92,
+   "origen": "Galicia",
+   "idOrigen": 2955
+  },
+  {
+   "fecha": "2025-12-29",
+   "documento": "Factura",
+   "nro": "0009-00086506",
+   "deuda": 36001.07,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143515342
+  },
+  {
+   "fecha": "2026-01-07",
+   "documento": "Resumen Bancario",
+   "nro": "40694411",
+   "deuda": 0.0,
+   "credito": 36001.07,
+   "origen": "Galicia",
+   "idOrigen": 2988
+  },
+  {
+   "fecha": "2026-02-18",
+   "documento": "Factura",
+   "nro": "0009-00091014",
+   "deuda": 34789.04,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143515403
+  },
+  {
+   "fecha": "2026-02-27",
+   "documento": "Factura",
+   "nro": "0009-00091770",
+   "deuda": 78000.0,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143515404
+  },
+  {
+   "fecha": "2026-03-03",
+   "documento": "Resumen Bancario",
+   "nro": "44659184",
+   "deuda": 0.0,
+   "credito": 112789.03,
+   "origen": "Galicia",
+   "idOrigen": 3079
+  },
+  {
+   "fecha": "2026-03-30",
+   "documento": "Resumen Bancario",
+   "nro": null,
+   "deuda": 0.0,
+   "credito": 39011.0,
+   "origen": "Galicia",
+   "idOrigen": 3117
+  },
+  {
+   "fecha": "2026-04-16",
+   "documento": "Factura",
+   "nro": "0009-00096374",
+   "deuda": 42000.99,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143517401
+  },
+  {
+   "fecha": "2026-04-23",
+   "documento": "Resumen Bancario",
+   "nro": null,
+   "deuda": 0.0,
+   "credito": 42000.99,
+   "origen": "Galicia",
+   "idOrigen": 3171
+  },
+  {
+   "fecha": "2026-06-26",
+   "documento": "Resumen Bancario",
+   "nro": null,
+   "deuda": 0.0,
+   "credito": 43056.9,
+   "origen": "Galicia",
+   "idOrigen": 3292
+  },
+  {
+   "fecha": "2026-07-08",
+   "documento": "Factura",
+   "nro": "0009-00104731",
+   "deuda": 14600.0,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143518484
+  },
+  {
+   "fecha": "2026-07-13",
+   "documento": "Factura",
+   "nro": "0009-00105106",
+   "deuda": 46000.0,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143518485
+  },
+  {
+   "fecha": "2026-07-20",
+   "documento": "Factura",
+   "nro": "0011-00013090",
+   "deuda": 2329000.05,
+   "credito": 0.0,
+   "origen": "Compras",
+   "idOrigen": 2143518490
+  },
+  {
+   "fecha": "2026-07-20",
+   "documento": "Resumen Bancario",
+   "nro": null,
+   "deuda": 0.0,
+   "credito": 60600.0,
+   "origen": "Galicia",
+   "idOrigen": 3332
+  },
+  {
+   "fecha": "2026-07-21",
+   "documento": "Resumen Bancario",
+   "nro": null,
+   "deuda": 0.0,
+   "credito": 2329000.0,
+   "origen": "Galicia",
+   "idOrigen": 3336
+  },
+  {
+   "fecha": "2026-08-20",
+   "documento": "Resumen Bancario",
+   "nro": null,
+   "deuda": 0.0,
+   "credito": 46044.04,
+   "origen": "Galicia",
+   "idOrigen": 3386
+  }
+ ]
+}

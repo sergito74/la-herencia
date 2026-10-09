@@ -11,6 +11,9 @@ import { ErrorState, LoadingState } from "@/components/ui/States";
 import { BASE_DOCUMENTOS_COMPRAS, esRutaLocalWindows, urlParaAbrirDocumento } from "@/lib/documentoLocal";
 import { formatFecha, formatMoneda } from "@/lib/format";
 import { fetchComprobantes, fetchMovimientosRevision, fetchRevision, guardarRevision, type EstadoRevision, type SugerenciaNota } from "@/services/auditoriaCuentasApi";
+import { FichaCuenta } from "@/components/revision-cuentas/FichaCuenta";
+import { PagosSinFactura } from "@/components/revision-cuentas/PagosSinFactura";
+import { SaldosExternos } from "@/components/revision-cuentas/SaldosExternos";
 import { FifoCuenta } from "./FifoCuenta";
 import { HistorialCorrecciones, ImputacionesSospechosas, NotaDeAjuste } from "./CorreccionesCuenta";
 import { urlDocumentoLocal } from "@/services/comprasApi";
@@ -168,6 +171,9 @@ export function RevisionCuenta({ idContacto }: { idContacto: number }) {
         </div>
       </section>
 
+      <FichaCuenta idContacto={idContacto} />
+      <PagosSinFactura idContacto={idContacto} />
+      <SaldosExternos idContacto={idContacto} />
       <ImputacionesSospechosas idContacto={idContacto} />
       <FifoCuenta idContacto={idContacto} />
       <div className="flex flex-wrap items-center gap-2">

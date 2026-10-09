@@ -7,23 +7,26 @@ import { useState } from "react";
 import { SoloLectura } from "@/components/auth/SoloLectura";
 import { ErrorState, LoadingState } from "@/components/ui/States";
 import { formatFecha, formatMoneda } from "@/lib/format";
-import { aplicarTanda, fetchPlanFifo, revertirTanda, simularTanda, type Tanda } from "@/services/auditoriaCuentasApi";
+import { aplicarTanda, fetchPlanFifo, revertirTanda, simularTanda, type SimulacionTanda, type Tanda } from "@/services/auditoriaCuentasApi";
 
 const ESTADO: Record<Tanda["estado"], string> = { pendiente: "Pendiente", parcial: "Aplicada en parte", aplicada: "Aplicada" };
 
 function UnaTanda({ tanda }: { tanda: Tanda }) {
   const qc = useQueryClient();
   const [abierta, setAbierta] = useState(false);
-  const [sim, setSim] = useState<{ idEjecucion: number; resumen: Record<string, number> } | null>(null);
+  const [sim, setSim] = useState<SimulacionTanda | null>(null);
   const [aplicada, setAplicada] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const ids = tanda.contactos.map((c) => c.idContacto);
+  // la puerta del FIFO deja afuera las cuentas que todavía no completaron E1 a E4: solo se aplica lo que se simuló
+  const omitidas = sim?.omitidas ?? [];
+  const idsSimulados = ids.filter((i) => !omitidas.some((o) => o.idContacto === i));
   const refrescar = () => {
     for (const k of ["auditoria-fifo-plan", "auditoria-resumen", "auditoria-revision", "auditoria-hallazgos", "auditoria-grupo"]) qc.invalidateQueries({ queryKey: [k] });
   };
   const fallo = (e: unknown) => setError(e instanceof Error ? e.message : "No se pudo completar.");
   const simular = useMutation({ mutationFn: () => simularTanda(ids), onSuccess: (r) => { setSim(r); setAplicada(false); setError(null); }, onError: fallo });
-  const aplicar = useMutation({ mutationFn: () => aplicarTanda(sim!.idEjecucion, ids), onSuccess: () => { setAplicada(true); setError(null); refrescar(); }, onError: fallo });
+  const aplicar = useMutation({ mutationFn: () => aplicarTanda(sim!.idEjecucion, idsSimulados), onSuccess: () => { setAplicada(true); setError(null); refrescar(); }, onError: fallo });
   const deshacer = useMutation({ mutationFn: () => revertirTanda(sim!.idEjecucion), onSuccess: () => { setAplicada(false); setSim(null); setError(null); refrescar(); }, onError: fallo });
   const r = sim?.resumen;
 
@@ -62,6 +65,18 @@ function UnaTanda({ tanda }: { tanda: Tanda }) {
           <p>
             Simulación: <b>{r.cierranDespues}</b> de {r.contactos} cuentas cierran, <b>{r.empeoran}</b> empeoran, {r.aplicaciones} imputaciones nuevas.
           </p>
+          {omitidas.length > 0 && (
+            <details className="text-status-warning">
+              <summary className="cursor-pointer">{omitidas.length} cuentas quedaron afuera: todavía no completaron las etapas previas al FIFO</summary>
+              <ul className="mt-1 list-disc pl-5">
+                {omitidas.map((o) => (
+                  <li key={o.idContacto}>
+                    <Link className="text-finance underline" href={`/finanzas/auditoria-cuentas/cuenta/${o.idContacto}`}>{tanda.contactos.find((c) => c.idContacto === o.idContacto)?.nombre ?? o.idContacto}</Link>: {o.motivo}
+                  </li>
+                ))}
+              </ul>
+            </details>
+          )}
           {aplicada ? (
             <p className="text-status-success">
               Tanda aplicada.{" "}

@@ -1,0 +1,91 @@
+# Quickstart: validar el método de revisión de cuentas
+
+Todo en `WC`. Desde `backend/`, con `PYTHONIOENCODING=utf-8`. Referencias: [data-model.md](data-model.md), [contracts/revision-cuentas-api.md](contracts/revision-cuentas-api.md) y [research.md](research.md). Los pasos que escriben se hacen sobre cuentas de prueba o con la aprobación de Sergio; ninguno toca `LaHerencia` ni los archivos Access.
+
+## Preparación
+
+1. Crear las tablas, primero en modo verificación (no escribe): `python -m scripts.crear_esquema_revision_036 --verificar`; luego sin opción (respaldo verificado, tablas e inserción del corte inicial 30/09/2026, idempotente). Esperado: tablas `RevisionCortes` (1 fila), `RevisionFichas`, `RevisionPagosSinFactura`, `RevisionSaldosExternos`, `RevisionTableroFotos`, y los esquemas de la 035 intactos.
+2. Para la prueba del detector con el caso testigo, la cuenta de Jauregui tal como estaba antes del 09/10/2026 se reconstruye en una fixture (`backend/tests/fixtures/jauregui_antes.json`): los movimientos de `vw_MovimientosCuenta_Base` del contacto 48 sin las 10 facturas cargadas ese día (ids de compra 2143522625 a 2143522634).
+
+## Pasos de validación
+
+1. **Corte vigente**: `GET /api/revision-cuentas/corte` devuelve 2026-09-30.
+2. **Detector sobre el caso testigo (SC-002)**: la prueba de la función pura con la fixture devuelve los 8 pagos esperados (20.000,04; 79.114,02; 1.563.484,73 con la retención de 18.515,27 y esperado 1.582.000,00; 30.017,03; 33.000,00; 39.011,00; 43.056,90; 46.044,04) y ninguno de los pagos que sí tienen factura. Los 2 falsos positivos del prototipo (retención de 21 días y pago multi-factura de 2021, ver research D1) tienen que quedar resueltos; si no, se ajustan las pasadas antes de seguir.
+3. **Detector sobre la cuenta real**: `GET /cuentas/48/pagos-sin-factura` informa 0 pagos desde 2021, `consistencia.cierra = true` y, aparte, los pagos anteriores a 2021 con `anteriorA2021 = true`.
+4. **Marca conservada (FR-015)**: sobre una cuenta de prueba, `PUT /cuentas/{id}/pagos-sin-factura/galicia/{mov}` con `sin-documento` y nota; el siguiente `GET` muestra la marca y el pago no vuelve a figurar como pendiente.
+5. **Los 7 criterios de Jauregui (US2)**: `GET /cuentas/48/ficha` devuelve los 7 criterios medidos con los números del 09/10/2026: C1 y C4 cumplidos, C5 cumplido (FIFO aplicado, ejecución 72), C3 dependiente del saldo externo.
+6. **Saldo externo**: `POST /cuentas/48/saldos-externos` con fecha 2026-09-30, saldo −0,01, fuente `portal` y la referencia del PDF; `GET` lo lista con la diferencia contra el saldo de la cuenta a esa fecha (−3,31) y la clasificación `menor-al-umbral`.
+7. **Cierre y aprobación rápida (US2, FR-012)**: en una cuenta de prueba con saldo cero y sin hallazgos, `PUT .../ficha` con `cerrada` guarda corte y saldo al cierre; en una cuenta con un criterio sin cumplir devuelve 409 con la lista de los que faltan; con `cerrada-con-excepcion` y sin motivo devuelve 422.
+8. **Reapertura (FR-004)**: sobre una cuenta de prueba cerrada, un movimiento con fecha posterior al corte no la reabre; un movimiento con fecha anterior al corte que cambia el saldo la muestra como `reabierta` en `estadoEfectivo`.
+9. **Colas (US3)**: `GET /tablero` informa `totalCuentas` igual a la suma de todas las casillas; `GET /colas/A` ordena por movimientos y, a igual cantidad, por importe; una cuenta con pago sin factura y doble descuento aparece en la cola D con el doble descuento en `otrosProblemas`; Condominio LSC aparece en la H.
+10. **Lote (US3)**: `POST /lotes/simular` (cola C), `PUT /lotes/{id}/cuentas` con una cuenta, `POST .../aplicar`: el saldo de la cuenta es idéntico antes y después, y `POST .../revertir` devuelve las imputaciones a su estado anterior. `POST .../aplicar` sin cuentas tildadas devuelve 409; con el rol `Lectura` devuelve 403.
+11. **Puerta del FIFO (US5)**: `POST /api/auditoria-cuentas/cuentas/{id}/fifo/simular` sobre una cuenta con pagos sin factura devuelve 409 con `etapaPendiente = E1`; sobre una cuenta que cumple E1 a E4 simula normalmente.
+12. **Archivos incompletos (US6)**: `GET /archivos/incompletos?periodo=04 2025 - 03 2026` lista los `.crdownload` de Jauregui de esa carpeta (por ejemplo `20250923_JaureguiYMorales.crdownload` y `20251113_JaureguiYMorales.crdownload`) con `estado = comprobante-legible-extension-incorrecta` y `cargado = true` (ya se cargaron el 09/10/2026); los demás `.crdownload` de otras carpetas de período se ven con `periodo` correspondiente; los `.jpg` aparecen como `imagen-revisar`. Los archivos no se modificaron (misma fecha y tamaño antes y después).
+13. **Tablero y foto semanal (US7)**: la primera apertura crea la foto de la semana (`comparacion = null`); con una foto de la semana anterior cargada de prueba, `comparacion` informa cuentas cerradas en la semana y variación de la cola I; `POST /tablero/fotos` repetido en la misma semana devuelve 409.
+14. **Rendimiento**: el detector de una cuenta en menos de 2 segundos (la más grande, Cargill, con unos 800 movimientos) y el tablero de las 518 cuentas en menos de 10 segundos.
+
+## Verificaciones automáticas
+
+- Backend: `python -m pytest tests -q` (pruebas puras del detector, las etapas, las colas, el orden y los criterios; contrato de la API con httpx; lecturas de solo lectura sobre `WC`).
+- Frontend: `npx tsc --noEmit` en `frontend/` y `node tests/revision-cuentas.e2e.cjs` con el servidor en el puerto 3100.
+
+## Qué falta decidir con Sergio durante la validación
+
+- Si el orden de la precedencia de colas (research D5) le sirve tal cual.
+- Cómo tratar lo anterior a 2021 sin emparejar en cuentas viejas (research D8).
+
+## Resultados de la corrida
+
+### Esquema (T004, 09/10/2026)
+
+- `python -m scripts.crear_esquema_revision_036 --verificar` informó las 5 tablas como "se creará"; no escribió nada.
+- La corrida real hizo el respaldo verificado `WC_esquema-revision-036_20261009_153026_042129.bak` (carpeta de respaldos de SQL Server) y creó `RevisionCortes` (1 fila: corte 2026-09-30, "Primer corte: cierre del mes 9"), `RevisionFichas`, `RevisionPagosSinFactura`, `RevisionSaldosExternos` y `RevisionTableroFotos` (vacías).
+- Las restricciones de los datos del modelo se crearon como CHECK: estados de la ficha, estados de la marca, fuente de respaldo, fuente y moneda del saldo externo, nota obligatoria en `sin-documento` y en `sin-estado`, y motivo obligatorio en `cerrada-con-excepcion`.
+
+### Detector (T017, 09/10/2026)
+
+- Pruebas puras `tests/test_revision_detector.py`: 27 pasan (los 8 pagos de Jauregui, la retención, el pago multi-factura, clientes y mixtas con fixtures `cliente_mixta.json` de Ganaderos de Elordi y Ferias del Centro).
+- Contrato `tests/contract/test_revision_cuentas_api.py`: 11 pasan (corte, pagos sin factura de Jauregui real sin pagos desde 2021 y consistencia que cierra, marca conservada, 404, 422, 403).
+- Medición sobre las 518 cuentas: 2,07 s en total, la más lenta 0,33 s; 90 cuentas con pagos sin factura desde 2021 (700 pagos); la consistencia cierra en 517 de 518 (la que no cierra es Banco Nación, 369).
+
+### Ficha de Jauregui y Morales (T025, 09/10/2026)
+
+- Con el inventario de fuentes confirmado (seis fuentes: estado del proveedor, extractos, tarjeta, certificados, Dropbox y Access), la ficha da: **C1** cumple (0 pagos sin factura desde 2021; 8 anteriores a 2021 anotados), **C2** cumple, **C4** cumple (0 doble conteo), **C5** cumple (imputaciones completas), **C6** cumple, **C7** cumple (inventario confirmado, saldo estable al corte). **C3 no cumple todavía**: sin saldo externo y sin coincidencia con el Access (el Access de Jauregui nunca tuvo las 10 facturas, por eso la 035 la clasifica como diferencia sin explicar y cae en la cola I). Etapa E4.
+- El cierre se hace en T038a, después de registrar el saldo externo en T038.
+
+### Colas (T033, 09/10/2026, corte 30/09/2026)
+
+- Las 518 cuentas con movimientos quedan cada una en **una sola cola**: A 363 · B 35 · C 1 · D 75 · E 2 · F 3 · H 23 · I 16 (la G no tiene cuentas hoy).
+- **SC-007**: la cola de excepciones (I) es el **3,1 %** del total (16 de 518), por debajo del 10 %.
+- Etapa: 517 cuentas están en E0 (todavía no confirmaron el inventario de fuentes) y Jauregui en E4. La regla `aprobar-cierre` confirma el inventario con la fuente `access` al cerrar en bloque.
+- Cálculo por lotes de las 518 cuentas: 6 segundos (más la clasificación de la 035, que queda en su caché).
+- Lote `aprobar-cierre` (cola A), solo lectura: **363 candidatas, 358 cumplen** (5 no tienen evidencia de saldo: C3) y ninguna de la cola A tiene movimientos entre el 26 y el 30/09; solo 3 cuentas del total los tienen.
+- Lote `anular-doble-descuento` (cola C), solo lectura: **1 candidata, Coto** (13 pagos, 25 imputaciones por $183.244,81; el saldo no cambia). No se aplicó.
+- El lote `fifo-tandas` (cola B) no se probó sobre datos reales porque simular crea una ejecución del FIFO en `WC`; se valida al aplicarlo con la aprobación de Sergio.
+
+### Cierre de Jauregui y Morales (T038 y T038a, 09/10/2026, aprobados por Sergio)
+
+- **Saldo externo (T038)**: se registró el estado de cuenta del portal del proveedor con fecha 30/09/2026 y fuente `portal`. El portal informa −0,01 como deuda (su convención); en la convención de la cuenta (positivo = a favor nuestro) se cargó **+0,01**, y la nota lo aclara. Diferencia contra el saldo de la cuenta (−$3,31): **−$3,32, "menor al umbral"** (C3 cumple con evidencia `portal`; el Access discrepa y gana el proveedor).
+- **Cierre (T038a)**: los 7 criterios cumplen; la cuenta quedó **cerrada al corte del 30/09/2026 con saldo −$3,31**, usuario "Sergio (cierre de Jauregui, 036)". El historial de la ficha muestra inventario, saldo externo y cierre.
+- La fila de Jauregui en `CuentasARevisar` (035) ("$1,87 M pagados de más sin facturas posteriores") se marcó resuelta, con la decisión anotada: faltaban 10 facturas sin cargar, no había pagos de más.
+- Con la evidencia externa cargada, la cuenta deja de estar en la cola I (la diferencia contra el Access queda explicada) y pasa a la cola A.
+
+### Medición final (T055, 09/10/2026, corte 30/09/2026)
+
+**Tiempos** (objetivos del plan): detector de una cuenta **0,35 s** con Cargill, la más grande (805 movimientos; objetivo menos de 2 s) · tablero de las 518 cuentas **5,2 s** recalculando y 0,01 s desde la caché de 3 minutos (objetivo menos de 10 s; la clasificación de la 035, 4,8 s, se precalienta al arrancar el servidor) · ficha de Cargill 2,4 s · revisión de archivos de un período **6,1 s** (objetivo menos de 15 s; todos los períodos juntos 76 s).
+
+**Distribución final de colas** (518 cuentas, cada una en una sola): A 364 · B 32 · C 4 · D 75 · E 2 · F 3 · H 23 · I 15. Con la detección de imputaciones de tarjeta duplicadas (T042) la C pasó de 1 a 4 cuentas (Coto y otras 3).
+
+| Criterio | Resultado |
+|---|---|
+| SC-001 ficha, etapa, estado y cola para todas | Cumple: las 518 cuentas se calculan y el total del tablero coincide con la suma de sus casillas (prueba de contrato). |
+| SC-002 detector sobre el caso testigo | Cumple: los 8 pagos de Jauregui, con la retención sumada (prueba con fixture). |
+| SC-003 ninguna cuenta se cierra con pagos sin factura sin decisión | Cumple: el cierre devuelve 409 con la lista de criterios (pruebas unitarias y de contrato). |
+| SC-004 FIFO solo con E1 a E4 y saldo idéntico | Cumple en la puerta (409 con la etapa pendiente, tandas que omiten e informan); el "saldo idéntico antes y después" lo sigue garantizando el motor de la 032. |
+| SC-005 cuenta sana aprobada en menos de 1 minuto | **No medido con una aplicación real**: el lote `aprobar-cierre` de la cola A (364 cuentas, 359 cumplen) está listo pero no se aplicó sin la aprobación de Sergio. El flujo es una sola decisión por lote. |
+| SC-006 un lote, una regla, una aprobación | Cumple en el diseño y en las pruebas con lotes simulados; no se aplicó un lote real. |
+| SC-007 cola I menor al 10 % | **Cumple: 15 de 518, 2,9 %.** |
+| SC-008 motivo, fecha y evidencia en cada cierre y excepción; reversible | Cumple en las pruebas (se guarda quién, cuándo, motivo y fuente; la ficha previa se conserva para revertir). La reversión real de un lote no se ejercitó sobre `WC`. |
+| SC-009 ningún comprobante legible sin cargar y sin informar | Cumple en la carpeta real: 21 archivos por revisar en todos los períodos, 12 comprobantes legibles con extensión incorrecta y los 12 ya cargados. |
+| SC-010 saber el avance en menos de 30 segundos | Cumple: tablero en 5,2 s la primera vez y al instante después. |
+| SC-011 todas las cuentas cerradas o cerradas con excepción | **En curso**: 1 de 518 cerrada (Jauregui y Morales). Es el objetivo del trabajo que sigue. |
