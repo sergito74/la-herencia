@@ -183,12 +183,13 @@ def hallazgos_movimiento_sin_contacto(movs: list[dict], reglas: list[str]) -> di
             "importeSinExplicar": round(sum(g["importe"] for g in grupos.values()), 2)}
 
 
-def hallazgos_contacto_duplicado(contactos: list[dict]) -> list[dict]:
-    """Contactos con el mismo CUIT; solo se informa, nunca se unifican."""
+def hallazgos_contacto_duplicado(contactos: list[dict], cuits_compartidos: frozenset[str] | set[str] | tuple = ()) -> list[dict]:
+    """Contactos con el mismo CUIT; solo se informa, nunca se unifican. Los CUIT declarados como compartidos (estaciones de una misma
+    operadora, por ejemplo) no se informan."""
     por_cuit: dict[str, list[dict]] = defaultdict(list)
     for c in contactos:
         cuit = "".join(ch for ch in (c.get("cuit") or "") if ch.isdigit())
-        if len(cuit) == 11:
+        if len(cuit) == 11 and cuit not in cuits_compartidos:
             por_cuit[cuit].append(c)
     resultado = []
     for cuit, lista in por_cuit.items():
@@ -207,6 +208,6 @@ def todos(datos: dict, parametros: dict) -> list[dict]:
     res += hallazgos_doble_descuento(datos["documentos"])
     res += hallazgos_sobrepago(datos["documentos"])
     res += hallazgos_nota_sin_imputar(datos["notas"], umbral)
-    res += hallazgos_contacto_duplicado(datos["contactos"])
+    res += hallazgos_contacto_duplicado(datos["contactos"], set(datos.get("cuitsCompartidos", ())))
     res += hallazgos_impuesto_sin_boleta(datos.get("saldosOrganismos", {}), umbral)
     return res

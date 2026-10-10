@@ -71,13 +71,14 @@ async def test_casos_conocidos_aparecen_solos():
     h = (await _get("/api/auditoria-cuentas/cuentas/258/hallazgos")).json()["hallazgos"]
     cargill = [x for x in h if x["causa"] == "aplicacion-fuera-de-plazo" and x.get("idMovimiento") == 3240 and x.get("medio") == "galicia"]
     assert cargill and cargill[0]["cantidadFacturas"] > 50 and cargill[0]["facturaMasVieja"] == "2019-05-07"
-    # Doble descuento con tarjeta. Cooperativa (22) y Lartirigoyen (61) ya se corrigieron el 09/10/2026 (FIFO y anulación de imputaciones,
-    # corrección 41): ya no figuran. Coto (465) sigue con el caso y lo encuentra solo.
-    for contacto in (22, 61):
+    # Doble descuento con tarjeta. Cooperativa (22) y Lartirigoyen (61) se corrigieron el 09/10/2026 (FIFO y anulación de imputaciones,
+    # corrección 41) y Coto (465) con el lote 65 de la 036 (anulación de 25 imputaciones): ya no figuran. YPF Debenedetti (282) sigue con
+    # el caso y lo encuentra solo.
+    for contacto in (22, 61, 465):
         hs = (await _get(f"/api/auditoria-cuentas/cuentas/{contacto}/hallazgos")).json()["hallazgos"]
         assert not any(x["causa"] == "doble-descuento-tarjeta" for x in hs)
-    coto = (await _get("/api/auditoria-cuentas/cuentas/465/hallazgos")).json()["hallazgos"]
-    assert any(x["causa"] == "doble-descuento-tarjeta" for x in coto)
+    debenedetti = (await _get("/api/auditoria-cuentas/cuentas/282/hallazgos")).json()["hallazgos"]
+    assert any(x["causa"] == "doble-descuento-tarjeta" for x in debenedetti)
 
 
 @pytest.mark.anyio

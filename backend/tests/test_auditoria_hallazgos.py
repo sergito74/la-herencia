@@ -107,3 +107,15 @@ def test_una_regla_sin_numeros_alcanza_conceptos_con_numeros():
     assert h.explicado_por("Imp. Cre. Ley 25413", ["LEY 25413"]) == "LEY 25413"
     assert h.explicado_por("Imp. Cre. Ley 99999", ["LEY 25413"]) is None
     assert h.explicado_por(None, ["LEY"]) is None
+
+
+def test_un_cuit_declarado_como_compartido_no_se_informa_como_contacto_duplicado():
+    c = [{"idContacto": 1, "razonSocial": "EESS Saladillo", "cuit": "30-67877449-5"},
+         {"idContacto": 2, "razonSocial": "YPF Nordelta", "cuit": "30678774495"},
+         {"idContacto": 3, "razonSocial": "YPF Pacheco", "cuit": "30678774495"},
+         {"idContacto": 4, "razonSocial": "Otro", "cuit": "20111111112"},
+         {"idContacto": 5, "razonSocial": "Otro duplicado", "cuit": "20111111112"}]
+    sin_regla = h.hallazgos_contacto_duplicado(c)
+    assert sorted(x["idContacto"] for x in sin_regla) == [1, 2, 3, 4, 5]
+    con_regla = h.hallazgos_contacto_duplicado(c, {"30678774495"})
+    assert sorted(x["idContacto"] for x in con_regla) == [4, 5]       # los demás siguen informándose

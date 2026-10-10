@@ -115,5 +115,9 @@ def cargar_hallazgos(corte: date | None = None) -> dict:
     saldos_org = {r["c"]: float(r["s"]) for r in fetch_all(
         "SELECT IdContacto AS c, SUM(Credito - Deuda) AS s FROM dbo.vw_MovimientosCuenta_Base WHERE Fecha <= ? "
         f"AND IdContacto IN ({','.join(str(i) for i in ORGANISMOS)}) GROUP BY IdContacto", (tope,))}
+    try:
+        compartidos = [r["k"] for r in fetch_all("SELECT Clave AS k FROM dbo.AuditoriaConocidos WHERE Activo = 1 AND Tipo = 'cuit-compartido'", ())]
+    except Exception:
+        compartidos = []  # sin tabla o sin el tipo todavía
     return {"aplicaciones": aplicaciones, "documentos": list(docs.values()), "notas": notas, "contactos": contactos,
-            "saldosOrganismos": saldos_org, "movimientosSinContacto": sin_contacto}
+            "saldosOrganismos": saldos_org, "movimientosSinContacto": sin_contacto, "cuitsCompartidos": compartidos}

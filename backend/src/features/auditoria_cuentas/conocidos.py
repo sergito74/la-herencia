@@ -8,6 +8,8 @@ Un mismo mecanismo para todas las cuentas y todos los movimientos, sin umbral de
     siga siendo la documentada deja de contar como excepción, y si cambia vuelve a aparecer.
   * `tc-pactado`: el proveedor factura en dólares a un tipo de cambio pactado (la clave es el contacto): sus pagos
     en pesos se pasan a dólares con el tipo de cambio de las facturas y no con el dólar BNA, sin diferencia de cambio.
+  * `cuit-compartido`: varios contactos legítimos comparten un CUIT (por ejemplo las estaciones de una misma operadora, cada una con su
+    cuenta): la clave es el CUIT de 11 dígitos y deja de informarse como "contacto duplicado".
 
 Nada se borra: dar de baja una regla la marca inactiva con usuario y fecha.
 """
@@ -16,7 +18,7 @@ from __future__ import annotations
 
 from src.db.connection import execute_insert_returning_id, execute_write, fetch_all, fetch_one
 
-TIPOS = ("concepto-movimiento", "cuenta", "tc-pactado")
+TIPOS = ("concepto-movimiento", "cuenta", "tc-pactado", "cuit-compartido")
 
 
 class ConocidoError(Exception):
@@ -42,7 +44,11 @@ def crear(tipo: str, clave: str, motivo: str, importe_ref: float | None, usuario
     motivo = (motivo or "").strip()
     if not clave or not motivo:
         raise ConocidoError(422, "Falta la clave o el motivo")
-    if tipo == "concepto-movimiento":
+    if tipo == "cuit-compartido":
+        clave = "".join(ch for ch in clave if ch.isdigit())
+        if len(clave) != 11:
+            raise ConocidoError(422, "El CUIT debe tener 11 dígitos")
+    elif tipo == "concepto-movimiento":
         clave = clave.upper()
         if len(clave) < 4:
             raise ConocidoError(422, "El concepto es muy corto: tiene que tener al menos 4 caracteres")
