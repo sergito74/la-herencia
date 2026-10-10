@@ -125,3 +125,8 @@ Todo en `WC`. Desde `backend/`, con `PYTHONIOENCODING=utf-8`. Referencias: [data
 
 - Un pago de un cliente (por ejemplo una retención de Ganancias) que es parte del cobro de una venta de hacienda o de granos ya no se marca "sin documento": se marca `venta-cargada` con la venta que lo respalda, y la ficha muestra "Respaldada por la venta de hacienda 00003-00000014". Tabla ampliada con `TipoVenta` e `IdVenta` y el estado nuevo (script `ampliar_marcas_ventas_036.py`, con respaldo; idempotente). Endpoint nuevo `GET /cuentas/{id}/ventas`. Aplicado a Sarciat Gómez y Transcom. Pruebas del backend y de navegador pasan.
 - Cola D, grupo A (lote 57, 10 cuentas) y sueldos (lote 58, 3 cuentas) cerrados: 396 fichas cerradas.
+
+### Cola D, un solo pago marcado: últimas cuentas (09/10/2026)
+
+- Aquila Nera (VEP de AFIP pagado por Giamigli por cuenta de Aquila Nera y reintegrado), Servicios Turísticos de Rutas (diferencia de $1,90, probablemente percepciones de IIBB que la app de YPF no cobraba), Simplex Vili (compra de Mercado Libre devuelta por completo) y Diego Pardo (personal auxiliar eventual: sus 6 jornales de la planilla de trabajos eventuales coinciden con sus pagos; aviso de $91.000 marcado resuelto): lote 59. Fideicomiso La Esperanza: el contrato de arrendamiento ahora también puede ser el respaldo de una marca (`arrendamiento`), y la medición de imputaciones cuenta los contratos como crédito. Total: 401 fichas cerradas.
+- Personas: los únicos empleados permanentes son Marcelo Sierra (de Giamigli) e Irma Miranda (de Lucy, con sueldos pagados por Giamigli a través de la cuenta particular de Lucy o de Sergio); el resto del personal es auxiliar eventual (Planilla trabajos eventuales.xlsx).

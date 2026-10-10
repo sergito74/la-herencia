@@ -14,9 +14,11 @@ from datetime import date
 from src.db.connection import execute_write_transaction, fetch_all, fetch_one
 
 ESTADOS_MARCA = ("pendiente", "factura-cargada", "sin-documento", "anticipo", "venta-cargada")
-# Una venta (de hacienda o de granos) también respalda un pago de un cliente: la retención o el cobro es parte de esa venta
-TIPOS_VENTA = {"venta-hacienda": ("Venta Hacienda", "[Nro documento]", "venta de hacienda"),
-               "venta-granos": ("Venta Granos", "[Nro Documento]", "venta de granos")}
+# Un pago de un cliente puede estar respaldado por una venta (de hacienda o de granos) o por un contrato de arrendamiento:
+# la retención o el cobro es parte de ese documento. tabla, columna del id, columna del contacto, columna del número (None: se usa la fecha), rótulo
+TIPOS_VENTA = {"venta-hacienda": ("Venta Hacienda", "IdVenta", "IdConsignatario", "[Nro documento]", "venta de hacienda"),
+               "venta-granos": ("Venta Granos", "IdVenta", "IdConsignatario", "[Nro Documento]", "venta de granos"),
+               "arrendamiento": ("Alquileres", "IdAlquiler", "IdContacto", None, "contrato de arrendamiento")}
 FUENTES_RESPALDO = ("portal", "estado-de-cuenta", "pdf")
 _EXTENSION_DE_ARCHIVO = re.compile(r"\.(pdf|jpe?g|png|tiff?|crdownload)\b", re.IGNORECASE)
 
@@ -44,13 +46,13 @@ def validar_marca(id_contacto: int, estado: str, nota: str | None, id_compra: in
         raise ValueError("Fuente de respaldo desconocida")
     if estado == "venta-cargada":
         if tipo_venta not in TIPOS_VENTA or id_venta is None:
-            raise ValueError("Indicá cuál venta respalda el pago: de hacienda o de granos, y su número")
-        tabla = TIPOS_VENTA[tipo_venta][0]
-        if fetch_one(f"SELECT 1 AS x FROM dbo.[{tabla}] WHERE IdVenta = ? AND IdConsignatario = ?", (id_venta, id_contacto)) is None:
-            raise ValueError("La venta no existe o no es de esta cuenta")
+            raise ValueError("Indicá cuál venta o contrato respalda el pago: de hacienda, de granos o de arrendamiento, y su número")
+        tabla, col_id, col_contacto, _, _ = TIPOS_VENTA[tipo_venta]
+        if fetch_one(f"SELECT 1 AS x FROM dbo.[{tabla}] WHERE {col_id} = ? AND {col_contacto} = ?", (id_venta, id_contacto)) is None:
+            raise ValueError("La venta o el contrato no existe o no es de esta cuenta")
         return False
     if tipo_venta is not None or id_venta is not None:
-        raise ValueError("La venta solo se indica cuando el pago está respaldado por una venta")
+        raise ValueError("La venta o el contrato solo se indica cuando el pago está respaldado por una venta")
     sin_archivo = False
     if estado == "factura-cargada":
         if id_compra is None:
@@ -65,21 +67,31 @@ def validar_marca(id_contacto: int, estado: str, nota: str | None, id_compra: in
     return sin_archivo
 
 
+def _numero(fila: dict, columna_nro: str | None, fecha_clave: str = "f") -> str | None:
+    """Número del documento; el contrato de arrendamiento no tiene número y se nombra por su fecha."""
+    if columna_nro is not None:
+        return fila["n"] or None
+    f = str(fila.get(fecha_clave) or "")[:10]
+    return f"del {f[8:10]}/{f[5:7]}/{f[0:4]}" if len(f) >= 10 else None
+
+
 def texto_de_venta(tipo_venta: str | None, id_venta: int | None) -> str | None:
-    """Rótulo legible de la venta que respalda un pago, por ejemplo "venta de hacienda 00003-00000014"."""
+    """Rótulo legible del documento que respalda un pago, por ejemplo "venta de hacienda 00003-00000014"."""
     if tipo_venta not in TIPOS_VENTA or id_venta is None:
         return None
-    tabla, columna_nro, rotulo = TIPOS_VENTA[tipo_venta]
-    fila = fetch_one(f"SELECT {columna_nro} AS n FROM dbo.[{tabla}] WHERE IdVenta = ?", (id_venta,))
-    return f"{rotulo} {fila['n']}" if fila and fila["n"] else f"{rotulo} #{id_venta}"
+    tabla, col_id, _, columna_nro, rotulo = TIPOS_VENTA[tipo_venta]
+    fila = fetch_one(f"SELECT {columna_nro or 'NULL'} AS n, Fecha AS f FROM dbo.[{tabla}] WHERE {col_id} = ?", (id_venta,))
+    numero = _numero(fila, columna_nro) if fila else None
+    return f"{rotulo} {numero}" if numero else f"{rotulo} #{id_venta}"
 
 
 def ventas_de_cuenta(id_contacto: int) -> list[dict]:
-    """Ventas de hacienda y de granos de la cuenta, para elegir cuál respalda un pago."""
+    """Ventas de hacienda y de granos y contratos de arrendamiento de la cuenta, para elegir cuál respalda un pago."""
     salida = []
-    for tipo, (tabla, columna_nro, rotulo) in TIPOS_VENTA.items():
-        for f in fetch_all(f"SELECT IdVenta AS i, Fecha AS f, {columna_nro} AS n FROM dbo.[{tabla}] WHERE IdConsignatario = ? ORDER BY Fecha DESC", (id_contacto,)):
-            salida.append({"tipo": tipo, "idVenta": int(f["i"]), "fecha": f["f"], "numero": f["n"], "rotulo": f"{rotulo} {f['n'] or '#' + str(f['i'])}"})
+    for tipo, (tabla, col_id, col_contacto, columna_nro, rotulo) in TIPOS_VENTA.items():
+        for f in fetch_all(f"SELECT {col_id} AS i, Fecha AS f, {columna_nro or 'NULL'} AS n FROM dbo.[{tabla}] WHERE {col_contacto} = ? ORDER BY Fecha DESC", (id_contacto,)):
+            numero = _numero(f, columna_nro)
+            salida.append({"tipo": tipo, "idVenta": int(f["i"]), "fecha": f["f"], "numero": numero, "rotulo": f"{rotulo} {numero}" if numero else f"{rotulo} #{f['i']}"})
     return sorted(salida, key=lambda v: str(v["fecha"]), reverse=True)
 
 

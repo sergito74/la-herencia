@@ -130,8 +130,26 @@ def test_las_ventas_de_la_cuenta_traen_hacienda_y_granos_ordenadas_por_fecha(mon
     def falso(sql, params=()):
         if "Venta Hacienda" in sql:
             return [{"i": 67, "f": "2024-05-28", "n": "00003-00000014"}]
-        return [{"i": 12, "f": "2025-01-10", "n": None}]
+        if "Venta Granos" in sql:
+            return [{"i": 12, "f": "2025-01-10", "n": None}]
+        return []  # sin contratos de arrendamiento
     monkeypatch.setattr(evidencia, "fetch_all", falso)
     ventas = evidencia.ventas_de_cuenta(551)
     assert [v["rotulo"] for v in ventas] == ["venta de granos #12", "venta de hacienda 00003-00000014"]
     assert [v["tipo"] for v in ventas] == ["venta-granos", "venta-hacienda"]
+
+
+def test_un_contrato_de_arrendamiento_tambien_respalda_un_pago(monkeypatch):
+    consultas = []
+    monkeypatch.setattr(evidencia, "fetch_one", lambda sql, params=(): consultas.append((sql, params)) or {"x": 1})
+    assert evidencia.validar_marca(562, "venta-cargada", None, None, None, "arrendamiento", 138210678) is False
+    assert "Alquileres" in consultas[0][0] and "IdAlquiler" in consultas[0][0] and consultas[0][1] == (138210678, 562)
+
+
+def test_el_contrato_de_arrendamiento_se_nombra_por_su_fecha(monkeypatch):
+    monkeypatch.setattr(evidencia, "fetch_one", lambda sql, params=(): {"n": None, "f": "2024-11-19 00:00:00"})
+    assert evidencia.texto_de_venta("arrendamiento", 138210678) == "contrato de arrendamiento del 19/11/2024"
+    monkeypatch.setattr(evidencia, "fetch_all", lambda sql, params=(): [{"i": 138210678, "f": "2024-11-19", "n": None}] if "Alquileres" in sql else [])
+    ventas = evidencia.ventas_de_cuenta(562)
+    assert ventas == [{"tipo": "arrendamiento", "idVenta": 138210678, "fecha": "2024-11-19", "numero": "del 19/11/2024",
+                       "rotulo": "contrato de arrendamiento del 19/11/2024"}]

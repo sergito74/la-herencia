@@ -18,7 +18,7 @@ export type EstadoFicha =
   | "cerrada-con-excepcion";
 export type EstadoEfectivo = EstadoFicha | "reabierta";
 export type EstadoMarca = "pendiente" | "factura-cargada" | "sin-documento" | "anticipo" | "venta-cargada";
-export type TipoVenta = "venta-hacienda" | "venta-granos";
+export type TipoVenta = "venta-hacienda" | "venta-granos" | "arrendamiento";
 export type FuenteSaldoExterno = "portal" | "pdf" | "mail" | "banco" | "tarjeta" | "sin-estado";
 export type FuenteRespaldo = "portal" | "estado-de-cuenta" | "pdf";
 export type Moneda = "Pesos" | "Dolares";

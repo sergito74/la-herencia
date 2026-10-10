@@ -143,6 +143,9 @@ def imputaciones_de_cuentas(ids: list[int] | None = None, hasta: date | None = N
     tesoreria += fetch_all(
         "SELECT ct.IdContacto AS i, SUM(ct.Importe) AS s FROM dbo.ConciliacionesTesoreria ct JOIN dbo.[Movimientos Mercado Libre] ml ON ml.IdMovimiento = ct.IdMovimiento "
         "WHERE ct.Medio = 'mercado-libre' AND ct.TipoOrigenDocumento IS NULL" + f_c + f_ml + " GROUP BY ct.IdContacto", p_ids + p_hasta)
+    # los contratos de arrendamiento entran como crédito en la cuenta (neto de la retención) y compensan facturas sin pasar por AplicacionesPago
+    tesoreria += fetch_all(
+        "SELECT IdContacto AS i, SUM([Importe total del contrato] - ISNULL([Retencion Ganancias], 0)) AS s FROM dbo.Alquileres WHERE 1 = 1" + f_ids + f_hasta + " GROUP BY IdContacto", p_ids + p_hasta)
     tesoreria += fetch_all(
         "SELECT IdContacto AS i, SUM(Importe) AS s FROM dbo.AjustesCuentaCorriente WHERE Lado = 'Credito'" + f_ids + f_hasta + " GROUP BY IdContacto", p_ids + p_hasta)
     r: dict[int, dict] = {int(f["i"]): {"facturado": round(float(f["s"] or 0), 2), "facturas": int(f["n"]), "aplicado": 0.0, "tarjeta": 0.0} for f in facturado}

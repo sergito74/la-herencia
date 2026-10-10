@@ -17,7 +17,7 @@ const NOMBRE_ESTADO: Record<EstadoMarca, string> = {
   pendiente: "Pendiente",
   "factura-cargada": "Factura cargada",
   "sin-documento": "Sin documento",
-  "venta-cargada": "Respaldado por una venta",
+  "venta-cargada": "Respaldado por una venta o un contrato",
   anticipo: "Anticipo",
 };
 
@@ -88,7 +88,7 @@ function FilaPago({ idContacto, pago, alMarcar }: { idContacto: number; pago: Pa
               Qué pasó con este pago{" "}
               <select value={estado} onChange={(e) => setEstado(e.target.value as EstadoMarca)} className="rounded border border-line px-1 py-0.5">
                 <option value="factura-cargada">Ya cargué la factura</option>
-                <option value="venta-cargada">Lo respalda una venta (hacienda o granos)</option>
+                <option value="venta-cargada">Lo respalda una venta o un contrato de arrendamiento</option>
                 <option value="sin-documento">No hay documento (decisión mía)</option>
                 <option value="anticipo">Es un anticipo</option>
                 <option value="pendiente">Dejarlo pendiente</option>
@@ -107,14 +107,14 @@ function FilaPago({ idContacto, pago, alMarcar }: { idContacto: number; pago: Pa
             )}
             {estado === "venta-cargada" && (
               <label className="block">
-                ¿Cuál venta?{" "}
+                ¿Cuál documento?{" "}
                 <select value={venta} onChange={(e) => setVenta(e.target.value)} className="rounded border border-line px-1 py-0.5">
-                  <option value="">Elegí una venta</option>
+                  <option value="">Elegí una venta o un contrato</option>
                   {ventas.map((v) => (
                     <option key={`${v.tipo}:${v.idVenta}`} value={`${v.tipo}:${v.idVenta}`}>{formatFecha(v.fecha)} · {v.rotulo}</option>
                   ))}
                 </select>
-                {ventas.length === 0 && <span className="ml-2 text-ink-secondary">Esta cuenta no tiene ventas de hacienda ni de granos.</span>}
+                {ventas.length === 0 && <span className="ml-2 text-ink-secondary">Esta cuenta no tiene ventas ni contratos de arrendamiento.</span>}
               </label>
             )}
             <label className="block">
