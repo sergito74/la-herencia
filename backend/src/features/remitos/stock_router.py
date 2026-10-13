@@ -80,6 +80,13 @@ async def exportar_existencias(q: str | None = None, tipo: str | None = None, es
     return Response(content=contenido, media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", headers={"Content-Disposition": f'attachment; filename="existencias-{date.today().isoformat()}.xlsx"'})
 
 
+@router.get("/existencias/recuento")
+async def exportar_recuento(q: str | None = None, tipo: str | None = None, estado: str | None = None) -> Response:
+    """Planilla imprimible para el recuento físico de stock en el campo."""
+    contenido = await _ejecutar(exportacion.recuento_xlsx, q, tipo, estado)
+    return Response(content=contenido, media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", headers={"Content-Disposition": f'attachment; filename="recuento-stock-{date.today().isoformat()}.xlsx"'})
+
+
 @router.get("/existencias/{id_producto}/kardex")
 async def kardex(id_producto: int) -> dict:
     k = await _ejecutar(stock_repo.kardex, id_producto)

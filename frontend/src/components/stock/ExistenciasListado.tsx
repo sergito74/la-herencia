@@ -3,7 +3,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 
-import { fetchExistencias, fetchKardex, fetchTiposProducto, urlExportarExistencias, type Existencia } from "@/services/remitosApi";
+import { fetchExistencias, fetchKardex, fetchTiposProducto, urlExportarExistencias, urlRecuentoFisico, type Existencia } from "@/services/remitosApi";
 import { formatCantidad, formatMoneda } from "@/lib/format";
 import { DataTable, type DataTableColumn } from "@/components/ui/DataTable";
 import { FilterBar, FilterField, FilterSubmitButton, filterInputClass } from "@/components/ui/FilterBar";
@@ -117,7 +117,14 @@ export function ExistenciasListado() {
           <KpiCard label="Stock negativo" value={formatCantidad(data.totales.negativos)} tone={data.totales.negativos ? "danger" : "neutral"} />
         </div>
       )}
-      <div className="flex justify-end">
+      <div className="flex justify-end gap-2">
+        <a
+          href={urlRecuentoFisico(filtros)}
+          title="Descarga una planilla imprimible para contar el stock en el campo, con los filtros aplicados."
+          className="rounded-sm border border-finance px-4 py-2 text-sm text-finance hover:bg-finance-light"
+        >
+          Planilla de recuento físico
+        </a>
         <BotonExcel href={urlExportarExistencias(filtros)} />
       </div>
       <FilterBar

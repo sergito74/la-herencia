@@ -119,11 +119,12 @@ def kardex(id_producto: int) -> dict | None:
     for sid, cons in s["consumos"].items():
         m = s["salidaMeta"][sid]
         cantidad = sum(i["cantidad"] for i in cons["items"]) + cons["sin_cobertura"]
-        detalle = {"orden": f"Orden de trabajo {m.get('idOrden')}", "baja": f"Baja: {MOTIVOS_BAJA.get(m.get('motivo'), m.get('motivo'))}",
+        detalle = {"orden": f"Orden de trabajo {m.get('idOrden')} (heredada)",
+                   "ordenTrabajo": f"Orden de trabajo {m.get('idOrdenTrabajo')}", "baja": f"Baja: {MOTIVOS_BAJA.get(m.get('motivo'), m.get('motivo'))}",
                    "faltante": f"Ajuste (faltante): {m.get('motivo')}"}[m["tipo"]]
         movs.append({
-            "fecha": _d(m["fecha"]), "orden": 1, "clave": sid, "tipo": {"orden": "Orden de trabajo", "baja": "Baja", "faltante": "Faltante"}[m["tipo"]],
-            "detalle": detalle, "idOrden": m.get("idOrden"), "idBaja": m.get("idBaja"), "cantidad": -cantidad,
+            "fecha": _d(m["fecha"]), "orden": 1, "clave": sid, "tipo": {"orden": "Orden de trabajo", "ordenTrabajo": "Orden de trabajo", "baja": "Baja", "faltante": "Faltante"}[m["tipo"]],
+            "detalle": detalle, "idOrden": m.get("idOrden") or m.get("idOrdenTrabajo"), "idBaja": m.get("idBaja"), "cantidad": -cantidad,
             "costoUnitario": (cons["costo"] / (cantidad - cons["cantidad_costo_pendiente"] - cons["sin_cobertura"])) if cantidad - cons["cantidad_costo_pendiente"] - cons["sin_cobertura"] > TOLERANCIA else None,
             "importe": -cons["costo"], "costoPendiente": cons["provisoria"], "sinCobertura": cons["sin_cobertura"],
         })

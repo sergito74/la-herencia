@@ -114,3 +114,74 @@ def bajas_xlsx(**filtros) -> bytes:
                        "Sí" if l["costoPendiente"] else None, "Sí" if b["anulada"] else None])
     _cerrar(ws, {0: _FECHA, 6: _CANT, 8: _PESOS})
     return _bytes(wb)
+
+
+def recuento_xlsx(q=None, tipo=None, estado=None) -> bytes:
+    """Planilla para el recuento físico en el campo: lista para imprimir, con la existencia
+    del sistema y columnas en blanco para anotar lo contado. La diferencia se calcula sola
+    cuando se carga la cantidad contada en la planilla."""
+    from openpyxl.styles import Border, Side
+
+    datos = stock_repo.existencias(q, tipo, estado)
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Recuento físico"
+    linea = Side(style="thin", color="808080")
+    borde = Border(left=linea, right=linea, top=linea, bottom=linea)
+    columnas = [("N°", 5), ("Producto", 44), ("Unidad", 8), ("Stock sistema", 13), ("Cantidad contada", 14), ("Diferencia", 12), ("Observaciones", 34)]
+    for i, (_, ancho) in enumerate(columnas, start=1):
+        ws.column_dimensions[get_column_letter(i)].width = ancho
+
+    ws.append(["Recuento físico de stock"])
+    ws["A1"].font = Font(bold=True, size=14)
+    ws.append([f"Generado: {date.today().strftime('%d/%m/%Y')}", None, None, None, "Fecha del recuento: ____/____/______"])
+    ws.append(["Responsable: ______________________________", None, None, None, "Lugar / depósito: ____________________"])
+    ws.append([])
+    ws.append([c for c, _ in columnas])
+    encabezado = ws.max_row
+    for c in range(1, len(columnas) + 1):
+        celda = ws.cell(row=encabezado, column=c)
+        celda.font = Font(bold=True)
+        celda.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
+        celda.border = borde
+    ws.row_dimensions[encabezado].height = 30
+
+    grupos: dict[str, list] = {}
+    for it in datos["items"]:
+        grupos.setdefault(it["tipo"] or "Sin tipo", []).append(it)
+    n = 0
+    for nombre in sorted(grupos):
+        ws.append([nombre])
+        f = ws.max_row
+        ws.merge_cells(start_row=f, start_column=1, end_row=f, end_column=len(columnas))
+        ws.cell(row=f, column=1).font = Font(bold=True)
+        ws.cell(row=f, column=1).fill = PatternFill("solid", fgColor="E3ECE6")
+        for c in range(1, len(columnas) + 1):
+            ws.cell(row=f, column=c).border = borde
+        for it in grupos[nombre]:
+            n += 1
+            ws.append([n, it["producto"], it["unidadBase"], round(it["existencia"], 2), None, None, None])
+            f = ws.max_row
+            ws.cell(row=f, column=6).value = f'=IF(E{f}="","",E{f}-D{f})'
+            ws.row_dimensions[f].height = 22
+            for c in range(1, len(columnas) + 1):
+                celda = ws.cell(row=f, column=c)
+                celda.border = borde
+                celda.alignment = Alignment(vertical="center", wrap_text=(c == 2))
+            for c in (4, 5, 6):
+                ws.cell(row=f, column=c).number_format = "#,##0.00"
+                ws.cell(row=f, column=c).alignment = Alignment(horizontal="right", vertical="center")
+
+    ws.append([])
+    ws.append(["Firma del responsable: ______________________________"])
+    ws.freeze_panes = ws.cell(row=encabezado + 1, column=1)
+    ws.print_title_rows = f"{encabezado}:{encabezado}"
+    ws.page_setup.paperSize = ws.PAPERSIZE_A4
+    ws.page_setup.orientation = "portrait"
+    ws.page_setup.fitToWidth = 1
+    ws.page_setup.fitToHeight = 0
+    ws.sheet_properties.pageSetUpPr.fitToPage = True
+    ws.print_options.horizontalCentered = True
+    ws.page_margins.left = ws.page_margins.right = 0.4
+    ws.oddFooter.center.text = "Página &P de &N"
+    return _bytes(wb)

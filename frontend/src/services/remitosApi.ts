@@ -353,6 +353,7 @@ function urlExport(ruta: string, params: Record<string, string | number | null |
 export const urlExportarRemitos = (f: FiltrosRemitos) =>
   urlExport("/api/remitos/exportar", { idProveedor: f.idProveedor, producto: f.producto, nroRemito: f.nroRemito, fechaDesde: f.fechaDesde, fechaHasta: f.fechaHasta, estado: f.estado });
 export const urlExportarExistencias = (f: { q?: string; tipo?: string; estado?: string }) => urlExport("/api/stock/existencias/exportar", f);
+export const urlRecuentoFisico = (f: { q?: string; tipo?: string; estado?: string }) => urlExport("/api/stock/existencias/recuento", f);
 export const urlExportarBajas = (f: { fechaDesde?: string; fechaHasta?: string; motivo?: string; producto?: string }) => urlExport("/api/stock/bajas/exportar", f);
 
 // ------------------------------------------------------------------ etiquetas
