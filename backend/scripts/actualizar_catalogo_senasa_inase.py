@@ -43,6 +43,35 @@ SIN_CLASIFICAR = "SD"
 # Biológicos sin antecedente en el catálogo: aptitud por el organismo.
 APTITUD_BIO = [("BEAUVERIA", "IN"), ("METARHIZIUM", "IN"), ("THURINGIENSIS", "IN"), ("BACULOVIRUS", "IN"),
                ("TRICHODERMA", "FU"), ("BACILLUS", "FU"), ("STREPTOMYCES", "FU"), ("PSEUDOMONAS", "FU")]
+# Activos sin antecedente (nombre nuevo o escrito distinto), clasificados a mano
+# con la etiqueta/ficha del producto (revisión 2026-10-15). Se busca por subcadena.
+APTITUD_ACTIVO = [
+    # Herbicidas
+    ("BENTAZON", "HE"), ("BIXLOZONE", "HE"), ("BROMOXINIL", "HE"), ("CIALOFOP", "HE"), ("CLOPYRALID", "HE"),
+    ("DIQUAT", "HE"), ("EPYRIFENACIL", "HE"), ("FENOXAPROP", "HE"), ("FLUAZIFOP", "HE"), ("HALOXIFOP", "HE"),
+    ("ISOXABEN", "HE"), ("TEMBOTRIONE", "HE"), ("METAMITRON", "HE"), ("METPROXYBICYCLON", "HE"),
+    ("PIROXSULAM", "HE"), ("QUIZALOFOP", "HE"), ("TIAFENACIL", "HE"), ("TRIFLUDIMOXAZIN", "HE"),
+    # Insecticidas
+    ("AFIDOPYROPEN", "IN"), ("CIPERMETRINA", "IN"), ("ALFAMETRINA", "IN"), ("BUPROFEZIN", "IN"),
+    ("GRANULOVIRUS", "IN"), ("SWINGLEA", "IN"), ("FLUXAMETAMIDE", "IN"), ("ISARIA", "IN"), ("ISOCYCLOSERAM", "IN"),
+    ("LAMBDA-CIALOTRINA", "IN"), ("PIMETROZIN", "IN"), ("PIRIPROXIFEN", "IN"), ("PYRIDALIL", "IN"), ("RIANODINA", "IN"),
+    # Fungicidas
+    ("ARBOL DE TE", "FU"), ("AMISULBROM", "FU"), ("BICARBONATO DE SODIO", "FU"), ("ZOXAMIDA", "FU"), ("ETABOXAM", "FU"),
+    ("OXATIAPIPROLIN", "FU"), ("MEFENTRIFLUCONAZOLE", "FU"), ("PENFLUFEN", "FU"), ("PIDIFLUMETOFEN", "FU"),
+    ("PIRACLOSTROBIN", "FU"), ("PIRIMETANIL", "FU"), ("SALES CCA", "FU"),
+    # Nematicidas
+    ("CYCLOBUTRIFLURAM", "NE"), ("FLUAZAINDOLIZINE", "NE"), ("METAN SODIO", "NE"), ("QUILLAY", "NE"),
+    # Fitorreguladores (incluye antibrotantes y retardadores de maduración)
+    ("AMINOETOXIVINILGLICINA", "FR"), ("CLORPROPHAM", "FR"), ("DIMETILNAFTALENO", "FR"), ("CICLOPROPENO", "FR"),
+    ("PACLOBUTRAZOL", "FR"), ("PROHEXADIONE", "FR"), ("TRINEXAPAC", "FR"),
+    # Feromonas
+    ("DODECADIEN", "FO"), ("DODECENIL", "FO"), ("TETRADECENIL", "FO"), ("LAVANDULIL", "FO"), ("RESCALURE", "FO"),
+    # Coadyuvantes y correctores
+    ("PALMISTE", "AC"), ("HEPTAMETILTRISILOXANO", "CA"), ("ACIDOS FOSFONICOS", "CA"), ("METILFOSF", "CA"),
+    ("ESTERES Y JABONES", "CA"), ("POLIGLICEROL", "CA"),
+]
+# Productos sin activo informado por SENASA: por marca.
+APTITUD_MARCA = {"CHEMICLOR EC": "IN", "BIOTRINSIC D3 WD": "FU", "CERDANA-D": "FU"}
 
 
 def _get_json(url: str) -> dict:
@@ -86,14 +115,19 @@ def _votos_aptitud() -> dict[str, Counter]:
     return votos
 
 
-def _aptitud(activos: list[tuple[str, str]], votos: dict[str, Counter]) -> str:
+def _aptitud(activos: list[tuple[str, str]], votos: dict[str, Counter], marca: str = "") -> str:
     total = Counter()
     for nombre, _ in activos:
         total.update(votos.get(nombre, Counter()))
     if total:
         return total.most_common(1)[0][0]
-    texto = " ".join(n for n, _ in activos)
-    return next((ap for clave, ap in APTITUD_BIO if clave in texto), SIN_CLASIFICAR)
+    return _aptitud_por_texto(" ".join(n for n, _ in activos), marca)
+
+
+def _aptitud_por_texto(texto: str, marca: str = "") -> str:
+    texto = texto.upper().replace("Á", "A").replace("Ó", "O")
+    return (next((ap for clave, ap in APTITUD_ACTIVO + APTITUD_BIO if clave in texto), None)
+            or APTITUD_MARCA.get(marca.strip().upper(), SIN_CLASIFICAR))
 
 
 def _fecha(s: str | None):
@@ -121,7 +155,7 @@ def main(aplicar: bool) -> None:
             continue
         ids.add(nro)
         activos = _activos(p["sustanciasActivas"])
-        ap = _aptitud(activos, votos)
+        ap = _aptitud(activos, votos, p["marca"])
         aptitudes[ap] += 1
         nuevos_f.append((p["marca"].strip(), nro, ap))
         stmts.append((
@@ -129,6 +163,17 @@ def main(aplicar: bool) -> None:
             " CT, CONCENTRACION, NroReg_int) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
             (ap, p["nombreFirma"], float(nro), p["marca"].strip(), " + ".join(n for n, _ in activos) or None,
              p["claseToxicologica"], " + ".join(c for _, c in activos) or None, nro)))
+
+    # Los ya cargados como "Sin clasificar" se reclasifican si ahora hay regla.
+    reclasif = Counter()
+    for r in fetch_all("SELECT NroReg_int AS nro, [INGREDIENTE ACTIVO] AS ia, [MARCA COMERCIAL] AS m"
+                       " FROM dbo.Formulados WHERE APTITUDES = ?", (SIN_CLASIFICAR,)):
+        ap = _aptitud_por_texto(r["ia"] or "", r["m"] or "")
+        if ap != SIN_CLASIFICAR:
+            reclasif[ap] += 1
+            stmts.append(("UPDATE dbo.Formulados SET APTITUDES = ? WHERE NroReg_int = ? AND APTITUDES = ?",
+                          (ap, r["nro"], SIN_CLASIFICAR)))
+    print(f"Reclasificados desde 'Sin clasificar': {sum(reclasif.values())} {dict(reclasif)}")
 
     nuevos_s = []
     hoy = date.today()
