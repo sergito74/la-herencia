@@ -4,10 +4,10 @@ from __future__ import annotations
 
 from datetime import date
 
-from fastapi import APIRouter, HTTPException, Response
+from fastapi import APIRouter, Form, HTTPException, Response, UploadFile
 from starlette.concurrency import run_in_threadpool
 
-from src.features.remitos import catalogo, exportacion, stock_repo
+from src.features.remitos import catalogo, exportacion, recuento, stock_repo
 from src.features.remitos.repository import RequiereConfirmacion
 from src.features.remitos.router import _ejecutar
 from src.features.remitos.schemas import (
@@ -85,6 +85,18 @@ async def exportar_recuento(q: str | None = None, tipo: str | None = None, estad
     """Planilla imprimible para el recuento físico de stock en el campo."""
     contenido = await _ejecutar(exportacion.recuento_xlsx, q, tipo, estado)
     return Response(content=contenido, media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", headers={"Content-Disposition": f'attachment; filename="recuento-stock-{date.today().isoformat()}.xlsx"'})
+
+
+@router.post("/existencias/recuento/previsualizar")
+async def previsualizar_recuento(archivo: UploadFile, fecha: date | None = Form(None)) -> dict:
+    """Compara la planilla de recuento completada contra la existencia a la fecha del recuento."""
+    return await _ejecutar(recuento.previsualizar, await archivo.read(), fecha)
+
+
+@router.post("/existencias/recuento/aplicar", status_code=201)
+async def aplicar_recuento(archivo: UploadFile, motivo: str = Form(...), fecha: date | None = Form(None)) -> dict:
+    """Graba un ajuste por cada faltante o sobrante del recuento, en una sola transacción."""
+    return await _ejecutar(recuento.aplicar, await archivo.read(), fecha, motivo)
 
 
 @router.get("/existencias/{id_producto}/kardex")

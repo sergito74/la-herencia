@@ -123,6 +123,16 @@ export async function apiPost<T>(
   return (await leerRespuesta(response)) as T;
 }
 
+/** POST multipart (subida de archivos), con la misma sesión y manejo de errores que `apiPost`. */
+export async function apiPostForm<T>(path: string, form: FormData): Promise<T> {
+  const response = await fetch(new URL(path, API_BASE_URL).toString(), { method: "POST", body: form, credentials: "include" });
+  if (!response.ok) {
+    const detail = await leerDetalleError(response);
+    throw new ApiError(response.status, detail || response.statusText);
+  }
+  return (await leerRespuesta(response)) as T;
+}
+
 /** PUT helper — ver nota en el encabezado del módulo (solo para `WC`). */
 export async function apiPut<T>(
   path: string,

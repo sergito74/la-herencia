@@ -2,7 +2,7 @@
  * Remitos y stock de insumos (010-remitos). Escribe exclusivamente contra `WC`.
  */
 
-import { API_BASE_URL, apiDelete, apiGet, apiPost, apiPut } from "@/services/apiClient";
+import { API_BASE_URL, apiDelete, apiGet, apiPost, apiPostForm, apiPut } from "@/services/apiClient";
 
 // ------------------------------------------------------------------ catálogo
 
@@ -365,3 +365,37 @@ export const ETIQUETA_ESTADO_RENGLONES: Record<EstadoRenglones, string> = {
   Completo: "Completo",
   ConDiferencia: "Con diferencia",
 };
+
+export type EstadoRecuento = "faltante" | "sobrante" | "sinDiferencia" | "noEncontrado" | "ambiguo";
+
+export interface RenglonRecuento {
+  fila: number;
+  idProducto: number | null;
+  producto: string;
+  unidadBase: string | null;
+  sistema: number | null;
+  contada: number;
+  diferencia: number | null;
+  estado: EstadoRecuento;
+  observaciones: string | null;
+}
+
+export interface PreviaRecuento {
+  fecha: string;
+  renglones: RenglonRecuento[];
+  sinContar: number;
+  resumen: Record<EstadoRecuento, number>;
+}
+
+function formRecuento(archivo: File, fecha: string, motivo?: string) {
+  const form = new FormData();
+  form.append("archivo", archivo);
+  if (fecha) form.append("fecha", fecha);
+  if (motivo != null) form.append("motivo", motivo);
+  return form;
+}
+
+export const previsualizarRecuento = (archivo: File, fecha: string) =>
+  apiPostForm<PreviaRecuento>("/api/stock/existencias/recuento/previsualizar", formRecuento(archivo, fecha));
+export const aplicarRecuento = (archivo: File, fecha: string, motivo: string) =>
+  apiPostForm<{ ajustes: number }>("/api/stock/existencias/recuento/aplicar", formRecuento(archivo, fecha, motivo));

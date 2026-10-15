@@ -15,6 +15,7 @@ import { ErrorState, LoadingState } from "@/components/ui/States";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { useToast } from "@/components/ui/Toast";
 import { ProductoSelect } from "@/components/remitos/ProductoSelect";
+import { RecuentoUpload } from "@/components/stock/RecuentoUpload";
 
 const campo = `${filterInputClass} w-full px-1.5 py-1 text-xs`;
 
@@ -151,6 +152,7 @@ export function AjustesListado() {
   const [aplicados, setAplicados] = useState(form);
   const [page, setPage] = useState(1);
   const [nuevo, setNuevo] = useState(false);
+  const [recuento, setRecuento] = useState(false);
   const [anulando, setAnulando] = useState<number | null>(null);
   const [motivoAnul, setMotivoAnul] = useState("");
   const filtros = { fechaDesde: aplicados.fechaDesde || undefined, fechaHasta: aplicados.fechaHasta || undefined, producto: aplicados.producto || undefined };
@@ -227,7 +229,10 @@ export function AjustesListado() {
 
   return (
     <div className="space-y-4">
-      <div className="flex justify-end">
+      <div className="flex justify-end gap-2">
+        <button type="button" onClick={() => setRecuento(true)} className="rounded-sm border border-finance px-4 py-2 text-sm text-finance hover:bg-finance-light">
+          Subir recuento
+        </button>
         <button type="button" onClick={() => setNuevo(true)} className="rounded-sm bg-finance px-4 py-2 text-sm text-white hover:opacity-90">
           + Nuevo ajuste
         </button>
@@ -254,6 +259,7 @@ export function AjustesListado() {
       {isError && <ErrorState message="No se pudieron cargar los ajustes." onRetry={() => refetch()} />}
       {data && <DataTable columns={columnas} rows={data.items} keyField={(a) => a.idAjuste} emptyMessage="No hay ajustes de inventario." page={data.page} pageSize={data.pageSize} total={data.total} onPageChange={setPage} />}
       <AjusteForm abierto={nuevo} onClose={() => setNuevo(false)} onCreado={refrescar} />
+      <RecuentoUpload abierto={recuento} onClose={() => setRecuento(false)} onAplicado={refrescar} />
     </div>
   );
 }

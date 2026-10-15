@@ -128,7 +128,7 @@ def recuento_xlsx(q=None, tipo=None, estado=None) -> bytes:
     ws.title = "Recuento físico"
     linea = Side(style="thin", color="808080")
     borde = Border(left=linea, right=linea, top=linea, bottom=linea)
-    columnas = [("N°", 5), ("Producto", 36), ("Principio activo", 30), ("Unidad", 8), ("Stock sistema", 13), ("Cantidad contada", 14), ("Diferencia", 12), ("Observaciones", 26)]
+    columnas = [("N°", 5), ("Producto", 36), ("Principio activo", 30), ("Unidad", 8), ("Stock sistema", 13), ("Cantidad contada", 14), ("Diferencia", 12), ("Observaciones", 26), ("Id producto", 10)]
     for i, (_, ancho) in enumerate(columnas, start=1):
         ws.column_dimensions[get_column_letter(i)].width = ancho
 
@@ -160,7 +160,7 @@ def recuento_xlsx(q=None, tipo=None, estado=None) -> bytes:
             ws.cell(row=f, column=c).border = borde
         for it in grupos[nombre]:
             n += 1
-            ws.append([n, it["producto"], it.get("ingredienteActivo"), it["unidadBase"], round(it["existencia"], 2), None, None, None])
+            ws.append([n, it["producto"], it.get("ingredienteActivo"), it["unidadBase"], round(it["existencia"], 2), None, None, None, it["idProducto"]])
             f = ws.max_row
             ws.cell(row=f, column=7).value = f'=IF(F{f}="","",F{f}-E{f})'
             ws.row_dimensions[f].height = 22
@@ -172,6 +172,8 @@ def recuento_xlsx(q=None, tipo=None, estado=None) -> bytes:
                 ws.cell(row=f, column=c).number_format = "#,##0.00"
                 ws.cell(row=f, column=c).alignment = Alignment(horizontal="right", vertical="center")
 
+    # Columna oculta: identifica el producto al subir el recuento completado (recuento.py).
+    ws.column_dimensions[get_column_letter(len(columnas))].hidden = True
     ws.append([])
     ws.append(["Firma del responsable: ______________________________"])
     ws.freeze_panes = ws.cell(row=encabezado + 1, column=1)
