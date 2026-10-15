@@ -172,6 +172,22 @@ def recuento_xlsx(q=None, tipo=None, estado=None) -> bytes:
                 ws.cell(row=f, column=c).number_format = "#,##0.00"
                 ws.cell(row=f, column=c).alignment = Alignment(horizontal="right", vertical="center")
 
+    # Filas en blanco para lo que aparezca en el depósito sin stock en el sistema: se
+    # anota el nombre del producto tal como figura en el catálogo y lo contado.
+    ws.append(["Otros productos encontrados (no figuran en el sistema): nombre exacto del producto"])
+    f = ws.max_row
+    ws.merge_cells(start_row=f, start_column=1, end_row=f, end_column=len(columnas))
+    ws.cell(row=f, column=1).font = Font(bold=True)
+    ws.cell(row=f, column=1).fill = PatternFill("solid", fgColor="E3ECE6")
+    for _ in range(10):
+        n += 1
+        ws.append([n])
+        f = ws.max_row
+        ws.cell(row=f, column=7).value = f'=IF(F{f}="","",F{f}-E{f})'
+        ws.row_dimensions[f].height = 22
+        for c in range(1, len(columnas) + 1):
+            ws.cell(row=f, column=c).border = borde
+
     # Columna oculta: identifica el producto al subir el recuento completado (recuento.py).
     ws.column_dimensions[get_column_letter(len(columnas))].hidden = True
     ws.append([])
