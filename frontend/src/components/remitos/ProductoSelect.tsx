@@ -7,8 +7,8 @@ import { buscarProductos, type Producto } from "@/services/remitosApi";
 import { filterInputClass } from "@/components/ui/FilterBar";
 
 /**
- * Buscador de insumos (agroquímicos, fertilizantes y semillas): 9.516 productos del
- * catálogo unificado. Los que ya se usan en remitos (con unidad base) aparecen primero.
+ * Buscador de insumos (agroquímicos, fertilizantes y semillas) del catálogo unificado
+ * (padrones SENASA e INASE). Los que ya se usan en remitos (con unidad base) aparecen primero.
  */
 export function ProductoSelect({
   value,
@@ -16,12 +16,15 @@ export function ProductoSelect({
   disabled,
   placeholder = "Buscar producto…",
   className,
+  inputClassName,
 }: {
   value: { idProducto: number; producto: string } | null;
   onChange: (p: Producto) => void;
   disabled?: boolean;
   placeholder?: string;
   className?: string;
+  /** Reemplaza el estilo del input (ej. celda sin borde de la grilla). */
+  inputClassName?: string;
 }) {
   const [texto, setTexto] = useState(value?.producto ?? "");
   const [abierto, setAbierto] = useState(false);
@@ -59,7 +62,7 @@ export function ProductoSelect({
   return (
     <div ref={contenedor} className={`relative ${className ?? ""}`}>
       <input
-        className={`${filterInputClass} w-full px-1.5 py-1 text-xs`}
+        className={inputClassName ?? `${filterInputClass} w-full px-1.5 py-1 text-xs`}
         value={texto}
         disabled={disabled}
         placeholder={placeholder}

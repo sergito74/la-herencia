@@ -45,7 +45,7 @@ def _productos_por_id(ids: list[int]) -> dict[int, dict]:
         lote = ids[i : i + 800]
         marcas = ",".join("?" for _ in lote)
         for p in fetch_all(
-            f"SELECT CAST(IdProducto AS int) AS idProducto, Producto AS producto, TipoProducto AS tipo FROM dbo.vw_ProductosBase WHERE IdProducto IN ({marcas})",
+            f"SELECT CAST(IdProducto AS int) AS idProducto, Producto AS producto, TipoProducto AS tipo, IngredienteActivo AS ingredienteActivo FROM dbo.vw_ProductosBase WHERE IdProducto IN ({marcas})",
             tuple(lote),
         ):
             out[p["idProducto"]] = p
@@ -65,6 +65,7 @@ def existencias(q: str | None = None, tipo: str | None = None, estado: str | Non
             "idProducto": pid,
             "producto": p["producto"],
             "tipo": p["tipo"],
+            "ingredienteActivo": (p.get("ingredienteActivo") or "").strip() or None,
             "unidadBase": s["unidadBase"],
             "existencia": existencia,
             "valor": s["valor"],

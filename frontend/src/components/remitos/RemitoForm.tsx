@@ -39,15 +39,24 @@ interface Renglon {
   congelado: { motivo: "consumo" | "factura"; consumido: number; vinculado: boolean } | null;
 }
 
+const FILAS_INICIALES = 10;
 const input = `${filterInputClass} w-full px-1.5 py-1 text-xs`;
+const labelCompacto = "flex flex-col gap-0.5 text-xs text-ink-secondary";
+// Celda de la grilla, igual que la de Compras (ComprasGrid): sin borde, resalta al enfocar.
+const celda = "w-full border-0 bg-transparent px-1.5 py-0.5 text-xs text-ink-primary focus:bg-finance-light focus:outline-none disabled:cursor-not-allowed disabled:opacity-60";
 let contador = 0;
 const nuevaClave = () => `r${++contador}`;
 const vacio = (): Renglon => ({
   clave: nuevaClave(), idDetalle: null, producto: null, info: null, cantidad: null, unidad: "LTS", vencimiento: "", unidadBase: "", factorUnidad: null, congelado: null,
 });
 const hoy = () => new Date().toISOString().slice(0, 10);
+const rellenar = (filas: Renglon[]) => [...filas, ...Array.from({ length: Math.max(0, FILAS_INICIALES - filas.length) }, vacio)];
 
-/** Alta y edición de un remito (010). El remito suma stock al guardarse; no lleva precio. */
+/**
+ * Alta y edición de un remito (010). El remito suma stock al guardarse; no lleva precio.
+ * Mismo formato que la carga de Compras: encabezado y pie fijos, grilla tipo planilla
+ * con filas vacías en el medio (la única parte que scrollea).
+ */
 export function RemitoForm({ idRemito }: { idRemito?: number }) {
   const edicion = idRemito != null;
   const router = useRouter();
@@ -61,7 +70,7 @@ export function RemitoForm({ idRemito }: { idRemito?: number }) {
   const [idEstablecimiento, setIdEstablecimiento] = useState<number | "">("");
   const [observaciones, setObservaciones] = useState("");
   const [archivo, setArchivo] = useState("");
-  const [renglones, setRenglones] = useState<Renglon[]>([vacio()]);
+  const [renglones, setRenglones] = useState<Renglon[]>(() => rellenar([]));
   const [advertencias, setAdvertencias] = useState<string[]>([]);
   const [confirmado, setConfirmado] = useState(false);
   const [confirmacionServidor, setConfirmacionServidor] = useState<string[] | null>(null);
@@ -95,7 +104,7 @@ export function RemitoForm({ idRemito }: { idRemito?: number }) {
     setIdEstablecimiento(r.idEstablecimiento ?? "");
     setObservaciones(r.observaciones ?? "");
     setArchivo(r.archivo ?? "");
-    setRenglones(
+    setRenglones(rellenar(
       r.renglones.map((l) => ({
         clave: nuevaClave(),
         idDetalle: l.idDetalle,
@@ -108,7 +117,7 @@ export function RemitoForm({ idRemito }: { idRemito?: number }) {
         factorUnidad: null,
         congelado: l.congelado ? { motivo: l.motivoCongelado ?? "consumo", consumido: l.consumido, vinculado: l.vinculos.length > 0 } : null,
       }))
-    );
+    ));
   }, [edicion, remitoQuery.data]);
 
   // Información de cada producto elegido (unidad base y equivalencias)
@@ -212,20 +221,22 @@ export function RemitoForm({ idRemito }: { idRemito?: number }) {
 
   const hayCongelados = renglones.some((r) => r.congelado);
 
+  const filaIniciada = (r: Renglon) => !!(r.producto || r.cantidad);
+
   return (
     <form
-      className="space-y-4"
+      className="flex flex-col gap-2"
+      style={{ height: "calc(100vh - 8rem)" }}
       onSubmit={(e) => {
         e.preventDefault();
         guardar(confirmado);
       }}
+      suppressHydrationWarning
     >
-      <div className="grid gap-3 rounded-md border border-border bg-surface p-4 sm:grid-cols-2 lg:grid-cols-4">
-        <label className="text-xs text-ink-secondary">
-          Fecha
-          <input type="date" required className={input} value={fecha} disabled={hayCongelados} onChange={(e) => setFecha(e.target.value)} />
-        </label>
-        <div className="text-xs text-ink-secondary sm:col-span-1 lg:col-span-2">
+      {/* Encabezado fijo, como Compras: los campos se reparten por todo el ancho. */}
+      <div className="shrink-0 space-y-2">
+      <div className="grid grid-cols-[repeat(auto-fit,minmax(10rem,1fr))] items-end gap-2 rounded-md border border-border bg-surface p-2">
+        <div className={`${labelCompacto} sm:col-span-2`}>
           Proveedor
           <ContactoSelect
             value={idProveedor}
@@ -239,15 +250,19 @@ export function RemitoForm({ idRemito }: { idRemito?: number }) {
           />
           {hayCongelados && <span className="text-[11px]">No se puede cambiar: hay renglones consumidos o vinculados a una factura.</span>}
         </div>
-        <label className="text-xs text-ink-secondary">
+        <label className={labelCompacto}>
+          Fecha
+          <input type="date" required className={input} value={fecha} disabled={hayCongelados} onChange={(e) => setFecha(e.target.value)} />
+        </label>
+        <label className={labelCompacto}>
           N° de remito
           <input className={input} value={nro} onChange={(e) => setNro(e.target.value)} placeholder="0000-00000000" disabled={sinRemito} />
-          <span className="mt-1 flex items-center gap-1">
-            <input type="checkbox" checked={sinRemito} onChange={(e) => setNro(e.target.checked ? "SIN REMITO" : "")} />
-            El proveedor entregó sin remito
-          </span>
         </label>
-        <label className="text-xs text-ink-secondary">
+        <label className="flex items-center gap-1.5 self-center text-xs text-ink-secondary">
+          <input type="checkbox" checked={sinRemito} onChange={(e) => setNro(e.target.checked ? "SIN REMITO" : "")} />
+          Entregó sin remito
+        </label>
+        <label className={labelCompacto}>
           Establecimiento
           <select className={input} value={idEstablecimiento} onChange={(e) => setIdEstablecimiento(e.target.value ? Number(e.target.value) : "")}>
             <option value="">—</option>
@@ -258,150 +273,159 @@ export function RemitoForm({ idRemito }: { idRemito?: number }) {
             ))}
           </select>
         </label>
-        <label className="text-xs text-ink-secondary sm:col-span-2 lg:col-span-3">
+        <label className={`${labelCompacto} sm:col-span-2`}>
           Observaciones
           <input className={input} value={observaciones} onChange={(e) => setObservaciones(e.target.value)} maxLength={500} />
         </label>
-        <ArchivoVinculado className="sm:col-span-2 lg:col-span-4" label="Foto o PDF del remito (opcional)" value={archivo} onChange={setArchivo} inputClassName={input} />
+        <ArchivoVinculado className="sm:col-span-2" label="Foto o PDF del remito (opcional)" value={archivo} onChange={setArchivo} inputClassName={input} />
       </div>
 
       {advertencias.length > 0 && (
-        <div className="rounded-md border border-status-warning bg-status-warning-bg p-3 text-xs">
+        <div className="rounded-md border border-status-warning bg-status-warning-bg px-2 py-1 text-xs">
           <ul className="list-disc pl-4">
             {advertencias.map((a) => (
               <li key={a}>{a}</li>
             ))}
           </ul>
-          <label className="mt-2 flex items-center gap-2 font-medium">
+          <label className="mt-1 flex items-center gap-2 font-medium">
             <input type="checkbox" checked={confirmado} onChange={(e) => setConfirmado(e.target.checked)} />
             Es correcto, guardar igual
           </label>
         </div>
       )}
-
-      <div className="rounded-md border border-border bg-surface p-4">
-        <h2 className="text-sm font-medium">Renglones</h2>
-        <div className="mt-2 overflow-visible">
-          <table className="w-full text-xs">
-            <thead className="text-left text-ink-secondary">
-              <tr>
-                <th className="w-[36%] py-1 pr-2">Producto</th>
-                <th className="w-24 pr-2">Cantidad</th>
-                <th className="w-28 pr-2">Unidad</th>
-                <th className="w-36 pr-2">Vencimiento (opcional)</th>
-                <th className="pr-2">Notas</th>
-                <th className="w-6" />
-              </tr>
-            </thead>
-            <tbody>
-              {renglones.map((r) => {
-                const congelado = r.congelado;
-                const sinBase = r.info && !r.info.unidadBase;
-                return (
-                  <tr key={r.clave} className="border-t border-border align-top">
-                    <td className="py-1 pr-2">
-                      <ProductoSelect
-                        value={r.producto}
-                        disabled={!!congelado}
-                        onChange={(p) => actualizar(r.clave, { producto: { idProducto: p.idProducto, producto: p.producto }, info: p, unidad: p.unidadBase ?? p.unidadBaseSugerida ?? "LTS", unidadBase: p.unidadBase ?? "", factorUnidad: null })}
-                      />
-                      {r.info && (
-                        <span className="text-[11px] text-ink-secondary">
-                          {r.info.tipo ?? "—"} · unidad base {r.info.unidadBase ?? `(a definir: ${r.info.unidadBaseSugerida})`}
-                        </span>
-                      )}
-                    </td>
-                    <td className="py-1 pr-2">
-                      <NumberInput
-                        className={`${input} text-right font-data`}
-                        value={r.cantidad}
-                        onChange={(v) => actualizar(r.clave, { cantidad: v })}
-                        disabled={!!congelado?.vinculado}
-                      />
-                    </td>
-                    <td className="py-1 pr-2">
-                      <select className={input} value={r.unidad} disabled={!!congelado} onChange={(e) => actualizar(r.clave, { unidad: e.target.value, factorUnidad: null })}>
-                        {(unidades ?? []).map((u) => (
-                          <option key={u.codigo} value={u.codigo}>
-                            {u.codigo}
-                          </option>
-                        ))}
-                      </select>
-                      {sinBase && (
-                        <label className="mt-1 block text-[11px] text-ink-secondary">
-                          Unidad base del producto
-                          <select className={input} value={baseDe(r)} onChange={(e) => actualizar(r.clave, { unidadBase: e.target.value })}>
-                            {unidadesBase.map((u) => (
-                              <option key={u.codigo} value={u.codigo}>
-                                {u.codigo}
-                              </option>
-                            ))}
-                          </select>
-                        </label>
-                      )}
-                      {necesitaEquivalencia(r) && (
-                        <label className="mt-1 block text-[11px] text-ink-secondary">
-                          1 {r.unidad} = ¿cuántos {baseDe(r)}?
-                          <NumberInput className={`${input} text-right font-data`} value={r.factorUnidad} onChange={(v) => actualizar(r.clave, { factorUnidad: v })} />
-                        </label>
-                      )}
-                    </td>
-                    <td className="py-1 pr-2">
-                      <input type="date" className={input} value={r.vencimiento} onChange={(e) => actualizar(r.clave, { vencimiento: e.target.value })} />
-                    </td>
-                    <td className="py-1 pr-2 text-[11px] text-ink-secondary">
-                      {congelado && (
-                        <span>
-                          {congelado.consumido > 0 && `Ya se consumieron ${formatCantidad(congelado.consumido)}. `}
-                          {congelado.vinculado && "Vinculado a una factura: la cantidad no se puede cambiar. "}
-                          No se puede quitar ni cambiar el producto.
-                        </span>
-                      )}
-                    </td>
-                    <td className="py-1">
-                      {!congelado && renglones.length > 1 && (
-                        <button type="button" className="text-ink-secondary hover:text-status-danger" title="Quitar renglón" onClick={() => setRenglones((p) => p.filter((x) => x.clave !== r.clave))}>
-                          ✕
-                        </button>
-                      )}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-        <button type="button" className="mt-2 text-xs text-finance underline" onClick={() => setRenglones((p) => [...p, vacio()])}>
-          + Agregar renglón
-        </button>
       </div>
 
-      {confirmacionServidor && (
-        <div className="rounded-md border border-status-warning bg-status-warning-bg p-3 text-xs">
-          <ul className="list-disc pl-4">
-            {confirmacionServidor.map((m) => (
-              <li key={m}>{m}</li>
-            ))}
-          </ul>
-          <div className="mt-2 flex gap-2">
-            <button type="button" className="rounded-sm bg-finance px-3 py-1 text-white" disabled={guardando} onClick={() => { setConfirmacionServidor(null); guardar(true); }}>
-              Confirmar y guardar
+      {/* Cuerpo: única sección que scrollea. */}
+      <div className="min-h-0 flex-1 overflow-y-auto">
+        <div className="rounded-md border border-border">
+        <table className="min-w-full divide-y divide-border text-xs">
+          <thead className="sticky top-0 z-10 bg-surface-sunken text-left">
+            <tr>
+              {["Cantidad", "Unidad", "Producto", "Tipo · principio activo", "Unidad base / equivalencia", "Vencimiento", "Notas", ""].map((h) => (
+                <th key={h} className="whitespace-nowrap px-1.5 py-1 font-medium text-ink-secondary">
+                  {h}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-border">
+            {renglones.map((r) => {
+              const congelado = r.congelado;
+              const sinBase = r.info && !r.info.unidadBase;
+              return (
+                <tr key={r.clave} className="align-top hover:bg-surface-sunken">
+                  <td className="w-24">
+                    <NumberInput className={`${celda} text-right font-data`} value={r.cantidad} onChange={(v) => actualizar(r.clave, { cantidad: v })} disabled={!!congelado?.vinculado} />
+                  </td>
+                  <td className="w-24">
+                    <select className={`${celda} cursor-pointer`} value={r.unidad} disabled={!!congelado} onChange={(e) => actualizar(r.clave, { unidad: e.target.value, factorUnidad: null })}>
+                      {(unidades ?? []).map((u) => (
+                        <option key={u.codigo} value={u.codigo}>
+                          {u.codigo}
+                        </option>
+                      ))}
+                    </select>
+                  </td>
+                  <td className="min-w-[18rem]">
+                    <ProductoSelect
+                      value={r.producto}
+                      disabled={!!congelado}
+                      inputClassName={celda}
+                      placeholder=""
+                      onChange={(p) => actualizar(r.clave, { producto: { idProducto: p.idProducto, producto: p.producto }, info: p, unidad: p.unidadBase ?? p.unidadBaseSugerida ?? "LTS", unidadBase: p.unidadBase ?? "", factorUnidad: null })}
+                    />
+                  </td>
+                  <td className="min-w-[12rem] px-1.5 py-0.5 text-ink-secondary">
+                    {r.info && [r.info.tipo, r.info.ingredienteActivo].filter(Boolean).join(" · ")}
+                  </td>
+                  <td className="min-w-[11rem] px-1.5 py-0.5 text-ink-secondary">
+                    {r.info && !sinBase && !necesitaEquivalencia(r) && r.info.unidadBase}
+                    {sinBase && (
+                      <label className="flex items-center gap-1">
+                        Base
+                        <select className={`${celda} cursor-pointer`} value={baseDe(r)} onChange={(e) => actualizar(r.clave, { unidadBase: e.target.value })}>
+                          {unidadesBase.map((u) => (
+                            <option key={u.codigo} value={u.codigo}>
+                              {u.codigo}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                    )}
+                    {necesitaEquivalencia(r) && (
+                      <label className="flex items-center gap-1 whitespace-nowrap">
+                        1 {r.unidad} =
+                        <NumberInput className={`${celda} w-16 text-right font-data`} value={r.factorUnidad} onChange={(v) => actualizar(r.clave, { factorUnidad: v })} />
+                        {baseDe(r)}
+                      </label>
+                    )}
+                  </td>
+                  <td className="w-32">
+                    <input type="date" className={celda} value={r.vencimiento} onChange={(e) => actualizar(r.clave, { vencimiento: e.target.value })} />
+                  </td>
+                  <td className="px-1.5 py-0.5 text-[11px] text-ink-secondary">
+                    {congelado && (
+                      <span>
+                        {congelado.consumido > 0 && `Ya se consumieron ${formatCantidad(congelado.consumido)}. `}
+                        {congelado.vinculado && "Vinculado a una factura: la cantidad no se puede cambiar. "}
+                        No se puede quitar ni cambiar el producto.
+                      </span>
+                    )}
+                  </td>
+                  <td className="w-6 px-1 text-center">
+                    {!congelado && filaIniciada(r) && (
+                      <button type="button" className="text-ink-secondary hover:text-status-danger" title="Eliminar renglón" aria-label="Eliminar renglón" onClick={() => setRenglones((p) => rellenar(p.filter((x) => x.clave !== r.clave)))}>
+                        ✕
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+        <button type="button" className="m-1.5 text-xs text-finance underline" onClick={() => setRenglones((p) => [...p, ...Array.from({ length: 5 }, vacio)])}>
+          + Agregar 5 renglones
+        </button>
+        </div>
+      </div>
+
+      {/* Pie fijo, como Compras. */}
+      <div className="shrink-0 space-y-2">
+        {confirmacionServidor && (
+          <div className="rounded-md border border-status-warning bg-status-warning-bg px-2 py-1 text-xs">
+            <ul className="list-disc pl-4">
+              {confirmacionServidor.map((m) => (
+                <li key={m}>{m}</li>
+              ))}
+            </ul>
+            <div className="mt-1 flex gap-2">
+              <button type="button" className="rounded-sm bg-finance px-3 py-1 text-white" disabled={guardando} onClick={() => { setConfirmacionServidor(null); guardar(true); }}>
+                Confirmar y guardar
+              </button>
+              <button type="button" className="rounded-sm border border-border px-3 py-1" onClick={() => setConfirmacionServidor(null)}>
+                Volver
+              </button>
+            </div>
+          </div>
+        )}
+        <div className="flex items-center justify-between gap-2 rounded-md border border-border bg-surface-sunken p-2 text-xs">
+          <span className="text-ink-secondary">
+            {edicion
+              ? "Los renglones consumidos o vinculados a una factura quedan congelados; para corregirlos, anular el remito y cargar uno nuevo. "
+              : "Al guardar, los productos suman al stock. El costo sale de la factura que se vincule después. "}
+            Renglones cargados: <span className="font-data text-ink-primary">{renglones.filter(filaIniciada).length}</span>
+            {error && <span className="ml-3 text-status-danger">{error}</span>}
+          </span>
+          <div className="flex gap-2">
+            <button type="button" onClick={() => router.back()} className="rounded-sm border border-border px-3 py-1.5 text-xs text-ink-secondary hover:text-ink-primary">
+              Cancelar
             </button>
-            <button type="button" className="rounded-sm border border-border px-3 py-1" onClick={() => setConfirmacionServidor(null)}>
-              Volver
+            <button type="submit" disabled={guardando} className="rounded-sm bg-finance px-3 py-1.5 text-xs text-white hover:opacity-90 disabled:opacity-40">
+              {guardando ? "Guardando…" : edicion ? "Guardar cambios" : "Guardar remito"}
             </button>
           </div>
         </div>
-      )}
-      {error && <p className="text-sm text-status-danger">{error}</p>}
-
-      <div className="flex gap-2">
-        <button type="submit" disabled={guardando} className="rounded-sm bg-finance px-5 py-2 text-sm text-white hover:opacity-90 disabled:opacity-40">
-          {guardando ? "Guardando…" : edicion ? "Guardar cambios" : "Guardar remito"}
-        </button>
-        <button type="button" onClick={() => router.back()} className="rounded-sm border border-border px-5 py-2 text-sm text-ink-secondary hover:text-ink-primary">
-          Cancelar
-        </button>
       </div>
     </form>
   );

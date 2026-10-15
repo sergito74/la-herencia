@@ -128,14 +128,14 @@ def recuento_xlsx(q=None, tipo=None, estado=None) -> bytes:
     ws.title = "Recuento físico"
     linea = Side(style="thin", color="808080")
     borde = Border(left=linea, right=linea, top=linea, bottom=linea)
-    columnas = [("N°", 5), ("Producto", 44), ("Unidad", 8), ("Stock sistema", 13), ("Cantidad contada", 14), ("Diferencia", 12), ("Observaciones", 34)]
+    columnas = [("N°", 5), ("Producto", 36), ("Principio activo", 30), ("Unidad", 8), ("Stock sistema", 13), ("Cantidad contada", 14), ("Diferencia", 12), ("Observaciones", 26)]
     for i, (_, ancho) in enumerate(columnas, start=1):
         ws.column_dimensions[get_column_letter(i)].width = ancho
 
     ws.append(["Recuento físico de stock"])
     ws["A1"].font = Font(bold=True, size=14)
-    ws.append([f"Generado: {date.today().strftime('%d/%m/%Y')}", None, None, None, "Fecha del recuento: ____/____/______"])
-    ws.append(["Responsable: ______________________________", None, None, None, "Lugar / depósito: ____________________"])
+    ws.append([f"Generado: {date.today().strftime('%d/%m/%Y')}", None, None, None, None, "Fecha del recuento: ____/____/______"])
+    ws.append(["Responsable: ______________________________", None, None, None, None, "Lugar / depósito: ____________________"])
     ws.append([])
     ws.append([c for c, _ in columnas])
     encabezado = ws.max_row
@@ -160,15 +160,15 @@ def recuento_xlsx(q=None, tipo=None, estado=None) -> bytes:
             ws.cell(row=f, column=c).border = borde
         for it in grupos[nombre]:
             n += 1
-            ws.append([n, it["producto"], it["unidadBase"], round(it["existencia"], 2), None, None, None])
+            ws.append([n, it["producto"], it.get("ingredienteActivo"), it["unidadBase"], round(it["existencia"], 2), None, None, None])
             f = ws.max_row
-            ws.cell(row=f, column=6).value = f'=IF(E{f}="","",E{f}-D{f})'
+            ws.cell(row=f, column=7).value = f'=IF(F{f}="","",F{f}-E{f})'
             ws.row_dimensions[f].height = 22
             for c in range(1, len(columnas) + 1):
                 celda = ws.cell(row=f, column=c)
                 celda.border = borde
-                celda.alignment = Alignment(vertical="center", wrap_text=(c == 2))
-            for c in (4, 5, 6):
+                celda.alignment = Alignment(vertical="center", wrap_text=c in (2, 3))
+            for c in (5, 6, 7):
                 ws.cell(row=f, column=c).number_format = "#,##0.00"
                 ws.cell(row=f, column=c).alignment = Alignment(horizontal="right", vertical="center")
 
