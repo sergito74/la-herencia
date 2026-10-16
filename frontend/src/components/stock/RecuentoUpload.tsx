@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import Link from "next/link";
+import { Fragment, useState } from "react";
 
 import { aplicarRecuento, previsualizarRecuento, type EstadoRecuento, type PreviaRecuento } from "@/services/remitosApi";
 import { ApiError } from "@/services/apiClient";
@@ -21,11 +22,13 @@ const ESTADOS: Record<EstadoRecuento, { label: string; tone: "danger" | "success
 };
 
 const aFecha = (iso: string) => iso.split("-").reverse().join("/");
+const conSigno = (n: number) => `${n > 0 ? "+" : ""}${formatCantidad(n)}`;
 
 /**
- * Sube la planilla de recuento físico completada (Existencias → "Planilla de recuento
- * físico"), muestra la comparación contra el stock del sistema a la fecha del recuento
- * y, al confirmar, graba un ajuste por cada faltante o sobrante.
+ * Sube la planilla de recuento físico completada y muestra cómo se reparte cada
+ * diferencia entre las órdenes de trabajo del período (recuento.py): el recuento es
+ * aproximado y las aplicaciones no son exactas, así que la diferencia ajusta el consumo
+ * de esas órdenes y su costo llega a los lotes y cultivos.
  */
 export function RecuentoUpload({ abierto, onClose, onAplicado }: { abierto: boolean; onClose: () => void; onAplicado: () => void }) {
   const { showToast } = useToast();
@@ -34,6 +37,7 @@ export function RecuentoUpload({ abierto, onClose, onAplicado }: { abierto: bool
   const [motivo, setMotivo] = useState("");
   const [previa, setPrevia] = useState<PreviaRecuento | null>(null);
   const [soloDiferencias, setSoloDiferencias] = useState(true);
+  const [abiertos, setAbiertos] = useState<Set<number>>(new Set());
   const [error, setError] = useState<string | null>(null);
   const [trabajando, setTrabajando] = useState(false);
 
@@ -43,6 +47,7 @@ export function RecuentoUpload({ abierto, onClose, onAplicado }: { abierto: bool
     setMotivo("");
     setPrevia(null);
     setError(null);
+    setAbiertos(new Set());
   }
 
   async function revisar(f: File | null = archivo, fe: string = fecha) {
@@ -52,6 +57,7 @@ export function RecuentoUpload({ abierto, onClose, onAplicado }: { abierto: bool
     try {
       const p = await previsualizarRecuento(f, fe);
       setPrevia(p);
+      setAbiertos(new Set(p.renglones.filter((r) => r.revisar).map((r) => r.fila)));
       if (!fe) setFecha(p.fecha);
       if (!motivo) setMotivo(`Recuento físico ${aFecha(p.fecha)}`);
     } catch (e) {
@@ -67,25 +73,34 @@ export function RecuentoUpload({ abierto, onClose, onAplicado }: { abierto: bool
     setTrabajando(true);
     try {
       const r = await aplicarRecuento(archivo, fecha, motivo);
-      showToast(`Recuento cargado: ${r.ajustes} ajustes.`, "success");
+      showToast(`Recuento grabado: ${r.ajustesOrden} ajustes de órdenes${r.sinImputar ? ` y ${r.sinImputar} sin imputar` : ""}.`, "success");
       reiniciar();
       onAplicado();
       onClose();
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : "No se pudieron grabar los ajustes.");
+      setError(e instanceof ApiError ? e.message : "No se pudo grabar el recuento.");
     } finally {
       setTrabajando(false);
     }
   }
 
+  function alternar(fila: number) {
+    setAbiertos((prev) => {
+      const s = new Set(prev);
+      if (s.has(fila)) s.delete(fila);
+      else s.add(fila);
+      return s;
+    });
+  }
+
   const bloqueantes = previa ? previa.resumen.noEncontrado + previa.resumen.ambiguo : 0;
-  const aGrabar = previa ? previa.resumen.faltante + previa.resumen.sobrante : 0;
+  const conDiferencia = previa ? previa.resumen.faltante + previa.resumen.sobrante : 0;
   const filas = previa?.renglones.filter((r) => !soloDiferencias || r.estado !== "sinDiferencia") ?? [];
 
   return (
-    <SideDrawer open={abierto} onClose={onClose} title="Subir recuento físico" maxWidthClass="max-w-4xl">
+    <SideDrawer open={abierto} onClose={onClose} title="Subir recuento físico" maxWidthClass="max-w-5xl">
       <p className="text-xs text-ink-secondary">
-        Subí la planilla de recuento con la columna «Cantidad contada» completa. Se compara contra el stock del sistema a la fecha del recuento y, al confirmar, se graba un faltante o sobrante por cada diferencia. Los productos sin cantidad contada no se tocan.
+        Subí la planilla de recuento con la columna «Cantidad contada» completa. Cada diferencia contra el sistema se reparte entre las órdenes de trabajo que usaron el producto desde el recuento anterior, en proporción a lo que usó cada una: ajusta su consumo y su costo llega a los lotes y cultivos. Si no hubo órdenes en el período, queda como faltante o sobrante sin imputar. Los productos sin cantidad contada no se tocan.
       </p>
       <div className="mt-3 grid gap-3 sm:grid-cols-3">
         <label className="text-xs text-ink-secondary sm:col-span-3">
@@ -115,7 +130,7 @@ export function RecuentoUpload({ abierto, onClose, onAplicado }: { abierto: bool
           />
         </label>
         <label className="text-xs text-ink-secondary sm:col-span-2">
-          Motivo de los ajustes
+          Motivo
           <input className={campo} value={motivo} maxLength={200} onChange={(e) => setMotivo(e.target.value)} />
         </label>
       </div>
@@ -129,7 +144,8 @@ export function RecuentoUpload({ abierto, onClose, onAplicado }: { abierto: bool
             <span className="text-status-danger">Faltantes: {previa.resumen.faltante}</span>
             <span className="text-status-success">Sobrantes: {previa.resumen.sobrante}</span>
             <span className="text-ink-secondary">Sin diferencia: {previa.resumen.sinDiferencia}</span>
-            {previa.sinContar > 0 && <span className="text-ink-secondary">Sin contar (no se ajustan): {previa.sinContar}</span>}
+            {previa.sinContar > 0 && <span className="text-ink-secondary">Sin contar: {previa.sinContar}</span>}
+            {previa.aRevisar > 0 && <span className="font-medium text-status-warning">Para revisar: {previa.aRevisar}</span>}
             {bloqueantes > 0 && <span className="text-status-warning">Sin identificar: {bloqueantes}</span>}
             <label className="ml-auto flex items-center gap-1 text-ink-secondary">
               <input type="checkbox" checked={soloDiferencias} onChange={(e) => setSoloDiferencias(e.target.checked)} />
@@ -138,46 +154,98 @@ export function RecuentoUpload({ abierto, onClose, onAplicado }: { abierto: bool
           </div>
           <div className="max-h-[55vh] overflow-y-auto rounded-md border border-border">
             <table className="min-w-full divide-y divide-border text-xs">
-              <thead className="sticky top-0 bg-surface-sunken text-left">
+              <thead className="sticky top-0 z-10 bg-surface-sunken text-left">
                 <tr>
-                  {["Fila", "Producto", "Unidad", `Sistema al ${aFecha(previa.fecha)}`, "Contado", "Diferencia", ""].map((h) => (
-                    <th key={h} className="whitespace-nowrap px-1.5 py-1 font-medium text-ink-secondary">
+                  {["", "Producto", "Unidad", `Sistema al ${aFecha(previa.fecha)}`, "Contado", "Diferencia", "Reparto", ""].map((h, i) => (
+                    <th key={i} className="whitespace-nowrap px-1.5 py-1 font-medium text-ink-secondary">
                       {h}
                     </th>
                   ))}
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
-                {filas.map((r) => (
-                  <tr key={r.fila}>
-                    <td className="px-1.5 py-0.5 font-data text-ink-secondary">{r.fila}</td>
-                    <td className="px-1.5 py-0.5">
-                      {r.producto}
-                      {r.observaciones && <span className="block text-[11px] text-ink-secondary">{r.observaciones}</span>}
-                    </td>
-                    <td className="px-1.5 py-0.5">{r.unidadBase ?? "—"}</td>
-                    <td className="px-1.5 py-0.5 text-right font-data">{r.sistema != null ? formatCantidad(r.sistema) : "—"}</td>
-                    <td className="px-1.5 py-0.5 text-right font-data">{formatCantidad(r.contada)}</td>
-                    <td className={`px-1.5 py-0.5 text-right font-data ${(r.diferencia ?? 0) < 0 ? "text-status-danger" : (r.diferencia ?? 0) > 0 ? "text-status-success" : ""}`}>
-                      {r.diferencia != null ? `${r.diferencia > 0 ? "+" : ""}${formatCantidad(r.diferencia)}` : "—"}
-                    </td>
-                    <td className="px-1.5 py-0.5">
-                      <StatusBadge label={ESTADOS[r.estado].label} tone={ESTADOS[r.estado].tone} />
-                    </td>
-                  </tr>
-                ))}
+                {filas.map((r) => {
+                  const desplegable = r.ordenes.length > 0;
+                  const abiertoFila = abiertos.has(r.fila);
+                  return (
+                    <Fragment key={r.fila}>
+                      <tr className={r.revisar ? "bg-status-warning-bg" : undefined}>
+                        <td className="w-5 px-1 text-center">
+                          {desplegable && (
+                            <button type="button" className="text-ink-secondary" onClick={() => alternar(r.fila)} aria-label="Ver órdenes">
+                              {abiertoFila ? "▾" : "▸"}
+                            </button>
+                          )}
+                        </td>
+                        <td className="px-1.5 py-0.5">
+                          {r.producto}
+                          {r.observaciones && <span className="block text-[11px] text-ink-secondary">{r.observaciones}</span>}
+                        </td>
+                        <td className="px-1.5 py-0.5">{r.unidadBase ?? "—"}</td>
+                        <td className="px-1.5 py-0.5 text-right font-data">{r.sistema != null ? formatCantidad(r.sistema) : "—"}</td>
+                        <td className="px-1.5 py-0.5 text-right font-data">{formatCantidad(r.contada)}</td>
+                        <td className={`px-1.5 py-0.5 text-right font-data ${(r.diferencia ?? 0) < 0 ? "text-status-danger" : (r.diferencia ?? 0) > 0 ? "text-status-success" : ""}`}>
+                          {r.diferencia != null ? conSigno(r.diferencia) : "—"}
+                        </td>
+                        <td className="px-1.5 py-0.5 text-ink-secondary">
+                          {r.estado === "faltante" || r.estado === "sobrante" ? (
+                            <>
+                              {r.ordenes.length > 0 && (
+                                <span>
+                                  {r.ordenes.length} {r.ordenes.length === 1 ? "orden" : "órdenes"}
+                                  {r.porcentajeAjuste != null && <span className={r.revisar ? "font-medium text-status-warning" : ""}> ({r.porcentajeAjuste > 0 ? "+" : ""}{formatCantidad(r.porcentajeAjuste)}% del uso)</span>}
+                                  {r.desde ? ` desde ${aFecha(r.desde)}` : " (desde la primera entrada)"}
+                                </span>
+                              )}
+                              {Math.abs(r.sinImputar) > 0.005 && (
+                                <span className="block font-medium text-status-warning">Sin imputar: {conSigno(r.sinImputar)} (sin órdenes en el período)</span>
+                              )}
+                            </>
+                          ) : null}
+                        </td>
+                        <td className="px-1.5 py-0.5">
+                          <StatusBadge label={ESTADOS[r.estado].label} tone={ESTADOS[r.estado].tone} />
+                        </td>
+                      </tr>
+                      {abiertoFila &&
+                        r.ordenes.map((o) => (
+                          <tr key={`${r.fila}-${o.idOrdenInsumo}`} className="bg-surface-sunken text-ink-secondary">
+                            <td />
+                            <td className="px-1.5 py-0.5 pl-4" colSpan={2}>
+                              <Link href={`/produccion/ordenes/${o.idOrdenTrabajo}`} target="_blank" className="text-finance underline">
+                                Orden {o.idOrdenTrabajo}
+                              </Link>{" "}
+                              del {aFecha(o.fecha)}
+                            </td>
+                            <td className="px-1.5 py-0.5 text-right font-data" colSpan={2}>
+                              usó {formatCantidad(o.cantidad)}
+                            </td>
+                            <td className="px-1.5 py-0.5 text-right font-data">{conSigno(o.ajuste)}</td>
+                            <td className="px-1.5 py-0.5 font-data" colSpan={2}>
+                              → {formatCantidad(o.cantidad + o.ajuste)}
+                            </td>
+                          </tr>
+                        ))}
+                    </Fragment>
+                  );
+                })}
                 {filas.length === 0 && (
                   <tr>
-                    <td colSpan={7} className="px-1.5 py-2 text-ink-secondary">
-                      No hay diferencias para ajustar.
+                    <td colSpan={8} className="px-1.5 py-2 text-ink-secondary">
+                      No hay diferencias.
                     </td>
                   </tr>
                 )}
               </tbody>
             </table>
           </div>
+          {previa.aRevisar > 0 && (
+            <p className="text-xs text-status-warning">
+              Resaltados: el ajuste supera el 20% de lo usado en el período o no hay órdenes para repartirlo. Suele indicar una orden sin cargar o un error de conteo más que imprecisión de las aplicaciones; conviene revisarlos antes de confirmar.
+            </p>
+          )}
           {bloqueantes > 0 && (
-            <p className="text-xs text-status-warning">Hay productos que no se pudieron identificar en el catálogo: corregí el nombre en la planilla (o usá la planilla nueva desde Existencias) y volvé a subirla.</p>
+            <p className="text-xs text-status-warning">Hay productos que no se pudieron identificar en el catálogo: corregí el nombre en la planilla y volvé a subirla.</p>
           )}
           <div className="flex justify-end gap-2">
             <button type="button" onClick={onClose} className="rounded-sm border border-border px-3 py-1.5 text-xs text-ink-secondary hover:text-ink-primary">
@@ -185,11 +253,11 @@ export function RecuentoUpload({ abierto, onClose, onAplicado }: { abierto: bool
             </button>
             <button
               type="button"
-              disabled={trabajando || bloqueantes > 0 || aGrabar === 0 || !motivo.trim()}
+              disabled={trabajando || bloqueantes > 0 || !motivo.trim()}
               onClick={confirmar}
               className="rounded-sm bg-finance px-3 py-1.5 text-xs text-white hover:opacity-90 disabled:opacity-40"
             >
-              {trabajando ? "Grabando…" : `Confirmar ${aGrabar} ajustes`}
+              {trabajando ? "Grabando…" : conDiferencia ? `Confirmar recuento (${conDiferencia} con diferencia)` : "Confirmar recuento"}
             </button>
           </div>
         </div>

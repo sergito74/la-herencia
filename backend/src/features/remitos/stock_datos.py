@@ -209,6 +209,9 @@ def calcular_stock(id_producto: int | None = None, excluir_remito: int | None = 
         salidas[o["idProducto"]].append(Salida(id=sid, fecha=fecha(o["fecha"]), cantidad=_f(o["cantidad"]), tipo="orden", orden=o["id"]))
         salida_meta[sid] = {"tipo": "orden", "idOrden": o["idOrden"], "fecha": fecha(o["fecha"])}
 
+    # El consumo de cada renglón incluye sus ajustes por recuento físico (recuento.py):
+    # la diferencia contada se reparte entre las órdenes del período, así su costo
+    # llega a los lotes/cultivos por las mismas proporciones de la distribución.
     # Órdenes de Trabajo nuevas (011-ordenes-trabajo): no se escriben en la tabla
     # heredada `Ordenes_Detalles`, así que su consumo se lee de `Ordenes_Trabajo_Insumos`.
     # `CantidadTotal` ya viene neta de devoluciones (FR-004/FR-009: una devolución
@@ -217,9 +220,18 @@ def calcular_stock(id_producto: int | None = None, excluir_remito: int | None = 
     for o in fetch_all(
         f"""
         SELECT oti.IdOrdenInsumo AS id, oti.IdOrdenTrabajo AS idOrden, oti.IdProducto AS idProducto,
-               oti.CantidadTotal AS cantidad, COALESCE(ot.FechaEjecucion, ot.FechaPedido) AS fecha
+               oti.CantidadTotal + ISNULL(aj.Ajuste, 0) AS cantidad, ISNULL(aj.Ajuste, 0) AS ajusteRecuento,
+               COALESCE(ot.FechaEjecucion, ot.FechaPedido) AS fecha
         FROM dbo.Ordenes_Trabajo_Insumos oti JOIN dbo.Ordenes_Trabajo ot ON ot.IdOrdenTrabajo = oti.IdOrdenTrabajo
-        WHERE ot.Estado <> 'Anulada' AND oti.CantidadTotal > 0{filtro_ot}
+        LEFT JOIN (
+            SELECT ar.IdOrdenInsumo, SUM(ar.Cantidad) AS Ajuste
+            FROM dbo.Ordenes_Trabajo_AjustesRecuento ar
+            JOIN dbo.Stock_Recuentos_Detalle rd ON rd.IdRecuentoDetalle = ar.IdRecuentoDetalle
+            JOIN dbo.Stock_Recuentos r ON r.IdRecuento = rd.IdRecuento
+            WHERE r.Anulado = 0
+            GROUP BY ar.IdOrdenInsumo
+        ) aj ON aj.IdOrdenInsumo = oti.IdOrdenInsumo
+        WHERE ot.Estado <> 'Anulada' AND oti.CantidadTotal + ISNULL(aj.Ajuste, 0) > 0{filtro_ot}
         """,
         params_ot,
     ):
@@ -227,7 +239,8 @@ def calcular_stock(id_producto: int | None = None, excluir_remito: int | None = 
             continue
         sid = f"OT{o['id']}"
         salidas[o["idProducto"]].append(Salida(id=sid, fecha=fecha(o["fecha"]), cantidad=_f(o["cantidad"]), tipo="ordenTrabajo", orden=o["id"]))
-        salida_meta[sid] = {"tipo": "ordenTrabajo", "idOrdenTrabajo": o["idOrden"], "fecha": fecha(o["fecha"])}
+        salida_meta[sid] = {"tipo": "ordenTrabajo", "idOrdenTrabajo": o["idOrden"], "fecha": fecha(o["fecha"]),
+                            "ajusteRecuento": _f(o["ajusteRecuento"])}
 
     filtro_b, params_b = _filtro("d.IdProducto", id_producto)
     for b in fetch_all(

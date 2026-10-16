@@ -121,7 +121,7 @@ def kardex(id_producto: int) -> dict | None:
         m = s["salidaMeta"][sid]
         cantidad = sum(i["cantidad"] for i in cons["items"]) + cons["sin_cobertura"]
         detalle = {"orden": f"Orden de trabajo {m.get('idOrden')} (heredada)",
-                   "ordenTrabajo": f"Orden de trabajo {m.get('idOrdenTrabajo')}", "baja": f"Baja: {MOTIVOS_BAJA.get(m.get('motivo'), m.get('motivo'))}",
+                   "ordenTrabajo": f"Orden de trabajo {m.get('idOrdenTrabajo')}" + (f" (incluye ajuste por recuento {m['ajusteRecuento']:+g})" if m.get("ajusteRecuento") else ""), "baja": f"Baja: {MOTIVOS_BAJA.get(m.get('motivo'), m.get('motivo'))}",
                    "faltante": f"Ajuste (faltante): {m.get('motivo')}"}[m["tipo"]]
         movs.append({
             "fecha": _d(m["fecha"]), "orden": 1, "clave": sid, "tipo": {"orden": "Orden de trabajo", "ordenTrabajo": "Orden de trabajo", "baja": "Baja", "faltante": "Faltante"}[m["tipo"]],

@@ -142,6 +142,8 @@ export interface RenglonInsumoDetalle {
   idProducto: number;
   producto: string | null;
   cantidadTotal: number;
+  /** Ajustes por recuento físico repartidos a este renglón: consumo efectivo = cantidadTotal + ajusteRecuento. */
+  ajusteRecuento: number;
   unidad: string;
   distribuciones: DistribucionDetalle[];
   devoluciones: DevolucionDetalle[];

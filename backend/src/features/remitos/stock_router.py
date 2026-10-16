@@ -95,8 +95,18 @@ async def previsualizar_recuento(archivo: UploadFile, fecha: date | None = Form(
 
 @router.post("/existencias/recuento/aplicar", status_code=201)
 async def aplicar_recuento(archivo: UploadFile, motivo: str = Form(...), fecha: date | None = Form(None)) -> dict:
-    """Graba un ajuste por cada faltante o sobrante del recuento, en una sola transacción."""
+    """Graba el recuento: reparte cada diferencia entre las órdenes del período (recuento.py)."""
     return await _ejecutar(recuento.aplicar, await archivo.read(), fecha, motivo)
+
+
+@router.get("/recuentos")
+async def listar_recuentos() -> list[dict]:
+    return await _ejecutar(recuento.listar)
+
+
+@router.post("/recuentos/{id_recuento}/anular", status_code=204)
+async def anular_recuento(id_recuento: int, body: AnularIn) -> None:
+    await _ejecutar(recuento.anular, id_recuento, body.motivo)
 
 
 @router.get("/existencias/{id_producto}/kardex")

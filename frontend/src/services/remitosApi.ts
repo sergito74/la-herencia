@@ -378,6 +378,13 @@ export interface RenglonRecuento {
   diferencia: number | null;
   estado: EstadoRecuento;
   observaciones: string | null;
+  /** Inicio del período cuyas órdenes absorben la diferencia (null = desde la primera entrada). */
+  desde: string | null;
+  ordenes: { idOrdenInsumo: number; idOrdenTrabajo: number; fecha: string; cantidad: number; ajuste: number }[];
+  sinImputar: number;
+  usadoPeriodo: number;
+  porcentajeAjuste: number | null;
+  revisar: boolean;
 }
 
 export interface PreviaRecuento {
@@ -385,7 +392,24 @@ export interface PreviaRecuento {
   renglones: RenglonRecuento[];
   sinContar: number;
   resumen: Record<EstadoRecuento, number>;
+  conSinImputar: number;
+  aRevisar: number;
 }
+
+export interface Recuento {
+  idRecuento: number;
+  fecha: string;
+  motivo: string;
+  anulado: boolean;
+  motivoAnulacion: string | null;
+  productos: number;
+  conDiferencia: number;
+  ajustesOrden: number;
+  sinImputar: number;
+}
+
+export const fetchRecuentos = () => apiGet<Recuento[]>("/api/stock/recuentos");
+export const anularRecuento = (id: number, motivo: string) => apiPost<void>(`/api/stock/recuentos/${id}/anular`, { motivo });
 
 function formRecuento(archivo: File, fecha: string, motivo?: string) {
   const form = new FormData();
@@ -398,4 +422,4 @@ function formRecuento(archivo: File, fecha: string, motivo?: string) {
 export const previsualizarRecuento = (archivo: File, fecha: string) =>
   apiPostForm<PreviaRecuento>("/api/stock/existencias/recuento/previsualizar", formRecuento(archivo, fecha));
 export const aplicarRecuento = (archivo: File, fecha: string, motivo: string) =>
-  apiPostForm<{ ajustes: number }>("/api/stock/existencias/recuento/aplicar", formRecuento(archivo, fecha, motivo));
+  apiPostForm<{ idRecuento: number; ajustesOrden: number; sinImputar: number }>("/api/stock/existencias/recuento/aplicar", formRecuento(archivo, fecha, motivo));

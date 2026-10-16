@@ -275,6 +275,14 @@ def obtener_orden(id_orden: int) -> dict | None:
     )
     for r in insumos:
         r["cantidadTotal"] = _f(r["cantidadTotal"])
+        # Ajustes por recuento físico repartidos a este renglón (recuento.py): el consumo
+        # efectivo es cantidadTotal + ajusteRecuento.
+        r["ajusteRecuento"] = _f(fetch_one(
+            "SELECT SUM(ar.Cantidad) AS c FROM dbo.Ordenes_Trabajo_AjustesRecuento ar "
+            "JOIN dbo.Stock_Recuentos_Detalle rd ON rd.IdRecuentoDetalle = ar.IdRecuentoDetalle "
+            "JOIN dbo.Stock_Recuentos re ON re.IdRecuento = rd.IdRecuento WHERE re.Anulado = 0 AND ar.IdOrdenInsumo = ?",
+            (r["idOrdenInsumo"],),
+        )["c"])
         r["distribuciones"] = fetch_all(
             "SELECT d.IdDistrib AS idDistrib, d.IdLote AS idLote, l.[Numero Lote] AS lote, d.IdCultivo AS idCultivo, cu.Cultivo AS cultivo, "
             "d.IdCampania AS idCampania, ca.Campaña AS campania, d.DosisHa AS dosisHa, d.Superficie AS superficie, d.CantidadAsignada AS cantidadAsignada, d.Aplicar AS aplicar "

@@ -237,6 +237,12 @@ export default function DetalleOrdenPage() {
           <div key={r.idOrdenInsumo} className="rounded border border-border p-3">
             <div className="mb-2 font-medium">
               {r.producto ?? r.idProducto} — {formatCantidad(r.cantidadTotal)} {r.unidad}
+              {Math.abs(r.ajusteRecuento) > 0.00005 && (
+                <span className="ml-2 text-xs font-normal text-ink-secondary">
+                  Ajuste por recuento físico: {r.ajusteRecuento > 0 ? "+" : ""}
+                  {formatCantidad(r.ajusteRecuento)} → consumo efectivo {formatCantidad(r.cantidadTotal + r.ajusteRecuento)} {r.unidad} (cada lote en la misma proporción)
+                </span>
+              )}
             </div>
             <table className="w-full text-sm">
               <thead>

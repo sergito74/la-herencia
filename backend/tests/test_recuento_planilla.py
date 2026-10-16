@@ -38,3 +38,26 @@ def test_planilla_anterior_sin_id_se_resuelve_por_nombre():
     r = leer_planilla(_planilla(con_id=False))
     assert all(f["idProducto"] is None for f in r["filas"])
     assert [f["producto"] for f in r["filas"]] == ["GOTEN", "TALIS", "DARREN"]
+
+
+def test_reparte_faltante_proporcional_a_lo_usado():
+    from src.features.remitos.recuento import _repartir
+
+    ordenes = [{"idOrdenInsumo": 1, "cantidad": 300.0}, {"idOrdenInsumo": 2, "cantidad": 100.0}]
+    ajustes, sin_imputar = _repartir(-20.0, ordenes)  # contado 20 menos que el sistema
+    assert [a["ajuste"] for a in ajustes] == [15.0, 5.0]
+    assert sin_imputar == 0.0
+
+
+def test_sobrante_no_deja_ordenes_en_negativo_y_el_resto_queda_sin_imputar():
+    from src.features.remitos.recuento import _repartir
+
+    ajustes, sin_imputar = _repartir(50.0, [{"idOrdenInsumo": 1, "cantidad": 30.0}])
+    assert [a["ajuste"] for a in ajustes] == [-30.0]
+    assert sin_imputar == 20.0
+
+
+def test_sin_ordenes_todo_queda_sin_imputar():
+    from src.features.remitos.recuento import _repartir
+
+    assert _repartir(-7.5, []) == ([], -7.5)

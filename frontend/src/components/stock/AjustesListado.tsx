@@ -16,6 +16,7 @@ import { StatusBadge } from "@/components/ui/StatusBadge";
 import { useToast } from "@/components/ui/Toast";
 import { ProductoSelect } from "@/components/remitos/ProductoSelect";
 import { RecuentoUpload } from "@/components/stock/RecuentoUpload";
+import { RecuentosListado } from "@/components/stock/RecuentosListado";
 
 const campo = `${filterInputClass} w-full px-1.5 py-1 text-xs`;
 
@@ -160,6 +161,7 @@ export function AjustesListado() {
 
   function refrescar() {
     qc.invalidateQueries({ queryKey: ["ajustes"] });
+    qc.invalidateQueries({ queryKey: ["recuentos"] });
     qc.invalidateQueries({ queryKey: ["existencias"] });
   }
 
@@ -259,6 +261,7 @@ export function AjustesListado() {
       {isError && <ErrorState message="No se pudieron cargar los ajustes." onRetry={() => refetch()} />}
       {data && <DataTable columns={columnas} rows={data.items} keyField={(a) => a.idAjuste} emptyMessage="No hay ajustes de inventario." page={data.page} pageSize={data.pageSize} total={data.total} onPageChange={setPage} />}
       <AjusteForm abierto={nuevo} onClose={() => setNuevo(false)} onCreado={refrescar} />
+      <RecuentosListado onAnulado={refrescar} />
       <RecuentoUpload abierto={recuento} onClose={() => setRecuento(false)} onAplicado={refrescar} />
     </div>
   );
