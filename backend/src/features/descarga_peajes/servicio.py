@@ -66,7 +66,7 @@ def _procesar_portal(pw, nombre: str, listar, id_ejecucion: int | None, dry_run:
     try:
         docs, ctx, avisos = listar(pw)
         for d in docs:
-            if repository.existe_clave(d["clave"]):
+            if repository.existe_clave(d["clave"]) or repository.existe_alguna(d.get("equivalentes", [])):
                 res["existentes"] += 1
                 continue
             try:

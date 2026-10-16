@@ -30,12 +30,14 @@ CONTACTOS = {
     "Telepeaje": 328, "CorredoresViales": 436, "Corresur": 2657, "CV5": 2658, "AutopistasDelSol": 276,
     "GrupoConcesionarioDelOeste": 306, "AUSA": 380, "Ceamse": 314, "AUBASA": 316,
 }
+# Las 7 concesionarias del filtro de TelePASE (todas se bajan, pedido de Sergio 2026-10-16).
+# Rosario-Santa Fe y Del Mercosur no tienen contacto en Compras: se bajan y quedan pendientes.
 NOMBRES_TS = {
     "ACCESO NORTE": "AutopistasDelSol", "ACCESO OESTE": "GrupoConcesionarioDelOeste",
     "AUTOPISTAS URBANAS": "AUSA", "ACCESO RICCHERI": "CorredoresViales",
+    "AU. BS AS - LA PLATA": "AUBASA", "AU. ROSARIO - SANTA FE": "AutopistaRosarioSantaFe",
+    "AU. DEL MERCOSUR": "AutopistaDelMercosur",
 }
-# Concesionarios que TelePASE también lista pero se bajan desde su propio portal (evita duplicar el PDF).
-CUBIERTOS_POR_OTRO_PORTAL = {"AU. BS AS - LA PLATA"}  # AUBASA
 NOMBRES_TP = [("CVSA", "CorredoresViales"), ("CORRESUR", "Corresur"), ("PENTAVIA", "CV5")]
 
 
@@ -149,14 +151,15 @@ def listar_telepase(pw):
             if len(celdas) < 3 or not enlace:
                 continue
             concesionario = celdas[1]
-            if concesionario in CUBIERTOS_POR_OTRO_PORTAL:
-                continue
             proveedor = NOMBRES_TS.get(concesionario)
             if not proveedor:
                 avisos.append(f"Concesionario sin proveedor asignado: {concesionario} ({celdas[2]})")
                 proveedor = "TelePASE"
             docs.append(_doc(f"ts-{concesionario}-{celdas[2]}", date.fromisoformat(celdas[0]), proveedor,
                              f"{concesionario} {celdas[2]}", _bajar_url(ctx, enlace)))
+            if proveedor == "AUBASA":
+                # La misma factura se ofrece en el portal propio de AUBASA: la baja el primero que la encuentra.
+                docs[-1]["equivalentes"] = [f"aubasa-%-{celdas[2]}"]
         pagina += 1
         siguiente = pg.query_selector(f'a:text-is("{pagina}")')
         if not siguiente:
@@ -209,6 +212,8 @@ def _listar_oficina_virtual(pw, portal: str, login: str, proveedor: str, prefijo
 
         docs.append(_doc(f"{prefijo}-{pvta}-{nro}", datetime.strptime(fecha, "%d/%m/%y").date(), proveedor,
                          f"{proveedor} {tipo} {pvta}-{nro}", bajar))
+        if prefijo == "aubasa":
+            docs[-1]["equivalentes"] = [f"ts-AU. BS AS - LA PLATA-{nro}"]
     return docs, ctx, avisos
 
 

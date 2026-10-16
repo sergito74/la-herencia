@@ -64,5 +64,8 @@ Reglas:
 | TelePASE ACCESO NORTE | AutopistasDelSol | 276 |
 | TelePASE ACCESO OESTE | GrupoConcesionarioDelOeste | 306 |
 | TelePASE AUTOPISTAS URBANAS | AUSA | 380 |
+| TelePASE AU. BS AS - LA PLATA / oficina virtual AUBASA | AUBASA (la misma factura se baja una sola vez: se compara el número entre los dos portales) | 316 |
+| TelePASE AU. ROSARIO - SANTA FE | AutopistaRosarioSantaFe | — (sin contacto: queda pendiente) |
+| TelePASE AU. DEL MERCOSUR | AutopistaDelMercosur | — (sin contacto: queda pendiente) |
 | CEAMSE | Ceamse | 314 |
 | AUBASA | AUBASA | 316 |

@@ -123,6 +123,14 @@ def existe_clave(clave: str) -> bool:
     return fetch_one("SELECT 1 AS x FROM dbo.DescargaPeajes_Documentos WHERE Clave = ?", (clave,)) is not None
 
 
+def existe_alguna(patrones: list[str]) -> bool:
+    """La misma factura ofrecida por otro portal (ej. AUBASA en TelePASE y en su oficina virtual)."""
+    for patron in patrones:
+        if fetch_one("SELECT 1 AS x FROM dbo.DescargaPeajes_Documentos WHERE Clave LIKE ?", (patron,)):
+            return True
+    return False
+
+
 def insertar_documento(doc: dict) -> int:
     return execute_insert_returning_id(
         "INSERT INTO dbo.DescargaPeajes_Documentos (Clave, Portal, Proveedor, IdContacto, FechaDocumento, "
