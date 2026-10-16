@@ -148,8 +148,11 @@ def _repartir(diferencia: float, ordenes: list[dict]) -> tuple[list[dict], float
     return ajustes, resto if abs(resto) > TOLERANCIA else 0.0
 
 
-def previsualizar(contenido: bytes, fecha: date | None) -> dict:
+def previsualizar(contenido: bytes, fecha: date | None, asignaciones: dict[int, int] | None = None) -> dict:
+    """`asignaciones`: fila de la planilla -> IdProducto elegido a mano en la vista previa,
+    para los productos que no se pudieron identificar por nombre."""
     planilla = leer_planilla(contenido)
+    asignaciones = asignaciones or {}
     fecha = fecha or planilla["fecha"]
     if fecha is None:
         raise ValueError(["Indicá la fecha del recuento."])
@@ -163,7 +166,7 @@ def previsualizar(contenido: bytes, fecha: date | None) -> dict:
         if f["contada"] is None:
             sin_contar += 1
             continue
-        pid = f["idProducto"]
+        pid = asignaciones.get(f["fila"]) or f["idProducto"]
         if pid is None:
             candidatos = por_nombre.get(_texto(f["producto"]), [])
             if not candidatos:
@@ -203,14 +206,14 @@ def previsualizar(contenido: bytes, fecha: date | None) -> dict:
     }
 
 
-def aplicar(contenido: bytes, fecha: date | None, motivo: str) -> dict:
+def aplicar(contenido: bytes, fecha: date | None, motivo: str, asignaciones: dict[int, int] | None = None) -> dict:
     """Recalcula la vista previa (no confía en lo que mande el navegador) y graba el
     recuento en una sola transacción: cada producto contado queda como detalle (marca el
     inicio del próximo período), las diferencias como ajustes de las órdenes del período
     y lo que no se puede repartir como faltante/sobrante sin imputar."""
     if not motivo.strip():
         raise ValueError(["Indicá el motivo del recuento."])
-    prev = previsualizar(contenido, fecha)
+    prev = previsualizar(contenido, fecha, asignaciones)
     problemas = [f"Fila {r['fila']}: «{r['producto']}» no se encontró en el catálogo." if r["estado"] == "noEncontrado"
                  else f"Fila {r['fila']}: «{r['producto']}» coincide con más de un producto." for r in prev["renglones"] if r["estado"] in ("noEncontrado", "ambiguo")]
     if problemas:

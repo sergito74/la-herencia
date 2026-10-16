@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from datetime import date
 
 from fastapi import APIRouter, Form, HTTPException, Response, UploadFile
@@ -88,15 +89,27 @@ async def exportar_recuento(q: str | None = None, tipo: str | None = None, estad
 
 
 @router.post("/existencias/recuento/previsualizar")
-async def previsualizar_recuento(archivo: UploadFile, fecha: date | None = Form(None)) -> dict:
+async def previsualizar_recuento(archivo: UploadFile, fecha: date | None = Form(None), asignaciones: str | None = Form(None)) -> dict:
     """Compara la planilla de recuento completada contra la existencia a la fecha del recuento."""
-    return await _ejecutar(recuento.previsualizar, await archivo.read(), fecha)
+    return await _ejecutar(recuento.previsualizar, await archivo.read(), fecha, _asignaciones(asignaciones))
 
 
 @router.post("/existencias/recuento/aplicar", status_code=201)
-async def aplicar_recuento(archivo: UploadFile, motivo: str = Form(...), fecha: date | None = Form(None)) -> dict:
+async def aplicar_recuento(
+    archivo: UploadFile, motivo: str = Form(...), fecha: date | None = Form(None), asignaciones: str | None = Form(None)
+) -> dict:
     """Graba el recuento: reparte cada diferencia entre las órdenes del período (recuento.py)."""
-    return await _ejecutar(recuento.aplicar, await archivo.read(), fecha, motivo)
+    return await _ejecutar(recuento.aplicar, await archivo.read(), fecha, motivo, _asignaciones(asignaciones))
+
+
+def _asignaciones(texto: str | None) -> dict[int, int]:
+    """JSON {fila: idProducto} con los productos elegidos a mano en la vista previa."""
+    if not texto:
+        return {}
+    try:
+        return {int(k): int(v) for k, v in json.loads(texto).items()}
+    except (ValueError, AttributeError) as exc:
+        raise HTTPException(status_code=400, detail=["Asignaciones de productos inválidas."]) from exc
 
 
 @router.get("/recuentos")

@@ -411,15 +411,19 @@ export interface Recuento {
 export const fetchRecuentos = () => apiGet<Recuento[]>("/api/stock/recuentos");
 export const anularRecuento = (id: number, motivo: string) => apiPost<void>(`/api/stock/recuentos/${id}/anular`, { motivo });
 
-function formRecuento(archivo: File, fecha: string, motivo?: string) {
+/** Fila de la planilla -> IdProducto elegido a mano para los productos que no se identificaron por nombre. */
+export type AsignacionesRecuento = Record<number, number>;
+
+function formRecuento(archivo: File, fecha: string, asignaciones: AsignacionesRecuento, motivo?: string) {
   const form = new FormData();
   form.append("archivo", archivo);
   if (fecha) form.append("fecha", fecha);
+  if (Object.keys(asignaciones).length) form.append("asignaciones", JSON.stringify(asignaciones));
   if (motivo != null) form.append("motivo", motivo);
   return form;
 }
 
-export const previsualizarRecuento = (archivo: File, fecha: string) =>
-  apiPostForm<PreviaRecuento>("/api/stock/existencias/recuento/previsualizar", formRecuento(archivo, fecha));
-export const aplicarRecuento = (archivo: File, fecha: string, motivo: string) =>
-  apiPostForm<{ idRecuento: number; ajustesOrden: number; sinImputar: number }>("/api/stock/existencias/recuento/aplicar", formRecuento(archivo, fecha, motivo));
+export const previsualizarRecuento = (archivo: File, fecha: string, asignaciones: AsignacionesRecuento = {}) =>
+  apiPostForm<PreviaRecuento>("/api/stock/existencias/recuento/previsualizar", formRecuento(archivo, fecha, asignaciones));
+export const aplicarRecuento = (archivo: File, fecha: string, motivo: string, asignaciones: AsignacionesRecuento = {}) =>
+  apiPostForm<{ idRecuento: number; ajustesOrden: number; sinImputar: number }>("/api/stock/existencias/recuento/aplicar", formRecuento(archivo, fecha, asignaciones, motivo));

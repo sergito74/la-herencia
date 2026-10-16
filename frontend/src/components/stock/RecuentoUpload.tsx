@@ -3,13 +3,14 @@
 import Link from "next/link";
 import { Fragment, useState } from "react";
 
-import { aplicarRecuento, previsualizarRecuento, type EstadoRecuento, type PreviaRecuento } from "@/services/remitosApi";
+import { aplicarRecuento, previsualizarRecuento, type AsignacionesRecuento, type EstadoRecuento, type PreviaRecuento } from "@/services/remitosApi";
 import { ApiError } from "@/services/apiClient";
 import { formatCantidad } from "@/lib/format";
 import { filterInputClass } from "@/components/ui/FilterBar";
 import { SideDrawer } from "@/components/ui/SideDrawer";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { useToast } from "@/components/ui/Toast";
+import { ProductoSelect } from "@/components/remitos/ProductoSelect";
 
 const campo = `${filterInputClass} w-full px-1.5 py-1 text-xs`;
 
@@ -36,6 +37,9 @@ export function RecuentoUpload({ abierto, onClose, onAplicado }: { abierto: bool
   const [fecha, setFecha] = useState("");
   const [motivo, setMotivo] = useState("");
   const [previa, setPrevia] = useState<PreviaRecuento | null>(null);
+  // Productos elegidos a mano (fila -> producto) para los que no se identificaron por nombre.
+  const [elegidos, setElegidos] = useState<Record<number, { idProducto: number; producto: string }>>({});
+  const asignaciones: AsignacionesRecuento = Object.fromEntries(Object.entries(elegidos).map(([f, p]) => [f, p.idProducto]));
   const [soloDiferencias, setSoloDiferencias] = useState(true);
   const [abiertos, setAbiertos] = useState<Set<number>>(new Set());
   const [error, setError] = useState<string | null>(null);
@@ -48,14 +52,15 @@ export function RecuentoUpload({ abierto, onClose, onAplicado }: { abierto: bool
     setPrevia(null);
     setError(null);
     setAbiertos(new Set());
+    setElegidos({});
   }
 
-  async function revisar(f: File | null = archivo, fe: string = fecha) {
+  async function revisar(f: File | null = archivo, fe: string = fecha, asig: AsignacionesRecuento = asignaciones) {
     if (!f) return;
     setError(null);
     setTrabajando(true);
     try {
-      const p = await previsualizarRecuento(f, fe);
+      const p = await previsualizarRecuento(f, fe, asig);
       setPrevia(p);
       setAbiertos(new Set(p.renglones.filter((r) => r.revisar).map((r) => r.fila)));
       if (!fe) setFecha(p.fecha);
@@ -72,7 +77,7 @@ export function RecuentoUpload({ abierto, onClose, onAplicado }: { abierto: bool
     if (!archivo || !previa) return;
     setTrabajando(true);
     try {
-      const r = await aplicarRecuento(archivo, fecha, motivo);
+      const r = await aplicarRecuento(archivo, fecha, motivo, asignaciones);
       showToast(`Recuento grabado: ${r.ajustesOrden} ajustes de órdenes${r.sinImputar ? ` y ${r.sinImputar} sin imputar` : ""}.`, "success");
       reiniciar();
       onAplicado();
@@ -113,7 +118,8 @@ export function RecuentoUpload({ abierto, onClose, onAplicado }: { abierto: bool
               const f = e.target.files?.[0] ?? null;
               setArchivo(f);
               setPrevia(null);
-              revisar(f, fecha);
+              setElegidos({});
+              revisar(f, fecha, {});
             }}
           />
         </label>
@@ -125,7 +131,7 @@ export function RecuentoUpload({ abierto, onClose, onAplicado }: { abierto: bool
             value={fecha}
             onChange={(e) => {
               setFecha(e.target.value);
-              if (archivo && e.target.value) revisar(archivo, e.target.value);
+              if (archivo && e.target.value) revisar(archivo, e.target.value, asignaciones);
             }}
           />
         </label>
@@ -178,7 +184,27 @@ export function RecuentoUpload({ abierto, onClose, onAplicado }: { abierto: bool
                           )}
                         </td>
                         <td className="px-1.5 py-0.5">
-                          {r.producto}
+                          {r.estado === "noEncontrado" || r.estado === "ambiguo" ? (
+                            <div className="min-w-[16rem]">
+                              <span className="block text-[11px] text-status-warning">
+                                «{r.producto}» {r.estado === "ambiguo" ? "coincide con varios productos" : "no está en el catálogo"}: elegilo
+                              </span>
+                              <ProductoSelect
+                                value={null}
+                                placeholder="Buscar en el catálogo…"
+                                onChange={(p) => {
+                                  const nuevos = { ...elegidos, [r.fila]: { idProducto: p.idProducto, producto: p.producto } };
+                                  setElegidos(nuevos);
+                                  revisar(archivo, fecha, Object.fromEntries(Object.entries(nuevos).map(([fi, x]) => [fi, x.idProducto])));
+                                }}
+                              />
+                            </div>
+                          ) : (
+                            <>
+                              {r.producto}
+                              {elegidos[r.fila] && <span className="ml-1 text-[11px] text-ink-secondary">(elegido a mano)</span>}
+                            </>
+                          )}
                           {r.observaciones && <span className="block text-[11px] text-ink-secondary">{r.observaciones}</span>}
                         </td>
                         <td className="px-1.5 py-0.5">{r.unidadBase ?? "—"}</td>
@@ -245,7 +271,7 @@ export function RecuentoUpload({ abierto, onClose, onAplicado }: { abierto: bool
             </p>
           )}
           {bloqueantes > 0 && (
-            <p className="text-xs text-status-warning">Hay productos que no se pudieron identificar en el catálogo: corregí el nombre en la planilla y volvé a subirla.</p>
+            <p className="text-xs text-status-warning">Hay productos que no se pudieron identificar por su nombre: elegí cada uno en el buscador de su fila para poder confirmar.</p>
           )}
           <div className="flex justify-end gap-2">
             <button type="button" onClick={onClose} className="rounded-sm border border-border px-3 py-1.5 text-xs text-ink-secondary hover:text-ink-primary">
