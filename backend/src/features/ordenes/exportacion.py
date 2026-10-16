@@ -11,7 +11,7 @@ from openpyxl.utils import get_column_letter
 from src.features.ordenes import repository, resultado
 
 _PESOS = '"$" #,##0.00;[Red]-"$" #,##0.00'
-_CANT = "#,##0.###"
+_CANT = "#,##0.00"
 _FECHA = "dd/mm/yyyy"
 
 

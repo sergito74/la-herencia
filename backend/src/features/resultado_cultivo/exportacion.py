@@ -12,7 +12,7 @@ from src.features.resultado_cultivo import resultado
 
 _MONEDA = '"$" #,##0.00;[Red]-"$" #,##0.00'
 _DOLARES = '"us$" #,##0.00;[Red]-"us$" #,##0.00'
-_CANTIDAD = "#,##0.###"
+_CANTIDAD = "#,##0.00"
 
 
 def _crear_hoja(wb: Workbook, nombre: str, columnas: list[tuple[str, int]]):

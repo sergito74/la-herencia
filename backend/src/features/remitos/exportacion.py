@@ -16,7 +16,7 @@ from openpyxl.utils import get_column_letter
 from src.features.remitos import repository, stock_repo
 
 _PESOS = '"$" #,##0.00;[Red]-"$" #,##0.00'
-_CANT = "#,##0.###"
+_CANT = "#,##0.00"
 _FECHA = "dd/mm/yyyy"
 _ESTADO_FACTURA = {"SinFactura": "Sin factura", "Facturado": "Facturado"}
 _ESTADO_RENGLONES = {"SinVincular": "Sin vincular", "Parcial": "Parcial", "Completo": "Completo", "ConDiferencia": "Con diferencia"}
