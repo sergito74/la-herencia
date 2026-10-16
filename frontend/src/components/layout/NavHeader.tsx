@@ -187,7 +187,7 @@ export function NavHeader() {
   }
 
   return (
-    <header className="sticky top-0 z-20 border-b border-border bg-surface shadow-sm">
+    <header className="sticky top-0 z-20 border-b border-border bg-surface shadow-sm print:hidden">
       {/* Una sola franja: logo + navegación por proceso de negocio a la
           izquierda, selector de contexto/notificaciones/usuario a la
           derecha — todo en la misma línea para no gastar alto de más

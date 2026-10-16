@@ -55,18 +55,96 @@ def ordenes_xlsx(**filtros) -> bytes:
     return _bytes(wb)
 
 
+def _fecha(v):
+    """Fecha sin hora (las celdas de fecha no deben mostrar la hora)."""
+    from datetime import date
+
+    return date.fromisoformat(str(v)[:10]) if v else None
+
+
+def _ha(v: float) -> str:
+    return f"{v:,.1f}".rstrip("0").rstrip(".").replace(",", "§").replace(".", ",").replace("§", ".")
+
+
 def formulario_retiro_xlsx(id_orden: int) -> bytes:
+    """Formulario de Retiro con el formato de la planilla del campo (Retiro_151): hoja A4
+    apaisada, encabezado con datos de la orden, Ing. Activo · Marca Comercial · Cantidad ·
+    Unidad ordenado por principio activo, y firmas de entrega y retiro."""
+    from openpyxl.styles import Border, Side
+
     orden = repository.obtener_orden(id_orden)
     if orden is None or orden["formularioRetiro"] is None:
         raise ValueError([f"La orden {id_orden} no tiene Formulario de Retiro."])
+    form = orden["formularioRetiro"]
     wb = Workbook()
-    ws = _hoja(
-        wb, f"Formulario {orden['formularioRetiro']['idFormularioRetiro']}",
-        [("Producto", 30), ("Principio activo", 36), ("Cantidad", 14), ("Unidad", 12)],
-    )
+    ws = wb.active
+    ws.title = f"Retiro {form['idFormularioRetiro']}"
+    for col, ancho in zip("ABCDEF", (5, 48, 30, 13, 10, 11)):
+        ws.column_dimensions[col].width = ancho
+    fino = Side(style="thin", color="808080")
+    grueso = Side(style="medium", color="000000")
+
+    ws.append(["La Herencia", None, "RETIRO DE AGROQUÍMICOS", None, "Formulario N°", form["idFormularioRetiro"]])
+    ws["A1"].font = Font(bold=True, size=14)
+    ws["C1"].font = Font(bold=True, size=14)
+    ws["E1"].font = Font(bold=True, color="666666")
+    ws["F1"].font = Font(bold=True, size=14)
+    ws.append(["Producción agrícola · Depósito de insumos", None, None, None, "Emitido", _fecha(form["fechaEmision"])])
+    ws["F2"].number_format = _FECHA
+    ws["A2"].font = Font(italic=True, color="666666", size=9)
+    for c in range(1, 7):
+        ws.cell(row=2, column=c).border = Border(bottom=grueso)
+    ws.append([])
+    ws.append(["Orden N°", None, "Fecha", None, "Labor", None])
+    ws.append([orden["idOrden"], None, _fecha(orden["fechaPedido"]), None, orden.get("tipoLabor"), None])
+    ws.append(["Contratista", None, orden.get("contratista") or "Maquinaria propia"])
+    destinos: dict[str, dict[str, float]] = {}
     for r in orden["insumos"]:
-        ws.append([r["producto"], (r.get("ingredienteActivo") or "").strip() or None, r["cantidadTotal"], r["unidad"]])
-    _cerrar(ws, {2: _CANT})
+        for d in r["distribuciones"]:
+            if d["aplicar"] and d["cantidadAsignada"] > 0:
+                destinos.setdefault(" ".join(x for x in (d["cultivo"], d["campania"]) if x), {})[d["lote"] or str(d["idLote"])] = d["superficie"]
+    ws.append(["Cultivos y lotes", None, "; ".join(f"{c}: {', '.join(l)} ({_ha(sum(l.values()))} ha)" for c, l in destinos.items()) or "—"])
+    for fila in (4, 6, 7):
+        ws.cell(row=fila, column=1).font = Font(bold=True, color="666666", size=9)
+    for col in (3, 5):
+        ws.cell(row=4, column=col).font = Font(bold=True, color="666666", size=9)
+    ws["A5"].font = Font(bold=True, size=12)
+    ws["C5"].number_format = _FECHA
+    ws.append([])
+
+    ws.append(["#", "Ing. Activo", "Marca Comercial", "Cantidad", "Unidad", "Control"])
+    enc = ws.max_row
+    for c in range(1, 7):
+        celda = ws.cell(row=enc, column=c)
+        celda.font = Font(bold=True)
+        celda.border = Border(top=grueso, bottom=grueso)
+    ws.cell(row=enc, column=4).alignment = Alignment(horizontal="right")
+    renglones = sorted(orden["insumos"], key=lambda r: ((r.get("ingredienteActivo") or "").strip(), r["producto"] or ""))
+    for n, r in enumerate(renglones, start=1):
+        ws.append([n, (r.get("ingredienteActivo") or "").strip() or "—", r["producto"], r["cantidadTotal"], r["unidad"], "☐"])
+        f = ws.max_row
+        ws.cell(row=f, column=4).number_format = "#,##0.0##"
+        ws.cell(row=f, column=6).alignment = Alignment(horizontal="center")
+        ws.cell(row=f, column=3).font = Font(bold=True)
+        for c in range(1, 7):
+            ws.cell(row=f, column=c).border = Border(bottom=fino)
+    if orden.get("observaciones"):
+        ws.append([])
+        ws.append(["Observaciones:", None, orden["observaciones"]])
+    for _ in range(4):
+        ws.append([])
+    ws.append([None, "Entregó (encargado de depósito)", "Retiró (contratista / operario)", None, "Fecha y hora de retiro"])
+    f = ws.max_row
+    for c in (2, 3, 5):
+        ws.cell(row=f, column=c).border = Border(top=grueso)
+        ws.cell(row=f, column=c).font = Font(size=9)
+    ws.page_setup.paperSize = ws.PAPERSIZE_A4
+    ws.page_setup.orientation = "landscape"
+    ws.page_setup.fitToWidth = 1
+    ws.page_setup.fitToHeight = 0
+    ws.sheet_properties.pageSetUpPr.fitToPage = True
+    ws.print_title_rows = f"{enc}:{enc}"
+    ws.oddFooter.right.text = f"Orden N° {orden['idOrden']} · Formulario N° {form['idFormularioRetiro']} · Página &P de &N"
     return _bytes(wb)
 
 

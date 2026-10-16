@@ -1,48 +1,34 @@
 "use client";
 
-import { formatCantidad } from "@/lib/format";
+import Link from "next/link";
+
+import { FormularioRetiroDocumento } from "@/components/ordenes/FormularioRetiroDocumento";
 import { urlExportarFormularioRetiro, type OrdenDetalle } from "@/services/ordenesApi";
 
 /**
- * Formulario de Retiro (FR-008): documento con numeración propia que el
- * encargado de campo usa para preparar los insumos a entregar al contratista
- * o a la maquinaria propia.
+ * Formulario de Retiro (FR-008) dentro del detalle de la orden: documento con
+ * numeración propia que el encargado de campo usa para preparar los insumos a entregar
+ * al contratista o a la maquinaria propia. Se imprime desde su propia página (A4
+ * apaisado, sin el resto de la pantalla).
  */
 export function FormularioRetiroView({ orden }: { orden: OrdenDetalle }) {
   if (!orden.formularioRetiro) return null;
   return (
-    <div className="rounded border border-border p-4 print:border-0">
-      <div className="mb-3 flex items-baseline justify-between">
-        <h2 className="text-lg font-semibold">Formulario de Retiro N° {orden.formularioRetiro.idFormularioRetiro}</h2>
-        <span className="text-sm text-ink-secondary">Orden N° {orden.idOrden} — {orden.fechaPedido}</span>
-      </div>
-      <table className="w-full text-sm">
-        <thead>
-          <tr className="border-b border-border text-left text-ink-secondary">
-            <th className="py-1 pr-4">Producto</th>
-            <th className="py-1 pr-4">Principio activo</th>
-            <th className="w-28 py-1 pr-3 text-right">Cantidad</th>
-            <th className="w-20 py-1">Unidad</th>
-          </tr>
-        </thead>
-        <tbody>
-          {orden.insumos.map((r) => (
-            <tr key={r.idOrdenInsumo} className="border-b border-border">
-              <td className="py-1 pr-4">{r.producto ?? r.idProducto}</td>
-              <td className="py-1 pr-4 text-ink-secondary">{r.ingredienteActivo?.trim() || "—"}</td>
-              <td className="py-1 pr-3 text-right font-data">{formatCantidad(r.cantidadTotal)}</td>
-              <td className="py-1">{r.unidad}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-      <div className="mt-3 flex gap-2 print:hidden">
-        <button type="button" onClick={() => window.print()} className="rounded border border-border px-3 py-1.5 text-sm hover:bg-surface-sunken">
-          Imprimir
-        </button>
+    <div className="space-y-2">
+      <div className="flex gap-2">
+        <Link
+          href={`/produccion/ordenes/${orden.idOrden}/retiro?imprimir=1`}
+          target="_blank"
+          className="rounded bg-finance px-3 py-1.5 text-sm text-white hover:opacity-90"
+        >
+          Imprimir / guardar PDF
+        </Link>
         <a href={urlExportarFormularioRetiro(orden.idOrden)} className="rounded border border-border px-3 py-1.5 text-sm hover:bg-surface-sunken">
           Exportar a Excel
         </a>
+      </div>
+      <div className="overflow-x-auto rounded border border-border">
+        <FormularioRetiroDocumento orden={orden} />
       </div>
     </div>
   );
