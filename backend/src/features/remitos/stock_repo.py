@@ -77,7 +77,8 @@ def existencias(q: str | None = None, tipo: str | None = None, estado: str | Non
         }
         items.append(item)
     if q:
-        items = [i for i in items if q.strip().lower() in (i["producto"] or "").lower()]
+        texto = q.strip().lower()
+        items = [i for i in items if texto in (i["producto"] or "").lower() or texto in (i["ingredienteActivo"] or "").lower()]
     if tipo:
         items = [i for i in items if i["tipo"] == tipo]
     filtro = {

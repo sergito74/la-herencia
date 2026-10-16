@@ -12,19 +12,27 @@ import { filterInputClass } from "@/components/ui/FilterBar";
  * existencia disponible (`estado=conStock`, mismo filtro que la pantalla de
  * Existencias), mostrando cuánto hay de cada uno — pedido del usuario:
  * no tiene sentido ofrecer para aplicar un insumo que no hay en stock.
+ * Muestra nombre comercial, principio activo y stock disponible (en la lista y,
+ * una vez elegido, debajo del campo); se busca por nombre o principio activo.
  */
 export function InsumoConStockSelect({
   value,
   onChange,
   disabled,
-  placeholder = "Buscar insumo con stock…",
+  placeholder = "Buscar por nombre o principio activo…",
   className,
+  reservado = 0,
+  cantidadPedida = 0,
 }: {
   value: { idProducto: number; producto: string } | null;
   onChange: (p: Existencia) => void;
   disabled?: boolean;
   placeholder?: string;
   className?: string;
+  /** Al editar una orden: lo que esta misma orden ya tenía descontado de ese insumo (vuelve a estar disponible). */
+  reservado?: number;
+  /** Lo que la orden pide de este insumo (todos sus renglones), para avisar si supera lo disponible. */
+  cantidadPedida?: number;
 }) {
   const [texto, setTexto] = useState(value?.producto ?? "");
   const [abierto, setAbierto] = useState(false);
@@ -52,6 +60,16 @@ export function InsumoConStockSelect({
     staleTime: 30_000,
   });
   const items = data?.items ?? [];
+
+  // Stock del insumo elegido al momento de la carga (también al abrir una orden existente).
+  const { data: todos } = useQuery({
+    queryKey: ["existencias-select-info"],
+    queryFn: () => fetchExistencias({ estado: "todos" }),
+    enabled: value != null,
+    staleTime: 30_000,
+  });
+  const elegido = value ? todos?.items.find((p) => p.idProducto === value.idProducto) : undefined;
+  const disponible = value ? (elegido?.existencia ?? 0) + reservado : null;
 
   function elegir(p: Existencia) {
     onChange(p);
@@ -105,13 +123,30 @@ export function InsumoConStockSelect({
               onMouseEnter={() => setIndice(i)}
               className={`cursor-pointer px-2 py-1 ${i === indice ? "bg-finance-light" : ""}`}
             >
-              <span className="font-medium">{p.producto}</span>{" "}
-              <span className="text-ink-secondary">
-                · {p.tipo ?? "—"} · hay {formatCantidad(p.existencia)} {p.unidadBase ?? ""}
+              <span className="flex items-baseline justify-between gap-3">
+                <span>
+                  <span className="font-medium">{p.producto}</span>
+                  <span className="block text-[11px] text-ink-secondary">{p.ingredienteActivo ?? p.tipo ?? "—"}</span>
+                </span>
+                <span className="whitespace-nowrap font-data text-ink-secondary">
+                  {formatCantidad(p.existencia)} {p.unidadBase ?? ""}
+                </span>
               </span>
             </li>
           ))}
         </ul>
+      )}
+      {value && elegido && (
+        <span className="mt-0.5 block text-[11px] text-ink-secondary">
+          {elegido.ingredienteActivo ?? elegido.tipo ?? "—"} · Stock disponible:{" "}
+          <span className={`font-data ${disponible != null && cantidadPedida > disponible + 0.0001 ? "font-medium text-status-danger" : "text-ink-primary"}`}>
+            {formatCantidad(disponible ?? 0)} {elegido.unidadBase ?? ""}
+          </span>
+          {reservado > 0 && " (incluye lo que ya tenía esta orden)"}
+          {disponible != null && cantidadPedida > disponible + 0.0001 && (
+            <span className="ml-1 text-status-danger">· La cantidad a aplicar supera el stock disponible</span>
+          )}
+        </span>
       )}
     </div>
   );

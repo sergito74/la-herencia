@@ -86,6 +86,14 @@ export function OrdenForm({ orden }: { orden?: OrdenDetalle }) {
   const [idCentroCostos, setIdCentroCostos] = useState<number | null>(orden?.idCentroCostos ?? null);
   const [grupos, setGrupos] = useState<GrupoCultivoCampania[]>([]);
   const [gruposInicializados, setGruposInicializados] = useState(false);
+  // Al editar: lo que esta orden ya descontó de cada insumo (incluido el ajuste por recuento)
+  // vuelve a estar disponible para ella.
+  const reservadoPorProducto = new Map<number, number>();
+  if (orden && orden.estado !== "Anulada") {
+    for (const i of orden.insumos) {
+      reservadoPorProducto.set(i.idProducto, (reservadoPorProducto.get(i.idProducto) ?? 0) + i.cantidadTotal + (i.ajusteRecuento ?? 0));
+    }
+  }
   const [renglones, setRenglones] = useState<Renglon[]>(
     orden?.insumos.map((i) => ({
       idProducto: i.idProducto,
@@ -296,6 +304,8 @@ export function OrdenForm({ orden }: { orden?: OrdenDetalle }) {
               <div className="mb-2 flex items-center gap-3">
                 <InsumoConStockSelect
                   value={r.idProducto ? { idProducto: r.idProducto, producto: r.producto } : null}
+                  reservado={r.idProducto ? reservadoPorProducto.get(r.idProducto) ?? 0 : 0}
+                  cantidadPedida={renglones.filter((x) => x.idProducto === r.idProducto).reduce((acc, x) => acc + (x.cantidadTotal || 0), 0)}
                   onChange={(p) => {
                     const copia = [...renglones];
                     copia[i] = { ...copia[i], idProducto: p.idProducto, producto: p.producto, unidad: p.unidadBase ?? copia[i].unidad };

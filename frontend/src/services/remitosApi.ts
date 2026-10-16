@@ -233,6 +233,7 @@ export interface Existencia {
   idProducto: number;
   producto: string;
   tipo: string | null;
+  ingredienteActivo: string | null;
   unidadBase: string | null;
   existencia: number;
   valor: number;
