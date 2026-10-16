@@ -16,9 +16,9 @@ def test_repartir_total_proporcional_al_peso_dosis_por_superficie():
     repartidas = distribucion.repartir_total(260, distribuciones)
     pesos = [2.3 * 20, 2.3 * 26, 2.8 * 16, 3.2 * 32]
     peso_total = sum(pesos)
-    for r, peso in zip(repartidas, pesos):
-        assert r["cantidadAsignada"] == round(260 * peso / peso_total, 4)
-    assert sum(r["cantidadAsignada"] for r in repartidas) == pytest.approx(260, abs=1e-3)
+    for r, peso in zip(repartidas, pesos):  # el lote mayor absorbe el residuo del redondeo (≤ 0,0001 por lote)
+        assert r["cantidadAsignada"] == pytest.approx(260 * peso / peso_total, abs=5e-4)
+    assert round(sum(r["cantidadAsignada"] for r in repartidas), 4) == 260
 
 
 def test_repartir_total_lote_no_aplicado_recibe_cero():
@@ -54,3 +54,17 @@ def test_validar_cierre_sin_devolucion_lanza_si_no_cierra():
 def test_validar_cierre_con_devolucion_cierra():
     distribuciones = distribucion.repartir_total(20, [_dist(2, 10)])  # repartido = 20
     distribucion.validar_cierre(25, distribuciones, devoluciones=[5])
+
+
+def test_repartir_total_cierra_exacto_aunque_el_redondeo_no_de():
+    # 16 entre tres lotes iguales da 5,3333 c/u = 15,9999: el residuo va a un lote.
+    repartidas = distribucion.repartir_total(16, [_dist(1, 10), _dist(1, 10), _dist(1, 10)])
+    assert round(sum(d["cantidadAsignada"] for d in repartidas), 4) == 16
+    distribucion.validar_cierre(16, repartidas)
+
+
+def test_mensaje_de_cierre_nombra_el_insumo():
+    distribuciones = distribucion.repartir_total(35, [_dist(2, 10), _dist(3, 5)])
+    with pytest.raises(ValueError) as exc:
+        distribucion.validar_cierre(50, distribuciones, producto="POWER PLUS II", unidad="LTS")
+    assert "«POWER PLUS II»" in exc.value.args[0][0] and "faltan 15 LTS" in exc.value.args[0][0]

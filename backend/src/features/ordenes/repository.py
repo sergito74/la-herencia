@@ -129,7 +129,8 @@ def _repartir_y_validar(renglones: list[dict]) -> tuple[list[dict], dict[int, fl
         if total <= 0:
             raise ValueError([f"Renglón {i}: la cantidad total a aplicar debe ser mayor a cero."])
         distribuciones_repartidas = distribucion.repartir_total(total, r["distribuciones"])
-        distribucion.validar_cierre(total, distribuciones_repartidas)
+        nombre = fetch_one("SELECT Producto AS p FROM dbo.vw_ProductosBase WHERE IdProducto = ?", (r["idProducto"],))
+        distribucion.validar_cierre(total, distribuciones_repartidas, producto=(nombre or {}).get("p"), unidad=r.get("unidad"))
         repartidos.append({**r, "distribuciones": distribuciones_repartidas})
         consumo_por_producto[r["idProducto"]] = consumo_por_producto.get(r["idProducto"], 0.0) + total
     return repartidos, consumo_por_producto

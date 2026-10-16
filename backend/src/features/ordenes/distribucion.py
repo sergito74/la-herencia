@@ -28,22 +28,42 @@ def repartir_total(cantidad_total: float, distribuciones: list[dict]) -> list[di
     o `aplicar=False` recibe 0."""
     pesos = [float(d["dosisHa"]) * float(d["superficie"]) if d.get("aplicar", True) else 0.0 for d in distribuciones]
     peso_total = sum(pesos)
-    return [
-        {**d, "cantidadAsignada": round(float(cantidad_total) * peso / peso_total, 4) if peso_total > 0 else 0.0}
-        for d, peso in zip(distribuciones, pesos)
-    ]
+    cantidades = [round(float(cantidad_total) * peso / peso_total, 4) if peso_total > 0 else 0.0 for peso in pesos]
+    if peso_total > 0:
+        # Cada parte se redondea a 4 decimales; el residuo (ej. 16 repartido da 15,9998)
+        # va al lote con más cantidad para que el reparto cierre exacto contra el total.
+        mayor = max(range(len(cantidades)), key=lambda i: cantidades[i])
+        cantidades[mayor] = round(cantidades[mayor] + float(cantidad_total) - sum(cantidades), 4)
+    return [{**d, "cantidadAsignada": c} for d, c in zip(distribuciones, cantidades)]
 
 
-def validar_cierre(cantidad_total: float, distribuciones_repartidas: list[dict], devoluciones: list[float] | None = None) -> None:
+def _num(v: float) -> str:
+    """Formato local para mensajes: miles con punto, decimales con coma, sin ceros de más."""
+    texto = f"{v:,.4f}".rstrip("0").rstrip(".")
+    return texto.replace(",", "§").replace(".", ",").replace("§", ".")
+
+
+def validar_cierre(
+    cantidad_total: float,
+    distribuciones_repartidas: list[dict],
+    devoluciones: list[float] | None = None,
+    producto: str | None = None,
+    unidad: str | None = None,
+) -> None:
     """Lanza ValueError si `cantidad_total` no cierra contra `cantidadAsignada`
     de cada lote (ya repartida por `repartir_total`) + lo devuelto a stock."""
     repartido = sum(float(d["cantidadAsignada"]) for d in distribuciones_repartidas)
     devuelto = sum(devoluciones or [])
     diferencia = round(float(cantidad_total) - repartido - devuelto, 4)
     if abs(diferencia) > EPS:
+        u = f" {unidad}" if unidad else ""
+        nombre = f"«{producto}»" if producto else "Un insumo"
+        detalle = f"{_num(repartido)}{u} entre los lotes" + (f" y {_num(devuelto)}{u} devueltos" if devuelto else "")
         raise ValueError(
             [
-                f"El total del insumo ({cantidad_total:g}) no cierra contra lo repartido entre lotes "
-                f"({repartido:g}) más lo devuelto ({devuelto:g}): diferencia de {diferencia:g}."
+                f"{nombre}: la cantidad total a aplicar ({_num(cantidad_total)}{u}) no coincide con lo repartido "
+                f"({detalle}); faltan {_num(diferencia)}{u}." if diferencia > 0 else
+                f"{nombre}: lo repartido ({detalle}) supera la cantidad total a aplicar ({_num(cantidad_total)}{u}) "
+                f"en {_num(-diferencia)}{u}. Revisá la cantidad total o las dosis de los lotes."
             ]
         )

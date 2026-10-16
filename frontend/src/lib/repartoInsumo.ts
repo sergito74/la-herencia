@@ -10,5 +10,10 @@ export function repartirTotal(cantidadTotal: number, distribuciones: Distribucio
   const pesos = distribuciones.map((d) => (d.aplicar ? d.dosisHa * d.superficie : 0));
   const pesoTotal = pesos.reduce((a, b) => a + b, 0);
   if (pesoTotal <= 0) return pesos.map(() => 0);
-  return pesos.map((p) => Math.round(((cantidadTotal * p) / pesoTotal) * 10000) / 10000);
+  const cantidades = pesos.map((p) => Math.round(((cantidadTotal * p) / pesoTotal) * 10000) / 10000);
+  // Igual que el backend: el residuo del redondeo va al lote con más cantidad, así cierra exacto.
+  const mayor = cantidades.indexOf(Math.max(...cantidades));
+  const residuo = cantidadTotal - cantidades.reduce((a, b) => a + b, 0);
+  cantidades[mayor] = Math.round((cantidades[mayor] + residuo) * 10000) / 10000;
+  return cantidades;
 }
