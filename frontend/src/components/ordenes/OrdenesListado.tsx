@@ -7,6 +7,7 @@ import { useState } from "react";
 import { DataTable, type DataTableColumn } from "@/components/ui/DataTable";
 import { ErrorState, LoadingState } from "@/components/ui/States";
 import { BadgeEstadoOrden } from "@/components/ordenes/EstadosOrden";
+import { formatCantidad } from "@/lib/format";
 import { fetchOrdenes, type FiltrosOrdenes, type OrdenListItem } from "@/services/ordenesApi";
 
 const ESTADOS = [
@@ -16,7 +17,7 @@ const ESTADOS = [
   { value: "Anulada", label: "Anuladas" },
 ];
 
-const VACIO: FiltrosOrdenes = { fechaDesde: "", fechaHasta: "", estado: "" };
+const VACIO: FiltrosOrdenes = { fechaDesde: "", fechaHasta: "", estado: "", insumo: "" };
 
 const COLUMNAS: DataTableColumn<OrdenListItem>[] = [
   {
@@ -34,13 +35,31 @@ const COLUMNAS: DataTableColumn<OrdenListItem>[] = [
   { key: "estado", header: "Estado", render: (o) => <BadgeEstadoOrden estado={o.estado} /> },
 ];
 
+const COLUMNA_INSUMOS: DataTableColumn<OrdenListItem> = {
+  key: "insumos",
+  header: "Insumo usado",
+  render: (o) =>
+    (o.insumosCoincidentes ?? []).map((i) => (
+      <span key={i.producto} className="block whitespace-nowrap">
+        {i.producto}: <span className="font-data">{formatCantidad(i.cantidad)}</span> {i.unidad}
+      </span>
+    )),
+};
+
 export function OrdenesListado() {
   const [filtros, setFiltros] = useState<FiltrosOrdenes>(VACIO);
+  // El texto del insumo se aplica al tocar Filtrar o Enter, no en cada tecla.
+  const [insumo, setInsumo] = useState("");
   const [page, setPage] = useState(1);
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ["ordenes", filtros, page],
     queryFn: () => fetchOrdenes(filtros, page),
   });
+  const aplicarInsumo = () => {
+    setPage(1);
+    if (insumo.trim() !== (filtros.insumo ?? "")) setFiltros({ ...filtros, insumo: insumo.trim() });
+    else refetch();
+  };
 
   return (
     <div className="space-y-4">
@@ -77,12 +96,19 @@ export function OrdenesListado() {
             ))}
           </select>
         </label>
+        <label className="text-sm">
+          Insumo
+          <input
+            className="mt-1 block w-56 rounded border border-border px-2 py-1.5"
+            placeholder="Producto o principio activo"
+            value={insumo}
+            onChange={(e) => setInsumo(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && aplicarInsumo()}
+          />
+        </label>
         <button
           type="button"
-          onClick={() => {
-            setPage(1);
-            refetch();
-          }}
+          onClick={aplicarInsumo}
           className="rounded bg-finance px-3 py-1.5 text-sm text-white"
         >
           Filtrar
@@ -96,7 +122,7 @@ export function OrdenesListado() {
       {isError && <ErrorState message="No se pudieron cargar las órdenes." />}
       {data && (
         <DataTable
-          columns={COLUMNAS}
+          columns={filtros.insumo ? [...COLUMNAS, COLUMNA_INSUMOS] : COLUMNAS}
           rows={data.items}
           keyField={(o) => o.idOrden}
           emptyMessage="No hay órdenes de trabajo con estos filtros."

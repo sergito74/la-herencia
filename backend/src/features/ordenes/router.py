@@ -54,22 +54,23 @@ async def listar_ordenes(
     fechaDesde: date | None = None,
     fechaHasta: date | None = None,
     estado: str | None = None,
+    insumo: str | None = None,
     page: int = 1,
     pageSize: int = 25,
 ) -> dict:
     return await _ejecutar(
-        repository.listar_ordenes, idContratista, idLote, idCultivo, idCampania, fechaDesde, fechaHasta, estado, max(page, 1), min(max(pageSize, 1), 200)
+        repository.listar_ordenes, idContratista, idLote, idCultivo, idCampania, fechaDesde, fechaHasta, estado, max(page, 1), min(max(pageSize, 1), 200), insumo
     )
 
 
 @router.get("/exportar")
 async def exportar_ordenes(
     idContratista: int | None = None, idLote: int | None = None, idCultivo: int | None = None, idCampania: int | None = None,
-    fechaDesde: date | None = None, fechaHasta: date | None = None, estado: str | None = None,
+    fechaDesde: date | None = None, fechaHasta: date | None = None, estado: str | None = None, insumo: str | None = None,
 ) -> Response:
     contenido = await _ejecutar(
         exportacion.ordenes_xlsx, idContratista=idContratista, idLote=idLote, idCultivo=idCultivo, idCampania=idCampania,
-        fechaDesde=fechaDesde, fechaHasta=fechaHasta, estado=estado,
+        fechaDesde=fechaDesde, fechaHasta=fechaHasta, estado=estado, insumo=insumo,
     )
     return Response(content=contenido, media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", headers={"Content-Disposition": f'attachment; filename="ordenes-{date.today().isoformat()}.xlsx"'})
 

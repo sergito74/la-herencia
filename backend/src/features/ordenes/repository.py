@@ -205,6 +205,7 @@ def listar_ordenes(
     estado: str | None = None,
     page: int = 1,
     page_size: int = 25,
+    insumo: str | None = None,
 ) -> dict:
     where, params = ["1 = 1"], []
     if idContratista is not None:
@@ -234,6 +235,15 @@ def listar_ordenes(
             f"EXISTS (SELECT 1 FROM dbo.Ordenes_Trabajo_Distrib d JOIN dbo.Ordenes_Trabajo_Insumos i ON i.IdOrdenInsumo = d.IdOrdenInsumo "
             f"WHERE i.IdOrdenTrabajo = o.IdOrdenTrabajo AND {' AND '.join(sub)})"
         )
+    # Insumo: por nombre comercial o principio activo (ej. "DIFLUFENICAN" trae todas las marcas).
+    filtro_insumo = ""
+    if insumo and insumo.strip():
+        filtro_insumo = "(p.Producto LIKE ? OR p.IngredienteActivo LIKE ?)"
+        where.append(
+            "EXISTS (SELECT 1 FROM dbo.Ordenes_Trabajo_Insumos i JOIN dbo.vw_ProductosBase p ON p.IdProducto = i.IdProducto "
+            f"WHERE i.IdOrdenTrabajo = o.IdOrdenTrabajo AND {filtro_insumo})"
+        )
+        params += [f"%{insumo.strip()}%"] * 2
     filas = fetch_all(
         f"""
         SELECT o.IdOrdenTrabajo AS idOrden, o.FechaPedido AS fechaPedido, o.FechaEjecucion AS fechaEjecucion,
@@ -249,7 +259,21 @@ def listar_ordenes(
     )
     items = [{**f, "fechaPedido": _d(f["fechaPedido"]), "fechaEjecucion": _d(f["fechaEjecucion"])} for f in filas]
     inicio = (page - 1) * page_size
-    return {"items": items[inicio : inicio + page_size], "total": len(items), "page": page, "pageSize": page_size}
+    pagina = items[inicio : inicio + page_size]
+    if filtro_insumo and pagina:
+        # Qué insumos de cada orden coincidieron con la búsqueda, con lo usado.
+        ids = [o["idOrden"] for o in pagina]
+        usados: dict[int, list] = {}
+        for r in fetch_all(
+            f"SELECT i.IdOrdenTrabajo AS idOrden, p.Producto AS producto, i.CantidadTotal AS cantidad, i.Unidad AS unidad "
+            f"FROM dbo.Ordenes_Trabajo_Insumos i JOIN dbo.vw_ProductosBase p ON p.IdProducto = i.IdProducto "
+            f"WHERE i.IdOrdenTrabajo IN ({','.join('?' for _ in ids)}) AND {filtro_insumo} ORDER BY i.IdOrdenInsumo",
+            (*ids, f"%{insumo.strip()}%", f"%{insumo.strip()}%"),
+        ):
+            usados.setdefault(r["idOrden"], []).append({"producto": r["producto"], "cantidad": _f(r["cantidad"]), "unidad": r["unidad"]})
+        for o in pagina:
+            o["insumosCoincidentes"] = usados.get(o["idOrden"], [])
+    return {"items": pagina, "total": len(items), "page": page, "pageSize": page_size}
 
 
 def obtener_orden(id_orden: int) -> dict | None:

@@ -97,6 +97,8 @@ export interface OrdenListItem {
   estado: EstadoOrden;
   idRubro: number | null;
   idCentroCostos: number | null;
+  /** Solo al filtrar por insumo: los insumos de la orden que coinciden, con lo usado. */
+  insumosCoincidentes?: { producto: string; cantidad: number; unidad: string }[];
 }
 
 export interface FiltrosOrdenes {
@@ -107,6 +109,8 @@ export interface FiltrosOrdenes {
   fechaDesde?: string;
   fechaHasta?: string;
   estado?: string;
+  /** Nombre comercial o principio activo de un insumo usado en la orden. */
+  insumo?: string;
 }
 
 export const fetchOrdenes = (f: FiltrosOrdenes, page: number, pageSize = 25) =>
@@ -118,6 +122,7 @@ export const fetchOrdenes = (f: FiltrosOrdenes, page: number, pageSize = 25) =>
     fechaDesde: f.fechaDesde,
     fechaHasta: f.fechaHasta,
     estado: f.estado,
+    insumo: f.insumo || undefined,
     page,
     pageSize,
   });
