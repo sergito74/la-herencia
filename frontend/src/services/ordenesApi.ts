@@ -191,6 +191,7 @@ export const ejecutarOrdenUrlExportar = (f: FiltrosOrdenes) => {
 };
 
 export const urlExportarFormularioRetiro = (idOrden: number) => new URL(`/api/ordenes/${idOrden}/formulario-retiro/exportar`, API_BASE_URL).toString();
+export const urlPdfFormularioRetiro = (idOrden: number) => new URL(`/api/ordenes/${idOrden}/formulario-retiro/pdf`, API_BASE_URL).toString();
 
 // ------------------------------------------------------------------ devoluciones (Historia 2)
 

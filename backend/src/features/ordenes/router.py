@@ -7,7 +7,7 @@ from datetime import date
 from fastapi import APIRouter, HTTPException, Response
 from starlette.concurrency import run_in_threadpool
 
-from src.features.ordenes import exportacion, repository, resultado
+from src.features.ordenes import exportacion, repository, resultado, retiro_pdf
 from src.features.ordenes.repository import RequiereConfirmacion
 from src.features.ordenes.schemas import (
     AnularIn,
@@ -73,6 +73,12 @@ async def exportar_ordenes(
         fechaDesde=fechaDesde, fechaHasta=fechaHasta, estado=estado, insumo=insumo,
     )
     return Response(content=contenido, media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", headers={"Content-Disposition": f'attachment; filename="ordenes-{date.today().isoformat()}.xlsx"'})
+
+
+@router.get("/{id_orden}/formulario-retiro/pdf")
+async def formulario_retiro_pdf(id_orden: int) -> Response:
+    contenido = await _ejecutar(retiro_pdf.formulario_retiro_pdf, id_orden)
+    return Response(content=contenido, media_type="application/pdf", headers={"Content-Disposition": f'attachment; filename="formulario-retiro-orden-{id_orden}.pdf"'})
 
 
 @router.get("/{id_orden}/formulario-retiro/exportar")

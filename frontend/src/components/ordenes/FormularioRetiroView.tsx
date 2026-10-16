@@ -3,7 +3,7 @@
 import Link from "next/link";
 
 import { FormularioRetiroDocumento } from "@/components/ordenes/FormularioRetiroDocumento";
-import { urlExportarFormularioRetiro, type OrdenDetalle } from "@/services/ordenesApi";
+import { urlExportarFormularioRetiro, urlPdfFormularioRetiro, type OrdenDetalle } from "@/services/ordenesApi";
 
 /**
  * Formulario de Retiro (FR-008) dentro del detalle de la orden: documento con
@@ -21,8 +21,11 @@ export function FormularioRetiroView({ orden }: { orden: OrdenDetalle }) {
           target="_blank"
           className="rounded bg-finance px-3 py-1.5 text-sm text-white hover:opacity-90"
         >
-          Imprimir / guardar PDF
+          Imprimir
         </Link>
+        <a href={urlPdfFormularioRetiro(orden.idOrden)} className="rounded border border-border px-3 py-1.5 text-sm hover:bg-surface-sunken">
+          Exportar a PDF
+        </a>
         <a href={urlExportarFormularioRetiro(orden.idOrden)} className="rounded border border-border px-3 py-1.5 text-sm hover:bg-surface-sunken">
           Exportar a Excel
         </a>

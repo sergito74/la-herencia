@@ -7,7 +7,7 @@ import { Suspense, useEffect } from "react";
 import { FormularioRetiroDocumento } from "@/components/ordenes/FormularioRetiroDocumento";
 import { BackLink } from "@/components/ui/BackLink";
 import { ErrorState, LoadingState } from "@/components/ui/States";
-import { fetchOrden, urlExportarFormularioRetiro } from "@/services/ordenesApi";
+import { fetchOrden, urlExportarFormularioRetiro, urlPdfFormularioRetiro } from "@/services/ordenesApi";
 
 /** Formulario de Retiro listo para imprimir o guardar como PDF (A4 apaisado). */
 function Contenido() {
@@ -31,8 +31,11 @@ function Contenido() {
         <BackLink href={`/produccion/ordenes/${id}`}>Volver a la orden</BackLink>
         <div className="flex gap-2">
           <button type="button" onClick={() => window.print()} className="rounded bg-finance px-3 py-1.5 text-sm text-white hover:opacity-90">
-            Imprimir / guardar PDF
+            Imprimir
           </button>
+          <a href={urlPdfFormularioRetiro(id)} className="rounded border border-border px-3 py-1.5 text-sm hover:bg-surface-sunken">
+            Exportar a PDF
+          </a>
           <a href={urlExportarFormularioRetiro(id)} className="rounded border border-border px-3 py-1.5 text-sm hover:bg-surface-sunken">
             Exportar a Excel
           </a>
