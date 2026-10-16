@@ -97,10 +97,13 @@ def _desde(id_producto: int, fecha: date, movimientos: list[dict]) -> date | Non
     )[0]["f"]
     if previo:
         return date.fromisoformat(str(previo)[:10])
+    # El ciclo actual del stock empieza en el último cero seguido de una entrada. No sirve
+    # "el último cero" a secas: si la última orden dejó el stock en cero (DIFLU 50 RINDER,
+    # orden 141), esa misma orden quedaría afuera y es la que hay que ajustar.
     cero = None
-    for m in movimientos:
-        if abs(m["saldo"]) <= TOLERANCIA:
-            cero = str(m["fecha"])[:10]
+    for actual, siguiente in zip(movimientos, movimientos[1:]):
+        if abs(actual["saldo"]) <= TOLERANCIA and siguiente["cantidad"] > 0:
+            cero = str(actual["fecha"])[:10]
     return date.fromisoformat(cero) if cero else None
 
 

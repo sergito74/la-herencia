@@ -61,3 +61,23 @@ def test_sin_ordenes_todo_queda_sin_imputar():
     from src.features.remitos.recuento import _repartir
 
     assert _repartir(-7.5, []) == ([], -7.5)
+
+
+def test_primer_recuento_incluye_la_orden_que_dejo_el_stock_en_cero(monkeypatch):
+    """DIFLU 50 RINDER: entró 15, la orden 141 usó 15 y quedó en cero; contaron 4.
+    El período empieza antes de la entrada, así la orden 141 absorbe el sobrante."""
+    from datetime import date
+
+    from src.features.remitos import recuento
+
+    monkeypatch.setattr(recuento, "fetch_all", lambda *a, **k: [{"f": None}])
+    movimientos = [
+        {"fecha": "2025-09-08", "cantidad": 15.0, "saldo": 15.0},
+        {"fecha": "2025-09-15", "cantidad": -15.0, "saldo": 0.0},
+    ]
+    assert recuento._desde(41623, date(2026, 10, 15), movimientos) is None
+    ciclos = [{"fecha": "2024-01-01", "cantidad": 5.0, "saldo": 5.0}, {"fecha": "2024-02-01", "cantidad": -5.0, "saldo": 0.0}] + [
+        {"fecha": "2025-09-08", "cantidad": 15.0, "saldo": 15.0},
+        {"fecha": "2025-09-15", "cantidad": -15.0, "saldo": 0.0},
+    ]
+    assert recuento._desde(41623, date(2026, 10, 15), ciclos) == date(2024, 2, 1)
