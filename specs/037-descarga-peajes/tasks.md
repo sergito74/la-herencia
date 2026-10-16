@@ -99,8 +99,8 @@
 ## Phase 7: Polish & Cross-Cutting
 
 - [X] T035 Correr `pytest backend/tests/test_descarga_peajes_lectores.py backend/tests/test_descarga_peajes_carga.py backend/tests/contract/test_descarga_peajes_api.py` y `npx tsc --noEmit` + `npm run build` en `frontend/`
-- [ ] T036 Ejecutar `python -m scripts.descargar_peajes --origen manual --dry-run` desde `backend/` con el .venv y verificar que no propone documentos nuevos (todo `historico`)
-- [ ] T037 Validación manual de [quickstart.md](quickstart.md) pasos 1–8 con la app levantada por el launcher; registrar resultados en `specs/037-descarga-peajes/quickstart.md`
+- [X] T036 Ejecutar `python -m scripts.descargar_peajes --origen manual --dry-run` desde `backend/` con el .venv y verificar que no propone documentos nuevos (todo `historico`)
+- [X] T037 Validación manual de [quickstart.md](quickstart.md) pasos 1–8 con la app levantada por el launcher; registrar resultados en `specs/037-descarga-peajes/quickstart.md`
 - [X] T038 [P] Revisión de checkpoint con el agente de dirección financiera (`.github/agents/`) sobre los criterios de carga automática (rubro, IIBB, no gravados, resumen Telepeaje $0) y registrar hallazgos
   - Hecha 2026-10-16 (agente 07, dirección financiera). Corregidos: (6) los lectores rechazan notas de crédito/débito → pendiente; (7) "ya cargado" por documento original compara ruta exacta (o formato heredado `ruta#`), no prefijo. (3) Sergio decidió (A): percepción de IVA → `PercepcionIVA` desde el módulo; aplicado en lectores y carga. Seguimiento: (1) el débito del resumen Telepeaje se imputa a las facturas de las concesionarias, no a Telepeaje (328); (2) aceptación con cuenta corriente 276/380/328 en cero tras imputar débitos reales; (5) informe de cargas automáticas y anulación por ejecución.
 - [X] T039 [P] Actualizar `memory.md` y la memoria de proyecto (descarga de peajes) con el módulo, tablas y la ubicación del instalador; revisar diff (sin credenciales, sin PDFs fuera de fixtures, sin .bak)

@@ -21,7 +21,9 @@ Guardar "telepase" "sgiamberardini@fibertel.com.ar"
 Guardar "ceamse" "779446"
 Guardar "aubasa" "718901"
 
-$accion = New-ScheduledTaskAction -Execute $python -Argument "-m scripts.descargar_peajes --origen semanal" -WorkingDirectory $backend
+# pythonw: corre sin abrir una ventana de consola los lunes.
+$pythonw = "C:\dev\LaHerencia\backend\.venv\Scripts\pythonw.exe"
+$accion = New-ScheduledTaskAction -Execute $pythonw -Argument "-m scripts.descargar_peajes --origen semanal" -WorkingDirectory $backend
 $disparo = New-ScheduledTaskTrigger -Weekly -DaysOfWeek Monday -At 9am
 $ajustes = New-ScheduledTaskSettingsSet -StartWhenAvailable -RunOnlyIfNetworkAvailable -ExecutionTimeLimit (New-TimeSpan -Minutes 30)
 Register-ScheduledTask -TaskName "LaHerencia - Descarga peajes" -Action $accion -Trigger $disparo -Settings $ajustes -Description "Baja y carga en Compras los comprobantes de TelepeajePlus, TelePASE, CEAMSE y AUBASA" -Force | Out-Null

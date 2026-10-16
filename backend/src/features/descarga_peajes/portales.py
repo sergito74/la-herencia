@@ -34,6 +34,8 @@ NOMBRES_TS = {
     "ACCESO NORTE": "AutopistasDelSol", "ACCESO OESTE": "GrupoConcesionarioDelOeste",
     "AUTOPISTAS URBANAS": "AUSA", "ACCESO RICCHERI": "CorredoresViales",
 }
+# Concesionarios que TelePASE también lista pero se bajan desde su propio portal (evita duplicar el PDF).
+CUBIERTOS_POR_OTRO_PORTAL = {"AU. BS AS - LA PLATA"}  # AUBASA
 NOMBRES_TP = [("CVSA", "CorredoresViales"), ("CORRESUR", "Corresur"), ("PENTAVIA", "CV5")]
 
 
@@ -147,6 +149,8 @@ def listar_telepase(pw):
             if len(celdas) < 3 or not enlace:
                 continue
             concesionario = celdas[1]
+            if concesionario in CUBIERTOS_POR_OTRO_PORTAL:
+                continue
             proveedor = NOMBRES_TS.get(concesionario)
             if not proveedor:
                 avisos.append(f"Concesionario sin proveedor asignado: {concesionario} ({celdas[2]})")

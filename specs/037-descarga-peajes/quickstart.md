@@ -18,3 +18,10 @@
 6. **Pendiente**: un formato no reconocido aparece en la lista con su motivo, el contador del menú sube, "Cargar en Compras" abre el alta precargada y, al guardarla, el contador baja.
 7. **Semanal (US3)**: ejecutar la tarea desde el Programador de tareas; queda en el historial con origen "semanal".
 8. **Solo lectura**: con un usuario `Lectura`, el botón no aparece y el `POST` devuelve 403.
+
+## Resultado de la validación — 2026-10-16
+
+- Instalador corrido por Sergio: 4 credenciales configuradas, tarea "LaHerencia - Descarga peajes" lista (próxima 19/10/2026 09:00). Su prueba inmediata = ejecución 1 (semanal, completa, 0 nuevos; 98 existentes).
+- API real (backend en puerto de prueba, portales reales): `/estado` con 4 portales configurados y la tarea; `POST` con rol Lectura → 403; dos `POST` seguidos → 202 (ejecución 2) y 409 con `idEjecucion` 2; avance por portal visible en el polling; terminó `completa` en ~60 s (SC-001 < 5 min); 0 documentos nuevos, 0 pendientes, contador {0, 0}.
+- Hallazgo corregido: TelePASE también lista la factura de AUBASA ("AU. BS AS - LA PLATA"); se excluye porque se baja desde el portal propio de AUBASA. La tarea pasa a `pythonw.exe` para no abrir consola (requiere volver a correr el instalador).
+- Pendiente: probar la carga automática con el primer comprobante nuevo real (próximo lunes) y revisar la pantalla en el navegador.
