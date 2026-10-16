@@ -1,14 +1,20 @@
 "use client";
 
 import Link from "next/link";
+import { useQuery } from "@tanstack/react-query";
 import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
 
 import { useAuth } from "@/components/auth/AuthContext";
+import { getResumen } from "@/services/descargaPeajesApi";
 
 interface NavLeaf {
   href: string;
   label: string;
+  /** Activo solo con la ruta exacta (ej. "/compras" no se marca dentro de "/compras/descarga-peajes"). */
+  exact?: boolean;
+  /** Contador opcional (pendientes de la descarga de peajes, 037). */
+  badge?: "peajes";
 }
 
 interface NavItem {
@@ -67,7 +73,15 @@ function Icon({ children, className = "h-4 w-4" }: { children: JSX.Element; clas
  * sección "2026-09-16 — Polish de navegación" para el detalle de research).
  */
 const NAV_ITEMS: NavItem[] = [
-  { href: "/compras", label: "Compras", icon: ICONS.compras },
+  {
+    href: "/compras",
+    label: "Compras",
+    icon: ICONS.compras,
+    submenu: [
+      { href: "/compras", label: "Compras", exact: true },
+      { href: "/compras/descarga-peajes", label: "Descarga de peajes", badge: "peajes" },
+    ],
+  },
   {
     href: "/ventas/hacienda",
     label: "Ventas",
@@ -130,7 +144,31 @@ function isActive(pathname: string, href: string) {
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
-function NavDropdown({ item, active }: { item: NavItem; active: boolean }) {
+/** Contador de la descarga de peajes (037, FR-020): pendientes de carga
+ * manual + portales con error en su última corrida. Se consulta cada 5 min
+ * y al volver a la pestaña; oculto si es 0. */
+function usePendientesPeajes(habilitado: boolean): number {
+  const { data } = useQuery({
+    queryKey: ["descarga-peajes", "resumen"],
+    queryFn: getResumen,
+    enabled: habilitado,
+    refetchInterval: 5 * 60 * 1000,
+    refetchOnWindowFocus: true,
+    retry: false,
+  });
+  return data ? data.pendientes + data.portalesConError : 0;
+}
+
+function Contador({ valor }: { valor: number }) {
+  if (!valor) return null;
+  return (
+    <span className="ml-1 rounded-full bg-amber-500 px-1.5 text-[10px] font-semibold leading-4 text-white" title="Pendientes de carga manual o portales con error">
+      {valor}
+    </span>
+  );
+}
+
+function NavDropdown({ item, active, peajes }: { item: NavItem; active: boolean; peajes: number }) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
 
@@ -148,12 +186,13 @@ function NavDropdown({ item, active }: { item: NavItem; active: boolean }) {
       >
         <Icon>{item.icon}</Icon>
         {item.label}
+        {item.submenu?.some((l) => l.badge === "peajes") && <Contador valor={peajes} />}
         <Icon className={`h-3.5 w-3.5 transition-transform ${open ? "rotate-180" : ""}`}>{ICONS.chevron}</Icon>
       </button>
       {open && (
         <div className="absolute left-0 top-full z-10 min-w-[14rem] origin-top-left rounded-md border border-border bg-surface py-1 shadow-lg ring-1 ring-black/5 animate-[fadeIn_0.1s_ease-out]">
           {item.submenu!.map((leaf) => {
-            const leafActive = isActive(pathname, leaf.href);
+            const leafActive = leaf.exact ? pathname === leaf.href : isActive(pathname, leaf.href);
             return (
               <Link
                 key={leaf.href}
@@ -165,6 +204,7 @@ function NavDropdown({ item, active }: { item: NavItem; active: boolean }) {
                 }`}
               >
                 {leaf.label}
+                {leaf.badge === "peajes" && <Contador valor={peajes} />}
               </Link>
             );
           })}
@@ -178,6 +218,7 @@ export function NavHeader() {
   const pathname = usePathname();
   const router = useRouter();
   const { usuario, logout } = useAuth();
+  const peajes = usePendientesPeajes(pathname !== "/login" && !!usuario);
 
   if (pathname === "/login") return null;
 
@@ -220,7 +261,7 @@ export function NavHeader() {
                 (item.submenu?.some((leaf) => isActive(pathname, leaf.href)) ?? false);
 
               if (item.submenu) {
-                return <NavDropdown key={item.href} item={item} active={active} />;
+                return <NavDropdown key={item.href} item={item} active={active} peajes={peajes} />;
               }
 
               return (

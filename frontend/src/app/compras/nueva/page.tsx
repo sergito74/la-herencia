@@ -22,6 +22,8 @@ export default function NuevaCompraPage({ searchParams }: { searchParams: Params
     // Un reintegro de tarjeta (importe negativo) se carga como Nota de Crédito
     // en negativo (caso real 2026-10-02, Luvik S.A.).
     importe: Number.isFinite(importe) && importe !== 0 ? importe : undefined,
+    // PDF ya bajado por la descarga de peajes (037).
+    documentoOriginal: uno(searchParams.documentoOriginal),
   };
   return (
     <main className="mx-auto max-w-none px-8 py-3">

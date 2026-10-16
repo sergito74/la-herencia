@@ -100,6 +100,8 @@ export function CompraForm({
     numeroDocumento?: string;
     detalle?: string;
     importe?: number;
+    /** Ruta del PDF ya bajado (ej. desde la descarga de peajes, 037). */
+    documentoOriginal?: string;
   };
 }) {
   const router = useRouter();
@@ -135,7 +137,7 @@ export function CompraForm({
     else if (tipoDeCambio === 1) setTipoDeCambio(null);
   }
   const [ajustaTipoCambio, setAjustaTipoCambio] = useState(initial?.ajustaTipoCambio ?? false);
-  const [documentoOriginalLink, setDocumentoOriginalLink] = useState(initial?.documentoOriginal ?? "");
+  const [documentoOriginalLink, setDocumentoOriginalLink] = useState(initial?.documentoOriginal ?? prefill?.documentoOriginal ?? "");
   const [conceptos, setConceptos] = useState({
     ingresosBrutos: initial?.ingresosBrutos ?? 0,
     percepcionIva: initial?.percepcionIva ?? 0,

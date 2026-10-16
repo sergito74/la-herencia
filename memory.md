@@ -697,3 +697,8 @@ El usuario informó cambio de OpenAI gratuito a Plus. Se retomó T048: ver `spec
 ## Spec Kit para Codex — 2026-09-22
 
 Por pedido del usuario, Spec Kit es la herramienta de desarrollo. Se completó la instalación oficial 1.0.7 de GitHub con diez skills locales en `.agents/skills/` y Codex como integración predeterminada. Se conservan Claude y Copilot, las specs y la Constitución. Ver `.specify/README.md` para uso y diagnóstico de coexistencia. La instalación no cierra T048 de 012 ni resuelve la consulta pendiente sobre costeo por superficie.
+
+
+## 037 Descarga de peajes — 2026-10-16
+
+Módulo `backend/src/features/descarga_peajes/` + pantalla Compras › Descarga de peajes. Baja comprobantes de TelepeajePlus, TelePASE, CEAMSE y AUBASA (acceso solo lectura autorizado por Sergio) y los carga en Compras si cierran contra el total impreso (±$0,05) y no están duplicados; si no, quedan pendientes con motivo. Tablas `DescargaPeajes_Ejecuciones/EjecucionPortales/Documentos` en WC (98 claves previas importadas como `historico`). Una sola ejecución a la vez (`sp_getapplock`). Credenciales solo en el Administrador de credenciales de Windows (servicio `LaHerencia-Peajes`), cargadas por `backend/scripts/instalar_descarga_peajes.ps1`, que también programa la tarea semanal (lunes 9:00, `.venv`, `--origen semanal`). Decisión de Sergio: percepción de IVA (RG 3337 / 3 %) → `PercepcionIVA` (antes se cargaba en Ingresos Brutos). Pendientes de validación con credenciales: T036/T037. Seguimiento financiero en tasks.md T038.

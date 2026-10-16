@@ -1,0 +1,17 @@
+{
+  "_nota": "Casos de prueba de los lectores (037). Los PDFs NO se versionan (datos personales): se leen de la carpeta de Compras de Dropbox y el test hace skip si no están. 'esperado' = la compra ya cargada a mano en WC.",
+  "casos": [
+    {"archivo": "04 2026 - 03 2027/20261001_AutopistasDelSol.pdf", "proveedor": "AutopistasDelSol", "esperado": {"numero": "0840-00787789", "fecha": "2026-10-01", "total": 5705.30, "idDeuda": 2143522636}},
+    {"archivo": "04 2026 - 03 2027/20260901_GrupoConcesionarioDelOeste.pdf", "proveedor": "GrupoConcesionarioDelOeste", "esperado": {"numero": "0758-00444694", "fecha": "2026-09-01", "total": 2385.98, "idDeuda": 2143519534}},
+    {"archivo": "04 2026 - 03 2027/20260531_AUSA.pdf", "proveedor": "AUSA", "esperado": {"numero": "5012-01364313", "fecha": "2026-05-31", "total": 5439.68, "idDeuda": 2143517501}},
+    {"archivo": "04 2026 - 03 2027/20260528_CorredoresViales.pdf", "proveedor": "CorredoresViales", "esperado": {"numero": "00700-03230490", "fecha": "2026-05-28", "total": 2600.00, "idDeuda": 2143517498}},
+    {"archivo": "04 2026 - 03 2027/20260529_CorredoresViales.pdf", "proveedor": "CorredoresViales", "esperado": {"numero": "0104-13842013", "fecha": "2026-05-29", "total": 1500.00, "idDeuda": 2143517499}},
+    {"archivo": "04 2026 - 03 2027/20260914_Corresur 001.pdf", "proveedor": "Corresur", "esperado": {"numero": "0002-00664384", "fecha": "2026-09-14", "total": 6195.28, "idDeuda": 2143519531}},
+    {"archivo": "04 2026 - 03 2027/20260729_CV5.pdf", "proveedor": "CV5", "esperado": {"numero": "0001-00019220", "fecha": "2026-07-29", "total": 1787.10, "idDeuda": 2143518519}},
+    {"archivo": "04 2026 - 03 2027/20260831_Ceamse.pdf", "proveedor": "Ceamse", "esperado": {"numero": "00126-00787798", "fecha": "2026-08-31", "total": 3074.38, "idDeuda": 2143519537}},
+    {"archivo": "04 2025 - 03 2026/20251215_AUBASA.pdf", "proveedor": "AUBASA", "esperado": {"numero": "00050-04824898", "fecha": "2025-12-15", "total": 34455.32, "idDeuda": 2143515356}},
+    {"archivo": "04 2026 - 03 2027/20260427_Telepeaje.pdf", "proveedor": "Telepeaje", "esperado": {"numero": "0002-319712701", "fecha": "2026-04-27", "total": 108.12, "idDeuda": null}},
+    {"archivo": "04 2026 - 03 2027/20260912_Telepeaje.pdf", "proveedor": "Telepeaje", "esperado": {"numero": "0002-365398211", "fecha": "2026-09-12", "total": 117.23, "idDeuda": 2143519530}},
+    {"archivo": "04 2026 - 03 2027/20261012_Telepeaje.pdf", "proveedor": "Telepeaje", "esperado": {"numero": "0002-376397313", "fecha": "2026-10-12", "total": 0.00, "idDeuda": 2143522656}}
+  ]
+}
