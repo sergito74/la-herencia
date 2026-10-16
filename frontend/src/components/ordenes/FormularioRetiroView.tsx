@@ -19,16 +19,18 @@ export function FormularioRetiroView({ orden }: { orden: OrdenDetalle }) {
       <table className="w-full text-sm">
         <thead>
           <tr className="border-b border-border text-left text-ink-secondary">
-            <th className="py-1">Producto</th>
-            <th className="py-1 text-right">Cantidad</th>
-            <th className="py-1">Unidad</th>
+            <th className="py-1 pr-4">Producto</th>
+            <th className="py-1 pr-4">Principio activo</th>
+            <th className="w-28 py-1 pr-3 text-right">Cantidad</th>
+            <th className="w-20 py-1">Unidad</th>
           </tr>
         </thead>
         <tbody>
           {orden.insumos.map((r) => (
             <tr key={r.idOrdenInsumo} className="border-b border-border">
-              <td className="py-1">{r.producto ?? r.idProducto}</td>
-              <td className="py-1 text-right">{formatCantidad(r.cantidadTotal)}</td>
+              <td className="py-1 pr-4">{r.producto ?? r.idProducto}</td>
+              <td className="py-1 pr-4 text-ink-secondary">{r.ingredienteActivo?.trim() || "—"}</td>
+              <td className="py-1 pr-3 text-right font-data">{formatCantidad(r.cantidadTotal)}</td>
               <td className="py-1">{r.unidad}</td>
             </tr>
           ))}

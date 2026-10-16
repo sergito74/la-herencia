@@ -146,6 +146,7 @@ export interface RenglonInsumoDetalle {
   idOrdenInsumo: number;
   idProducto: number;
   producto: string | null;
+  ingredienteActivo: string | null;
   cantidadTotal: number;
   /** Ajustes por recuento físico repartidos a este renglón: consumo efectivo = cantidadTotal + ajusteRecuento. */
   ajusteRecuento: number;

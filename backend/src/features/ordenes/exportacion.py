@@ -62,11 +62,11 @@ def formulario_retiro_xlsx(id_orden: int) -> bytes:
     wb = Workbook()
     ws = _hoja(
         wb, f"Formulario {orden['formularioRetiro']['idFormularioRetiro']}",
-        [("Producto", 30), ("Cantidad", 14), ("Unidad", 12)],
+        [("Producto", 30), ("Principio activo", 36), ("Cantidad", 14), ("Unidad", 12)],
     )
     for r in orden["insumos"]:
-        ws.append([r["producto"], r["cantidadTotal"], r["unidad"]])
-    _cerrar(ws, {1: _CANT})
+        ws.append([r["producto"], (r.get("ingredienteActivo") or "").strip() or None, r["cantidadTotal"], r["unidad"]])
+    _cerrar(ws, {2: _CANT})
     return _bytes(wb)
 
 

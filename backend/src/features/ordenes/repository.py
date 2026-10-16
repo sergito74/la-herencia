@@ -294,7 +294,8 @@ def obtener_orden(id_orden: int) -> dict | None:
     if cab is None:
         return None
     insumos = fetch_all(
-        "SELECT oi.IdOrdenInsumo AS idOrdenInsumo, oi.IdProducto AS idProducto, p.Producto AS producto, oi.CantidadTotal AS cantidadTotal, oi.Unidad AS unidad "
+        "SELECT oi.IdOrdenInsumo AS idOrdenInsumo, oi.IdProducto AS idProducto, p.Producto AS producto, p.IngredienteActivo AS ingredienteActivo, "
+        "oi.CantidadTotal AS cantidadTotal, oi.Unidad AS unidad "
         "FROM dbo.Ordenes_Trabajo_Insumos oi LEFT JOIN dbo.vw_ProductosBase p ON p.IdProducto = oi.IdProducto WHERE oi.IdOrdenTrabajo = ? ORDER BY oi.IdOrdenInsumo",
         (id_orden,),
     )
