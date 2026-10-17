@@ -254,7 +254,8 @@ def aplicar(id_correccion: int, usuario: str) -> dict:
     tildadas = [c for c in lote["cuentas"] if c["tildada"]]
     vigente = fichas.corte_vigente()
     corte = vigente["corte"] if vigente else date.today()
-    ahora = datos.saldos_al_corte(corte) if tildadas else {}
+    # El mismo saldo que guardó la simulación (el de la ficha: en cuentas con dólares, el de la capa bimonetaria), no el crudo de la vista.
+    ahora = {i: ctx["saldo"] for i, ctx in fichas.cargar_contextos(corte, [c["idContacto"] for c in tildadas]).items()} if tildadas else {}
     validar_aplicacion(lote["estado"], tildadas, ahora)
     from src.features.vinculos.backup import backup_verificado
 
