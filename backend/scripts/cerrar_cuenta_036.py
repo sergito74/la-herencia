@@ -63,7 +63,10 @@ def main() -> None:
         if (ya.get((p["medio"], p["idMovimiento"])) or {}).get("estado", "pendiente") == "pendiente":
             f = factura_para(c, p["fecha"], p.get("importe"))
             if f:
-                sin_archivo = evidencia.validar_marca(c, "factura-cargada", None, f["id"], None)
+                try:
+                    sin_archivo = evidencia.validar_marca(c, "factura-cargada", None, f["id"], None)
+                except ValueError:  # factura sin PDF: se respalda con el estado de cuenta (FR-020)
+                    sin_archivo = evidencia.validar_marca(c, "factura-cargada", None, f["id"], "estado-de-cuenta")
                 evidencia.guardar_marca(c, p["medio"], p["idMovimiento"], "factura-cargada", f["id"],
                                         "estado-de-cuenta" if sin_archivo else None, "Pago de la factura (cierre 17/10/2026)", U)
                 print("marcado", p["medio"], p["idMovimiento"], p["importe"], "-> compra", f["id"])
