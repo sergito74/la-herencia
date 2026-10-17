@@ -170,6 +170,10 @@ def cargar_contextos(corte: date, ids: list[int] | None = None) -> dict[int, dic
         cuenta = cuentas035.get(id_contacto)
         gobierna = (cuenta or {}).get("gobierna") or ("Dolares" if (cuenta or {}).get("moneda") == "Dolares" else "Pesos")
         saldo = saldos.get(id_contacto, 0.0)
+        if gobierna == "Dolares" and (cuenta or {}).get("saldoRevision") is not None:
+            # La vista suma el importe en dólares de las facturas como si fuera pesos: en una cuenta que se rige en dólares
+            # el saldo es el de la capa bimonetaria de la 035, en US$ (caso ArPov, 17/10/2026).
+            saldo = float(cuenta["saldoRevision"])
         imp = imputaciones.get(id_contacto, {"facturado": 0.0, "aplicado": 0.0, "tarjeta": 0.0, "facturas": 0})
         sanas = criterios.imputaciones_sanas(sentido, gobierna, imp["facturado"], imp["aplicado"], imp["tarjeta"], saldo, imp["facturas"])
         externos = []
