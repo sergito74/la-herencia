@@ -148,6 +148,14 @@ def imputaciones_de_cuentas(ids: list[int] | None = None, hasta: date | None = N
         "SELECT IdContacto AS i, SUM([Importe total del contrato] - ISNULL([Retencion Ganancias], 0)) AS s FROM dbo.Alquileres WHERE 1 = 1" + f_ids + f_hasta + " GROUP BY IdContacto", p_ids + p_hasta)
     tesoreria += fetch_all(
         "SELECT IdContacto AS i, SUM(Importe) AS s FROM dbo.AjustesCuentaCorriente WHERE Lado = 'Credito'" + f_ids + f_hasta + " GROUP BY IdContacto", p_ids + p_hasta)
+    # Pagos de un socio con fondos propios ("Pago por socio" en la vista): cubren facturas sin pasar por AplicacionesPago
+    # (caso Cooperativa Eléctrica, julio 2026, $165.337,52 pagados por Sergio).
+    f_ps = " AND ps.IdContacto IN (" + ",".join("?" * len(ids)) + ")" if ids else ""
+    f_ms = " AND m.Fecha < ?" if hasta is not None else ""
+    tesoreria += fetch_all(
+        "SELECT ps.IdContacto AS i, SUM(m.Importe) AS s FROM dbo.PagosSocioProveedor ps "
+        "JOIN dbo.MovimientosCuentaSocio m ON m.IdMovimiento = ps.IdMovimientoSocio "
+        "WHERE m.Anulada = 0" + f_ps + f_ms + " GROUP BY ps.IdContacto", p_ids + p_hasta)
     r: dict[int, dict] = {int(f["i"]): {"facturado": round(float(f["s"] or 0), 2), "facturas": int(f["n"]), "aplicado": 0.0, "tarjeta": 0.0} for f in facturado}
     for f in aplicado:
         r.setdefault(int(f["i"]), {"facturado": 0.0, "facturas": 0, "aplicado": 0.0, "tarjeta": 0.0})["aplicado"] = round(float(f["s"] or 0), 2)
