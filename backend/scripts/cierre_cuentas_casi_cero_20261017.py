@@ -59,7 +59,7 @@ def prorratear(cur, id_deuda: int, delta: float, excluir: tuple[str, ...]) -> No
     k = 1 + delta / bruto
     for l in base:
         cur.execute("UPDATE dbo.Det_Compras SET [Precio Unitario]=? WHERE IdDetalleCompra=?",
-                    round(float(l[2]) * k, 4), l[0])
+                    round(float(l[2]) * k, 6), l[0])
 
 
 def aplicar() -> None:

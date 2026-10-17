@@ -24,7 +24,15 @@ from src.features.revision_cuentas.router import _corte_o_404, _detectar_cuenta
 U = "Sergio (036, cierres 2026-10-17)"
 
 
-def factura_para(id_contacto: int, fecha) -> dict | None:
+def factura_para(id_contacto: int, fecha, importe: float | None = None) -> dict | None:
+    """Primero la factura de ±60 días cuyo importe (en pesos, al TC de la factura) coincide con el pago; si no, la anterior más cercana."""
+    if importe:
+        f = fetch_one("SELECT TOP 1 c.IdDeuda AS id FROM dbo.Compras c JOIN dbo.vw_Compras_ImporteDocumento v ON v.IdDeuda = c.IdDeuda "
+                      "WHERE c.IdContacto = ? AND ABS(DATEDIFF(day, c.Fecha, ?)) <= 60 "
+                      "AND ABS(v.ImporteDocumento * CASE WHEN c.Moneda = 'Dolares' THEN ISNULL(c.[Tipo de Cambio], 1) ELSE 1 END - ?) <= 1 "
+                      "ORDER BY ABS(DATEDIFF(day, c.Fecha, ?))", (id_contacto, fecha, abs(importe), fecha))
+        if f:
+            return f
     f = fetch_one("SELECT TOP 1 IdDeuda AS id FROM dbo.Compras WHERE IdContacto = ? AND Fecha <= ? "
                   "AND ISNULL([Tipo documento], 'Factura') <> 'Nota de Crédito' ORDER BY Fecha DESC, IdDeuda DESC", (id_contacto, fecha))
     return f or fetch_one("SELECT TOP 1 IdDeuda AS id FROM dbo.Compras WHERE IdContacto = ? AND Fecha > ? ORDER BY Fecha, IdDeuda",
@@ -50,9 +58,10 @@ def main() -> None:
         conocidos.crear("tc-pactado", str(c), a.tc_pactado, None, U)
         bimonetaria.invalidar()
     _, resultado, _ = _detectar_cuenta(c, corte)
+    ya = evidencia.leer_marcas(c)  # el detector no trae las marcas: no pisar las que ya existen
     for p in resultado["pagos"]:
-        if not p.get("marca") or p["marca"].get("estado") == "pendiente":
-            f = factura_para(c, p["fecha"])
+        if (ya.get((p["medio"], p["idMovimiento"])) or {}).get("estado", "pendiente") == "pendiente":
+            f = factura_para(c, p["fecha"], p.get("importe"))
             if f:
                 sin_archivo = evidencia.validar_marca(c, "factura-cargada", None, f["id"], None)
                 evidencia.guardar_marca(c, p["medio"], p["idMovimiento"], "factura-cargada", f["id"],
