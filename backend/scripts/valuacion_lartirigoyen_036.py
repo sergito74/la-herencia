@@ -65,6 +65,7 @@ def valuar(filas: list[dict]) -> dict[tuple[str, int], float]:
 
 
 if __name__ == "__main__":
+    raise SystemExit("REEMPLAZADO (18/10/2026) por scripts.aplicacion_lartirigoyen_036, que sigue las aplicaciones de Lartirigoyen. No correr: pisaría esa aplicación.")
     _assert_target_is_wc()
     filas = bimonetaria.cargar_cuenta(C, refrescar=True)["filas"]
     val = valuar(filas)

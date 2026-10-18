@@ -21,6 +21,7 @@ NOTA = "Aplicación según resúmenes de Lartirigoyen (orden cronológico, TC de
 MEDIO = {"Banco Nacion": "bna", "Galicia": "galicia", "Venta Granos": "comp-venta-granos", "Retenciones": "retenciones", "Compras": "comp-compra"}
 
 if __name__ == "__main__":
+    raise SystemExit("REEMPLAZADO (18/10/2026) por scripts.aplicacion_lartirigoyen_036, que sigue las aplicaciones de Lartirigoyen. No correr: pisaría esa aplicación.")
     _assert_target_is_wc()
     filas = bimonetaria.cargar_cuenta(C, refrescar=True)["filas"]
     tarjeta = {r["i"]: float(r["s"]) for r in fetch_all(
