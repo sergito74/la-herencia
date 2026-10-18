@@ -54,6 +54,8 @@ ESCANEADOS = [
 OMITIDOS = {
     "0000-2021-000001": "Syngenta: certificado con base de $603.180,90 que no es la de la ND 0274-2567 ($8.723,40); el pago del 18/01/2021 "
                         "fue el total sin descontar retención. Sergio la dejó en $0 a propósito (2026-10-08).",
+    "0000-2021-000023": "La Esperanza Agropecuaria: anulada en Access ($0); el pago del 08/09/2021 se rehízo con la "
+                        "transferencia de $10.733,80 + la retención 0000-2021-000025 ($353,76) (2026-10-18).",
 }
 
 # (IdRetencionSQL, columna, valor esperado antes, valor nuevo, motivo)
