@@ -16,7 +16,10 @@ Correcciones:
 4. Cuotas sep-2023 a mar-2025 (antes de lo que muestra el portal): Sancor avisó cada vencimiento por mail; se carga una cuota
    por cada pago de los socios, por el importe pagado (desde abr-2025 el pago coincide siempre con la cuota).
 5. Se vinculan a la cuenta los pagos de los socios que no lo estaban y se cargan 6 comprobantes de Dropbox sin cargar (2023-24).
-6. Lo que queda antes de abr-2025 (diferencias chicas 2013-2025) se ajusta al 31/03/2025.
+6. Lo que queda (diferencias chicas 2013-2024, antes del período del portal) se ajusta al 31/03/2025, dejando abierta solo la
+   cuota oct-2026 de Vida Colectivo ($347,06), que Galicia pagó el 05/10 (extracto de octubre sin cargar).
+7. Vida Colectivo feb y mar-2025: $274 según el PDF (estaban con la tarifa anterior). 8-9. Pagos de socios: dic-2025 fue
+   $36.077 y la cuota de oct-2026 la pagó Lucy (Sergio, 18/10/2026).
 Idempotente.
 
 Uso (desde backend/): python -m scripts.sancor_036
@@ -65,6 +68,7 @@ CUOTAS_PREVIAS = [
 DROPBOX = [("2023-04-07", "514339009", 1451.00, "Vida Colectivo ref. 542394"), ("2023-04-13", "514640013", 2917.00, "Accidentes Personales ref. 2409457 (Irma Miranda)"),
            ("2023-05-09", "517491167", 252.00, "Vida Colectivo ref. 542394"), ("2023-12-11", "539730035", 252.00, "Vida Colectivo ref. 542394"),
            ("2024-01-14", "542957474", 252.00, "Vida Colectivo ref. 542394"), ("2024-02-11", "545385766", 566.00, "Vida Colectivo ref. 542394")]
+PENDIENTE_OCT_VC = 347.06   # cuota oct-2026 de Vida Colectivo: Galicia la pagó el 05/10 (extracto de octubre sin cargar)
 BORRAR = (2143515354, 2143518493, 2143519509, 2143519514)
 VINCULAR = [2593, 2598, 2621, 2622, 2628, 2634, 2636, 2642, 2650, 2656, 2664, 2669, 2674, 2161, 2682, 2685, 2696, 2700, 2704, 2706, 2730, 2766]
 LINEAS = (("Accidentes Personales ref. 2409457 (Irma Miranda)", 2), ("Vida Colectivo ref. 939969 (Irma Miranda)", 3),
@@ -129,6 +133,23 @@ if __name__ == "__main__":
             cur.execute("INSERT INTO dbo.Det_Compras (IdCompra, Cantidad, Unidad, [Producto/Servicio], IdFormulado, IdCentroCostos, "
                         "IdDestino, IdRubro, IdCampaña, [Campaña], [Precio Unitario], IVA, [Ajuste financiero]) "
                         "VALUES (?, 1, 'Unidades', ?, 0, ?, 1, ?, 20, 'No Aplica', ?, 0, 0)", idc, poliza[:50], CC, RUBRO, importe)
+        # 7. Cuotas de Vida Colectivo feb y mar-2025: el PDF dice $274 (cargadas con la tarifa anterior, $144 / $143,22)
+        for idc in (2143515222, 2143515223):
+            cur.execute("UPDATE dbo.Det_Compras SET [Precio Unitario] = 247.34 WHERE IdCompra = ? AND [Producto/Servicio] = 'Seguro de vida'", idc)
+            cur.execute("UPDATE dbo.Det_Compras SET [Precio Unitario] = 25.18 WHERE IdCompra = ? AND [Producto/Servicio] = 'Aumento de capital'", idc)
+            cur.execute("UPDATE dbo.Compras SET [Conceptos no gravados] = 1.48 WHERE IdDeuda = ?", idc)
+        # 8. Sergio: la cuota de dic-2025 se pagó por $36.077 (el movimiento de socio 2227 estaba cargado por $32.707)
+        cur.execute("UPDATE dbo.MovimientosCuentaSocio SET Importe = 36077, ImporteUSD = ROUND(ImporteUSD * 36077 / 32707, 4), "
+                    "ImporteKgCarne = ROUND(ImporteKgCarne * 36077 / 32707, 3) WHERE IdMovimiento = 2227 AND Importe = 32707")
+        # 9. Sergio: la cuota de oct-2026 ($50.259,78, cobrada por Sancor el 05/10/2026) la pagó Lucy
+        cur.execute("SELECT IdMovimiento FROM dbo.MovimientosCuentaSocio WHERE IdSocio = 2 AND Importe = 50259.78 AND Fecha = '2026-10-05'")
+        r = cur.fetchone()
+        if not r:
+            cur.execute("INSERT INTO dbo.MovimientosCuentaSocio (IdSocio, Tipo, Importe, Fecha, Medio, Motivo, Usuario, Anulada, ImporteUSD, "
+                        "ImporteKgCarne) OUTPUT INSERTED.IdMovimiento VALUES (2, 'Devolucion', 50259.78, '2026-10-05', 'Banco Galicia', "
+                        "?, ?, 0, 0, 0)", "Sancor Seguros – Seg. Accidentes Irma (cuota oct-2026, cobrada por Sancor el 05/10/2026)", U)
+            r = cur.fetchone()
+        VINCULAR.append(int(r[0]))
         for m in VINCULAR:
             cur.execute("IF NOT EXISTS (SELECT 1 FROM dbo.PagosSocioProveedor WHERE IdMovimientoSocio = ?) "
                         "INSERT INTO dbo.PagosSocioProveedor (IdMovimientoSocio, IdContacto, Criterio, FechaAlta) "
@@ -140,14 +161,16 @@ if __name__ == "__main__":
     finally:
         conn.close()
     # 6. Diferencias anteriores a abr-2025 (lo que el portal no muestra; Sancor informa todo pago): ajuste al 31/03/2025
-    resto = fetch_all("SELECT SUM(Credito - Deuda) s FROM dbo.vw_MovimientosCuenta_Saldo WHERE IdContacto = ? AND Fecha < '2025-04-01' "
-                      "AND NOT (Origen = 'Ajuste Interno' AND Fecha = '2025-03-31')", (C,))[0]["s"] or 0
+    aj = fetch_all("SELECT ISNULL(SUM(CASE Lado WHEN 'Credito' THEN Importe ELSE -Importe END), 0) s FROM dbo.AjustesCuentaCorriente "
+                   "WHERE IdContacto = ? AND Fecha = '2025-03-31'", (C,))[0]["s"]
+    total = fetch_all("SELECT SUM(Credito - Deuda) s FROM dbo.vw_MovimientosCuenta_Saldo WHERE IdContacto = ?", (C,))[0]["s"] or 0
+    resto = round(total - float(aj) + PENDIENTE_OCT_VC, 2)
     ya = fetch_all("SELECT IdAjuste FROM dbo.AjustesCuentaCorriente WHERE IdContacto = ? AND Fecha = '2025-03-31'", (C,))
     if abs(resto) >= 0.01:
         from src.db.connection import execute_write_transaction
         lado = "Deuda" if resto > 0 else "Credito"
-        motivo = (f"Diferencias 2013-2025 anteriores al período que muestra el portal de Sancor (abr-2025 en adelante, todo pago): "
-                  f"pagos chicos de Vida Colectivo sin su comprobante y redondeos. Cierre en 0 (decisión de Sergio).")
+        motivo = ("Diferencias 2013-2024 anteriores al período que muestra el portal de Sancor (abr-2025 en adelante, todo pago): "
+                  "pagos chicos de Vida Colectivo y Accidentes sin su comprobante y redondeos. Cierre en 0 (decisión de Sergio).")
         if ya:
             execute_write_transaction([("UPDATE dbo.AjustesCuentaCorriente SET Lado = ?, Importe = ?, Motivo = ? WHERE IdAjuste = ?",
                                         (lado, round(abs(resto), 2), motivo, ya[0]["IdAjuste"]))])
