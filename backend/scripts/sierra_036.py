@@ -10,7 +10,9 @@ socios) y los recibos PDF (mandan sobre la planilla en el neto). Cada carga est�
   $18.265) ya estaba cargado como "julio 2022 (Retroactivo)".
 - ago-2023: "Ajuste No Remunerativo" $30.000 (planilla; no está en el recibo PDF, neto $205.797; pagado aparte por BNA 05/09/2023);
   adicional $90.800 (Access y caja 05/09/2023).
-- feb-2026: la planilla calcula $427.295 de adicional; la caja registra $359.700 pagados (dato a confirmar por Sergio).
+- feb-2026: el adicional es siempre el 38,5% del neto del recibo (mail de Sergio al estudio, 05/02/2026): 38,5% x $1.027.545 =
+  $395.600. Se pagaron $359.700 por un error de tipeo (5 y 9 invertidos, Sergio 18/10/2026) → la cuenta queda con $35.900 a
+  favor de Marcelo (deuda real; ficha cerrada con excepción). La planilla daba $427.295 sobre un neto proyectado, no el real.
 - feb-2026: adicional $359.700 (caja 10/03/2026). abr-2026: adicional $434.400 (caja 14/05/2026).
 - dic-2025: el adicional ($624.200) lo pagaron los socios el 26/12/2025 (Sergio $324.200, Lucy $300.000) → se vinculan.
 Idempotente.
@@ -30,7 +32,7 @@ ALTAS = [("2019-03-31", "Adicional fuera de recibo Marzo 2019", 8330.00),
          ("2022-06-30", "Adicional fuera de recibo Junio 2022", 36500.00),
          ("2023-08-31", "Ajuste No Remunerativo Agosto 2023", 30000.00),
          ("2023-08-31", "Adicional fuera de recibo Agosto 2023", 90800.00),
-         ("2026-02-28", "Adicional fuera de recibo Febrero 2026", 359700.00),
+         ("2026-02-28", "Adicional fuera de recibo Febrero 2026", 395600.00),
          ("2026-04-30", "Adicional fuera de recibo Abril 2026", 434400.00)]
 SOCIOS = [2225, 2722]
 
@@ -55,6 +57,8 @@ if __name__ == "__main__":
                        "VALUES (?, ?, 'manual-036', SYSDATETIME())", (m, C)))
     st.append(("UPDATE dbo.Remuneraciones SET [Bonificacion adicional] = 13000 WHERE IdContacto = ? AND "
                "[Periodo liquidado] = 'Adicional fuera de recibo Julio 2020' AND [Bonificacion adicional] = 12960", (C,)))
+    st.append(("UPDATE dbo.Remuneraciones SET [Bonificacion adicional] = 395600 WHERE IdContacto = ? AND "
+               "[Periodo liquidado] = 'Adicional fuera de recibo Febrero 2026' AND [Bonificacion adicional] = 359700", (C,)))
     # Revisión 18/10: ene-2020 es $11.450 según Access (estaba con el importe pagado, $11.360); los $90 que se pagaron de más
     # en dic-2019 ($15.000 por $14.910) se compensan con los $90 de menos de enero → sin ajuste.
     st.append(("UPDATE dbo.Remuneraciones SET [Bonificacion adicional] = 11450 WHERE IdContacto = ? AND "
@@ -64,3 +68,8 @@ if __name__ == "__main__":
                "[Periodo liquidado] = 'Adicional fuera de recibo Junio 2022' AND [Bonificacion adicional] = 54765", (C,)))
     execute_write_transaction(st)
     print("Después:", saldo())
+    from src.features.revision_cuentas import fichas
+    f = fichas.cambiar_estado(C, {"estado": "cerrada-con-excepcion", "nota": "Revisada mes a mes contra Access, planilla de liquidaciones, caja y recibos PDF (18/10/2026).",
+                                  "motivoExcepcion": "Deuda real con Marcelo Sierra: $35.900 del adicional de feb-2026 (38,5% de $1.027.545 = $395.600; "
+                                                     "se pagaron $359.700 por error de tipeo). Pendiente de pago."}, "Sergio (barrida 036)")
+    print("Ficha:", f.get("estado") if isinstance(f, dict) else f)
