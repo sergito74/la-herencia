@@ -7,7 +7,9 @@ percepción de IVA). Premios: US$573,99 / 545,42 / 267,42; NC: -29,41 / -27,94 /
 
 Se pagaron con tarjeta al TC 238,25 (cláusula de la póliza: dólar BNA del día hábil anterior al pago) — $136.753 / $129.946,72
 / $63.713,15 y los reintegros de las NC $7.006,81 / $6.657,11 / $3.264,36 — así que en dólares cierran exacto. La diferencia
-entre ese TC y el TC impositivo de cada factura es solo de pesos: un ajuste de cuenta corriente por póliza (no mueve dólares).
+entre ese TC y el TC impositivo de cada factura es solo de pesos: una ND (o NC, en los reintegros) en pesos por póliza,
+marcada como ajuste de TC, a la que se imputa esa parte del pago con tarjeta. Se anulan las imputaciones automáticas que
+duplicaban el vínculo de tarjeta.
 Las pólizas en pesos (2016-2022) y sus pagos cierran en pesos y se valúan en 0 dólares.
 Idempotente.
 
@@ -46,6 +48,9 @@ if __name__ == "__main__":
     try:
         cur.execute("DELETE FROM dbo.AjustesCuentaCorriente WHERE IdContacto = ? AND Motivo LIKE 'Diferencia de cambio al pago de la póliza%'", C)
         cur.execute("DELETE FROM dbo.ValuacionProveedor WHERE IdContacto = ?", C)
+        cur.execute("UPDATE a SET Anulada = 1, MotivoAnulacion = 'Duplica el vínculo de tarjeta (barrida 036)', UsuarioAnulacion = ?, "
+                    "FechaAnulacion = SYSDATETIME() FROM dbo.AplicacionesPago a JOIN dbo.Compras c ON c.IdDeuda = a.IdDocumentoAplicado "
+                    "WHERE c.IdContacto = ? AND c.Fecha >= '2022-09-01' AND a.Anulada = 0 AND a.Origen <> 'manual'", U, C)
         for idc, (prima, rec, otros, r_prima, r_rec, tc, premio) in DOCS.items():
             cur.execute("DELETE FROM dbo.Det_Compras WHERE IdCompra = ? AND IdDetalleCompra NOT IN (?, ?)", idc, r_prima, r_rec)
             cur.execute("UPDATE dbo.Det_Compras SET [Precio Unitario] = ?, Cantidad = 1, IVA = 21 WHERE IdDetalleCompra = ?", prima, r_prima)
@@ -60,23 +65,38 @@ if __name__ == "__main__":
             cur.execute("INSERT INTO dbo.ValuacionProveedor (Origen, IdOrigen, IdContacto, Dolares, Fuente, Nota, Usuario, Fecha) VALUES "
                         "(?, ?, ?, ?, 'Póliza Nación Seguros: premio en US$ pagado al BNA del día anterior al pago (238,25)', ?, ?, SYSDATETIME())",
                         o, i, C, abs(premio), POLIZA[idc], U)
-            dif = round(pagado - premio * tc, 2)
-            if abs(dif) >= 0.01:
-                cur.execute("INSERT INTO dbo.AjustesCuentaCorriente (IdContacto, Fecha, Lado, Importe, Motivo, Usuario) "
-                            "SELECT ?, Fecha, ?, ?, ?, ? FROM dbo.Compras WHERE IdDeuda = ?", C, "Deuda" if dif > 0 else "Credito", abs(dif),
-                            f"Diferencia de cambio al pago de la póliza {POLIZA[idc]}: US${abs(premio):,.2f} pagados a TC {TC_PAGO} "
-                            f"(BNA día anterior al pago, cláusula de la póliza) vs TC impositivo {tc}.", U, idc)
+            # Diferencia de cambio al pago: documento en pesos (ajuste de TC) al que se imputa la parte de la tarjeta que excede
+            pesos_doc = round(premio * tc, 2)
+            dif = round(pagado - pesos_doc, 2)
+            nro = ("DIFTC-" if premio > 0 else "NCDIFTC-") + POLIZA[idc].split()[-1].strip("()") if False else                   ("DIFTC " if premio > 0 else "NCDIFTC ") + POLIZA[idc].replace("NC ", "").split()[0]
+            cur.execute("SELECT IdDeuda FROM dbo.Compras WHERE IdContacto = ? AND [Nro Documento] = ?", C, nro)
+            fila = cur.fetchone()
+            if fila:
+                nd = fila[0]
+                cur.execute("DELETE FROM dbo.Det_Compras WHERE IdCompra = ?", nd)
+            else:
+                cur.execute("INSERT INTO dbo.Compras (Fecha, IdContacto, Tipo, [Tipo documento], [Nro Documento], Moneda, [Tipo de Cambio], "
+                            "[Ingresos Brutos], PercepcionIVA, [Conceptos no gravados], Guias, Comision, Financiacion, [Gastos Varios], "
+                            "[Ley de Sellos], [Res gral 4169/96], [Ajusta Tipo Cambio]) OUTPUT INSERTED.IdDeuda "
+                            "SELECT Fecha, ?, 'A', ?, ?, 'Pesos', 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1 FROM dbo.Compras WHERE IdDeuda = ?",
+                            C, "Nota de Débito" if premio > 0 else "Nota de Crédito", nro, idc)
+                nd = cur.fetchone()[0]
+            cur.execute("INSERT INTO dbo.Det_Compras (IdCompra, Cantidad, [Producto/Servicio], IdFormulado, IdCentroCostos, IdDestino, IdRubro, "
+                        "IdCampaña, [Campaña], [Precio Unitario], IVA, [Ajuste financiero]) SELECT ?, 1, ?, 0, IdCentroCostos, IdDestino, IdRubro, "
+                        "IdCampaña, [Campaña], ?, 0, 0 FROM dbo.Det_Compras WHERE IdDetalleCompra = ?", nd,
+                        f"Dif. cambio al pago (TC {TC_PAGO} vs {tc}) - {POLIZA[idc]}"[:50], dif if premio > 0 else -abs(dif), r_prima)
+            cur.execute("UPDATE dbo.Tarjetas_Resumenes_Lineas_Compras SET ImporteImputado = ? WHERE IdVinculo = ?", pesos_doc, i)
+            cur.execute("SELECT IdLineaConsumo FROM dbo.Tarjetas_Resumenes_Lineas_Compras WHERE IdVinculo = ?", i)
+            linea = cur.fetchone()[0]
+            cur.execute("DELETE FROM dbo.Tarjetas_Resumenes_Lineas_Compras WHERE IdCompra = ?", nd)
+            cur.execute("INSERT INTO dbo.Tarjetas_Resumenes_Lineas_Compras (IdLineaConsumo, IdCompra, ImporteImputado) VALUES (?, ?, ?)",
+                        linea, nd, round(pagado - pesos_doc, 2) if premio > 0 else -abs(dif))
         conn.commit()
     except Exception:
         conn.rollback()
         raise
     finally:
         conn.close()
-    # Los ajustes de diferencia de cambio son solo de pesos
-    for a in fetch_all("SELECT IdAjuste FROM dbo.AjustesCuentaCorriente WHERE IdContacto = ? AND Motivo LIKE 'Diferencia de cambio al pago de la póliza%'", (C,)):
-        from src.db.connection import execute_write_transaction
-        execute_write_transaction([("INSERT INTO dbo.ValuacionProveedor (Origen, IdOrigen, IdContacto, Dolares, Fuente, Nota, Usuario, Fecha) VALUES "
-                                    "('Ajuste Interno', ?, ?, 0, 'Diferencia de cambio solo en pesos', NULL, ?, SYSDATETIME())", (a["IdAjuste"], C, U))])
     # Movimientos en pesos (pólizas en pesos 2016-2022 y sus pagos): cierran en pesos y no mueven dólares
     from src.db.connection import execute_write_transaction
     bimonetaria.invalidar()
