@@ -16,13 +16,15 @@ Spec Kit 1.0.7 está instalado desde `https://github.com/github/spec-kit.git`, t
 ## Restricciones de este proyecto
 
 - Leer `.specify/memory/agent-guidance.md` y `.specify/memory/constitution.md` antes de usar Spec Kit. Son las instrucciones compartidas para Claude y Codex.
-- SQL Server `WC` es la base mutable de desarrollo; el usuario autorizó escrituras de desarrollo dentro de `WC`.
-- La base oficial `LaHerencia` debe permanecer intacta durante el desarrollo. Su puesta en marcha requiere una decisión y aprobación separadas.
-- Los archivos Access del sistema actual deben preservarse sin cambios mientras sigan en uso.
+- SQL Server `WC` es la base de producción desde el corte del 25/09/2026. Las escrituras normales deben estar dentro del alcance de la tarea; los cambios de esquema y escrituras masivas requieren respaldo verificado previo.
+- La base `LaHerencia` está congelada y no recibe escrituras. El corte ya ocurrió; no hay una puesta en marcha futura pendiente sobre ella.
+- Los archivos Access se preservan sin cambios como referencia histórica.
 - Cada módulo debe expresar un proceso de negocio, no solo exponer tablas.
 - Revisar los agentes especializados de `.github/agents/` antes de planificar una funcionalidad.
 
 Claude y Codex comparten las mismas especificaciones de `specs/`, la misma Constitución y el mismo ciclo Spec Kit. Los archivos `AGENTS.md` y `CLAUDE.md` apuntan a la guía común para que las instrucciones no diverjan.
+
+El usuario puede trabajar indistintamente con Codex o Claude Code sobre la misma carpeta, sin turnos ni entregas formales. Cada agente retoma desde el código, Git y los documentos compartidos, y mantiene allí las decisiones y el avance. Ver `.specify/memory/agent-guidance.md` para continuidad y manejo de conflictos concretos si hay actividad simultánea.
 
 El índice de módulos y el significado de `Status: Draft` están documentados en [`specs/README.md`](../specs/README.md). `Draft` no equivale a "sin código": se debe contrastar con las tareas, implementación y Git.
 

@@ -7,7 +7,7 @@ Este documento es la guía común de trabajo para Claude Code, Codex y cualquier
 1. Seguir la instrucción más reciente del usuario.
 2. Tratar `.specify/memory/constitution.md` como norma de arquitectura y seguridad.
 3. Para una funcionalidad, usar como fuente funcional su `spec.md` y los contratos/modelos/decisiones de la misma carpeta `specs/NNN-*/`.
-4. Antes de editar, leer `memory.md`, esta guía, la documentación relevante y el código actual. La memoria es contexto histórico y puede estar desactualizada; no prevalece sobre la Constitución ni sobre una aclaración posterior del usuario.
+4. Antes de editar, leer esta guía, la documentación relevante y el código actual. Consultar en `memory.md` solo las secciones pertinentes cuando se necesiten antecedentes; no cargar toda la memoria histórica por rutina. La memoria puede estar desactualizada y no prevalece sobre la Constitución ni sobre una aclaración posterior del usuario.
 5. Si código, memoria y especificación discrepan, no ocultar la discrepancia: señalarla y actualizar los documentos afectados en el mismo cambio cuando el alcance lo permita.
 
 ## Bases de datos y archivos Access
@@ -27,6 +27,16 @@ Este documento es la guía común de trabajo para Claude Code, Codex y cualquier
 - Marcar una tarea como terminada solo cuando el código/documentación pedido esté presente y las verificaciones requeridas para esa tarea se hayan completado. No confundir checklist de calidad de una especificación con checklist de implementación.
 - Mantener juntas la especificación y su implementación: si una decisión cambia, actualizar la spec/contrato/plan/tareas afectados. No declarar un módulo terminado por la sola existencia de código.
 
+## Colaboración entre Codex y Claude Code
+
+- Ambos agentes trabajan sobre este repositorio y continúan las mismas tareas de `specs/`; las conversaciones de una herramienta no se transfieren automáticamente a la otra.
+- El usuario elige indistintamente Codex o Claude Code según su conveniencia, sobre la misma carpeta del proyecto. No imponer turnos, roles fijos, una entrega formal ni un commit como requisito para cambiar de herramienta.
+- Antes de retomar, comprobar la rama, `git status` y el diff existente, y leer la spec y las tareas de la funcionalidad. No atribuirse cambios previos ni asumir que están terminados.
+- Mantener el contexto útil en los archivos compartidos durante el trabajo: decisiones funcionales en spec/plan/contratos, avance y pendientes en `tasks.md`, y verificaciones en el documento de validación de la funcionalidad cuando exista. No depender de la conversación privada de una herramienta para que la otra pueda continuar.
+- No exigir `handoff.md`; si ya existe, usarlo como contexto auxiliar y contrastarlo con el código y Git.
+- Si hay actividad simultánea, preservar los cambios del otro agente y volver a leer los archivos antes de editarlos. Ante una colisión concreta sobre el mismo archivo o una operación Git que afecte trabajo activo, coordinar ese conflicto puntual con el usuario. Las carpetas Git independientes (worktrees) son una opción para aislar trabajo paralelo, no un requisito para elegir herramienta; tampoco aíslan SQL Server.
+- La revisión cruzada puede repartirse entre Codex y Claude según la tarea; no hay una especialidad fija por herramienta. Estas reglas no autorizan invocar al otro agente, publicar, hacer push ni integrar ramas sin el alcance solicitado por el usuario.
+
 ## Arquitectura y calidad
 
 - Stack objetivo: Python + FastAPI, SQL Server, Next.js + TypeScript, Tailwind CSS y TanStack Query, según la Constitución vigente.
@@ -35,6 +45,14 @@ Este documento es la guía común de trabajo para Claude Code, Codex y cualquier
 - Cada cambio debe ser acotado, revisable y reversible; preservar los cambios locales sin commit y evitar refactors ajenos al alcance.
 - Añadir o ejecutar verificaciones solo cuando el usuario o la tarea activa lo pida o lo requiera expresamente. No afirmar que algo fue probado si no se ejecutó.
 - No instalar dependencias, publicar, hacer push, modificar datos fuera de `WC` ni ejecutar acciones destructivas salvo que el usuario lo solicite explícitamente.
+
+## Uso eficiente de recursos
+
+- Trabajar con el alcance concreto pedido. Buscar primero rutas y símbolos relevantes y leer fragmentos acotados; ampliar la exploración solo si falta información para resolver la tarea.
+- Reutilizar información ya leída en la sesión mientras siga vigente. Volver a leer archivos si cambiaron o si hay indicios de actividad de otro agente, sin repetir por rutina la exploración completa.
+- No lanzar subagentes ni revisiones adicionales salvo pedido explícito del usuario o requisito aplicable de la tarea. No regenerar fases de Spec Kit ya resueltas.
+- Ejecutar las verificaciones mínimas útiles exigidas por la Constitución y la tarea. Una vez que pasan, no repetirlas ni ampliar a toda la aplicación sin cambios nuevos, fallos o una duda concreta.
+- Mantener breves las respuestas y salidas de herramientas. Evitar volcados completos de archivos grandes, registros y diffs si bastan búsquedas o fragmentos.
 
 ## Comunicación
 

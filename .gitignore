@@ -41,6 +41,7 @@ coverage/
 Thumbs.db
 
 # Local Claude Code session state (not project config)
+.claude/settings.local.json
 .claude/scheduled_tasks.lock
 .claude/worktrees/
 
