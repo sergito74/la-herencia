@@ -22,7 +22,7 @@ from src.features.vinculos.backup import backup_verificado
 U = "Sergio (barrida 036)"
 ZAFIRO, FC31449 = 402, 2143514824
 EESS = 30
-TICKETS = [2143514965, 2143514964, 2143515013, 2143515047, 2143515184, 2143515178, 2143515179]
+TICKETS: list[int] = []   # REEMPLAZADO por eess_saladillo_auditoria_036 (19/10/2026): las diferencias no eran descuentos
 CAB = "Fecha, IdContacto, Tipo, [Tipo documento], [Nro Documento], Moneda, [Tipo de Cambio], [Ingresos Brutos], PercepcionIVA, " \
       "[Conceptos no gravados], Guias, Comision, Financiacion, [Gastos Varios], [Ley de Sellos], [Res gral 4169/96], [Ajusta Tipo Cambio]"
 
