@@ -15,8 +15,16 @@ US$0,01 con el recibo 1053314 del 18/07/2016 (BNA $4.567,82).
    (US$53,26; total US$2.406,92); NC 0292-113 con la percepción en positivo (US$−895,38 según el PDF); FC 0292-58 con
    precios en US$ a otro TC y 30 litros de 2,4D en vez de 20 (total US$1.176,15 según el PDF); NC 0392-412 (el PDF vinculado es de otro proveedor; libro de
    ASP: 2 bolsas a US$120 + IVA = US$290,40). FC 0392-41 queda como el PDF (US$13.635,54; el libro de ASP dice 13.630,50).
-3. La diferencia en pesos que queda (la cuenta se lleva en dólares) se ajusta con un AjusteCuentaCorriente de diferencia de
-   cambio al 18/07/2016.
+3. La diferencia en pesos que queda (la cuenta se lleva en dólares) se ajusta por tramo, con su causa (análisis del
+   19/10/2026; Sergio aprobó cerrar el tramo 1 sin evidencia física):
+   - Tramo 1 (2010 → feb-2012, antes del libro de ASP): compras del "Negocio Maíz" a nombre de Giamberardini Oscar Vicente
+     (Sucesión; comprobantes en Comprobantes/Sucesion/2010), pagadas en parte fuera de las cuentas de Giamigli (cheque de
+     $22.380,68 del 25/11/2010 según "ASP (Giamberardini 20101126).xls", no está en ningún banco del sistema). ASP abre su
+     libro 2012 en cero. No hay resumen de ASP 2011 ni extractos de la Sucesión.
+   - Tramo 2 (2012-2016, libro de ASP): diferencia de cambio entre el TC de cada factura y el TC al que ASP acreditó cada
+     recibo, más $960,66 que ASP compensó de menos en la refacturación de pasturas (NC en pesos $41.859,74 contra una
+     diferencia de $42.820,40, "Cuenta Pastura.xlsx").
+4. Se carga la FC 0102-5659 (31/12/2010, US$25,78, a nombre de Oscar Vicente; Comprobantes/Sucesion/2010).
 Idempotente. Uso (desde backend/): python -m scripts.asp_036 [--aplicar]
 """
 
@@ -29,7 +37,7 @@ from datetime import date
 
 import openpyxl
 
-from src.db.connection import _assert_target_is_wc, execute_write_transaction
+from src.db.connection import _assert_target_is_wc, execute_write_transaction, fetch_all
 from src.features.auditoria_cuentas import bimonetaria
 from src.features.vinculos.backup import backup_verificado
 
@@ -171,27 +179,49 @@ if __name__ == "__main__":
         ("UPDATE dbo.Det_Compras SET [Precio Unitario] = 39.38 / 4.633, Cantidad = 20 WHERE IdCompra = 2143509530 AND [Producto/Servicio] LIKE '%2,4D%'", ()),
         ("UPDATE dbo.Compras SET [Ingresos Brutos] = ROUND(110.31 / 4.633, 2) WHERE IdDeuda = 2143509530", ()),
     ])
+    # 4. FC 0102-5659 (31/12/2010, a nombre de Oscar Vicente) que faltaba
+    if not fetch_all("SELECT 1 AS x FROM dbo.Compras WHERE IdContacto = ? AND [Nro Documento] = '0102-00005659'", (C,)):
+        pdf = "C:/Users/Sergio/Documents/La Herencia/Comprobantes/Sucesion/2010/20101231_ASP.pdf".replace("/", "\\")
+        execute_write_transaction([
+            ("INSERT INTO dbo.Compras (Fecha, [Fecha Vto], IdContacto, Tipo, [Tipo documento], [Nro Documento], Moneda, [Tipo de Cambio], "
+             "[Ingresos Brutos], PercepcionIVA, [Conceptos no gravados], Guias, Comision, Financiacion, [Gastos Varios], [Ley de Sellos], "
+             "[Res gral 4169/96], [Ajusta Tipo Cambio], [Documento Original]) VALUES ('2010-12-31', '2011-01-30', ?, 'A', 'Factura', "
+             "'0102-00005659', 'Dolares', 3.976, 0.59, 0, 0, 0, 0, 0, 0, 0, 0, 0, ?)", (C, pdf + "#" + pdf + "#")),
+            ("INSERT INTO dbo.Det_Compras (IdCompra, Cantidad, [Producto/Servicio], IdFormulado, IdCentroCostos, IdDestino, IdRubro, IdCampaña, "
+             "[Campaña], [Precio Unitario], IVA, [Ajuste financiero]) SELECT TOP 1 (SELECT IdDeuda FROM dbo.Compras WHERE IdContacto = ? AND "
+             "[Nro Documento] = '0102-00005659'), 0.04, 'Fertilizante 47.9-0-0 (TN)', 0, IdCentroCostos, IdDestino, IdRubro, IdCampaña, [Campaña], "
+             "570, 10.5, 0 FROM dbo.Det_Compras WHERE IdCompra = 2143509434 ORDER BY IdDetalleCompra", (C,)),
+        ])
     bimonetaria.invalidar()
     val, *_ = plan()
     st = [("DELETE FROM dbo.ValuacionProveedor WHERE IdContacto = ?", (C,)),
-          ("DELETE FROM dbo.AjustesCuentaCorriente WHERE IdContacto = ? AND Motivo LIKE 'Diferencia de cambio acumulada (cuenta en US$ de ASP%'", (C,))]
+          ("DELETE FROM dbo.RevisionPagosSinFactura WHERE IdContacto = ? AND Medio = 'ajuste-interno'", (C,)),
+          ("DELETE FROM dbo.AjustesCuentaCorriente WHERE IdContacto = ? AND (Motivo LIKE 'Diferencia de cambio acumulada (cuenta en US$ de ASP%' "
+           "OR Motivo LIKE 'ASP tramo %')", (C,))]
     st += [("INSERT INTO dbo.ValuacionProveedor (Origen, IdOrigen, IdContacto, Dolares, Fuente, Nota, Usuario, Fecha) VALUES (?, ?, ?, ?, ?, NULL, ?, SYSDATETIME())",
-            (o, i, C, abs(v), FUENTE, U)) for (o, i), v in val.items()]
+            (o, i, C, abs(v), FUENTE, U)) for (o, i), v in val.items() if o != "Ajuste Interno"]
     execute_write_transaction(st)
     bimonetaria.invalidar()
     r = bimonetaria.cargar_cuenta(C, refrescar=True)
-    pesos = round(r["saldoPesos"], 2)
-    if abs(pesos) > 0.01:
-        execute_write_transaction([("INSERT INTO dbo.AjustesCuentaCorriente (IdContacto, Fecha, Lado, Importe, Motivo, Usuario, FechaAlta) VALUES "
-                                    "(?, '2016-07-18', ?, ?, ?, ?, SYSDATETIME())",
-                                    (C, "Deuda" if pesos > 0 else "Credito", abs(pesos),
-                                     "Diferencia de cambio acumulada (cuenta en US$ de ASP, cerrada en US$0 con el recibo 1053314 del 18/07/2016)", U))])
-        bimonetaria.invalidar()
-        r = bimonetaria.cargar_cuenta(C, refrescar=True)
-        execute_write_transaction([("INSERT INTO dbo.ValuacionProveedor (Origen, IdOrigen, IdContacto, Dolares, Fuente, Nota, Usuario, Fecha) "
-                                    "VALUES (?, ?, ?, 0, 'Diferencia de cambio en pesos (no mueve dólares)', NULL, ?, SYSDATETIME())", (f["origenTipo"], f["idOrigen"], C, U))
-                                   for f in r["filas"] if f["origenTipo"] == "Ajuste Interno"
-                                   and (f["origenTipo"], f["idOrigen"]) not in {k for k in val}])
-        bimonetaria.invalidar()
-        r = bimonetaria.cargar_cuenta(C, refrescar=True)
+    # 3. Ajuste en pesos por tramo, con su causa (saldo en pesos al cierre de cada tramo; negativo = debemos)
+    tramo1 = [f["saldoPesos"] for f in r["filas"] if f["fecha"] <= CEROS[0]][-1]
+    tramo2 = round(r["saldoPesos"] - tramo1, 2)
+    motivos = [
+        (CEROS[0], tramo1, "ASP tramo 1 (2010-feb 2012): compras del Negocio Maíz a nombre de Giamberardini Oscar Vicente (Sucesión), "
+                           "pagadas en parte fuera de las cuentas de Giamigli (cheque $22.380,68 del 25/11/2010, no está en los bancos del "
+                           "sistema); ASP abre su libro 2012 en cero. Sin evidencia física (decisión de Sergio, 19/10/2026)."),
+        (CEROS[-1], tramo2, "ASP tramo 2 (2012-2016): diferencia de cambio entre el TC de cada factura y el TC al que ASP acreditó cada "
+                            "recibo; incluye $960,66 que ASP compensó de menos en la refacturación de pasturas (Cuenta Pastura.xlsx)."),
+    ]
+    execute_write_transaction([("INSERT INTO dbo.AjustesCuentaCorriente (IdContacto, Fecha, Lado, Importe, Motivo, Usuario, FechaAlta) VALUES "
+                                "(?, ?, ?, ?, ?, ?, SYSDATETIME())", (C, fecha, "Credito" if v < 0 else "Deuda", round(abs(v), 2), m, U))
+                               for fecha, v, m in motivos if abs(v) > 0.01])
+    bimonetaria.invalidar()
+    r = bimonetaria.cargar_cuenta(C, refrescar=True)
+    execute_write_transaction([("INSERT INTO dbo.ValuacionProveedor (Origen, IdOrigen, IdContacto, Dolares, Fuente, Nota, Usuario, Fecha) "
+                                "VALUES (?, ?, ?, 0, 'Diferencia en pesos de la cuenta en US$ de ASP (no mueve dólares)', NULL, ?, SYSDATETIME())",
+                                (f["origenTipo"], f["idOrigen"], C, U)) for f in r["filas"] if f["origenTipo"] == "Ajuste Interno"])
+    bimonetaria.invalidar()
+    r = bimonetaria.cargar_cuenta(C, refrescar=True)
+    print("Ajustes: tramo 1", round(tramo1, 2), " tramo 2", tramo2)
     print("Saldo: pesos", r["saldoPesos"], " US$", r["saldoDolares"], r["gobierna"])
