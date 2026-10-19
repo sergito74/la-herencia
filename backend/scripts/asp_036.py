@@ -251,6 +251,11 @@ if __name__ == "__main__":
                        "IdCampaña, [Campaña], [Precio Unitario], IVA, [Ajuste financiero]) SELECT IdDeuda, 1, 'Diferencia de cambio ASP 2012-2016', 0, "
                        "?, ?, ?, ?, ?, ?, 0, 0 FROM dbo.Compras WHERE IdContacto = ? AND [Nro Documento] = ?",
                        (cc, dest, rub, ic, camp, v, C, ND_TRAMO2)))
+        # se cancela con el sobrante en pesos de la NC 0392-1616 (anulación de la ND anticipada de pasturas 2546)
+        st.append(("INSERT INTO dbo.AplicacionesPago (OrigenMovimiento, IdMovimientoOrigen, TipoDocumento, IdDocumentoAplicado, ImporteAplicado, "
+                   "Fecha, Usuario, Anulada, Origen, NotaConciliacion) SELECT 'comp-compra', 2143510763, 'CompraDeuda', IdDeuda, ?, SYSDATETIME(), ?, "
+                   "0, 'manual', 'Barrida 036: dif. de cambio ASP 2012-2016 contra el sobrante de la NC 1616' FROM dbo.Compras "
+                   "WHERE IdContacto = ? AND [Nro Documento] = ?", (tramo2, U, C, ND_TRAMO2)))
         execute_write_transaction(st)
     bimonetaria.invalidar()
     r = bimonetaria.cargar_cuenta(C, refrescar=True)
