@@ -62,8 +62,7 @@ PLAN: dict[tuple[str, int], list[str]] = {
     ("Banco Nacion", 15037): ["3448"],
     ("Venta Granos", 110): ["7573", "143402", "55586", "55587", "B15038"],         # TCC 54515 + OP 186151
     ("Venta Granos", 111): ["7573", "143402", "55586", "55587", "B15038"],
-    ("Venta Granos", 112): ["B15040"],                                            # OP 188537 (LC + IVA)
-    ("Ajuste Interno", 24): ["B15040"],
+    ("Venta Granos", 112): ["B15040"],                                            # OP 188537 (LC + IVA RG 2300; la deducción mal cargada se borró el 19/10/2026)
     ("Venta Granos", 113): ["B15041"],                                            # OP 189005
     ("Venta Granos", 114): ["B15041"],
     ("Banco Nacion", 15042): ["8268", "3728"],
