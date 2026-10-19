@@ -86,7 +86,6 @@ PLAN: dict[tuple[str, int], list[str]] = {
     ("Galicia", 1802): ["12422", "5324"],
     ("Galicia", 1969): ["12612", "5494"],                                         # AP 8221
     ("Retenciones", 152): ["12612", "5494"],
-    ("Ajuste Interno", 25): ["5494"],
 }
 # Notas de crédito (por número): documento que corrigen
 PLAN_NC = {"00000545": ["5684", "5693", "2157"], "00000546": ["2157"], "00007581": ["2060"], "00007600": ["13491"],
