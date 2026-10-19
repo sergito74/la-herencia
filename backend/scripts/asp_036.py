@@ -21,7 +21,7 @@ US$0,01 con el recibo 1053314 del 18/07/2016 (BNA $4.567,82).
      (Sucesión; comprobantes en Comprobantes/Sucesion/2010), pagadas en parte fuera de las cuentas de Giamigli (cheque de
      $22.380,68 del 25/11/2010 según "ASP (Giamberardini 20101126).xls", no está en ningún banco del sistema). ASP abre su
      libro 2012 en cero. No hay resumen de ASP 2011 ni extractos de la Sucesión.
-   - Tramo 2 (2012-2016, libro de ASP): diferencia de cambio entre el TC de cada factura y el TC al que ASP acreditó cada
+   - Tramo 2 (2012-2016, libro de ASP), ND en pesos "DIFTC ASP" imputada por cultivo (no ajuste): diferencia de cambio entre el TC de cada factura y el TC al que ASP acreditó cada
      recibo, más $960,66 que ASP compensó de menos en la refacturación de pasturas (NC en pesos $41.859,74 contra una
      diferencia de $42.820,40, "Cuenta Pastura.xlsx").
 4. Se carga la FC 0102-5659 (31/12/2010, US$25,78, a nombre de Oscar Vicente; Comprobantes/Sucesion/2010).
@@ -45,6 +45,9 @@ C, U = 17, "Sergio (barrida 036)"
 CARPETA = "C:/Users/Sergio/Documents/La Herencia/Administracion y gestion/Resumenes de Cuenta/ASP/"
 LIBRO = CARPETA + "Resumen Cuenta ASP Completa.xlsx"
 PLANILLA = CARPETA + "Resumen Cuenta ASP (1).xlsx"
+ND_TRAMO2 = "DIFTC ASP"   # sin dígitos: no debe chocar con los números del libro de ASP
+PASTURAS = (2143510765, 2143510766)   # FC 0392-8806 y 0392-8804 (refacturación de pasturas)
+PASTURAS_COMPENSACION = 960.66   # diferencia por cambio $42.820,40 − NC en pesos $41.859,74 (Cuenta Pastura.xlsx)
 FUENTE = "Libro en US$ de ASP 2012-2016 (Resumen Cuenta ASP Completa.xlsx) y recibos de la planilla Resumen Cuenta ASP (1).xlsx"
 # Tramos: antes del libro de ASP (cuenta en cero antes de las FC de mayo 2012) y el libro completo, que cierra el 18/07/2016.
 # Los ceros intermedios del libro no se usan como corte: los cheques diferidos de un recibo se debitan después.
@@ -119,7 +122,7 @@ def plan():
     for f in filas:
         if f["origenTipo"] != "Compras":
             continue
-        n = str(int(re.findall(r"\d+", f["numeroDocumento"] or "0")[-1]))
+        n = str(int((re.findall(r"\d+", f["numeroDocumento"] or "") or ["0"])[-1]))
         if f["moneda"] == "Dolares":   # el motor usa el importe del documento en dólares (corregido contra su PDF)
             val[_k(f)] = round(f["deudaOriginal"] - f["creditoOriginal"], 2)
         elif n in asp:
@@ -178,6 +181,10 @@ if __name__ == "__main__":
         ("UPDATE dbo.Det_Compras SET [Precio Unitario] = 39.38 / 4.633 WHERE IdCompra = 2143509530 AND [Producto/Servicio] LIKE '%Choice%'", ()),
         ("UPDATE dbo.Det_Compras SET [Precio Unitario] = 39.38 / 4.633, Cantidad = 20 WHERE IdCompra = 2143509530 AND [Producto/Servicio] LIKE '%2,4D%'", ()),
         ("UPDATE dbo.Compras SET [Ingresos Brutos] = ROUND(110.31 / 4.633, 2) WHERE IdDeuda = 2143509530", ()),
+        # la ND de diferencia de cambio del tramo 2 se rehace en cada corrida (idempotencia)
+        ("DELETE FROM dbo.AplicacionesPago WHERE IdDocumentoAplicado IN (SELECT IdDeuda FROM dbo.Compras WHERE IdContacto = ? AND [Nro Documento] = ?)", (C, ND_TRAMO2)),
+        ("DELETE FROM dbo.Det_Compras WHERE IdCompra IN (SELECT IdDeuda FROM dbo.Compras WHERE IdContacto = ? AND [Nro Documento] = ?)", (C, ND_TRAMO2)),
+        ("DELETE FROM dbo.Compras WHERE IdContacto = ? AND [Nro Documento] = ?", (C, ND_TRAMO2)),
     ])
     # 4. FC 0102-5659 (31/12/2010, a nombre de Oscar Vicente) que faltaba
     if not fetch_all("SELECT 1 AS x FROM dbo.Compras WHERE IdContacto = ? AND [Nro Documento] = '0102-00005659'", (C,)):
@@ -210,12 +217,41 @@ if __name__ == "__main__":
         (CEROS[0], tramo1, "ASP tramo 1 (2010-feb 2012): compras del Negocio Maíz a nombre de Giamberardini Oscar Vicente (Sucesión), "
                            "pagadas en parte fuera de las cuentas de Giamigli (cheque $22.380,68 del 25/11/2010, no está en los bancos del "
                            "sistema); ASP abre su libro 2012 en cero. Sin evidencia física (decisión de Sergio, 19/10/2026)."),
-        (CEROS[-1], tramo2, "ASP tramo 2 (2012-2016): diferencia de cambio entre el TC de cada factura y el TC al que ASP acreditó cada "
-                            "recibo; incluye $960,66 que ASP compensó de menos en la refacturación de pasturas (Cuenta Pastura.xlsx)."),
     ]
     execute_write_transaction([("INSERT INTO dbo.AjustesCuentaCorriente (IdContacto, Fecha, Lado, Importe, Motivo, Usuario, FechaAlta) VALUES "
                                 "(?, ?, ?, ?, ?, ?, SYSDATETIME())", (C, fecha, "Credito" if v < 0 else "Deuda", round(abs(v), 2), m, U))
                                for fecha, v, m in motivos if abs(v) > 0.01])
+    # Tramo 2: es un costo real (se pagaron más pesos que el TC de cada factura) → ND en pesos de diferencia de cambio (ajuste de TC,
+    # no mueve dólares) con renglones por cultivo: $960,66 a las pasturas (FC 8804/8806) y el resto repartido entre las demás
+    # facturas en US$ 2012-2016 en proporción a sus dólares (mismo desvío de TC por dólar), con la imputación de sus renglones.
+    if tramo2 > 0.01:
+        renglones = fetch_all(
+            "SELECT c.IdDeuda AS i, d.Cantidad * d.[Precio Unitario] AS neto, d.IdCampaña AS ic, d.[Campaña] AS camp, d.IdDestino AS dest, "
+            "d.IdCentroCostos AS cc, d.IdRubro AS rub FROM dbo.Compras c JOIN dbo.Det_Compras d ON d.IdCompra = c.IdDeuda "
+            "WHERE c.IdContacto = ? AND c.Moneda = 'Dolares' AND c.Fecha > ? AND c.Fecha <= ? AND d.Cantidad * d.[Precio Unitario] > 0",
+            (C, CEROS[0], CEROS[-1]))
+        lineas: dict = {}
+        for parte, filas in ((PASTURAS_COMPENSACION, [x for x in renglones if x["i"] in PASTURAS]),
+                             (round(tramo2 - PASTURAS_COMPENSACION, 2), [x for x in renglones if x["i"] not in PASTURAS])):
+            base = sum(float(x["neto"]) for x in filas)
+            for x in filas:
+                k = (x["cc"], x["dest"], x["ic"], x["camp"])
+                g = lineas.setdefault(k, {"importe": 0.0, "rubros": {}})
+                g["importe"] += parte * float(x["neto"]) / base
+                g["rubros"][x["rub"]] = g["rubros"].get(x["rub"], 0.0) + float(x["neto"])
+        imp = {k: round(g["importe"], 2) for k, g in lineas.items()}
+        k0 = max(imp, key=imp.get)
+        imp[k0] = round(imp[k0] + tramo2 - sum(imp.values()), 2)
+        st = [("INSERT INTO dbo.Compras (Fecha, IdContacto, Tipo, [Tipo documento], [Nro Documento], Moneda, [Tipo de Cambio], [Ingresos Brutos], "
+               "PercepcionIVA, [Conceptos no gravados], Guias, Comision, Financiacion, [Gastos Varios], [Ley de Sellos], [Res gral 4169/96], "
+               "[Ajusta Tipo Cambio]) VALUES (?, ?, 'A', 'Nota de Débito', ?, 'Pesos', 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1)", (CEROS[-1], C, ND_TRAMO2))]
+        for (cc, dest, ic, camp), v in imp.items():
+            rub = max(lineas[(cc, dest, ic, camp)]["rubros"].items(), key=lambda t: t[1])[0]
+            st.append(("INSERT INTO dbo.Det_Compras (IdCompra, Cantidad, [Producto/Servicio], IdFormulado, IdCentroCostos, IdDestino, IdRubro, "
+                       "IdCampaña, [Campaña], [Precio Unitario], IVA, [Ajuste financiero]) SELECT IdDeuda, 1, 'Diferencia de cambio ASP 2012-2016', 0, "
+                       "?, ?, ?, ?, ?, ?, 0, 0 FROM dbo.Compras WHERE IdContacto = ? AND [Nro Documento] = ?",
+                       (cc, dest, rub, ic, camp, v, C, ND_TRAMO2)))
+        execute_write_transaction(st)
     bimonetaria.invalidar()
     r = bimonetaria.cargar_cuenta(C, refrescar=True)
     execute_write_transaction([("INSERT INTO dbo.ValuacionProveedor (Origen, IdOrigen, IdContacto, Dolares, Fuente, Nota, Usuario, Fecha) "
