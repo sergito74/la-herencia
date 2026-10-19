@@ -9,7 +9,7 @@ Se pagaron con tarjeta al TC 238,25 (cláusula de la póliza: dólar BNA del dí
 / $63.713,15 y los reintegros de las NC $7.006,81 / $6.657,11 / $3.264,36 — así que en dólares cierran exacto. La diferencia
 entre ese TC y el TC impositivo de cada factura es solo de pesos: una ND (o NC, en los reintegros) en pesos por póliza,
 marcada como ajuste de TC, a la que se imputa esa parte del pago con tarjeta. Se anulan las imputaciones automáticas que
-duplicaban el vínculo de tarjeta.
+duplicaban el vínculo de tarjeta (de origen 'tarjetas', en todos los años). Saldo externo: portal, $0.
 Las pólizas en pesos (2016-2022) y sus pagos cierran en pesos y se valúan en 0 dólares.
 Idempotente.
 
@@ -50,7 +50,7 @@ if __name__ == "__main__":
         cur.execute("DELETE FROM dbo.ValuacionProveedor WHERE IdContacto = ?", C)
         cur.execute("UPDATE a SET Anulada = 1, MotivoAnulacion = 'Duplica el vínculo de tarjeta (barrida 036)', UsuarioAnulacion = ?, "
                     "FechaAnulacion = SYSDATETIME() FROM dbo.AplicacionesPago a JOIN dbo.Compras c ON c.IdDeuda = a.IdDocumentoAplicado "
-                    "WHERE c.IdContacto = ? AND c.Fecha >= '2022-09-01' AND a.Anulada = 0 AND a.Origen <> 'manual'", U, C)
+                    "WHERE c.IdContacto = ? AND a.Anulada = 0 AND a.Origen <> 'manual' AND (c.Fecha >= '2022-09-01' OR a.OrigenMovimiento = 'tarjetas')", U, C)
         for idc, (prima, rec, otros, r_prima, r_rec, tc, premio) in DOCS.items():
             cur.execute("DELETE FROM dbo.Det_Compras WHERE IdCompra = ? AND IdDetalleCompra NOT IN (?, ?)", idc, r_prima, r_rec)
             cur.execute("UPDATE dbo.Det_Compras SET [Precio Unitario] = ?, Cantidad = 1, IVA = 21 WHERE IdDetalleCompra = ?", prima, r_prima)
@@ -59,9 +59,10 @@ if __name__ == "__main__":
                         "[Ley de Sellos] = ? WHERE IdDeuda = ? AND IdContacto = ? AND Moneda = 'Dolares'", otros, idc, C)
             # Dólares del pago = premio; la diferencia de TC va a la cuenta en pesos
             o, i = PAGOS[idc]
-            cur.execute("SELECT Deuda, Credito FROM dbo.vw_MovimientosCuenta_Saldo WHERE IdContacto = ? AND Origen = ? AND IdOrigen = ?", C, o, i)
-            d, cr = cur.fetchone()
-            pagado = float(cr or 0) - float(d or 0)
+            # importe cobrado en la tarjeta: la línea del resumen (no cambia al repartirla entre la póliza y su ND)
+            cur.execute("SELECT l.Importe FROM dbo.Tarjetas_Resumenes_Lineas l JOIN dbo.Tarjetas_Resumenes_Lineas_Compras t "
+                        "ON t.IdLineaConsumo = l.IdLineaConsumo WHERE t.IdVinculo = ?", i)
+            pagado = float(cur.fetchone()[0])
             cur.execute("INSERT INTO dbo.ValuacionProveedor (Origen, IdOrigen, IdContacto, Dolares, Fuente, Nota, Usuario, Fecha) VALUES "
                         "(?, ?, ?, ?, 'Póliza Nación Seguros: premio en US$ pagado al BNA del día anterior al pago (238,25)', ?, ?, SYSDATETIME())",
                         o, i, C, abs(premio), POLIZA[idc], U)
@@ -106,6 +107,12 @@ if __name__ == "__main__":
     execute_write_transaction([("INSERT INTO dbo.ValuacionProveedor (Origen, IdOrigen, IdContacto, Dolares, Fuente, Nota, Usuario, Fecha) VALUES "
                                 "(?, ?, ?, 0, 'Movimiento en pesos de pólizas en pesos (cierra en pesos)', NULL, ?, SYSDATETIME())", (o, i, C, U))
                                for o, i in nuevos])
+    from src.features.revision_cuentas import evidencia
+    if not fetch_all("SELECT 1 AS x FROM dbo.RevisionSaldosExternos WHERE IdContacto = ? AND Fuente = 'portal' AND Anulado = 0", (C,)):
+        from datetime import date
+        evidencia.crear_saldo_externo(C, date(2026, 9, 30), 0.0, "Pesos", "portal", "misseguros.nacion-seguros.com.ar",
+                                      "Portal Nación Seguros (18/10/2026, solo lectura): 24 pólizas 2018-2023, las mismas del sistema, "
+                                      "ninguna con deuda ni vencida.", U)
     for idc in DOCS:
         print(idc, fetch_all("SELECT ImporteDocumento t FROM dbo.vw_Compras_ImporteDocumento WHERE IdDeuda = ?", (idc,))[0]["t"])
     bimonetaria.invalidar()
