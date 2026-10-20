@@ -64,3 +64,9 @@ Datos: `scripts/campanias_lote_a_036.py` completó los 41 renglones (13 document
 13 renglones migrados de Access (texto 2025/2026 o 2026, `IdCampaña` 20 No Aplica), destino productivo, USD 1.040,28 hoy imputados a No Aplica. Evidencia de órdenes solo para Mulan (Pastura 2026) y Coady siliconado (Soja 2025/26); los demás no tienen producto vinculado.
 
 Decisión de Sergio: vincular según el texto. `scripts/campanias_lote_b_036.py` pasó los 13 renglones al IdCampaña del texto; importes y destinos sin cambio, los 13 en la vista de costos (USD 1.040,28 salen de No Aplica). Respaldo `WC_campanias-lote-b-036_20261020_144838_816034.bak`. Auditoría posterior: solo quedan `no_aplica_sin_vinculo` 199 (195 destino General, 4 Stock: ninguno productivo) y `sin_asignacion` 1 (redondeo FC316792, excepción).
+
+## Control para nuevas cargas (20/10/2026)
+
+- App: `compras/repository.validar_compra` rechaza (400) un renglón con campaña escrita que no existe en el catálogo o cuyo IdCampaña no corresponde al texto; el alta/edición guarda el IdCampaña resuelto.
+- Base WC: trigger `dbo.trg_Det_Compras_Campania` (AFTER INSERT, UPDATE) rechaza todo renglón con texto de campaña sin el IdCampaña que le corresponde; frena también scripts. Creado por `scripts/control_campania_det_compras_036.py`, que antes completó IdCampaña 'No Aplica' en los 199 renglones con ese texto (aprobado por Sergio). Probado: cambios inválidos rechazados y revertidos.
+- Auditoría posterior: solo queda `sin_asignacion` 1 (redondeo FC316792, sin texto ni id: excepción).

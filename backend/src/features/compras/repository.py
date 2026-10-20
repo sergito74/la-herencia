@@ -519,6 +519,13 @@ def validar_compra(
         id_destino = linea.get("idDestino")
         if id_destino is not None and not existe_destino(id_destino):
             errores.append(f"El destino {id_destino} no existe.")
+        campania = (linea.get("campaña") or "").strip()
+        if campania:
+            id_texto = get_id_campania_por_nombre(campania)
+            if id_texto is None:
+                errores.append(f"La campaña '{campania}' no existe en el catálogo de campañas: elegila de la lista o creala primero.")
+            elif linea.get("idCampania") is not None and linea["idCampania"] != id_texto:
+                errores.append(f"La campaña '{campania}' no corresponde al identificador {linea['idCampania']}.")
 
     return errores
 

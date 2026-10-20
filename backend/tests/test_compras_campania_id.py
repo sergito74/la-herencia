@@ -40,3 +40,22 @@ def test_insert_incluye_id_campania():
     sql, params = repository._linea_insert_statement(
         {"productoServicio": "x", "cantidad": 1, "precioUnitario": 1, "iva": 21, "campaña": "2025/2026", "idCampania": 24})([99])
     assert "IdCampaña" in sql and sql.count("?") == len(params) and 24 in params
+
+
+@pytest.fixture
+def validacion(catalogo, monkeypatch):
+    monkeypatch.setattr(repository, "existe_contacto_valido_para_compra", lambda i: True)
+
+
+def test_rechaza_campania_fuera_del_catalogo(validacion):
+    errores = repository.validar_compra(1, "Pesos", None, [{"campaña": "2025-2026"}])
+    assert len(errores) == 1 and "no existe en el catálogo" in errores[0]
+
+
+def test_rechaza_id_que_no_corresponde_al_texto(validacion):
+    errores = repository.validar_compra(1, "Pesos", None, [{"campaña": "2025/2026", "idCampania": 20}])
+    assert len(errores) == 1 and "no corresponde" in errores[0]
+
+
+def test_acepta_campania_del_catalogo_o_vacia(validacion):
+    assert repository.validar_compra(1, "Pesos", None, [{"campaña": "2025/2026"}, {"campaña": ""}, {}]) == []
