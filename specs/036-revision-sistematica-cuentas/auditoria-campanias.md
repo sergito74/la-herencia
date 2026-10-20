@@ -52,3 +52,13 @@ Solo elimina espacios exteriores y compara sin distinguir mayúsculas; no equipa
 Script `backend/scripts/baya_casal_fc320049_036.py`: precio de 9.488 kg de urea de USD0,62 a USD0,6218 según original; nueve vínculos completados por coincidencia exacta con el catálogo, sin cambiar reparto, cantidades, destinos ni otros precios. Total verificado USD19.375,91; nueve líneas verificadas con campaña en `vw_ResultadosCultivo_CostosBase`.
 
 Respaldo verificado: `WC_baya-fc320049-036_20261020_105801_355367.bak`. Foto antes/después y hash del PDF en `backups/baya-conciliacion-20261019/fc320049-20261020_105802.json`. Script idempotente: segunda ejecución valida estado y no escribe.
+
+## Lote A — vínculos faltantes (20/10/2026)
+
+Causa raíz: `compras/repository.py` (alta y edición) guardaba solo el texto `Campaña`, nunca `IdCampaña`. Corregido: `_resolver_defaults_linea` resuelve el id por coincidencia exacta única del catálogo y ambos INSERT lo guardan; texto desconocido queda sin id (el auditor lo sigue mostrando). Pruebas `tests/test_compras_campania_id.py`.
+
+Datos: `scripts/campanias_lote_a_036.py` completó los 41 renglones (13 documentos: Allianz, Fideicomiso La Esperanza, FEDEA, Cargill —ND/factura de la tarjeta 27/04/2023 que copian la clasificación de las facturas que ajustan—, San Cristóbal, Aguilar, Silva Rossi). Texto, importes, cantidades, destinos y rubros sin cambio; los 41 entran en `vw_ResultadosCultivo_CostosBase`. Respaldo `WC_campanias-lote-a-036_20261020_144628_851184.bak`. Auditoría posterior: `falta_vinculo` = 0.
+
+## Lote B — discordancias (pendiente de decisión de Sergio)
+
+13 renglones migrados de Access (texto 2025/2026 o 2026, `IdCampaña` 20 No Aplica), destino productivo, USD 1.040,28 hoy imputados a No Aplica. Evidencia de órdenes solo para Mulan (Pastura 2026) y Coady siliconado (Soja 2025/26); los demás no tienen producto vinculado.

@@ -362,6 +362,16 @@ def get_id_destino_por_nombre(nombre: str) -> int | None:
     return row["IdDestino"] if row else None
 
 
+def get_id_campania_por_nombre(nombre: str | None) -> int | None:
+    """IdCampaña de un texto de campaña (coincidencia exacta, sin espacios exteriores). Sin el id, el renglón
+    no entra en los resultados por campaña aunque tenga el texto (auditoría de campañas 036)."""
+    texto = (nombre or "").strip()
+    if not texto:
+        return None
+    rows = fetch_all("SELECT IdCampaña AS id FROM dbo.Campañas WHERE LTRIM(RTRIM(Campaña)) = ?", (texto,))
+    return rows[0]["id"] if len(rows) == 1 else None
+
+
 def existe_contacto_valido_para_compra(id_contacto: int) -> bool:
     """FR-001/FR-013: el proveedor de una compra puede ser Proveedor/Multiple/Organismo/Empleado/Banco."""
     row = fetch_one(
@@ -629,6 +639,8 @@ def _resolver_defaults_linea(linea: dict) -> dict:
         resultado["idDestino"] = get_id_destino_por_nombre(DEFAULT_DESTINO)
     if not resultado.get("campaña"):
         resultado["campaña"] = DEFAULT_CAMPANIA
+    if resultado.get("idCampania") is None:
+        resultado["idCampania"] = get_id_campania_por_nombre(resultado["campaña"])
     return resultado
 
 
@@ -708,9 +720,9 @@ def _linea_insert_statement(linea: dict):
         sql = """
             INSERT INTO dbo.Det_Compras (
                 IdCompra, [Producto/Servicio], Cantidad, [Precio Unitario], IVA, Unidad,
-                IdCentroCostos, IdDestino, IdRubro, Campaña, [Ajuste financiero]
+                IdCentroCostos, IdDestino, IdRubro, Campaña, IdCampaña, [Ajuste financiero]
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """
         params = (
             id_compra,
@@ -723,6 +735,7 @@ def _linea_insert_statement(linea: dict):
             linea.get("idDestino"),
             linea.get("idRubro"),
             linea.get("campaña"),
+            linea.get("idCampania"),
             linea.get("ajusteFinanciero") or False,
         )
         return sql, params
@@ -785,9 +798,9 @@ def update_compra(id_compra: int, cabecera: dict, lineas: list[dict], vencimient
                 """
                 INSERT INTO dbo.Det_Compras (
                     IdCompra, [Producto/Servicio], Cantidad, [Precio Unitario], IVA, Unidad,
-                    IdCentroCostos, IdDestino, IdRubro, Campaña, [Ajuste financiero]
+                    IdCentroCostos, IdDestino, IdRubro, Campaña, IdCampaña, [Ajuste financiero]
                 )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     id_compra,
@@ -800,6 +813,7 @@ def update_compra(id_compra: int, cabecera: dict, lineas: list[dict], vencimient
                     linea.get("idDestino"),
                     linea.get("idRubro"),
                     linea.get("campaña"),
+                    linea.get("idCampania"),
                     linea.get("ajusteFinanciero") or False,
                 ),
             )
