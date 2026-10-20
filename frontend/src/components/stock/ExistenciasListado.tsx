@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 
 import { fetchExistencias, fetchKardex, fetchTiposProducto, urlExportarExistencias, urlRecuentoFisico, type Existencia } from "@/services/remitosApi";
-import { formatCantidad, formatMoneda } from "@/lib/format";
+import { formatCantidad, formatMoneda, formatFecha } from "@/lib/format";
 import { DataTable, type DataTableColumn } from "@/components/ui/DataTable";
 import { FilterBar, FilterField, FilterSubmitButton, filterInputClass } from "@/components/ui/FilterBar";
 import { KpiCard } from "@/components/ui/KpiCard";
@@ -50,7 +50,7 @@ function Kardex({ idProducto, onClose }: { idProducto: number | null; onClose: (
             <tbody>
               {data.movimientos.map((m) => (
                 <tr key={m.clave} className="border-t border-border">
-                  <td className="py-1 pr-2 whitespace-nowrap">{m.fecha}</td>
+                  <td className="py-1 pr-2 whitespace-nowrap">{formatFecha(m.fecha)}</td>
                   <td className="pr-2">
                     <span className={m.cantidad >= 0 ? "text-status-success" : "text-ink-primary"}>{m.tipo}</span> · {m.detalle}
                     {m.costoPendiente && <span className="ml-1"><StatusBadge label="Costo pendiente" tone="warning" /></span>}

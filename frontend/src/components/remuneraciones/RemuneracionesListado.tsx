@@ -13,7 +13,7 @@ import { DataTable, type DataTableColumn } from "@/components/ui/DataTable";
 import { FilterBar, FilterSubmitButton } from "@/components/ui/FilterBar";
 import { EmptyState, ErrorState, LoadingState } from "@/components/ui/States";
 import { useToast } from "@/components/ui/Toast";
-import { formatMoneda } from "@/lib/format";
+import { formatMoneda, formatFecha } from "@/lib/format";
 import { NuevaLiquidacionForm } from "@/components/remuneraciones/NuevaLiquidacionForm";
 import {
   BASE_DOCUMENTOS_RECIBOS,
@@ -74,7 +74,7 @@ function buildColumns(onReciboSubido: () => Promise<void> | void): DataTableColu
       header: "Fecha de pago",
       numeric: true,
       sortValue: (r) => r.fechaPago,
-      render: (r) => r.fechaPago ?? "—",
+      render: (r) => formatFecha(r.fechaPago),
     },
     { key: "periodoLiquidado", header: "Período", render: (r) => r.periodoLiquidado ?? "—" },
     {

@@ -12,10 +12,10 @@ import { ContactoSelect } from "@/components/ui/ContactoSelect";
 import { DataTable, type DataTableColumn } from "@/components/ui/DataTable";
 import { FilterBar, FilterSubmitButton } from "@/components/ui/FilterBar";
 import { ErrorState, LoadingState } from "@/components/ui/States";
-import { formatMoneda } from "@/lib/format";
+import { formatMoneda, formatFecha } from "@/lib/format";
 
 const COLUMNS: DataTableColumn<RetencionVentaHacienda>[] = [
-  { key: "fecha", header: "Fecha", numeric: true, sortValue: (r) => r.fecha, render: (r) => r.fecha ?? "—" },
+  { key: "fecha", header: "Fecha", numeric: true, sortValue: (r) => r.fecha, render: (r) => formatFecha(r.fecha) },
   {
     key: "contacto",
     header: "Contacto",

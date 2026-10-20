@@ -15,7 +15,7 @@ import {
   fetchOrden,
   vincularFacturaContratista,
 } from "@/services/ordenesApi";
-import { formatCantidad, formatMoneda } from "@/lib/format";
+import { formatCantidad, formatMoneda, formatFecha } from "@/lib/format";
 import { ErrorState, LoadingState } from "@/components/ui/States";
 import { NumberInput } from "@/components/ui/NumberInput";
 import { useToast } from "@/components/ui/Toast";
@@ -274,7 +274,7 @@ export default function DetalleOrdenPage() {
             </table>
             {r.devoluciones.length > 0 && (
               <div className="mt-2 text-sm text-ink-secondary">
-                Devoluciones: {r.devoluciones.map((dv) => `${formatCantidad(dv.cantidad)} (${dv.fecha})`).join(", ")}
+                Devoluciones: {r.devoluciones.map((dv) => `${formatCantidad(dv.cantidad)} (${formatFecha(dv.fecha)})`).join(", ")}
               </div>
             )}
             {orden.estado !== "Anulada" && <DevolucionPanel idOrden={id} renglon={r} onGuardada={refrescar} />}

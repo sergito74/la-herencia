@@ -10,6 +10,7 @@ import { ContactoSelect } from "@/components/ui/ContactoSelect";
 import { DataTable, type DataTableColumn } from "@/components/ui/DataTable";
 import { FilterBar, FilterField, FilterSubmitButton, filterInputClass } from "@/components/ui/FilterBar";
 import { EmptyState, ErrorState, LoadingState } from "@/components/ui/States";
+import { formatFecha } from "@/lib/format";
 
 const COLUMNS: DataTableColumn<CompraCuotasListItem>[] = [
   {
@@ -17,7 +18,7 @@ const COLUMNS: DataTableColumn<CompraCuotasListItem>[] = [
     header: "Fecha",
     render: (c) => (
       <Link className="text-finance underline" href={`/finanzas/tarjetas/compras-en-cuotas/${c.idPagoTarjeta}`}>
-        {c.fecha}
+        {formatFecha(c.fecha)}
       </Link>
     ),
   },

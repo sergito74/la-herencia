@@ -19,7 +19,7 @@ import { KpiCard } from "@/components/ui/KpiCard";
 import { ErrorState, LoadingState } from "@/components/ui/States";
 import { MoneyInput } from "@/components/ui/MoneyInput";
 import { useToast } from "@/components/ui/Toast";
-import { formatCantidad, formatMoneda } from "@/lib/format";
+import { formatCantidad, formatMoneda, formatFecha } from "@/lib/format";
 
 const MEDIOS_DEVOLUCION = ["Transferencia", "Efectivo", "Cheque", "Otro"];
 
@@ -102,7 +102,7 @@ export function CuentaSocio({ idSocio }: { idSocio: number }) {
   }
 
   const columns: DataTableColumn<MovimientoCuentaSocio>[] = [
-    { key: "fecha", header: "Fecha", sortValue: (m) => m.fecha, render: (m) => m.fecha?.slice(0, 10) ?? "—" },
+    { key: "fecha", header: "Fecha", sortValue: (m) => m.fecha, render: (m) => formatFecha(m.fecha) },
     { key: "tipo", header: "Tipo", render: (m) => (m.tipo === "AsignacionGasto" ? "Gasto asignado" : "Devolución") },
     { key: "origen", header: "Origen", render: (m) => <OrigenMovimientoSocio m={m} /> },
     {

@@ -19,7 +19,7 @@ import { DataTable, type DataTableColumn, type SortState } from "@/components/ui
 import { FilterBar, FilterField, FilterSubmitButton, filterInputClass } from "@/components/ui/FilterBar";
 import { KpiCard } from "@/components/ui/KpiCard";
 import { ErrorState, LoadingState } from "@/components/ui/States";
-import { formatMoneda } from "@/lib/format";
+import { formatMoneda, formatFecha } from "@/lib/format";
 
 // Valores confirmados de `Tipo Contacto` contra datos reales (data-model.md).
 const TIPOS_CONTACTO = [
@@ -35,7 +35,7 @@ const TIPOS_CONTACTO = [
 
 function buildColumns(onReasignado: () => void): DataTableColumn<MovimientoCuentaCorriente>[] {
   return [
-  { key: "fecha", header: "Fecha", numeric: true, sortValue: (m) => m.fecha, render: (m) => m.fecha ?? "—" },
+  { key: "fecha", header: "Fecha", numeric: true, sortValue: (m) => m.fecha, render: (m) => formatFecha(m.fecha) },
   { key: "documento", header: "Documento", sortValue: (m) => m.documento ?? "", render: (m) => m.documento ?? "—" },
   {
     key: "numeroDocumento",

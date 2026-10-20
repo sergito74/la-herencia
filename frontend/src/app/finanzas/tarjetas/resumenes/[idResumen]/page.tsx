@@ -19,7 +19,7 @@ import { fetchPagosCandidatos } from "@/services/tarjetasApi";
 import { urlDocumentoLocal } from "@/services/comprasApi";
 import { urlParaAbrirDocumento } from "@/lib/documentoLocal";
 import { PanelConciliacion } from "@/components/tarjetas-conciliacion/PanelConciliacion";
-import { formatMoneda } from "@/lib/format";
+import { formatFecha, formatMoneda } from "@/lib/format";
 import { filterInputClass } from "@/components/ui/FilterBar";
 import { ErrorState, LoadingState } from "@/components/ui/States";
 import { useToast } from "@/components/ui/Toast";
@@ -100,7 +100,7 @@ function LineaConsumoRow({ linea, onChanged }: { linea: LineaConsumo; onChanged:
 
   return (
     <tr className="border-t border-border align-top">
-      <td className="py-1">{linea.fechaCompra}</td>
+      <td className="py-1">{formatFecha(linea.fechaCompra)}</td>
       <td className="py-1">{linea.detalle}</td>
       <td className="py-1 text-right font-data">{formatMoneda(linea.importe)}</td>
       <td className="py-1">
@@ -248,7 +248,7 @@ export default function ResumenDetallePage() {
             </div>
           </div>
           <p className="text-xs text-ink-secondary">
-            Cierre: {data.fechaCierre} · Vencimiento: {data.fechaVencimiento}
+            Cierre: {formatFecha(data.fechaCierre)} · Vencimiento: {formatFecha(data.fechaVencimiento)}
           </p>
           {data.urlResumenOriginal && (
             <p className="text-xs">
@@ -329,7 +329,7 @@ export default function ResumenDetallePage() {
                 <tbody>
                   {data.pagos.map((p) => (
                     <tr key={p.idPago} className="border-t border-border">
-                      <td className="py-1">{p.fecha}</td>
+                      <td className="py-1">{formatFecha(p.fecha)}</td>
                       <td className="py-1 text-right font-data">{formatMoneda(p.importe)}</td>
                       <td className="py-1 text-ink-secondary">{p.origen ?? "Manual"}</td>
                       <td className="py-1 text-right">
@@ -356,7 +356,7 @@ export default function ResumenDetallePage() {
                   {candidatos.map((c) => (
                     <li key={`${c.origen}-${c.idMovimiento}`} className="flex items-center justify-between gap-2 text-xs">
                       <span>
-                        {c.fecha} · {formatMoneda(c.importe)} · {c.concepto ?? c.origen}
+                        {formatFecha(c.fecha)} · {formatMoneda(c.importe)} · {c.concepto ?? c.origen}
                       </span>
                       <button
                         type="button"

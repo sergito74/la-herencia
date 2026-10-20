@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useState } from "react";
 
 import { fetchFacturasSinRemito, type FacturaSinRemito } from "@/services/remitosApi";
-import { formatMoneda } from "@/lib/format";
+import { formatMoneda, formatFecha } from "@/lib/format";
 import { DataTable, type DataTableColumn } from "@/components/ui/DataTable";
 import { FilterBar, FilterField, FilterSubmitButton, filterInputClass } from "@/components/ui/FilterBar";
 import { ErrorState, LoadingState } from "@/components/ui/States";
@@ -26,7 +26,7 @@ export function FacturasSinRemitoListado() {
   const { data, isLoading, isError, refetch } = useQuery({ queryKey: ["facturas-sin-remito", filtros, page], queryFn: () => fetchFacturasSinRemito(filtros, page), staleTime: 0 });
 
   const columnas: DataTableColumn<FacturaSinRemito>[] = [
-    { key: "fecha", header: "Fecha", numeric: true, render: (f) => f.fecha ?? "—" },
+    { key: "fecha", header: "Fecha", numeric: true, render: (f) => formatFecha(f.fecha) },
     { key: "proveedor", header: "Proveedor", render: (f) => f.proveedor },
     {
       key: "doc",

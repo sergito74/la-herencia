@@ -8,7 +8,7 @@ import { useEffect, useState } from "react";
 import { conRetornoResumenes } from "@/lib/tarjetasNavigation";
 import { fetchResumenes } from "@/services/tarjetasResumenesApi";
 import { fetchTarjetas } from "@/services/tarjetasApi";
-import { formatMoneda } from "@/lib/format";
+import { formatMoneda, formatFecha } from "@/lib/format";
 import { esRutaLocalWindows, urlParaAbrirDocumento } from "@/lib/documentoLocal";
 import { urlDocumentoLocal } from "@/services/comprasApi";
 import { DataTable, type DataTableColumn } from "@/components/ui/DataTable";
@@ -47,7 +47,7 @@ const COLUMNS: DataTableColumn<ResumenListItem>[] = [
   },
   { key: "tarjeta", header: "Tarjeta", render: (r) => r.tarjeta ?? "—" },
   { key: "codigo", header: "Código", render: (r) => r.codigo },
-  { key: "fechaVencimiento", header: "Fecha vencimiento", render: (r) => r.fechaVencimiento ?? "—" },
+  { key: "fechaVencimiento", header: "Fecha vencimiento", render: (r) => formatFecha(r.fechaVencimiento) },
   { key: "totalCalculado", header: "Total", numeric: true, render: (r) => formatMoneda(r.totalCalculado) },
   {
     key: "pagoConciliado",

@@ -5,7 +5,7 @@ import { useState } from "react";
 
 import { anularAjuste, crearAjuste, fetchAjustes, fetchUnidades, type Ajuste } from "@/services/remitosApi";
 import { ApiError } from "@/services/apiClient";
-import { formatCantidad, formatMoneda } from "@/lib/format";
+import { formatCantidad, formatMoneda, formatFecha } from "@/lib/format";
 import { DataTable, type DataTableColumn } from "@/components/ui/DataTable";
 import { FilterBar, FilterField, FilterSubmitButton, filterInputClass } from "@/components/ui/FilterBar";
 import { MoneyInput } from "@/components/ui/MoneyInput";
@@ -178,7 +178,7 @@ export function AjustesListado() {
   }
 
   const columnas: DataTableColumn<Ajuste>[] = [
-    { key: "fecha", header: "Fecha", numeric: true, render: (a) => a.fecha ?? "—" },
+    { key: "fecha", header: "Fecha", numeric: true, render: (a) => formatFecha(a.fecha) },
     { key: "producto", header: "Producto", render: (a) => a.producto ?? `Producto ${a.idProducto}` },
     {
       key: "tipo",

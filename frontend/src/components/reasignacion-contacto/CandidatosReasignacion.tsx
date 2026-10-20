@@ -14,7 +14,7 @@ import { SoloLectura } from "@/components/auth/SoloLectura";
 import { DataTable, type DataTableColumn } from "@/components/ui/DataTable";
 import { ErrorState, LoadingState } from "@/components/ui/States";
 import { useToast } from "@/components/ui/Toast";
-import { formatMoneda } from "@/lib/format";
+import { formatMoneda, formatFecha } from "@/lib/format";
 
 /** Detección de candidatos a reasignación (022, US2): solo lectura hasta
  * que el usuario confirma (FR-009) — "Reasignar" reutiliza el mismo
@@ -64,7 +64,7 @@ export function CandidatosReasignacion() {
   }
 
   const columns: DataTableColumn<Candidato>[] = [
-    { key: "fecha", header: "Fecha", render: (c) => c.fecha?.slice(0, 10) ?? "—" },
+    { key: "fecha", header: "Fecha", render: (c) => formatFecha(c.fecha) },
     { key: "descripcion", header: "Descripción", render: (c) => c.descripcion ?? "—" },
     {
       key: "importe",

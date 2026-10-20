@@ -13,7 +13,7 @@ import {
   type Baja,
 } from "@/services/remitosApi";
 import { ApiError } from "@/services/apiClient";
-import { formatCantidad, formatMoneda } from "@/lib/format";
+import { formatCantidad, formatMoneda, formatFecha } from "@/lib/format";
 import { DataTable, type DataTableColumn } from "@/components/ui/DataTable";
 import { FilterBar, FilterField, FilterSubmitButton, filterInputClass } from "@/components/ui/FilterBar";
 import { KpiCard } from "@/components/ui/KpiCard";
@@ -248,7 +248,7 @@ export function BajasListado() {
   }
 
   const columnas: DataTableColumn<Baja>[] = [
-    { key: "fecha", header: "Fecha", numeric: true, render: (b) => b.fecha ?? "—" },
+    { key: "fecha", header: "Fecha", numeric: true, render: (b) => formatFecha(b.fecha) },
     {
       key: "motivo",
       header: "Motivo",

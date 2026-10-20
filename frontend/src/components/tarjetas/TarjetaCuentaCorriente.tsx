@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 
 import { fetchMovimientosTarjeta } from "@/services/tarjetasApi";
-import { formatMoneda } from "@/lib/format";
+import { formatMoneda, formatFecha } from "@/lib/format";
 import { DataTable, type DataTableColumn } from "@/components/ui/DataTable";
 import { ErrorState, LoadingState } from "@/components/ui/States";
 import type { MovimientoTarjeta } from "@/services/tarjetasApi";

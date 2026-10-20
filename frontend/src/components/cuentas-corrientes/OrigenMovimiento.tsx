@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import type { Origen } from "@/services/cuentasCorrientesApi";
+import { formatFecha } from "@/lib/format";
 
 const MEDIO_LABEL: Record<string, string> = {
   bna: "Banco Nación",
@@ -63,7 +64,7 @@ export function OrigenMovimiento({ origen }: { origen: Origen }) {
           className="text-finance underline"
         >
           Tesorería · {origen.medio ? (MEDIO_LABEL[origen.medio] ?? origen.medio) : "—"}
-          {origen.fecha ? ` · ${origen.fecha}` : ""}
+          {origen.fecha ? ` · ${formatFecha(origen.fecha)}` : ""}
         </Link>
       );
     case "impuesto":

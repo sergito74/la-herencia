@@ -7,7 +7,7 @@ import { AplicarPagoPanel } from "@/components/aplicaciones-pago/AplicarPagoPane
 import { FilterBar, FilterField, filterInputClass } from "@/components/ui/FilterBar";
 import { SideDrawer } from "@/components/ui/SideDrawer";
 import { ErrorState, LoadingState } from "@/components/ui/States";
-import { formatMoneda } from "@/lib/format";
+import { formatFecha, formatMoneda } from "@/lib/format";
 import {
   fetchDetalleRubro,
   fetchPorRubro,
@@ -140,7 +140,7 @@ export function FlujoCajaRubro() {
                 <li key={i} className="px-4 py-2 text-sm">
                   <div className="flex items-center justify-between gap-2">
                     <span>
-                      {p.fecha} · {p.cuenta}
+                      {formatFecha(p.fecha)} · {p.cuenta}
                     </span>
                     <span className={p.importeArs < 0 ? "text-status-danger" : undefined}>
                       {moneda === "USD" ? fmt(p.importeUsd) : fmt(p.importeArs)}
@@ -159,7 +159,7 @@ export function FlujoCajaRubro() {
                   {moneda === "USD" && (
                     <p className="text-xs text-ink-secondary">
                       {p.cotizacion
-                        ? `Cotización ${formatMoneda(p.cotizacion)} del ${p.fechaCotizacion}`
+                        ? `Cotización ${formatMoneda(p.cotizacion)} del ${formatFecha(p.fechaCotizacion)}`
                         : "Sin tipo de cambio: no suma en dólares"}
                     </p>
                   )}
@@ -230,14 +230,14 @@ function Avisos({ data, fmt }: { data: FlujoPorRubro; fmt: (v: number | null) =>
       {data.moneda === "USD" && (sinTc > 0 || data.saldosSinTipoCambio.length > 0) && (
         <p className="rounded border border-status-warning bg-status-warning-bg px-3 py-2 text-status-warning">
           {sinTc} movimientos sin tipo de cambio no suman en dólares
-          {data.ultimaFechaCotizacion && ` (la serie de dólar BNA llega hasta el ${data.ultimaFechaCotizacion})`}. Las
+          {data.ultimaFechaCotizacion && ` (la serie de dólar BNA llega hasta el ${formatFecha(data.ultimaFechaCotizacion)})`}. Las
           celdas afectadas están marcadas con ⚠.
         </p>
       )}
       {data.traspasosSinContraparte.length > 0 && (
         <p className="rounded border border-status-warning bg-status-warning-bg px-3 py-2 text-status-warning">
           {data.traspasosSinContraparte.length} traspasos entre bancos sin contraparte en el otro banco:{" "}
-          {data.traspasosSinContraparte.map((t) => `${t.fecha} ${t.cuenta} ${fmt(t.importe)}`).join(" · ")}
+          {data.traspasosSinContraparte.map((t) => `${formatFecha(t.fecha)} ${t.cuenta} ${fmt(t.importe)}`).join(" · ")}
         </p>
       )}
     </div>

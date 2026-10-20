@@ -5,9 +5,10 @@ import { useQuery } from "@tanstack/react-query";
 import { fetchHistorial, type Reasignacion } from "@/services/reasignacionContactoApi";
 import { DataTable, type DataTableColumn } from "@/components/ui/DataTable";
 import { ErrorState, LoadingState } from "@/components/ui/States";
+import { formatFechaHora } from "@/lib/format";
 
 const COLUMNS: DataTableColumn<Reasignacion>[] = [
-  { key: "fecha", header: "Fecha", render: (r) => r.fecha?.slice(0, 16).replace("T", " ") ?? "—" },
+  { key: "fecha", header: "Fecha", render: (r) => formatFechaHora(r.fecha) },
   { key: "origen", header: "Origen", render: (r) => `${r.origen} #${r.idOrigen}` },
   {
     key: "cambio",

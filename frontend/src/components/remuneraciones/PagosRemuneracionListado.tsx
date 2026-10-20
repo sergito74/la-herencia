@@ -6,10 +6,10 @@ import { useState } from "react";
 import { fetchPagosRemuneracion, type PagoRemuneracion } from "@/services/remuneracionesApi";
 import { DataTable, type DataTableColumn } from "@/components/ui/DataTable";
 import { ErrorState, LoadingState } from "@/components/ui/States";
-import { formatMoneda } from "@/lib/format";
+import { formatMoneda, formatFecha } from "@/lib/format";
 
 const COLUMNS: DataTableColumn<PagoRemuneracion>[] = [
-  { key: "fecha", header: "Fecha", numeric: true, sortValue: (p) => p.fecha, render: (p) => p.fecha ?? "—" },
+  { key: "fecha", header: "Fecha", numeric: true, sortValue: (p) => p.fecha, render: (p) => formatFecha(p.fecha) },
   { key: "cuenta", header: "Cuenta", render: (p) => p.cuenta ?? "—" },
   { key: "caja", header: "Caja", render: (p) => p.caja ?? "—" },
   {

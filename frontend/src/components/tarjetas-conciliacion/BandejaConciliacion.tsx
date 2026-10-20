@@ -11,7 +11,7 @@ import {
   type LineaPendiente,
 } from "@/services/tarjetasResumenesApi";
 import { fetchTarjetas } from "@/services/tarjetasApi";
-import { formatCantidad, formatMoneda } from "@/lib/format";
+import { formatCantidad, formatMoneda, formatFecha } from "@/lib/format";
 import { DataTable, type DataTableColumn } from "@/components/ui/DataTable";
 import { FilterBar, FilterField, FilterSubmitButton, filterInputClass } from "@/components/ui/FilterBar";
 import { EmptyState, ErrorState, LoadingState } from "@/components/ui/States";
@@ -181,7 +181,7 @@ export function BandejaConciliacion() {
         </span>
       ),
     },
-    { key: "fecha", header: "Fecha", numeric: true, render: (r) => r.fechaCompra?.slice(0, 10) ?? "—" },
+    { key: "fecha", header: "Fecha", numeric: true, render: (r) => formatFecha(r.fechaCompra) },
     {
       key: "detalle",
       header: "Proveedor / detalle",

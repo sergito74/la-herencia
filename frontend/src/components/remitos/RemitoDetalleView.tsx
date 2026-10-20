@@ -14,7 +14,7 @@ import {
 import { ApiError } from "@/services/apiClient";
 import { urlDocumentoLocal } from "@/services/comprasApi";
 import { urlParaAbrirDocumento } from "@/lib/documentoLocal";
-import { formatCantidad, formatMoneda } from "@/lib/format";
+import { formatCantidad, formatMoneda, formatFecha } from "@/lib/format";
 import { filterInputClass } from "@/components/ui/FilterBar";
 import { ErrorState, LoadingState } from "@/components/ui/States";
 import { StatusBadge } from "@/components/ui/StatusBadge";
@@ -86,7 +86,7 @@ export function RemitoDetalleView({ idRemito }: { idRemito: number }) {
       <div className="flex flex-wrap items-start justify-between gap-3 rounded-md border border-border bg-surface p-4">
         <div className="space-y-1 text-sm">
           <div className="text-lg font-semibold">
-            Remito {data.nroRemito} <span className="text-sm font-normal text-ink-secondary">· {data.fecha}</span>
+            Remito {data.nroRemito} <span className="text-sm font-normal text-ink-secondary">· {formatFecha(data.fecha)}</span>
           </div>
           <div>{data.proveedor}</div>
           <div className="flex flex-wrap items-center gap-2 text-xs text-ink-secondary">
@@ -199,7 +199,7 @@ export function RemitoDetalleView({ idRemito }: { idRemito: number }) {
                 <Link className="text-finance underline" href={`/compras/${f.idCompra}`}>
                   {f.tipoDocumento} {f.numeroDocumento}
                 </Link>
-                <span className="text-ink-secondary">{f.fecha}</span>
+                <span className="text-ink-secondary">{formatFecha(f.fecha)}</span>
                 {!data.anulado && (
                   <button type="button" className="text-ink-secondary hover:text-status-danger" title="Desvincular la factura y sus renglones" onClick={() => quitarFactura(f.idCompra)}>
                     ✕

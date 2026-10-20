@@ -4,7 +4,7 @@ import { useParams, useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 
 import { fetchCompraDetalle } from "@/services/tarjetasCuotasApi";
-import { formatMoneda } from "@/lib/format";
+import { formatFecha, formatMoneda } from "@/lib/format";
 import { ErrorState, LoadingState } from "@/components/ui/States";
 
 /** Solo lectura desde 2026-09-19 (feedback del usuario, punto 5) — la
@@ -35,7 +35,7 @@ export default function CompraCuotasDetallePage() {
             Compra en cuotas — {data.contacto ?? "—"} (comprobante {data.nroComprobante})
           </h1>
           <p className="text-xs text-ink-secondary">
-            Fecha: {data.fecha} · {data.cantidadCuotas} cuotas · Total: {formatMoneda(data.importeTotal)}
+            Fecha: {formatFecha(data.fecha)} · {data.cantidadCuotas} cuotas · Total: {formatMoneda(data.importeTotal)}
           </p>
           <div className="rounded-md border border-border bg-surface p-2">
             <table className="w-full text-xs">
@@ -51,7 +51,7 @@ export default function CompraCuotasDetallePage() {
                 {data.cuotas.map((c) => (
                   <tr key={c.idCuota} className="border-t border-border">
                     <td className="py-1">{c.numeroCuota}</td>
-                    <td className="py-1">{c.fechaVencimiento}</td>
+                    <td className="py-1">{formatFecha(c.fechaVencimiento)}</td>
                     <td className="py-1 text-right font-data">{formatMoneda(c.importe)}</td>
                     <td className="py-1 text-right">{c.cobrado ? "Cobrada" : "Pendiente"}</td>
                   </tr>
