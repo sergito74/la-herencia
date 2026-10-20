@@ -51,6 +51,10 @@ El portal arranca en 2020 con saldo 0. Todas las facturas USD previas (39.511,94
 
 eCheq 00008092 librado por Jorge y Martín de la Serna SRL (CUIT 33-59409247-9), pagadero 09/06/2026, recibido y endosado a Bayá desde Banco Nación (listado `BNA/Cheques/Listado de ECHEQs recibidos.xls`). Cobra las liquidaciones de hacienda 0003-00017092 y 0003-00017137 (remate 13/05/2026, vto 12/06): $5.996.744,06 − IVA transferido 29/05 $137.473,35 − efectivo 18/05 $61.710,00 = $5.797.560,71 exacto. Cargado en Valores Recibidos (emisor J y M, receptor Bayá) con valuación USD 3.931,99 (CA145717). `baya_casal_cheque8092_036.py`, respaldo `WC_baya-cheque8092-036_20261020_141059_752916.bak`.
 
+### CERRADA con excepción (20/10/2026)
+
+Ficha 226 `cerrada-con-excepcion` al corte 30/09/2026 (respaldo `WC_baya-cierre-036_20261020_143139_964444.bak`). Siguiente etapa: auditoría de campañas (abajo).
+
 ### Cuenta replicada (20/10/2026)
 
 - Retención 7 también excepción (USD 0), como 54 y 183: certificados emitidos y depositados que Bayá nunca acreditó ($168.791,21 en total, ≈USD 430; no se reclaman).
