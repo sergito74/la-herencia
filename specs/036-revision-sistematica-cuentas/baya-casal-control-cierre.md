@@ -33,6 +33,24 @@ Creada `dbo.ValuacionProveedorEventos`. Transferencia $40.596.244,94 = CA145870 
 
 Libro bimonetario del portal (consulta solo lectura 20/10/2026, con aplicaciones): RI3114 $504.278,14 del 09/06/2021 dolarizado en CA7479 USD 5.146,31 (TC 95) y CA7480 USD 67,62 (TC 95,50) el 02/07/2021, y CA53679 USD 68,62 (TC 130) el 17/08/2022; CA53680 es neutra. El portal no tiene PDF de CA7479/7480; evidencia en `backups/baya-conciliacion-20261019/portal-ctacte-2021-2022-aplicaciones-20261020.html/.txt`. Agregada `ValuacionProveedor.FechaReconocimientoPesos` (09/06/2021; el débito BNA del 03/05 queda intacto). Total USD 5.282,55 = proveedor; saldo USD −107,34, pesos sin cambio. Script `baya_casal_anticipo2021_036.py`, respaldo `WC_baya-anticipo2021-036_20261020_121735_697286.bak`.
 
+### Grupos de pago iguales al portal (20/10/2026)
+
+`baya_casal_valuaciones_portal_036.py`: 13 grupos (BNA 16333; Galicia 5/423/466/719/1268/1324/1673/2979/3251/3274; Tarjetas 5583/654; retenciones 9/13/49/100/221/234/240) con el USD que acreditó el proveedor (RI/CA/RG del libro bimonetario). RG26 (ret. 100) tomada solo en pesos → 0 USD. CA144661 y CA145870 aplican banco + retención juntos: reparto proporcional a pesos. Galicia 3274 corregido a los USD del portal (25.684,39 + 182,49 + 2.312,47; ret. 240 431,82). Variación USD −197,71 (la esperada), pesos sin cambio. Respaldo `WC_baya-valuaciones-portal-036_20261020_123817_736888.bak`. Matriz: 33 de 39 grupos coinciden.
+
+### Brecha remanente al corte (facturado, sin PENDIENTE): USD 2.210,00
+
+Sistema USD 154,15 a favor; portal USD 2.055,85 a pagar (FC465204, vence 30/06/2027; pesos $0).
+
+| Partida | USD (sistema − proveedor, crédito) | Estado |
+|---|---:|---|
+| Historia anterior al portal (saldo del sistema al 30/06/2020; el portal arranca en 0 con saldos migrados SD) | 5.685,07 | Sin libro del proveedor anterior a 2020: decisión de Sergio |
+| FC235074 (USD 393,25) y su pago BNA16332 + ret. 7 (USD 458,02), ninguno en el portal | 64,77 | Revisar con Sergio |
+| Retenciones 54 (2022-15, $32.773,29) y 183 (2024-40, $132.097,95) no registradas por Bayá | 391,68 | ¿Se entregaron los certificados? |
+| Cheque 8092 (RI77444 $5.797.560,71, CA145717) acreditado por Bayá, ausente en el sistema | −3.931,99 | Falta origen del cheque recibido |
+| Ajustes del proveedor dic-2021 / ene-2024 | 0,47 | Menor |
+
+Comparación completa del libro: `backups/baya-conciliacion-20261019/portal-ctacte-completo-20261020.txt`. PED.43194 y su NC PENDIENTE se compensan (no es diferencia).
+
 ## Cola de trabajo vigente
 
 El script de solo lectura `backend/scripts/baya_casal_matriz_pagos_actual_036.py` recalcula los 39 grupos del relevamiento inicial con las reglas/valuaciones actuales. Conserva referencia externa del 19/10; no es una consulta actualizada al portal, ni certifica documentos o imputaciones. La falta de fuente visible tampoco autoriza anular pagos. Informes JSON en `backups/baya-conciliacion-20261019/matriz-pagos-actual-*.json`.
