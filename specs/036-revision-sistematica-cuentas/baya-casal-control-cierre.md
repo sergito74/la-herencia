@@ -47,13 +47,18 @@ El portal arranca en 2020 con saldo 0. Todas las facturas USD previas (39.511,94
 - FC235074 y BNA16332: pago exacto a TC 93,5 (USD 393,25); ambos anteriores a la migración del portal. Retención 7 (2021-000003, $3.919,97, USD 41,89) no registrada por Bayá: **pendiente de confirmar si va como excepción**.
 - Comprobantes al centavo contra PDF (portal/Dropbox): FC357850 (precios 4 decimales), ND63227, NC78177, ND83045, ND92923, NC133873 (renglones financieros ARS), y 18 más con precios escalados (`baya_casal_centavos_036.py`, `..._centavos2_036.py`, `..._centavos3_036.py`). Cuando el renglón del libro del portal difiere de su propio PDF (NC109246, NC120722, NC133873, ND134486, ND134645), manda el PDF.
 
-### Brecha remanente al corte (facturado, sin PENDIENTE): USD 3.889,62
+### Cheque 8092 — resuelto 20/10/2026
+
+eCheq 00008092 librado por Jorge y Martín de la Serna SRL (CUIT 33-59409247-9), pagadero 09/06/2026, recibido y endosado a Bayá desde Banco Nación (listado `BNA/Cheques/Listado de ECHEQs recibidos.xls`). Cobra las liquidaciones de hacienda 0003-00017092 y 0003-00017137 (remate 13/05/2026, vto 12/06): $5.996.744,06 − IVA transferido 29/05 $137.473,35 − efectivo 18/05 $61.710,00 = $5.797.560,71 exacto. Cargado en Valores Recibidos (emisor J y M, receptor Bayá) con valuación USD 3.931,99 (CA145717). `baya_casal_cheque8092_036.py`, respaldo `WC_baya-cheque8092-036_20261020_141059_752916.bak`.
+
+### Brecha remanente al corte (facturado, sin PENDIENTE): USD 42,37
+
+Sistema USD 2.013,48 a pagar; portal USD 2.055,85.
 
 | Partida | USD | Estado |
 |---|---:|---|
-| Cheque 8092 (eCheq de terceros Banco Galicia, emitido y pagadero 09/06/2026, endosado por Giamigli el 09/06 y enviado a Susana Vesque; RI77444 anticipo, CA145717 aplica a ND130997 refinanciación $316.725,64 + ND134486 $109.941,84 + RD136157/FC416539 $5.370.893,23, TC 1.446,50) | −3.931,99 | Origen desconocido: investigar quién lo emitió. Solo figura en ChequesEntregados |
-| Retención 7 no registrada por Bayá | 41,89 | ¿Excepción? |
-| Ajustes del proveedor dic-2021 (CD26292/CA26293, +0,50) y ene-2024 (RI37633, −0,03) | 0,47 | Menor |
+| Retención 7 (2021-000003, $3.919,97) no registrada por Bayá | 41,89 | ¿Excepción, como 54/183? |
+| Ajustes del proveedor dic-2021 (+0,50) y ene-2024 (−0,03) | 0,47 | Menor |
 
 Pendiente aparte: FC357848/357849/357850 tienen fecha oct-dic 2023 en el sistema y 12/03/2024 en el original; no cambia saldos al corte.
 
