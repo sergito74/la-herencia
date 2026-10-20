@@ -53,7 +53,10 @@ def archivar(c, k):
 def main():
     _assert_target_is_wc()
     certs = {k: c for k, c in json.load(open(ROOT / 'certificados.json', encoding='utf-8')).items() if k not in COMPENSADAS}
-    ventas = {r['Nro Documento']: r for r in fetch_all('SELECT * FROM dbo.[Venta Granos] WHERE IdConsignatario=258 AND Fecha>=?', (DESDE,))}
+    renglones = defaultdict(list)  # una liquidación puede estar partida por cultivo: "330125575215 (1)"/"(2)" o mismo número
+    for r in fetch_all('SELECT * FROM dbo.[Venta Granos] WHERE IdConsignatario=258 AND Fecha>=?', (DESDE,)):
+        renglones[re.sub(r'\s*\(\d+\)$', '', r['Nro Documento'].strip())].append(r)
+    ventas = {k: max(rs, key=lambda r: r['Cantidad vendida'] or 0) for k, rs in renglones.items()}
     por_lpg = defaultdict(list)
     sin_lpg = []
     for k, c in certs.items():
@@ -61,7 +64,7 @@ def main():
             por_lpg[c['lpg']].append((k, c))
         else:
             sin_lpg.append((k, c))
-    ids = [v['IdVenta'] for v in ventas.values()]
+    ids = [r['IdVenta'] for rs in renglones.values() for r in rs]
     m = ','.join(map(str, ids))
     rig_antes = fetch_all(f'SELECT * FROM dbo.[Retenciones IVA Granos] WHERE IdLiquidacion IN ({m})')
     devol = {re.sub(r'\D', '', r['Nro Certificado'] or ''): r['Importe Devolucion'] for r in rig_antes if r['Importe Devolucion']}
@@ -70,7 +73,16 @@ def main():
         cs = por_lpg.get(nro, [])
         iva = round(sum(c['importe'] for _, c in cs if c['tipo'] == 'IVA'), 2)
         iibb = round(sum(c['importe'] for _, c in cs if c['tipo'] == 'IIBB'), 2)
-        plan.append({'IdVenta': v['IdVenta'], 'lpg': nro, 'antes': {'iva': v['Retencion IVA'], 'otras': v['Otra Retenciones']}, 'iva': iva, 'iibb': iibb})
+        rs = renglones[nro]
+        kg = sum(r['Cantidad vendida'] or 0 for r in rs) or 1
+        ac_iva = ac_ib = 0.0
+        for j, r in enumerate(sorted(rs, key=lambda r: r['IdVenta'])):
+            if j < len(rs) - 1:
+                pi, pb = round(iva * (r['Cantidad vendida'] or 0) / kg, 2), round(iibb * (r['Cantidad vendida'] or 0) / kg, 2)
+            else:
+                pi, pb = round(iva - ac_iva, 2), round(iibb - ac_ib, 2)
+            ac_iva += pi; ac_ib += pb
+            plan.append({'IdVenta': r['IdVenta'], 'lpg': nro, 'antes': {'iva': r['Retencion IVA'], 'otras': r['Otra Retenciones']}, 'iva': pi, 'iibb': pb})
         for k, c in cs:
             if c['tipo'] == 'IVA':
                 filas.append((v['IdVenta'], nro_iva(k), c['importe'], devol.get(k.lstrip('0'), devol.get(k, 0)) or 0, archivar(c, k)))
