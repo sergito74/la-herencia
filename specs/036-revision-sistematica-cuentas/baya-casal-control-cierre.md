@@ -29,7 +29,9 @@ Scripts: `baya_casal_retenciones_mixtas_036.py`, `baya_casal_canjes_valuacion_03
 
 Creada `dbo.ValuacionProveedorEventos`. Transferencia $40.596.244,94 = CA145870 USD 25.650,70 + CA145871 USD 179,78 (10/06, TC 1441) + CA146076 USD 2.355,69 (16/06, TC 1432,50) = USD 28.186,17. Retención 240 ($621.445,56) USD 431,26 a TC 1441. Saldo pesos sin cambio; saldo USD +13,90 (queda USD −28.957,15 incluyendo PENDIENTE). Script `baya_casal_aplicaciones_junio2026_036.py`, respaldo `WC_baya-aplicaciones-junio2026-036_20261020_120016_769778.bak`.
 
-Pendiente: anticipo 2021 (RI3114, CA7479/7480/53679) — en la carpeta solo está CA53679; faltan CA7479 y CA7480 para cargar sus eventos.
+### Anticipo 2021 (BNA 16334 / RI3114)
+
+Libro bimonetario del portal (consulta solo lectura 20/10/2026, con aplicaciones): RI3114 $504.278,14 del 09/06/2021 dolarizado en CA7479 USD 5.146,31 (TC 95) y CA7480 USD 67,62 (TC 95,50) el 02/07/2021, y CA53679 USD 68,62 (TC 130) el 17/08/2022; CA53680 es neutra. El portal no tiene PDF de CA7479/7480; evidencia en `backups/baya-conciliacion-20261019/portal-ctacte-2021-2022-aplicaciones-20261020.html/.txt`. Agregada `ValuacionProveedor.FechaReconocimientoPesos` (09/06/2021; el débito BNA del 03/05 queda intacto). Total USD 5.282,55 = proveedor; saldo USD −107,34, pesos sin cambio. Script `baya_casal_anticipo2021_036.py`, respaldo `WC_baya-anticipo2021-036_20261020_121735_697286.bak`.
 
 ## Cola de trabajo vigente
 
