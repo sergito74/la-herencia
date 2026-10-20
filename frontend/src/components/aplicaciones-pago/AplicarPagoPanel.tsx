@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 
 import { SoloLectura } from "@/components/auth/SoloLectura";
 import { useToast } from "@/components/ui/Toast";
-import { formatMonto } from "@/lib/format";
+import { formatFecha, formatMonto } from "@/lib/format";
 import { ApiError } from "@/services/apiClient";
 import {
   anularAplicacion,
@@ -194,7 +194,7 @@ export function EstadoDocumentoPanel({ tipoDocumento, idDocumento }: { tipoDocum
         {estado.aplicaciones.map((a) => (
           <li key={a.idAplicacion} className={`flex items-center justify-between text-xs ${a.anulada ? "text-ink-secondary line-through" : ""}`}>
             <span>
-              {new Date(a.fecha).toLocaleDateString("es-AR")} · {formatMonto(a.importeAplicado)} · {a.usuario}
+              {formatFecha(a.fecha)} · {formatMonto(a.importeAplicado)} · {a.usuario}
               {a.anulada && ` (anulada: ${a.motivoAnulacion})`}
             </span>
             {!a.anulada && (

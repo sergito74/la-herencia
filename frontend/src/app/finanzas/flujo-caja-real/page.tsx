@@ -6,7 +6,7 @@ import { useState } from "react";
 import { AplicarPagoPanel } from "@/components/aplicaciones-pago/AplicarPagoPanel";
 import { TablaFlujoCaja } from "@/components/flujo-caja/TablaFlujoCaja";
 import { SideDrawer } from "@/components/ui/SideDrawer";
-import { formatMonto } from "@/lib/format";
+import { formatFecha, formatMonto } from "@/lib/format";
 import { fetchDetalle, fetchResumen, type Granularidad } from "@/services/flujoCajaApi";
 
 export default function FlujoCajaRealPage() {
@@ -84,7 +84,7 @@ export default function FlujoCajaRealPage() {
             {detalleQuery.data.movimientos.map((m, i) => (
               <li key={i} className="px-4 py-2 text-sm">
                 <div className="flex items-center justify-between">
-                  <span>{new Date(m.fecha).toLocaleDateString("es-AR")}</span>
+                  <span>{formatFecha(m.fecha)}</span>
                   <span className={m.importe < 0 ? "text-status-danger" : undefined}>{formatMonto(m.importe)}</span>
                 </div>
                 <p className="text-xs text-ink-secondary">

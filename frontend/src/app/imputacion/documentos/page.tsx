@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 
 import { API_BASE_URL, ApiError, apiGet, apiPost } from "@/services/apiClient";
+import { formatFecha } from "@/lib/format";
 import { ContactoSelect } from "@/components/ui/ContactoSelect";
 import { FilterBar, FilterField, FilterSubmitButton, filterInputClass } from "@/components/ui/FilterBar";
 import { SoloLectura } from "@/components/auth/SoloLectura";
@@ -275,7 +276,7 @@ export default function DocumentosImputacionPage() {
                 {doc.tipoDocumento} {doc.numeroDocumento} — {doc.proveedor ?? "—"}
               </span>
               <span className="text-xs text-ink-secondary">
-                {new Date(doc.fecha).toLocaleDateString("es-AR")} · {doc.moneda}
+                {formatFecha(doc.fecha)} · {doc.moneda}
               </span>
             </div>
             <div className="px-4 py-3">

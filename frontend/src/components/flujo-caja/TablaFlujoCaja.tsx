@@ -1,6 +1,6 @@
 "use client";
 
-import { formatMonto } from "@/lib/format";
+import { formatFecha, formatMonto } from "@/lib/format";
 import type { PeriodoResumen, UltimaCarga } from "@/services/flujoCajaApi";
 
 function Monto({ value }: { value: number }) {
@@ -9,7 +9,7 @@ function Monto({ value }: { value: number }) {
 
 function formatFechaCorta(fecha: string | null): string {
   if (!fecha) return "sin datos cargados";
-  return new Date(fecha).toLocaleDateString("es-AR");
+  return formatFecha(fecha);
 }
 
 /** Todas las cuentas que aparecen en al menos un período, en orden estable
