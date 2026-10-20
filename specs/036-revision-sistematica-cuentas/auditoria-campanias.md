@@ -70,3 +70,12 @@ Decisión de Sergio: vincular según el texto. `scripts/campanias_lote_b_036.py`
 - App: `compras/repository.validar_compra` rechaza (400) un renglón con campaña escrita que no existe en el catálogo o cuyo IdCampaña no corresponde al texto; el alta/edición guarda el IdCampaña resuelto.
 - Base WC: trigger `dbo.trg_Det_Compras_Campania` (AFTER INSERT, UPDATE) rechaza todo renglón con texto de campaña sin el IdCampaña que le corresponde; frena también scripts. Creado por `scripts/control_campania_det_compras_036.py`, que antes completó IdCampaña 'No Aplica' en los 199 renglones con ese texto (aprobado por Sergio). Probado: cambios inválidos rechazados y revertidos.
 - Auditoría posterior: solo queda `sin_asignacion` 1 (redondeo FC316792, sin texto ni id: excepción).
+
+## Campañas válidas según el plan agrícola (20/10/2026)
+
+Decisión de Sergio: en la carga de compras solo se ofrecen y aceptan combinaciones destino + campaña válidas en `PlanAgricola` (destino↔cultivo por `Map_CultivoResultado`):
+- destino de un cultivo → solo las campañas planificadas para ese cultivo (sin No Aplica);
+- General → solo No Aplica;
+- Stock, grupos (Cultivo Invierno/Verano, Verdeos) y Rye Grass → cualquier campaña del plan + No Aplica.
+
+Backend: `campanias_validas_por_destino()` (catálogo `campañasPorDestino` en `/api/compras/filtros`) y `validar_compra` rechaza (400) combinaciones fuera del plan; al editar se conservan las combinaciones que la compra ya tenía guardadas. Frontend: la grilla filtra el selector por destino (`components/compras/campanias.ts`), limpia la campaña si se cambia a un destino donde no corresponde, descarta campañas pegadas fuera del plan y ya no permite crear campañas desde la compra (se planifican primero). Hoy Cebada no tiene campañas planificadas y Soja primera no figura en 2024/25.

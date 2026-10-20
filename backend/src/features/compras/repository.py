@@ -347,7 +347,40 @@ def get_filtros() -> dict:
         "destinos": destinos,
         "unidadesMedida": unidades_medida,
         "campañas": campañas,
+        "campañasPorDestino": {str(k): sorted(v) for k, v in campanias_validas_por_destino().items()},
     }
+
+
+DESTINO_GENERAL = "General"
+CAMPANIA_NO_APLICA = "No Aplica"
+
+
+def campanias_validas_por_destino() -> dict[int, set[int]]:
+    """Campañas que se pueden elegir en una línea de compra según su destino (decisión de Sergio, 20/10/2026):
+    destino de un cultivo → solo las campañas del plan agrícola para ese cultivo (sin No Aplica);
+    General → solo No Aplica; el resto (Stock, grupos de cultivos, verdeos) → cualquier campaña del plan + No Aplica."""
+    destinos = fetch_all("SELECT IdDestino AS id, Destino AS nombre FROM dbo.DestinoCompras")
+    mapa = {r["d"]: r["c"] for r in fetch_all("SELECT IdDestino AS d, IdCultivo AS c FROM dbo.Map_CultivoResultado WHERE IdDestino IS NOT NULL")}
+    plan = fetch_all("SELECT DISTINCT IdCultivo AS c, IdCampaña AS camp FROM dbo.PlanAgricola")
+    no_aplica = get_id_campania_por_nombre(CAMPANIA_NO_APLICA)
+    por_cultivo: dict[int, set[int]] = {}
+    for r in plan:
+        por_cultivo.setdefault(r["c"], set()).add(r["camp"])
+    todas = {r["camp"] for r in plan} - {no_aplica}
+    resultado: dict[int, set[int]] = {}
+    for d in destinos:
+        if d["id"] in mapa:
+            resultado[d["id"]] = por_cultivo.get(mapa[d["id"]], set()) - {no_aplica}
+        elif (d["nombre"] or "").strip() == DESTINO_GENERAL:
+            resultado[d["id"]] = {no_aplica}
+        else:
+            resultado[d["id"]] = todas | {no_aplica}
+    return resultado
+
+
+def combinaciones_de_compra(id_compra: int) -> set[tuple[int | None, int | None]]:
+    """(IdDestino, IdCampaña) que ya tiene guardados una compra: al editarla se conservan aunque hoy no estén en el plan."""
+    return {(r["d"], r["c"]) for r in fetch_all("SELECT DISTINCT IdDestino AS d, IdCampaña AS c FROM dbo.Det_Compras WHERE IdCompra = ?", (id_compra,))}
 
 
 def get_id_centro_costo_por_nombre(nombre: str) -> int | None:
@@ -495,7 +528,8 @@ DEFAULT_CAMPANIA = "No Aplica"
 
 
 def validar_compra(
-    id_contacto: int, moneda: str, tipo_de_cambio: float | None, lineas: list[dict]
+    id_contacto: int, moneda: str, tipo_de_cambio: float | None, lineas: list[dict],
+    combinaciones_previas: set[tuple[int | None, int | None]] | None = None,
 ) -> list[str]:
     """FR-007/FR-013: errores de validación de aplicación (sin FKs reales en el motor)."""
     errores: list[str] = []
@@ -526,7 +560,28 @@ def validar_compra(
                 errores.append(f"La campaña '{campania}' no existe en el catálogo de campañas: elegila de la lista o creala primero.")
             elif linea.get("idCampania") is not None and linea["idCampania"] != id_texto:
                 errores.append(f"La campaña '{campania}' no corresponde al identificador {linea['idCampania']}.")
+    errores.extend(_errores_plan(lineas, combinaciones_previas or set()))
+    return errores
 
+
+def _errores_plan(lineas: list[dict], combinaciones_previas: set) -> list[str]:
+    """Cada línea tiene que usar una combinación destino + campaña válida en el plan agrícola (ver
+    `campanias_validas_por_destino`). Las combinaciones que la compra ya tenía guardadas se aceptan al editar."""
+    if not lineas:
+        return []
+    validas = campanias_validas_por_destino()
+    nombres_destino = {r["id"]: r["n"] for r in fetch_all("SELECT IdDestino AS id, Destino AS n FROM dbo.DestinoCompras")}
+    errores: list[str] = []
+    for linea in lineas:
+        id_destino = linea.get("idDestino") or get_id_destino_por_nombre(DEFAULT_DESTINO)
+        texto = (linea.get("campaña") or "").strip() or DEFAULT_CAMPANIA
+        id_campania = linea.get("idCampania") or get_id_campania_por_nombre(texto)
+        if id_campania is None or id_destino not in validas:
+            continue  # campaña inexistente o destino inválido ya se informan arriba
+        if id_campania in validas[id_destino] or (id_destino, id_campania) in combinaciones_previas:
+            continue
+        errores.append(f"La campaña '{texto}' no es válida para el destino '{nombres_destino.get(id_destino, id_destino)}' "
+                       "según el plan agrícola: elegí una campaña planificada para ese cultivo.")
     return errores
 
 
@@ -787,7 +842,8 @@ def create_compra(cabecera: dict, lineas: list[dict], vencimientos: list[dict]) 
 def update_compra(id_compra: int, cabecera: dict, lineas: list[dict], vencimientos: list[dict]) -> None:
     """Edición transaccional: reemplazo total de líneas/vencimientos + UPDATE de cabecera (FR-009/FR-010)."""
     errores = validar_compra(
-        cabecera["idContacto"], cabecera["moneda"], cabecera.get("tipoDeCambio"), lineas
+        cabecera["idContacto"], cabecera["moneda"], cabecera.get("tipoDeCambio"), lineas,
+        combinaciones_de_compra(id_compra),
     )
     if errores:
         raise ValueError(errores)

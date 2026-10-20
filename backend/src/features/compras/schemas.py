@@ -137,6 +137,8 @@ class FiltrosComprasResponse(BaseModel):
     destinos: list[Destino] = []
     unidadesMedida: list[UnidadMedida] = []
     campañas: list[Campania] = []
+    # IdDestino (como texto) -> IdCampaña válidos según el plan agrícola (036).
+    campañasPorDestino: dict[str, list[int]] = {}
 
 
 # --- Alta controlada de catálogos (006-carga-compras): los combos de línea

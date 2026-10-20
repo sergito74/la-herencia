@@ -11,6 +11,7 @@ import {
   type FiltrosComprasResponse,
   type LineaInput,
 } from "@/services/comprasApi";
+import { campaniasParaDestino } from "./campanias";
 import { formatMonto, formatMoneda, normalizarNumeroPegado, parseNumeroLocal, type MonedaFormato } from "@/lib/format";
 import { useToast } from "@/components/ui/Toast";
 import { CeldaNumerica } from "@/components/ui/CeldaNumerica";
@@ -161,6 +162,13 @@ export function ComprasGrid({
 
   async function handleCatalogoChange(rowIndex: number, columna: ColumnaCatalogo, value: string) {
     if (value !== NUEVO_SENTINEL) {
+      const campania = rows[rowIndex].campania;
+      if (columna === "destino" && campania && !campaniasParaDestino(filtros, value, "").includes(campania)) {
+        // La campaña elegida no corresponde al nuevo destino según el plan: se limpia para volver a elegirla.
+        const next = rows.map((r, i) => (i === rowIndex ? { ...r, destino: value, campania: "" } : r));
+        onChange(next);
+        return;
+      }
       actualizarCelda(rowIndex, columna, value);
       return;
     }
@@ -231,6 +239,8 @@ export function ComprasGrid({
         let valorFinal = valor;
         if (columnasNumericas.includes(col)) valorFinal = normalizarNumeroPegado(valor);
         else if (columnasCatalogo.includes(col)) valorFinal = resolverValorCatalogoPegado(col as ColumnaCatalogo, valor);
+        if (col === "campania" && valorFinal && !campaniasParaDestino(filtros, next[rowIndex + dRow].destino, "").includes(valorFinal))
+          valorFinal = ""; // fuera del plan agrícola para ese destino: queda vacía para elegirla
         next[rowIndex + dRow] = { ...next[rowIndex + dRow], [col]: valorFinal };
       });
     });
@@ -299,12 +309,15 @@ export function ComprasGrid({
     value,
     opciones,
     placeholderDefault,
+    permitirNuevo = true,
   }: {
     rowIndex: number;
     columna: ColumnaCatalogo;
     value: string;
     opciones: string[];
     placeholderDefault?: string;
+    /** Campaña: no se crea desde la compra; una campaña nueva se planifica primero en el plan agrícola. */
+    permitirNuevo?: boolean;
   }) {
     return (
       <select
@@ -318,7 +331,7 @@ export function ComprasGrid({
             {o}
           </option>
         ))}
-        <option value={NUEVO_SENTINEL}>+ Agregar nuevo…</option>
+        {permitirNuevo && <option value={NUEVO_SENTINEL}>+ Agregar nuevo…</option>}
       </select>
     );
   }
@@ -424,8 +437,15 @@ export function ComprasGrid({
                       rowIndex={rowIndex}
                       columna="campania"
                       value={row.campania}
-                      opciones={(filtros?.campañas ?? []).map((c) => c.campania ?? "").filter(Boolean)}
-                      placeholderDefault={filaIniciada ? "No Aplica" : undefined}
+                      opciones={campaniasParaDestino(filtros, row.destino, row.campania)}
+                      placeholderDefault={
+                        filaIniciada
+                          ? campaniasParaDestino(filtros, row.destino, "").includes("No Aplica")
+                            ? "No Aplica"
+                            : "Elegir campaña"
+                          : undefined
+                      }
+                      permitirNuevo={false}
                     />
                   </td>
                   <td className="w-28">

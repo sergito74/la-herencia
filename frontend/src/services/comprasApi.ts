@@ -159,6 +159,8 @@ export interface FiltrosComprasResponse {
   destinos: Destino[];
   unidadesMedida: UnidadMedida[];
   campañas: Campania[];
+  /** IdDestino (texto) -> IdCampaña válidos según el plan agrícola (036). */
+  campañasPorDestino?: Record<string, number[]>;
 }
 
 /** Catálogos para los filtros — replica los combos del Frm Listado Compras real. */

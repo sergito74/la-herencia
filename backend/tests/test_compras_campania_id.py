@@ -45,6 +45,15 @@ def test_insert_incluye_id_campania():
 @pytest.fixture
 def validacion(catalogo, monkeypatch):
     monkeypatch.setattr(repository, "existe_contacto_valido_para_compra", lambda i: True)
+    monkeypatch.setattr(repository, "campanias_validas_por_destino", lambda: {1: {20}, 6: {24}, 16: {20, 24}})
+    original = repository.fetch_all
+
+    def fetch_all(sql, params=()):
+        if "DestinoCompras" in sql:
+            return [{"id": 1, "n": "General"}, {"id": 6, "n": "Soja primera"}, {"id": 16, "n": "Stock"}]
+        return original(sql, params)
+
+    monkeypatch.setattr(repository, "fetch_all", fetch_all)
 
 
 def test_rechaza_campania_fuera_del_catalogo(validacion):
@@ -57,5 +66,22 @@ def test_rechaza_id_que_no_corresponde_al_texto(validacion):
     assert len(errores) == 1 and "no corresponde" in errores[0]
 
 
-def test_acepta_campania_del_catalogo_o_vacia(validacion):
-    assert repository.validar_compra(1, "Pesos", None, [{"campaña": "2025/2026"}, {"campaña": ""}, {}]) == []
+def test_acepta_campania_del_plan_o_vacia_en_general(validacion):
+    assert repository.validar_compra(1, "Pesos", None, [{"campaña": "2025/2026", "idDestino": 6}, {"campaña": "", "idDestino": 1}, {}]) == []
+
+
+def test_rechaza_campania_fuera_del_plan_para_el_cultivo(validacion):
+    errores = repository.validar_compra(1, "Pesos", None, [{"campaña": "No Aplica", "idDestino": 6}])
+    assert len(errores) == 1 and "plan agrícola" in errores[0] and "Soja primera" in errores[0]
+
+
+def test_general_solo_admite_no_aplica(validacion):
+    assert repository.validar_compra(1, "Pesos", None, [{"campaña": "2025/2026", "idDestino": 1}])
+
+
+def test_stock_admite_campania_del_plan_y_no_aplica(validacion):
+    assert repository.validar_compra(1, "Pesos", None, [{"campaña": "2025/2026", "idDestino": 16}, {"campaña": "No Aplica", "idDestino": 16}]) == []
+
+
+def test_al_editar_se_conserva_una_combinacion_ya_guardada(validacion):
+    assert repository.validar_compra(1, "Pesos", None, [{"campaña": "No Aplica", "idDestino": 6}], {(6, 20)}) == []
