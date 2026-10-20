@@ -46,6 +46,8 @@ Este documento es la guía común de trabajo para Claude Code, Codex y cualquier
 
 ## Arquitectura y calidad
 
+- Antes de validar resultados por campaña o cerrar una conciliación con imputaciones productivas, ejecutar la auditoría de vínculos descrita en `specs/036-revision-sistematica-cuentas/auditoria-campanias.md`. Tener texto de campaña no sustituye el identificador; revisar candidatos sin reasignar automáticamente No Aplica ni partidas ambiguas.
+
 - Stack objetivo: Python + FastAPI, SQL Server, Next.js + TypeScript, Tailwind CSS y TanStack Query, según la Constitución vigente.
 - Organizar el backend por módulos en `backend/src/features/` y el frontend por rutas/componentes/servicios en `frontend/src/`, siguiendo el patrón existente del módulo más cercano.
 - Las consultas SQL deben usar parámetros, objetos conocidos y límites apropiados. Mantener los resguardos centrales de conexión; nunca construir SQL ejecutable con datos libres del usuario.

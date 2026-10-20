@@ -136,4 +136,6 @@ frontend/
 
 ## Complexity Tracking
 
+Ampliación 20/10/2026: auditoría transversal de campañas por script de solo lectura, clasificador puro y pruebas de ambigüedad/discordancias. Reutiliza conexión WC; informes CSV/JSON fuera de Git; sin esquema nuevo ni actualización masiva. Ver `auditoria-campanias.md`.
+
 Sin violaciones de la Constitución que justificar.
