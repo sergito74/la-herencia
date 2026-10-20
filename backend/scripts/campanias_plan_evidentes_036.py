@@ -6,6 +6,8 @@ Renglones con destino/campaña fuera del plan donde el documento indica la combi
 - Semilla sorgo Sudol 18/12/2025: No Aplica -> 2025/2026.
 - Seguro granizo soja segunda Nación Seguros 63288 (mayo 2023): No Aplica -> 2022/2023.
 - Avena con campaña de verano 2020/2021: jun-2020 -> 2020; dic-2020 y may-2021 -> 2021.
+- Segunda tanda (Sergio 20/10/2026): atrazina Cargill 1126-00014152 (26/05/2020) -> Sorgo 2020/2021 (primera
+  aplicación posterior en sorgo: orden 57 del 15/10/2020, lote 2A); voleo rye grass Yanquelen 00002-00000020 -> Pastura 2021.
 Solo cambian IdDestino/Campaña/IdCampaña; importes y cantidades iguales.
 """
 import json
@@ -21,6 +23,7 @@ ROOT = Path(__file__).resolve().parents[2] / 'backups/auditoria-campanias'
 PLAN = {2141382043: (9, '2026/2027'), 2141377233: (None, '2024/2025'), 2141378500: (None, '2025/2026'),
         2141374988: (None, '2022/2023'), 2141374989: (None, '2022/2023'), 2141389806: (None, '2022/2023'),
         2141370653: (None, '2020'), 2141371485: (None, '2021'), 2141371947: (None, '2021')}
+PLAN2 = {2141370574: (None, '2020/2021'), 2141373459: (None, '2021')}
 FIJOS = ('IdCompra', 'Producto/Servicio', 'Cantidad', 'Precio Unitario', 'IVA', 'IdRubro', 'IdCentroCostos', 'Ajuste financiero')
 
 
@@ -52,4 +55,8 @@ def main():
     print(json.dumps({'actualizados': len(PLAN), 'backup': audit['backup']}))
 
 
-if __name__ == '__main__': main()
+if __name__ == '__main__':
+    import sys
+    if len(sys.argv) > 1 and sys.argv[1] == '--segunda':
+        PLAN.clear(); PLAN.update(PLAN2)
+    main()
