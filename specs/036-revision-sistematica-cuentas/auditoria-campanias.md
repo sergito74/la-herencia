@@ -79,3 +79,11 @@ Decisión de Sergio: en la carga de compras solo se ofrecen y aceptan combinacio
 - Stock, grupos (Cultivo Invierno/Verano, Verdeos) y Rye Grass → cualquier campaña del plan + No Aplica.
 
 Backend: `campanias_validas_por_destino()` (catálogo `campañasPorDestino` en `/api/compras/filtros`) y `validar_compra` rechaza (400) combinaciones fuera del plan; al editar se conservan las combinaciones que la compra ya tenía guardadas. Frontend: la grilla filtra el selector por destino (`components/compras/campanias.ts`), limpia la campaña si se cambia a un destino donde no corresponde, descarta campañas pegadas fuera del plan y ya no permite crear campañas desde la compra (se planifican primero). Hoy Cebada no tiene campañas planificadas y Soja primera no figura en 2024/25.
+
+## Renglones fuera del plan agrícola (20/10/2026)
+
+Medición con la regla nueva: 46 renglones (USD 70.222,87) con destino + campaña fuera del plan.
+- Correcciones evidentes aprobadas (`scripts/campanias_plan_evidentes_036.py`, 9 renglones): girasol PENDIENTE 56078 General→Girasol 2026/27; Pérez maíz diferido →2024/25; Sudol sorgo →2025/26; Nación Seguros 63288 soja segunda →2022/23; Avena 2020/2021 → 2020 (jun-2020) y 2021 (dic-2020, may-2021). Respaldo `WC_campanias-plan-evidentes-036_20261020_151747_970358.bak`.
+- Plan agrícola completado (`scripts/plan_agricola_faltantes_036.py`, 9 filas, aprobado): Sorgo 2026/27 9A; Avena 2015 6B/6C/8A; Avena 2017 10A/10B; Cebada 2015/16 2A/5A/5B. Respaldo `WC_plan-agricola-faltantes-036_20261020_152401_453668.bak`.
+- **Excepciones**: 16 renglones de campañas 2009/10–2013/14 (USD 61.459,44), anteriores al plan cargado (empieza 2015/16), aprobado por Sergio; Cebada 2026/27 Santos FC 00001-00000053 anulada por NC 00001-00000006 (neto USD 2,17 de tipo de cambio), no hubo cebada.
+- Sin decidir: atrazina Cargill 1126-00014152 (may-2020, Sorgo No Aplica, USD 0) y voleo rye grass Yanquelen 00002-00000020 (jul-2022, Pastura 2021/2022, USD 143,64).
