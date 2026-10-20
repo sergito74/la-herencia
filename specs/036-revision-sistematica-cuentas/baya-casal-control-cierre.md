@@ -51,16 +51,14 @@ El portal arranca en 2020 con saldo 0. Todas las facturas USD previas (39.511,94
 
 eCheq 00008092 librado por Jorge y Martín de la Serna SRL (CUIT 33-59409247-9), pagadero 09/06/2026, recibido y endosado a Bayá desde Banco Nación (listado `BNA/Cheques/Listado de ECHEQs recibidos.xls`). Cobra las liquidaciones de hacienda 0003-00017092 y 0003-00017137 (remate 13/05/2026, vto 12/06): $5.996.744,06 − IVA transferido 29/05 $137.473,35 − efectivo 18/05 $61.710,00 = $5.797.560,71 exacto. Cargado en Valores Recibidos (emisor J y M, receptor Bayá) con valuación USD 3.931,99 (CA145717). `baya_casal_cheque8092_036.py`, respaldo `WC_baya-cheque8092-036_20261020_141059_752916.bak`.
 
-### Brecha remanente al corte (facturado, sin PENDIENTE): USD 42,37
+### Cuenta replicada (20/10/2026)
 
-Sistema USD 2.013,48 a pagar; portal USD 2.055,85.
+- Retención 7 también excepción (USD 0), como 54 y 183: certificados emitidos y depositados que Bayá nunca acreditó ($168.791,21 en total, ≈USD 430; no se reclaman).
+- Fechas y vencimientos según PDF (`baya_casal_fechas_pdf_036.py`): 115 comprobantes revisados, TC coincide en todos; FC357848/49/50 al 12/03/2024 y 7 vencimientos.
+- Fechas de reconocimiento/aplicación del proveedor (`baya_casal_fechas_aplicacion_036.py`): cheques diferidos Galicia 423/466 (11/06/2021), 2580/2581 (01/08/2024, TC 932,50), 3251 (15/04 y 29/05/2026); Galicia 719 en dos aplicaciones; RG33 y pago FC348391 en enero 2024.
+- **Comprobación**: saldo USD facturado (sin PENDIENTE ni PED.43194/NC) igual al portal en los 49 cierres de mes desde 2020 dentro de USD 1; al corte sistema USD 2.055,36 vs portal USD 2.055,85. Residuo USD 0,49 = ajustes de centavos del proveedor (CD26292/CA26293 +0,50, RI37633 −0,03, CA100879, redondeos).
+- Pendientes de facturar fuera del corte: PENDIENTE 56078, 68476, 68485, 59111 (USD 29.416,36).
 
-| Partida | USD | Estado |
-|---|---:|---|
-| Retención 7 (2021-000003, $3.919,97) no registrada por Bayá | 41,89 | ¿Excepción, como 54/183? |
-| Ajustes del proveedor dic-2021 (+0,50) y ene-2024 (−0,03) | 0,47 | Menor |
-
-Pendiente aparte: FC357848/357849/357850 tienen fecha oct-dic 2023 en el sistema y 12/03/2024 en el original; no cambia saldos al corte.
 
 ## Cola de trabajo vigente
 
