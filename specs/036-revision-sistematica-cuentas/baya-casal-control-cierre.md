@@ -37,19 +37,25 @@ Libro bimonetario del portal (consulta solo lectura 20/10/2026, con aplicaciones
 
 `baya_casal_valuaciones_portal_036.py`: 13 grupos (BNA 16333; Galicia 5/423/466/719/1268/1324/1673/2979/3251/3274; Tarjetas 5583/654; retenciones 9/13/49/100/221/234/240) con el USD que acreditó el proveedor (RI/CA/RG del libro bimonetario). RG26 (ret. 100) tomada solo en pesos → 0 USD. CA144661 y CA145870 aplican banco + retención juntos: reparto proporcional a pesos. Galicia 3274 corregido a los USD del portal (25.684,39 + 182,49 + 2.312,47; ret. 240 431,82). Variación USD −197,71 (la esperada), pesos sin cambio. Respaldo `WC_baya-valuaciones-portal-036_20261020_123817_736888.bak`. Matriz: 33 de 39 grupos coinciden.
 
-### Brecha remanente al corte (facturado, sin PENDIENTE): USD 2.210,00
+### Historia previa al portal (2015-2020) — resuelta 20/10/2026
 
-Sistema USD 154,15 a favor; portal USD 2.055,85 a pagar (FC465204, vence 30/06/2027; pesos $0).
+El portal arranca en 2020 con saldo 0. Todas las facturas USD previas (39.511,94) se pagaron en pesos y cada ciclo cierra exacto en pesos al TC de sus facturas: 2015 (FC en pesos), 2017-18 (TC 17,50: canje de granos 2017 + hacienda 2018 − devoluciones de Bayá; dif. $0,18), may-2019 (TC 45/47), dic-2019 (TC 66), feb-jun 2020 (TC 70/65; dif. $26,54), jun-2020 (TC 73). El sistema pasaba cada movimiento con el BNA del día: USD 5.685 a favor ficticios (4.800,73 del ciclo 2017-18). `baya_casal_historia_pre2020_036.py` valúa cada fila en pesos de cada ciclo al TC del ciclo: saldo al 30/06/2020 USD 0,01. Respaldo `WC_baya-historia-pre2020-036_20261020_132550_149803.bak`.
 
-| Partida | USD (sistema − proveedor, crédito) | Estado |
+### Excepciones y ajustes 20/10/2026
+
+- Retenciones 54 (2022-15) y 183 (2024-40): **excepción aprobada por Sergio**, valuadas USD 0. La 54 era el resto de FC292987 (USD 263,79 a TC 124,24); la 183 completaba RI52670 a TC 1.045, pero Bayá aplicó el cheque a TC 1.031,50 sin ella. `baya_casal_retenciones_excepcion_036.py`.
+- FC235074 y BNA16332: pago exacto a TC 93,5 (USD 393,25); ambos anteriores a la migración del portal. Retención 7 (2021-000003, $3.919,97, USD 41,89) no registrada por Bayá: **pendiente de confirmar si va como excepción**.
+- Comprobantes al centavo contra PDF (portal/Dropbox): FC357850 (precios 4 decimales), ND63227, NC78177, ND83045, ND92923, NC133873 (renglones financieros ARS), y 18 más con precios escalados (`baya_casal_centavos_036.py`, `..._centavos2_036.py`, `..._centavos3_036.py`). Cuando el renglón del libro del portal difiere de su propio PDF (NC109246, NC120722, NC133873, ND134486, ND134645), manda el PDF.
+
+### Brecha remanente al corte (facturado, sin PENDIENTE): USD 3.889,62
+
+| Partida | USD | Estado |
 |---|---:|---|
-| Historia anterior al portal (saldo del sistema al 30/06/2020; el portal arranca en 0 con saldos migrados SD) | 5.685,07 | Sin libro del proveedor anterior a 2020: decisión de Sergio |
-| FC235074 (USD 393,25) y su pago BNA16332 + ret. 7 (USD 458,02), ninguno en el portal | 64,77 | Revisar con Sergio |
-| Retenciones 54 (2022-15, $32.773,29) y 183 (2024-40, $132.097,95) no registradas por Bayá | 391,68 | ¿Se entregaron los certificados? |
-| Cheque 8092 (RI77444 $5.797.560,71, CA145717) acreditado por Bayá, ausente en el sistema | −3.931,99 | Falta origen del cheque recibido |
-| Ajustes del proveedor dic-2021 / ene-2024 | 0,47 | Menor |
+| Cheque 8092 (eCheq de terceros Banco Galicia, emitido y pagadero 09/06/2026, endosado por Giamigli el 09/06 y enviado a Susana Vesque; RI77444 anticipo, CA145717 aplica a ND130997 refinanciación $316.725,64 + ND134486 $109.941,84 + RD136157/FC416539 $5.370.893,23, TC 1.446,50) | −3.931,99 | Origen desconocido: investigar quién lo emitió. Solo figura en ChequesEntregados |
+| Retención 7 no registrada por Bayá | 41,89 | ¿Excepción? |
+| Ajustes del proveedor dic-2021 (CD26292/CA26293, +0,50) y ene-2024 (RI37633, −0,03) | 0,47 | Menor |
 
-Comparación completa del libro: `backups/baya-conciliacion-20261019/portal-ctacte-completo-20261020.txt`. PED.43194 y su NC PENDIENTE se compensan (no es diferencia).
+Pendiente aparte: FC357848/357849/357850 tienen fecha oct-dic 2023 en el sistema y 12/03/2024 en el original; no cambia saldos al corte.
 
 ## Cola de trabajo vigente
 
