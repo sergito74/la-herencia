@@ -18,6 +18,16 @@ def test_pedido_de_anulacion():
         c.validar_pedido(list(range(c.MAX_APLICACIONES + 1)), "x")
 
 
+def test_reversion_generica_no_reactiva_aplicaciones_de_pago_neutralizado(monkeypatch):
+    monkeypatch.setattr(c, "fetch_one", lambda *args: {"e": "aplicada", "r": c.REGLA_EFECTIVO_DUPLICADO})
+    def prohibido(*args):
+        pytest.fail("No debe reactivar imputaciones sin restaurar el pago de origen")
+    monkeypatch.setattr(c, "execute_write_transaction", prohibido)
+    with pytest.raises(c.CorreccionError) as error:
+        c.revertir(123, "prueba")
+    assert error.value.codigo == 409
+
+
 def test_validar_nota_de_ajuste():
     hoy = date.today()
     a.validar("debito", 100.0, "Diferencia de cambio", "Pesos", hoy)

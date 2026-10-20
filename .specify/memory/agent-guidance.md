@@ -48,6 +48,8 @@ Este documento es la guía común de trabajo para Claude Code, Codex y cualquier
 
 ## Uso eficiente de recursos
 
+- Para consultas autorizadas a portales y correo local, consultar `.specify/memory/local-access.md` antes de afirmar que falta acceso o pedir instalaciones; documenta las vías verificadas de Chromium y Outlook.
+
 - Trabajar con el alcance concreto pedido. Buscar primero rutas y símbolos relevantes y leer fragmentos acotados; ampliar la exploración solo si falta información para resolver la tarea.
 - Reutilizar información ya leída en la sesión mientras siga vigente. Volver a leer archivos si cambiaron o si hay indicios de actividad de otro agente, sin repetir por rutina la exploración completa.
 - No lanzar subagentes ni revisiones adicionales salvo pedido explícito del usuario o requisito aplicable de la tarea. No regenerar fases de Spec Kit ya resueltas.

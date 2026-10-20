@@ -84,3 +84,14 @@ Maquinaria propia nueva: se usa `CostoPorHectarea` manual y la superficie regist
 Verificación del SQL real: CostosBase ya firma `Pesos` y `Dolares` en notas de crédito. Se normaliza `ABS(importe) × Signo`, evitando volver a convertir el crédito en cargo. Esta corrección reemplaza cualquier indicación previa de multiplicar directamente el importe firmado por Signo.
 
 El motor FIFO existente entrega los costos de insumos de órdenes en pesos. La serie en dólares de esos insumos no está reconstruida en este corte; no se debe interpretar su cero actual como una conversión validada. Esta limitación debe resolverse antes de considerar completos los indicadores en dólares cuando incluyen esas órdenes.
+
+
+### 19/10/2026: ND con renglón financiero negativo (Bayá Casal,036)
+
+Al distribuir ND95459 por pedido expreso de Sergio, eloriginal asigna +36.030,87 aunaFC y−7.059,16 aotra. CostosBase normalizaba todo conABS ySigno1 paraND, perdiendo la reducción. Se corrigió enWC elcaso específico deND conAjustefinanciero1: monto firmado ySigno−1 para negativo; así consumidoresABS(monto)*Signo conservan lareducción ylasNCsiguensiendo negativas. Otrosdocumentosconservan convención. Respaldos,SQLantes/después,verificacionesyreproducción en`specs/036-revision-sistematica-cuentas/baya-casal-nd95459-distribucion.md` y`backend/scripts/baya_casal_nd95459_036.py`. Antesdelalta nohabíaNDfinancierasnegativas. Verificados6casosSELECTsin escritura yNDreal57líneas neto28971,71,USD0.
+
+### 20/10/2026: NC financieras con signos mixtos y precisión fiscal
+
+NC135583 combina un cargo de fertilizante y un crédito de maíz. CostosBase conserva ahora también el signo individual de NC financieras: precio positivo aumenta costo y precio negativo lo reduce, tanto en Pesos firmado como en ABS(Pesos)*Signo. La convención histórica de NC no financieras se conserva; no interpretar la regla anterior como que toda línea de NC debe ser negativa. Se verificaron los agregados de las demás NC financieras sin cambios. Ver `specs/036-revision-sistematica-cuentas/baya-casal-nc135583.md` y su script.
+
+En las vistas de importe de compras, el coeficiente de IVA se calcula en precisión doble para ND y NC financieras en pesos con marca Ajusta Tipo Cambio. Evita diferencias de centavos causadas por el tipo SQL REAL de IVA. Se contrastaron los demás totales financieros a centavos antes/después sin cambios; detalle en `specs/036-revision-sistematica-cuentas/baya-casal-nc134760.md`.

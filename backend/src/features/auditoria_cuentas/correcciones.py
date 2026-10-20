@@ -12,6 +12,7 @@ import json
 from src.db.connection import execute_write_transaction, fetch_all, fetch_one
 
 REGLA_MANUAL = "anular-manual"
+REGLA_EFECTIVO_DUPLICADO = "neutralizar-efectivo-duplicado"
 MAX_APLICACIONES = 2000
 
 
@@ -65,6 +66,9 @@ def revertir(id_correccion: int, usuario: str) -> dict:
         raise CorreccionError(404, "La corrección no existe")
     if fila["e"] != "aplicada":
         raise CorreccionError(409, "La corrección no está aplicada")
+    if fila["r"] == REGLA_EFECTIVO_DUPLICADO:
+        raise CorreccionError(409, "Esta corrección también modificó el pago de origen. "
+                              "Usar baya_casal_duplicado_1909_036.py --revertir ID para restaurar pago e imputaciones juntos.")
     ids: list[int] = []
     for c in fetch_all("SELECT IdsAplicacion AS ids FROM dbo.AuditoriaCorreccionesCuentas WHERE IdCorreccion = ?", (id_correccion,)):
         ids += json.loads(c["ids"] or "[]")

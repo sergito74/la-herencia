@@ -1,0 +1,9 @@
+# NC135583 — ajuste mixto corregido
+
+Autorización de Sergio20/10/2026. Id2143517488 conserva crédito fiscal$140.241,55 (neto$115.902,11+IVA21%$24.339,44). Marca ajusteTC activada; vencimiento29/06/2026; tres renglones existentes conservan Id y dimensiones, ahora cantidad1ARS/financieros.
+
+El PDF combina cargo bruto$920,75 deRD136157 (origenFC416539/Id2143515104) y crédito bruto$141.162,30 deFC451184/Id2143517472. Para no sumarIVA dos veces, se convierten a netos a21%: **cargo$760,95 y crédito$116.663,06**, diferencia crédito$115.902,11. Fertilizante repartido por netos de los dos renglones deFC416539, con mayores restos; maíz según la línea única deFC451184. Se conservaIVA21% de la nota, aunque factura de fertilizante original tiene10,5%. Agregadas ambas relaciones, originales intactos. No es la nota que anula la compra de23bolsas, sino diferencia de cambio; devolución comercial todavía se evalúa aparte.
+
+La vista de costos trataba todas las NC como descuentos negativos aunque alguna línea fuera cargo positivo. Se corrigió la rama de **NC financieras** para conservar el signo individual: cargo positivo de fertilizante aumenta costo; crédito negativo de maíz lo reduce. Signo y Pesos consistentes tanto en suma directa comoABS(Pesos)*Signo del API. ND mantienen criterio anterior y NC no financieras siguen regla histórica. Comprobados agregados de todas las demás NC financieras antes/después sin cambio; SQL de vista y comparación en auditoría.
+
+Verificados tres costos (dos cargos/un crédito), neto−$115.902,11 por ambos métodos, costosUSD0 y cuentaUSD0, total fiscal y lectura posterior a commit. Respaldo verificado `WC_baya-nc135583-036_20261020_091802_188802.bak`. Script `backend/scripts/baya_casal_nc135583_036.py`; auditoría local `backups/baya-conciliacion-20261019/nc135583-correccion-*.json` con antes/después, plan, originales, hashPDF, vistas y verificaciones. Sin pagos nuevos/FIFO/cierre.
