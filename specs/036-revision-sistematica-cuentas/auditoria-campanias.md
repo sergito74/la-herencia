@@ -59,6 +59,8 @@ Causa raíz: `compras/repository.py` (alta y edición) guardaba solo el texto `C
 
 Datos: `scripts/campanias_lote_a_036.py` completó los 41 renglones (13 documentos: Allianz, Fideicomiso La Esperanza, FEDEA, Cargill —ND/factura de la tarjeta 27/04/2023 que copian la clasificación de las facturas que ajustan—, San Cristóbal, Aguilar, Silva Rossi). Texto, importes, cantidades, destinos y rubros sin cambio; los 41 entran en `vw_ResultadosCultivo_CostosBase`. Respaldo `WC_campanias-lote-a-036_20261020_144628_851184.bak`. Auditoría posterior: `falta_vinculo` = 0.
 
-## Lote B — discordancias (pendiente de decisión de Sergio)
+## Lote B — discordancias (resuelto 20/10/2026)
 
 13 renglones migrados de Access (texto 2025/2026 o 2026, `IdCampaña` 20 No Aplica), destino productivo, USD 1.040,28 hoy imputados a No Aplica. Evidencia de órdenes solo para Mulan (Pastura 2026) y Coady siliconado (Soja 2025/26); los demás no tienen producto vinculado.
+
+Decisión de Sergio: vincular según el texto. `scripts/campanias_lote_b_036.py` pasó los 13 renglones al IdCampaña del texto; importes y destinos sin cambio, los 13 en la vista de costos (USD 1.040,28 salen de No Aplica). Respaldo `WC_campanias-lote-b-036_20261020_144838_816034.bak`. Auditoría posterior: solo quedan `no_aplica_sin_vinculo` 199 (195 destino General, 4 Stock: ninguno productivo) y `sin_asignacion` 1 (redondeo FC316792, excepción).

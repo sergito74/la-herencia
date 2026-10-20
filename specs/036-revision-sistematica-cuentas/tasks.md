@@ -251,7 +251,7 @@ Task: "T016 [P] [US1] Componente PagosSinFactura.tsx en frontend/src/components/
 
 - [x] 20/10/2026: respaldar y corregir FC320049: precio documentado y nueve vínculos de campaña; verificar total y vista de costos.
 - [x] 20/10/2026: crear procedimiento/script de auditoría general de campañas, pruebas de clasificación e informe inicial sin escrituras generales.
-- [ ] Revisar los 41 vínculos productivos faltantes y las 13 discordancias detectadas; corroborar evidencias y corregir solo casos aprobados. Ver `auditoria-campanias.md`.
+- [x] 20/10/2026: lotes A y B resueltos (41 + 13) y alta de compras corregida. Revisar los 41 vínculos productivos faltantes y las 13 discordancias detectadas; corroborar evidencias y corregir solo casos aprobados. Ver `auditoria-campanias.md`.
 
 - Un frente a la vez; no reabrir lo cerrado (Jauregui, tarjetas, Mercado Pago).
 - Primero lo que cambia el saldo (documentos, movimientos), al final las imputaciones (FIFO).
