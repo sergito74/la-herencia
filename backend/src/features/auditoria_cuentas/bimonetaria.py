@@ -152,27 +152,40 @@ def construir(filas: list[dict], compras: dict[int, dict], cotizacion: Cotizacio
             efecto = efectos_valuacion.get(key)
             if efecto is None or key not in valuaciones:
                 continue
-            fecha = _dia(efecto["fecha"])
-            if fecha is None or fecha < _dia(f["Fecha"]):
-                raise ValueError("La aplicación USD no puede preceder al documento de origen")
+            fecha_origen = _dia(efecto.get("fechaOrigen")) or _dia(f["Fecha"])
+            partes = efecto.get("eventos")
+            if partes is None:
+                partes = [{"fecha": efecto["fecha"], "documento": efecto["documento"], "dolares": abs(float(valuaciones[key]))}]
+            if not partes or abs(sum(float(p["dolares"]) for p in partes)-abs(float(valuaciones[key]))) > .0001:
+                raise ValueError("Las aplicaciones USD deben sumar la valuación del origen")
+            for parte in partes:
+                fecha = _dia(parte["fecha"])
+                if fecha is None or fecha < fecha_origen:
+                    raise ValueError("La aplicación USD no puede preceder al documento de origen")
+            if efecto.get("fechaOrigen") is not None:
+                f = dict(f)
+                f["Fecha"] = fecha_origen
+                origenes[-1] = f
             if efecto.get("pesos") is not None:
                 # Importe/fecha reconocidos en el libro del proveedor. El
                 # registro bancario sigue intacto en su fuente y auditoría.
                 f = dict(f)
-                f["Fecha"] = fecha
+                f["Fecha"] = fecha_origen if efecto.get("fechaOrigen") is not None else _dia(partes[0]["fecha"])
                 for campo in ("Deuda", "Credito"):
                     if f.get(campo):
                         f[campo] = abs(float(efecto["pesos"])) * (1 if f[campo] > 0 else -1)
                 origenes[-1] = f
-            group = (fecha, efecto["documento"])
-            event = eventos.setdefault(group, {"Fecha": fecha, "Documento": "Aplicación proveedor",
-                "Nro Documento": efecto["documento"], "Deuda": 0.0, "Credito": 0.0,
-                "Origen": "Aplicacion proveedor", "IdOrigen": int(f["IdOrigen"]), "SoloUSD": True})
-            importe = abs(float(valuaciones[key]))
-            if float(f["Deuda"] or 0):
-                event["Deuda"] = round(event["Deuda"] + importe, 4)
-            elif float(f["Credito"] or 0):
-                event["Credito"] = round(event["Credito"] + importe, 4)
+            for parte in partes:
+                fecha = _dia(parte["fecha"])
+                group = (fecha, parte["documento"])
+                event = eventos.setdefault(group, {"Fecha": fecha, "Documento": "Aplicación proveedor",
+                    "Nro Documento": parte["documento"], "Deuda": 0.0, "Credito": 0.0,
+                    "Origen": "Aplicacion proveedor", "IdOrigen": int(f["IdOrigen"]), "SoloUSD": True})
+                importe = float(parte["dolares"])
+                if float(f["Deuda"] or 0):
+                    event["Deuda"] = round(event["Deuda"] + importe, 4)
+                elif float(f["Credito"] or 0):
+                    event["Credito"] = round(event["Credito"] + importe, 4)
             valuaciones[key] = 0.0
         filas = sorted([*origenes, *eventos.values()], key=lambda f: (_dia(f["Fecha"]), f["Origen"], int(f["IdOrigen"])))
     gobierna = moneda_que_gobierna(filas, compras)
@@ -254,6 +267,19 @@ def _vista_en_memoria(refrescar: bool = False) -> tuple[dict[int, list], dict[in
                 for v in fetch_all("SELECT Origen AS o,IdOrigen AS i,ImporteReconocidoPesos AS p FROM dbo.ValuacionProveedor "
                                    "WHERE FechaEfectoUSD IS NOT NULL AND ImporteReconocidoPesos IS NOT NULL", ()):
                     efectos[(v["o"], int(v["i"]))]["pesos"] = float(v["p"])
+        if fetch_all("SELECT OBJECT_ID('dbo.ValuacionProveedorEventos','U') AS n", ())[0]["n"] is not None:
+            for v in fetch_all("SELECT Origen AS o,IdOrigen AS i,IdContacto AS c,Fecha AS f,Documento AS d,Dolares AS usd FROM dbo.ValuacionProveedorEventos ORDER BY Fecha,Documento", ()):
+                key = (v['o'], int(v['i']))
+                if key not in valuaciones:
+                    raise ValueError('Aplicaciones proveedor sin valuación de origen')
+                if not any(f['Origen']==v['o'] and int(f['IdOrigen'])==int(v['i']) for f in por_contacto.get(int(v['c']), [])):
+                    raise ValueError('Aplicación proveedor ajena al contacto del origen')
+                effect = efectos.setdefault(key, {})
+                effect.setdefault('eventos', []).append({'fecha':_dia(v['f']), 'documento':v['d'], 'dolares':float(v['usd'])})
+        if fetch_all("SELECT COL_LENGTH('dbo.ValuacionProveedor','FechaReconocimientoPesos') AS n", ())[0]["n"] is not None:
+            for v in fetch_all('SELECT Origen AS o,IdOrigen AS i,FechaReconocimientoPesos AS f FROM dbo.ValuacionProveedor WHERE FechaReconocimientoPesos IS NOT NULL', ()):
+                key=(v['o'],int(v['i']))
+                if key in efectos: efectos[key]['fechaOrigen']=_dia(v['f'])
         _VISTA.update(t=time.time(), filas=dict(por_contacto), compras=compras, entregas=entregas, tc_ventas=tc_ventas, valuaciones=valuaciones, efectos_valuacion=efectos)
     return _VISTA["filas"], _VISTA["compras"], _VISTA["entregas"]
 

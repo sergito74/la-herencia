@@ -41,3 +41,36 @@ def test_importe_reconocido_no_modifica_banco_y_no_genera_residuo_proveedor():
             'fecha':date(2023,8,29),'documento':'RI33178','pesos':9880147.75}})
     assert result['saldoPesos']==9880147.75 and result['saldoDolares']==26786.96
     assert f['Credito']==9880148.0 and f['Fecha']==date(2023,8,24)
+
+
+def banco(importe):
+    return {'Fecha':date(2026,6,10),'Documento':'Banco','Nro Documento':'3274',
+            'Deuda':0,'Credito':importe,'Origen':'Galicia','IdOrigen':3274}
+
+
+def test_varias_aplicaciones_usd_de_un_mismo_pago():
+    partes=[{'fecha':date(2026,6,10),'documento':'CA145870','dolares':25650.70},
+            {'fecha':date(2026,6,10),'documento':'CA145871','dolares':179.78},
+            {'fecha':date(2026,6,16),'documento':'CA146076','dolares':2355.69}]
+    r=construir([banco(40596244.94)],{},CotizacionBNA({date(2026,6,9):1440}),
+        valuaciones={('Galicia',3274):28186.17},
+        efectos_valuacion={('Galicia',3274):{'fecha':date(2026,6,10),'documento':'CA145870','eventos':partes}})
+    assert r['saldoPesos']==40596244.94 and r['saldoDolares']==28186.17
+    assert [f['saldoDolares'] for f in r['filas']]==[25650.7,25830.48,25830.48,28186.17]
+    assert r['filas'][-1]['fecha']==date(2026,6,16)
+
+
+def test_eventos_que_no_suman_la_valuacion_son_error():
+    import pytest
+    with pytest.raises(ValueError):
+        construir([banco(100)],{},CotizacionBNA({date(2026,6,9):1440}),valuaciones={('Galicia',3274):10},
+            efectos_valuacion={('Galicia',3274):{'fecha':date(2026,6,10),'documento':'x',
+                'eventos':[{'fecha':date(2026,6,10),'documento':'x','dolares':9}]}})
+
+
+def test_evento_anterior_al_origen_es_error():
+    import pytest
+    with pytest.raises(ValueError):
+        construir([banco(100)],{},CotizacionBNA({date(2026,6,9):1440}),valuaciones={('Galicia',3274):10},
+            efectos_valuacion={('Galicia',3274):{'fecha':date(2026,6,10),'documento':'x',
+                'eventos':[{'fecha':date(2026,6,1),'documento':'x','dolares':10}]}})

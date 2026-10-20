@@ -243,6 +243,12 @@ Task: "T016 [P] [US1] Componente PagosSinFactura.tsx en frontend/src/components/
 
 ### Reglas de trabajo
 
+- [x] 20/10/2026: incorporar aplicaciones USD múltiples por origen y fecha de reconocimiento en pesos, con suma validada, conservación del banco y pruebas de fechas/signos; aplicar únicamente operaciones respaldadas por CA/RI.
+
+- [x] 20/10/2026: corregir valuaciones de retenciones99/153 y canjes177/1230 según recibos originales y libro USD, conservando nominales y pesos; crear matriz de pagos recalculable e índice de cierre `baya-casal-control-cierre.md`.
+- [ ] Terminar Bayá siguiendo la cola del índice vigente: valuaciones restantes, aplicaciones, historia previa, pedidos/remitos y cotejo final; no declarar cierre por coincidencias parciales.
+- [ ] Después de Bayá, revisar campañas por lotes homogéneos según estrategia del índice; registrar excepciones y comprobar impacto en resultados.
+
 - [x] 20/10/2026: respaldar y corregir FC320049: precio documentado y nueve vínculos de campaña; verificar total y vista de costos.
 - [x] 20/10/2026: crear procedimiento/script de auditoría general de campañas, pruebas de clasificación e informe inicial sin escrituras generales.
 - [ ] Revisar los 41 vínculos productivos faltantes y las 13 discordancias detectadas; corroborar evidencias y corregir solo casos aprobados. Ver `auditoria-campanias.md`.

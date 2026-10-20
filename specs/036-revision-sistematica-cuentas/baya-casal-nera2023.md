@@ -28,6 +28,8 @@ Verificados6aplicaciones, sumas exactas deRI yretención, bancos/certificado/doc
 
 ## Pendientes de otras etapas
 
+Actualización posterior: FC320049 ya corregida aUSD19.375,91 y nueve vínculos de campaña completos. Ver `auditoria-campanias.md`. El párrafo siguiente queda como antecedente del hallazgo, no pendiente vigente. Índice actual de cierre en `baya-casal-control-cierre.md`.
+
 LaFC320049 del sistema aún totalizaUSD19.357,04 frenteUSD19.375,91 reconocido. Es una discrepancia de carga de factura, no motivo para alterar el pago documentado. Revisar precio deurea0,62 frenteoriginal0,6218 (antecedente ya localizado). No declarar sobrepago real por capacidadSQL incorrecta ni corregir por ajuste genérico. No se cierra toda la cuenta ni se ejecutaFIFOglobal.
 
 Respaldo verificado `WC_baya-nera2023-036_20261020_104251_833467.bak`; script `backend/scripts/baya_casal_nera2023_036.py`; auditoría local `backups/baya-conciliacion-20261019/nera2023-correccion-*.json`. Recibos fuente `RI_0006_00033178.pdf` y `RG36_RI37632.pdf` con textos parseados en la misma carpeta. La ampliaciónnullable devaluaciones es compatible con registros existentes.

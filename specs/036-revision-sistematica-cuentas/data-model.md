@@ -167,6 +167,10 @@ La define la precedencia de [research.md D5](research.md). Los otros problemas d
 
 ## Transiciones de estado de la ficha
 
+### Aplicaciones USD múltiples de un origen (20/10/2026)
+
+Extensión necesaria para reproducir CA7479/7480/53679 y CA145870/145871/146076: `ValuacionProveedorEventos` contiene Origen, IdOrigen, IdContacto, Fecha, Documento, Dolares (con signo; admite reversión parcial), Fuente. Su suma por origen debe coincidir con ValuacionProveedor.Dolares; no representa otro pago. Opcional `ValuacionProveedor.FechaReconocimientoPesos` permite mostrar la recepción documentada distinta del débito bancario conservado en su tabla. Ambos mecanismos solo operan si hay valuación del origen y evidencia explícita. Sin metadatos se conserva comportamiento anterior. Validar suma, fechas y contacto; eventos anteriores a recepción son error. Tabla/eventos y cambios de fechas requieren respaldo y transacción, pruebas puras y trazabilidad. Eventos se agrupan por fecha/comprobante; no suman pesos nuevamente.
+
 ```text
 pendiente ──► en-proceso ──► esperando-evidencia ──► en-proceso
                         └──► esperando-sergio ──► en-proceso
