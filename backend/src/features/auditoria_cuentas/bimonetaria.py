@@ -87,7 +87,8 @@ def _recorrer(filas: list[dict], compras: dict[int, dict], cotizacion: Cotizacio
         deuda, credito = float(f["Deuda"] or 0), float(f["Credito"] or 0)
         fecha = _dia(f["Fecha"])
         compra = compras.get(int(f["IdOrigen"])) if f["Origen"] == "Compras" else None
-        en_dolares = bool(compra and compra.get("moneda") == DOLARES)
+        solo_usd = bool(f.get("SoloUSD"))
+        en_dolares = solo_usd or bool(compra and compra.get("moneda") == DOLARES)
         entrega = (entregas or {}).get((f["Origen"], int(f["IdOrigen"])))
         tc_venta = (tc_ventas or {}).get(int(f["IdOrigen"])) if f["Origen"] == "Venta Granos" else None
         tc_dia = tc_pagos or tc_venta or cotizacion.dia_anterior(entrega or fecha)
@@ -95,7 +96,11 @@ def _recorrer(filas: list[dict], compras: dict[int, dict], cotizacion: Cotizacio
         fila = {"fecha": fecha, "documento": f["Documento"], "numeroDocumento": f["Nro Documento"], "origenTipo": f["Origen"],
                 "idOrigen": int(f["IdOrigen"]), "moneda": DOLARES if en_dolares else "Pesos", "deudaOriginal": deuda, "creditoOriginal": credito,
                 "tipoDeCambio": None, "tcEstimado": False, "fechaEntrega": entrega}
-        if en_dolares:
+        if solo_usd:
+            # Efecto de una aplicación externa: no duplica su origen en pesos.
+            deuda_p = credito_p = 0.0
+            deuda_d, credito_d = deuda, credito
+        elif en_dolares:
             tc = float(compra["tc"]) if (compra.get("tc") or 0) > 1 else None
             if tc is None:
                 tc, fila["tcEstimado"] = tc_dia, True
@@ -122,7 +127,8 @@ def _recorrer(filas: list[dict], compras: dict[int, dict], cotizacion: Cotizacio
 
 def construir(filas: list[dict], compras: dict[int, dict], cotizacion: CotizacionBNA, entregas: dict[tuple[str, int], date] | None = None,
               tc_pactado: bool = False, tc_ventas: dict[int, float] | None = None,
-              valuaciones: dict[tuple[str, int], float] | None = None) -> dict:
+              valuaciones: dict[tuple[str, int], float] | None = None,
+              efectos_valuacion: dict[tuple[str, int], dict] | None = None) -> dict:
     """Movimientos de una cuenta con su moneda, importes en pesos, saldo acumulado en pesos y en dólares.
 
     `filas`: filas de la vista ya ordenadas por (Fecha, Origen, IdOrigen) con Fecha, Documento, Nro Documento,
@@ -134,6 +140,41 @@ def construir(filas: list[dict], compras: dict[int, dict], cotizacion: Cotizacio
     diferencia de cambio. Solo para cuentas cuyos documentos están todos en dólares. Nunca se deduce solo: dos casos con
     la misma forma (pago exacto en pesos al tipo de cambio de la factura) pueden tener o no un tipo de cambio pactado.
     """
+    if efectos_valuacion:
+        # Los dólares nacen al aplicar el crédito, no al emitir su origen.
+        # Agrupar las partes del mismo comprobante; nunca mutar la entrada.
+        valuaciones = dict(valuaciones or {})
+        eventos: dict[tuple, dict] = {}
+        origenes = []
+        for f in filas:
+            origenes.append(f)
+            key = (f["Origen"], int(f["IdOrigen"]))
+            efecto = efectos_valuacion.get(key)
+            if efecto is None or key not in valuaciones:
+                continue
+            fecha = _dia(efecto["fecha"])
+            if fecha is None or fecha < _dia(f["Fecha"]):
+                raise ValueError("La aplicación USD no puede preceder al documento de origen")
+            if efecto.get("pesos") is not None:
+                # Importe/fecha reconocidos en el libro del proveedor. El
+                # registro bancario sigue intacto en su fuente y auditoría.
+                f = dict(f)
+                f["Fecha"] = fecha
+                for campo in ("Deuda", "Credito"):
+                    if f.get(campo):
+                        f[campo] = abs(float(efecto["pesos"])) * (1 if f[campo] > 0 else -1)
+                origenes[-1] = f
+            group = (fecha, efecto["documento"])
+            event = eventos.setdefault(group, {"Fecha": fecha, "Documento": "Aplicación proveedor",
+                "Nro Documento": efecto["documento"], "Deuda": 0.0, "Credito": 0.0,
+                "Origen": "Aplicacion proveedor", "IdOrigen": int(f["IdOrigen"]), "SoloUSD": True})
+            importe = abs(float(valuaciones[key]))
+            if float(f["Deuda"] or 0):
+                event["Deuda"] = round(event["Deuda"] + importe, 4)
+            elif float(f["Credito"] or 0):
+                event["Credito"] = round(event["Credito"] + importe, 4)
+            valuaciones[key] = 0.0
+        filas = sorted([*origenes, *eventos.values()], key=lambda f: (_dia(f["Fecha"]), f["Origen"], int(f["IdOrigen"])))
     gobierna = moneda_que_gobierna(filas, compras)
     salida, avisos, saldo_pesos, saldo_dolares = _recorrer(filas, compras, cotizacion, entregas, None, tc_ventas, valuaciones)
     facturado_usd = sum(x["deudaOriginal"] for x in salida if x["moneda"] == DOLARES)
@@ -202,7 +243,18 @@ def _vista_en_memoria(refrescar: bool = False) -> tuple[dict[int, list], dict[in
                 valuaciones[(v["o"], int(v["i"]))] = abs(float(v["d"]))
         except Exception:
             pass  # todavía no se creó la tabla
-        _VISTA.update(t=time.time(), filas=dict(por_contacto), compras=compras, entregas=entregas, tc_ventas=tc_ventas, valuaciones=valuaciones)
+        efectos = {}
+        # Columnas opcionales agregadas por la conciliación036; instalación
+        # anterior mantiene sus valuaciones inmediatas sin perderlas.
+        if fetch_all("SELECT COL_LENGTH('dbo.ValuacionProveedor','FechaEfectoUSD') AS n", ())[0]["n"] is not None:
+            for v in fetch_all("SELECT Origen AS o,IdOrigen AS i,FechaEfectoUSD AS f,DocumentoEfectoUSD AS d "
+                               "FROM dbo.ValuacionProveedor WHERE FechaEfectoUSD IS NOT NULL", ()):
+                efectos[(v["o"], int(v["i"]))] = {"fecha": _dia(v["f"]), "documento": v["d"]}
+            if fetch_all("SELECT COL_LENGTH('dbo.ValuacionProveedor','ImporteReconocidoPesos') AS n", ())[0]["n"] is not None:
+                for v in fetch_all("SELECT Origen AS o,IdOrigen AS i,ImporteReconocidoPesos AS p FROM dbo.ValuacionProveedor "
+                                   "WHERE FechaEfectoUSD IS NOT NULL AND ImporteReconocidoPesos IS NOT NULL", ()):
+                    efectos[(v["o"], int(v["i"]))]["pesos"] = float(v["p"])
+        _VISTA.update(t=time.time(), filas=dict(por_contacto), compras=compras, entregas=entregas, tc_ventas=tc_ventas, valuaciones=valuaciones, efectos_valuacion=efectos)
     return _VISTA["filas"], _VISTA["compras"], _VISTA["entregas"]
 
 
@@ -216,7 +268,7 @@ def cuentas_con_tc_pactado() -> set[int]:
 def cargar_cuenta(id_contacto: int, refrescar: bool = False) -> dict:
     """La cuenta de la vista con el criterio bimonetario (solo lectura, desde la copia en memoria)."""
     filas, compras, entregas = _vista_en_memoria(refrescar)
-    return construir(filas.get(id_contacto, []), compras, cotizacion_bna(), entregas, id_contacto in cuentas_con_tc_pactado(), _VISTA.get("tc_ventas"), _VISTA.get("valuaciones"))
+    return construir(filas.get(id_contacto, []), compras, cotizacion_bna(), entregas, id_contacto in cuentas_con_tc_pactado(), _VISTA.get("tc_ventas"), _VISTA.get("valuaciones"), _VISTA.get("efectos_valuacion"))
 
 
 def cargar_cuentas(ids: list[int]) -> dict[int, dict]:
@@ -226,4 +278,4 @@ def cargar_cuentas(ids: list[int]) -> dict[int, dict]:
     filas, compras, entregas = _vista_en_memoria()
     cot = cotizacion_bna()
     pactados = cuentas_con_tc_pactado()
-    return {i: construir(filas.get(i, []), compras, cot, entregas, i in pactados, _VISTA.get("tc_ventas"), _VISTA.get("valuaciones")) for i in ids}
+    return {i: construir(filas.get(i, []), compras, cot, entregas, i in pactados, _VISTA.get("tc_ventas"), _VISTA.get("valuaciones"), _VISTA.get("efectos_valuacion")) for i in ids}

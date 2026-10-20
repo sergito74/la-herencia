@@ -6,6 +6,8 @@
 
 ## Summary
 
+Actualización20/10/2026: para reproducir la fecha real de aplicaciones del proveedor, extender las valuaciones existentes con fecha/comprobante de efectoUSD opcionales. El motor deriva el eventoUSD en esa fecha sin otro pago en pesos ni cambios de costo económico. Compatibilidad: valuaciones previas siguen inmediatas. Modelo y pruebas de fechas/agrupación en los documentos de esta feature; aplicación respaldada enWC.
+
 Se arma el método para llevar cada cuenta de `WC` a "refleja la realidad financiera", con las piezas que la spec pide: una **ficha por cuenta** con siete etapas y siete criterios de cierre medibles; un **detector de pagos sin factura** que empareja cada pago con las facturas que suma (y detectó, en un prototipo sobre datos reales, los 8 pagos que faltaban en Jauregui); **colas** A a I con orden de las más fáciles a las más complejas y **lotes** reversibles por regla; **saldos externos** del proveedor para conciliar; una **puerta** que impide aplicar el FIFO antes de completar documentos; un **control de archivos incompletos** de Dropbox (solo lectura); y un **tablero** con foto semanal y lista de preguntas.
 
 Enfoque técnico (detalle en [research.md](research.md)): un módulo nuevo `revision_cuentas` que reutiliza sin cambios las reglas de la auditoría (035), el recálculo FIFO (032) y la cuenta corriente de tarjetas (034). La etapa y la cola se **calculan** a partir de los datos (no se guardan), y solo se guardan las decisiones humanas (ficha, marcas, saldos externos, cortes, fotos). Los lotes son correcciones registradas de la 035 (mismo respaldo y reversión). No se agregan dependencias.

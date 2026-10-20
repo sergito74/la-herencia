@@ -1,5 +1,14 @@
 # Tasks: Método sistemático de revisión, conciliación y FIFO de cuentas
 
+## Extensión aprobada20/10/2026 — finales de soja y fecha de aplicación
+
+- [X] Documentar efectoUSD diferido opcional en ValuacionProveedor, preservando pesos y compatibilidad.
+- [X] Escribir pruebas simuladas antes del cambio: fallaron por ausencia del contrato; luego pasaron19tests bimonetarios incluyendo3nuevos.
+- [X] Implementar fecha/comprobante opcional y agrupación por aplicación; aislar cuentas y evitar doble crédito.
+- [X] RespaldarWC, cargar finales1231/1232 conPDF/0kg/IVA0 y registrar8aplicaciones segúnCA115924/123088.
+- [X] Verificar persistencia, totalidad de fuentes, originales intactos y eventosUSD en fechas reales; dejar diferencia fiscalNC120722$4,13 como no reconocida.
+- [X] NERA: extender opcionalmente importe reconocido en pesos sin mutar banco; prueba simulada y20tests bimonetarios pasaron, validar6aplicaciones/fechas/monedas en cuenta real.
+
 **Input**: documentos de diseño en `specs/036-revision-sistematica-cuentas/` (plan.md, spec.md, research.md, data-model.md, contracts/revision-cuentas-api.md, quickstart.md)
 
 **Prerequisitos**: feature 035 (auditoría de cuentas, hallazgos, correcciones registradas, `AuditoriaRevisiones*`), feature 032 (motor FIFO), feature 034 (tarjetas), base `WC` con corte de movimientos al 30/09/2026.

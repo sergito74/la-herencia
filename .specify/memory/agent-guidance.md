@@ -37,6 +37,13 @@ Este documento es la guía común de trabajo para Claude Code, Codex y cualquier
 - Si hay actividad simultánea, preservar los cambios del otro agente y volver a leer los archivos antes de editarlos. Ante una colisión concreta sobre el mismo archivo o una operación Git que afecte trabajo activo, coordinar ese conflicto puntual con el usuario. Las carpetas Git independientes (worktrees) son una opción para aislar trabajo paralelo, no un requisito para elegir herramienta; tampoco aíslan SQL Server.
 - La revisión cruzada puede repartirse entre Codex y Claude según la tarea; no hay una especialidad fija por herramienta. Estas reglas no autorizan invocar al otro agente, publicar, hacer push ni integrar ramas sin el alcance solicitado por el usuario.
 
+## Conciliación con resúmenes de proveedores
+
+- Premisa general aprobada por Sergio (20/10/2026): cuando exista resumen de cuenta del proveedor, el sistema debe reproducir ese libro al mismo corte: documentos, créditos, recibos, aplicaciones, tipos de cambio, fechas y saldos separados por moneda. No imponer FIFO, capacidad histórica errónea ni conversiones genéricas sobre una aplicación documentada por el proveedor.
+- Contrastar cada movimiento con comprobantes y registrar discrepancias. Conservar importes fiscales de los originales y movimientos bancarios reales; si difieren del resumen, reproducir la valuación/aplicación externa mediante los mecanismos de conciliación, con fuente y auditoría, sin falsificar el documento ni inventar un ajuste para cerrar en cero. Las diferencias internas son pendientes de registro/valuación, no deuda nueva por defecto.
+- Separar cuenta corriente de resultados: una compra o gasto exclusivamente en pesos puede tener costo económico convertido a dólares para el cultivo, sin modificar el libro del proveedor en dólares. No marcar un gasto real como diferencia de cambio para lograr esta separación. Aplicar igual criterio al pago y sus retenciones.
+- FIFO es un recurso para lo no respaldado por aplicaciones externas; preservar las imputaciones documentadas. Si falta resumen o cobertura de un período, explicitarlo y usar la evidencia disponible sin atribuir al proveedor un saldo o aplicación no comprobados. Esta premisa no habilita contactos, envíos de correo ni escrituras en portales sin autorización.
+
 ## Arquitectura y calidad
 
 - Stack objetivo: Python + FastAPI, SQL Server, Next.js + TypeScript, Tailwind CSS y TanStack Query, según la Constitución vigente.

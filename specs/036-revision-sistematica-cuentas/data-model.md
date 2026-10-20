@@ -4,6 +4,14 @@ Todo en `WC`. Las tablas nuevas se crean con `backend/scripts/crear_esquema_revi
 
 ## Tablas nuevas
 
+### Extensión20/10/2026: efecto diferido de ValuacionProveedor
+
+La tabla existente `ValuacionProveedor` agrega dos columnas opcionales: `FechaEfectoUSD date NULL` y `DocumentoEfectoUSD varchar(50) NULL`. NULL conserva el comportamiento anterior. Si se informan, el origen conserva su importe/fecha en pesos y USD0 hasta su aplicación; su valuaciónUSD se presenta en la fecha real bajo el comprobante indicado, agrupando partes de la misma aplicación. No se crea otro pago ni se duplica el importe en pesos. El cálculo usa solo efectos cuyos orígenes pertenecen a las filas de esa cuenta, sin mutar entradas ni mezclar cuentas. Se deriva un movimiento de presentación `Aplicacion proveedor` con monedaDolares y pesos0; no es otro registro financiero nominal. La fecha no puede preceder al origen.
+
+ExtensiónNERA del mismo día: `ImporteReconocidoPesos money NULL` permite registrar un importe nominal reconocido en el libro distinto del banco. Si está informado junto con fecha/comprobante, la representación de cuenta toma ese importe y fecha, sin modificar el registro bancario. Caso9880148,00 de banco versus9880147,75 reconocido29/08/2023; diferencia0,25 auditada en tesorería, no deuda del proveedor. Las filas anteriores conNULL conservan su importe/fecha de origen. Prueba simulada específica y verificación sobre cuenta real;20tests bimonetarios pasaron.
+
+Caso respaldado: finales de soja04/09/2024, aplicadas22/05/2025 porCA123088/USD83,17; y cheque recibido30/12/2024, aplicado09/01/2025 porCA115924/USD7913,67. Ampliación con respaldo verificado y pruebas simuladas de fecha, agrupación, ausencia de duplicación y aislamiento. No altera costos de cultivos ni valuaciones antiguas sin fecha de efecto.
+
 ### `RevisionCortes`
 
 El corte vigente de todo el método (D7). La fila más nueva manda; las anteriores quedan de historial.
