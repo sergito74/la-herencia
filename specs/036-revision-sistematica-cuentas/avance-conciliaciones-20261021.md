@@ -66,8 +66,8 @@ Estado para retomar las conciliaciones de cuentas corrientes (Claude o Codex). T
 ## 3. Pendientes (en orden)
 
 1. **Condominio LSC 549 ($4.134)** — cheque propio 30990496 del 20/03/2012, comentario "IVA e IIBB Condominio": la empresa
-   pagó impuestos del condominio. Propuesta pendiente de OK de Sergio: cargo al socio "Cond LSC" (MovimientosCuentaSocio,
-   AsignacionGasto) + comprobante en el contacto. El condominio es socio 3; su cuenta (41 mov. desde dic-2023, saldo a su
+   pagó impuestos del condominio. **EN PAUSA por Sergio (21/10/2026): lo quiere analizar y buscar más información; no
+   registrar nada ni volver a proponerlo hasta que él lo retome.** El condominio es socio 3; su cuenta (41 mov. desde dic-2023, saldo a su
    favor $8.989.678 según planilla) se revisa con las cuentas de socios.
 2. **Cuentas sin ficha** (de menor a mayor): Visa Galicia 532, UATRE 315, Estudio Criado 115, Virginia Giamberardini 564,
    J y M de la Serna 47, Municipalidad 72, ARBA 12, Banco Nación 369, Sergio 375, Giamigli de Bolívar 386, AFIP 119,
