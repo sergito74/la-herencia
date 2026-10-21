@@ -64,6 +64,7 @@ Estado para retomar las conciliaciones de cuentas corrientes (Claude o Codex). T
 | Visa Galicia 532 | Saldo −$568.318,16 = resumen VI…7822346 (cierre 01/10/2026, vto 13/10): posterior al corte, pendiente justificado | — |
 | UATRE 315 | $0: DEBIN 31/01/2025 $604.224,36 era boleta municipal → Municipalidad 72; DEBIN 28/08/2025 $130.000 = carga a Mercado Pago (traspaso interno); pago efectivo 395 duplicado de ML 23 borrado; redondeo $102,50 | `uatre_036` |
 | Estudio Criado 115 | Saldo = FC 00003-00000881 (08/10/2026, posterior al corte); redondeo $0,45 (RDD115-260930) | `redondeos_cuentas_pesos_036` |
+| J y M de la Serna 47 | CERRADA $0: complemento = parte B = precio B x cantidad (vista la cuenta una vez); residuo 2015-2020 por venta (comisión B fuera de sistema); Breccia fuera (gasto Piccirilli $280.000 sin factura, pagó Sergio ICBC); Galicia Broker $20.174,34 = reconocimiento Galicia Seguros (NCI575-250710); AJ 293 vacuna aftosa $17.880; resumen J y M 25/11/2025 = sistema | `jym_*_036`, `breccia_fuera_jym_036`, `piccirilli_mantenimiento_036`, `galicia_seguros_reconocimiento_036` |
 | Galicia 29/09/2026 $2.000.000 | Traspaso interno Galicia→BNA ya registrado (TraspasosInternosTesoreria) | — |
 
 ## 3. Pendientes (en orden)
@@ -76,11 +77,6 @@ Estado para retomar las conciliaciones de cuentas corrientes (Claude o Codex). T
    - Virginia Giamberardini 564 (+$1.655.760): es Ceci (socia 4). 4 de las 5 transferencias son "Retiro por aportes varios" de la
      hoja *Cuenta Cond LSC* (14/09/2024, 11/11/2025, 11/12/2025, 11/03/2026); la de $485.400 del 10/09/2025 no figura. Depende del
      Condominio (EN PAUSA): no registrar.
-   - J y M de la Serna 47: REGLA (Sergio 21/10): Complemento = cuenta B; precio B = 0; cobro B en efectivo (planilla) como
-     Pagos efectivo tipo 3 caja La Herencia/Blue (`jym_cuenta_b_036`). Ventas = PDF. Queda −$127.328,30 = residuo 2017-2020
-     (−5.033,94) + Galicia 2658 "GALICIA BROKER ASESO 30708099119" $20.174,34 (no es J y M; Galicia Seguros 575 está cerrada) +
-     oct-2025 +17.879,98 + Breccia FC 00002-23 $120.000 (energizador Gacela, 11/05/2026) cargado como pagado por caja J y M
-     sin estar descontado en ninguna liquidación. Preguntado a Sergio.
    - Municipalidad 72: boletas no descargadas generadas (`municipalidad_boletas_036`: tasa vial cuotas 2-6/2025 y 2-3/2026,
      5 guías SIN COPIA). Queda +$50.525,29: cuota 03/2021 ($35.864,32) pagada dos veces (Lucy 04/05/2021 y Galicia 31/05/2021)
      + diferencias chicas 2011-2022.
