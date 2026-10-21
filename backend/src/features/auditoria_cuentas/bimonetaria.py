@@ -362,6 +362,14 @@ def _vista_en_memoria(refrescar: bool = False) -> tuple[dict[int, list], dict[in
             "SELECT c.IdDeuda AS id, c.Moneda AS moneda, c.[Tipo de Cambio] AS tc, c.[Ajusta Tipo Cambio] AS ajusta, v.vto "
             "FROM dbo.Compras c LEFT JOIN (SELECT IdCompra, MAX([Fecha de vencimiento]) AS vto FROM dbo.[Vencimiento Compras] GROUP BY IdCompra) v "
             "ON v.IdCompra = c.IdDeuda", ())}
+        # La vista expresa en pesos (GranTotal x TC) las compras en US$ (21/10/2026, scripts/vista_compras_usd_en_pesos.py);
+        # este módulo trabaja con el importe original del documento: se vuelve a dólares con el mismo TC.
+        for filas_c in por_contacto.values():
+            for f in filas_c:
+                c = compras.get(int(f["IdOrigen"])) if f["Origen"] == "Compras" else None
+                if c and c["moneda"] == DOLARES and (c["tc"] or 0) > 1:
+                    f["Deuda"] = round(float(f["Deuda"] or 0) / float(c["tc"]), 6)
+                    f["Credito"] = round(float(f["Credito"] or 0) / float(c["tc"]), 6)
         try:
             for r in fetch_all("SELECT IdCompra AS a, IdCompraRelacionada AS b FROM dbo.CompraDocumentosRelacionados", ()):
                 for x, y in ((int(r["a"]), int(r["b"])), (int(r["b"]), int(r["a"]))):
