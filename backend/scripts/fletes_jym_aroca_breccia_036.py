@@ -15,7 +15,8 @@ from src.db.connection import _assert_target_is_wc, execute_write_transaction, f
 from src.features.vinculos.backup import backup_verificado
 
 JYM = 47
-FLETES = [(4662, "2026-05-18", 61710.00, 2143521583), (5665, "2026-05-11", 120000.00, 2143522639)]
+# Breccia (5665) sacado el 21/10/2026: no es flete ni tiene relación con J y M (plomero, mantenimiento del campo). Ver breccia_fuera_jym_036.
+FLETES = [(4662, "2026-05-18", 61710.00, 2143521583)]
 
 if __name__ == "__main__":
     _assert_target_is_wc()
