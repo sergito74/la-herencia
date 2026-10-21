@@ -76,13 +76,17 @@ Estado para retomar las conciliaciones de cuentas corrientes (Claude o Codex). T
    - Virginia Giamberardini 564 (+$1.655.760): es Ceci (socia 4). 4 de las 5 transferencias son "Retiro por aportes varios" de la
      hoja *Cuenta Cond LSC* (14/09/2024, 11/11/2025, 11/12/2025, 11/03/2026); la de $485.400 del 10/09/2025 no figura. Depende del
      Condominio (EN PAUSA): no registrar.
-   - J y M de la Serna 47 (+$5.017.181): el sistema registra ventas por encima de la liquidación PDF (precio B + Complemento):
-     mar-2025 +$1.986.678, oct-2025 (0003-16178) +$857.016, mar-2026 (0003-16822) +$2.300.816. Cobros B en efectivo en la planilla
-     (Caja Efectivo Pesos): 22/04/2025 $982.000, 18/11/2025 $403.000, 08/04/2026 $1.137.200 — no están en el sistema. Aun con ellos
-     quedan ~$2,62 M: falta definir con Sergio cómo se registra la parte B / complemento.
-   - Municipalidad 72 (+$6,21 M; recibió el DEBIN de $604.224,36 que estaba en UATRE): 7 pagos de tasa vial por DEBIN (Nuevo
-     Banco de Santa Fe, CUIT 30707743987) 2025-2026 de $0,66–1,04 M sin boleta cargada. Sigue "pendiente" a pedido de Sergio.
-   - ARBA 12 (+$7,12 M): $9,29 M de pagos sin boleta (recaudaciones bancarias + pagos grandes 2025 sin boleta): backfill de boletas.
+   - J y M de la Serna 47: REGLA (Sergio 21/10): Complemento = cuenta B; precio B = 0; cobro B en efectivo (planilla) como
+     Pagos efectivo tipo 3 caja La Herencia/Blue (`jym_cuenta_b_036`). Ventas = PDF. Queda −$127.328,30 = residuo 2017-2020
+     (−5.033,94) + Galicia 2658 "GALICIA BROKER ASESO 30708099119" $20.174,34 (no es J y M; Galicia Seguros 575 está cerrada) +
+     oct-2025 +17.879,98 + Breccia FC 00002-23 $120.000 (energizador Gacela, 11/05/2026) cargado como pagado por caja J y M
+     sin estar descontado en ninguna liquidación. Preguntado a Sergio.
+   - Municipalidad 72: boletas no descargadas generadas (`municipalidad_boletas_036`: tasa vial cuotas 2-6/2025 y 2-3/2026,
+     5 guías SIN COPIA). Queda +$50.525,29: cuota 03/2021 ($35.864,32) pagada dos veces (Lucy 04/05/2021 y Galicia 31/05/2021)
+     + diferencias chicas 2011-2022.
+   - UATRE 315: el redondeo de $102,50 NO lo aceptó Sergio: revisar (ver respuesta 21/10).
+   - ARBA 12 (+$7,12 M): ESPERAR a Sergio: baja la cuenta corriente del inmobiliario para separar percepciones/retenciones IIBB,
+     liquidaciones IIBB e inmobiliario.
    - Sin mirar todavía: Banco Nación 369, Sergio 375, Giamigli de Bolívar 386, AFIP 119,
    Albina Iglina (Lucy) 390, Banco Galicia 518.
 3. **Ya revisadas, quedan como pendientes justificados**: Sancor 171 (débito sep-2026 posterior al corte), Rivas 5666 y
