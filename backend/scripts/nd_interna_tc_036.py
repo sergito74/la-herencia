@@ -28,18 +28,19 @@ def _renglones(contacto, nro_factura, importe, texto):
              'idCampania': r['IdCampaña']} for c, r in zip(partes, src) if c]
 
 
-def crear(contacto, ajustes):
-    """Crea las notas internas que falten. Devuelve {numero: IdDeuda}. Debe llamarse dentro de reconciliation_transaction()."""
+def crear(contacto, ajustes, prefijos=('NDI', 'NCI'), texto='Dif. TC interna', ajusta=True):
+    """Crea las notas internas que falten. Devuelve {numero: IdDeuda}. Debe llamarse dentro de reconciliation_transaction().
+    Con prefijos=('RDD','RDC'), texto='Redondeo' y ajusta=False sirve para redondeos de cuentas en pesos."""
     creadas = {}
     for fecha, importe, nro_factura, motivo in ajustes:
         f = fecha if isinstance(fecha, datetime) else datetime(fecha.year, fecha.month, fecha.day)
-        nro = f"{'NDI' if importe > 0 else 'NCI'}{contacto}-{f:%y%m%d}"
+        nro = f"{prefijos[0] if importe > 0 else prefijos[1]}{contacto}-{f:%y%m%d}"
         if fetch_all('SELECT 1 x FROM dbo.Compras WHERE IdContacto=? AND [Nro Documento]=?', (contacto, nro)):
             continue
         ref = fetch_all('SELECT IdDeuda i FROM dbo.Compras WHERE IdContacto=? AND [Nro Documento]=?', (contacto, nro_factura))[0]['i']
         cab = {'idContacto': contacto, 'fecha': f, 'tipoDocumento': 'Nota de Débito' if importe > 0 else 'Nota de Crédito', 'tipo': 'X',
-               'numeroDocumento': nro, 'moneda': 'Pesos', 'tipoDeCambio': 1, 'ajustaTipoCambio': True}
-        lineas = _renglones(contacto, nro_factura, importe, f'Dif. TC interna {nro_factura}')
+               'numeroDocumento': nro, 'moneda': 'Pesos', 'tipoDeCambio': 1, 'ajustaTipoCambio': ajusta}
+        lineas = _renglones(contacto, nro_factura, importe, f'{texto} {nro_factura}')
         i = execute_write_transaction([compras._cabecera_insert_statement(cab)] + [compras._linea_insert_statement(l) for l in lineas] +
                                       [compras._vencimiento_insert_statement({'fechaVencimiento': f})])[0]
         g = fetch_all('SELECT GranTotal g FROM dbo.vw_Cns_Total_Compra WHERE IdDeuda=?', (i,))[0]['g']
