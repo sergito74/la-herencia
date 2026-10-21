@@ -63,6 +63,7 @@ Estado para retomar las conciliaciones de cuentas corrientes (Claude o Codex). T
 | Irma Miranda 46 | $0 (ajustes de sueldo pagados por socios vinculados; sueldo sep-2026 Lucy 01/10) | `irma_miranda_036` |
 | Visa Galicia 532 | Saldo −$568.318,16 = resumen VI…7822346 (cierre 01/10/2026, vto 13/10): posterior al corte, pendiente justificado | — |
 | UATRE 315 | $0: DEBIN 31/01/2025 $604.224,36 era boleta municipal → Municipalidad 72; DEBIN 28/08/2025 $130.000 = carga a Mercado Pago (traspaso interno); pago efectivo 395 duplicado de ML 23 borrado; redondeo $102,50 | `uatre_036` |
+| Estudio Criado 115 | Saldo = FC 00003-00000881 (08/10/2026, posterior al corte); redondeo $0,45 (RDD115-260930) | `redondeos_cuentas_pesos_036` |
 | Galicia 29/09/2026 $2.000.000 | Traspaso interno Galicia→BNA ya registrado (TraspasosInternosTesoreria) | — |
 
 ## 3. Pendientes (en orden)
@@ -71,8 +72,18 @@ Estado para retomar las conciliaciones de cuentas corrientes (Claude o Codex). T
    pagó impuestos del condominio. **EN PAUSA por Sergio (21/10/2026): lo quiere analizar y buscar más información; no
    registrar nada ni volver a proponerlo hasta que él lo retome.** El condominio es socio 3; su cuenta (41 mov. desde dic-2023, saldo a su
    favor $8.989.678 según planilla) se revisa con las cuentas de socios.
-2. **Cuentas sin ficha** (de menor a mayor): Estudio Criado 115, Virginia Giamberardini 564,
-   J y M de la Serna 47, Municipalidad 72 (recibió el DEBIN de $604.224,36 que estaba en UATRE), ARBA 12, Banco Nación 369, Sergio 375, Giamigli de Bolívar 386, AFIP 119,
+2. **Cuentas sin ficha — esperan respuesta de Sergio** (21/10/2026):
+   - Virginia Giamberardini 564 (+$1.655.760): es Ceci (socia 4). 4 de las 5 transferencias son "Retiro por aportes varios" de la
+     hoja *Cuenta Cond LSC* (14/09/2024, 11/11/2025, 11/12/2025, 11/03/2026); la de $485.400 del 10/09/2025 no figura. Depende del
+     Condominio (EN PAUSA): no registrar.
+   - J y M de la Serna 47 (+$5.017.181): el sistema registra ventas por encima de la liquidación PDF (precio B + Complemento):
+     mar-2025 +$1.986.678, oct-2025 (0003-16178) +$857.016, mar-2026 (0003-16822) +$2.300.816. Cobros B en efectivo en la planilla
+     (Caja Efectivo Pesos): 22/04/2025 $982.000, 18/11/2025 $403.000, 08/04/2026 $1.137.200 — no están en el sistema. Aun con ellos
+     quedan ~$2,62 M: falta definir con Sergio cómo se registra la parte B / complemento.
+   - Municipalidad 72 (+$6,21 M; recibió el DEBIN de $604.224,36 que estaba en UATRE): 7 pagos de tasa vial por DEBIN (Nuevo
+     Banco de Santa Fe, CUIT 30707743987) 2025-2026 de $0,66–1,04 M sin boleta cargada. Sigue "pendiente" a pedido de Sergio.
+   - ARBA 12 (+$7,12 M): $9,29 M de pagos sin boleta (recaudaciones bancarias + pagos grandes 2025 sin boleta): backfill de boletas.
+   - Sin mirar todavía: Banco Nación 369, Sergio 375, Giamigli de Bolívar 386, AFIP 119,
    Albina Iglina (Lucy) 390, Banco Galicia 518.
 3. **Ya revisadas, quedan como pendientes justificados**: Sancor 171 (débito sep-2026 posterior al corte), Rivas 5666 y
    Sasso 5667 (facturas 14/10/2026), Electricidad Lavalle 32 (dejado a propósito por Sergio; no proponer la NC).
