@@ -90,10 +90,18 @@ def valuar_usd_por_comprobante(filas: list[dict], compras: dict[int, dict],
 
     valuaciones = valuaciones or {}
     usd: deque = deque()   # [signo, dólares pendientes, tc, vencimiento, IdOrigen]
-    pesos: deque = deque()  # [clave, signo, pesos pendientes, cancela_usd, comprobantes relacionados]
+    # [clave, signo, pesos pendientes, cancela_usd, comprobantes relacionados, dólares fijos (valuación explícita) o None]
+    pesos: deque = deque()
     salida: dict[tuple[str, int], float] = {}
 
     def aplicar(p: list, d: list) -> None:
+        if p[5] is not None:  # fila con dólares fijos: cancela por sus dólares; su valuación ya cuenta en el saldo
+            usd_ap = min(p[5], d[1])
+            if p[5] > 1e-9:
+                p[2] -= p[2] * usd_ap / p[5]
+            p[5] -= usd_ap
+            d[1] -= usd_ap
+            return
         aplicado = min(p[2], d[1] * d[2])
         p[2] -= aplicado
         d[1] -= aplicado / d[2]
@@ -122,7 +130,7 @@ def valuar_usd_por_comprobante(filas: list[dict], compras: dict[int, dict],
         vivos = [p for p in pesos if p[2] > 1e-6]
         for a in vivos:
             for b in vivos:
-                if a[2] > 1e-6 and b[2] > 1e-6 and a[1] == -b[1]:
+                if a[2] > 1e-6 and b[2] > 1e-6 and a[1] == -b[1] and a[5] is None and b[5] is None:
                     m = min(a[2], b[2])
                     a[2] -= m
                     b[2] -= m
@@ -138,12 +146,12 @@ def valuar_usd_por_comprobante(filas: list[dict], compras: dict[int, dict],
         compra = compras.get(int(f["IdOrigen"]), {}) if f["Origen"] == "Compras" else {}
         hoy = _dia(f["Fecha"])
         if compra.get("moneda") == DOLARES and (compra.get("tc") or 0) > 1 and signo > 0:
-            pesos.append([clave, signo, abs(importe) * float(compra["tc"]), True, compra.get("rel") or set()])
+            pesos.append([clave, signo, abs(importe) * float(compra["tc"]), True, compra.get("rel") or set(), None])
         elif compra.get("moneda") == DOLARES and (compra.get("tc") or 0) > 1:
             usd.append([signo, abs(importe), float(compra["tc"]), _dia(compra.get("vto")) or hoy, int(f["IdOrigen"])])
         elif valuaciones.get(clave):
-            # valuación explícita (p.ej. anticipo financiero en US$): se cancela por su propio camino, no con los pesos del día
-            usd.append([signo, abs(valuaciones[clave]), abs(importe) / abs(valuaciones[clave]), date.max, None])
+            # valuación explícita (libro del proveedor, anticipo en US$): cancela por sus dólares fijos
+            pesos.append([clave, signo, abs(importe), True, compra.get("rel") or set(), abs(valuaciones[clave])])
         elif compra.get("ajusta") and any(compras.get(r, {}).get("moneda") == DOLARES and (compras[r].get("tc") or 0) > 1
                                           for r in compra.get("rel") or ()):
             rel = next(r for r in sorted(compra["rel"]) if compras.get(r, {}).get("moneda") == DOLARES and (compras[r].get("tc") or 0) > 1)
@@ -153,7 +161,7 @@ def valuar_usd_por_comprobante(filas: list[dict], compras: dict[int, dict],
         else:
             # una nota de ajuste en pesos sin comprobante en dólares relacionado (p.ej. diferencia de cambio de un anticipo
             # financiero que en el sistema está en pesos) cancela como cualquier peso
-            pesos.append([clave, signo, abs(importe), True, compra.get("rel") or set()])
+            pesos.append([clave, signo, abs(importe), True, compra.get("rel") or set(), None])
         cruzar(hoy)
     if abiertos is not None:
         abiertos.extend([{"tipo": "usd", "signo": d[0], "dolares": d[1], "tc": d[2], "vencimiento": d[3], "idCompra": d[4]} for d in usd] +
