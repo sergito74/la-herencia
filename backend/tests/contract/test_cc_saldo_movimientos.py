@@ -40,7 +40,7 @@ async def test_get_saldo(client, monkeypatch):
 
     response = await _get(client, "/api/cuentas-corrientes/contactos/42/saldo")
     assert response.status_code == 200
-    assert response.json() == {"idContacto": 42, "saldoParcial": -60500.00}
+    assert response.json() == {"idContacto": 42, "saldoParcial": -60500.00, "saldoDolares": None, "moneda": None}
 
 
 @pytest.mark.anyio

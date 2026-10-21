@@ -58,10 +58,12 @@ def cuenta_corriente_xlsx(
     wb = Workbook()
     ws = _hoja(
         wb, "Movimientos",
-        [("Fecha", 12), ("Documento", 16), ("N° Documento", 18), ("Deuda", 16), ("Crédito", 16), ("Saldo", 16)],
+        [("Fecha", 12), ("Documento", 16), ("N° Documento", 18), ("Deuda", 16), ("Crédito", 16), ("Saldo", 16),
+         ("Saldo US$", 14), ("Importe US$", 14), ("TC", 10)],
     )
     for m in rows:
-        ws.append([m["fecha"], m["documento"], m["numeroDocumento"], m["deuda"], m["credito"], m.get("saldoParcial")])
+        ws.append([m["fecha"], m["documento"], m["numeroDocumento"], m["deuda"], m["credito"], m.get("saldoParcial"),
+                   m.get("saldoDolares"), m.get("importeOriginal"), m.get("tipoCambio")])
     _cerrar(ws, {0: _FECHA, 3: _PESOS, 4: _PESOS, 5: _PESOS})
 
     if ws.max_row == 1:

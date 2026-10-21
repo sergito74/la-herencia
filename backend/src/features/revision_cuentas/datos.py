@@ -52,9 +52,31 @@ def movimientos_de_cuenta(id_contacto: int, hasta: date | None = None) -> list[d
     filas = fetch_all(
         "SELECT Fecha, Documento, [Nro Documento] AS nro, Deuda, Credito, Origen, IdOrigen "
         "FROM dbo.vw_MovimientosCuenta_Base WHERE IdContacto = ?" + filtro + " ORDER BY Fecha, Origen, IdOrigen", tuple(params))
+    bim = _bimonetaria(id_contacto)
+    if bim is not None:  # cuenta con documentos en US$: la vista suma dólares como pesos; se usan los pesos valuados
+        return [{"fecha": f["fecha"], "documento": f["documento"], "nro": f["numeroDocumento"],
+                 "deuda": round(f["deudaPesos"], 2), "credito": round(f["creditoPesos"], 2),
+                 "origen": f["origenTipo"], "idOrigen": int(f["idOrigen"] or 0)}
+                for f in bim["filas"] if hasta is None or f["fecha"] <= hasta]
     return [{"fecha": _dia(f["Fecha"]), "documento": f["Documento"], "nro": f["nro"],
              "deuda": round(float(f["Deuda"] or 0), 2), "credito": round(float(f["Credito"] or 0), 2),
              "origen": f["Origen"], "idOrigen": int(f["IdOrigen"]) if f["IdOrigen"] is not None else 0} for f in filas]
+
+
+def _bimonetaria(id_contacto: int) -> dict | None:
+    """Valuación bimonetaria de la cuenta si tiene documentos en US$ (None si es solo en pesos).
+
+    `vw_MovimientosCuenta_Base` pone el importe en dólares de esos documentos en la columna de pesos, sin el tipo de
+    cambio; para esas cuentas el saldo correcto es el de la valuación bimonetaria (la misma de los cierres, 036)."""
+    from src.features.auditoria_cuentas.bimonetaria import cargar_cuenta
+
+    c = cargar_cuenta(id_contacto)
+    return c if c["tieneDolares"] else None
+
+
+def _saldo_bimonetario_al(cuenta: dict, corte: date) -> float:
+    filas = [f for f in cuenta["filas"] if f["fecha"] <= corte]
+    return round(filas[-1]["saldoPesos"], 2) if filas else 0.0
 
 
 def _dia_siguiente(d: date) -> datetime:
@@ -64,7 +86,10 @@ def _dia_siguiente(d: date) -> datetime:
 
 
 def saldo_al_corte(id_contacto: int, corte: date) -> float:
-    """Saldo (crédito menos deuda) de una cuenta hasta el día de corte inclusive."""
+    """Saldo (crédito menos deuda) de una cuenta hasta el día de corte inclusive (valuación bimonetaria si tiene US$)."""
+    bim = _bimonetaria(id_contacto)
+    if bim is not None:
+        return _saldo_bimonetario_al(bim, corte)
     f = fetch_one("SELECT SUM(Credito) - SUM(Deuda) AS s FROM dbo.vw_MovimientosCuenta_Base WHERE IdContacto = ? AND Fecha < ?",
                   (id_contacto, _dia_siguiente(corte)))
     return round(float(f["s"] or 0), 2) if f else 0.0
@@ -74,7 +99,13 @@ def saldos_al_corte(corte: date) -> dict[int, float]:
     """Saldo al corte de todas las cuentas con movimientos, en una sola consulta."""
     filas = fetch_all("SELECT IdContacto AS i, SUM(Credito) - SUM(Deuda) AS s FROM dbo.vw_MovimientosCuenta_Base "
                       "WHERE IdContacto IS NOT NULL AND Fecha < ? GROUP BY IdContacto", (_dia_siguiente(corte),))
-    return {int(f["i"]): round(float(f["s"] or 0), 2) for f in filas}
+    saldos = {int(f["i"]): round(float(f["s"] or 0), 2) for f in filas}
+    from src.features.auditoria_cuentas.bimonetaria import cargar_cuentas
+
+    for i, c in cargar_cuentas(list(saldos)).items():  # cuentas con US$: saldo valuado, no la suma de la vista
+        if c["tieneDolares"]:
+            saldos[i] = _saldo_bimonetario_al(c, corte)
+    return saldos
 
 
 def actividad_de_cuentas(hasta: date | None = None) -> dict[int, dict]:

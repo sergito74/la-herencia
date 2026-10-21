@@ -19,6 +19,9 @@ export interface ContactosListResponse {
 export interface Saldo {
   idContacto: number;
   saldoParcial: number | null;
+  /** Valuación bimonetaria (036): saldo en US$ (solo cuentas con documentos en dólares) y moneda que gobierna. */
+  saldoDolares?: number | null;
+  moneda?: string | null;
 }
 
 export interface Origen {
@@ -82,6 +85,11 @@ export interface MovimientoCuentaCorriente {
   /** Saldo acumulado hasta este movimiento — replica la columna que
    * muestra el formulario Access real (SbfrmMovCuenta). */
   saldoParcial: number | null;
+  /** Valuación bimonetaria (036): saldo acumulado en US$; en documentos en dólares, importe original en US$ y TC. */
+  saldoDolares?: number | null;
+  moneda?: string | null;
+  importeOriginal?: number | null;
+  tipoCambio?: number | null;
   origen: Origen;
   /** Valores crudos de `vw_MovimientosCuenta_Base.Origen`/`IdOrigen`
    * (022-reasignacion-contacto) — usados por el botón "Reasignar". */

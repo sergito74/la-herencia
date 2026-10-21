@@ -25,6 +25,8 @@ class ContactosListResponse(BaseModel):
 class Saldo(BaseModel):
     idContacto: int
     saldoParcial: float | None = None
+    saldoDolares: float | None = None
+    moneda: str | None = None
 
 
 class SaldoContacto(BaseModel):
@@ -95,6 +97,12 @@ class MovimientoCuentaCorriente(BaseModel):
     # Replica el formulario Access real SbfrmMovCuenta, que muestra esta
     # columna por fila, no solo el total.
     saldoParcial: float | None = None
+    # Valuación bimonetaria (036): saldo acumulado en US$ (solo cuentas con documentos en dólares) y, para documentos en
+    # dólares, su importe original en US$ (positivo = deuda) y el tipo de cambio con el que se pasó a pesos.
+    saldoDolares: float | None = None
+    moneda: str | None = None
+    importeOriginal: float | None = None
+    tipoCambio: float | None = None
     origen: Origen
     # Valores crudos de `vw_MovimientosCuenta_Base.Origen`/`IdOrigen`
     # (022-reasignacion-contacto, research.md §4) — el botón "Reasignar"

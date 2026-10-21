@@ -19,7 +19,7 @@ import { DataTable, type DataTableColumn, type SortState } from "@/components/ui
 import { FilterBar, FilterField, FilterSubmitButton, filterInputClass } from "@/components/ui/FilterBar";
 import { KpiCard } from "@/components/ui/KpiCard";
 import { ErrorState, LoadingState } from "@/components/ui/States";
-import { formatMoneda, formatFecha } from "@/lib/format";
+import { formatMoneda, formatFecha, formatMonto } from "@/lib/format";
 
 // Valores confirmados de `Tipo Contacto` contra datos reales (data-model.md).
 const TIPOS_CONTACTO = [
@@ -74,6 +74,35 @@ function buildColumns(onReasignado: () => void): DataTableColumn<MovimientoCuent
         {m.saldoParcial != null ? formatMoneda(m.saldoParcial) : "—"}
       </span>
     ),
+  },
+  {
+    key: "dolares",
+    header: "US$",
+    align: "right",
+    numeric: true,
+    render: (m) =>
+      m.moneda === "Dolares" && m.importeOriginal != null ? (
+        <span className="text-xs text-ink-secondary" title={m.tipoCambio ? `TC ${formatMonto(m.tipoCambio)}` : undefined}>
+          {formatMoneda(Math.abs(m.importeOriginal), "Dolares")}
+          {m.tipoCambio ? ` · TC ${formatMonto(m.tipoCambio)}` : ""}
+        </span>
+      ) : (
+        ""
+      ),
+  },
+  {
+    key: "saldoDolares",
+    header: "Saldo US$",
+    align: "right",
+    numeric: true,
+    render: (m) =>
+      m.saldoDolares != null ? (
+        <span className={m.saldoDolares < 0 ? "text-status-danger" : "text-status-success"}>
+          {formatMoneda(m.saldoDolares, "Dolares")}
+        </span>
+      ) : (
+        ""
+      ),
   },
   { key: "origen", header: "Origen", render: (m) => <OrigenMovimiento origen={m.origen} /> },
   {
@@ -293,6 +322,13 @@ export function CuentaCorriente() {
                 saldo?.saldoParcial == null ? "neutral" : saldo.saldoParcial < 0 ? "danger" : "success"
               }
             />
+            {saldo?.saldoDolares != null && (
+              <KpiCard
+                label={saldo.moneda === "Pesos" ? "Saldo US$" : "Saldo US$ (gobierna)"}
+                value={formatMoneda(saldo.saldoDolares, "Dolares")}
+                tone={saldo.saldoDolares < 0 ? "danger" : saldo.saldoDolares > 0 ? "success" : "neutral"}
+              />
+            )}
             <a
               href={urlExportarCuenta(selected.idContacto, {
                 fechaDesde: appliedDates.fechaDesde || undefined,

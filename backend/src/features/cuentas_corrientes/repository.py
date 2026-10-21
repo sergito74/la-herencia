@@ -54,31 +54,19 @@ def search_contactos(q: str | None, tipo_contacto: str | None) -> list[dict]:
 
 
 def get_saldo(id_contacto: int) -> dict | None:
-    """Saldo actual del contacto (FR-003). Fuente de verdad, sin recalcular.
+    """Saldo actual del contacto con la valuación bimonetaria (036, 21/10/2026).
 
-    BUG CORREGIDO 2026-09-17: `vw_MovimientosCuenta_Saldo` devuelve una
-    fila por movimiento con un saldo ACUMULADO corriente (`SaldoParcial`),
-    no una fila única por contacto — confirmado inspeccionando el
-    formulario Access real `SbfrmMovCuenta` (RecordSource ordena
-    `Fecha, Origen, IdOrigen`, mismo orden usado acá). La versión anterior
-    de esta función no tenía `ORDER BY` y devolvía el `SaldoParcial` de
-    una fila arbitraria (la primera que entregaba SQL Server sin orden
-    definido) en vez del saldo acumulado final. `TOP 1` con el mismo
-    orden invertido (`DESC`) da la última fila de la secuencia, que es el
-    saldo real vigente.
+    La vista `vw_MovimientosCuenta_Base` pone el importe en US$ de los documentos en dólares en la misma columna que los
+    pesos (no los multiplica por el tipo de cambio), así que su `SaldoParcial` mezcla monedas. La valuación bimonetaria
+    pasa cada documento a pesos a su tipo de cambio y aplica las reglas de dólares (es la que usan las fichas de cierre).
     """
-    sql = """
-        SELECT TOP 1
-            IdContacto AS idContacto,
-            SaldoParcial AS saldoParcial
-        FROM dbo.vw_MovimientosCuenta_Saldo
-        WHERE IdContacto = ?
-        ORDER BY Fecha DESC, Origen DESC, IdOrigen DESC
-    """
-    row = fetch_one(sql, (id_contacto,))
-    if row is None:
+    from src.features.auditoria_cuentas.bimonetaria import cargar_cuenta
+
+    c = cargar_cuenta(id_contacto)
+    if not c["filas"]:
         return None
-    return {"idContacto": row["idContacto"], "saldoParcial": row.get("saldoParcial")}
+    return {"idContacto": id_contacto, "saldoParcial": round(c["saldoPesos"], 2),
+            "saldoDolares": round(c["saldoDolares"], 2) if c["tieneDolares"] else None, "moneda": c["gobierna"]}
 
 
 def get_saldos_todos(orden: str = "razonSocial") -> list[dict]:
@@ -137,6 +125,16 @@ _COLUMNAS_ORDENABLES = {
 }
 
 
+_ORDEN_FILAS = {
+    "fecha": lambda f: (f["fecha"] or date.min),
+    "documento": lambda f: f["documento"] or "",
+    "numeroDocumento": lambda f: f["numeroDocumento"] or "",
+    "deuda": lambda f: f["deuda"] or 0,
+    "credito": lambda f: f["credito"] or 0,
+    "saldoParcial": lambda f: f["saldoParcial"] or 0,
+}
+
+
 def get_movimientos(
     id_contacto: int,
     fecha_desde: date | None,
@@ -146,81 +144,38 @@ def get_movimientos(
     sort_by: str | None = None,
     sort_dir: str = "asc",
 ) -> tuple[list[dict], int]:
-    """Movimientos de cuenta corriente del contacto (FR-004, FR-005, FR-012, FR-014).
+    """Movimientos de cuenta corriente del contacto con la valuación bimonetaria (036, 21/10/2026).
 
-    Deduplicado a nivel SQL vía DISTINCT — necesario para contactos tipo
-    "Multiple" per FR-014.
+    Deuda/Crédito en pesos (los documentos en US$ a su tipo de cambio; la vista base los sumaba en dólares como si fueran
+    pesos) y saldo acumulado en pesos y en dólares, en orden cronológico real. Reordenar la lista no recalcula el saldo
+    (criterio de libro mayor). Mismas filas que la vista (las mismas que el formulario Access SbfrmMovCuenta).
     """
-    where_clauses = ["IdContacto = ?"]
-    params: list = [id_contacto]
+    from src.features.auditoria_cuentas.bimonetaria import cargar_cuenta
 
-    if fecha_desde:
-        where_clauses.append("Fecha >= ?")
-        params.append(as_sql_datetime(fecha_desde))
-    if fecha_hasta:
-        where_clauses.append("Fecha <= ?")
-        params.append(as_sql_datetime(fecha_hasta))
-
-    where_sql = f"WHERE {' AND '.join(where_clauses)}"
-
-    count_sql = f"""
-        SELECT COUNT(*) AS total
-        FROM (
-            SELECT DISTINCT Fecha, Documento, [Nro Documento], Deuda, Credito, Origen, IdOrigen
-            FROM dbo.vw_MovimientosCuenta_Base
-            {where_sql}
-        ) AS dedup
-    """
-    total_row = fetch_one(count_sql, tuple(params))
-    total = total_row["total"] if total_row else 0
-
-    # Se consulta `vw_MovimientosCuenta_Saldo` (no `_Base`) para exponer el
-    # saldo acumulado por movimiento (`SaldoParcial`) — el formulario
-    # Access real (`SbfrmMovCuenta`) lo muestra por fila, no solo el total.
-    # Mismo orden canónico usado ahí (`Fecha, Origen, IdOrigen`), del que
-    # también depende que `SaldoParcial` sea correcto (es un acumulado).
-    offset = offset_for(page, page_size)
-    # Ordenamiento pedido por el cliente (pantalla de Cuenta Corriente,
-    # 2026-09-28: ordenar debe cubrir TODOS los movimientos del contacto,
-    # no solo la página cargada — antes se ordenaba en el navegador, que
-    # solo ve una página a la vez). `SaldoParcial` sigue siendo el saldo
-    # acumulado en orden cronológico real (ya viene calculado así en la
-    # vista); reordenar la lista para mostrarla no recalcula ese número,
-    # solo cambia en qué renglón aparece cada uno — mismo criterio que un
-    # libro mayor contable al que se le cambia el orden de visualización.
-    columna_orden = _COLUMNAS_ORDENABLES.get(sort_by or "", "Fecha")
-    direccion = "DESC" if sort_dir == "desc" else "ASC"
-    orden_desempate = "" if columna_orden == "Fecha" else ", Fecha ASC"
-    list_sql = f"""
-        SELECT DISTINCT
-            Fecha AS fecha,
-            Documento AS documento,
-            [Nro Documento] AS numeroDocumento,
-            Deuda AS deuda,
-            Credito AS credito,
-            Origen AS origenTipo,
-            IdOrigen AS idOrigen,
-            SaldoParcial AS saldoParcial
-        FROM dbo.vw_MovimientosCuenta_Saldo
-        {where_sql}
-        ORDER BY {columna_orden} {direccion}{orden_desempate}, Origen ASC, IdOrigen ASC
-        OFFSET ? ROWS FETCH NEXT ? ROWS ONLY
-    """
-    rows = fetch_all(list_sql, tuple(params) + (offset, page_size))
-    movimientos = [
+    c = cargar_cuenta(id_contacto)
+    filas = [
         {
-            "fecha": row.get("fecha"),
-            "documento": row.get("documento"),
-            "numeroDocumento": row.get("numeroDocumento"),
-            "deuda": row.get("deuda"),
-            "credito": row.get("credito"),
-            "origenTipo": row.get("origenTipo"),
-            "idOrigen": row.get("idOrigen"),
-            "saldoParcial": row.get("saldoParcial"),
+            "fecha": f["fecha"],
+            "documento": f["documento"],
+            "numeroDocumento": f["numeroDocumento"],
+            "deuda": round(f["deudaPesos"], 2),
+            "credito": round(f["creditoPesos"], 2),
+            "origenTipo": f["origenTipo"],
+            "idOrigen": f["idOrigen"],
+            "saldoParcial": round(f["saldoPesos"], 2),
+            "saldoDolares": round(f["saldoDolares"], 2) if c["tieneDolares"] else None,
+            "moneda": f["moneda"],
+            "importeOriginal": (f["deudaOriginal"] or 0) - (f["creditoOriginal"] or 0) if f["moneda"] == "Dolares" else None,
+            "tipoCambio": f["tipoDeCambio"] if f["moneda"] == "Dolares" else None,
         }
-        for row in rows
+        for f in c["filas"]
+        if (not fecha_desde or f["fecha"] >= fecha_desde) and (not fecha_hasta or f["fecha"] <= fecha_hasta)
     ]
-    return movimientos, total
+    clave = _ORDEN_FILAS.get(sort_by or "", _ORDEN_FILAS["fecha"])
+    if sort_by in _ORDEN_FILAS and sort_by != "fecha" or sort_dir == "desc":
+        filas.sort(key=clave, reverse=(sort_dir == "desc"))
+    offset = offset_for(page, page_size)
+    return filas[offset:offset + page_size], len(filas)
 
 
 def get_compra_referencia(id_compra: int) -> dict | None:
