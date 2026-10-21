@@ -1,6 +1,6 @@
 """ARBA (12): Ingresos Brutos según las DDJJ presentadas (portal ARBA, solo lectura, autorizado por Sergio 21/10/2026).
 
-Fuentes (backups/arba-iibb-20261021/): detalle de las 93 DDJJ mensuales 2019-2026 (impuesto determinado, deducciones) y
+Fuentes (backups/arba-iibb-20261021/): detalle de las 190 DDJJ mensuales 12/2011-2026 (rectificativas: vale la última) (impuesto determinado, deducciones) y
 descarga de deducciones por período (B bancarias, P percepciones, R retenciones); aviso de deuda IIBB 21/10/2026 (saldo a
 favor $696.058,10).
 Modelo (acordado con Sergio):
@@ -23,7 +23,8 @@ from src.features.vinculos.backup import backup_verificado
 
 C = 12
 EVID = r'C:\dev\LaHerencia\backups\arba-iibb-20261021'
-VIEJAS = (1056, 1057, 1058, 1059, 1162, 1165)
+# boletas IIBB cargadas antes, sustituidas por las DDJJ (2015-2017 y 2023-2024); las de 2011 previas a 12/2011 quedan (el portal arranca en 12/2011)
+VIEJAS = (1056, 1057, 1058, 1059, 1162, 1165, 318, 1052, 1053, 383, 1055)
 SALDO_ARBA = 696058.10
 USUARIO = 'Sergio (036, revisión 21/10/2026)'
 
@@ -34,8 +35,13 @@ def plan():
     pr, b = defaultdict(float), defaultdict(float)
     for x in ded:
         (b if x['tipo'] == 'B' else pr)[(x['anio'], x['mes'])] += x['imp']
+    ultima = {}
+    for x in ddjj:  # rectificativas: vale la última presentada del período (mayor número de comprobante)
+        k = (x['anio'], x['mes'])
+        if k not in ultima or int(x['nro']) > int(ultima[k]['nro']):
+            ultima[k] = x
     out = []
-    for x in ddjj:
+    for x in sorted(ultima.values(), key=lambda y: (y['anio'], y['mes'])):
         k = (x['anio'], x['mes'])
         imp, contrib = x['impuesto'] or 0, x['contrib'] or 0
         if not imp and not contrib:
