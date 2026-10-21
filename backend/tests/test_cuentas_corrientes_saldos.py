@@ -25,10 +25,21 @@ def test_get_saldos_todos_ordena_por_razon_social_por_defecto(monkeypatch):
         return [{"idContacto": 1, "razonSocial": "B", "saldoParcial": 0.0}]
 
     monkeypatch.setattr(repository, "fetch_all", fake_fetch_all)
+    monkeypatch.setattr("src.features.auditoria_cuentas.bimonetaria.cargar_cuentas", lambda ids: {})
     resultado = repository.get_saldos_todos("razonSocial")
     assert resultado == [{"idContacto": 1, "razonSocial": "B", "saldoParcial": 0.0}]
     assert "ROW_NUMBER()" in filas[0]
     assert "[Razon Social]" in filas[0].split("ORDER BY")[-1]
+
+
+def test_get_saldos_todos_usa_saldo_bimonetario(monkeypatch):
+    """Cuenta en US$ cerrada en US$ 0: la vista suma pesos con diferencias de pesificación; el listado muestra la valuación."""
+    monkeypatch.setattr(repository, "fetch_all", lambda sql, params=(): [{"idContacto": 17, "razonSocial": "ASP", "saldoParcial": 581115.43}])
+    monkeypatch.setattr("src.features.auditoria_cuentas.bimonetaria.cargar_cuentas",
+                        lambda ids: {17: {"saldoPesos": 0.0, "saldoDolares": 0.0, "tieneDolares": True, "gobierna": "Mixta"}})
+    [fila] = repository.get_saldos_todos("razonSocial")
+    assert fila["saldoParcial"] == 0.0 and fila["saldoDolares"] == 0.0 and fila["moneda"] == "Mixta"
+    assert fila["saldoVista"] == 581115.43
 
 
 def test_get_saldos_todos_orden_por_saldo_pone_mayor_deuda_primero(monkeypatch):

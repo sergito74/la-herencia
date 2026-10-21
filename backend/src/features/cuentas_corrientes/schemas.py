@@ -31,6 +31,8 @@ class SaldoContacto(BaseModel):
     idContacto: int
     razonSocial: str | None = None
     saldoParcial: float | None = None
+    saldoDolares: float | None = None
+    moneda: str | None = None
 
 
 class SaldosResponse(BaseModel):

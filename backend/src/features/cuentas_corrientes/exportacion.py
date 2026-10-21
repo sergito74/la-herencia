@@ -78,8 +78,8 @@ def saldos_xlsx(orden: str) -> bytes:
     """Saldo de todos los contactos con movimientos (US2, FR-003)."""
     items = repository.get_saldos_todos(orden)
     wb = Workbook()
-    ws = _hoja(wb, "Saldos", [("Razón Social", 36), ("Saldo", 18)])
+    ws = _hoja(wb, "Saldos", [("Razón Social", 36), ("Saldo $", 18), ("Saldo US$", 16), ("Moneda", 10)])
     for s in items:
-        ws.append([s["razonSocial"], s["saldoParcial"]])
+        ws.append([s["razonSocial"], s["saldoParcial"], s.get("saldoDolares"), s.get("moneda")])
     _cerrar(ws, {1: _PESOS})
     return _bytes(wb)

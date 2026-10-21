@@ -35,7 +35,28 @@ const COLUMNS: DataTableColumn<SaldoContacto>[] = [
       </span>
     ),
   },
+  {
+    key: "saldoDolares",
+    header: "Saldo US$",
+    align: "right",
+    numeric: true,
+    sortValue: (s) => s.saldoDolares ?? 0,
+    render: (s) =>
+      s.saldoDolares != null ? (
+        <span className={s.saldoDolares < 0 ? "text-status-danger" : "text-status-success"}>
+          {formatMoneda(s.saldoDolares, "Dolares")}
+        </span>
+      ) : (
+        ""
+      ),
+  },
 ];
+
+/** Cuenta saldada: en pesos dentro de la tolerancia y, si la gobiernan los dólares, en US$ 0 (< us$ 1). */
+function estaSaldada(s: SaldoContacto): boolean {
+  if (s.moneda === "Dolares" || s.moneda === "Mixta") return Math.abs(s.saldoDolares ?? 0) < 1;
+  return Math.abs(s.saldoParcial ?? 0) <= TOLERANCIA_SALDADA;
+}
 
 // Saldos dentro de +/- $500 se consideran redondeo de procesamiento, no
 // deuda real (pedido explícito del usuario, 2026-09-28).
@@ -55,7 +76,7 @@ export function SaldosListado() {
 
   const filas = data
     ? soloNoSaldadas
-      ? data.items.filter((s) => Math.abs(s.saldoParcial ?? 0) > TOLERANCIA_SALDADA)
+      ? data.items.filter((s) => !estaSaldada(s))
       : data.items
     : [];
 

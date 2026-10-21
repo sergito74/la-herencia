@@ -104,7 +104,23 @@ def get_saldos_todos(orden: str = "razonSocial") -> list[dict]:
         WHERE rn = 1
         ORDER BY {order_sql}
     """
-    return fetch_all(sql)
+    filas = fetch_all(sql)
+    # Saldo real con la valuación bimonetaria (la misma de las fichas de cierre, 036): en las cuentas con documentos en US$
+    # la suma cruda de pesos de la vista deja diferencias de pesificación aunque la cuenta esté cerrada en US$ 0
+    # (ASP, Don Mario, Nidera, Allianz...). Para las cuentas en pesos el valor es el mismo.
+    from src.features.auditoria_cuentas.bimonetaria import cargar_cuentas
+
+    bim = cargar_cuentas([f["idContacto"] for f in filas])
+    for f in filas:
+        b = bim.get(f["idContacto"])
+        if b:
+            f["saldoVista"] = f["saldoParcial"]
+            f["saldoParcial"] = round(b["saldoPesos"], 2)
+            f["saldoDolares"] = round(b["saldoDolares"], 2) if b["tieneDolares"] else None
+            f["moneda"] = b["gobierna"]
+    if orden == "saldo":
+        filas.sort(key=lambda f: f["saldoParcial"] or 0)
+    return filas
 
 
 # Único punto de entrada para nombres de columna en el ORDER BY dinámico

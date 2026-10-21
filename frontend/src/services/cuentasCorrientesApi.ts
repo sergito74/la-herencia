@@ -140,6 +140,8 @@ export interface SaldoContacto {
   idContacto: number;
   razonSocial: string | null;
   saldoParcial: number | null;
+  saldoDolares?: number | null;
+  moneda?: string | null;
 }
 
 export interface SaldosResponse {
