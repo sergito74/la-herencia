@@ -7,6 +7,10 @@
 - SENASA (250): 9 débitos automáticos "SENASA ARANCELES" en Galicia (dic-2024 a may-2026) sin comprobante. Se carga
   uno por débito con el número de boleta de la leyenda del banco, como el de ago-2024 ("SIN COMPROBANTE"), en Gastos de
   Comercialización como los DT-e (centro 2, destino 1, No Aplica, exento).
+- AgroNacion (administración anterior) (5662): 22 pagos 2010-2012 (21 BNA + 1 efectivo) del resumen de la tarjeta
+  AgroNación de la sucesión (resumen nov-dic 2011 en Comprobantes/Sucesion/2011). Sergio 21/10/2026: "cerralo como pago de
+  la empresa a la sucesión; es una continuación luego de una reestructuración societaria". Un comprobante por pago
+  (tipo X, exento), Gastos de Administración, centro 2, destino 1, No Aplica.
 Idempotente.
 """
 from datetime import datetime
@@ -24,7 +28,13 @@ DOCS = [
     (datetime(2026, 3, 12), '7401130', 1747.88), (datetime(2026, 5, 14), '7557353', 2127.57), (datetime(2026, 5, 22), '7584526', 33222.90))]
 
 
+def sucesion():
+    pagos = fetch_all("SELECT Fecha f,Origen o,IdOrigen i,Credito c FROM dbo.vw_MovimientosCuenta_Base WHERE IdContacto=5662 AND Credito>0 ORDER BY Fecha")
+    return [(5662, p['f'], f"SUC-{p['f']:%y%m%d}", 'Resumen AgroNación sucesión (pago de la empresa)', round(p['c'], 2), GASTOS_ADM) for p in pagos]
+
+
 def main():
+    DOCS.extend(sucesion())
     _assert_target_is_wc()
     pend = [d for d in DOCS if not fetch_all('SELECT 1 x FROM dbo.Compras WHERE IdContacto=? AND [Nro Documento]=?', (d[0], d[2]))]
     if not pend:
