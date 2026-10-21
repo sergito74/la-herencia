@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 
 import { fetchReferenciaOrigen, type Medio } from "@/services/tesoreriaApi";
 import { StatusBadge } from "@/components/ui/StatusBadge";
+import { formatFecha } from "@/lib/format";
 
 /**
  * Renders the 3 explicit estados of the origin-reference heuristic
@@ -45,7 +46,7 @@ export function ReferenciaOrigen({ medio, idMovimiento }: { medio: Medio; idMovi
         {data.candidatas.map((c) => (
           <li key={c.idCompra}>
             Compra #{c.idCompra} ({c.numeroDocumento ?? "—"}) — {c.proveedor ?? "—"} —{" "}
-            {c.fecha ?? "—"} — {c.importe ?? "—"}
+            {formatFecha(c.fecha)} — {c.importe ?? "—"}
           </li>
         ))}
       </ul>

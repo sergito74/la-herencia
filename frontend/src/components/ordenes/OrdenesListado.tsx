@@ -7,7 +7,7 @@ import { useState } from "react";
 import { DataTable, type DataTableColumn } from "@/components/ui/DataTable";
 import { ErrorState, LoadingState } from "@/components/ui/States";
 import { BadgeEstadoOrden } from "@/components/ordenes/EstadosOrden";
-import { formatCantidad } from "@/lib/format";
+import { formatCantidad, formatFecha } from "@/lib/format";
 import { fetchOrdenes, type FiltrosOrdenes, type OrdenListItem } from "@/services/ordenesApi";
 
 const ESTADOS = [
@@ -26,7 +26,7 @@ const COLUMNAS: DataTableColumn<OrdenListItem>[] = [
     numeric: true,
     render: (o) => (
       <Link className="whitespace-nowrap text-finance underline" href={`/produccion/ordenes/${o.idOrden}`}>
-        {o.fechaPedido ?? "—"}
+        {formatFecha(o.fechaPedido)}
       </Link>
     ),
   },

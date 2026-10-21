@@ -8,7 +8,7 @@ import { ApiError } from "@/services/apiClient";
 import { SoloLectura } from "@/components/auth/SoloLectura";
 import { filterInputClass } from "@/components/ui/FilterBar";
 import { useToast } from "@/components/ui/Toast";
-import { formatMoneda } from "@/lib/format";
+import { formatMoneda, formatFecha } from "@/lib/format";
 
 /** Acción "Asignar a un socio…" (021 US1, T020): busca compras
  * "particulares" (research.md §3) sin asignación vigente y genera el
@@ -90,7 +90,7 @@ export function AsignarGastoForm({ idSocio, onAsignado }: { idSocio: number; onA
                     <div>
                       <p className="font-medium">{c.proveedor ?? "—"}</p>
                       <p className="text-ink-secondary">
-                        {c.fecha?.slice(0, 10)} · {c.numeroDocumento ?? "—"} · {formatMoneda(c.importePersonal)}
+                        {formatFecha(c.fecha)} · {c.numeroDocumento ?? "—"} · {formatMoneda(c.importePersonal)}
                       </p>
                     </div>
                     <button

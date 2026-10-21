@@ -9,6 +9,7 @@ import {
   type DocumentoRelacionadoVentaHacienda,
 } from "@/services/ventasHaciendaApi";
 import { filterInputClass } from "@/components/ui/FilterBar";
+import { formatFecha } from "@/lib/format";
 
 /**
  * Vínculo manual entre ventas de hacienda del mismo consignatario (ej. una
@@ -66,7 +67,7 @@ export function DocumentosRelacionadosVentaHaciendaPanel({
                 onClick={(e) => e.stopPropagation()}
                 className="text-ink-secondary underline decoration-dotted hover:text-finance"
               >
-                {r.fecha ?? "—"} · {r.tipoDocumento ?? "—"} {r.numeroDocumento ?? ""}
+                {formatFecha(r.fecha)} · {r.tipoDocumento ?? "—"} {r.numeroDocumento ?? ""}
               </Link>
             </label>
           ))}
@@ -96,7 +97,7 @@ export function DocumentosRelacionadosVentaHaciendaPanel({
                 onClick={(e) => e.stopPropagation()}
                 className="text-ink-secondary underline decoration-dotted hover:text-finance"
               >
-                {c.fecha ?? "—"} · {c.numeroDocumento ?? ""}
+                {formatFecha(c.fecha)} · {c.numeroDocumento ?? ""}
               </Link>
             </label>
           ))}

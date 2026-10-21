@@ -7,6 +7,7 @@ import { TrazabilidadCompra } from "@/components/compras/TrazabilidadCompra";
 import { Breadcrumb } from "@/components/ui/Breadcrumb";
 import { ContactoLink } from "@/components/ui/ContactoLink";
 import { EmptyState, ErrorState, LoadingState } from "@/components/ui/States";
+import { formatFecha } from "@/lib/format";
 
 /**
  * Compra detail: header + lines with explicit imputacion (US2: FR-003,
@@ -44,7 +45,7 @@ export function DetalleCompra({ idCompra }: { idCompra: number }) {
         <dl className="mt-2 grid grid-cols-2 gap-2 text-sm sm:grid-cols-4">
           <div>
             <dt className="text-ink-secondary">Fecha</dt>
-            <dd className="font-data">{data.fecha ?? "—"}</dd>
+            <dd className="font-data">{formatFecha(data.fecha)}</dd>
           </div>
           <div>
             <dt className="text-ink-secondary">Proveedor</dt>

@@ -6,6 +6,7 @@ import { useState } from "react";
 
 import { fetchCompras, type DocumentoRelacionado, type TipoDocumentoCompra } from "@/services/comprasApi";
 import { filterInputClass } from "@/components/ui/FilterBar";
+import { formatFecha } from "@/lib/format";
 
 /** Un documento suele relacionarse con el/los tipo/s "opuesto/s" — una
  *  Nota de Crédito o Débito complementa una Factura, y viceversa. */
@@ -77,7 +78,7 @@ export function DocumentosRelacionadosPanel({
                 onClick={(e) => e.stopPropagation()}
                 className="text-ink-secondary underline decoration-dotted hover:text-finance"
               >
-                {r.fecha ?? "—"} · {r.tipoDocumento ?? "—"} {r.numeroDocumento ?? ""}
+                {formatFecha(r.fecha)} · {r.tipoDocumento ?? "—"} {r.numeroDocumento ?? ""}
               </Link>
             </label>
           ))}
@@ -112,7 +113,7 @@ export function DocumentosRelacionadosPanel({
                 onClick={(e) => e.stopPropagation()}
                 className="text-ink-secondary underline decoration-dotted hover:text-finance"
               >
-                {c.fecha ?? "—"} · {c.tipoDocumento ?? "—"} {c.numeroDocumento ?? ""}
+                {formatFecha(c.fecha)} · {c.tipoDocumento ?? "—"} {c.numeroDocumento ?? ""}
               </Link>
             </label>
           ))}

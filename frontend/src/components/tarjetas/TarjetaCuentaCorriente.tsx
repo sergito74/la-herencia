@@ -27,7 +27,7 @@ const COLUMNS: DataTableColumn<MovimientoTarjeta>[] = [
     header: "Fecha",
     render: (m) => (
       <Link className="text-finance underline" href={`/finanzas/tarjetas/resumenes/${m.idResumen}`}>
-        {m.fecha ?? "—"}
+        {formatFecha(m.fecha)}
       </Link>
     ),
   },

@@ -1,5 +1,6 @@
 "use client";
 
+import { formatFecha } from "@/lib/format";
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -20,7 +21,7 @@ const COLUMNS: DataTableColumn<VentaGranos>[] = [
     sortValue: (v) => v.fecha,
     render: (v) => (
       <Link className="text-finance underline" href={`/ventas/granos/${v.idVenta}/editar`}>
-        {v.fecha ?? "—"}
+        {formatFecha(v.fecha)}
       </Link>
     ),
   },

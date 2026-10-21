@@ -11,7 +11,7 @@ import { StatusBadge, type BadgeTone } from "@/components/ui/StatusBadge";
 import { FilterBar, FilterSubmitButton } from "@/components/ui/FilterBar";
 import { EmptyState, ErrorState, LoadingState } from "@/components/ui/States";
 import { useToast } from "@/components/ui/Toast";
-import { formatMoneda, formatCantidad } from "@/lib/format";
+import { formatMoneda, formatCantidad, formatFecha } from "@/lib/format";
 
 /**
  * Enum real confirmado en el formulario Access (`Subformulario Detalle
@@ -177,7 +177,7 @@ export function ArrendamientosListado() {
                           return (
                             <tr key={c.idCobroAlquiler}>
                               <td className="px-2 py-1 font-data">{c.numeroCuota ?? "—"}</td>
-                              <td className="px-2 py-1 font-data">{c.fechaVencimiento ?? "—"}</td>
+                              <td className="px-2 py-1 font-data">{formatFecha(c.fechaVencimiento)}</td>
                               <td className="px-2 py-1">
                                 <StatusBadge label={estado.label} tone={estado.tone} />
                               </td>

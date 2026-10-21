@@ -107,7 +107,7 @@ function ModalExactas({ onClose, onApplied }: { onClose: () => void; onApplied: 
                     <td className="py-1 pr-2">
                       {p.tarjeta} · {p.resumenCodigo}
                     </td>
-                    <td className="pr-2 whitespace-nowrap">{p.fechaCompra?.slice(0, 10)}</td>
+                    <td className="pr-2 whitespace-nowrap">{formatFecha(p.fechaCompra)}</td>
                     <td className="pr-2">
                       {p.proveedor ?? "—"} <span className="text-ink-secondary">{p.detalle}</span>
                     </td>
@@ -177,7 +177,7 @@ export function BandejaConciliacion() {
       render: (r) => (
         <span>
           {r.tarjeta ?? "—"} <span className="text-ink-secondary">· {r.resumenCodigo}</span>
-          <span className="block text-xs text-ink-secondary">cierre {r.fechaCierre?.slice(0, 10) ?? "—"}</span>
+          <span className="block text-xs text-ink-secondary">cierre {formatFecha(r.fechaCierre)}</span>
         </span>
       ),
     },

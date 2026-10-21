@@ -11,7 +11,7 @@ import { ContactoSelect } from "@/components/ui/ContactoSelect";
 import { DataTable, type DataTableColumn, type SortState } from "@/components/ui/DataTable";
 import { FilterBar, FilterField, FilterSubmitButton, filterInputClass } from "@/components/ui/FilterBar";
 import { EmptyState, ErrorState, LoadingState } from "@/components/ui/States";
-import { formatMoneda } from "@/lib/format";
+import { formatMoneda, formatFecha } from "@/lib/format";
 
 // El proveedor casi siempre ya está filtrado en el buscador de arriba —
 // pedido explícito del usuario (2026-09-29): mostrarlo por fila es
@@ -34,7 +34,7 @@ function buildColumns(mostrarProveedor: boolean): DataTableColumn<Compra>[] {
           href={`/compras/${c.idCompra}/editar`}
           title="Ver/editar esta compra."
         >
-          {c.fecha ?? "—"}
+          {formatFecha(c.fecha)}
         </Link>
       ),
     },

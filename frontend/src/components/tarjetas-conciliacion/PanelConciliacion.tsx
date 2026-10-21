@@ -24,7 +24,7 @@ import {
 import { urlDocumentoLocal } from "@/services/comprasApi";
 import { ApiError } from "@/services/apiClient";
 import { esRutaLocalWindows, urlParaAbrirDocumento } from "@/lib/documentoLocal";
-import { formatMoneda, formatMonto, formatPorcentaje } from "@/lib/format";
+import { formatMoneda, formatMonto, formatPorcentaje, formatFecha } from "@/lib/format";
 import { filterInputClass } from "@/components/ui/FilterBar";
 import { SideDrawer } from "@/components/ui/SideDrawer";
 import { useToast } from "@/components/ui/Toast";
@@ -354,7 +354,7 @@ function ContenidoPanel({
           </div>
           <div className="mt-1 text-sm font-medium">{linea.proveedor ?? "Sin proveedor"}</div>
           <div className="text-xs text-ink-secondary">
-            {linea.fechaCompra?.slice(0, 10) ?? "—"} · {linea.detalle ?? "—"}
+            {formatFecha(linea.fechaCompra)} · {linea.detalle ?? "—"}
             {linea.nroDocumento && ` · doc. ${linea.nroDocumento}`}
           </div>
           <div className="mt-2 font-data text-xl font-semibold">{formatMoneda(linea.importe)}</div>
@@ -431,7 +431,7 @@ function ContenidoPanel({
                   <label className="flex cursor-pointer items-center gap-2 py-0.5">
                     <input type="checkbox" checked={lineasExtra.includes(h.idLineaConsumo)} onChange={() => alternarLinea(h.idLineaConsumo)} />
                     <span className="flex-1">
-                      {h.fechaCompra?.slice(0, 10)} · res. {h.resumenCodigo} · {h.detalle}
+                      {formatFecha(h.fechaCompra)} · res. {h.resumenCodigo} · {h.detalle}
                     </span>
                     <span className="font-data">{formatMoneda(h.importe)}</span>
                   </label>
@@ -537,7 +537,7 @@ function ContenidoPanel({
                             aria-label={`Elegir ${nombreDoc(d)}`}
                           />
                         </td>
-                        <td className="py-0.5 pr-2 whitespace-nowrap">{d.fecha?.slice(0, 10) ?? "—"}</td>
+                        <td className="py-0.5 pr-2 whitespace-nowrap">{formatFecha(d.fecha)}</td>
                         <td className="pr-2">
                           {/* Origen siempre distinguido (FR-004) — nunca "proveedor" para un organismo. */}
                           {d.origen === "Impuestos" && (
@@ -612,7 +612,7 @@ function ContenidoPanel({
                         {d.origen === "Impuestos" && (
                           <span className="mr-1 rounded-sm bg-status-warning-bg px-1 text-status-warning">Impuestos</span>
                         )}
-                        {d.proveedor} · {nombreDoc(d)} ({d.fecha?.slice(0, 10)}) · {formatMoneda(d.importeOriginal, monedaDe(d))}
+                        {d.proveedor} · {nombreDoc(d)} ({formatFecha(d.fecha)}) · {formatMoneda(d.importeOriginal, monedaDe(d))}
                         {d.ajustaTipoCambio && <span className="ml-1 rounded-sm bg-finance-light px-1 text-finance">Ajuste TC</span>}
                         {d.saldoPendiente != null && (
                           <span className="ml-1 text-ink-secondary">· saldo {formatMoneda(d.saldoPendiente)}</span>

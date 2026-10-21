@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 
 import { fetchCompraTrazabilidad } from "@/services/comprasApi";
 import { EmptyState, ErrorState, LoadingState } from "@/components/ui/States";
+import { formatFecha } from "@/lib/format";
 
 /**
  * Trazabilidad hacia cuenta corriente/tesorería (US3: FR-008, FR-009). Un
@@ -58,7 +59,7 @@ export function TrazabilidadCompra({ idCompra }: { idCompra: number }) {
             <tbody className="divide-y divide-border">
               {data.movimientos.map((mov, index) => (
                 <tr key={`${mov.idOrigen}-${index}`} className="hover:bg-surface-sunken">
-                  <td className="px-3 py-1.5 font-data">{mov.fecha ?? "—"}</td>
+                  <td className="px-3 py-1.5 font-data">{formatFecha(mov.fecha)}</td>
                   <td className="px-3 py-1.5">{mov.origenTipo ?? "—"}</td>
                   <td className="px-3 py-1.5">{mov.documento ?? "—"}</td>
                   <td className="px-3 py-1.5">{mov.tipoImporte ?? "—"}</td>

@@ -159,7 +159,7 @@ export function RemitoDetalleView({ idRemito }: { idRemito: number }) {
                     {formatCantidad(r.cantidad)} {r.unidad}
                     {r.unidadBase && r.unidad !== r.unidadBase && <div className="text-[11px] text-ink-secondary">= {formatCantidad(r.cantidad * r.factorABase)} {r.unidadBase}</div>}
                   </td>
-                  <td className="pr-2">{r.vencimiento ?? "—"}</td>
+                  <td className="pr-2">{formatFecha(r.vencimiento)}</td>
                   <td className="pr-2 text-right font-data">{formatCantidad(r.cantidadVinculada)}</td>
                   <td className="pr-2">
                     <BadgeRenglones estado={r.estadoVinculo} />

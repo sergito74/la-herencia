@@ -12,7 +12,7 @@ import { ContactoSelect } from "@/components/ui/ContactoSelect";
 import { DataTable, type DataTableColumn } from "@/components/ui/DataTable";
 import { FilterBar, FilterSubmitButton } from "@/components/ui/FilterBar";
 import { ErrorState, LoadingState } from "@/components/ui/States";
-import { formatMoneda } from "@/lib/format";
+import { formatMoneda, formatFecha } from "@/lib/format";
 
 const COLUMNS: DataTableColumn<Impuesto>[] = [
   {
@@ -22,7 +22,7 @@ const COLUMNS: DataTableColumn<Impuesto>[] = [
     sortValue: (i) => i.fecha,
     render: (i) => (
       <Link href={`/finanzas/impuestos/${i.idImpuesto}/editar`} className="text-finance underline" title="Ver o editar la boleta">
-        {i.fecha ?? "—"}
+        {formatFecha(i.fecha)}
       </Link>
     ),
   },

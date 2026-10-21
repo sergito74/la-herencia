@@ -146,12 +146,12 @@ export default function DetalleOrdenPage() {
       <div className="mt-4 grid grid-cols-2 gap-4 text-sm sm:grid-cols-4">
         <div>
           <div className="text-ink-secondary">Fecha pedido</div>
-          <div>{orden.fechaPedido ?? "—"}</div>
+          <div>{formatFecha(orden.fechaPedido)}</div>
         </div>
         <div>
           <div className="text-ink-secondary">Fecha ejecución</div>
           <div className="flex items-center gap-2">
-            {orden.fechaEjecucion ?? "—"}
+            {formatFecha(orden.fechaEjecucion)}
             {orden.estado === "Ejecutada" && (
               <button
                 type="button"

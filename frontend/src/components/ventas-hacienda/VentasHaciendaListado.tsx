@@ -12,7 +12,7 @@ import { DataTable, type DataTableColumn } from "@/components/ui/DataTable";
 import { FilterBar, FilterSubmitButton } from "@/components/ui/FilterBar";
 import { SideDrawer } from "@/components/ui/SideDrawer";
 import { ErrorState, LoadingState } from "@/components/ui/States";
-import { formatMoneda, formatCantidad } from "@/lib/format";
+import { formatMoneda, formatCantidad, formatFecha } from "@/lib/format";
 
 /**
  * Listado de ventas de hacienda: consignatario a nivel de venta, comprador
@@ -81,7 +81,7 @@ export function VentasHaciendaListado() {
       sortValue: (v) => v.fecha,
       render: (v) => (
         <Link className="text-finance underline" href={`/ventas/hacienda/${v.idVenta}/editar`}>
-          {v.fecha ?? "—"}
+          {formatFecha(v.fecha)}
         </Link>
       ),
     },
@@ -153,7 +153,7 @@ export function VentasHaciendaListado() {
         {selected && (
           <div className="space-y-3">
             <p className="text-sm text-ink-secondary">
-              {selected.fecha ?? "—"} · Consignatario:{" "}
+              {formatFecha(selected.fecha)} · Consignatario:{" "}
               <ContactoLink
                 idContacto={selected.idConsignatario}
                 razonSocial={selected.consignatario}

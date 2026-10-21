@@ -1,5 +1,6 @@
 "use client";
 
+import { formatFecha } from "@/lib/format";
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import { useState } from "react";
@@ -42,7 +43,7 @@ const COLUMNAS: DataTableColumn<RemitoListItem>[] = [
     numeric: true,
     render: (r) => (
       <Link className="whitespace-nowrap text-finance underline" href={`/produccion/remitos/${r.idRemito}`}>
-        {r.fecha ?? "—"}
+        {formatFecha(r.fecha)}
       </Link>
     ),
   },

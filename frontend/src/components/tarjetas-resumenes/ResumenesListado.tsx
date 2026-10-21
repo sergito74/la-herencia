@@ -41,7 +41,7 @@ const COLUMNS: DataTableColumn<ResumenListItem>[] = [
     header: "Fecha cierre",
     render: (r) => (
       <EnlaceResumen id={r.idResumen}>
-        {r.fechaCierre ?? "—"}
+        {formatFecha(r.fechaCierre)}
       </EnlaceResumen>
     ),
   },
