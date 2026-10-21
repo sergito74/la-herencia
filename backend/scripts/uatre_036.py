@@ -47,4 +47,25 @@ def main():
     print('saldo', cargar_cuenta(C, refrescar=True)['saldoPesos'], '| Municipalidad', round(cargar_cuenta(72, refrescar=True)['saldoPesos'], 2))
 
 
-if __name__ == '__main__': main()
+
+
+
+def intereses_mora():
+    """Sergio 21/10/2026: los $102,50 son intereses por mora de la boleta 08/2024 (no redondeo): cargo en Impuestos
+    (tipo 15, aporte sindical) y se borra el ajuste de redondeo."""
+    _assert_target_is_wc()
+    st = []
+    if not fetch_all("SELECT 1 x FROM dbo.Impuestos WHERE IdOrganismo=? AND [Numero de documento]='INT MORA 08-2024'", (C,)):
+        st.append(("INSERT INTO dbo.Impuestos (Fecha,IdOrganismo,IdTipoImpuesto,[Periodo liquidado],[Numero de documento],Importe) "
+                   "VALUES ('2024-09-04',?,15,'08 2024','INT MORA 08-2024',102.50)", (C,)))
+    st.append(("DELETE FROM dbo.AjustesCuentaCorriente WHERE IdContacto=? AND Motivo LIKE 'UATRE:%'", (C,)))
+    print(backup_verificado('uatre-intereses-036'))
+    with reconciliation_transaction():
+        execute_write_transaction(st)
+    invalidar()
+    print('saldo', cargar_cuenta(C, refrescar=True)['saldoPesos'])
+
+
+if __name__ == '__main__':
+    import sys
+    intereses_mora() if 'intereses' in sys.argv else main()
