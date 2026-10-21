@@ -153,3 +153,29 @@ def test_la_valuacion_del_proveedor_manda_sobre_el_dolar_bna_y_conserva_el_signo
     por = {f["origenTipo"]: f for f in r["filas"]}
     assert por["Banco Nacion"]["saldoDolares"] == 151.0 and r["filas"][1]["saldoDolares"] == 142.0       # el cobro negativo resta
     assert round(r["saldoDolares"], 2) == 141.0 and r["saldoPesos"] == 15000.0 - 1000.0 - 98.0
+
+
+def test_usd_tc_comprobante_pesos_cancelan_al_tc_del_comprobante_vencido():
+    """Regla usd-tc-comprobante (Cargill): la FC en US$ se cancela con pesos al TC de la FC solo vencida; la ND de
+    diferencia de cambio en pesos vinculada mueve dólares al TC de su factura; la NC en US$ se aplica a su factura."""
+    from datetime import date
+
+    from src.features.auditoria_cuentas.bimonetaria import CotizacionBNA, construir
+
+    compras = {1: {"moneda": "Dolares", "tc": 100.0, "ajusta": False, "vto": date(2026, 3, 31)},
+               2: {"moneda": "Pesos", "tc": 1.0, "ajusta": True, "rel": {1}},
+               3: {"moneda": "Dolares", "tc": 110.0, "ajusta": False, "rel": {1}}}
+    filas = [
+        {"Fecha": date(2026, 1, 10), "Documento": "Factura", "Nro Documento": "FC", "Deuda": 1000.0, "Credito": 0, "Origen": "Compras", "IdOrigen": 1},
+        {"Fecha": date(2026, 1, 20), "Documento": "NC", "Nro Documento": "NC", "Deuda": 0, "Credito": 100.0, "Origen": "Compras", "IdOrigen": 3},
+        {"Fecha": date(2026, 2, 1), "Documento": "LPG", "Nro Documento": "L", "Deuda": 0, "Credito": 50000.0, "Origen": "Venta Granos", "IdOrigen": 9},
+        {"Fecha": date(2026, 2, 3), "Documento": "Banco", "Nro Documento": "B", "Deuda": 50000.0, "Credito": 0, "Origen": "Galicia", "IdOrigen": 7},
+        {"Fecha": date(2026, 4, 1), "Documento": "LPG", "Nro Documento": "L2", "Deuda": 0, "Credito": 99000.0, "Origen": "Venta Granos", "IdOrigen": 10},
+        {"Fecha": date(2026, 4, 1), "Documento": "ND", "Nro Documento": "ND", "Deuda": 10000.0, "Credito": 0, "Origen": "Compras", "IdOrigen": 2},
+    ]
+    r = construir(filas, compras, CotizacionBNA({date(2025, 12, 31): 200.0}), usd_tc_comprobante=True)
+    por_fecha = {f["fecha"]: f["saldoDolares"] for f in r["filas"]}
+    assert por_fecha[date(2026, 1, 20)] == -890.0       # NC US$ 100 x 110 = $11.000 cancela US$ 110 de la FC a 100
+    assert por_fecha[date(2026, 2, 3)] == -890.0        # la FC no venció: la cosecha se paga en pesos, no la cancela
+    assert r["saldoDolares"] == 0.0 and r["saldoPesos"] == 0.0  # vencida: $99.000 cancelan US$ 890 de la FC y la ND $10.000 (US$ 100 al TC 100 de su FC)
+    assert r["gobierna"] == "Dolares"

@@ -8,6 +8,10 @@ Un mismo mecanismo para todas las cuentas y todos los movimientos, sin umbral de
     siga siendo la documentada deja de contar como excepción, y si cambia vuelve a aparecer.
   * `tc-pactado`: el proveedor factura en dólares a un tipo de cambio pactado (la clave es el contacto): sus pagos
     en pesos se pasan a dólares con el tipo de cambio de las facturas y no con el dólar BNA, sin diferencia de cambio.
+  * `usd-tc-comprobante`: la cuenta la lleva el proveedor en dólares (la clave es el contacto): cada comprobante en
+    dólares vale su importe en US$ a su propio tipo de cambio y los pesos (liquidaciones, cobros, pagos, retenciones)
+    valen lo que cancelan de esos comprobantes, por antigüedad; las notas de diferencia de cambio en pesos no mueven
+    dólares. Ej. Cargill (Sergio, 21/10/2026).
   * `cuit-compartido`: varios contactos legítimos comparten un CUIT (por ejemplo las estaciones de una misma operadora, cada una con su
     cuenta): la clave es el CUIT de 11 dígitos y deja de informarse como "contacto duplicado".
 
@@ -18,7 +22,7 @@ from __future__ import annotations
 
 from src.db.connection import execute_insert_returning_id, execute_write, fetch_all, fetch_one
 
-TIPOS = ("concepto-movimiento", "cuenta", "tc-pactado", "cuit-compartido")
+TIPOS = ("concepto-movimiento", "cuenta", "tc-pactado", "usd-tc-comprobante", "cuit-compartido")
 
 
 class ConocidoError(Exception):

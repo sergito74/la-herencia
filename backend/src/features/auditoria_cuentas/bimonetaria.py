@@ -70,9 +70,101 @@ def moneda_que_gobierna(filas: list[dict], compras: dict[int, dict]) -> str:
     return "Mixta" if en_dolares else "Pesos"
 
 
+def valuar_usd_por_comprobante(filas: list[dict], compras: dict[int, dict],
+                               valuaciones: dict[tuple[str, int], float] | None = None,
+                               abiertos: list | None = None) -> dict[tuple[str, int], float]:
+    """Dólares de cada fila en pesos de una cuenta que el proveedor lleva en dólares (regla `usd-tc-comprobante`).
+
+    Los comprobantes en dólares (y las filas con valuación explícita) son deuda o crédito en US$ a su tipo de cambio.
+    Cada fila en pesos cancela, por antigüedad, los comprobantes en dólares de signo contrario ya vencidos a la fecha
+    (Cargill compensa con la cosecha las facturas vencidas y paga el resto en pesos) y vale lo que cancela. Una nota de
+    crédito en dólares se pasa a pesos a su propio tipo de cambio y se aplica primero a su factura relacionada
+    (CompraDocumentosRelacionados), aunque no haya vencido (Cargill: NC 1126-6320 US$ 304,39 x 62,21 cancela US$ 315,23
+    de la FC 2786 a 60,07). Una nota de diferencia de cambio en pesos vinculada a un comprobante en dólares mueve
+    pesos / TC de ese comprobante (Cargill: ND 1126-13117 $2.225,58 devuelve US$ 49,71 a la FC 1978 a 44,77); sin
+    comprobante relacionado en dólares, la nota cancela como cualquier peso;
+    (pesos / TC del comprobante); lo que sobra se compensa con otras filas en pesos sin mover dólares. Las notas en
+    pesos de ajuste de tipo de cambio solo se compensan en pesos. Devuelve (Origen, IdOrigen) -> dólares (sin signo).
+    """
+    from collections import deque
+
+    valuaciones = valuaciones or {}
+    usd: deque = deque()   # [signo, dólares pendientes, tc, vencimiento, IdOrigen]
+    pesos: deque = deque()  # [clave, signo, pesos pendientes, cancela_usd, comprobantes relacionados]
+    salida: dict[tuple[str, int], float] = {}
+
+    def aplicar(p: list, d: list) -> None:
+        aplicado = min(p[2], d[1] * d[2])
+        p[2] -= aplicado
+        d[1] -= aplicado / d[2]
+        salida[p[0]] = salida.get(p[0], 0.0) + aplicado / d[2]
+
+    def cruzar(hoy: date) -> None:
+        for p in pesos:
+            if not p[3]:
+                continue
+            for d in usd:
+                if p[2] > 1e-6 and d[4] in p[4] and d[0] == -p[1] and d[1] > 1e-9:
+                    aplicar(p, d)
+            for d in usd:
+                if p[2] <= 1e-6:
+                    break
+                if d[0] == -p[1] and d[1] > 1e-9 and (d[3] is None or d[3] <= hoy):
+                    aplicar(p, d)
+        for a in usd:  # notas en dólares que se compensan entre sí (NC que anula una ND) sin pasar por pesos
+            for b in usd:
+                if a[1] > 1e-9 and b[1] > 1e-9 and a[0] == -b[0] and a[4] is not None and a[4] == b[4]:
+                    m = min(a[1], b[1])
+                    a[1] -= m
+                    b[1] -= m
+        for d in [d for d in usd if d[1] <= 1e-9]:
+            usd.remove(d)
+        vivos = [p for p in pesos if p[2] > 1e-6]
+        for a in vivos:
+            for b in vivos:
+                if a[2] > 1e-6 and b[2] > 1e-6 and a[1] == -b[1]:
+                    m = min(a[2], b[2])
+                    a[2] -= m
+                    b[2] -= m
+        pesos.clear()
+        pesos.extend(p for p in vivos if p[2] > 1e-6)
+
+    for f in filas:
+        clave = (f["Origen"], int(f["IdOrigen"]))
+        importe = float(f["Credito"] or 0) - float(f["Deuda"] or 0)
+        if abs(importe) < 1e-9 or f.get("SoloUSD"):
+            continue
+        signo = 1 if importe > 0 else -1
+        compra = compras.get(int(f["IdOrigen"]), {}) if f["Origen"] == "Compras" else {}
+        hoy = _dia(f["Fecha"])
+        if compra.get("moneda") == DOLARES and (compra.get("tc") or 0) > 1 and signo > 0:
+            pesos.append([clave, signo, abs(importe) * float(compra["tc"]), True, compra.get("rel") or set()])
+        elif compra.get("moneda") == DOLARES and (compra.get("tc") or 0) > 1:
+            usd.append([signo, abs(importe), float(compra["tc"]), _dia(compra.get("vto")) or hoy, int(f["IdOrigen"])])
+        elif valuaciones.get(clave):
+            # valuación explícita (p.ej. anticipo financiero en US$): se cancela por su propio camino, no con los pesos del día
+            usd.append([signo, abs(valuaciones[clave]), abs(importe) / abs(valuaciones[clave]), date.max, None])
+        elif compra.get("ajusta") and any(compras.get(r, {}).get("moneda") == DOLARES and (compras[r].get("tc") or 0) > 1
+                                          for r in compra.get("rel") or ()):
+            rel = next(r for r in sorted(compra["rel"]) if compras.get(r, {}).get("moneda") == DOLARES and (compras[r].get("tc") or 0) > 1)
+            tc = float(compras[rel]["tc"])
+            salida[clave] = abs(importe) / tc
+            usd.append([signo, abs(importe) / tc, tc, max(hoy, _dia(compras[rel].get("vto")) or hoy), rel])
+        else:
+            # una nota de ajuste en pesos sin comprobante en dólares relacionado (p.ej. diferencia de cambio de un anticipo
+            # financiero que en el sistema está en pesos) cancela como cualquier peso
+            pesos.append([clave, signo, abs(importe), True, compra.get("rel") or set()])
+        cruzar(hoy)
+    if abiertos is not None:
+        abiertos.extend([{"tipo": "usd", "signo": d[0], "dolares": d[1], "tc": d[2], "vencimiento": d[3], "idCompra": d[4]} for d in usd] +
+                        [{"tipo": "pesos", "clave": p[0], "signo": p[1], "pesos": p[2]} for p in pesos])
+    return salida
+
+
 def _recorrer(filas: list[dict], compras: dict[int, dict], cotizacion: CotizacionBNA, entregas: dict[tuple[str, int], date] | None,
               tc_pagos: float | None, tc_ventas: dict[int, float] | None = None,
-              valuaciones: dict[tuple[str, int], float] | None = None) -> tuple[list[dict], list[str], float, float]:
+              valuaciones: dict[tuple[str, int], float] | None = None,
+              usd_creditos: dict[tuple[str, int], float] | None = None) -> tuple[list[dict], list[str], float, float]:
     """Pasa las filas a pesos y dólares. `tc_pagos`: si viene, los importes en pesos se pasan a dólares con ese tipo de cambio
     (el pactado en las facturas) en vez del dólar BNA del día anterior.
 
@@ -109,6 +201,9 @@ def _recorrer(filas: list[dict], compras: dict[int, dict], cotizacion: Cotizacio
             fila["tipoDeCambio"] = tc
             deuda_p, credito_p = (round(deuda * tc, 2), round(credito * tc, 2)) if tc else (0.0, 0.0)
             deuda_d, credito_d = deuda, credito
+            clave = (f["Origen"], int(f["IdOrigen"]))
+            if usd_creditos and clave in usd_creditos:  # NC en US$ aplicada en pesos (regla usd-tc-comprobante)
+                credito_d = round(usd_creditos[clave] * (1 if credito >= 0 else -1), 4) if credito else 0.0
         else:
             deuda_p, credito_p = deuda, credito
             deuda_d, credito_d = (round(deuda / tc_dia, 4), round(credito / tc_dia, 4)) if tc_dia else (0.0, 0.0)
@@ -128,7 +223,7 @@ def _recorrer(filas: list[dict], compras: dict[int, dict], cotizacion: Cotizacio
 def construir(filas: list[dict], compras: dict[int, dict], cotizacion: CotizacionBNA, entregas: dict[tuple[str, int], date] | None = None,
               tc_pactado: bool = False, tc_ventas: dict[int, float] | None = None,
               valuaciones: dict[tuple[str, int], float] | None = None,
-              efectos_valuacion: dict[tuple[str, int], dict] | None = None) -> dict:
+              efectos_valuacion: dict[tuple[str, int], dict] | None = None, usd_tc_comprobante: bool = False) -> dict:
     """Movimientos de una cuenta con su moneda, importes en pesos, saldo acumulado en pesos y en dólares.
 
     `filas`: filas de la vista ya ordenadas por (Fecha, Origen, IdOrigen) con Fecha, Documento, Nro Documento,
@@ -189,7 +284,20 @@ def construir(filas: list[dict], compras: dict[int, dict], cotizacion: Cotizacio
             valuaciones[key] = 0.0
         filas = sorted([*origenes, *eventos.values()], key=lambda f: (_dia(f["Fecha"]), f["Origen"], int(f["IdOrigen"])))
     gobierna = moneda_que_gobierna(filas, compras)
-    salida, avisos, saldo_pesos, saldo_dolares = _recorrer(filas, compras, cotizacion, entregas, None, tc_ventas, valuaciones)
+    usd_creditos: dict[tuple[str, int], float] = {}
+    if usd_tc_comprobante:
+        # Regla `usd-tc-comprobante`: el proveedor lleva la cuenta en dólares; los pesos valen lo que cancelan.
+        auto = valuar_usd_por_comprobante(filas, compras, valuaciones)
+        valuaciones = dict(valuaciones or {})
+        for f in filas:
+            clave = (f["Origen"], int(f["IdOrigen"]))
+            compra = compras.get(int(f["IdOrigen"]), {}) if f["Origen"] == "Compras" else {}
+            if compra.get("moneda") != DOLARES and clave not in valuaciones:
+                valuaciones[clave] = auto.get(clave, 0.0)
+            elif compra.get("moneda") == DOLARES and float(f["Credito"] or 0) - float(f["Deuda"] or 0) > 0:
+                usd_creditos[clave] = auto.get(clave, 0.0)
+        gobierna = DOLARES
+    salida, avisos, saldo_pesos, saldo_dolares = _recorrer(filas, compras, cotizacion, entregas, None, tc_ventas, valuaciones, usd_creditos)
     facturado_usd = sum(x["deudaOriginal"] for x in salida if x["moneda"] == DOLARES)
     facturado_pesos = sum(x["deudaPesos"] for x in salida if x["moneda"] == DOLARES)
     pactado = False
@@ -199,7 +307,7 @@ def construir(filas: list[dict], compras: dict[int, dict], cotizacion: Cotizacio
     return {"filas": salida, "saldoPesos": round(saldo_pesos, 2), "saldoDolares": round(saldo_dolares, 2), "gobierna": gobierna,
             "saldoGobierna": round(saldo_dolares if gobierna == DOLARES else saldo_pesos, 2),
             # una diferencia de cambio chica no es un problema: hasta US$ 1 o el 0,5 % de lo facturado en dólares (tolerancia del FIFO)
-            "toleranciaDolares": round(max(1.0, 0.005 * facturado_usd), 2), "tcPactado": pactado,
+            "toleranciaDolares": round(max(1.0, 0.005 * facturado_usd), 2), "tcPactado": pactado, "usdTcComprobante": usd_tc_comprobante,
             "bimonetaria": any(x["moneda"] == DOLARES for x in salida)
             and any(x["moneda"] == "Pesos" and x["origenTipo"] == "Compras" and x["deudaOriginal"] > 0 for x in salida),
             "tieneDolares": any(x["moneda"] == DOLARES for x in salida), "avisos": sorted(set(avisos))}
@@ -239,8 +347,17 @@ def _vista_en_memoria(refrescar: bool = False) -> tuple[dict[int, list], dict[in
                 "SELECT IdContacto, Fecha, Documento, [Nro Documento], Deuda, Credito, Origen, IdOrigen FROM dbo.vw_MovimientosCuenta_Base "
                 "WHERE IdContacto IS NOT NULL ORDER BY IdContacto, Fecha, Origen, IdOrigen", ()):
             por_contacto[f["IdContacto"]].append(f)
-        compras = {int(c["id"]): {"moneda": c["moneda"], "tc": c["tc"], "ajusta": bool(c["ajusta"])} for c in fetch_all(
-            "SELECT IdDeuda AS id, Moneda AS moneda, [Tipo de Cambio] AS tc, [Ajusta Tipo Cambio] AS ajusta FROM dbo.Compras", ())}
+        compras = {int(c["id"]): {"moneda": c["moneda"], "tc": c["tc"], "ajusta": bool(c["ajusta"]), "vto": c["vto"]} for c in fetch_all(
+            "SELECT c.IdDeuda AS id, c.Moneda AS moneda, c.[Tipo de Cambio] AS tc, c.[Ajusta Tipo Cambio] AS ajusta, v.vto "
+            "FROM dbo.Compras c LEFT JOIN (SELECT IdCompra, MAX([Fecha de vencimiento]) AS vto FROM dbo.[Vencimiento Compras] GROUP BY IdCompra) v "
+            "ON v.IdCompra = c.IdDeuda", ())}
+        try:
+            for r in fetch_all("SELECT IdCompra AS a, IdCompraRelacionada AS b FROM dbo.CompraDocumentosRelacionados", ()):
+                for x, y in ((int(r["a"]), int(r["b"])), (int(r["b"]), int(r["a"]))):
+                    if x in compras:
+                        compras[x].setdefault("rel", set()).add(y)
+        except Exception:
+            pass  # todavía no existe la tabla de documentos relacionados
         entregas: dict[tuple[str, int], date] = {}
         try:
             for e in fetch_all("SELECT MedioMovimiento AS m, IdMovimiento AS i, FechaEntrega AS f FROM dbo.ChequesEntregados "
@@ -291,10 +408,18 @@ def cuentas_con_tc_pactado() -> set[int]:
     return {int(k["clave"]) for k in conocidos.listar() if k["tipo"] == "tc-pactado" and str(k["clave"]).isdigit()}
 
 
+def cuentas_usd_tc_comprobante() -> set[int]:
+    """Cuentas que el proveedor lleva en dólares al TC de cada comprobante (reglas activas `usd-tc-comprobante`)."""
+    from src.features.auditoria_cuentas import conocidos
+
+    return {int(k["clave"]) for k in conocidos.listar() if k["tipo"] == "usd-tc-comprobante" and str(k["clave"]).isdigit()}
+
+
 def cargar_cuenta(id_contacto: int, refrescar: bool = False) -> dict:
     """La cuenta de la vista con el criterio bimonetario (solo lectura, desde la copia en memoria)."""
     filas, compras, entregas = _vista_en_memoria(refrescar)
-    return construir(filas.get(id_contacto, []), compras, cotizacion_bna(), entregas, id_contacto in cuentas_con_tc_pactado(), _VISTA.get("tc_ventas"), _VISTA.get("valuaciones"), _VISTA.get("efectos_valuacion"))
+    return construir(filas.get(id_contacto, []), compras, cotizacion_bna(), entregas, id_contacto in cuentas_con_tc_pactado(), _VISTA.get("tc_ventas"),
+                     _VISTA.get("valuaciones"), _VISTA.get("efectos_valuacion"), id_contacto in cuentas_usd_tc_comprobante())
 
 
 def cargar_cuentas(ids: list[int]) -> dict[int, dict]:
@@ -304,4 +429,6 @@ def cargar_cuentas(ids: list[int]) -> dict[int, dict]:
     filas, compras, entregas = _vista_en_memoria()
     cot = cotizacion_bna()
     pactados = cuentas_con_tc_pactado()
-    return {i: construir(filas.get(i, []), compras, cot, entregas, i in pactados, _VISTA.get("tc_ventas"), _VISTA.get("valuaciones"), _VISTA.get("efectos_valuacion")) for i in ids}
+    en_usd = cuentas_usd_tc_comprobante()
+    return {i: construir(filas.get(i, []), compras, cot, entregas, i in pactados, _VISTA.get("tc_ventas"), _VISTA.get("valuaciones"),
+                         _VISTA.get("efectos_valuacion"), i in en_usd) for i in ids}
