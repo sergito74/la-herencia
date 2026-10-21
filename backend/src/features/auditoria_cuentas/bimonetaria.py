@@ -76,8 +76,10 @@ def valuar_usd_por_comprobante(filas: list[dict], compras: dict[int, dict],
     """Dólares de cada fila en pesos de una cuenta que el proveedor lleva en dólares (regla `usd-tc-comprobante`).
 
     Los comprobantes en dólares (y las filas con valuación explícita) son deuda o crédito en US$ a su tipo de cambio.
-    Cada fila en pesos cancela, por antigüedad, los comprobantes en dólares de signo contrario ya vencidos a la fecha
-    (Cargill compensa con la cosecha las facturas vencidas y paga el resto en pesos) y vale lo que cancela. Una nota de
+    Cada fila en pesos cancela, por antigüedad, los comprobantes en dólares de signo contrario y vale lo que cancela. En
+    una cuenta con liquidaciones de granos o hacienda (acopiador) solo cancela los ya vencidos a la fecha: el acopiador
+    compensa la cosecha contra las facturas vencidas y paga el resto en pesos (Cargill). Con un proveedor común el pago
+    cancela la factura aunque no haya vencido. Una nota de
     crédito en dólares se pasa a pesos a su propio tipo de cambio y se aplica primero a su factura relacionada
     (CompraDocumentosRelacionados), aunque no haya vencido (Cargill: NC 1126-6320 US$ 304,39 x 62,21 cancela US$ 315,23
     de la FC 2786 a 60,07). Una nota de diferencia de cambio en pesos vinculada a un comprobante en dólares mueve
@@ -89,6 +91,7 @@ def valuar_usd_por_comprobante(filas: list[dict], compras: dict[int, dict],
     from collections import deque
 
     valuaciones = valuaciones or {}
+    acopiador = any(f["Origen"] in ("Venta Granos", "Venta Hacienda") for f in filas)
     usd: deque = deque()   # [signo, dólares pendientes, tc, vencimiento, IdOrigen]
     # [clave, signo, pesos pendientes, cancela_usd, comprobantes relacionados, dólares fijos (valuación explícita) o None]
     pesos: deque = deque()
@@ -117,7 +120,7 @@ def valuar_usd_por_comprobante(filas: list[dict], compras: dict[int, dict],
             for d in usd:
                 if p[2] <= 1e-6:
                     break
-                if d[0] == -p[1] and d[1] > 1e-9 and (d[3] is None or d[3] <= hoy):
+                if d[0] == -p[1] and d[1] > 1e-9 and (not acopiador or d[3] is None or d[3] <= hoy):
                     aplicar(p, d)
         for a in usd:  # notas en dólares que se compensan entre sí (NC que anula una ND) sin pasar por pesos
             for b in usd:
@@ -310,7 +313,7 @@ def construir(filas: list[dict], compras: dict[int, dict], cotizacion: Cotizacio
     facturado_pesos = sum(x["deudaPesos"] for x in salida if x["moneda"] == DOLARES)
     pactado = False
     if tc_pactado and gobierna == DOLARES and facturado_usd:
-        salida, avisos, saldo_pesos, saldo_dolares = _recorrer(filas, compras, cotizacion, entregas, round(facturado_pesos / facturado_usd, 6), tc_ventas, valuaciones)
+        salida, avisos, saldo_pesos, saldo_dolares = _recorrer(filas, compras, cotizacion, entregas, round(facturado_pesos / facturado_usd, 6), tc_ventas, valuaciones, usd_creditos)
         pactado = True
     return {"filas": salida, "saldoPesos": round(saldo_pesos, 2), "saldoDolares": round(saldo_dolares, 2), "gobierna": gobierna,
             "saldoGobierna": round(saldo_dolares if gobierna == DOLARES else saldo_pesos, 2),
