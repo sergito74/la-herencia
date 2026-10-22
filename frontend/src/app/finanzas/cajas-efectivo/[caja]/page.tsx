@@ -21,7 +21,7 @@ export default function CajaEfectivoPage({ params }: { params: { caja: string } 
       <BackLink href="/">Volver al inicio</BackLink>
       <h1 className="mt-2 text-2xl font-semibold">Caja de efectivo</h1>
       <p className="mt-1 text-ink-secondary">
-        Historial y saldo migrados de &quot;Cajas Giamigli.xlsx&quot; — solo lectura.
+        Movimientos, pagos, aportes, traspasos, arqueos y comparación con la planilla.
       </p>
       <div className="mt-6">
         <CajaEfectivo caja={caja as CajaSlug} />

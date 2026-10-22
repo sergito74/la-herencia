@@ -178,7 +178,10 @@ def imputaciones_de_cuentas(ids: list[int] | None = None, hasta: date | None = N
     tesoreria += fetch_all(
         "SELECT IdContacto AS i, SUM([Importe total del contrato] - ISNULL([Retencion Ganancias], 0)) AS s FROM dbo.Alquileres WHERE 1 = 1" + f_ids + f_hasta + " GROUP BY IdContacto", p_ids + p_hasta)
     tesoreria += fetch_all(
-        "SELECT IdContacto AS i, SUM(Importe) AS s FROM dbo.AjustesCuentaCorriente WHERE Lado = 'Credito'" + f_ids + f_hasta + " GROUP BY IdContacto", p_ids + p_hasta)
+        "SELECT IdContacto AS i, SUM(Importe) AS s FROM dbo.AjustesCuentaCorriente aj WHERE Lado = 'Credito' "
+        "AND NOT EXISTS (SELECT 1 FROM dbo.EfectosOperacionCaja e JOIN dbo.OperacionesCajaEfectivo op "
+        "ON op.IdOperacion=e.IdOperacion WHERE e.TipoEfecto='AjusteNoCobrado' AND e.EsCreadoPorOperacion=1 "
+        "AND op.Estado='Anulada' AND e.IdRegistro=aj.IdAjuste)" + f_ids + f_hasta + " GROUP BY IdContacto", p_ids + p_hasta)
     # Pagos de un socio con fondos propios ("Pago por socio" en la vista): cubren facturas sin pasar por AplicacionesPago
     # (caso Cooperativa Eléctrica, julio 2026, $165.337,52 pagados por Sergio).
     f_ps = " AND ps.IdContacto IN (" + ",".join("?" * len(ids)) + ")" if ids else ""

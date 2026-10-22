@@ -146,6 +146,9 @@ def _cultivos_con_datos(id_campania: int) -> list[int]:
         SELECT DISTINCT m.IdCultivo AS idCultivo
         FROM dbo.Map_CultivoResultado m
         WHERE m.Activo = 1 AND (
+            EXISTS (SELECT 1 FROM dbo.RepartosGastoCaja d JOIN dbo.GastoCajaEfectivo g ON g.IdGasto=d.IdGasto
+                    JOIN dbo.OperacionesCajaEfectivo op ON op.IdOperacion=g.IdOperacion
+                    WHERE d.IdDestino=m.IdDestino AND d.IdCampania=? AND g.Anulada=0 AND op.Estado='Vigente') OR
             EXISTS (SELECT 1 FROM dbo.vw_ResultadosCultivo_CostosBase c WHERE c.IdDestino = m.IdDestino AND c.IdCampaña = ?)
             OR EXISTS (SELECT 1 FROM dbo.PlanAgricola p WHERE p.IdCultivo = m.IdCultivo AND p.IdCampaña = ?)
             OR EXISTS (SELECT 1 FROM dbo.ResultadoCultivo_Cierre rc WHERE rc.IdCultivo = m.IdCultivo AND rc.IdCampaña = ?)
@@ -166,7 +169,7 @@ def _cultivos_con_datos(id_campania: int) -> list[int]:
             )
         )
         """,
-        (id_campania,) * 7,
+        (id_campania,) * 8,
     )
     return [f["idCultivo"] for f in filas]
 
@@ -181,10 +184,24 @@ def costo_sin_clasificar(id_campania: int) -> dict | None:
         """,
         (id_campania,),
     )
-    if fila is None or (fila["pesos"] is None and fila["dolares"] is None):
+    caja = fetch_one(
+        "SELECT SUM(d.ImportePesos) pesos,SUM(g.ImporteUSD*d.ImportePesos/g.ImportePesos) dolares,"
+        "SUM(CASE WHEN g.ImporteUSD IS NULL THEN 1 ELSE 0 END) noValuados "
+        "FROM dbo.RepartosGastoCaja d JOIN dbo.GastoCajaEfectivo g ON g.IdGasto=d.IdGasto "
+        "JOIN dbo.OperacionesCajaEfectivo op ON op.IdOperacion=g.IdOperacion "
+        "WHERE g.Anulada=0 AND op.Estado='Vigente' AND (d.IdCampania IS NULL OR (d.IdCampania=? "
+        "AND NOT EXISTS (SELECT 1 FROM dbo.Map_CultivoResultado m WHERE m.IdDestino=d.IdDestino AND m.Activo=1)))",
+        (id_campania,),
+    )
+    if (fila is None or (fila["pesos"] is None and fila["dolares"] is None)) and not (caja and caja['pesos'] is not None):
         return None
     motivo = "Sin cultivo asociado en esta campaña o sin campaña asignada (todas las campañas). No incluido en los totales."
-    return {"montoPesos": round(_f(fila["pesos"]), 2), "montoDolares": round(_f(fila["dolares"]), 2), "motivo": motivo}
+    incomplete = bool((caja or {}).get('noValuados'))
+    if incomplete:
+        motivo += ' Incluye gastos de caja pendientes de valuar en dólares.'
+    return {"montoPesos": round(_f((fila or {}).get('pesos')) + _f((caja or {}).get('pesos')), 2),
+            "montoDolares": round(_f((fila or {}).get('dolares')) + _f((caja or {}).get('dolares')), 2),
+            "valuacionDolaresIncompleta": incomplete, "motivo": motivo}
 
 
 def resultado_campania(id_campania: int) -> dict:

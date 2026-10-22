@@ -101,13 +101,13 @@ def movimientos_bancarios() -> dict[tuple, dict]:
 def importes_efectivo() -> dict[tuple, float]:
     """Importe de los pagos en efectivo, para la regla de us$ contra pesos."""
     return {("efectivo", f["id"]): -abs(float(f["importe"] or 0))
-            for f in fetch_all("SELECT IdPagoEfectivo AS id, [Importe imputado] AS importe FROM dbo.[Pagos efectivo]")}
+            for f in fetch_all("SELECT IdPagoEfectivo AS id, [Importe imputado] AS importe FROM dbo.vw_PagosEfectivoVigentes")}
 
 
 def fechas_otros_medios(lineas: dict) -> dict[tuple, object]:
     """Fecha de los medios que no son banco, para detectar fechas incoherentes."""
     fechas = {("tarjetas", i): l["fecha"] for i, l in lineas.items()}
-    for f in fetch_all("SELECT IdPagoEfectivo AS id, Fecha AS fecha FROM dbo.[Pagos efectivo]"):
+    for f in fetch_all("SELECT IdPagoEfectivo AS id, Fecha AS fecha FROM dbo.vw_PagosEfectivoVigentes"):
         fechas[("efectivo", f["id"])] = f["fecha"]
     for f in fetch_all("SELECT IdValor AS id, [Fecha Emision] AS fecha FROM dbo.[Valores Recibidos]"):
         fechas[("valores-recibidos", f["id"])] = f["fecha"]

@@ -12,15 +12,21 @@ from src.features.vinculos import validacion
 
 
 def _importe_total_documento(tipo_documento: str, id_documento: int) -> float:
+    if tipo_documento == 'Alquiler':
+        fila = fetch_all('SELECT [Importe Cuota] total FROM dbo.[Detalle Cobro Alquiler] WHERE IdCobroAlquiler=?', (id_documento,))
+        return float(fila[0]['total'] or 0) if fila else 0.0
     if tipo_documento == "CompraDeuda":
         # 031 (FR-010): en pesos; las compras en dólares se pesifican con su TC.
         fila = fetch_all(
-            "SELECT t.GranTotal AS total, c.Moneda AS moneda, c.[Tipo de Cambio] AS tc FROM dbo.vw_Cns_Total_Compra t "
-            "JOIN dbo.Compras c ON c.IdDeuda = t.IdDeuda WHERE t.IdDeuda = ?", (id_documento,)
+            "SELECT t.GranTotal AS total,c.Moneda AS moneda,c.[Tipo de Cambio] AS tc,pa.cp particular "
+            "FROM dbo.vw_Cns_Total_Compra t JOIN dbo.Compras c ON c.IdDeuda=t.IdDeuda "
+            "OUTER APPLY (SELECT SUM(d.Cantidad*d.[Precio Unitario]*(1+ISNULL(d.IVA,0)/100.0)) cp "
+            "FROM dbo.Det_Compras d WHERE d.IdCompra=c.IdDeuda AND d.Cantidad*d.[Precio Unitario]<0 "
+            "AND d.[Producto/Servicio] LIKE '%particular%') pa WHERE t.IdDeuda=?", (id_documento,)
         )
         if not fila:
             return 0.0
-        total = float(fila[0]["total"] or 0)
+        total = float(fila[0]["total"] or 0) - float(fila[0].get("particular") or 0)
         if fila[0]["moneda"] == "Dolares" and (fila[0]["tc"] or 0) > 1:
             total *= float(fila[0]["tc"])
         return total

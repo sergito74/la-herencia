@@ -39,6 +39,7 @@ export interface ResultadoCultivoResumen {
 }
 
 export interface CostoSinClasificar {
+  valuacionDolaresIncompleta?: boolean;
   montoPesos: number;
   montoDolares: number;
   motivo: string;

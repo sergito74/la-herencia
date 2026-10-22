@@ -46,9 +46,13 @@ def _compras_pendientes(id_contacto: int) -> list[dict]:
     filas = fetch_all(
         """
         SELECT c.IdDeuda AS idDocumento, c.Fecha AS fecha, c.[Nro Documento] AS numeroDocumento,
-               tc.GranTotal AS importeTotal, c.Moneda AS moneda, c.[Tipo de Cambio] AS tc
+               tc.GranTotal-ISNULL(pa.cp,0) AS importeTotal,
+               ABS(ISNULL(pa.cp,0)) AS importePersonal,c.Moneda AS moneda,c.[Tipo de Cambio] AS tc
         FROM dbo.Compras c
         JOIN dbo.vw_Cns_Total_Compra tc ON tc.IdDeuda = c.IdDeuda
+        OUTER APPLY (SELECT SUM(d.Cantidad*d.[Precio Unitario]*(1+ISNULL(d.IVA,0)/100.0)) cp
+          FROM dbo.Det_Compras d WHERE d.IdCompra=c.IdDeuda AND d.Cantidad*d.[Precio Unitario]<0
+          AND d.[Producto/Servicio] LIKE '%particular%') pa
         WHERE c.IdContacto = ?
         ORDER BY c.Fecha ASC, c.IdDeuda ASC
         """,
@@ -72,6 +76,9 @@ def _compras_pendientes(id_contacto: int) -> list[dict]:
                     "importeTotal": round(importe_total, 2),
                     "aplicado": round(aplicado, 2),
                     "saldoPendiente": saldo,
+                    "esParticular": bool(f.get('importePersonal')),
+                    "importePersonal": round(float(f.get('importePersonal') or 0) *
+                                             (float(f['tc']) if f['moneda']=='Dolares' and (f['tc'] or 0)>0 else 1), 2),
                 }
             )
     return resultado
@@ -147,5 +154,25 @@ def documentos_pendientes(id_contacto: int, tipo: str | None = None) -> list[dic
     if tipo in (None, "venta"):
         resultado.extend(_ventas_hacienda_pendientes(id_contacto))
         resultado.extend(_ventas_granos_pendientes(id_contacto))
+        resultado.extend(_alquileres_pendientes(id_contacto))
     resultado.sort(key=lambda d: d["fecha"] or date.min)
     return resultado
+
+
+def _alquileres_pendientes(id_contacto: int) -> list[dict]:
+    rows = fetch_all('SELECT d.IdCobroAlquiler idDocumento,d.[Fecha vencimiento] fecha,'
+                     'd.[Numero Cuota] numeroCuota,d.[Importe Cuota] importeTotal,d.Estado estado '
+                     'FROM dbo.[Detalle Cobro Alquiler] d JOIN dbo.Alquileres a ON a.IdAlquiler=d.IdAlquiler '
+                     'WHERE a.IdContacto=? ORDER BY d.[Fecha vencimiento],d.IdCobroAlquiler', (id_contacto,))
+    paid = _pagados('Alquiler', [x['idDocumento'] for x in rows])
+    result = []
+    for row in rows:
+        total = round(float(row['importeTotal'] or 0), 2)
+        applied = paid[row['idDocumento']]
+        if row['estado'] == 'Cobrado' and applied == 0:
+            continue  # Historical settlement without a recreated treasury payment.
+        if total-applied > .005:
+            result.append({'tipoDocumento': 'Alquiler', 'idDocumento': row['idDocumento'],
+                           'fecha': _fecha(row['fecha']), 'numeroDocumento': f"Cuota {row['numeroCuota']}",
+                           'importeTotal': total, 'aplicado': applied, 'saldoPendiente': round(total-applied, 2)})
+    return result

@@ -151,9 +151,28 @@ def costos_contratista(id_cultivo: int, id_campania: int) -> list[dict]:
 
 
 def costo_total(id_cultivo: int, id_campania: int) -> dict:
-    lineas = costos_heredados(id_cultivo, id_campania) + costo_ordenes_trabajo(id_cultivo, id_campania)
+    lineas = (costos_heredados(id_cultivo, id_campania) + costo_ordenes_trabajo(id_cultivo, id_campania)
+              + gastos_caja(id_cultivo, id_campania))
     return {
         "pesos": round(sum(_f(l["montoPesos"]) for l in lineas), 2),
         "dolares": round(sum(_f(l["montoDolares"]) for l in lineas), 2),
         "lineas": lineas,
     }
+
+
+def gastos_caja(id_cultivo: int, id_campania: int) -> list[dict]:
+    """038: cada reparto vigente es un costo no fiscal, sin duplicar compras."""
+    destino = mapeo.idCultivo_a_destino(id_cultivo)
+    if destino is None:
+        return []
+    return fetch_all(
+        "SELECT g.Concepto concepto,r.Rubro rubro,d.ImportePesos montoPesos,"
+        "CASE WHEN g.ImporteUSD IS NULL THEN NULL ELSE g.ImporteUSD*d.ImportePesos/g.ImportePesos END montoDolares,"
+        "'GastoCaja' origen,g.IdGasto idGasto,d.IdReparto idReparto,g.IdOperacion idOperacion,"
+        "NULL idCompra,NULL idDetalleCompra,NULL idOrdenTrabajo "
+        "FROM dbo.GastoCajaEfectivo g JOIN dbo.RepartosGastoCaja d ON d.IdGasto=g.IdGasto "
+        "JOIN dbo.OperacionesCajaEfectivo op ON op.IdOperacion=g.IdOperacion "
+        "JOIN dbo.Rubros r ON r.IdRubro=d.IdRubro "
+        "WHERE g.Anulada=0 AND op.Estado='Vigente' AND d.IdDestino=? AND d.IdCampania=?",
+        (destino, id_campania),
+    )

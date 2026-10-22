@@ -4,7 +4,7 @@
 
 **Created**: 2026-10-22
 
-**Status**: Clarified
+**Status**: Implemented (verificación con datos simulados y lecturas de WC; sin operaciones de prueba reales)
 
 **Input**: User description: "Módulo de administración y gestión de cajas de efectivo (Giamigli SA, caja chica del campo y caja del Condominio LSC). Hoy las cajas son solo lectura (027) y se cargan desde la planilla Cajas Giamigli.xlsx. Se necesita operar las cajas desde el sistema: aportes y retiros de socios, pagos a proveedores, cobros, traspasos entre cajas y con bancos, y arqueos; cada movimiento reflejado una sola vez en las cuentas que correspondan, auditable."
 
@@ -147,10 +147,10 @@ Ver cada caja con su saldo, movimientos y filtros (fecha, tipo, socio, contacto)
 - **FR-004**: Un aporte o retiro "a cuenta" de un socio MUST reflejarse una sola vez en su cuenta de socio, valuado en kg de novillo / US$ a la fecha con las cotizaciones del sistema (regla de 021/036).
 - **FR-005**: Un retiro marcado como "retiro de ganancias" MUST NOT generar deuda ni crédito en la cuenta del socio.
 - **FR-006**: Un pago de compra particular desde una caja MUST aplicar la regla de compras particulares (pago en el proveedor, asiento Particular, deuda del socio).
-- **FR-007**: Un traspaso entre cajas MUST generar la salida y la entrada vinculadas, por el mismo importe y en la misma fecha, sin efecto en contactos ni socios.
+- **FR-007**: Un traspaso entre cajas MUST generar la salida y la entrada vinculadas, por el mismo importe y en la misma fecha, sin efecto en contactos ni socios cuando ambas cajas pertenecen a Giamigli. Los cruces con la caja del Condominio son aportes/devoluciones con dos piernas físicas y un único efecto de socio.
 - **FR-008**: Una extracción o depósito bancario MUST poder vincularse al movimiento del extracto bancario correspondiente (ya importado) y, una vez vinculado, ese movimiento bancario MUST NOT figurar en la cuenta de ningún contacto.
 - **FR-009**: El sistema MUST permitir cargar un arqueo por denominación de billete y moneda, mostrar la diferencia contra el saldo y, si el usuario la confirma, registrar el movimiento de diferencia.
-- **FR-010**: El sistema MUST mostrar para cada caja el saldo actual, los movimientos con saldo corrido y filtros por fecha, tipo, contacto y socio, y el último arqueo con su diferencia.
+- **FR-010**: El sistema MUST mostrar para cada caja el saldo actual, los movimientos con saldo corrido y filtros por fecha, tipo, contacto y socio, y el último arqueo con su diferencia y estado de vigencia. Los filtros de tipo/contacto/socio solo restringen filas: saldo corrido real de caja y subtotal filtrado se muestran separados.
 - **FR-011**: La anulación MUST ser no destructiva: el movimiento queda visible como anulado, con motivo, usuario y fecha, y se revierten juntos todos sus efectos (caja, cuenta corriente, cuenta de socio, vínculos).
 - **FR-012**: Solo los usuarios con permiso de escritura MUST poder registrar o anular; los de solo lectura ven las cajas sin poder operar (mismo criterio que el resto del sistema).
 - **FR-013**: Los movimientos históricos cargados desde las planillas (027/036) MUST seguir visibles y mantener sus vínculos (fila de planilla, pago de Access), sin duplicarse con los nuevos.
@@ -186,3 +186,13 @@ Ver cada caja con su saldo, movimientos y filtros (fecha, tipo, socio, contacto)
 - La marca de cuenta A/B (blanco/negro) que usa la planilla se conserva como atributo del movimiento.
 - Permisos: el mismo esquema de roles existente (016); no se crean roles nuevos.
 - Moneda: las cajas son en pesos; la caja en dólares de la planilla (2023, 6 movimientos) queda fuera de alcance de esta versión.
+
+## Precisiones posteriores al análisis — 22/10/2026
+
+Sergio autorizó corregir los siete hallazgos. Estas precisiones complementan los requisitos; no registran operaciones reales.
+
+- FR-007 / US2–US3: traspaso interno sin efecto de socio solo entre Giamigli y caja chica. Aporte del Condominio desde su caja: salida Condominio, entrada Giamigli/chica y un crédito al socio 3, en una operación. Devolución: piernas inversas y un débito al socio 3. No añadir otro pago al contacto 549. Pago directo de gasto de Giamigli desde caja Condominio: una salida física, un pago proveedor y un crédito socio, sin movimiento ficticio en caja Giamigli.
+- FR-002 / US1: gasto sin comprobante persiste como gasto interno no fiscal y repartos rastreables. Entra una sola vez en costos; anulación revierte caja y costo juntos, sin factura ni deuda ficticia.
+- FR-009 / US5: anular ajuste de arqueo invalida el arqueo en la misma transacción. Conservar recuento, saldo observado y diferencia original; mostrar saldo recalculado y diferencia vigente aparte. No reabrir el recuento: corregir con un nuevo arqueo enlazado. Operación retroactiva aceptada marca los arqueos posteriores afectados como Desactualizado; no acreditan conciliación vigente hasta nuevo recuento.
+- FR-010: calcular saldo real antes de filtros de tipo/contacto/socio y paginación; mostrar subtotal filtrado separado. Filas anuladas visibles no afectan saldo.
+- US3, opción A: exigir liquidación salarial, débito bancario y retorno de efectivo documentados. Para liquidación/débito/retorno de $10.000: caja +$10.000, banco −$10.000, débito excluido como pago salarial y liquidación cancelada por Ajuste Interno explícito «no cobrado» de 036; cero aporte al socio. No sumar otro cobro salarial. Anulación revierte efectos propios y restaura clasificación/aplicaciones previas bajo versión. Montos parciales o diferencias sin regla documentada quedan pendientes, sin cancelación automática. Los pares compensados de cuenta de socio desde noviembre de 2017 conservan su tratamiento histórico: no convertirlos automáticamente en opción A.

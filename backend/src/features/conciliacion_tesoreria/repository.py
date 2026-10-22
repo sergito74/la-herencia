@@ -74,7 +74,7 @@ _MEDIOS: dict[str, _MedioInfo] = {
         "dbo.[Movimientos Mercado Libre]", "IdMovimiento", "IdContacto", "Importe", "Fecha"
     ),
     "efectivo": _MedioInfo(
-        "dbo.[Pagos efectivo]", "IdPagoEfectivo", "IdContacto", "[Importe imputado]", "Fecha"
+        "dbo.vw_PagosEfectivoVigentes", "IdPagoEfectivo", "IdContacto", "[Importe imputado]", "Fecha"
     ),
     "valores-propios": _MedioInfo(
         "dbo.[Valores propios]", "IdValor", None, "Importe", "[Fecha emision]"
@@ -101,10 +101,20 @@ def _info(medio: str) -> _MedioInfo:
 def _movimiento_original(medio: str, id_movimiento: int) -> dict:
     info = _info(medio)
     columnas = f"{info.importe_expr} AS importe, {info.fecha_col} AS fecha"
+    params: tuple = (id_movimiento,)
     if info.contacto_col:
-        columnas += f", {info.contacto_col} AS idContacto"
+        if medio in ('bna', 'galicia', 'mercado-libre'):
+            # 038 preserves the raw bank contact as history, but its active cash
+            # transfer is no longer a payment of that contact. Undo restores it.
+            columnas += (", CASE WHEN EXISTS (SELECT 1 FROM dbo.BancoOperacionCaja bc "
+                         "JOIN dbo.OperacionesCajaEfectivo oc ON oc.IdOperacion=bc.IdOperacion "
+                         "WHERE bc.Medio=? AND bc.IdMovimiento=? AND oc.Estado='Vigente') "
+                         f"THEN NULL ELSE {info.contacto_col} END AS idContacto")
+            params = (medio, id_movimiento, id_movimiento)
+        else:
+            columnas += f", {info.contacto_col} AS idContacto"
     fila = fetch_one(
-        f"SELECT {columnas} FROM {info.tabla} WHERE {info.id_col} = ?", (id_movimiento,)
+        f"SELECT {columnas} FROM {info.tabla} WHERE {info.id_col} = ?", params
     )
     if fila is None:
         raise ValueError(f"No existe ningún movimiento '{medio}' con id {id_movimiento}.")

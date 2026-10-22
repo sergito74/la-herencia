@@ -7,7 +7,7 @@ from datetime import date, datetime
 
 from pydantic import BaseModel
 
-TipoDocumento = str  # "CompraDeuda" | "VentaHacienda" | "VentaGranos"
+TipoDocumento = str  # CompraDeuda | VentaHacienda | VentaGranos | Alquiler (cuota)
 
 
 class DocumentoPendiente(BaseModel):
@@ -18,6 +18,8 @@ class DocumentoPendiente(BaseModel):
     importeTotal: float
     aplicado: float
     saldoPendiente: float
+    esParticular: bool = False
+    importePersonal: float | None = None
 
 
 class SugerenciaItem(BaseModel):

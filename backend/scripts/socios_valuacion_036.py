@@ -18,6 +18,7 @@ from datetime import date, datetime
 import openpyxl
 
 from src.db.connection import _assert_target_is_wc, execute_write_transaction, fetch_all, reconciliation_transaction
+from src.features.cuentas_socios.valuacion import proporciones
 
 PLANILLA = r'C:\Users\Sergio\Documents\La Herencia\Administracion y gestion\Cuentas a pagar\Cajas Giamigli.xlsx'
 HOJAS = {1: 'Cuenta Sergio', 2: 'Cuenta Lucy'}
@@ -101,10 +102,9 @@ def main():
                     st.append(('UPDATE dbo.MovimientosCuentaSocio SET ImporteKgCarne=?, ImporteUSD=? WHERE IdMovimiento=?', (round(kg, 4), round(usd, 4), x['i'])))
                     sync += 1
             elif not (x['kg'] or x['usd']):
-                if f < INICIO_NOVILLO:
-                    kg, usd = 0.0, m / cot(dol, f)
-                else:
-                    kg, usd = m * 0.5 / cot(nov, f), m * 0.5 / cot(dol, f)
+                parte_kg, parte_usd = proporciones(f)
+                kg = m * parte_kg / cot(nov, f) if parte_kg else 0.0
+                usd = m * parte_usd / cot(dol, f)
                 st.append(('UPDATE dbo.MovimientosCuentaSocio SET ImporteKgCarne=?, ImporteUSD=? WHERE IdMovimiento=?', (round(kg, 4), round(usd, 4), x['i'])))
                 val += 1
         resumen[socio] = (sync, val)

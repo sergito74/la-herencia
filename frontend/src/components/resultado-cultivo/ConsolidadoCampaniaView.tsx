@@ -38,7 +38,7 @@ export function ConsolidadoCampaniaView({
               <h3 className="font-medium">Costos sin clasificar</h3>
               <p className="mt-1 text-sm text-ink-secondary">{datos.costoSinClasificar.motivo}</p>
               <p className="mt-2 font-data">
-                {formatMoneda(datos.costoSinClasificar.montoPesos)} · {formatMoneda(datos.costoSinClasificar.montoDolares, "Dolares")}
+                {formatMoneda(datos.costoSinClasificar.montoPesos)} · {datos.costoSinClasificar.valuacionDolaresIncompleta ? "Valuación en dólares incompleta" : formatMoneda(datos.costoSinClasificar.montoDolares, "Dolares")}
               </p>
             </div>
           )}

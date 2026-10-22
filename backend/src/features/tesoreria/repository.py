@@ -127,7 +127,7 @@ MEDIOS_CONFIG: dict[str, MedioConfig] = {
         ),
     ),
     "efectivo": MedioConfig(
-        table="dbo.[Pagos efectivo]",
+        table="dbo.vw_PagosEfectivoVigentes",
         id_column="IdPagoEfectivo",
         id_field="idPagoEfectivo",
         date_column="Fecha",

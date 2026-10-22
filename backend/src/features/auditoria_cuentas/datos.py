@@ -58,7 +58,7 @@ def cargar_hallazgos(corte: date | None = None) -> dict:
         fechas[("bna", f["i"])] = _dia(f["f"])
     for f in fetch_all("SELECT IdMovimiento AS i, Fecha AS f FROM dbo.[Movimientos Galicia]", ()):
         fechas[("galicia", f["i"])] = _dia(f["f"])
-    for f in fetch_all("SELECT IdPagoEfectivo AS i, Fecha AS f FROM dbo.[Pagos efectivo]", ()):
+    for f in fetch_all("SELECT IdPagoEfectivo AS i, Fecha AS f FROM dbo.vw_PagosEfectivoVigentes", ()):
         fechas[("efectivo", f["i"])] = _dia(f["f"])
     filas = fetch_all(
         "SELECT a.IdAplicacion, a.OrigenMovimiento AS medio, a.IdMovimientoOrigen AS idMov, a.IdDocumentoAplicado AS idCompra, "

@@ -45,7 +45,7 @@ _MEDIOS: dict[str, _MedioInfo] = {
         "(ISNULL([Créditos], 0) - ISNULL([Débitos], 0))", "[Descripción]",
     ),
     "mercado-libre": _MedioInfo("dbo.[Movimientos Mercado Libre]", "IdMovimiento", "Fecha", "Importe", "Descripcion"),
-    "efectivo": _MedioInfo("dbo.[Pagos efectivo]", "IdPagoEfectivo", "Fecha", "[Importe imputado]", "Cuenta"),
+    "efectivo": _MedioInfo("dbo.vw_PagosEfectivoVigentes", "IdPagoEfectivo", "Fecha", "[Importe imputado]", "Cuenta"),
     "valores-propios": _MedioInfo("dbo.[Valores propios]", "IdValor", "[Fecha emision]", "Importe", "Comentarios"),
     "valores-recibidos": _MedioInfo("dbo.[Valores Recibidos]", "IdValor", "[Fecha Emision]", "Importe", "Destino"),
 }

@@ -1,6 +1,8 @@
 import { apiGet, apiPost } from "@/services/apiClient";
 
 export interface DocumentoPendiente {
+  esParticular?: boolean;
+  importePersonal?: number | null;
   tipoDocumento: string;
   idDocumento: number;
   fecha: string | null;

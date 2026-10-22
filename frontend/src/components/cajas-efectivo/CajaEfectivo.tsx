@@ -13,6 +13,14 @@ import { DataTable, type DataTableColumn } from "@/components/ui/DataTable";
 import { KpiCard } from "@/components/ui/KpiCard";
 import { ErrorState, LoadingState } from "@/components/ui/States";
 import { formatFecha, formatMoneda } from "@/lib/format";
+import { SoloLectura } from "@/components/auth/SoloLectura";
+import { ContactoSelect } from "@/components/ui/ContactoSelect";
+import { fetchSocios } from "@/services/cuentasSociosApi";
+import { listarArqueosCaja, TIPOS_CAJA } from "@/services/cajasEfectivoApi";
+import { OperacionCajaForm } from "./OperacionCajaForm";
+import { ArqueoCajaPanel } from "./ArqueoCajaPanel";
+import { ImportacionCajaPanel } from "./ImportacionCajaPanel";
+import { DetalleOperacionCaja } from "./DetalleOperacionCaja";
 
 const NOMBRES: Record<CajaSlug, string> = {
   "giamigli-sa": "Caja de efectivo — Giamigli SA",
@@ -35,14 +43,26 @@ const COLUMNS: DataTableColumn<MovimientoCajaEfectivo>[] = [
     ),
   },
   { key: "cuenta", header: "Cuenta", render: (m) => m.cuenta ?? "—" },
+  { key: "saldo", header: "Saldo real de caja", align: "right", render: m => m.saldoCorridoDecimal == null ? "—" : formatMoneda(Number(m.saldoCorridoDecimal)) },
+  { key: "estado", header: "Estado", render: m => m.anulada ? "Anulado" : m.idOperacion ? "Vigente" : "Histórico" },
   { key: "formaPago", header: "Forma de pago", render: (m) => m.formaPago ?? "—" },
 ];
 
-/** Cuenta de una caja de efectivo (027 US3/US4): saldo + historial, 100%
- * de solo lectura — no hay affordance de carga (FR-011). */
+/** Caja 038: operaciones, consulta, arqueos e importación con permisos existentes. */
 export function CajaEfectivo({ caja }: { caja: CajaSlug }) {
   const [page, setPage] = useState(1);
+  const [vista, setVista] = useState<"movimientos" | "operar" | "arqueos" | "importar">("movimientos");
+  const [detalle, setDetalle] = useState<number | null>(null);
+  const [desde, setDesde] = useState("");
+  const [hasta, setHasta] = useState("");
+  const [tipo, setTipo] = useState("");
+  const [contacto, setContacto] = useState<number | null>(null);
+  const [nombreContacto, setNombreContacto] = useState<string | null>(null);
+  const [socio, setSocio] = useState(0);
+  const [anulados, setAnulados] = useState(false);
   const pageSize = 50;
+  const ultimo = useQuery({ queryKey: ["caja-arqueos", caja, 1], queryFn: () => listarArqueosCaja(caja) });
+  const socios = useQuery({ queryKey: ["cuentas-socios"], queryFn: fetchSocios });
 
   const { data: saldo, isLoading: cargandoSaldo } = useQuery({
     queryKey: ["caja-efectivo-saldo", caja],
@@ -55,8 +75,8 @@ export function CajaEfectivo({ caja }: { caja: CajaSlug }) {
     isError,
     refetch,
   } = useQuery({
-    queryKey: ["caja-efectivo-movimientos", caja, page, pageSize],
-    queryFn: () => fetchMovimientosCaja(caja, { page, pageSize }),
+    queryKey: ["caja-efectivo-movimientos", caja, page, pageSize, desde, hasta, tipo, contacto, socio, anulados],
+    queryFn: () => fetchMovimientosCaja(caja, { page, pageSize, desde, hasta, tipo, idContacto: contacto ?? undefined, idSocio: socio || undefined, incluirAnuladas: anulados }),
   });
 
   return (
@@ -69,13 +89,30 @@ export function CajaEfectivo({ caja }: { caja: CajaSlug }) {
           tone={saldo && saldo.saldo < 0 ? "danger" : "success"}
         />
       </div>
+      {caja === "condominio-lsc" && <p>Se conserva la historia completa. Las operaciones nuevas registran únicamente la relación con Giamigli; la administración propia del Condominio sigue fuera de este módulo.</p>}
+      {ultimo.data?.items[0] && <p>Último arqueo: {formatFecha(ultimo.data.items[0].fechaCorte)} · {ultimo.data.items[0].estado} · diferencia vigente {formatMoneda(Number(ultimo.data.items[0].diferenciaVigenteDecimal))}</p>}
+      {ultimo.isError && <p role="alert">No se pudo consultar el último arqueo. <button onClick={() => ultimo.refetch()}>Reintentar</button></p>}
+      <nav className="flex flex-wrap gap-3" aria-label="Acciones de caja"><button className="rounded border border-border p-2" onClick={() => setVista("movimientos")}>Movimientos</button><button className="rounded border border-border p-2" onClick={() => setVista("arqueos")}>Arqueos</button><SoloLectura><button className="rounded border border-border p-2" onClick={() => setVista("operar")}>Registrar movimiento</button><button className="rounded border border-border p-2" onClick={() => setVista("importar")}>Comparar e importar planilla</button></SoloLectura></nav>
+      {detalle && <DetalleOperacionCaja key={detalle} id={detalle} onClose={() => setDetalle(null)} />}
+      {vista === "operar" && <SoloLectura><OperacionCajaForm key={caja} caja={caja} onSaved={id => { setDetalle(id); setVista("movimientos"); }} /></SoloLectura>}
+      {vista === "arqueos" && <ArqueoCajaPanel key={caja} caja={caja} onOperation={setDetalle} />}
+      {vista === "importar" && <ImportacionCajaPanel />}
+      {vista === "movimientos" && <><div className="grid gap-3 rounded border border-border p-3 md:grid-cols-3">
+        <label>Desde<input className="block rounded border border-border p-2" type="date" value={desde} onChange={e => { setDesde(e.target.value); setPage(1); }} /></label>
+        <label>Hasta<input className="block rounded border border-border p-2" type="date" value={hasta} onChange={e => { setHasta(e.target.value); setPage(1); }} /></label>
+        <label>Tipo<select className="block rounded border border-border p-2" value={tipo} onChange={e => { setTipo(e.target.value); setPage(1); }}><option value="">Todos</option>{Object.entries(TIPOS_CAJA).map(([k, v]) => <option key={k} value={k}>{v}</option>)}<option value="diferencia_arqueo">Diferencia de arqueo</option></select></label>
+        <ContactoSelect value={contacto} razonSocial={nombreContacto} label="Contacto" onChange={(id, nombre) => { setContacto(id); setNombreContacto(nombre); setPage(1); }} />
+        <label>Socio<select className="block rounded border border-border p-2" value={socio} onChange={e => { setSocio(Number(e.target.value)); setPage(1); }}><option value={0}>Todos</option>{socios.data?.socios.map(s => <option key={s.idSocio} value={s.idSocio}>{s.nombre}</option>)}</select></label>
+        <label><input type="checkbox" checked={anulados} onChange={e => { setAnulados(e.target.checked); setPage(1); }} /> Incluir anulados</label>
+      </div>
+      {movimientos && <p>Arrastre real: {formatMoneda(Number(movimientos.saldoAnteriorDecimal ?? 0))} · subtotal de movimientos filtrados: {formatMoneda(Number(movimientos.subtotalFiltradoDecimal ?? 0))}. El saldo corrido incluye los movimientos ocultos por los filtros.</p>}
 
       {isLoading && <LoadingState />}
       {isError && <ErrorState message="Ocurrió un error al obtener los movimientos." onRetry={() => refetch()} />}
 
       {movimientos && (
         <DataTable
-          columns={COLUMNS}
+          columns={[...COLUMNS, { key: "operacion", header: "Origen", render: m => m.idOperacion ? <button className="underline" onClick={() => setDetalle(m.idOperacion!)}>Detalle y auditoría</button> : m.numeroDocumento || m.formaPago || "Historia de planilla" }]}
           rows={movimientos.items}
           keyField={(m) => m.idMovimiento}
           emptyMessage="Sin movimientos registrados para esta caja."
@@ -85,6 +122,7 @@ export function CajaEfectivo({ caja }: { caja: CajaSlug }) {
           onPageChange={setPage}
         />
       )}
+      </>}
     </div>
   );
 }

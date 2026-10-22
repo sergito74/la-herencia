@@ -226,7 +226,7 @@ def get_efectivo_referencia(id_pago: int) -> dict | None:
             IdPagoEfectivo AS idMovimiento,
             Fecha AS fecha,
             [Importe imputado] AS importe
-        FROM dbo.[Pagos efectivo]
+        FROM dbo.vw_PagosEfectivoVigentes
         WHERE IdPagoEfectivo = ?
     """
     return fetch_one(sql, (id_pago,))
