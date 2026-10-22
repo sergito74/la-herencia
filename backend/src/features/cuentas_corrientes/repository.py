@@ -78,18 +78,15 @@ def get_saldos_todos(orden: str = "razonSocial") -> list[dict]:
     repetir `get_saldo` contacto por contacto. Incluye contactos con saldo
     exactamente $0 (FR-004) — nunca filtra por `SaldoParcial <> 0`.
     """
-    order_sql = "SaldoParcial ASC" if orden == "saldo" else "[Razon Social]"
+    # 22/10/2026: antes tomaba la última fila de vw_MovimientosCuenta_Saldo (saldo acumulado con ventana sobre todos los
+    # movimientos); con la PC sin memoria libre esa consulta llegó a tardar 7 min y trababa al resto del sistema (esperas
+    # RESOURCE_SEMAPHORE). El saldo final es la suma Credito − Deuda: mismo resultado (verificado, 522 contactos), sin ventana.
+    order_sql = "saldoParcial ASC" if orden == "saldo" else "razonSocial"
     sql = f"""
-        SELECT IdContacto AS idContacto, [Razon Social] AS razonSocial, SaldoParcial AS saldoParcial
-        FROM (
-            SELECT IdContacto, [Razon Social], SaldoParcial,
-                   ROW_NUMBER() OVER (
-                       PARTITION BY IdContacto
-                       ORDER BY Fecha DESC, Origen DESC, IdOrigen DESC
-                   ) AS rn
-            FROM dbo.vw_MovimientosCuenta_Saldo
-        ) ultimos
-        WHERE rn = 1
+        SELECT IdContacto AS idContacto, MAX([Razon Social]) AS razonSocial,
+               ROUND(SUM(ISNULL(Credito, 0) - ISNULL(Deuda, 0)), 2) AS saldoParcial
+        FROM dbo.vw_MovimientosCuenta_Base
+        GROUP BY IdContacto
         ORDER BY {order_sql}
     """
     filas = fetch_all(sql)

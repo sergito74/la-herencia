@@ -28,8 +28,8 @@ def test_get_saldos_todos_ordena_por_razon_social_por_defecto(monkeypatch):
     monkeypatch.setattr("src.features.auditoria_cuentas.bimonetaria.cargar_cuentas", lambda ids: {})
     resultado = repository.get_saldos_todos("razonSocial")
     assert resultado == [{"idContacto": 1, "razonSocial": "B", "saldoParcial": 0.0}]
-    assert "ROW_NUMBER()" in filas[0]
-    assert "[Razon Social]" in filas[0].split("ORDER BY")[-1]
+    assert "GROUP BY IdContacto" in filas[0]
+    assert "razonSocial" in filas[0].split("ORDER BY")[-1]
 
 
 def test_get_saldos_todos_usa_saldo_bimonetario(monkeypatch):
@@ -51,7 +51,7 @@ def test_get_saldos_todos_orden_por_saldo_pone_mayor_deuda_primero(monkeypatch):
 
     monkeypatch.setattr(repository, "fetch_all", fake_fetch_all)
     repository.get_saldos_todos("saldo")
-    assert "SaldoParcial ASC" in capturado["sql"].split("ORDER BY")[-1]
+    assert "saldoParcial ASC" in capturado["sql"].split("ORDER BY")[-1]
 
 
 def test_endpoint_saldos_incluye_saldo_cero(monkeypatch):
