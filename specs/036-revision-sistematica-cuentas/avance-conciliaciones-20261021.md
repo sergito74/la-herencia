@@ -65,6 +65,11 @@ Estado para retomar las conciliaciones de cuentas corrientes (Claude o Codex). T
 | UATRE 315 | $0: DEBIN 31/01/2025 $604.224,36 era boleta municipal → Municipalidad 72; DEBIN 28/08/2025 $130.000 = carga a Mercado Pago (traspaso interno); pago efectivo 395 duplicado de ML 23 borrado; redondeo $102,50 | `uatre_036` |
 | Estudio Criado 115 | Saldo = FC 00003-00000881 (08/10/2026, posterior al corte); redondeo $0,45 (RDD115-260930) | `redondeos_cuentas_pesos_036` |
 | J y M de la Serna 47 | CERRADA $0: complemento = parte B = precio B x cantidad (vista la cuenta una vez); residuo 2015-2020 por venta (comisión B fuera de sistema); Breccia fuera (gasto Piccirilli $280.000 sin factura, pagó Sergio ICBC); Galicia Broker $20.174,34 = reconocimiento Galicia Seguros (NCI575-250710); AJ 293 vacuna aftosa $17.880; resumen J y M 25/11/2025 = sistema | `jym_*_036`, `breccia_fuera_jym_036`, `piccirilli_mantenimiento_036`, `galicia_seguros_reconocimiento_036` |
+| ARBA 12 | Cerrada con excepción: IIBB = aviso de deuda ARBA ($696.058,10 a favor al corte), 100 DDJJ del portal; inmobiliario/patente según avisos | `arba_*_036` |
+| Municipalidad 72 | $0: boletas tasa vial/guías generadas; Galicia 31/05/2021 = reintegro a Lucy; ajuste histórico | `municipalidad_*_036` |
+| Giamigli de Bolívar 386 | Vacía: traspasos internos, cobros B y retenciones duplicados, retiros a caja, ventas 2011 a Luis Albo, redondeo eliminado | `giamigli_*_036` |
+| Banco Galicia 518 | $0: inversiones/retiros sin contacto, intereses de préstamos y gastos bancarios mensuales (GB518) como comprobantes internos | `banco_galicia_cierre_036` |
+| Banco Nación 369 | Quedan solo los préstamos (+$6.989.711,77): falta el cronograma del BNA (Sergio lo baja del home banking) | `banco_nacion_cierre_036` |
 | Galicia 29/09/2026 $2.000.000 | Traspaso interno Galicia→BNA ya registrado (TraspasosInternosTesoreria) | — |
 
 ## 3. Pendientes (en orden)
@@ -83,8 +88,7 @@ Estado para retomar las conciliaciones de cuentas corrientes (Claude o Codex). T
    - UATRE 315: el redondeo de $102,50 NO lo aceptó Sergio: revisar (ver respuesta 21/10).
    - ARBA 12 (+$7,12 M): ESPERAR a Sergio: baja la cuenta corriente del inmobiliario para separar percepciones/retenciones IIBB,
      liquidaciones IIBB e inmobiliario.
-   - Sin mirar todavía: Banco Nación 369, Sergio 375, Giamigli de Bolívar 386, AFIP 119,
-   Albina Iglina (Lucy) 390, Banco Galicia 518.
+   - Sin mirar todavía: Sergio 375, AFIP 119, Albina Iglina (Lucy) 390.
 3. **Ya revisadas, quedan como pendientes justificados**: Sancor 171 (débito sep-2026 posterior al corte), Rivas 5666 y
    Sasso 5667 (facturas 14/10/2026), Electricidad Lavalle 32 (dejado a propósito por Sergio; no proponer la NC).
 4. **San Cristóbal 4663**: NO tiene saldo cero (Sergio); revisar.
