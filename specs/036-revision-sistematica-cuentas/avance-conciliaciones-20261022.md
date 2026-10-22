@@ -1,5 +1,7 @@
 # Avance conciliaciones — 22/10/2026 (traspaso a Codex)
 
+> **Continuación más reciente (22/10 tarde):** [traspaso-codex-20261022-tarde.md](traspaso-codex-20261022-tarde.md) — spec 038 (gestión de cajas) lista para `/speckit-plan`, cajas reconstruidas y pendientes de 036.
+
 > **Punto de entrada vigente para continuar la cuenta 375:** [pendientes y resumen](sergio-375-pendientes-resumen-20261022.md). Leer también la sección 4 de este documento: registra las acciones y respuestas posteriores al traspaso inicial y corrige hipótesis de las secciones anteriores. Los identificadores P/S se conservan en el [detalle histórico](sergio-375-pagos-para-revisar-20261022.md).
 
 Continúa [avance-conciliaciones-20261021.md](avance-conciliaciones-20261021.md). Reglas vigentes: escribir solo en WC; Access es solo referencia; scripts re-corribles con `backup_verificado` + `reconciliation_transaction`; push a `main` autorizado.
