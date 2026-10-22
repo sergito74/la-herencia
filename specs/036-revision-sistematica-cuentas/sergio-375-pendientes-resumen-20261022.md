@@ -1,5 +1,27 @@
 # Cuenta de Sergio: pendientes y resumen
 
+## Actualización 22/10/2026, 14:55: diferencia de mayo a agosto de 2016 (P10–P12), investigación (SIN APLICAR)
+
+**Evidencia:**
+- **BNA de Giamigli** (cuenta corriente 12301640029280): los débitos "DEB.TRAN.INTERB-LINK" a la caja de ahorro de Sergio (CBU 0150501601000218614294) son 18411 y 18412 ($10.000 + $10.000, 30/06/2016), 18413 ($13.000, 28/07/2016) y 18414 ($8.000, 05/09/2016).
+- **Comprobante de 18413:** `Cuentas a pagar\Transferencias\Sergio Giamberardini\Transferencia Sergio (Retiro Efectivo) - 20160728.pdf` dice **"CONCEPTO: RETIRO EFECTIVO — REFERENCIA: RET EFE"**.
+- **Caja** (MovimientosCajaEfectivo / hoja Caja Efectivo Pesos), el mismo día y por el mismo importe:
+  - 88 y 89 "Ingreso Efectivo" ($10.000 c/u, filas 688–689).
+  - 100 "Retorno Sueldo Sergio" ($13.000, fila 700).
+  - 114 "Retorno Sueldo Sergio Agosto 2016" ($8.000, fila 715).
+  - En esos meses la caja tenía entre $7.000 y $13.000.
+- **Recibos 2016** (Personal\Recibos6): mayo neto $8.000, junio $12.434 (con aguinaldo), agosto $8.000, octubre y noviembre $10.000. No hay PDF de julio; Access tiene julio $8.000.
+- **Cuenta de socio 2016:** sin registros de estos movimientos.
+
+**Lectura:** las transferencias del 30/06 y del 28/07 no fueron pago de sueldo. Fueron un **retiro de efectivo para fondear la caja** a través de la cuenta de Sergio: BNA → cuenta de Sergio → efectivo → caja, el mismo día. Desde el 05/09/2016 el patrón cambia a "retorno de sueldo" mensual ($8.000, después $10.000).
+
+**Propuesta (sin aplicar):**
+1. 18411, 18412 y 18413 ($33.000) salen del 375 como **traspasos internos BNA → caja**, vinculados con los movimientos de caja 88, 89 y 100 en TraspasosInternosTesoreria. No son sueldo ni socio.
+2. Sueldos de mayo, junio y julio de 2016 ($8.000 + $12.434 + $8.000 = $28.434): no se cobraron. Se cancelan con un ajuste por período, igual que enero-2013 a abril-2016.
+3. Con esto la diferencia de $4.566 desaparece.
+4. **Pregunta abierta:** desde agosto de 2016 los pagos mensuales coinciden con el sueldo y vuelven a caja como "Retorno sueldo" (19 retornos hasta febrero de 2018, $328.503). ¿Se tratan igual, es decir, como sueldo no cobrado y traspaso a caja, o como sueldo cobrado y aporte de Sergio en efectivo?
+
+
 ## Actualización 22/10/2026, 14:45: sueldos no cobrados 2013-2016 (APLICADO)
 
 - Sergio: "creo que no los cobré ni los voy a cobrar"; pidió un documento de ajuste por cada período.
