@@ -7,7 +7,7 @@ Relevamiento solo lectura del 22/10/2026 (consultas SELECT a WC y GET/POST de co
 - **Verificación**: 25/09/2026 = 4.068,212; 29/09/2026 = 4.241,828; 30/09/2026 sin índice ("-"). Promedio simple = 4.155,02 = liquidación real.
 - **Rationale**: `IndiceNovillo` carga `haciinfo000013`, otro índice (25/09 = 4.166,214); no sirve para pastaje.
 - **Alternativas**: reusar IndiceNovillo (rechazado: otro índice); total ponderado de la página 4.155,957 (rechazado: no es lo pactado).
-- **Hallazgo lateral** (no se corrige en 039): `_num()` del script existente lee "6.316" como 6,316 → `IndiceNovillo.CabIngresadas` mal cargado. Para INMAG se usa un parser que trata '.' como miles.
+- **Hallazgo lateral** (corregido 22/10/2026): `_num()` leía "6.316" como 6,316 → `IndiceNovillo.CabIngresadas` mal cargado. Script corregido (`_entero`) y 1.026 fechas actualizadas en WC (plan en backups/indice-novillo/). Por FR-019, IndiceNovillo queda como histórico una vez aprobada la unificación; INMAG pasa a ser el índice único.
 
 ## R2. Programación diaria
 - **Decisión**: tarea de Windows "LaHerencia - Indice INMAG" diaria (`Register-ScheduledTask -Daily`, `-StartWhenAvailable -RunOnlyIfNetworkAvailable`), con instalador `backend/scripts/instalar_indice_inmag.ps1` según el precedente `instalar_descarga_peajes.ps1` (037). Cada corrida recupera los últimos 10 días faltantes (cubre feriados, PC apagada). Botón "Actualizar ahora" en la UI llama al mismo servicio.

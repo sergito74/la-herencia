@@ -14,7 +14,7 @@ Módulo de ingresos por pastaje de Giamigli de Bolívar S.A. (establecimiento La
 **Target Platform**: PC Windows local (launcher), tarea programada de Windows diaria
 **Project Type**: web application (backend + frontend)
 **Performance Goals**: liquidación y preview < 2 s; actualización INMAG < 30 s
-**Constraints**: Decimal sin float; redondeo solo en neto/IVA y precio promedio; escrituras solo WC con respaldo; no tocar gastos de pastaje históricos ni IndiceNovillo
+**Constraints**: Decimal sin float; redondeo solo en neto/IVA y precio promedio; escrituras solo WC con respaldo; no tocar gastos de pastaje históricos; IndiceNovillo pasa a solo histórico tras la aprobación de FR-019 (su error de cabezas ya fue corregido el 22/10/2026)
 **Scale/Scope**: 1–5 contratos, ~250 índices/año, 12 liquidaciones/contrato/año
 
 ## Constitution Check
@@ -48,9 +48,9 @@ backend/
   src/features/resultado_cultivo/                # Otros ingresos — Pastaje
   tests/test_pastaje_calculo_039.py tests/test_pastaje_contrato_039.py tests/test_pastaje_inmag_039.py tests/test_pastaje_factura_039.py
 frontend/src/
-  app/ganaderia/pastaje/page.tsx, [id]/page.tsx   # Condiciones (lista + ficha con pestañas)
+  app/ventas/pastaje/page.tsx, [id]/page.tsx   # Condiciones (lista + ficha con pestañas)
   components/pastaje/*  services/pastajeApi.ts
-  components/layout/NavHeader.tsx                 # entrada de menú
+  components/layout/NavHeader.tsx                 # entrada en menú Ventas
 ```
 **Structure Decision**: web application existente; feature backend propio `pastaje` con cálculo puro testeable.
 

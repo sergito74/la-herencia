@@ -126,6 +126,19 @@ Condiciones muestra, por contrato y mes, lo devengado, liquidado, facturado y co
 2. **Given** una diferencia entre liquidado y recalculado (índice o bitácora), **Then** aparece alerta con el importe de la diferencia.
 3. **Given** el ingreso facturado, **When** se consulta el resultado por campaña, **Then** aparece como ingreso "Pastaje" del establecimiento La Herencia, separado de arrendamientos y ventas de hacienda.
 
+### User Story 7 - Unificación del índice INMAG (Priority: P3)
+
+El INMAG pasa a ser el único índice de novillo del sistema, incluida la valuación en kg de las cuentas de socios.
+
+**Why this priority**: es lo que se acostumbra y evita dos índices distintos; cambia saldos históricos de socios, por eso requiere aprobación.
+
+**Independent Test**: informe por socio de valuación con índice anterior vs INMAG (kg y pesos) presentado a Sergio; tras su aprobación la valuación usa INMAG.
+
+**Acceptance Scenarios**:
+
+1. **Given** el histórico INMAG cargado desde 2020, **When** se ejecuta la comparación, **Then** se muestra por socio la diferencia en kg y en pesos sin modificar datos.
+2. **Given** la aprobación de Sergio, **When** se aplica el cambio, **Then** la valuación de socios usa INMAG y el índice anterior deja de cargarse y queda como histórico.
+
 ### Propuesta de pantallas
 
 - **Condiciones** (lista + ficha): tarjetas por contrato con cliente, estado, cabezas actuales por categoría, tarifa (kg/cab/mes), último INMAG y promedio del mes en curso, monto estimado del mes, próximo paso ("Liquidar septiembre", "Cargar factura", "Cobro pendiente"). Ficha con pestañas: *Condiciones* (parámetros y cláusulas, contrato adjunto), *Bitácora* (línea de tiempo de movimientos con cabezas vigentes), *Liquidaciones*, *Facturas*, *Índice* (valores INMAG del período con días usados).
@@ -167,8 +180,8 @@ Condiciones muestra, por contrato y mes, lo devengado, liquidado, facturado y co
 - **FR-015**: El ingreso DEBE imputarse a establecimiento La Herencia y a la campaña ganadera julio–junio del mes liquidado, identificado como "Pastaje" en el resultado, separado de arrendamientos y ventas de hacienda.
 - **FR-016**: Condiciones DEBE mostrar por contrato y mes: devengado, liquidado, facturado, cobrado, saldo y alertas (mes sin liquidar/facturar, índice faltante, diferencia entre liquidado y recalculado, recuento con diferencia).
 - **FR-017**: Usuarios de solo lectura DEBEN poder consultar todo sin poder escribir; toda alta, cambio y anulación queda auditada (usuario, fecha, motivo).
-- **FR-019**: El INMAG DEBE ser el único índice de novillo del sistema: la valuación en kg de las cuentas de socios pasa a usar INMAG (histórico desde 2020 cargado desde la misma fuente). El cambio se aplica solo después de mostrar a Sergio la comparación por socio de saldos en kg y en pesos antes/después y obtener su aprobación; la tabla anterior queda solo como histórico.
 - **FR-018**: Toda escritura DEBE ir a la base de trabajo, nunca a la base original protegida, y no modificar los gastos de pastaje históricos.
+- **FR-019**: El INMAG DEBE ser el único índice de novillo del sistema: la valuación en kg de las cuentas de socios pasa a usar INMAG (histórico desde 2020 cargado desde la misma fuente). El cambio se aplica solo después de mostrar a Sergio la comparación por socio de saldos en kg y en pesos antes/después y obtener su aprobación; la tabla anterior queda solo como histórico.
 
 ### Key Entities
 

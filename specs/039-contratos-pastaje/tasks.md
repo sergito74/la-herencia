@@ -8,7 +8,7 @@
 
 - [ ] T001 Crear paquete backend/src/features/pastaje/ (__init__.py, router.py, schemas.py, repository.py, service.py) y registrar router `/api/pastaje` en backend/src/main.py siguiendo el patrón de backend/src/features/cajas_efectivo/router.py (`_usuario`, `_ejecutar`, 403 para SoloLectura en escrituras).
 - [ ] T002 [P] Crear helper de tests backend/tests/pastaje_039_helpers.py que bloquee pyodbc.connect y simule persistencia (patrón backend/tests/cajas_038_helpers.py).
-- [ ] T003 [P] Crear frontend/src/services/pastajeApi.ts con tipos de contracts/api.md (importes Decimal como string) y agregar "Pastaje" al menú Ganadería en frontend/src/components/layout/NavHeader.tsx (`/ganaderia/pastaje`).
+- [ ] T003 [P] Crear frontend/src/services/pastajeApi.ts con tipos de contracts/api.md (importes Decimal como string) y agregar "Pastaje" al menú Ventas en frontend/src/components/layout/NavHeader.tsx (`/ventas/pastaje`).
 
 ## Phase 2: Foundational
 
@@ -32,17 +32,18 @@
 
 **Goal**: alta y consulta de contratos. **Independent test**: contrato San Justo visible con 70 vaquillonas, 5 kg, INMAG, mes vencido, IVA 21%, contado y cláusulas.
 
-- [ ] T014 [US1] Repositorio/servicio de contratos y tarifas en backend/src/features/pastaje/repository.py y service.py (Modalidad `mes_vencido`, CondicionVenta `contado`, AlicuotaIva 21.00, IdEstablecimiento 1, empresa contacto 386; editar sin afectar meses liquidados; adjunto opcional).
+- [ ] T014 [US1] Repositorio/servicio de contratos y tarifas en backend/src/features/pastaje/repository.py y service.py (Modalidad `mes_vencido`, CondicionVenta `contado`, AlicuotaIva 21.00, IdEstablecimiento 1, empresa contacto 386; editar sin afectar meses liquidados; transiciones de Estado `vigente` → `finalizado` (con FechaFin) y `anulado` (solo sin liquidaciones confirmadas), con motivo; adjunto opcional guardado con el almacenamiento de archivos existente (componente frontend/src/components/ui/ArchivoVinculado.tsx y su backend)).
 - [ ] T015 [P] [US1] Tests de contrato API backend/tests/test_pastaje_contrato_039.py (alta, edición, listado con tarjetas, 403 Lectura, concurrencia por Version).
-- [ ] T016 [US1] Endpoints de contratos (GET/POST/PUT /contratos, GET /contratos/{id}, POST archivo-contrato) con resumen de tarjetas (cabezas actuales, último INMAG, promedio y estimado del mes en curso, próximo paso, alertas).
-- [ ] T017 [US1] Frontend: frontend/src/app/ganaderia/pastaje/page.tsx (tarjetas por contrato) y frontend/src/app/ganaderia/pastaje/[id]/page.tsx con componente frontend/src/components/pastaje/FichaContrato.tsx (pestaña Condiciones: parámetros, tarifas, cláusulas, contrato adjunto; formulario de alta/edición con MoneyInput y helpers de formato global; SoloLectura).
+- [ ] T016 [US1] Endpoints de contratos (GET/POST/PUT /contratos, GET /contratos/{id}, POST archivo-contrato, POST /contratos/{id}/finalizar y /anular) con resumen de tarjetas (cabezas actuales, último INMAG, promedio y estimado del mes en curso, próximo paso, alertas).
+- [ ] T016a [US1] Consultar a los agentes .github/agents/08-agro-erp-frontend-specialist.agent.md y 09-agroux-lead-product-architect.agent.md (subagentes) sobre la propuesta de pantallas de spec.md antes de construir la UI; registrar decisiones en specs/039-contratos-pastaje/research.md.
+- [ ] T017 [US1] Frontend: frontend/src/app/ventas/pastaje/page.tsx (tarjetas por contrato) y frontend/src/app/ventas/pastaje/[id]/page.tsx con componente frontend/src/components/pastaje/FichaContrato.tsx (pestaña Condiciones: parámetros, tarifas, cláusulas, contrato adjunto; formulario de alta/edición con MoneyInput y helpers de formato global; SoloLectura).
 
 ## Phase 5: US2 — Bitácora de hacienda (P1)
 
 **Goal**: movimientos fechados. **Independent test**: ingreso 70 el 25/09 con DTe → 420 cabezas-día en septiembre.
 
-- [ ] T018 [US2] Bitácora en repository/service: alta, validación de no negativos por categoría y fecha, recuento devuelve diferencia sin modificar cabezas, anulación con motivo.
-- [ ] T019 [US2] Endpoints GET/POST /contratos/{id}/bitacora y POST /bitacora/{id}/anular; ampliar tests en backend/tests/test_pastaje_contrato_039.py.
+- [ ] T018 [US2] Bitácora en repository/service: alta, validación de no negativos por categoría y fecha, recuento devuelve diferencia (positiva o negativa) sin modificar cabezas, anulación con motivo.
+- [ ] T019 [US2] Endpoints GET/POST /contratos/{id}/bitacora y POST /bitacora/{id}/anular; ampliar tests en backend/tests/test_pastaje_contrato_039.py (incluye recuento con más cabezas que las registradas y con menos).
 - [ ] T020 [US2] Frontend frontend/src/components/pastaje/BitacoraHacienda.tsx (línea de tiempo, cabezas vigentes por categoría, formulario de movimiento, alerta de recuento).
 
 ## Phase 6: US4 — Liquidación mensual (P1)
@@ -54,14 +55,16 @@
 - [ ] T023 [US4] Endpoints de liquidaciones (preview, crear, generar-mes, confirmar, ajuste, pdf, texto-factura) y tests en backend/tests/test_pastaje_liquidacion_039.py (bloqueo sin índice, unicidad mensual, fijación tras confirmar).
 - [ ] T024 [US4] Frontend frontend/src/components/pastaje/Liquidaciones.tsx (preview por tramos e índices usados, confirmar, abrir PDF, texto sugerido para ARCA con copiar).
 
+- [ ] T024a [US4] Revisión de los agentes 06-livestock-health-specialist y 07-financial-direction-specialist (subagentes) sobre cálculo, PDF de liquidación y caso septiembre; registrar hallazgos en quickstart.md y corregir antes de US5.
+
 ## Phase 7: US5 — Facturas emitidas (P2)
 
 **Goal**: factura ARCA desde PDF a cuenta corriente. **Independent test**: factura A 0002-00000008 vinculada a septiembre sin diferencias; saldo cliente $351.930,19.
 
 - [ ] T025 [US5] Lector backend/src/features/pastaje/lector_factura.py (pdfplumber, patrón descarga_peajes/lectores.py): tipo/código, letra, punto de venta, número, fecha, vto pago, CUIT emisor (debe ser 30712114602), CUIT cliente, período, detalle, neto, IVA 21%, total, CAE, vto CAE.
 - [ ] T026 [P] [US5] Tests backend/tests/test_pastaje_factura_039.py con texto de fixture de 20261006_Giamigli.pdf (sin copiar el PDF al repo): lectura exacta, advertencias de emisor/cliente/importes, duplicado 409, ND/NC vinculada.
-- [ ] T027 [US5] Endpoints POST /comprobantes/leer, POST /comprobantes, GET /contratos/{id}/comprobantes, POST /comprobantes/{id}/anular (bloqueado con cobros aplicados); IdCampaña por período julio–junio (dbo.Campañas "YYYY/YYYY+1").
-- [ ] T028 [US5] Integración de cobros: tipo `'Pastaje'` en backend/src/features/aplicaciones_pago/documentos.py, mapeo de origen en backend/src/features/recalculo_fifo/ejecuciones.py; revisar backend/src/features/auditoria_cuentas/datos.py, bimonetaria.py y backend/src/features/cajas_efectivo/operaciones.py/service.py para que reconozcan el origen; retenciones sufridas en dbo.[Retenciones Ventas Hacienda] con referencia al comprobante; tests de regresión de aplicaciones/cajas.
+- [ ] T027 [US5] Endpoints POST /comprobantes/leer, POST /comprobantes, GET /contratos/{id}/comprobantes, POST /comprobantes/{id}/anular (bloqueado con cobros aplicados); el PDF subido se guarda con el almacenamiento de archivos existente (ArchivoVinculado) y el comprobante guarda su referencia en ArchivoPdf; IdCampaña por período julio–junio (dbo.Campañas "YYYY/YYYY+1").
+- [ ] T028 [US5] Integración de cobros: tipo `'Pastaje'` en backend/src/features/aplicaciones_pago/documentos.py, mapeo de origen en backend/src/features/recalculo_fifo/ejecuciones.py; revisar backend/src/features/auditoria_cuentas/datos.py, bimonetaria.py y backend/src/features/cajas_efectivo/operaciones.py/service.py para que reconozcan el origen; retenciones sufridas en dbo.[Retenciones Ventas Hacienda] vinculadas al comprobante mediante AplicacionesPago (OrigenMovimiento `ret-ventas-hacienda`, TipoDocumento `Pastaje`, IdDocumentoAplicado = IdComprobante), con test de trazabilidad retención → comprobante; tests de regresión de aplicaciones/cajas.
 - [ ] T029 [US5] Frontend frontend/src/components/pastaje/Facturas.tsx (subir PDF, confirmar datos leídos, comparación con liquidación, grilla por mes con cobrado/saldo, ND/NC).
 
 ## Phase 8: US6 — Devengado vs facturado (P2)
@@ -72,7 +75,7 @@
 - [ ] T031 [US6] Sección "Otros ingresos — Pastaje" (neto, por campaña y establecimiento) en backend/src/features/resultado_cultivo/ (consolidado de campaña) y frontend/src/components/resultado-cultivo/ConsolidadoCampaniaView.tsx, sin repartir a cultivos.
 - [ ] T032 [US6] Frontend: panel de meses y alertas en FichaContrato.tsx; pestaña Índice con valores del período y días usados.
 
-## Phase 9: US7 — Unificación del índice (FR-019)
+## Phase 9: US7 — Unificación del índice INMAG (P3, FR-019)
 
 **Goal**: INMAG único índice del sistema. **Independent test**: comparación por socio aprobada por Sergio antes del cambio.
 
@@ -82,7 +85,7 @@
 ## Phase 10: Polish
 
 - [ ] T035 Alta del contacto Ganadera San Justo S.S. (CUIT 30715943278) y del contrato real desde la UI con Sergio; liquidación de septiembre confirmada y factura cargada; verificar cuenta corriente (escenarios 1, 10, 12 de quickstart.md).
-- [ ] T036 Recorrido UI de las historias (vacío/error/Lectura), `python -m pytest tests -q -k 039`, `npx tsc --noEmit`, regresiones de aplicaciones/cajas/cuentas corrientes; revisión de diff, secretos y binarios; actualizar spec/plan/quickstart/tasks con evidencia.
+- [ ] T036 Recorrido UI de las historias, medición de SC-002 (tiempo de preparar y confirmar la liquidación de un contrato < 5 min) e informe de cobertura INMAG (días con remate vs días cargados automáticamente, meta SC-003 ≥ 95%) al cumplirse 30 días de la tarea programada; además recorrido UI de las historias (vacío/error/Lectura), `python -m pytest tests -q -k 039`, `npx tsc --noEmit`, regresiones de aplicaciones/cajas/cuentas corrientes; revisión de diff, secretos y binarios; actualizar spec/plan/quickstart/tasks con evidencia.
 
 ## Dependencies
 
