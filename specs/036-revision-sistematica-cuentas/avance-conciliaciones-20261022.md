@@ -1,5 +1,7 @@
 # Avance conciliaciones — 22/10/2026 (traspaso a Codex)
 
+> **Punto de entrada vigente para continuar la cuenta 375:** [pendientes y resumen](sergio-375-pendientes-resumen-20261022.md). Leer también la sección 4 de este documento: registra las acciones y respuestas posteriores al traspaso inicial y corrige hipótesis de las secciones anteriores. Los identificadores P/S se conservan en el [detalle histórico](sergio-375-pagos-para-revisar-20261022.md).
+
 Continúa [avance-conciliaciones-20261021.md](avance-conciliaciones-20261021.md). Reglas vigentes: escribir solo en WC; Access es solo referencia; scripts re-corribles con `backup_verificado` + `reconciliation_transaction`; push a `main` autorizado.
 
 ## 1. Hecho el 22/10
@@ -81,3 +83,47 @@ Separar los pagos de la vista `vw_MovimientosCuenta_Base` (IdContacto 375) en tr
 3. Lo que queda sin contraparte.
 
 Los sueldos de Access son recibo formal + "Bonificación adicional" (la parte informal) en `dbo.Remuneraciones`.
+
+## 4. Retoma de Codex y respuestas de Sergio (22/10/2026)
+
+- Aplicación reiniciada: `/health` devolvió `ok` y frontend HTTP 200.
+- Sergio autorizó `min server memory (MB) = 1024`, pidiendo reconfirmar el diagnóstico.
+- Reconfirmación: RAM física 12.356.816 KB; disponible 836.872 KB; SQL Server Express 17.0.1000.7 usaba 226.840 KB y marcaba `process_physical_memory_low = 1`. Esperas acumuladas RESOURCE_SEMAPHORE: 128, por 3.822.938 ms; sin consultas esperando en esa muestra. Conexión inicial: 0,07 s. Esto respalda presión de memoria e historial de esperas, pero no reproduce en este momento conexiones de 50–100 s ni prueba que sea la única causa de lentitud.
+- Aplicado con `sp_configure` y `RECONFIGURE`: mínimo anterior configurado 0 (en uso 16); nuevo configurado y en uso 1024. Máximo sin cambios (2147483647). Reversión: configurar mínimo en 0 y ejecutar RECONFIGURE. Sin reiniciar SQL Server ni modificar datos contables. El mínimo no reserva inmediatamente 1 GB ni garantiza por sí solo resolver lentitud. Documentación: https://learn.microsoft.com/en-us/sql/database-engine/configure-windows/server-memory-server-configuration-options
+- Respuestas sobre contacto 375: (a) sí, las transferencias de 2024 con retención son honorarios; (b) Sergio necesita ver el detalle de transferencias sueltas antes de confirmar retiros; (c) manda el recibo formal. Los 250 kg + US$ 550 son únicamente referencia para comparar el sueldo con el negocio, no obligación salarial ni diferencia automática a socio.
+- Detalle actualizado: [sergio-375-pagos-para-revisar-20261022.md](sergio-375-pagos-para-revisar-20261022.md). La reproducción literal con fechas normalizadas da 117 pagos candidatos a sueldo, 52 a socio y 37 sin contraparte por $8.475.209,51. Difiere de 113/58/38 del traspaso: no usar esos conteos como clasificación definitiva ni aplicar correcciones con este cruce por monto/fecha. Incluye retenciones y efectivo, además de transferencias. Falta cotejar comprobantes y correspondencia uno a uno. No se reclasificaron movimientos.
+
+- Revisión de `Personal/Empleados.xlsx`, hoja `Pagos Sergio G`: P01/P02 confirmados por Sergio como sueldos; P03–P09 con evidencia salarial y diferencias de fecha/cuenta explicitadas en el detalle y su HTML. Cruce exacto insuficiente para pagos acumulados/parciales. Se detectaron diferencias de distribución diciembre-2011/enero-2012 y pago adicional en WC del 13/08/2012 por $8.000. No se modificaron Excel ni datos de WC.
+
+- Sergio explicó que durante un período cobraba sueldos y los devolvía en efectivo a caja. Revisión personal + caja: ver `sergio-375-retornos-sueldo-20261022.md`. P12 directo; P10/P11 compatibles; P13 no cierra; P14 parcial $20.000; P15 banco receptor dice honorarios; P16 $70.000 receptor vs $140.000 emisor asignados al 375; P17 solo coincidencia parcial $200.000. S01–S03 respaldados como acreditaciones salariales. 19 retornos explícitos en caja por $328.503, sin aplicar ajustes ni duplicar socio. No hubo escrituras contables.
+
+- Revisión Estudio Contable completada para el alcance 375: 105 PDF seleccionados, 15 planillas, 12 recibos del RAR2021, más 13 recibos de Personal para cotejo. Estado vigente en `sergio-375-pendientes-resumen-20261022.md` y HTML homónimo en backups. Hallazgo crítico: marzo–junio2024 netos exactos de recibos; P27+P28=$1.013.327=neto julio con devolución de Ganancias $63.326,76. No crear honorarios adicionales por esos pagos pese a hipótesis anterior. P16/P17/P30: diferencias emisor/receptor $70.000/$200.000/$160.000 (investigar; sin reasignación aplicada). P31/P32 banco: reembolsos; P33: honorarios. Diciembre2024 tiene recibo/pago $1.425.000 y falta remuneración en vista375. Sin escrituras contables; cuenta no cerrada.
+
+## 5. Continuidad entre Claude y Codex
+
+Sergio reiteró que todo el trabajo debe quedar registrado para que cualquiera de los dos agentes pueda continuarlo. La regla quedó explícita en `.specify/memory/agent-guidance.md`.
+
+- **Estado vigente:** `sergio-375-pendientes-resumen-20261022.md` contiene pendientes para Sergio, investigación interna, hallazgos y conciliación documental, con fuentes. Los análisis anteriores se conservan como historia y remiten a ese estado.
+- **Presentación para Sergio:** `backups/sergio-375-20261022/Sergio - pendientes y resumen.html`. Sergio prefiere informes legibles en navegador, no mostrar Markdown. Abrir con `Start-Process -FilePath` sobre la ruta Windows verificada. Para pegar en navegador usar `file:///C:/...` con espacios codificados; `/C:/...` no es una dirección válida para pegar.
+- **Evidencia local:** índices/extracciones en `backups/sergio-375-20261022/extractos-personales/` y `backups/sergio-375-20261022/estudio-contable/`. Los originales siguen en las carpetas de Documents citadas en el informe; los PDF y las planillas son la evidencia, no la extracción textual. `backups/` es local y no se versiona.
+- **Verificaciones del último tramo:** 105 PDF extraídos sin errores y con texto; referencias de fuentes del informe comprobadas como archivos existentes; informe HTML con tres tablas y estructura cerrada; apertura solicitada mediante el navegador predeterminado. No se hizo una inspección visual del HTML con herramientas de navegador.
+- **Cambios efectivos:** reinicio de aplicación y mínimo de memoria SQL Server aplicado/verificado en 1024 MB. Lo demás fue lectura, análisis y documentación: no se corrigieron movimientos contables, no se guardaron cambios en Excel y no se cerró la cuenta 375.
+- **Siguiente paso:** continuar con los pendientes del informe vigente; investigar P16/P17/P30 contra los comprobantes del emisor y destinatarios antes de reclasificar. Conservar la pausa del Condominio/Virginia y evitar duplicar sueldos, retenciones y retornos.
+- **Git al registrar este avance:** documentación modificada/nueva en la carpeta compartida `specs/036-revision-sistematica-cuentas/`, todavía sin commit ni push en esta retoma. Claude puede leerla directamente en este mismo workspace. No confundirla con documentos ya subidos a main antes de esta sesión.
+
+## 6. Retoma de Claude, 22/10/2026 por la tarde (solo documental)
+
+- Se leyeron la guía, el avance y el resumen vigente; se preservaron los cambios de Codex sin commitear.
+- **P16/P17/P30 resueltos documentalmente** con los extractos Galicia de Lucy:
+  - P16 y P17 eran pagos en lote; $70.000 y $200.000 fueron para Lucy.
+  - En P30, los Mov. Galicia 2198 ($250.000) y 2199 ($90.000) tienen los contactos 375/390 cruzados.
+  - Las planillas Cuenta Sergio/Lucy ya tenían el reparto correcto.
+- **Resueltos además:**
+  - P15 y P37: cobro y devolución a caja el mismo día.
+  - P29, P33 y P34: retiros por aportes del Condominio (Cuenta Cond LSC).
+  - P32 y P35: devolución por aporte (Cuenta Sergio) + Condominio.
+  - P36: débito de Allianz de mayo de 2026.
+  - P18: probable ajuste del sueldo de agosto de 2023 (hoja Sueldo Sergio $330.000 contra recibo $300.000), a confirmar.
+- **Siguen pendientes:** P31 ($485.400 del 10/09/2025, sin rastro en planillas), P10–P11, P13 y P14.
+- **Sin escrituras:** WC, Access y planillas sin cambios. Las correcciones propuestas (dividir 267 y 683, cruzar 2198/2199, separar del 375 los pagos que no son sueldo, devolver P36 a Allianz) esperan la aprobación de Sergio. Detalle en `sergio-375-pendientes-resumen-20261022.md` (estado vigente, reescrito).
+- **Informe para Sergio:** `backups/sergio-375-20261022/Sergio - pendientes y resumen (Claude).html`, abierto en el navegador.
