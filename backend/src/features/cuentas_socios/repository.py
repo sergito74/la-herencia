@@ -168,12 +168,57 @@ def calcular_saldo(id_socio: int) -> dict:
     }
 
 
+ORIGEN_MUTUO = "Mutuo2018"
+
+
+def cotizaciones_actuales() -> dict:
+    """Última cotización disponible de las tablas de WC (036, 22/10/2026):
+    Índice Novillo (Mercado Agroganadero) y Dólar BNA billete promedio — las
+    mismas que usa la planilla Cajas Giamigli para la "Deuda Actualizada"."""
+    nov = fetch_one("SELECT TOP 1 Fecha AS fecha, Indice AS valor FROM dbo.IndiceNovillo WHERE Indice IS NOT NULL ORDER BY Fecha DESC")
+    dol = fetch_one("SELECT TOP 1 Fecha AS fecha, Prom_billete AS valor FROM dbo.[Dolar BNA] WHERE Prom_billete IS NOT NULL ORDER BY Fecha DESC")
+    return {
+        "novillo": _f(nov["valor"]) if nov else 0.0,
+        "fechaNovillo": nov["fecha"] if nov else None,
+        "dolar": _f(dol["valor"]) if dol else 0.0,
+        "fechaDolar": dol["fecha"] if dol else None,
+    }
+
+
+def deuda_actualizada(id_socio: int, cot: dict | None = None) -> dict:
+    """Deuda actualizada como la planilla: kg × índice novillo + US$ × dólar
+    de hoy (50% kg / 50% US$; 100% US$ antes del 16/03/2020). El mutuo en
+    dólares (Lucy 2018) va aparte, solo en US$. Positivo: el socio le debe a
+    la empresa; negativo: a favor del socio."""
+    cot = cot or cotizaciones_actuales()
+    fila = fetch_one(
+        "SELECT "
+        "SUM(CASE WHEN ISNULL(Origen,'') <> ? THEN (CASE WHEN Tipo = 'AsignacionGasto' THEN 1 ELSE -1 END) * ImporteKgCarne ELSE 0 END) AS kg, "
+        "SUM(CASE WHEN ISNULL(Origen,'') <> ? THEN (CASE WHEN Tipo = 'AsignacionGasto' THEN 1 ELSE -1 END) * ImporteUSD ELSE 0 END) AS usd, "
+        "SUM(CASE WHEN ISNULL(Origen,'') = ? THEN (CASE WHEN Tipo = 'AsignacionGasto' THEN 1 ELSE -1 END) * ImporteUSD ELSE 0 END) AS mutuo "
+        "FROM dbo.MovimientosCuentaSocio WHERE IdSocio = ? AND Anulada = 0",
+        (ORIGEN_MUTUO, ORIGEN_MUTUO, ORIGEN_MUTUO, id_socio),
+    )
+    kg, usd, mutuo = (_f(fila[k]) if fila else 0.0 for k in ("kg", "usd", "mutuo"))
+    valor_kg, valor_usd = kg * cot["novillo"], usd * cot["dolar"]
+    return {
+        "kgCarne": round(kg, 2),
+        "dolares": round(usd, 2),
+        "valorKgCarne": round(valor_kg, 2),
+        "valorDolares": round(valor_usd, 2),
+        "deudaActualizada": round(valor_kg + valor_usd, 2),
+        "mutuoUSD": round(mutuo, 2),
+        "mutuoPesos": round(mutuo * cot["dolar"], 2),
+        **cot,
+    }
+
+
 def listar_socios_con_saldo() -> list[dict]:
-    """Listado general (GET /api/cuentas-socios): mantiene `saldo` en
-    pesos únicamente, sin cambio de contrato — los saldos en USD/Kg carne
-    se muestran en el detalle por socio (`listar_movimientos`/`calcular_saldo`)."""
+    """Listado general (GET /api/cuentas-socios): saldo en pesos históricos
+    y deuda actualizada (kg × novillo + US$ × dólar de hoy, mutuo aparte)."""
     socios = fetch_all("SELECT IdSocio AS idSocio, Nombre AS nombre FROM dbo.Socios ORDER BY IdSocio")
-    return [{**s, "saldo": calcular_saldo(s["idSocio"])["saldoPesos"]} for s in socios]
+    cot = cotizaciones_actuales()
+    return [{**s, "saldo": calcular_saldo(s["idSocio"])["saldoPesos"], "actualizada": deuda_actualizada(s["idSocio"], cot)} for s in socios]
 
 
 def listar_movimientos(id_socio: int) -> list[dict]:

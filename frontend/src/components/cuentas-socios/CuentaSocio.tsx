@@ -166,10 +166,24 @@ export function CuentaSocio({ idSocio }: { idSocio: number }) {
               </p>
             </div>
             <div className="flex flex-wrap gap-3">
+              {data.actualizada && (
+                <KpiCard
+                  label="Deuda actualizada"
+                  value={formatMoneda(data.actualizada.deudaActualizada)}
+                  tone={data.actualizada.deudaActualizada > 0 ? "danger" : data.actualizada.deudaActualizada < 0 ? "success" : "neutral"}
+                />
+              )}
+              {data.actualizada && data.actualizada.mutuoUSD !== 0 && (
+                <KpiCard
+                  label="Mutuo (solo US$)"
+                  value={formatMoneda(data.actualizada.mutuoUSD, "Dolares")}
+                  tone={data.actualizada.mutuoUSD > 0 ? "danger" : "success"}
+                />
+              )}
               <KpiCard
-                label="Saldo pesos"
+                label="Saldo pesos históricos"
                 value={formatMoneda(data.saldo)}
-                tone={data.saldo > 0 ? "danger" : data.saldo < 0 ? "success" : "neutral"}
+                tone="neutral"
               />
               <KpiCard
                 label="Saldo USD"
@@ -183,6 +197,18 @@ export function CuentaSocio({ idSocio }: { idSocio: number }) {
               />
             </div>
           </div>
+
+          {data.actualizada && (
+            <p className="text-sm text-ink-secondary">
+              Deuda actualizada = {formatCantidad(data.actualizada.kgCarne)} kg × índice novillo {formatMoneda(data.actualizada.novillo)} (
+              {data.actualizada.fechaNovillo ? formatFecha(data.actualizada.fechaNovillo) : "—"}) ={" "}
+              {formatMoneda(data.actualizada.valorKgCarne)} + {formatMoneda(data.actualizada.dolares, "Dolares")} × dólar BNA billete{" "}
+              {formatMoneda(data.actualizada.dolar)} ({data.actualizada.fechaDolar ? formatFecha(data.actualizada.fechaDolar) : "—"}) ={" "}
+              {formatMoneda(data.actualizada.valorDolares)}.
+              {data.actualizada.mutuoUSD !== 0 &&
+                ` Mutuo en dólares aparte: ${formatMoneda(data.actualizada.mutuoUSD, "Dolares")} (hoy ${formatMoneda(data.actualizada.mutuoPesos)}).`}
+            </p>
+          )}
 
           <div className="flex flex-wrap gap-3">
             <AsignarGastoForm idSocio={idSocio} onAsignado={recargar} />

@@ -226,6 +226,20 @@ if (Test-Path $PidFile) {
     $pids.backend = $old.backend; $pids.frontend = $old.frontend; $pids.watcher = $old.watcher
 }
 
+# --- Cotizaciones (dolar BNA e indice novillo) ---
+# Una vez por dia, en segundo plano y sin bloquear el arranque: completa las
+# tablas de WC hasta ayer desde sus fuentes (errepar, Mercado Agroganadero).
+# Sin internet falla en silencio; se reintenta en la proxima apertura.
+$CotStamp = Join-Path $RunDir 'cotizaciones.ok'
+$cotHoy = (Test-Path $CotStamp) -and ((Get-Item $CotStamp).LastWriteTime.Date -eq (Get-Date).Date)
+if (-not $cotHoy) {
+    Start-Process -FilePath 'cmd.exe' `
+        -ArgumentList '/c', "`"$Python`" -m scripts.cotizaciones_dolar_novillo && type nul > `"$CotStamp`"" `
+        -WorkingDirectory $Backend -WindowStyle Hidden `
+        -RedirectStandardOutput (Join-Path $RunDir 'cotizaciones.log') `
+        -RedirectStandardError  (Join-Path $RunDir 'cotizaciones.err.log') | Out-Null
+}
+
 # --- Backend ---
 if (-not (Test-PortBusy $ApiPort)) {
     $p = Start-Process -FilePath $Python `

@@ -51,7 +51,9 @@ async def detalle_socio(idSocio: int) -> DetalleSocioResponse:
         raise HTTPException(status_code=404, detail="Socio no encontrado")
     movimientos = await run_in_threadpool(repository.listar_movimientos, idSocio)
     saldo = await run_in_threadpool(repository.calcular_saldo, idSocio)
+    actualizada = await run_in_threadpool(repository.deuda_actualizada, idSocio)
     return DetalleSocioResponse(
+        actualizada=actualizada,
         idSocio=idSocio,
         nombre=socio["nombre"],
         saldo=saldo["saldoPesos"],

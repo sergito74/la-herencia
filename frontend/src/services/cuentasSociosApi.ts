@@ -32,10 +32,27 @@ export interface MovimientoCuentaSocio {
   huerfano: boolean;
 }
 
+/** Deuda actualizada como la planilla Cajas Giamigli: kg × novillo + US$ ×
+ * dólar de hoy; el mutuo en dólares va aparte. Positivo: el socio debe. */
+export interface DeudaActualizada {
+  kgCarne: number;
+  dolares: number;
+  valorKgCarne: number;
+  valorDolares: number;
+  deudaActualizada: number;
+  mutuoUSD: number;
+  mutuoPesos: number;
+  novillo: number;
+  fechaNovillo: string | null;
+  dolar: number;
+  fechaDolar: string | null;
+}
+
 export interface SocioConSaldo {
   idSocio: number;
   nombre: string;
   saldo: number;
+  actualizada: DeudaActualizada | null;
 }
 
 export interface DetalleSocio {
@@ -44,6 +61,7 @@ export interface DetalleSocio {
   saldo: number;
   saldoUSD: number;
   saldoKgCarne: number;
+  actualizada: DeudaActualizada | null;
   movimientos: MovimientoCuentaSocio[];
 }
 

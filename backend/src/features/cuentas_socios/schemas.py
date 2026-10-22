@@ -34,10 +34,27 @@ class MovimientoCuentaSocio(BaseModel):
     huerfano: bool = False
 
 
+class DeudaActualizada(BaseModel):
+    """Como la planilla Cajas Giamigli: kg × novillo + US$ × dólar de hoy;
+    el mutuo en dólares va aparte. Positivo: el socio debe; negativo: a su favor."""
+    kgCarne: float = 0.0
+    dolares: float = 0.0
+    valorKgCarne: float = 0.0
+    valorDolares: float = 0.0
+    deudaActualizada: float = 0.0
+    mutuoUSD: float = 0.0
+    mutuoPesos: float = 0.0
+    novillo: float = 0.0
+    fechaNovillo: date | None = None
+    dolar: float = 0.0
+    fechaDolar: date | None = None
+
+
 class SocioConSaldo(BaseModel):
     idSocio: int
     nombre: str
     saldo: float
+    actualizada: DeudaActualizada | None = None
 
 
 class ListaSociosResponse(BaseModel):
@@ -54,6 +71,7 @@ class DetalleSocioResponse(BaseModel):
     saldo: float
     saldoUSD: float = 0.0
     saldoKgCarne: float = 0.0
+    actualizada: DeudaActualizada | None = None
     movimientos: list[MovimientoCuentaSocio]
 
 

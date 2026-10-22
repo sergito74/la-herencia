@@ -191,11 +191,13 @@ def test_listar_socios_con_saldo_devuelve_los_4_incluido_uno_en_cero(monkeypatch
     monkeypatch.setattr(
         repository, "calcular_saldo", lambda idSocio: {"saldoPesos": saldos[idSocio], "saldoUSD": 0.0, "saldoKgCarne": 0.0}
     )
+    monkeypatch.setattr(repository, "cotizaciones_actuales", lambda: {})
+    monkeypatch.setattr(repository, "deuda_actualizada", lambda idSocio, cot=None: {"deudaActualizada": 0.0})
 
     resultado = repository.listar_socios_con_saldo()
 
     assert len(resultado) == 4
-    assert resultado[1] == {"idSocio": 2, "nombre": "Lucy", "saldo": 0.0}
+    assert resultado[1] == {"idSocio": 2, "nombre": "Lucy", "saldo": 0.0, "actualizada": {"deudaActualizada": 0.0}}
 
 
 def test_listar_movimientos_incluye_anulados_y_marca_huerfano(monkeypatch):
