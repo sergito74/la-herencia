@@ -1,5 +1,19 @@
 # Cuenta de Sergio: pendientes y resumen
 
+## Actualización 22/10/2026, 15:25: decisiones de 2017 (APLICADO, `sergio_2017_retiros_036.py`)
+
+- **18421 ($21.000, "retiro deuda"):** Sergio descarta que sea un pago de sueldos de 5 años atrás. Es una recuperación de pagos de Giamigli hechos desde su cuenta particular, o de aportes de efectivo. Pasa al 5670 + AsignacionGasto $21.000 (30/03/2017, 100% US$) en su cuenta de socio.
+- **Marzo-2017, opción A:** 18422 queda sin contacto (traspaso → caja 254); liquidación de $17.735 cancelada; $1.735 como aporte en efectivo de Sergio (Devolución, 01/04/2017).
+- **18425 ($30.000):** **retiros genuinos de GANANCIAS** de los tres socios ($10.000 c/u; Ceci y Lucy desde la caja, movimientos 313/314). Regla de Sergio: registrarlos como retiro de ganancias, NO como compensación de pagos particulares. Pasa al 5670; NO se registra en MovimientosCuentaSocio (no es deuda ni crédito del socio); notas en el Detalle de caja 312–314.
+- **375 = −$1.846.705,52:**
+  - −$1.800.000: septiembre-2026.
+  - −$44.500: 2011–2012.
+  - −$21.000: octubre-2017, pagado el 19/12/2017 dentro del bloque nov-2017+.
+  - +$18.792: nov-2017 a 2019.
+  - +$2,48: redondeos.
+- **Pendiente:** el punto 4 (octubre-2017 y bloque nov-2017 a 2019) y 2011–2012.
+
+
 ## Actualización 22/10/2026, 15:15: 2017, movimiento por movimiento (investigación, SIN APLICAR)
 
 Fuente nueva: comprobantes BNA en `Cuentas a pagar/Transferencias/Sergio Giamberardini/`: "Sueldo <mes> 2017.pdf" (fecha de envío), "Transferencia Sergio (Retiro Marzo 2017).pdf" y "Transferencia Sueldo Noviembre 2017.pdf". Todos tienen la cuenta débito CC BNA 12301640029280 de Giamigli y la cuenta crédito de Sergio (CBU 0150501601000218614294).
