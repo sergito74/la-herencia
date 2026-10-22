@@ -58,3 +58,19 @@ Pedido de Sergio, 22/10/2026: revisar en conjunto Lucy, Condominio LSC, Virginia
 - Reconstruir la apertura de $227.747,52: ingresos de caja de 2011–2015 a partir de los retiros del BNA, la caja Condominio de Access (308 pagos) y los aportes.
 - Vincular las cargas de la caja chica y los retiros y depósitos bancarios como traspasos.
 - Revisar las 46 filas sin pago en Access: varias figuran en Access como Particular S (pagadas por Sergio), pero la planilla las muestra como pagadas por la caja.
+
+## Etapa 1b: ingresos de caja 2011–jul-2015 (APLICADO, `caja_giamigli_ingresos_2011_2015_036.py`)
+
+**Fuentes:**
+- Condominio: `Documents\Alquileres urbanos\Condominio LSC\Movimientos LSC.xlsx` (hoja Movs 2011–2016: "Compra Giamigli" EF/CC/TJC = gastos de Giamigli pagados por el Condominio; "Retiro Giamigli" = depósitos en el BNA y tres aportes en efectivo) y `Movimientos Condominios.xlsx` (Aportes Campo = depósitos y transferencias al BANCO, no a caja; Gastos Campo = exportación de Access).
+- Access: Pagos efectivo, caja "Condominio" y "Particular S".
+
+**Aplicado (el saldo no cambia, $381.785,15; el libro tiene 2.024 movimientos):**
+- 140 ingresos "Aporte Condominio LSC (pago directo)" por los egresos que pagó el Condominio: **$65.645,76**. Las dos fuentes coinciden en 73 de esos 140.
+- 3 aportes en efectivo del Condominio: **$7.500**.
+- 36 ingresos "Aporte Sergio (pago directo)" por egresos pagados por Sergio (Access Particular S, ya a su favor en la cuenta de socio): **$10.251,24**.
+- La apertura provisoria se redujo a **$144.350,52, "NO identificados"**.
+
+**Pendiente:**
+- **Identificar los $144.350,52 restantes.** Candidatos: cheques del BNA "COBRADO POR CAJA" sin contacto o "XXXX" (unos $29.500), extracciones Link, cobros en efectivo, y las hojas "Retiros" y "Gastos Mensuales Efectivo" de los archivos del Condominio.
+- Los egresos que pagó el Condominio y sus aportes en efectivo son aportes del Condominio a Giamigli: registrarlos en su cuenta de socio en la etapa 4, sin duplicar con los $733.781 de depósitos bancarios.
