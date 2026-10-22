@@ -71,3 +71,5 @@ Este documento es la guía común de trabajo para Claude Code, Codex y cualquier
 - Informar discrepancias, decisiones asumidas, riesgos concretos y verificaciones realizadas. No esconder incertidumbre ni convertir una inferencia en un hecho.
 
 - Conciliaciones de cuentas (036): antes de seguir, leer `specs/036-revision-sistematica-cuentas/avance-conciliaciones-20261021.md` (reglas acordadas con Sergio para cuentas en dólares, cierre al centavo contra el proveedor, cuentas cerradas y pendientes en orden).
+
+- **Access solo como referencia (Sergio, 21/10/2026):** Access ya no es base ni prueba de cierre (tiene errores estructurales, p. ej. sumaba US$ como pesos). La fuente de verdad es el sistema; las cuentas se cierran contra el proveedor u organismo (portal, resumen, aviso de deuda). Access sirve solo para buscar documentos o historia faltante.
