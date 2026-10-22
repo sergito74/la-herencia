@@ -13,7 +13,7 @@
 
 ## Requirement Completeness
 
-- [ ] No [NEEDS CLARIFICATION] markers remain — quedan 2 (FR-014 alcance caja Condominio, FR-015 convivencia con la planilla)
+- [x] No [NEEDS CLARIFICATION] markers remain (resueltas 22/10: FR-014 opción B, FR-015 opción B)
 - [x] Requirements are testable and unambiguous
 - [x] Success criteria are measurable
 - [x] Success criteria are technology-agnostic (no implementation details)
@@ -31,4 +31,4 @@
 
 ## Notes
 
-- Pendiente: respuestas de Sergio a Q1 (FR-014) y Q2 (FR-015) antes de `/speckit-plan`.
+- Aclaraciones resueltas el 22/10/2026; lista para `/speckit-plan`.

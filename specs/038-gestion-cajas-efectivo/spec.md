@@ -4,9 +4,16 @@
 
 **Created**: 2026-10-22
 
-**Status**: Draft
+**Status**: Clarified
 
 **Input**: User description: "Módulo de administración y gestión de cajas de efectivo (Giamigli SA, caja chica del campo y caja del Condominio LSC). Hoy las cajas son solo lectura (027) y se cargan desde la planilla Cajas Giamigli.xlsx. Se necesita operar las cajas desde el sistema: aportes y retiros de socios, pagos a proveedores, cobros, traspasos entre cajas y con bancos, y arqueos; cada movimiento reflejado una sola vez en las cuentas que correspondan, auditable."
+
+## Clarifications
+
+### Session 2026-10-22
+
+- Q: ¿La caja del Condominio se administra completa o solo sus movimientos con Giamigli? → A: Solo los movimientos que tienen relación con Giamigli (aportes, préstamos, pagos de gastos de Giamigli, retiros vinculados). El Condominio tiene su propio sistema de administración independiente; alquileres y gastos de los inmuebles quedan fuera.
+- Q: ¿Se deja de usar la planilla Cajas Giamigli.xlsx desde un corte o conviven? → A: Conviven hasta que Sergio confíe en que el sistema es robusto y funciona sin errores; durante ese período el sistema importa lo nuevo de la planilla sin duplicar y se compara contra ella.
 
 ## Contexto
 
@@ -127,7 +134,8 @@ Ver cada caja con su saldo, movimientos y filtros (fecha, tipo, socio, contacto)
 - Movimientos con fecha anterior a un arqueo ya confirmado: se advierte que modifica un período arqueado.
 - Movimiento que afecta a un socio y a un proveedor a la vez (compra particular): un solo registro con todos sus efectos.
 - Operación de un socio desde su cuenta personal hacia la caja (cobro del sueldo devuelto en efectivo): se registra como traspaso, no como aporte (opción A de 036).
-- Caja del Condominio: sus movimientos propios (alquileres, gastos de los inmuebles) frente a los que la vinculan con Giamigli (ver FR-014).
+- Caja del Condominio: solo se registran los movimientos con Giamigli (FR-014).
+- Durante la convivencia, un movimiento cargado en el sistema y también anotado en la planilla: la importación lo reconoce y no lo duplica (FR-015).
 
 ## Requirements *(mandatory)*
 
@@ -146,8 +154,8 @@ Ver cada caja con su saldo, movimientos y filtros (fecha, tipo, socio, contacto)
 - **FR-011**: La anulación MUST ser no destructiva: el movimiento queda visible como anulado, con motivo, usuario y fecha, y se revierten juntos todos sus efectos (caja, cuenta corriente, cuenta de socio, vínculos).
 - **FR-012**: Solo los usuarios con permiso de escritura MUST poder registrar o anular; los de solo lectura ven las cajas sin poder operar (mismo criterio que el resto del sistema).
 - **FR-013**: Los movimientos históricos cargados desde las planillas (027/036) MUST seguir visibles y mantener sus vínculos (fila de planilla, pago de Access), sin duplicarse con los nuevos.
-- **FR-014**: Para la caja del Condominio LSC, el sistema MUST registrar los movimientos que la vinculan con Giamigli y con los socios. El alcance de sus operaciones propias (alquileres, gastos de los inmuebles) es: [NEEDS CLARIFICATION: ¿la caja del Condominio se administra completa en el sistema, incluidos los cobros de alquileres y los gastos de los inmuebles, o solo sus movimientos con Giamigli y los socios?]
-- **FR-015**: Desde la puesta en marcha, el sistema MUST ser el lugar donde se registran las cajas: [NEEDS CLARIFICATION: ¿se deja de cargar la planilla Cajas Giamigli.xlsx desde una fecha de corte, o durante un tiempo conviven y el sistema importa lo nuevo de la planilla?]
+- **FR-014**: Para la caja del Condominio LSC, el sistema MUST registrar solo los movimientos que la vinculan con Giamigli (aportes y préstamos a Giamigli, pagos de gastos de Giamigli, devoluciones, retiros relacionados). Las operaciones propias del Condominio (alquileres, gastos de los inmuebles, retiros de los socios que no involucran a Giamigli) quedan fuera: el Condominio tiene su propio sistema. La historia ya cargada de su caja (036) queda como consulta.
+- **FR-015**: Durante un período de convivencia (hasta que Sergio lo dé por terminado), la planilla Cajas Giamigli.xlsx sigue en uso: el sistema MUST poder importar sus filas nuevas sin duplicar las ya registradas (en el sistema o importadas antes), identificando cada fila de la planilla, y MUST mostrar una comparación caja por caja (saldo y movimientos) entre planilla y sistema que señale diferencias. Al terminar la convivencia, el sistema pasa a ser la única fuente.
 - **FR-016**: Un movimiento con fecha anterior a un arqueo confirmado MUST mostrar una advertencia antes de guardarse.
 - **FR-017**: Un movimiento que deje la caja en saldo negativo MUST pedir confirmación explícita.
 
