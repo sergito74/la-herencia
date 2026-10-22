@@ -74,3 +74,16 @@ Pedido de Sergio, 22/10/2026: revisar en conjunto Lucy, Condominio LSC, Virginia
 **Pendiente:**
 - **Identificar los $144.350,52 restantes.** Candidatos: cheques del BNA "COBRADO POR CAJA" sin contacto o "XXXX" (unos $29.500), extracciones Link, cobros en efectivo, y las hojas "Retiros" y "Gastos Mensuales Efectivo" de los archivos del Condominio.
 - Los egresos que pagó el Condominio y sus aportes en efectivo son aportes del Condominio a Giamigli: registrarlos en su cuenta de socio en la etapa 4, sin duplicar con los $733.781 de depósitos bancarios.
+
+## Depósitos en el BNA sin identificar, 2011–2015 (investigación, SIN APLICAR)
+
+Hay 30 créditos en el BNA (DEP.EFECTIVO, DEPOSITO DE TER-SUC, DEP.P/T.INT.M.M-BANE) con IdContacto 0, por $490.688,02.
+
+- **17 son aportes del Condominio LSC ($278.971,50).** Coinciden en fecha e importe con "Aportes Campo" (`Movimientos Condominios.xlsx`) o con "Transferencia al Campo" / "Transferencia a Giamigli" (`Movimientos LSC.xlsx`).
+  - IdMovimientoBNA: 10295, 10324, 10339, 10348, 10746, 10790, 10825, 10830, 10863, 10888, 11101, 11119, 11240, 11254, 11295, 11300, 11790.
+  - Propuesta: asignarlos al contacto 549 (Condominio LSC) como aportes a Giamigli, dentro del set de $733.781.
+- **13 siguen sin identificar ($211.716,52).**
+  - 9885 y 9890 (11 y 14/02/2011, $30.000 c/u, depósitos de terceros en la sucursal 1190).
+  - 10431, 10509, 10640, 10857, 10906, 10990, 11076, 11245, 11272 y 11533 (DEP.EFECTIVO de 2012–2014, entre $1.000 y $40.000).
+  - 16987: los $3.285 de Agropecuaria Las Heras, ya identificados.
+- **Aclaración:** son entradas al BANCO, no a la caja. No explican los $144.350,52 de ingresos de caja no identificados, salvo que el efectivo de esos depósitos viniera de afuera (socios) y la caja se haya financiado con retiros del banco. Eso no se verificó.
