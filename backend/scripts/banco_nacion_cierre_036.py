@@ -5,8 +5,10 @@
    Mastercard 18020 decidido como pérdida/gasto 06/10/2026, pares que se anulan): comprobante interno mensual GB369-aamm,
    rubro Gastos bancarios. Las facturas del BNA de 2026 cubren el total de julio (FC 14/08 $74.400), agosto y septiembre
    ($85.560 c/u): esos meses sin comprobante interno.
-3. Quedan en la cuenta (se ven aparte): préstamos (acreditaciones y cuotas; hay préstamos vigentes, falta el detalle de
-   capital e intereses) y el depósito de un cheque de tercero del 07/02/2011 ($3.285).
+3. Queda en la cuenta: préstamos (acreditaciones y cuotas; hay préstamos vigentes, falta el cronograma de capital e intereses).
+4. BNA 16987 "DEPOSITO DE TER-SUC 1190" 07/02/2011 $3.285: es el depósito del cobro de Agropecuaria Las Heras (venta
+   0001-1789), ya registrado en su cuenta como Pagos efectivo 108 + 109 ($235,43 + $3.049,57, forma "Depósito en cuenta",
+   mismo día): sin contacto (no es del banco).
 Centro 3, destino 1. Uso: --simular (default) / --aplicar. Idempotente.
 """
 import sys
@@ -20,7 +22,7 @@ from src.features.compras import repository as compras
 C = 369
 RUBRO_GASTOS = 2047893509
 FACTURADOS = {(2026, 7), (2026, 8), (2026, 9)}
-QUEDAN = (16987,)  # depósito cheque de tercero 2011
+QUEDAN = ()
 
 
 def _doc(nro, fecha, importe, texto):
@@ -42,7 +44,7 @@ def main():
         if f['origenTipo'] != 'Banco Nacion' or f['idOrigen'] in QUEDAN:
             continue
         d, m = conceptos.get(f['idOrigen'], ''), f['creditoPesos'] - f['deudaPesos']
-        if 'PLAZO FIJO' in d or 'P.FIJO' in d or 'EXTR.RED LINK' in d:
+        if 'PLAZO FIJO' in d or 'P.FIJO' in d or 'EXTR.RED LINK' in d or f['idOrigen'] == 16987:
             sin_contacto.append(f['idOrigen'])
         elif 'PRESTAMO' in d:
             prestamos += m
