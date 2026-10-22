@@ -1,5 +1,23 @@
 # Cuenta de Sergio: pendientes y resumen
 
+## Actualización 22/10/2026, 15:05: opción A para cobros devueltos a caja (APLICADO)
+
+- Sergio aprobó la propuesta de mayo a agosto de 2016 y eligió la **opción A**: sueldo cobrado y devuelto a caja = sueldo **no cobrado** + traspaso de fondos BNA → caja. No es aporte de socio.
+- `sergio_retornos_sueldo_2016_2017_036.py`:
+  - 16 pares BNA ↔ caja (30/06/2016 a 03/10/2017): el débito BNA queda sin contacto, con la fila guardada en AuditoriaCorrecciones (regla `traspaso-bna-caja-via-sergio`) y la referencia en el Detalle del movimiento de caja.
+  - 16 liquidaciones (mayo-2016 a septiembre-2017, sin marzo-2017) canceladas con Ajuste Interno "no cobrado".
+- **Nov-2017 en adelante:** NO se aplicó la opción A. La planilla Cuenta Sergio ya registra esos meses como efectivo que Sergio adelanta a la caja ("Sueldo X", Devolución a su favor) y después cobra por BNA ("Cobro sueldo X" / "Sueldo X", AsignacionGasto). En la cuenta de socio esos pares se compensan.
+- **375 = −$1.797.440,52** = −$1.800.000 (sueldo de septiembre de 2026, se paga en octubre) + $2.559,48 de historia, así compuesta:
+  - **2011–2012 (incluye la liquidación de diciembre-2012, fechada 10/01/2013): −$44.500** (sueldos sin pago). Empleados.xlsx da $68.500 a favor de Sergio en 03/2013. Se revisa con esa hoja.
+  - **2017: +$28.265.**
+    - 18421 (30/03, $21.000) vs sueldo de marzo $17.735 (devuelto el 01/04): diferencia $3.265 (P13).
+    - 18422 (10/04, $16.000) sin devolución ni sueldo.
+    - 18425 (14/06, $30.000, P14): $20.000 vuelven a caja y $10.000 son retiros de Ceci/Lucy en caja.
+    - Octubre-2017 ($21.000): se paga en 2018 según la planilla.
+  - **Nov-2017 a 2019: +$18.792.** Pagos BNA 2018–2019 contra sueldos y la lógica de préstamo de la planilla. Revisar par por par.
+  - 2020–2026: $2,48 de redondeos.
+
+
 ## Actualización 22/10/2026, 14:55: diferencia de mayo a agosto de 2016 (P10–P12), investigación (SIN APLICAR)
 
 **Evidencia:**
