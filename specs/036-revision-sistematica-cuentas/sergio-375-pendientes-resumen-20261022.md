@@ -1,5 +1,17 @@
 # Cuenta de Sergio: pendientes y resumen
 
+## Actualización 22/10/2026, 14:40
+
+- **P18 aplicado** (`sergio_p18_retiro_20230905_036.py`): retiro adicional por compensación de pagos de Giamigli. Galicia 1390 pasa al 5670 y se agrega AsignacionGasto $30.000 del 05/09/2023 en la cuenta de socio.
+- **Planilla** (Excel cerrado; backup `backups/Cajas Giamigli-20261022-antes-p18-p31.xlsx`): filas en Cuenta Sergio del 05/09/2023 ($30.000) y del 10/09/2025 ($485.400). Saldos acumulados encadenados, sin cortes.
+- **375 = −$2.135.297,52** = −$1.800.000 (sueldo de septiembre de 2026, se paga en octubre) − $335.300 (historia 2011–2019).
+- **Historia 2011–2019, NO implementada** (solo diagnóstico):
+  - 2011–2012: Empleados.xlsx "Pagos Sergio G" cierra en 03/2013 con un saldo a favor de Sergio de $68.500. Sus pagos de 2011–2012 están en el 375 (BNA, Pagos efectivo Condominio y La Herencia).
+  - 2013–2016: los sueldos de $8.000–$12.434 por mes no tienen ningún pago en el 375 ni en "Pagos Sergio G".
+  - 2017–2019: hay pagos BNA con atraso que coinciden con sueldos de meses anteriores (por ejemplo, 14/05/2018 $31.500 = dic-2017; 30/05/2018 $24.400 = ene-2018; 30/01/2018 $21.000 = oct-2017; 08/10/2018, 27/12/2018 y 15/01/2019 $21.000 = feb/mar-2018). Los retornos de 2016–2018 (Codex) cubren parte.
+  - Falta la decisión de Sergio: ¿los sueldos de 2013–2016 se cobraron (en efectivo, por el Condominio o con retornos) o quedaron sin cobrar? Si quedaron sin cobrar, pasan a su cuenta de socio como crédito y el 375 se cierra.
+
+
 ## Actualización 22/10/2026, 14:35 — cuenta separada en EMPLEADO y SOCIO (APLICADO)
 
 **Decisiones de Sergio:**
