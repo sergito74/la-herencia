@@ -99,3 +99,7 @@ Estado para retomar las conciliaciones de cuentas corrientes (Claude o Codex). T
 - `bimonetaria.cargar_cuenta(id, refrescar=True)` → saldo en pesos/dólares por fila.
 - Portales con autorización de solo lectura: Bayá Casal, Cargill (ver memorias de Claude); nunca acciones que envíen mails.
 - Pagos de socios: `MovimientosCuentaSocio` (migrado de "Cajas Giamigli.xlsx") + `PagosSocioProveedor` (vínculo al contacto).
+
+## 5. Para el final (cuando estén revisadas todas las cuentas)
+- Ficha de revisión: sacar la opción de aceptar la coincidencia con Access como evidencia del saldo (criterio C3); exigir siempre el saldo externo del proveedor/organismo. Regla: Access solo como referencia (Sergio 21/10/2026).
+- Actualizar los 5 tests que dependen de datos reales corregidos en la revisión (Jauregui, casos conocidos de auditoría, ramas de tarjetas).
