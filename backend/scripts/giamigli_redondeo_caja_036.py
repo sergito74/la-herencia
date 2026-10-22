@@ -21,7 +21,7 @@ def main():
             execute_write_transaction([
                 ("INSERT INTO dbo.AuditoriaCorrecciones (Regla,Estado,Parametros,Usuario,Fecha,UsuarioAplicacion,FechaAplicacion,Respaldo,Resumen) "
                  "VALUES ('eliminar-pago-duplicado','aplicada',?,?,SYSDATETIME(),?,SYSDATETIME(),?,?)",
-                 (json.dumps({'tabla': 'Pagos efectivo', 'fila': fila}, ensure_ascii=False), USUARIO, USUARIO, resp.split('\')[-1],
+                 (json.dumps({'tabla': 'Pagos efectivo', 'fila': fila}, ensure_ascii=False), USUARIO, USUARIO, resp.split('\\')[-1],
                   'Redondeo de caja heredado de Access sin respaldo (07/03/2023, −$57,29); eliminado de la caja a pedido de Sergio')),
                 ('DELETE FROM dbo.[Pagos efectivo] WHERE IdPagoEfectivo=1362 AND IdContacto=386', ())])
         invalidar()
