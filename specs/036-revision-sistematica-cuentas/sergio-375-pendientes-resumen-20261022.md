@@ -1,5 +1,21 @@
 # Cuenta de Sergio: pendientes y resumen
 
+## Actualización 22/10/2026, 15:15: 2017, movimiento por movimiento (investigación, SIN APLICAR)
+
+Fuente nueva: comprobantes BNA en `Cuentas a pagar/Transferencias/Sergio Giamberardini/`: "Sueldo <mes> 2017.pdf" (fecha de envío), "Transferencia Sergio (Retiro Marzo 2017).pdf" y "Transferencia Sueldo Noviembre 2017.pdf". Todos tienen la cuenta débito CC BNA 12301640029280 de Giamigli y la cuenta crédito de Sergio (CBU 0150501601000218614294).
+
+- **18421 · 30/03/2017 · $21.000:** el comprobante dice **"CONCEPTO: RETIRO MARZO — REFERENCIA: RETIRO DEUDA"**. No es sueldo. Hipótesis: devolución de una deuda de Giamigli con Sergio. Candidata: los sueldos 2011-2012 adeudados (Empleados.xlsx cierra 03/2013 con $68.500 a favor de Sergio; en el 375 ese bloque está en −$44.500).
+- **18422 · 10/04/2017 · $16.000:** comprobante "SUELDO MARZO 2017", enviado el 08/04/2017. Es el pago del sueldo de marzo. La liquidación de marzo en WC es de $17.735. El 01/04 la caja recibió "Devolución Sueldo Sergio Marzo 2017" por $17.735, antes del pago: diferencia de $1.735.
+- **18425 · 14/06/2017 · $30.000:** sin comprobante. Ese día la caja recibe $20.000 "Ingreso Efectivo por Retiro en CA Sergio" y salen "Retiro Ceci" $10.000 y "Retiro Lucy" $10.000. Lectura: un retiro de $10.000 por cada socio; Sergio se quedó con el suyo en el banco.
+- **Octubre-2017 ($21.000):** comprobante "Sueldo Octubre 2017" sin fecha de envío. La planilla registra el cobro el 19/12/2017 (bloque nov-2017+).
+- Las "Sueldo <mes> 2017.pdf" confirman que 18419, 18420, 18423, 18424, 18426, 18427 y 18429 fueron pagos de sueldo (opción A ya aplicada).
+
+**Propuesta (pendiente de confirmación de Sergio):**
+- 18421 → contacto socio 5670; en la cuenta de socio, AsignacionGasto $21.000 "retiro deuda". Si la deuda eran los sueldos 2011-2012, se cancela contra ese bloque del 375.
+- Marzo-2017, opción A: 18422 sin contacto (traspaso, vinculado a la caja 254); liquidación de $17.735 cancelada. Los $1.735 devueltos de más quedan como aporte en efectivo de Sergio, salvo que diga otra cosa.
+- 18425 → 5670; AsignacionGasto $10.000 "retiro" + traspaso de $20.000 a la caja para los retiros de Ceci y Lucy.
+
+
 ## Actualización 22/10/2026, 15:05: opción A para cobros devueltos a caja (APLICADO)
 
 - Sergio aprobó la propuesta de mayo a agosto de 2016 y eligió la **opción A**: sueldo cobrado y devuelto a caja = sueldo **no cobrado** + traspaso de fondos BNA → caja. No es aporte de socio.
