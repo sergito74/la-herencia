@@ -1,5 +1,38 @@
 # Cuenta de Sergio: pendientes y resumen
 
+## Actualización 22/10/2026, 14:35 — cuenta separada en EMPLEADO y SOCIO (APLICADO)
+
+**Decisiones de Sergio:**
+- (1) Separar las cuentas, con una alerta operativa en pantalla.
+- (2) Regla de compras particulares: **SIEMPRE** para este tipo de gastos.
+- (3) El excedente de febrero de 2024 es deuda del socio.
+- (4) P31 es una compensación.
+- (5) Sobre P18 preguntó si hay $30.000 de más.
+
+**Aplicado en WC (scripts con backup):**
+- `allianz_taos_particular_036.py`: los 20 débitos de Allianz de la Taos (Galicia 02/2025–09/2026, $2.487.318,43) vuelven a Allianz (515) con reasignación 375→515, más un asiento "Particular S" (Pagos efectivo, negativo) por débito. Allianz sigue en $0. La deuda de socio ya existía, una por débito; mayo de 2026 es factura − NC $105.
+- `sergio_cuenta_socio_contacto_036.py`:
+  - Contacto nuevo **5670 "Sergio Giamberardini (socio)"**.
+  - Se le reasignan 41 movimientos 2020–2026 del 375 que no pagan sueldo y tienen contraparte en la cuenta de socio o en Cuenta Cond LSC (lista en el script).
+  - Ajustes internos: 267 (−$70.000 en el 375 / +$70.000 en el 390); 683 (−$200.000 en el socio 5670 / +$200.000 en el 390); retención de febrero de 2024 (−$9.248,64 en el 375; la deuda ya estaba en la cuenta de socio, mov. 2131: no se duplicó).
+  - P31: AsignacionGasto $485.400 del 10/09/2025 en la cuenta de socio + reasignación de Galicia 2782.
+- Frontend: `components/ui/AvisoCuentaContacto.tsx` (alerta en Cuentas corrientes, Revisión de cuentas y Cuentas de socios → Sergio) para los contactos 375 y 5670.
+
+**Saldos:**
+- **375 (empleado): −$2.105.297,52**, que se explica así:
+  - Sueldo de septiembre de 2026, $1.800.000: se paga en octubre y el extracto llega hasta el 30/09.
+  - Historia 2011–2019: sueldos sin pago identificado $672.700 − pagos sin sueldo $337.400 = −$335.300.
+  - P18: +$30.000.
+- 5670 (socio): $7.804.060. No se concilia, es el lado bancario de la cuenta de socio.
+- 390 (Lucy): +$270.000 por las partes de Lucy.
+
+**Pendientes:**
+- **Planilla:** agregar en Cuenta Sergio la fila del 10/09/2025, "Devolución por aporte pagos varios" $485.400. No se pudo: Excel estaba abierto.
+- **P18:** Giamigli te transfirió $30.000 el 05/09/2023 aparte del sueldo de agosto ($300.000, pagado el 31/08). No figura en Cuenta Sergio ni en la caja. Sigue en el 375. Propuesta: tratarla como retiro o compensación de socio (pasarla al 5670 + AsignacionGasto).
+- **Historia 2011–2019 del 375** (etapa de Codex): 2018 enero, febrero, marzo y julio sin pago; sueldos 2011–2017 pagados por Condominio, caja o retornos.
+- **Lucy (390):** revisar con el mismo criterio de separación cuando se retome.
+
+
 ## Actualización 22/10/2026, 14:20 (respuestas de Sergio y cambios aplicados)
 
 **Respuestas de Sergio:**

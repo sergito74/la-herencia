@@ -8,6 +8,7 @@ import { SoloLectura } from "@/components/auth/SoloLectura";
 import { OrigenMovimiento } from "@/components/cuentas-corrientes/OrigenMovimiento";
 import { ReasignarMovimientoButton } from "@/components/cuentas-corrientes/ReasignarMovimientoButton";
 import { ErrorState, LoadingState } from "@/components/ui/States";
+import { AvisoCuentaContacto } from "@/components/ui/AvisoCuentaContacto";
 import { BASE_DOCUMENTOS_COMPRAS, esRutaLocalWindows, urlParaAbrirDocumento } from "@/lib/documentoLocal";
 import { formatFecha, formatMoneda } from "@/lib/format";
 import { fetchComprobantes, fetchMovimientosRevision, fetchRevision, guardarRevision, type EstadoRevision, type SugerenciaNota } from "@/services/auditoriaCuentasApi";
@@ -65,6 +66,7 @@ export function RevisionCuenta({ idContacto }: { idContacto: number }) {
 
   return (
     <div className="space-y-4">
+      <AvisoCuentaContacto idContacto={idContacto} />
       <header className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="text-xl font-semibold">{r.razonSocial ?? `Contacto ${r.idContacto}`}</h1>

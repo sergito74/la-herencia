@@ -18,6 +18,7 @@ import { Breadcrumb } from "@/components/ui/Breadcrumb";
 import { DataTable, type DataTableColumn, type SortState } from "@/components/ui/DataTable";
 import { FilterBar, FilterField, FilterSubmitButton, filterInputClass } from "@/components/ui/FilterBar";
 import { KpiCard } from "@/components/ui/KpiCard";
+import { AvisoCuentaContacto } from "@/components/ui/AvisoCuentaContacto";
 import { ErrorState, LoadingState } from "@/components/ui/States";
 import { formatMoneda, formatFecha, formatMonto } from "@/lib/format";
 
@@ -302,6 +303,7 @@ export function CuentaCorriente() {
 
       {selected && (
         <div className="space-y-4">
+          <AvisoCuentaContacto idContacto={selected.idContacto} />
           <div className="flex items-center justify-between gap-4 rounded-md border border-border bg-surface p-4">
             <div>
               <h2 className="text-lg font-semibold text-ink-primary">

@@ -140,3 +140,12 @@ Sergio reiteró que todo el trabajo debe quedar registrado para que cualquiera d
   - El punto 5 son 20 débitos de Allianz reasignados al 375 y la ficha de Allianz está cerrada: consultado, sin aplicar.
   - Detalle completo en la sección "Actualización 14:20" de `sergio-375-pendientes-resumen-20261022.md`.
   - Informe: `backups/sergio-375-20261022/Sergio - cuenta 375 respuestas (Claude).html`.
+- **Actualización 14:35 (aplicado):**
+  - Allianz de la Taos devuelto a 515 con asientos Particular S (regla de compras particulares **siempre**).
+  - Cuenta de Sergio separada: 375 = empleado; **5670 = "Sergio Giamberardini (socio)"**, con 41 movimientos reasignados.
+  - Ajustes de los pagos en lote con Lucy y del excedente de febrero de 2024.
+  - P31 en la cuenta de socio.
+  - Alerta operativa en pantalla (`AvisoCuentaContacto`).
+  - 375 = −$2.105.297,52 (sueldo de septiembre de 2026 a pagar en octubre + historia 2011-2019 + P18).
+  - Pendiente: la fila P31 en la planilla (Excel abierto) y P18.
+  - Ver `sergio-375-pendientes-resumen-20261022.md`, sección 14:35.
