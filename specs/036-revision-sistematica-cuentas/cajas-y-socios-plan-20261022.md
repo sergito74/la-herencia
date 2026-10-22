@@ -37,3 +37,24 @@ Pedido de Sergio, 22/10/2026: revisar en conjunto Lucy, Condominio LSC, Virginia
 1. ¿La hoja "Caja Efectivo Pesos" es la fuente de verdad del efectivo de Giamigli desde 2011?
 2. ¿Las cajas de Access "La Herencia" y "GiamigliSA" son la misma caja física? ¿Y "Condominio"? ¿Era otra caja, del Condominio?
 3. ¿Se levanta la pausa de Condominio LSC y Virginia para este trabajo?
+
+## Respuestas de Sergio (22/10/2026)
+
+1. La hoja "Caja Efectivo Pesos" no es necesariamente la fuente de verdad, pero es lo mejor que tenemos: se usa como base.
+2. Las cajas de Access "La Herencia" y "GiamigliSA" son la misma caja física. "Condominio" y Condominio LSC son lo mismo.
+3. Se levanta la pausa de Condominio LSC y Virginia.
+4. **Lucy no tiene sueldo:** no hace falta separar su cuenta en empleada y socia.
+
+## Etapa 1: libro de caja de Giamigli (APLICADO, `caja_giamigli_libro_completo_036.py`)
+
+- Columnas nuevas en `MovimientosCajaEfectivo`: **FilaPlanilla** (fila de la hoja) e **IdPagoEfectivo** (pago de Access del mismo egreso).
+- Las 1.147 filas ya migradas quedaron vinculadas a su fila de la planilla. Se agregaron las 697 omitidas por la 027; 651 quedaron vinculadas a Access (487 en la caja "La Herencia" y 164 en "Condominio"). Las 46 sin pago en Access son gastos chicos de 2011–2015.
+- Apertura **PROVISORIA** del 13/07/2015 por **$227.747,52** = ingresos de 2011–jul-2015 que la planilla no registra. La columna Saldo de la hoja arranca en la fila 486 (14/07/2015) con $15.491,20.
+- **Libro GiamigliSA: 1.845 movimientos, saldo $381.785,15 = saldo real.** Caja chica (CampoChica): $96.907 = saldo real, sin cambios.
+- Corrección durante la carga: dos movimientos existentes con Concepto NULL (557 y 565, $180 y $800) se habían reinsertado; se borraron los duplicados. El script ya filtra con ISNULL.
+- Este libro **no entra** en `vw_MovimientosCuenta_Base`: no duplica las cuentas de los contactos, que se llevan por `Pagos efectivo`.
+
+**Siguiente (etapas 2–3):**
+- Reconstruir la apertura de $227.747,52: ingresos de caja de 2011–2015 a partir de los retiros del BNA, la caja Condominio de Access (308 pagos) y los aportes.
+- Vincular las cargas de la caja chica y los retiros y depósitos bancarios como traspasos.
+- Revisar las 46 filas sin pago en Access: varias figuran en Access como Particular S (pagadas por Sergio), pero la planilla las muestra como pagadas por la caja.
