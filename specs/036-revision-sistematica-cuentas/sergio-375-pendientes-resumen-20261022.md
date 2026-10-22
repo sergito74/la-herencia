@@ -1,5 +1,32 @@
 # Cuenta de Sergio: pendientes y resumen
 
+## Actualización 22/10/2026, 14:20 (respuestas de Sergio y cambios aplicados)
+
+**Respuestas de Sergio:**
+- **P18:** la planilla "Sueldo Sergio" ($330.000 en agosto de 2023) es un error de tipeo; manda el recibo PDF del Estudio ($300.000). Por lo tanto, los **$30.000 del 05/09/2023 no son sueldo** y siguen sin explicación.
+- **P31:** Sergio supone que es una compensación por gastos de Giamigli pagados desde su cuenta personal. **Evidencia:**
+  - Banco receptor: "REEMBOLSO GASTOS 485.400".
+  - Desde la última compensación (01/08/2025, $200.000), en Cuenta Sergio figuran pagos suyos por gastos de Giamigli: Irma agosto $194.621, Sancor $32.707, autónomos de Sergio $112.913,56 y de Lucy $47.635,83 (01/09), Torrontegui $55.500 (03/09). Suman $443.377,39; con los autónomos de julio ($111.113,52) llegan a $554.490,91.
+  - Ninguna combinación da exactamente $485.400; la más cercana difiere en $936.
+  - **No hay fila de compensación** en Cuenta Sergio para el 10/09/2025, a diferencia de las de 01/08/2025 y 11/11/2025.
+  - Conclusión: la suposición es coherente, pero la composición exacta no está respaldada.
+- **Puntos 3, 5 y 6:** aprobados. **Punto 4:** aprobado en principio, pero Sergio pidió que se le explique el mecanismo. **Puntos 1 y 2:** pidió más detalle.
+
+**Aplicado en WC (con backup):**
+- `scripts/sergio_lucy_galicia_20241104_036.py`: Mov. Galicia 2198 ($250.000) del 375 al 390, y 2199 ($90.000) del 390 al 375, con log en ReasignacionesContacto. El 375 bajó $160.000.
+- `scripts/sergio_sueldos_2024_ganancias_036.py`: en la liquidación de julio de 2024 se cargó la devolución de Ganancias $63.326,76 (como Ajuste No Remunerativo) y el redondeo $0,24; en febrero, el redondeo $0,64. Saldo 375: **$8.465.329,55** (antes $8.688.657,19).
+
+**Correcciones de hipótesis anteriores:**
+- **Diciembre de 2024 NO falta:** la liquidación está fechada 01/01/2025 ($1.425.000) y coincide con el pago del 30/12/2024.
+- **P36 / Allianz:** el Mov. 3200 tiene IdContacto 515, pero en la vista aparece en el 375 por la reasignación 2079 (01/10/2026, "Seguro TAOS gasto particular de Sergio"). En total hay **20 débitos de Allianz** (02/2025–09/2026, $2.487.318,43) reasignados al 375. La ficha de Allianz (515) está **cerrada**. Devolverlos exige reabrirla y aplicar la regla de compras particulares (pago en el proveedor + asiento Particular S + deuda de socio, que ya existe). **Sin aplicar:** se consulta a Sergio.
+- **Febrero de 2024:** el recibo da un neto de $690.752 (Ganancias $9.248,64); se pagaron $700.000. La retención también se devolvió en julio. Sergio cobró **$9.248 de más** en febrero. **Sin aplicar:** propuesta, deuda en su cuenta de socio.
+
+**Mecanismo propuesto para el punto 4 (pendiente de aprobación):**
+- Contacto **375 = Sergio empleado**: solo recibos de sueldo (debe) y sus pagos y retenciones (haber). Cierra en 0.
+- **Cuenta de socio** (MovimientosCuentaSocio, valuada en kg/US$): aportes, retiros, gastos particulares, compensaciones y retornos a caja.
+- Las transferencias bancarias que no son sueldo se reasignan a un contacto nuevo, **"Sergio Giamberardini (socio)"**, igual que el Condominio tiene el 549. Ese contacto no lleva saldo propio: es el lado bancario de la cuenta de socio, que ya registra esos movimientos desde la planilla. No se duplica nada.
+- Alternativa: dejarlas en el 375 con un documento interno de compensación por cada una.
+
 Estado vigente al cierre de la retoma de Claude, 22/10/2026 por la tarde. Continúa la versión de Codex del mismo día. Los identificadores P/S están en [sergio-375-pagos-para-revisar-20261022.md](sergio-375-pagos-para-revisar-20261022.md).
 
 "Conciliado documentalmente" significa que el pago y su comprobante o su registro en la planilla coinciden. **No significa que el sistema esté corregido**: en esta retoma no hubo escrituras en WC, Access ni las planillas. La cuenta 375 no está cerrada.

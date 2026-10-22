@@ -127,3 +127,16 @@ Sergio reiteró que todo el trabajo debe quedar registrado para que cualquiera d
 - **Siguen pendientes:** P31 ($485.400 del 10/09/2025, sin rastro en planillas), P10–P11, P13 y P14.
 - **Sin escrituras:** WC, Access y planillas sin cambios. Las correcciones propuestas (dividir 267 y 683, cruzar 2198/2199, separar del 375 los pagos que no son sueldo, devolver P36 a Allianz) esperan la aprobación de Sergio. Detalle en `sergio-375-pendientes-resumen-20261022.md` (estado vigente, reescrito).
 - **Informe para Sergio:** `backups/sergio-375-20261022/Sergio - pendientes y resumen (Claude).html`, abierto en el navegador.
+- **Actualización 14:20:**
+  - Respuestas de Sergio:
+    - P18: manda el recibo.
+    - P31: probable compensación.
+    - Aprobó los puntos 3, 5 y 6; pidió explicación de los puntos 1, 2 y 4.
+  - Aplicado:
+    - Cruce de contactos 2198/2199 (`sergio_lucy_galicia_20241104_036.py`).
+    - Devolución de Ganancias de julio de 2024 y redondeos (`sergio_sueldos_2024_ganancias_036.py`).
+    - Saldo 375: $8.465.329,55.
+  - Diciembre de 2024 no faltaba.
+  - El punto 5 son 20 débitos de Allianz reasignados al 375 y la ficha de Allianz está cerrada: consultado, sin aplicar.
+  - Detalle completo en la sección "Actualización 14:20" de `sergio-375-pendientes-resumen-20261022.md`.
+  - Informe: `backups/sergio-375-20261022/Sergio - cuenta 375 respuestas (Claude).html`.
