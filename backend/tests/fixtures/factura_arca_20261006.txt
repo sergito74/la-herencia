@@ -1,0 +1,35 @@
+ORIGINAL
+A
+FACTURA
+GIAMIGLI DE BOLIVAR S.A.
+COD. 01
+Punto de Venta: 00002 Comp. Nro: 00000008
+Razón Social: GIAMIGLI DE BOLIVAR S.A. Fecha de Emisión: 06/10/2026
+Domicilio Comercial: Sarmiento 437 - Bolivar, Buenos Aires CUIT: 30712114602
+Ingresos Brutos: 30-71211460-2
+Condición frente al IVA: IVA Responsable Inscripto Fecha de Inicio de Actividades: 01/12/2011
+Período Facturado Desde: 25/09/2026 Hasta:30/11/2026 Fecha de Vto. para el pago:06/10/2026
+CUIT: 30715943278 Apellido y Nombre / Razón Social:GANADERA SAN JUSTO SOCIEDAD SIMPLE
+Condición frente al IVA: IVA Responsable Inscripto Domicilio Comercial:Cuartel V Establecimiento San Justo 0 - San Miguel Del Monte,
+Buenos Aires
+Condición de venta: Contado
+Alicuota
+Código Producto / Servicio Cantidad U. medida Precio Unit. % Bonif Subtotal Subtotal c/IVA
+IVA
+0001 Servicio de pastaje de 70 Vaquillonas del 25 al 1,00 unidades 290851,40 0,00 290851,40 21% 351930,19
+30 de septiembre de 2026
+Importe Otros Tributos: $ 0,00
+Importe Neto Gravado: $ 290851,40
+IVA 27%: $ 0,00
+IVA 21%: $ 61078,79
+IVA 10.5%: $ 0,00
+IVA 5%: $ 0,00
+IVA 2.5%: $ 0,00
+IVA 0%: $ 0,00
+Importe Otros Tributos: $ 0,00
+Importe Total: $ 351930,19
+Pág. 1/1
+CAE N°: 86406417014230
+Fecha de Vto. de CAE: 16/10/2026
+Comprobante Autorizado
+Esta Agencia no se responsabiliza por los datos ingresados en el detalle de la operación

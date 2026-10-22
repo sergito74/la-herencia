@@ -33,6 +33,7 @@ from src.features.imputacion.router import router as imputacion_router
 from src.features.impuestos.router import router as impuestos_router
 from src.features.migracion_cajas_giamigli.router import router as migracion_cajas_giamigli_router
 from src.features.ordenes.router import router as ordenes_router
+from src.features.pastaje.router import router as pastaje_router
 from src.features.planificacion.router import router as planificacion_router
 from src.features.conciliacion_tesoreria.router import router as conciliacion_tesoreria_router
 from src.features.traspasos_internos_tesoreria.router import router as traspasos_internos_tesoreria_router
@@ -156,6 +157,7 @@ app.include_router(auth_router)
 app.include_router(aplicaciones_pago_router)
 app.include_router(arrendamientos_router)
 app.include_router(cajas_efectivo_router)
+app.include_router(pastaje_router)
 app.include_router(compras_router)
 app.include_router(conciliacion_tesoreria_router)
 app.include_router(cuentas_socios_router)

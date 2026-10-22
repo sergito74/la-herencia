@@ -33,6 +33,20 @@ export function ConsolidadoCampaniaView({
   return (
     <section aria-label={`Resultado de la campaña ${datos.campania}`}>
       <h2 className="text-lg font-semibold">Campaña {datos.campania}</h2>
+      {datos.otrosIngresos && datos.otrosIngresos.length > 0 && (
+        <div className="mt-4 rounded border border-border bg-surface p-4">
+          <h3 className="font-medium">Otros ingresos</h3>
+          <p className="mt-1 text-sm text-ink-secondary">Netos de IVA, por establecimiento. No se reparten a cultivos ni entran en el margen de cultivos.</p>
+          <ul className="mt-2 space-y-1 text-sm">
+            {datos.otrosIngresos.map((o) => (
+              <li key={`${o.concepto}-${o.establecimiento}`} className="flex justify-between gap-4">
+                <Link className="text-finance underline" href="/ventas/pastaje">{o.concepto} · {o.establecimiento}</Link>
+                <span className="font-data">{formatMoneda(o.netoPesos)}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
           {datos.costoSinClasificar && (
             <div className="mt-4 rounded border border-border bg-surface p-4">
               <h3 className="font-medium">Costos sin clasificar</h3>

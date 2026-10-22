@@ -46,6 +46,8 @@ export interface CostoSinClasificar {
 }
 
 export interface ResultadoCampania {
+  /** 039: ingresos fuera de cultivos (pastaje), netos de IVA; no forman parte del margen de cultivos. */
+  otrosIngresos?: { concepto: string; establecimiento: string; netoPesos: number }[];
   idCampania: number;
   campania: string;
   superficieSembrada: number;

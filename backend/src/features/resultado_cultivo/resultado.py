@@ -245,4 +245,13 @@ def resultado_campania(id_campania: int) -> dict:
         "costeoDolaresIncompleto": any(c.get("costeoDolaresIncompleto", False) for c in cultivos),
         "cultivos": cultivos,
         "costoSinClasificar": sin_clasificar,
+        "otrosIngresos": otros_ingresos(campania["nombre"]),
     }
+
+
+def otros_ingresos(campania: str) -> list[dict]:
+    """039: ingresos que no son de un cultivo (pastaje, neto de IVA, por establecimiento). No entran al margen de cultivos."""
+    from src.features.pastaje.service import ingresos_por_campania
+
+    return [{"concepto": "Pastaje", "establecimiento": r["establecimiento"] or "La Herencia", "netoPesos": round(float(r["neto"]), 2)}
+            for r in ingresos_por_campania(campania) if r["neto"] is not None]

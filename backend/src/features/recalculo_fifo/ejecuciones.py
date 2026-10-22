@@ -214,7 +214,8 @@ MOV_A_APLICACION = {"Banco Nacion": "bna", "Galicia": "galicia", "Pagos efectivo
                     # Documento que cancela a otro (compensación o NC a su factura).
                     "Compras": "comp-compra", "Venta Granos": "comp-venta-granos",
                     "Venta Hacienda": "comp-venta-hacienda"}
-DOC_A_APLICACION = {"Compras": "CompraDeuda", "Venta Granos": "VentaGranos", "Venta Hacienda": "VentaHacienda"}
+DOC_A_APLICACION = {"Compras": "CompraDeuda", "Venta Granos": "VentaGranos", "Venta Hacienda": "VentaHacienda",
+                    "Pastaje": "Pastaje"}
 # Lo que el recálculo reemplaza: las aplicaciones automáticas. Las manuales
 # y las cadenas reales (tarjeta, valores propios) no se tocan (FR-004, FR-024).
 ORIGENES_REEMPLAZABLES = ("automatica-exacta", "automatica-mejor-esfuerzo", "correccion-031", "fifo-032")

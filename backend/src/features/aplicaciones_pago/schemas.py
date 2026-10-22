@@ -7,7 +7,7 @@ from datetime import date, datetime
 
 from pydantic import BaseModel
 
-TipoDocumento = str  # CompraDeuda | VentaHacienda | VentaGranos | Alquiler (cuota)
+TipoDocumento = str  # CompraDeuda | VentaHacienda | VentaGranos | Alquiler (cuota) | Pastaje (039)
 
 
 class DocumentoPendiente(BaseModel):

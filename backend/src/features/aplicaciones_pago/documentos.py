@@ -155,6 +155,7 @@ def documentos_pendientes(id_contacto: int, tipo: str | None = None) -> list[dic
         resultado.extend(_ventas_hacienda_pendientes(id_contacto))
         resultado.extend(_ventas_granos_pendientes(id_contacto))
         resultado.extend(_alquileres_pendientes(id_contacto))
+        resultado.extend(_pastaje_pendientes(id_contacto))
     resultado.sort(key=lambda d: d["fecha"] or date.min)
     return resultado
 
@@ -175,4 +176,21 @@ def _alquileres_pendientes(id_contacto: int) -> list[dict]:
             result.append({'tipoDocumento': 'Alquiler', 'idDocumento': row['idDocumento'],
                            'fecha': _fecha(row['fecha']), 'numeroDocumento': f"Cuota {row['numeroCuota']}",
                            'importeTotal': total, 'aplicado': applied, 'saldoPendiente': round(total-applied, 2)})
+    return result
+
+
+def _pastaje_pendientes(id_contacto: int) -> list[dict]:
+    """039: facturas y ND de pastaje; las NC asociadas reducen su factura."""
+    from src.features.pastaje.repository import documentos_cliente
+
+    rows = documentos_cliente(id_contacto)
+    paid = _pagados('Pastaje', [x['idDocumento'] for x in rows])
+    result = []
+    for row in rows:
+        total = round(float(row['total']), 2)
+        applied = paid[row['idDocumento']]
+        if total - applied > TOLERANCIA_REDONDEO_APLICACION:
+            result.append({'tipoDocumento': 'Pastaje', 'idDocumento': row['idDocumento'],
+                           'fecha': _fecha(row['fecha']), 'numeroDocumento': row['numeroDocumento'],
+                           'importeTotal': total, 'aplicado': applied, 'saldoPendiente': round(total - applied, 2)})
     return result

@@ -12,6 +12,10 @@ from src.features.vinculos import validacion
 
 
 def _importe_total_documento(tipo_documento: str, id_documento: int) -> float:
+    if tipo_documento == 'Pastaje':
+        from src.features.pastaje.repository import saldo_documento
+
+        return float(saldo_documento(id_documento)['total'])
     if tipo_documento == 'Alquiler':
         fila = fetch_all('SELECT [Importe Cuota] total FROM dbo.[Detalle Cobro Alquiler] WHERE IdCobroAlquiler=?', (id_documento,))
         return float(fila[0]['total'] or 0) if fila else 0.0

@@ -60,7 +60,7 @@ def pagado_antes(totales: dict[tuple, float]) -> dict[tuple, float]:
 
 
 PROVEEDOR = {"Compras", "Impuestos", "Remuneraciones"}
-CLIENTE = {"Venta Granos", "Venta Hacienda", "Alquileres", "Cobro Seguro"}
+CLIENTE = {"Venta Granos", "Venta Hacienda", "Alquileres", "Cobro Seguro", "Pastaje"}
 
 
 def _grupo(origen: str) -> str:

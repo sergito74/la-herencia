@@ -32,11 +32,11 @@ from src.db.connection import fetch_all
 INICIO = date(2010, 4, 19)
 
 DOCUMENTOS = {"Compras", "Alquileres", "Impuestos", "Remuneraciones", "Venta Granos", "Venta Hacienda",
-              "Cobro Seguro", "Ajuste Interno"}
+              "Cobro Seguro", "Ajuste Interno", "Pastaje"}
 
 # Origen de la vista ↔ códigos de AplicacionesPago / vínculos de 031.
 TIPO_DOC_VISTA = {"CompraDeuda": "Compras", "VentaGranos": "Venta Granos", "VentaHacienda": "Venta Hacienda",
-                  "Impuesto": "Impuestos", "Remuneracion": "Remuneraciones"}
+                  "Impuesto": "Impuestos", "Remuneracion": "Remuneraciones", "Pastaje": "Pastaje"}
 ORIGEN_MOV_VISTA = {"bna": "Banco Nacion", "galicia": "Galicia", "efectivo": "Pagos efectivo"}
 TIPO_TESORERIA = {"Compras": "Compras", "Impuestos": "Impuestos", "Remuneraciones": "Remuneraciones"}
 

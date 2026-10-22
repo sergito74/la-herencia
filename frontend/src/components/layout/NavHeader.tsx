@@ -89,6 +89,7 @@ const NAV_ITEMS: NavItem[] = [
     submenu: [
       { href: "/ventas/hacienda", label: "Hacienda" },
       { href: "/ventas/granos", label: "Granos" },
+      { href: "/ventas/pastaje", label: "Pastaje" },
     ],
   },
   {

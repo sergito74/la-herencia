@@ -11,7 +11,7 @@ from datetime import date, datetime
 from src.db.connection import fetch_all, fetch_one
 
 # Orígenes de la vista que son un documento de venta: en ellos el crédito es lo que nos deben (cuentas de clientes).
-ORIGENES_VENTA = frozenset({"Venta Granos", "Venta Hacienda"})
+ORIGENES_VENTA = frozenset({"Venta Granos", "Venta Hacienda", "Pastaje"})
 
 # Orígenes que son documentos de compra o de gasto: la deuda es lo que debemos y el crédito es una nota que la reduce.
 ORIGENES_DOCUMENTO = frozenset({
