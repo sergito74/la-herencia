@@ -1,5 +1,20 @@
 # Cuenta de Sergio: pendientes y resumen
 
+## Actualización 22/10/2026, 14:45: sueldos no cobrados 2013-2016 (APLICADO)
+
+- Sergio: "creo que no los cobré ni los voy a cobrar"; pidió un documento de ajuste por cada período.
+- `sergio_sueldos_no_cobrados_2013_2016_036.py`:
+  - 40 Ajustes Internos (lado Crédito) en el 375, uno por liquidación, de enero de 2013 a abril de 2016.
+  - Total $342.423. El motivo de cada uno cita el IdSalario.
+  - Es una **renuncia al cobro**: no va a la cuenta de socio.
+  - Verificado: ningún pago en ese rango.
+- **375 = −$1.792.874,52** = −$1.800.000 (sueldo de septiembre de 2026, se paga en octubre) + $7.125,48 (neto del resto de la historia).
+- **Historia restante** (pagos de más por $7.125,48 en neto):
+  - 2011–2012: Empleados.xlsx cierra con $68.500 a favor de Sergio; diferencias diciembre-2011/enero-2012 y el pago de $8.000 del 13/08/2012.
+  - Mayo a julio de 2016: pagos $10.000 + $10.000 + $13.000 contra sueldos $28.434 (cobros devueltos a caja, P10–P12).
+  - 2017–2019: pagos BNA con atraso, P13 y P14.
+
+
 ## Actualización 22/10/2026, 14:40
 
 - **P18 aplicado** (`sergio_p18_retiro_20230905_036.py`): retiro adicional por compensación de pagos de Giamigli. Galicia 1390 pasa al 5670 y se agrega AsignacionGasto $30.000 del 05/09/2023 en la cuenta de socio.
