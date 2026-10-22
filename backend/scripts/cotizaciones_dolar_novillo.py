@@ -32,6 +32,12 @@ def _num(s):
     return float(s.replace('.', '').replace(',', '.')) if ',' in s else float(s)
 
 
+def _entero(s):
+    # Cantidades enteras con '.' de miles ("6.316"); _num las leería como decimales.
+    s = (s or '').strip().replace('.', '')
+    return int(s) if s.isdigit() else 0
+
+
 def crear_tabla_novillo():
     import pyodbc
     from src.db.connection import CONNECTION_STRING
@@ -52,7 +58,7 @@ def novillo(desde: date, hasta: date) -> list[tuple]:
         t = urllib.request.urlopen(urllib.request.Request(MAG, data=datos, headers=UA), timeout=120).read().decode('latin-1')
         for f, cab, imp, ind in re.findall(r'<TD Align="Center">\w\w&nbsp;(\d\d/\d\d/\d{4})</TD><TD Align="Right">([^<]*)</TD><TD Align="Right">([^<]*)</TD>'
                                            r'<TD Align="Center">([^<]*)</TD>', t):
-            out.append((datetime.strptime(f, '%d/%m/%Y').date(), int(_num(cab) or 0), _num(imp), _num(html.unescape(ind).replace('*', '').strip())))
+            out.append((datetime.strptime(f, '%d/%m/%Y').date(), _entero(cab), _num(imp), _num(html.unescape(ind).replace('*', '').strip())))
         ini = fin + timedelta(days=1)
     return out
 

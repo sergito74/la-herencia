@@ -162,10 +162,12 @@ Condiciones muestra, por contrato y mes, lo devengado, liquidado, facturado y co
 - **FR-012**: DEBE sugerir el texto del renglón de factura con el formato "Servicio de pastaje de {cabezas} {categoría} del {día} al {día} de {mes} de {año}" (una línea por categoría si hay varias).
 - **FR-013**: Diferencias posteriores a una factura DEBEN resolverse con ND/NC emitidas vinculadas a la factura original; la factura no se modifica. El sistema DEBE generar para el cliente una liquidación de ajuste en PDF (mismo formato, con original, recalculado y diferencia) que respalde la ND/NC.
 - Q: ¿Cómo le llega la liquidación al cliente? → A: El sistema genera el PDF y lo guarda en la carpeta del contrato (hoy `Documents\La Herencia\Ganaderia\Pastaje - La Herencia`); Sergio lo envía. El sistema no envía mails.
+- Q: ¿Se mantienen dos índices de novillo? → A: No. Se unifica: el INMAG es el índice para todos los cálculos del sistema (pastaje y valuación en kg de las cuentas de socios, hoy sobre el índice de haciinfo000013). Antes de cambiar la valuación de socios se presenta a Sergio la comparación de saldos antes/después.
 - **FR-014**: Facturas, ND y NC DEBEN impactar una sola vez en la cuenta corriente del cliente y poder cobrarse con los mecanismos de cobro existentes (banco, cajas de efectivo, cheques), incluyendo retenciones sufridas.
 - **FR-015**: El ingreso DEBE imputarse a establecimiento La Herencia y a la campaña ganadera julio–junio del mes liquidado, identificado como "Pastaje" en el resultado, separado de arrendamientos y ventas de hacienda.
 - **FR-016**: Condiciones DEBE mostrar por contrato y mes: devengado, liquidado, facturado, cobrado, saldo y alertas (mes sin liquidar/facturar, índice faltante, diferencia entre liquidado y recalculado, recuento con diferencia).
 - **FR-017**: Usuarios de solo lectura DEBEN poder consultar todo sin poder escribir; toda alta, cambio y anulación queda auditada (usuario, fecha, motivo).
+- **FR-019**: El INMAG DEBE ser el único índice de novillo del sistema: la valuación en kg de las cuentas de socios pasa a usar INMAG (histórico desde 2020 cargado desde la misma fuente). El cambio se aplica solo después de mostrar a Sergio la comparación por socio de saldos en kg y en pesos antes/después y obtener su aprobación; la tabla anterior queda solo como histórico.
 - **FR-018**: Toda escritura DEBE ir a la base de trabajo, nunca a la base original protegida, y no modificar los gastos de pastaje históricos.
 
 ### Key Entities
