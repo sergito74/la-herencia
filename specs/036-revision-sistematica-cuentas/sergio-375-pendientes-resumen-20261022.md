@@ -1,5 +1,20 @@
 # Cuenta de Sergio: pendientes y resumen
 
+## Actualización 22/10/2026, 15:20: CUENTA 375 CERRADA (−$1.800.000)
+
+- Sergio: "Giamigli no le debe nada a Sergio (empleado). El saldo debe ser $1.800.000 porque no está registrado el pago del sueldo de septiembre".
+- `sergio_375_cierre_sueldos_036.py`:
+  - Sueldos 2011–2012 no cobrados: pagos aplicados FIFO a las liquidaciones más viejas, el resto ($44.500) cancelado con un ajuste por período.
+  - Junio-2018: $2.208 no cobrados.
+  - Ajuste de redondeo 2020–2026.
+  - 375 = **−$1.800.000,00**.
+- `sergio_375_ficha_cierre_036.py`: ficha **cerrada-con-excepcion**.
+  - Saldo externo: recibo de septiembre-2026 (−$1.800.000, pdf).
+  - Excepción C1: la retención de febrero-2024 ($9.248,64) figura como pago sin factura y está compensada con ajuste; es deuda en la cuenta de socio (mov. 2131).
+- El bloque nov-2017 a 2019 quedó en cero con el ajuste de junio-2018. Octubre-2017 se pagó el 19/12/2017 dentro de ese bloque.
+- **Pendientes que siguen:** Lucy (390), con el mismo criterio de separación empleado/socio; Condominio LSC y Virginia (en pausa); AFIP (119).
+
+
 ## Actualización 22/10/2026, 15:25: decisiones de 2017 (APLICADO, `sergio_2017_retiros_036.py`)
 
 - **18421 ($21.000, "retiro deuda"):** Sergio descarta que sea un pago de sueldos de 5 años atrás. Es una recuperación de pagos de Giamigli hechos desde su cuenta particular, o de aportes de efectivo. Pasa al 5670 + AsignacionGasto $21.000 (30/03/2017, 100% US$) en su cuenta de socio.
