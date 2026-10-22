@@ -4,7 +4,7 @@ import { CajaEfectivo } from "@/components/cajas-efectivo/CajaEfectivo";
 import type { CajaSlug } from "@/services/cajasEfectivoApi";
 import { BackLink } from "@/components/ui/BackLink";
 
-const CAJAS_VALIDAS: CajaSlug[] = ["giamigli-sa", "campo-chica"];
+const CAJAS_VALIDAS: CajaSlug[] = ["giamigli-sa", "campo-chica", "condominio-lsc"];
 
 export const metadata = {
   title: "Caja de efectivo",

@@ -17,6 +17,7 @@ import { formatFecha, formatMoneda } from "@/lib/format";
 const NOMBRES: Record<CajaSlug, string> = {
   "giamigli-sa": "Caja de efectivo — Giamigli SA",
   "campo-chica": "Caja chica del campo",
+  "condominio-lsc": "Caja del Condominio LSC",
 };
 
 const COLUMNS: DataTableColumn<MovimientoCajaEfectivo>[] = [

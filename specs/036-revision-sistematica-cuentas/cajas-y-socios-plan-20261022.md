@@ -87,3 +87,14 @@ Hay 30 créditos en el BNA (DEP.EFECTIVO, DEPOSITO DE TER-SUC, DEP.P/T.INT.M.M-B
   - 10431, 10509, 10640, 10857, 10906, 10990, 11076, 11245, 11272 y 11533 (DEP.EFECTIVO de 2012–2014, entre $1.000 y $40.000).
   - 16987: los $3.285 de Agropecuaria Las Heras, ya identificados.
 - **Aclaración:** son entradas al BANCO, no a la caja. No explican los $144.350,52 de ingresos de caja no identificados, salvo que el efectivo de esos depósitos viniera de afuera (socios) y la caja se haya financiado con retiros del banco. Eso no se verificó.
+
+## Aplicado 22/10, después de "Ok, adelante. Con esto estamos construyendo la caja condominio también"
+
+- `bna_aportes_condominio_2012_2015_036.py`: los 17 depósitos/transferencias del BNA quedaron asignados al contacto **549 (Condominio LSC)**, $278.971,50. El log está en AuditoriaCorrecciones: la FK de ReasignacionesContacto no admite contacto anterior 0. El saldo de 549 pasó a −$274.837,50 (aportes del Condominio a favor de este).
+- `caja_condominio_lsc_036.py`: **caja de efectivo del Condominio LSC**.
+  - CHECK de `MovimientosCajaEfectivo.Caja` ampliado a 'CondominioLSC'.
+  - 1.226 movimientos (28/03/2016 → 11/09/2026) de "Caja Efectivo" de `Movimientos LSC desde Abr 2016.xlsm`, con FilaPlanilla. Saldo $0,23 = planilla.
+  - Pantalla: `/finanzas/cajas-efectivo/condominio-lsc`. No hay acceso en el menú a las cajas; se entra por la URL.
+- **Pendiente para la caja Condominio:**
+  - Tramo 2011–mar-2016, desde `Movimientos LSC.xlsx` > Movs, TIPO CAJA 'EF'.
+  - Vincular los movimientos entre cajas y bancos: "Retiro Giamigli (Préstamo)", aportes a Giamigli, retiros de socios.

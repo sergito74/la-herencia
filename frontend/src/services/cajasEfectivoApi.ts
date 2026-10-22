@@ -5,7 +5,7 @@
 
 import { apiGet } from "@/services/apiClient";
 
-export type CajaSlug = "giamigli-sa" | "campo-chica";
+export type CajaSlug = "giamigli-sa" | "campo-chica" | "condominio-lsc";
 
 export interface MovimientoCajaEfectivo {
   idMovimiento: number;

@@ -14,7 +14,7 @@ router = APIRouter(prefix="/api/cajas-efectivo", tags=["cajas-efectivo"])
 
 # Mapeo slug de URL -> valor guardado en MovimientosCajaEfectivo.Caja
 # (contracts/api.md).
-_SLUG_A_CAJA = {"giamigli-sa": "GiamigliSA", "campo-chica": "CampoChica"}
+_SLUG_A_CAJA = {"giamigli-sa": "GiamigliSA", "campo-chica": "CampoChica", "condominio-lsc": "CondominioLSC"}
 
 
 def _resolver_caja(slug: str) -> str:
