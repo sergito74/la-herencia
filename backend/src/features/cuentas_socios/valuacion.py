@@ -32,7 +32,7 @@ def a_fecha(importe, fecha):
         (fecha,),
     )
     nov = fetch_one(
-        "SELECT TOP 1 Fecha fecha,Indice valor FROM dbo.IndiceNovillo "
+        "SELECT TOP 1 Fecha fecha,Indice valor FROM dbo.IndiceINMAG "  # 039 FR-019: INMAG, índice único
         "WHERE Fecha<=? AND Indice>0 ORDER BY Fecha DESC",
         (fecha,),
     )
@@ -44,5 +44,5 @@ def a_fecha(importe, fecha):
         "dolar": dol,
         "novillo": nov,
         "fuenteDolar": "Dolar BNA.Prom_billete",
-        "fuenteNovillo": "IndiceNovillo.Indice",
+        "fuenteNovillo": "IndiceINMAG.Indice",
     }

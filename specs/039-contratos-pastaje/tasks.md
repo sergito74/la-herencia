@@ -80,7 +80,7 @@
 **Goal**: INMAG único índice del sistema. **Independent test**: comparación por socio aprobada por Sergio antes del cambio.
 
 - [x] T033 [US7] Script de solo lectura backend/scripts/comparar_indice_socios_039.py: valuación de cuentas de socios con IndiceNovillo vs IndiceINMAG (kg y pesos por socio y total); informe en backups/pastaje-039-schema/ y resumen en quickstart.md. PRESENTAR A SERGIO Y ESPERAR APROBACIÓN.
-- [ ] T034 [US7] Tras aprobación: cambiar backend/src/features/cuentas_socios/valuacion.py y backend/src/features/cuentas_socios/repository.py (línea ~178) para leer dbo.IndiceINMAG; tests de valuación actualizados; IndiceNovillo queda como histórico (dejar de cargarlo en backend/scripts/cotizaciones_dolar_novillo.py, mantener carga de Dólar BNA).
+- [x] T034 [US7] Tras aprobación: cambiar backend/src/features/cuentas_socios/valuacion.py y backend/src/features/cuentas_socios/repository.py (línea ~178) para leer dbo.IndiceINMAG; tests de valuación actualizados; IndiceNovillo queda como histórico (dejar de cargarlo en backend/scripts/cotizaciones_dolar_novillo.py, mantener carga de Dólar BNA).
 
 ## Phase 10: Polish
 

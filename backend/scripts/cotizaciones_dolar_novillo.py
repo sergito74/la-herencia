@@ -4,7 +4,7 @@ Fuentes (las que cita la planilla Cajas Giamigli):
 - Dólar BNA: api.errepar.com/syserrepar/apidolar/api/CotizacionesBNAII/byDates (billete y divisa, compra/venta).
   Tabla existente dbo.[Dolar BNA] (Fecha, Comp_billete, Vend_billete, Prom_billete, Comp_Divisa, Vend_Divisa, Prom_Divisa):
   se completa hasta ayer (solo días que faltan).
-- Índice Novillo (INMAG sugerido para arrendamientos, Mercado Agroganadero): www.mercadoagroganadero.com.ar/dll/hacienda2.dll/
+- (Histórico hasta 22/10/2026, reemplazado por el INMAG de 039) Índice Novillo (Mercado Agroganadero): www.mercadoagroganadero.com.ar/dll/hacienda2.dll/
   haciinfo000013 (POST txtFechaIni/txtFechaFin). Tabla nueva dbo.IndiceNovillo (Fecha, CabIngresadas, Importe, Indice); los días
   sin índice (menos de 300 novillos) quedan con Indice NULL, como en la fuente.
 Uso: python -m scripts.cotizaciones_dolar_novillo [--desde AAAA-MM-DD]  (re-corrible; por defecto completa lo que falta).
@@ -91,16 +91,9 @@ def main():
     nuevas and execute_write_transaction([('INSERT INTO dbo.[Dolar BNA] (Fecha,Comp_billete,Vend_billete,Prom_billete,Comp_Divisa,Vend_Divisa,Prom_Divisa) VALUES (?,?,?,?,?,?,?)',
                                 (x[0].isoformat(),) + x[1:]) for x in nuevas])
     print(f'Dólar BNA: {len(nuevas)} días agregados ({nuevas[0][0] if nuevas else "-"} a {nuevas[-1][0] if nuevas else "-"}); diferencias con lo existente: {dif[:5]}')
-    # Novillo
-    crear_tabla_novillo()
-    ultn = fetch_all('SELECT MAX(Fecha) f FROM dbo.IndiceNovillo')[0]['f']
-    n0 = desde_arg or ((datetime.fromisoformat(str(ultn)).date() + timedelta(days=1)) if ultn else INICIO_NOVILLO)
-    filas = novillo(n0, ayer)
-    hechas = {datetime.fromisoformat(str(r['f'])).date() for r in fetch_all('SELECT Fecha f FROM dbo.IndiceNovillo WHERE Fecha>=?', (n0.isoformat(),))}
-    nuevas = [x for x in filas if x[0] not in hechas]
-    nuevas and execute_write_transaction([('INSERT INTO dbo.IndiceNovillo (Fecha,CabIngresadas,Importe,Indice) VALUES (?,?,?,?)', (x[0].isoformat(),) + x[1:]) for x in nuevas])
-    con = [x for x in nuevas if x[3]]
-    print(f'Índice Novillo: {len(nuevas)} días agregados, {len(con)} con índice ({con[0][0] if con else "-"} a {con[-1][0] if con else "-"})')
-
+    # Novillo: desde 039 (FR-019, 22/10/2026) el índice único es el INMAG (dbo.IndiceINMAG, haciinfo000011).
+    # dbo.IndiceNovillo (haciinfo000013) queda solo como histórico y ya no se carga.
+    from src.features.pastaje import inmag
+    print(f"INMAG: {inmag.actualizar(desde_arg)['agregados']} días agregados")
 
 if __name__ == '__main__': main()

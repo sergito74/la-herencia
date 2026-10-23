@@ -172,10 +172,10 @@ ORIGEN_MUTUO = "Mutuo2018"
 
 
 def cotizaciones_actuales() -> dict:
-    """Última cotización disponible de las tablas de WC (036, 22/10/2026):
-    Índice Novillo (Mercado Agroganadero) y Dólar BNA billete promedio — las
+    """Última cotización disponible de las tablas de WC (036, 22/10/2026; desde 039 el índice es el INMAG):
+    INMAG (Mercado Agroganadero) y Dólar BNA billete promedio — las
     mismas que usa la planilla Cajas Giamigli para la "Deuda Actualizada"."""
-    nov = fetch_one("SELECT TOP 1 Fecha AS fecha, Indice AS valor FROM dbo.IndiceNovillo WHERE Indice IS NOT NULL ORDER BY Fecha DESC")
+    nov = fetch_one("SELECT TOP 1 Fecha AS fecha, Indice AS valor FROM dbo.IndiceINMAG ORDER BY Fecha DESC")
     dol = fetch_one("SELECT TOP 1 Fecha AS fecha, Prom_billete AS valor FROM dbo.[Dolar BNA] WHERE Prom_billete IS NOT NULL ORDER BY Fecha DESC")
     return {
         "novillo": _f(nov["valor"]) if nov else 0.0,
