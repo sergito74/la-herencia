@@ -176,3 +176,7 @@ Primer commit/push cumplido: a160622. Se aplicó clasificación respaldada: 31 v
 
 ### Cierre para continuidad Claude/Codex
 Todo el trabajo solicitado quedó pusheado: a160622 (USD y validación inicial del rediseño) y 58ebe14 (depuración, protección de importación y entidad única Condominio). T058–T064 completas. WC ya tiene AlcanceHistoricoCaja y la vista operativa aplicadas con respaldo; no hace falta reimportar. Guía funcional vigente: no mostrar gastos propios/sin vínculo del Condominio, no sumar neto parcial como deuda o efectivo, y no duplicar sus 31 filas con nuevas operaciones. Los 1.195 históricos excluidos siguen disponibles en tabla original y snapshots para auditoría, fuera de la operatoria. No se reabrieron conciliaciones ni se tocó pastaje.
+
+
+### Retoma de conciliaciones solicitada por Sergio — 23/10/2026
+Punto de entrada consolidado: [retoma-conciliaciones-20261023.md](retoma-conciliaciones-20261023.md). Se contrastaron antecedentes para evitar reabrir375/P18/P31 o mantener una pausa Condominio/Virginia ya levantada. Siguiente paso: relevar EF2011–mar2016 del Condominio y cruzar con caja/bancos/socio3, sin duplicar. Esta retoma fue documental; no se aplicaron correcciones contables. Pendientes y criterios de precedencia en el nuevo registro compartido.
