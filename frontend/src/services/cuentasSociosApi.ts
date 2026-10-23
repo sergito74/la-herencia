@@ -3,7 +3,7 @@
  * socios/directores y condominio). Ver specs/021-cuentas-socios/contracts/api.md.
  */
 
-import { apiGet, apiPost } from "@/services/apiClient";
+import { apiGet, apiPost, apiPut } from "@/services/apiClient";
 
 export interface CompraParticularCandidata {
   idCompra: number;
@@ -30,6 +30,10 @@ export interface MovimientoCuentaSocio {
   anulada: boolean;
   motivoAnulacion: string | null;
   huerfano: boolean;
+  /** Operación de caja (038) que generó el movimiento: se corrige/anula desde la caja. */
+  idOperacionCaja?: number | null;
+  /** Asiento manual o de planilla: se puede editar (anula y reemplaza). */
+  editable?: boolean;
 }
 
 /** Deuda actualizada como la planilla Cajas Giamigli: kg × novillo + US$ ×
@@ -95,4 +99,22 @@ export function registrarDevolucion(
   params: { importe: number; fecha: string; medio: string; motivo: string }
 ): Promise<MovimientoCuentaSocio> {
   return apiPost<MovimientoCuentaSocio>(`/api/cuentas-socios/${idSocio}/devolucion`, params);
+}
+
+/** Asiento manual (Debe: el socio debe · Haber: a favor del socio), valuado en kg INMAG / US$ a la fecha. */
+export interface AsientoSocioInput {
+  lado: "debe" | "haber";
+  importe: number;
+  fecha: string;
+  medio?: string | null;
+  motivo: string;
+}
+
+export function registrarAsiento(idSocio: number, body: AsientoSocioInput): Promise<MovimientoCuentaSocio> {
+  return apiPost<MovimientoCuentaSocio>(`/api/cuentas-socios/${idSocio}/asientos`, body);
+}
+
+/** Editar = anula el asiento y crea el corregido (queda en el historial). Solo asientos manuales/de planilla. */
+export function editarAsiento(idMovimiento: number, body: AsientoSocioInput): Promise<MovimientoCuentaSocio> {
+  return apiPut<MovimientoCuentaSocio>(`/api/cuentas-socios/movimientos/${idMovimiento}`, body);
 }

@@ -24,19 +24,19 @@ const button = "rounded border border-border px-3 py-2 disabled:opacity-50";
 
 export function OperacionCajaForm({ caja, initial, onSaved, onPrepared }: {
   caja: CajaSlug;
-  initial?: { fecha?: string; importe?: string; concepto?: string; cuenta?: string };
+  initial?: { fecha?: string; importe?: string; concepto?: string; cuenta?: string; tipo?: TipoOperacionCaja; idSocio?: number; idContacto?: number; razonSocial?: string };
   onSaved?: (id: number) => void;
   onPrepared?: (body: ConfirmacionCaja) => void;
 }) {
   const queryClient = useQueryClient();
-  const [tipo, setTipo] = useState<TipoOperacionCaja>(initial?.importe && Number(initial.importe) > 0 ? "aporte" : "pago");
+  const [tipo, setTipo] = useState<TipoOperacionCaja>(initial?.tipo ?? (initial?.importe && Number(initial.importe) > 0 ? "aporte" : "pago"));
   const [fecha, setFecha] = useState(initial?.fecha ?? hoyCaja());
   const [importe, setImporte] = useState(Math.abs(Number(initial?.importe ?? 0)));
   const [concepto, setConcepto] = useState(initial?.concepto ?? "");
   const [cuenta, setCuenta] = useState<"A" | "B">(initial?.cuenta === "B" ? "B" : "A");
-  const [contacto, setContacto] = useState<number | null>(null);
-  const [razonSocial, setRazonSocial] = useState<string | null>(null);
-  const [socio, setSocio] = useState(0);
+  const [contacto, setContacto] = useState<number | null>(initial?.idContacto ?? null);
+  const [razonSocial, setRazonSocial] = useState<string | null>(initial?.razonSocial ?? null);
+  const [socio, setSocio] = useState(initial?.idSocio ?? 0);
   const [destino, setDestino] = useState<CajaSlug>(caja === "giamigli-sa" ? "campo-chica" : "giamigli-sa");
   const [contraparte, setContraparte] = useState(false);
   const [motivo, setMotivo] = useState("");
@@ -107,8 +107,8 @@ export function OperacionCajaForm({ caja, initial, onSaved, onPrepared }: {
   function setAplicado(key: string, value: number) {
     const next = { ...seleccion, [key]: value }; setSeleccion(next); setImporte(Object.values(next).reduce((a, b) => a + b, 0));
   }
-  return <form className="space-y-4 rounded border border-border bg-surface p-4" onSubmit={e => { e.preventDefault(); revisar.mutate(); }}>
-    <h3 className="font-semibold">{onPrepared ? "Clasificar fila de planilla" : "Registrar movimiento"} — {nombresCaja[caja]}</h3>
+  return <form className="space-y-4" onSubmit={e => { e.preventDefault(); revisar.mutate(); }}>
+    {onPrepared && <h3 className="font-semibold">Clasificar fila de planilla — {nombresCaja[caja]}</h3>}
     <div className="grid gap-3 md:grid-cols-3">
       <label>Operación<select className={input} value={tipo} onChange={e => { setTipo(e.target.value as TipoOperacionCaja); setSeleccion({}); setParticular(false); setCompra(0); }}>
         {Object.entries(TIPOS_CAJA).filter(([t]) => caja !== "condominio-lsc" || t !== "traspaso_cajas").map(([k, v]) => <option key={k} value={k}>{v}</option>)}
@@ -155,7 +155,7 @@ export function OperacionCajaForm({ caja, initial, onSaved, onPrepared }: {
     {queryError && <p role="alert" className="text-status-danger">No se pudo cargar uno de los listados. <button type="button" className="underline" onClick={() => activas.filter(({ activa, q }) => activa && q.isError).forEach(({ q }) => q.refetch())}>Reintentar conservando el borrador</button></p>}
     {error && <p role="alert" className="text-status-danger">{error.message}</p>}
     {mensaje && <p role="status" className="text-status-success">{mensaje}</p>}
-    <button className={button} disabled={revisar.isPending || guardar.isPending || importe <= 0 || queryError || (particular && docs.isFetching)}>{revisar.isPending ? "Revisando…" : "Previsualizar"}</button>
+    <button className={button} disabled={revisar.isPending || guardar.isPending || importe <= 0 || queryError || (particular && docs.isFetching)}>{revisar.isPending ? "Revisando…" : "Revisar efectos antes de guardar"}</button>
     {preview && <div className="space-y-3 rounded border border-border p-3"><h4 className="font-semibold">Efectos antes de guardar</h4>{preview.efectosPrevistos.map(p => <p key={p.caja}>{nombresCaja[p.caja]}: {formatMoneda(Number(p.importe))} · saldo resultante {formatMoneda(Number(p.saldoResultante))}</p>)}
       {valuation && <p>Valuación: {formatMoneda(Number(valuation.importeUSD), "Dolares")} y {valuation.importeKgCarne} kg de novillo.</p>}
       {preview.contexto.particular && <p>Parte particular documentada: {formatMoneda(Number(preview.contexto.particular.importe))}. Se refleja el gasto del socio una sola vez; el pago al proveedor puede ser parcial.</p>}

@@ -1,0 +1,43 @@
+"use client";
+
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+
+/** Navegación común de "Cajas y socios": resumen, las tres cajas de efectivo y las cuentas de cada socio. */
+export const CAJAS_NAV = [
+  { href: "/finanzas/cajas", label: "Resumen", grupo: "" },
+  { href: "/finanzas/cajas-efectivo/giamigli-sa", label: "Giamigli SA", grupo: "Cajas" },
+  { href: "/finanzas/cajas-efectivo/campo-chica", label: "Caja chica del campo", grupo: "Cajas" },
+  { href: "/finanzas/cajas-efectivo/condominio-lsc", label: "Condominio LSC", grupo: "Cajas" },
+  { href: "/finanzas/cuentas-socios/1", label: "Sergio", grupo: "Socios" },
+  { href: "/finanzas/cuentas-socios/2", label: "Lucy", grupo: "Socios" },
+  { href: "/finanzas/cuentas-socios/4", label: "Ceci", grupo: "Socios" },
+  { href: "/finanzas/cuentas-socios/3", label: "Cond LSC", grupo: "Socios" },
+] as const;
+
+export function CajasNav() {
+  const path = usePathname();
+  const grupos = ["", "Cajas", "Socios"] as const;
+  return (
+    <nav aria-label="Cajas y cuentas de socios" className="flex flex-wrap items-center gap-x-5 gap-y-2 rounded-md border border-border bg-surface px-3 py-2">
+      {grupos.map((g) => (
+        <div key={g || "inicio"} className="flex flex-wrap items-center gap-1">
+          {g && <span className="mr-1 text-xs uppercase tracking-wide text-ink-secondary">{g}</span>}
+          {CAJAS_NAV.filter((x) => x.grupo === g).map((x) => {
+            const activo = path === x.href;
+            return (
+              <Link
+                key={x.href}
+                href={x.href}
+                aria-current={activo ? "page" : undefined}
+                className={`rounded-sm px-3 py-1 text-sm ${activo ? "bg-agro text-white" : "text-ink-primary hover:bg-surface-sunken"}`}
+              >
+                {x.label}
+              </Link>
+            );
+          })}
+        </div>
+      ))}
+    </nav>
+  );
+}

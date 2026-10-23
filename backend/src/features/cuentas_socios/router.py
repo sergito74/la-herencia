@@ -11,6 +11,7 @@ from src.db.connection import fetch_one
 from src.features.cuentas_socios import repository
 from src.features.cuentas_socios.schemas import (
     AnularMovimientoRequest,
+    AsientoRequest,
     AsignarGastoRequest,
     DetalleSocioResponse,
     DevolucionRequest,
@@ -93,3 +94,25 @@ async def registrar_devolucion(idSocio: int, body: DevolucionRequest, request: R
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
     return MovimientoCuentaSocio(**movimiento)
+
+
+@router.post("/{idSocio}/asientos", response_model=MovimientoCuentaSocio, status_code=201)
+async def registrar_asiento(idSocio: int, body: AsientoRequest, request: Request) -> MovimientoCuentaSocio:
+    usuario = _usuario_actual(request)
+    try:
+        m = await run_in_threadpool(repository.registrar_asiento, idSocio, body.lado, body.importe, body.fecha, body.medio,
+                                    body.motivo, usuario)
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e)) from e
+    return MovimientoCuentaSocio(**m)
+
+
+@router.put("/movimientos/{idMovimiento}", response_model=MovimientoCuentaSocio)
+async def editar_asiento(idMovimiento: int, body: AsientoRequest, request: Request) -> MovimientoCuentaSocio:
+    usuario = _usuario_actual(request)
+    try:
+        m = await run_in_threadpool(repository.editar_asiento, idMovimiento, body.lado, body.importe, body.fecha, body.medio,
+                                    body.motivo, usuario)
+    except ValueError as e:
+        raise HTTPException(status_code=409, detail=str(e)) from e
+    return MovimientoCuentaSocio(**m)

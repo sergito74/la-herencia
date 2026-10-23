@@ -1,7 +1,10 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { SideDrawer } from "@/components/ui/SideDrawer";
+import { Tabs } from "@/components/ui/Tabs";
 
 import {
   fetchMovimientosCaja,
@@ -51,7 +54,10 @@ const COLUMNS: DataTableColumn<MovimientoCajaEfectivo>[] = [
 /** Caja 038: operaciones, consulta, arqueos e importación con permisos existentes. */
 export function CajaEfectivo({ caja }: { caja: CajaSlug }) {
   const [page, setPage] = useState(1);
-  const [vista, setVista] = useState<"movimientos" | "operar" | "arqueos" | "importar">("movimientos");
+  const params = useSearchParams();
+  const [vista, setVista] = useState<"movimientos" | "arqueos" | "importar">("movimientos");
+  const [nuevo, setNuevo] = useState(params.get("nuevo") === "1");
+  useEffect(() => { if (params.get("nuevo") === "1") setNuevo(true); }, [params]);
   const [detalle, setDetalle] = useState<number | null>(null);
   const [desde, setDesde] = useState("");
   const [hasta, setHasta] = useState("");
@@ -92,11 +98,19 @@ export function CajaEfectivo({ caja }: { caja: CajaSlug }) {
       {caja === "condominio-lsc" && <p>Se conserva la historia completa. Las operaciones nuevas registran únicamente la relación con Giamigli; la administración propia del Condominio sigue fuera de este módulo.</p>}
       {ultimo.data?.items[0] && <p>Último arqueo: {formatFecha(ultimo.data.items[0].fechaCorte)} · {ultimo.data.items[0].estado} · diferencia vigente {formatMoneda(Number(ultimo.data.items[0].diferenciaVigenteDecimal))}</p>}
       {ultimo.isError && <p role="alert">No se pudo consultar el último arqueo. <button onClick={() => ultimo.refetch()}>Reintentar</button></p>}
-      <nav className="flex flex-wrap gap-3" aria-label="Acciones de caja"><button className="rounded border border-border p-2" onClick={() => setVista("movimientos")}>Movimientos</button><button className="rounded border border-border p-2" onClick={() => setVista("arqueos")}>Arqueos</button><SoloLectura><button className="rounded border border-border p-2" onClick={() => setVista("operar")}>Registrar movimiento</button><button className="rounded border border-border p-2" onClick={() => setVista("importar")}>Comparar e importar planilla</button></SoloLectura></nav>
-      {detalle && <DetalleOperacionCaja key={detalle} id={detalle} onClose={() => setDetalle(null)} />}
-      {vista === "operar" && <SoloLectura><OperacionCajaForm key={caja} caja={caja} onSaved={id => { setDetalle(id); setVista("movimientos"); }} /></SoloLectura>}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <p className="text-sm text-ink-secondary">Pagos, cobros, aportes y retiros de socios, traspasos, banco y gastos. Un movimiento mal cargado se anula (queda en el historial) y se vuelve a cargar con «Corregir».</p>
+        <SoloLectura><button className="rounded-sm bg-agro px-4 py-2 text-sm text-white hover:opacity-90" onClick={() => setNuevo(true)}>+ Nuevo movimiento</button></SoloLectura>
+      </div>
+      <SideDrawer open={nuevo} onClose={() => setNuevo(false)} title={`Nuevo movimiento — ${NOMBRES[caja]}`} maxWidthClass="max-w-3xl">
+        <SoloLectura><OperacionCajaForm key={caja} caja={caja} onSaved={id => { setNuevo(false); setDetalle(id); }} /></SoloLectura>
+      </SideDrawer>
+      <SideDrawer open={detalle !== null} onClose={() => setDetalle(null)} title="Detalle, auditoría y anulación" maxWidthClass="max-w-2xl">
+        {detalle && <DetalleOperacionCaja key={detalle} id={detalle} onClose={() => setDetalle(null)} />}
+      </SideDrawer>
+      <Tabs idBase="caja" activa={vista} onChange={setVista} tabs={[{ id: "movimientos", label: "Movimientos" }, { id: "arqueos", label: "Arqueos" }, { id: "importar", label: "Comparar con la planilla" }]}>
       {vista === "arqueos" && <ArqueoCajaPanel key={caja} caja={caja} onOperation={setDetalle} />}
-      {vista === "importar" && <ImportacionCajaPanel />}
+      {vista === "importar" && <SoloLectura><ImportacionCajaPanel /></SoloLectura>}
       {vista === "movimientos" && <><div className="grid gap-3 rounded border border-border p-3 md:grid-cols-3">
         <label>Desde<input className="block rounded border border-border p-2" type="date" value={desde} onChange={e => { setDesde(e.target.value); setPage(1); }} /></label>
         <label>Hasta<input className="block rounded border border-border p-2" type="date" value={hasta} onChange={e => { setHasta(e.target.value); setPage(1); }} /></label>
@@ -112,7 +126,7 @@ export function CajaEfectivo({ caja }: { caja: CajaSlug }) {
 
       {movimientos && (
         <DataTable
-          columns={[...COLUMNS, { key: "operacion", header: "Origen", render: m => m.idOperacion ? <button className="underline" onClick={() => setDetalle(m.idOperacion!)}>Detalle y auditoría</button> : m.numeroDocumento || m.formaPago || "Historia de planilla" }]}
+          columns={[...COLUMNS, { key: "operacion", header: "Origen", render: m => m.idOperacion ? <button className="underline" onClick={() => setDetalle(m.idOperacion!)}>Ver / anular / corregir</button> : m.numeroDocumento || m.formaPago || "Historia de planilla" }]}
           rows={movimientos.items}
           keyField={(m) => m.idMovimiento}
           emptyMessage="Sin movimientos registrados para esta caja."
@@ -123,6 +137,7 @@ export function CajaEfectivo({ caja }: { caja: CajaSlug }) {
         />
       )}
       </>}
+      </Tabs>
     </div>
   );
 }

@@ -129,6 +129,9 @@ def anular_movimiento(id_movimiento: int, motivo: str, usuario: str) -> dict:
         raise ValueError(f"El movimiento {id_movimiento} no existe.")
     if movimiento["anulada"]:
         raise ValueError(f"El movimiento {id_movimiento} ya está anulado.")
+    operacion = _operacion_caja(id_movimiento)
+    if operacion:
+        raise ValueError(f"El movimiento viene de la operación de caja {operacion}: anulala desde la caja para revertir todo junto.")
 
     accion = "ReversionAsignacion" if movimiento["tipo"] == "AsignacionGasto" else "ReversionDevolucion"
     execute_write_transaction(
@@ -242,10 +245,14 @@ def listar_movimientos(id_socio: int) -> list[dict]:
         """,
         (id_socio,),
     )
-    return [
-        {**f, "importe": _f(f["importe"]), "importeUSD": _f(f["importeUSD"]), "importeKgCarne": _f(f["importeKgCarne"]), "huerfano": bool(f["huerfano"])}
-        for f in filas
-    ]
+    ops = _operaciones_caja_socios()
+    out = []
+    for f in filas:
+        m = {**f, "importe": _f(f["importe"]), "importeUSD": _f(f["importeUSD"]), "importeKgCarne": _f(f["importeKgCarne"]),
+             "huerfano": bool(f["huerfano"]), "idOperacionCaja": ops.get(f["idMovimiento"])}
+        m["editable"] = editable(m)
+        out.append(m)
+    return out
 
 
 def registrar_devolucion(id_socio: int, importe: float, fecha: date, medio: str, motivo: str, usuario: str) -> dict:
@@ -273,3 +280,84 @@ def registrar_devolucion(id_socio: int, importe: float, fecha: date, medio: str,
         ]
     )
     return _movimiento_por_id(resultados[0])
+
+
+# --- Asientos manuales y edición (pedido de Sergio 23/10/2026) -----------------------------------------
+# Debe = el socio le debe a la empresa (Tipo AsignacionGasto); Haber = a favor del socio (Tipo Devolucion).
+# Se valúan en kg de novillo (INMAG) / US$ a la fecha con la regla histórica, como la planilla.
+# Los movimientos generados por una operación de caja (038) o por una compra particular se corrigen
+# desde su origen: aquí no se editan ni se anulan sueltos.
+
+ORIGEN_MANUAL = "Manual"
+
+
+def _operacion_caja(id_movimiento: int) -> int | None:
+    fila = fetch_one(
+        "SELECT TOP 1 e.IdOperacion AS id FROM dbo.EfectosOperacionCaja e JOIN dbo.OperacionesCajaEfectivo o "
+        "ON o.IdOperacion = e.IdOperacion WHERE e.TipoEfecto = 'MovimientoSocio' AND e.IdRegistro = ? AND o.Estado = 'Vigente'",
+        (id_movimiento,),
+    )
+    return fila["id"] if fila else None
+
+
+def editable(movimiento: dict) -> bool:
+    return not movimiento.get("anulada") and movimiento.get("origen") in (None, ORIGEN_MANUAL) and not movimiento.get("idOperacionCaja")
+
+
+def _insert_asiento(id_socio: int, lado: str, importe: float, fecha: date, medio: str | None, motivo: str, usuario: str):
+    from src.features.cuentas_socios.valuacion import a_fecha
+
+    if lado not in ("debe", "haber"):
+        raise ValueError("Elegí Debe (el socio debe) o Haber (a favor del socio).")
+    if importe <= 0:
+        raise ValueError("El importe debe ser mayor a $0.")
+    if not motivo or not motivo.strip():
+        raise ValueError("El concepto es obligatorio.")
+    if not fetch_one("SELECT 1 AS x FROM dbo.Socios WHERE IdSocio = ?", (id_socio,)):
+        raise ValueError(f"El socio {id_socio} no existe.")
+    v = a_fecha(importe, fecha)
+    signo = 1 if lado == "debe" else -1
+    tipo = "AsignacionGasto" if lado == "debe" else "Devolucion"
+    return (
+        "INSERT INTO dbo.MovimientosCuentaSocio (IdSocio, Tipo, Importe, ImporteUSD, ImporteKgCarne, Fecha, Origen, Medio, Motivo, Usuario) "
+        "OUTPUT INSERTED.IdMovimiento VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        (id_socio, tipo, importe, float(v["importeUSD"]) * signo, float(v["importeKgCarne"]) * signo, fecha, ORIGEN_MANUAL,
+         medio, motivo.strip(), usuario),
+    )
+
+
+def registrar_asiento(id_socio: int, lado: str, importe: float, fecha: date, medio: str | None, motivo: str, usuario: str) -> dict:
+    sql = _insert_asiento(id_socio, lado, importe, fecha, medio, motivo, usuario)
+    res = execute_write_transaction([
+        sql,
+        lambda r: ("INSERT INTO dbo.AuditoriaReflejoSocio (Accion, IdMovimiento, IdSocio, Usuario, Detalle) VALUES (?, ?, ?, ?, ?)",
+                   ("AsientoManual", r[0], id_socio, usuario, motivo)),
+    ])
+    return _movimiento_por_id(res[0])
+
+
+def editar_asiento(id_movimiento: int, lado: str, importe: float, fecha: date, medio: str | None, motivo: str, usuario: str) -> dict:
+    """Editar = anular el asiento anterior y crear el corregido en una transacción: el historial queda completo."""
+    actual = _movimiento_por_id(id_movimiento)
+    actual["idOperacionCaja"] = _operacion_caja(id_movimiento)
+    if not editable(actual):
+        raise ValueError("Este movimiento viene de una caja o de una compra: corregilo desde su origen.")
+    sql = _insert_asiento(actual["idSocio"], lado, importe, fecha, medio, motivo, usuario)
+    res = execute_write_transaction([
+        ("UPDATE dbo.MovimientosCuentaSocio SET Anulada = 1, MotivoAnulacion = ?, UsuarioAnulacion = ?, "
+         "FechaAnulacion = SYSUTCDATETIME() WHERE IdMovimiento = ? AND Anulada = 0",
+         ("Corregido por edición", usuario, id_movimiento)),
+        sql,
+        lambda r: ("INSERT INTO dbo.AuditoriaReflejoSocio (Accion, IdMovimiento, IdSocio, Usuario, Detalle) VALUES (?, ?, ?, ?, ?)",
+                   ("EdicionAsiento", r[1], actual["idSocio"], usuario, f"Reemplaza al movimiento {id_movimiento}: {motivo}")),
+    ])
+    if res[0] != 1:
+        raise ValueError("El movimiento ya fue anulado o modificado por otra persona.")
+    return _movimiento_por_id(res[1])
+
+
+def _operaciones_caja_socios() -> dict[int, int]:
+    """IdMovimiento de socio -> operación de caja vigente que lo generó (038)."""
+    return {r["IdRegistro"]: r["IdOperacion"] for r in fetch_all(
+        "SELECT e.IdRegistro, e.IdOperacion FROM dbo.EfectosOperacionCaja e JOIN dbo.OperacionesCajaEfectivo o "
+        "ON o.IdOperacion = e.IdOperacion WHERE e.TipoEfecto = 'MovimientoSocio' AND o.Estado = 'Vigente'")}

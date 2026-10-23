@@ -12,6 +12,9 @@ import {
 } from "@/services/cuentasSociosApi";
 import { AsignarGastoForm } from "@/components/cuentas-socios/AsignarGastoForm";
 import { SoloLectura } from "@/components/auth/SoloLectura";
+import { SideDrawer } from "@/components/ui/SideDrawer";
+import { AsientoSocioForm } from "./AsientoSocioForm";
+import { EfectivoSocioForm } from "./EfectivoSocioForm";
 import { ApiError } from "@/services/apiClient";
 import { DataTable, type DataTableColumn } from "@/components/ui/DataTable";
 import { filterInputClass } from "@/components/ui/FilterBar";
@@ -53,6 +56,10 @@ export function CuentaSocio({ idSocio }: { idSocio: number }) {
   });
 
   const [mostrarDevolucion, setMostrarDevolucion] = useState(false);
+  const [drawer, setDrawer] = useState<null | "asiento" | "efectivo" | MovimientoCuentaSocio>(null);
+  const [buscar, setBuscar] = useState("");
+  const [anio, setAnio] = useState("");
+  const [verAnulados, setVerAnulados] = useState(false);
   const [importe, setImporte] = useState(0);
   const [fecha, setFecha] = useState(() => new Date().toISOString().slice(0, 10));
   const [medio, setMedio] = useState(MEDIOS_DEVOLUCION[0]);
@@ -104,7 +111,8 @@ export function CuentaSocio({ idSocio }: { idSocio: number }) {
 
   const columns: DataTableColumn<MovimientoCuentaSocio>[] = [
     { key: "fecha", header: "Fecha", sortValue: (m) => m.fecha, render: (m) => formatFecha(m.fecha) },
-    { key: "tipo", header: "Tipo", render: (m) => (m.tipo === "AsignacionGasto" ? "Gasto asignado" : "Devolución") },
+    { key: "tipo", header: "Tipo", render: (m) => (m.tipo === "AsignacionGasto" ? "Debe" : "Haber") },
+    { key: "concepto", header: "Concepto", render: (m) => m.motivo ?? "—" },
     { key: "origen", header: "Origen", render: (m) => <OrigenMovimientoSocio m={m} /> },
     {
       key: "importe",
@@ -143,11 +151,20 @@ export function CuentaSocio({ idSocio }: { idSocio: number }) {
             Anulado{m.motivoAnulacion ? `: ${m.motivoAnulacion}` : ""}
           </span>
         ) : (
-          <SoloLectura>
-            <button type="button" onClick={() => anular(m)} className="text-sm text-finance underline">
-              Anular
-            </button>
-          </SoloLectura>
+          m.idOperacionCaja ? (
+            <a className="text-sm text-finance underline" href="/finanzas/cajas" title="Se corrige o anula desde la caja que lo generó">
+              De caja (op. {m.idOperacionCaja})
+            </a>
+          ) : (
+            <SoloLectura>
+              <span className="flex gap-3">
+                {m.editable && (
+                  <button type="button" onClick={() => setDrawer(m)} className="text-sm text-finance underline">Editar</button>
+                )}
+                <button type="button" onClick={() => anular(m)} className="text-sm text-finance underline">Anular</button>
+              </span>
+            </SoloLectura>
+          )
         ),
     },
   ];
@@ -213,6 +230,10 @@ export function CuentaSocio({ idSocio }: { idSocio: number }) {
           )}
 
           <div className="flex flex-wrap gap-3">
+            <SoloLectura>
+              <button type="button" onClick={() => setDrawer("asiento")} className="rounded-sm bg-agro px-4 py-2 text-sm text-white hover:opacity-90">+ Nuevo asiento</button>
+              <button type="button" onClick={() => setDrawer("efectivo")} className="rounded-sm border border-border px-3 py-2 text-sm hover:bg-surface-sunken">Aporte / retiro en efectivo…</button>
+            </SoloLectura>
             <AsignarGastoForm idSocio={idSocio} onAsignado={recargar} />
             <SoloLectura>
               <button
@@ -275,9 +296,23 @@ export function CuentaSocio({ idSocio }: { idSocio: number }) {
             </div>
           )}
 
+          <div className="flex flex-wrap items-end gap-3 text-sm">
+            <label>Buscar<input className="ml-2 rounded-sm border border-border bg-surface px-2 py-1" value={buscar} onChange={(e) => setBuscar(e.target.value)} placeholder="Concepto, proveedor…" /></label>
+            <label>Año<select className="ml-2 rounded-sm border border-border bg-surface px-2 py-1" value={anio} onChange={(e) => setAnio(e.target.value)}>
+              <option value="">Todos</option>
+              {Array.from(new Set(data.movimientos.map((m) => m.fecha.slice(0, 4)))).sort().reverse().map((a) => <option key={a}>{a}</option>)}
+            </select></label>
+            <label className="flex items-center gap-2"><input type="checkbox" checked={verAnulados} onChange={(e) => setVerAnulados(e.target.checked)} /> Ver anulados</label>
+          </div>
+          <SideDrawer open={drawer !== null} onClose={() => setDrawer(null)} maxWidthClass={drawer === "efectivo" ? "max-w-3xl" : "max-w-lg"}
+            title={drawer === "efectivo" ? `Aporte o retiro en efectivo — ${data.nombre}` : typeof drawer === "object" && drawer ? "Editar asiento" : `Nuevo asiento — ${data.nombre}`}>
+            {drawer === "efectivo" ? <EfectivoSocioForm idSocio={idSocio} onListo={() => { setDrawer(null); recargar(); }} />
+              : drawer !== null && <AsientoSocioForm key={typeof drawer === "object" ? drawer.idMovimiento : "nuevo"} idSocio={idSocio} movimiento={typeof drawer === "object" ? drawer : undefined} onListo={() => setDrawer(null)} />}
+          </SideDrawer>
           <DataTable
             columns={columns}
-            rows={data.movimientos}
+            rows={[...data.movimientos].reverse().filter((m) => (verAnulados || !m.anulada) && (!anio || m.fecha.startsWith(anio))
+              && (!buscar || `${m.motivo ?? ""} ${m.proveedorOrigen ?? ""} ${m.medio ?? ""}`.toLowerCase().includes(buscar.toLowerCase())))}
             keyField={(m) => m.idMovimiento}
             emptyMessage="Sin movimientos registrados para este socio."
             page={1}

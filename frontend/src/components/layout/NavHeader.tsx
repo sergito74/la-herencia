@@ -98,9 +98,7 @@ const NAV_ITEMS: NavItem[] = [
     icon: ICONS.finanzas,
     submenu: [
       { href: "/finanzas/tesoreria", label: "Tesorería" },
-      { href: "/finanzas/cajas-efectivo/giamigli-sa", label: "Caja Giamigli SA" },
-      { href: "/finanzas/cajas-efectivo/campo-chica", label: "Caja chica del campo" },
-      { href: "/finanzas/cajas-efectivo/condominio-lsc", label: "Caja Condominio LSC" },
+      { href: "/finanzas/cajas", label: "Cajas y socios" },
       { href: "/finanzas/flujo-caja-real", label: "Flujo de caja real" },
       { href: "/finanzas/flujo-caja-rubro", label: "Flujo de caja por rubro" },
       { href: "/finanzas/integridad-vinculos", label: "Integridad de vínculos" },
@@ -108,7 +106,6 @@ const NAV_ITEMS: NavItem[] = [
       { href: "/finanzas/cuentas-corrientes", label: "Cuentas corrientes" },
       { href: "/finanzas/auditoria-cuentas", label: "Auditoría de cuentas" },
       { href: "/finanzas/revision-cuentas", label: "Revisión de cuentas" },
-      { href: "/finanzas/cuentas-socios", label: "Cuentas de socios" },
       { href: "/finanzas/reasignacion-contacto", label: "Reasignación de contacto" },
       { href: "/finanzas/tarjetas", label: "Tarjetas" },
       { href: "/finanzas/impuestos", label: "Impuestos y retenciones" },

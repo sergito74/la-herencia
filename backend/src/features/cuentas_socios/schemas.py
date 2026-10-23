@@ -32,6 +32,8 @@ class MovimientoCuentaSocio(BaseModel):
     anulada: bool
     motivoAnulacion: str | None = None
     huerfano: bool = False
+    idOperacionCaja: int | None = None
+    editable: bool = False
 
 
 class DeudaActualizada(BaseModel):
@@ -81,6 +83,14 @@ class AsignarGastoRequest(BaseModel):
 
 
 class AnularMovimientoRequest(BaseModel):
+    motivo: str
+
+
+class AsientoRequest(BaseModel):
+    lado: str  # debe | haber
+    importe: float
+    fecha: date
+    medio: str | None = None
     motivo: str
 
 
