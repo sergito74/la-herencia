@@ -13,44 +13,46 @@ import { fetchRemuneraciones } from "@/services/remuneracionesApi";
 import { apiGet } from "@/services/apiClient";
 import { formatFecha, formatMoneda } from "@/lib/format";
 import {
-  TIPOS_CAJA, crearOperacionCaja, previsualizarCaja,
+  TIPOS_CAJA, monedaCaja, crearOperacionCaja, previsualizarCaja,
   type CajaSlug, type ConfirmacionCaja, type OperacionCajaInput, type PreviewCaja, type TipoOperacionCaja,
 } from "@/services/cajasEfectivoApi";
 
-export const nombresCaja: Record<CajaSlug, string> = { "giamigli-sa": "Giamigli SA", "campo-chica": "Caja chica", "condominio-lsc": "Condominio LSC" };
+export const nombresCaja: Record<CajaSlug, string> = { "giamigli-dolares": "Giamigli US$", "giamigli-sa": "Giamigli SA", "campo-chica": "Caja chica", "condominio-lsc": "Condominio LSC" };
 export const hoyCaja = () => new Intl.DateTimeFormat("sv-SE", { timeZone: "America/Argentina/Buenos_Aires" }).format(new Date());
 const input = "w-full rounded border border-border bg-surface px-3 py-2";
 const button = "rounded border border-border px-3 py-2 disabled:opacity-50";
 
 export function OperacionCajaForm({ caja, initial, onSaved, onPrepared }: {
   caja: CajaSlug;
-  initial?: { fecha?: string; importe?: string; concepto?: string; cuenta?: string; tipo?: TipoOperacionCaja; idSocio?: number; idContacto?: number; razonSocial?: string };
+  initial?: Partial<Omit<OperacionCajaInput, "cuenta">> & { cuenta?: string; razonSocial?: string };
   onSaved?: (id: number) => void;
   onPrepared?: (body: ConfirmacionCaja) => void;
 }) {
+  const moneda = monedaCaja(caja);
+  const usd = moneda === "Dolares";
   const queryClient = useQueryClient();
-  const [tipo, setTipo] = useState<TipoOperacionCaja>(initial?.tipo ?? (initial?.importe && Number(initial.importe) > 0 ? "aporte" : "pago"));
+  const [tipo, setTipo] = useState<TipoOperacionCaja>(initial?.tipo ?? (usd ? (Number(initial?.importe ?? 0) < 0 ? "egreso_dolares" : "ingreso_dolares") : (initial?.importe && Number(initial.importe) > 0 ? "aporte" : "pago")));
   const [fecha, setFecha] = useState(initial?.fecha ?? hoyCaja());
   const [importe, setImporte] = useState(Math.abs(Number(initial?.importe ?? 0)));
   const [concepto, setConcepto] = useState(initial?.concepto ?? "");
   const [cuenta, setCuenta] = useState<"A" | "B">(initial?.cuenta === "B" ? "B" : "A");
   const [contacto, setContacto] = useState<number | null>(initial?.idContacto ?? null);
   const [razonSocial, setRazonSocial] = useState<string | null>(initial?.razonSocial ?? null);
-  const [socio, setSocio] = useState(initial?.idSocio ?? 0);
-  const [destino, setDestino] = useState<CajaSlug>(caja === "giamigli-sa" ? "campo-chica" : "giamigli-sa");
-  const [contraparte, setContraparte] = useState(false);
-  const [motivo, setMotivo] = useState("");
-  const [seleccion, setSeleccion] = useState<Record<string, number>>({});
-  const [particular, setParticular] = useState(false);
-  const [compra, setCompra] = useState(0);
-  const [asiento, setAsiento] = useState(0);
-  const [asientoNuevo, setAsientoNuevo] = useState(false);
-  const [medio, setMedio] = useState<"bna" | "galicia" | "mercado-libre">("bna");
-  const [banco, setBanco] = useState(0);
-  const [intermediario, setIntermediario] = useState("");
-  const [evidencia, setEvidencia] = useState("");
-  const [salario, setSalario] = useState(0);
-  const [repartos, setRepartos] = useState([{ idRubro: 0, idCentroCostos: 0, idDestino: 0, idCampania: 0, importePesos: importe }]);
+  const [socio, setSocio] = useState(initial?.compraParticular?.idSocio ?? initial?.idSocio ?? 0);
+  const [destino, setDestino] = useState<CajaSlug>(initial?.cajaDestino ?? (caja === "giamigli-sa" ? "campo-chica" : "giamigli-sa"));
+  const [contraparte, setContraparte] = useState(!!initial?.cajaContraparte);
+  const [motivo, setMotivo] = useState(initial?.motivoRelacionGiamigli ?? "");
+  const [seleccion, setSeleccion] = useState<Record<string, number>>(Object.fromEntries((initial?.aplicaciones ?? []).map(a => [`${a.tipoDocumento}:${a.idDocumento}`, Number(a.importeAplicado)])));
+  const [particular, setParticular] = useState(!!initial?.compraParticular);
+  const [compra, setCompra] = useState(initial?.compraParticular?.idCompra ?? 0);
+  const [asiento, setAsiento] = useState(initial?.compraParticular?.idAsientoParticular ?? 0);
+  const [asientoNuevo, setAsientoNuevo] = useState(initial?.compraParticular?.confirmarAsientoNuevo ?? false);
+  const [medio, setMedio] = useState<"bna" | "galicia" | "mercado-libre">(initial?.banco?.medio ?? "bna");
+  const [banco, setBanco] = useState(initial?.banco?.idMovimiento ?? 0);
+  const [intermediario, setIntermediario] = useState(initial?.intermediario ?? "");
+  const [evidencia, setEvidencia] = useState(initial?.evidencia ?? "");
+  const [salario, setSalario] = useState(initial?.idSalario ?? 0);
+  const [repartos, setRepartos] = useState(initial?.repartos?.map(r => ({ ...r, idDestino: r.idDestino ?? 0, idCampania: r.idCampania ?? 0, importePesos: Number(r.importePesos) })) ?? [{ idRubro: 0, idCentroCostos: 0, idDestino: 0, idCampania: 0, importePesos: importe }]);
   const [preview, setPreview] = useState<PreviewCaja | null>(null);
   const [aceptadas, setAceptadas] = useState<string[]>([]);
   const [mensaje, setMensaje] = useState("");
@@ -109,14 +111,15 @@ export function OperacionCajaForm({ caja, initial, onSaved, onPrepared }: {
   }
   return <form className="space-y-4" onSubmit={e => { e.preventDefault(); revisar.mutate(); }}>
     {onPrepared && <h3 className="font-semibold">Clasificar fila de planilla — {nombresCaja[caja]}</h3>}
+    {usd && <p>Importes y saldo en US$ billete. Los aportes y retiros a cuenta del socio se registran íntegramente en dólares, sin kg INMAG.</p>}
     <div className="grid gap-3 md:grid-cols-3">
       <label>Operación<select className={input} value={tipo} onChange={e => { setTipo(e.target.value as TipoOperacionCaja); setSeleccion({}); setParticular(false); setCompra(0); }}>
-        {Object.entries(TIPOS_CAJA).filter(([t]) => caja !== "condominio-lsc" || t !== "traspaso_cajas").map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+        {Object.entries(TIPOS_CAJA).filter(([t]) => usd ? ["ingreso_dolares", "egreso_dolares", "aporte", "retiro_a_cuenta", "retiro_ganancias"].includes(t) : !["ingreso_dolares", "egreso_dolares"].includes(t) && (caja !== "condominio-lsc" || t !== "traspaso_cajas")).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
       </select></label>
       <label>Fecha<input className={input} type="date" required value={fecha} onChange={e => setFecha(e.target.value)} /></label>
       <label>Cuenta<select className={input} value={cuenta} onChange={e => setCuenta(e.target.value as "A" | "B")}><option>A</option><option>B</option></select></label>
       <label className="md:col-span-2">Concepto<input className={input} required maxLength={255} value={concepto} onChange={e => setConcepto(e.target.value)} /></label>
-      <label>Importe<MoneyInput className={input} moneda="Pesos" value={importe} onChange={setImporte} /></label>
+      <label>Importe<MoneyInput className={input} moneda={moneda} value={importe} onChange={setImporte} /></label>
     </div>
     {esContacto && <><ContactoSelect value={contacto} razonSocial={razonSocial} label={tipo === "pago" ? "Proveedor" : "Cliente / comprador"} onChange={(id, nombre) => { setContacto(id); setRazonSocial(nombre); setSeleccion({}); setCompra(0); }} /><AvisoCuentaContacto idContacto={contacto} />
       {tipo === "pago" && caja !== "condominio-lsc" && <label className="block"><input type="checkbox" checked={particular} onChange={e => { setParticular(e.target.checked); setSeleccion({}); }} /> Compra particular de un socio</label>}
@@ -131,7 +134,7 @@ export function OperacionCajaForm({ caja, initial, onSaved, onPrepared }: {
         <label className="block"><input type="checkbox" checked={asientoNuevo} onChange={e => setAsientoNuevo(e.target.checked)} /> Confirmo que debe crearse un asiento particular nuevo</label></>}
     </>}
     {(esSocio || particular) && <label>Socio<select className={input} value={socio} onChange={e => setSocio(Number(e.target.value))}><option value={0}>Elegir socio</option>{socios.data?.socios.map(s => <option key={s.idSocio} value={s.idSocio}>{s.nombre}</option>)}</select></label>}
-    {esSocio && socio === 3 && caja !== "condominio-lsc" && tipo !== "retiro_ganancias" && <label className="block"><input type="checkbox" checked={contraparte} onChange={e => setContraparte(e.target.checked)} /> El efectivo sale de / vuelve a la caja del Condominio (registrar ambas cajas)</label>}
+    {esSocio && socio === 3 && !usd && caja !== "condominio-lsc" && tipo !== "retiro_ganancias" && <label className="block"><input type="checkbox" checked={contraparte} onChange={e => setContraparte(e.target.checked)} /> El efectivo sale de / vuelve a la caja del Condominio (registrar ambas cajas)</label>}
     {(caja === "condominio-lsc" || (socio === 3 && contraparte)) && <label>Relación con Giamigli<input className={input} required maxLength={255} value={motivo} onChange={e => setMotivo(e.target.value)} /></label>}
     {tipo === "retiro_ganancias" && <p>Distribución de ganancias: no genera deuda ni crédito del socio.</p>}
     {tipo === "traspaso_cajas" && <label>Caja de destino<select className={input} value={destino} onChange={e => setDestino(e.target.value as CajaSlug)}>{(["giamigli-sa", "campo-chica"] as CajaSlug[]).filter(c => c !== caja).map(c => <option value={c} key={c}>{nombresCaja[c]}</option>)}</select></label>}
@@ -156,7 +159,7 @@ export function OperacionCajaForm({ caja, initial, onSaved, onPrepared }: {
     {error && <p role="alert" className="text-status-danger">{error.message}</p>}
     {mensaje && <p role="status" className="text-status-success">{mensaje}</p>}
     <button className={button} disabled={revisar.isPending || guardar.isPending || importe <= 0 || queryError || (particular && docs.isFetching)}>{revisar.isPending ? "Revisando…" : "Revisar efectos antes de guardar"}</button>
-    {preview && <div className="space-y-3 rounded border border-border p-3"><h4 className="font-semibold">Efectos antes de guardar</h4>{preview.efectosPrevistos.map(p => <p key={p.caja}>{nombresCaja[p.caja]}: {formatMoneda(Number(p.importe))} · saldo resultante {formatMoneda(Number(p.saldoResultante))}</p>)}
+    {preview && <div className="space-y-3 rounded border border-border p-3"><h4 className="font-semibold">Efectos antes de guardar</h4>{preview.efectosPrevistos.map(p => <p key={p.caja}>{nombresCaja[p.caja]}: {formatMoneda(Number(p.importe), monedaCaja(p.caja))} · saldo resultante {formatMoneda(Number(p.saldoResultante), monedaCaja(p.caja))}</p>)}
       {valuation && <p>Valuación: {formatMoneda(Number(valuation.importeUSD), "Dolares")} y {valuation.importeKgCarne} kg de novillo.</p>}
       {preview.contexto.particular && <p>Parte particular documentada: {formatMoneda(Number(preview.contexto.particular.importe))}. Se refleja el gasto del socio una sola vez; el pago al proveedor puede ser parcial.</p>}
       {!!preview.contexto.banco?.cuentasExcluidas.length && <p>El movimiento bancario dejará de figurar como pago/cobro del contacto; quedará vinculado a esta caja.</p>}

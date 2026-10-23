@@ -2,7 +2,7 @@
 
 import { apiGet, apiPost, apiPut, apiPostForm } from "@/services/apiClient";
 
-export type CajaSlug = "giamigli-sa" | "campo-chica" | "condominio-lsc";
+export type CajaSlug = "giamigli-sa" | "campo-chica" | "condominio-lsc" | "giamigli-dolares";
 
 export interface MovimientoCajaEfectivo {
   idMovimiento: number;
@@ -50,7 +50,10 @@ export function fetchMovimientosCaja(
   });
 }
 
+export const monedaCaja = (caja: string): "Pesos" | "Dolares" => caja === "giamigli-dolares" ? "Dolares" : "Pesos";
+
 export const TIPOS_CAJA = {
+  ingreso_dolares: "Entrada de dólares", egreso_dolares: "Salida de dólares",
   pago: "Pago a proveedor", cobro: "Cobro", aporte: "Aporte de socio",
   retiro_a_cuenta: "Retiro a cuenta / devolución de aporte", retiro_ganancias: "Retiro de ganancias",
   traspaso_cajas: "Traspaso entre cajas", extraccion_banco: "Extracción bancaria",

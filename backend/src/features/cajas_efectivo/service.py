@@ -35,7 +35,7 @@ def _caja_particular(socio):
 
 
 def piernas(op):
-    positive = op.tipo in ("cobro", "aporte", "extraccion_banco", "retorno_sueldo_opcion_a")
+    positive = op.tipo in ("cobro", "aporte", "extraccion_banco", "retorno_sueldo_opcion_a", "ingreso_dolares")
     result = {op.caja: op.importe if positive else -op.importe}
     target = op.cajaDestino or op.cajaContraparte
     if target:
@@ -154,7 +154,8 @@ def _references(op):
     if op.tipo in ("aporte", "retiro_a_cuenta") or (
         op.tipo == "pago" and op.caja == "condominio-lsc"
     ):
-        context["valuacion"] = valuacion.a_fecha(op.importe, op.fecha)
+        context["valuacion"] = (valuacion.dolares_a_fecha(op.importe, op.fecha)
+                                if op.caja == "giamigli-dolares" else valuacion.a_fecha(op.importe, op.fecha))
     if op.aplicaciones:
         context["documentos"] = _validar_documentos(op)
     if op.compraParticular:
@@ -368,11 +369,11 @@ def _socio(
         (
             socio,
             tipo,
-            importe if importe is not None else op.importe,
+            importe if importe is not None else valuation.get("importePesos", op.importe),
             fecha if fecha is not None else op.fecha,
             origin,
             id_origin or id_op,
-            "Efectivo",
+            "Efectivo USD" if op.caja == "giamigli-dolares" else "Efectivo",
             op.concepto,
             user,
             valuation["importeUSD"],

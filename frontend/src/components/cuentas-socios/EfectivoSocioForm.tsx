@@ -15,6 +15,7 @@ export function EfectivoSocioForm({ idSocio, onListo }: { idSocio: number; onLis
         <label>Caja
           <select className="mt-1 block w-full rounded-sm border border-border bg-surface px-3 py-2" value={caja} onChange={(e) => setCaja(e.target.value as CajaSlug)}>
             <option value="giamigli-sa">Giamigli SA</option>
+            <option value="giamigli-dolares">Giamigli US$ (billetes)</option>
             <option value="campo-chica">Caja chica del campo</option>
             <option value="condominio-lsc">Condominio LSC</option>
           </select>

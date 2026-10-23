@@ -36,6 +36,7 @@ router = APIRouter(prefix="/api/cajas-efectivo", tags=["cajas-efectivo"])
 # (contracts/api.md).
 _SLUG_A_CAJA = {
     "giamigli-sa": "GiamigliSA",
+    "giamigli-dolares": "GiamigliUSD",
     "campo-chica": "CampoChica",
     "condominio-lsc": "CondominioLSC",
 }
@@ -225,7 +226,7 @@ async def saldo_caja(caja: str, detalleSaldo: bool = False) -> SaldoCaja:
         return SaldoCaja(caja=caja, saldo=float(row['saldo']), saldoDecimal=f"{row['saldo']:.2f}",
                          ultimoArqueo=latest['items'][0] if latest['items'] else None,
                          cobertura='Solo relaciones con Giamigli; historia completa conservada.'
-                         if caja == 'condominio-lsc' else 'Caja de Giamigli en pesos.')
+                         if caja == 'condominio-lsc' else ('Tenencia de billetes en dólares estadounidenses.' if caja == 'giamigli-dolares' else 'Caja de Giamigli en pesos.'))
     saldo = await run_in_threadpool(repository.calcular_saldo, caja_real)
     return SaldoCaja(caja=caja, saldo=saldo, saldoDecimal=f'{saldo:.2f}')
 

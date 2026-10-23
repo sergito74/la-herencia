@@ -150,3 +150,21 @@ Los pendientes del traspaso del 22/10 siguen igual. No se avanzó en conciliacio
 - Contactos: 375 es Sergio empleado y 5670 es Sergio socio. Los retiros iguales de los socios son retiro de ganancias. Sueldo devuelto a caja: opción A.
 - Planilla por COM: verificar `ReadOnly` antes de guardar y hacer backup en `backups/`.
 - Push a `main` autorizado de forma permanente, sin `--force`.
+
+
+## Actualización Codex — 23/10/2026: caja USD y revisión del rediseño
+
+Sergio autorizó agregar la caja de tenencias/movimientos de billetes en dólares y confirmó aportes/retiros de socios 100% US$, sin kg. Implementada en `specs/040-caja-efectivo-dolares/`; ver quickstart de 040 para respaldo y evidencias.
+
+- Menú Cajas y socios → Giamigli US$. Libro independiente en USD, entradas/salidas, socios, ganancias, arqueos y comparación de hoja. No se agregaron las otras cajas pendientes.
+- Corrección al dato del traspaso: la hoja de dólares tiene 1.655 filas de formato, pero solo seis movimientos. Se cargaron esos seis, con respaldo verificado, saldo US$360 según planilla. Las tres cajas en pesos mantienen sus saldos y cantidades. No se dedujeron asientos de socios de las ventas históricas de dólares.
+- Navegador: rediseño recorrido con API simulada, 20 escenarios PASS, 123 peticiones interceptadas, sin JS errors y sin escribir pruebas en WC. Incluye edición/anulación de socio, caja USD y rol Lectura en ambos.
+- Corregido el botón Corregir de caja: ahora recupera también aplicaciones, repartos y referencias originales, con nueva previsualización obligatoria.
+- TypeScript y ESLint PASS; 65 pruebas focalizadas PASS y 18 USD/importación PASS tras el último ajuste de parser.
+- Queda vigente el resto del traspaso: conciliaciones, DTe de las 70 vaquillonas, recuento físico real, otras hojas y pruebas con datos vivos. El nuevo saldo USD es el saldo de la fuente, no un arqueo actual.
+
+
+## Nueva instrucción de Sergio — 23/10/2026 (limpieza Condominio)
+Sergio pidió commitear/pushear lo terminado, mantener la comunicación compartida con Claude Code y luego limpiar/corregir la caja del Condominio, dejando solo vínculos con Giamigli. También señaló la confusión de mostrar caja y socio como dos entidades distintas.
+
+Estado al iniciar: la importación 036 copió toda la hoja Caja Efectivo del Condominio (1.226 filas, saldo $0,23), sin filtro de relación. La aclaración 038 restringió operaciones nuevas, pero dejó esa historia como consulta; se debe corregir ese alcance para que el libro operativo muestre solo relaciones respaldadas. Se realizará con respaldo verificado, evidencia por fila y conservación de historia excluida; no se inventarán vínculos ni ajustes para mantener el saldo completo del Condominio. Todavía no se aplicó esta limpieza.

@@ -7,6 +7,7 @@ import { usePathname } from "next/navigation";
 export const CAJAS_NAV = [
   { href: "/finanzas/cajas", label: "Resumen", grupo: "" },
   { href: "/finanzas/cajas-efectivo/giamigli-sa", label: "Giamigli SA", grupo: "Cajas" },
+  { href: "/finanzas/cajas-efectivo/giamigli-dolares", label: "Giamigli US$", grupo: "Cajas" },
   { href: "/finanzas/cajas-efectivo/campo-chica", label: "Caja chica del campo", grupo: "Cajas" },
   { href: "/finanzas/cajas-efectivo/condominio-lsc", label: "Condominio LSC", grupo: "Cajas" },
   { href: "/finanzas/cuentas-socios/1", label: "Sergio", grupo: "Socios" },

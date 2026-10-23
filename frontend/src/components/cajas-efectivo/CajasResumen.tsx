@@ -6,11 +6,12 @@ import Link from "next/link";
 import { SoloLectura } from "@/components/auth/SoloLectura";
 import { ErrorState, LoadingState } from "@/components/ui/States";
 import { formatCantidad, formatFecha, formatMoneda } from "@/lib/format";
-import { fetchSaldoCaja, listarArqueosCaja, type CajaSlug } from "@/services/cajasEfectivoApi";
+import { fetchSaldoCaja, listarArqueosCaja, monedaCaja, type CajaSlug } from "@/services/cajasEfectivoApi";
 import { fetchSocios } from "@/services/cuentasSociosApi";
 
 const CAJAS: { slug: CajaSlug; nombre: string; detalle: string }[] = [
   { slug: "giamigli-sa", nombre: "Caja Giamigli SA", detalle: "Efectivo de la empresa" },
+  { slug: "giamigli-dolares", nombre: "Caja Giamigli US$", detalle: "Tenencia y movimientos de billetes en dólares" },
   { slug: "campo-chica", nombre: "Caja chica del campo", detalle: "Gastos menores en La Herencia" },
   { slug: "condominio-lsc", nombre: "Caja Condominio LSC", detalle: "Solo movimientos con Giamigli" },
 ];
@@ -26,7 +27,7 @@ function TarjetaCaja({ slug, nombre, detalle }: (typeof CAJAS)[number]) {
         <h3 className="font-semibold">{nombre}</h3>
         <p className="text-sm text-ink-secondary">{detalle}</p>
         <p className={`font-data mt-3 text-2xl font-semibold ${valor < 0 ? "text-status-danger" : "text-ink-primary"}`}>
-          {saldo.isLoading ? "…" : saldo.isError ? "—" : formatMoneda(valor)}
+          {saldo.isLoading ? "…" : saldo.isError ? "—" : formatMoneda(valor, monedaCaja(slug))}
         </p>
         <p className="mt-1 text-xs text-ink-secondary">
           {ultimo ? `Último arqueo ${formatFecha(ultimo.fechaCorte)} · ${ultimo.estado}` : "Sin arqueos registrados"}
@@ -52,7 +53,7 @@ export function CajasResumen() {
     <div className="space-y-8">
       <section>
         <h2 className="mb-3 text-lg font-semibold">Cajas de efectivo</h2>
-        <div className="grid gap-4 md:grid-cols-3">
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           {CAJAS.map((c) => (
             <TarjetaCaja key={c.slug} {...c} />
           ))}

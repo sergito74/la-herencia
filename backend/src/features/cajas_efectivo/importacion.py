@@ -19,7 +19,7 @@ from src.features.cajas_efectivo import operaciones as db, service
 from src.features.cajas_efectivo.schemas import Estricto, ConfirmarOperacion
 
 SHEETS = {
-    "CajasGiamigli": {"Caja Efectivo Pesos": "giamigli-sa", "Caja chica campo": "campo-chica"},
+    "CajasGiamigli": {"Caja Efectivo Pesos": "giamigli-sa", "Caja Efectivo Dolares": "giamigli-dolares", "Caja chica campo": "campo-chica"},
     "CondominioLSC": {"Caja Efectivo": "condominio-lsc"},
 }
 
@@ -92,7 +92,7 @@ def parse(content, libro, cutoff):
                 )
                 if when and when > cutoff:
                     continue
-                if box == "giamigli-sa":
+                if box in ("giamigli-sa", "giamigli-dolares"):
                     amount, account, balance = _money(v[6]), v[2], _money(v[7])
                     concept, detail = v[1], v[3]
                 elif box == "campo-chica":
@@ -254,7 +254,7 @@ def detalle(id_lote):
         candidates = _candidates(original)
         linked_candidate = next((c for c in candidates if c['idMovimiento']==row['IdMovimiento']),None)
         differences = []
-        if linked_candidate and n['caja']=='giamigli-sa':
+        if linked_candidate and n['caja'] in ('giamigli-sa','giamigli-dolares'):
             actual_account = {'White':'A','W':'A','Blue':'B'}.get(linked_candidate.get('cuenta'),linked_candidate.get('cuenta'))
             if actual_account != n['cuenta']:
                 differences.append('Cuenta A/B')
@@ -391,7 +391,7 @@ def confirmar(id_lote, body, user):
                 )
             movement, operation = chosen[0]["idMovimiento"], chosen[0]["idOperacion"]
             actual_account = {'White':'A','W':'A','Blue':'B'}.get(chosen[0].get('cuenta'),chosen[0].get('cuenta'))
-            if n['caja']=='giamigli-sa' and actual_account != n['cuenta'] and not decision.motivo:
+            if n['caja'] in ('giamigli-sa','giamigli-dolares') and actual_account != n['cuenta'] and not decision.motivo:
                 raise ValueError('Vincular con otra cuenta A/B requiere motivo; la comparación conservará la diferencia.')
             duplicate = db.one(
                 "SELECT IdFila FROM dbo.FilasOrigenCaja WHERE IdLote=? "
@@ -419,7 +419,7 @@ def confirmar(id_lote, body, user):
                     "Importar requiere clasificar la operación y confirmar su vista previa."
                 )
             op = decision.operacion.operacion
-            if n['caja']=='giamigli-sa' and n['cuenta'] in ('A','B') and op.cuenta != n['cuenta']:
+            if n['caja'] in ('giamigli-sa','giamigli-dolares') and n['cuenta'] in ('A','B') and op.cuenta != n['cuenta']:
                 raise ValueError('La cuenta A/B debe conservar la marca de la fila de planilla.')
             if (
                 op.caja != n["caja"]

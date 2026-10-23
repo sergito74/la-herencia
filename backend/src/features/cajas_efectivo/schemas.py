@@ -10,7 +10,7 @@ from decimal import Decimal
 from typing import Literal, Annotated
 from pydantic import ConfigDict, Field, model_validator
 
-CajaSlug = Literal["giamigli-sa", "campo-chica", "condominio-lsc"]
+CajaSlug = Literal["giamigli-sa", "campo-chica", "condominio-lsc", "giamigli-dolares"]
 Moneda = Annotated[Decimal, Field(gt=0, max_digits=19, decimal_places=2)]
 Identificador = Annotated[int, Field(gt=0)]
 
@@ -48,6 +48,8 @@ class RepartoCaja(Estricto):
 
 class OperacionCaja(Estricto):
     tipo: Literal[
+        "ingreso_dolares",
+        "egreso_dolares",
         "pago",
         "cobro",
         "aporte",
@@ -79,6 +81,14 @@ class OperacionCaja(Estricto):
 
     @model_validator(mode="after")
     def validar_combinacion(self):
+        es_usd = self.caja == "giamigli-dolares"
+        if es_usd and self.tipo not in ("ingreso_dolares", "egreso_dolares", "aporte", "retiro_a_cuenta", "retiro_ganancias"):
+            raise ValueError("Caja USD: elegir entrada/salida de dólares o aporte/retiro de socio.")
+        if not es_usd and self.tipo in ("ingreso_dolares", "egreso_dolares"):
+            raise ValueError("Entrada/salida de dólares requiere caja USD.")
+        if any((target == "giamigli-dolares") != es_usd for target in (self.cajaDestino, self.cajaContraparte) if target):
+            raise ValueError("No se admiten traspasos 1:1 entre pesos y dólares.")
+
         contacto = self.tipo in ("pago", "cobro")
         socio = self.tipo in ("aporte", "retiro_a_cuenta", "retiro_ganancias")
         bancario = self.tipo in ("extraccion_banco", "deposito_banco", "retorno_sueldo_opcion_a")

@@ -20,6 +20,7 @@ from src.db.connection import (
 
 CAJAS = {
     "giamigli-sa": "GiamigliSA",
+    "giamigli-dolares": "GiamigliUSD",
     "campo-chica": "CampoChica",
     "condominio-lsc": "CondominioLSC",
 }

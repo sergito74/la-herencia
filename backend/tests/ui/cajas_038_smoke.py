@@ -29,6 +29,11 @@ def run():
         "previews": [],
     }
     errors = []
+    socio_movs = [{"idMovimiento": 10, "tipo": "AsignacionGasto", "importe":100, "importeUSD":.05,
+        "importeKgCarne":.025,"fecha":"2026-10-23","origen":"Manual","idOrigen":None,
+        "proveedorOrigen":None,"numeroDocumentoOrigen":None,"medio":"Efectivo","motivo":"Asiento previo",
+        "usuario":"prueba","anulada":False,"motivoAnulacion":None,"huerfano":False,"editable":True,"idOperacionCaja":None}]
+
     doc = {
         "tipoDocumento": "CompraDeuda",
         "idDocumento": 10,
@@ -140,10 +145,22 @@ def run():
                 "page": 1,
                 "pageSize": 20,
             }
+        elif path == "/api/cuentas-socios/2/movimientos":
+            body = {"idSocio":2,"nombre":"Lucy","saldo":100,"saldoUSD":.05,"saldoKgCarne":.025,"actualizada":None,"movimientos":socio_movs}
+        elif path == "/api/cuentas-socios/2/asientos":
+            m = {**socio_movs[0],"idMovimiento":11,"motivo":data["motivo"],"importe":data["importe"]}
+            socio_movs.append(m);body=m
+        elif path == "/api/cuentas-socios/movimientos/11" and req.method == "PUT":
+            socio_movs[1]["anulada"]=True
+            m={**socio_movs[1],"idMovimiento":12,"anulada":False,"motivo":data["motivo"]}
+            socio_movs.append(m);body=m
+        elif path == "/api/cuentas-socios/movimientos/12/anular":
+            socio_movs[2]["anulada"]=True;body={"ok":True}
         elif path == "/api/cuentas-socios":
             body = {
                 "socios": [
                     {"idSocio": 1, "nombre": "Sergio", "saldo": 0},
+                    {"idSocio": 2, "nombre": "Lucy", "saldo": 0},
                     {"idSocio": 3, "nombre": "Condominio LSC", "saldo": 0},
                 ]
             }
@@ -209,7 +226,7 @@ def run():
                     "advertencias": [],
                     "contexto": {},
                     "efectosPrevistos": [
-                        {"caja": data["caja"], "importe": "-100.00", "saldoResultante": "900.00"}
+                        {"caja": data["caja"], "importe": "100.00" if data["tipo"] in ("aporte", "ingreso_dolares", "cobro", "extraccion_banco") else "-100.00", "saldoResultante": "1100.00" if data["tipo"] in ("aporte", "ingreso_dolares", "cobro", "extraccion_banco") else "900.00"}
                     ],
                 }
         elif path == "/api/cajas-efectivo/operaciones":
@@ -295,13 +312,14 @@ def run():
             f"{URL}/finanzas/cajas-efectivo/giamigli-sa", wait_until="networkidle", timeout=60000
         )
         expect(page.get_by_role("heading", name="Caja de efectivo — Giamigli SA")).to_be_visible()
+        expect(page.get_by_role("navigation", name="Cajas y cuentas de socios")).to_have_css("display", "flex")
         start = perf_counter()
-        page.get_by_role("button", name="Registrar movimiento", exact=True).click()
+        page.get_by_role("button", name="+ Nuevo movimiento", exact=True).click()
         page.get_by_label("Concepto", exact=True).fill("Pago de prueba visual")
-        page.get_by_placeholder("Buscar contacto…").fill("Proveedor")
+        page.locator("form").get_by_placeholder("Buscar contacto…").fill("Proveedor")
         page.get_by_role("button", name="Proveedor de prueba").click()
         page.locator("label").filter(has_text="FC 0001-00000100").click()
-        page.get_by_role("button", name="Previsualizar", exact=True).click()
+        page.get_by_role("button", name="Revisar efectos antes de guardar", exact=True).click()
         expect(page.get_by_role("heading", name="Efectos antes de guardar")).to_be_visible()
         page.screenshot(path=str(OUT / "pago-preview.png"), full_page=True)
         page.get_by_role("button", name="Confirmar operación", exact=True).click()
@@ -311,8 +329,13 @@ def run():
         page.get_by_label("Motivo de anulación").fill("Corrección de prueba")
         page.get_by_role("button", name="Confirmar anulación").click()
         expect(page.get_by_text("Anuló prueba", exact=False)).to_be_visible()
+        page.get_by_role("button",name="Corregir: cargar de nuevo con estos datos",exact=True).click()
+        expect(page.get_by_label("Concepto",exact=True)).to_have_value("Pago de prueba visual")
+        page.get_by_role("button",name="Revisar efectos antes de guardar",exact=True).click()
+        expect(page.get_by_role("heading",name="Efectos antes de guardar")).to_be_visible()
+        assert state["previews"][-1]["aplicaciones"][0]["idDocumento"]==10
         page.get_by_role("button", name="Cerrar detalle").click()
-        page.get_by_role("button", name="Arqueos", exact=True).click()
+        page.get_by_role("tab", name="Arqueos", exact=True).click()
         page.locator("input[inputmode=numeric]").fill("1")
         page.get_by_role("button", name="Guardar borrador y comparar").click()
         expect(page.get_by_text("diferencia:", exact=False).last).to_be_visible()
@@ -322,7 +345,7 @@ def run():
         page.get_by_role("button", name="Confirmar arqueo", exact=True).click()
         expect(page.get_by_text("Confirmado", exact=False).first).to_be_visible()
         page.screenshot(path=str(OUT / "arqueo.png"), full_page=True)
-        page.get_by_role("button", name="Comparar e importar planilla").click()
+        page.get_by_role("tab", name="Comparar con la planilla").click()
         page.locator("input[type=file]").set_input_files(
             {
                 "name": "caja.xlsx",
@@ -337,40 +360,40 @@ def run():
         page.get_by_role("button", name="Confirmar decisiones del lote").click()
         expect(page.get_by_text("Vinculada al movimiento 1")).to_be_visible()
         page.screenshot(path=str(OUT / "importacion.png"), full_page=True)
-        page.get_by_role("button", name="Registrar movimiento", exact=True).click()
+        page.get_by_role("button", name="+ Nuevo movimiento", exact=True).click()
         page.get_by_label("Concepto", exact=True).fill("Conservar borrador ante error")
-        page.get_by_placeholder("Buscar contacto…").fill("Proveedor")
+        page.locator("form").get_by_placeholder("Buscar contacto…").fill("Proveedor")
         page.get_by_role("button", name="Proveedor de prueba").click()
         page.locator("label").filter(has_text="FC 0001-00000100").click()
         state["errorPreview"] = True
-        page.get_by_role("button", name="Previsualizar", exact=True).click()
+        page.get_by_role("button", name="Revisar efectos antes de guardar", exact=True).click()
         expect(page.get_by_role("alert").filter(has_text="Cambió el contexto")).to_be_visible()
         expect(page.get_by_label("Concepto", exact=True)).to_have_value(
             "Conservar borrador ante error"
         )
         state["errorPreview"] = False
         page.get_by_label(re.compile("^Operación")).select_option("aporte")
-        page.get_by_label(re.compile("^Socio")).select_option("1")
-        page.get_by_role("button", name="Previsualizar", exact=True).click()
+        page.locator("form").get_by_label(re.compile("^Socio")).select_option("1")
+        page.get_by_role("button", name="Revisar efectos antes de guardar", exact=True).click()
         expect(page.get_by_role("heading", name="Efectos antes de guardar")).to_be_visible()
         assert state["previews"][-1]["idSocio"] == 1 and "idContacto" not in state["previews"][-1]
         page.get_by_label(re.compile("^Operación")).select_option("retiro_ganancias")
-        page.get_by_role("button", name="Previsualizar", exact=True).click()
+        page.get_by_role("button", name="Revisar efectos antes de guardar", exact=True).click()
         expect(page.get_by_role("heading", name="Efectos antes de guardar")).to_be_visible()
         assert state["previews"][-1]["tipo"] == "retiro_ganancias"
         page.get_by_label(re.compile("^Operación")).select_option("traspaso_cajas")
         page.get_by_label("Caja de destino").select_option("campo-chica")
-        page.get_by_role("button", name="Previsualizar", exact=True).click()
+        page.get_by_role("button", name="Revisar efectos antes de guardar", exact=True).click()
         expect(page.get_by_role("heading", name="Efectos antes de guardar")).to_be_visible()
         assert state["previews"][-1]["cajaDestino"] == "campo-chica"
         page.get_by_label(re.compile("^Operación")).select_option("extraccion_banco")
         page.get_by_label("Movimiento del extracto (fecha elegida)").select_option("7")
-        page.get_by_role("button", name="Previsualizar", exact=True).click()
+        page.get_by_role("button", name="Revisar efectos antes de guardar", exact=True).click()
         expect(page.get_by_role("heading", name="Efectos antes de guardar")).to_be_visible()
         assert state["previews"][-1]["banco"]["idMovimiento"] == 7
         page.get_by_label(re.compile("^Operación")).select_option("cobro")
         page.locator("label").filter(has_text="Venta 001").click()
-        page.get_by_role("button", name="Previsualizar", exact=True).click()
+        page.get_by_role("button", name="Revisar efectos antes de guardar", exact=True).click()
         expect(page.get_by_role("heading", name="Efectos antes de guardar")).to_be_visible()
         assert state["previews"][-1]["aplicaciones"][0]["tipoDocumento"] == "VentaHacienda"
         page.get_by_label(re.compile("^Operación")).select_option("gasto_sin_comprobante")
@@ -378,29 +401,75 @@ def run():
         page.get_by_label(re.compile("^Centro de costos")).select_option("1")
         page.get_by_label("Importe del reparto").fill("100")
         page.get_by_label("Concepto", exact=True).click()
-        page.get_by_role("button", name="Previsualizar", exact=True).click()
+        page.get_by_role("button", name="Revisar efectos antes de guardar", exact=True).click()
         expect(page.get_by_role("heading", name="Efectos antes de guardar")).to_be_visible()
         assert state["previews"][-1]["repartos"][0]["importePesos"] == "100.00"
         state["particular"] = True
         page.reload(wait_until="networkidle")
-        page.get_by_role("button", name="Registrar movimiento", exact=True).click()
+        page.get_by_role("button", name="+ Nuevo movimiento", exact=True).click()
         page.get_by_label("Concepto", exact=True).fill("Compra particular de prueba")
-        page.get_by_placeholder("Buscar contacto…").fill("Proveedor")
+        page.locator("form").get_by_placeholder("Buscar contacto…").fill("Proveedor")
         page.get_by_role("button", name="Proveedor de prueba").click()
         page.get_by_label("Compra particular de un socio", exact=True).check()
         page.locator("select").filter(has=page.locator('option[value="10"]')).select_option("10")
-        page.get_by_label(re.compile("^Socio")).select_option("1")
-        page.get_by_role("button", name="Previsualizar", exact=True).click()
+        page.locator("form").get_by_label(re.compile("^Socio")).select_option("1")
+        page.get_by_role("button", name="Revisar efectos antes de guardar", exact=True).click()
         expect(page.get_by_role("heading", name="Efectos antes de guardar")).to_be_visible()
         assert state["previews"][-1]["compraParticular"]["idCompra"] == 10
         assert state["previews"][-1]["compraParticular"]["idSocio"] == 1
         page.screenshot(path=str(OUT / "particular-preview.png"), full_page=True)
+        # Corrección de caja conserva el formulario en el historial anulado.
+        page.get_by_role("button",name="Cerrar",exact=True).click()
+        page.goto(f"{URL}/finanzas/cajas",wait_until="networkidle")
+        expect(page.get_by_role("heading",name="Caja Giamigli US$",exact=True)).to_be_visible()
+        page.screenshot(path=str(OUT / "resumen-cajas-socios.png"),full_page=True)
+        page.goto(f"{URL}/finanzas/cajas-efectivo/giamigli-dolares",wait_until="networkidle")
+        page.get_by_role("button",name="+ Nuevo movimiento",exact=True).click()
+        expect(page.locator("form").get_by_label(re.compile("^Operación"))).to_have_value("ingreso_dolares")
+        assert page.locator("form option[value=pago]").count()==0
+        page.get_by_label("Concepto",exact=True).fill("Ingreso billetes USD")
+        page.get_by_label("Importe",exact=True).fill("100")
+        page.get_by_label("Importe",exact=True).press("Tab")
+        page.get_by_role("button",name="Revisar efectos antes de guardar",exact=True).click()
+        expect(page.get_by_role("heading",name="Efectos antes de guardar")).to_be_visible()
+        assert state["previews"][-1]["caja"]=="giamigli-dolares"
+        page.screenshot(path=str(OUT / "dolares-preview.png"),full_page=True)
+        page.get_by_role("button",name="Cerrar",exact=True).click()
+        page.goto(f"{URL}/finanzas/cuentas-socios/2",wait_until="networkidle")
+        page.get_by_role("button",name="+ Nuevo asiento",exact=True).click()
+        page.get_by_label(re.compile("^Importe en pesos")).fill("100")
+        page.get_by_label(re.compile("^Importe en pesos")).press("Tab")
+        page.get_by_label("Concepto",exact=True).fill("Asiento nuevo UI")
+        page.get_by_role("button",name="Registrar asiento",exact=True).click()
+        expect(page.get_by_text("Asiento nuevo UI",exact=True)).to_be_visible()
+        page.get_by_role("row").filter(has_text="Asiento nuevo UI").get_by_role("button",name="Editar").click()
+        page.get_by_label("Concepto",exact=True).fill("Asiento corregido UI")
+        page.get_by_role("button",name="Guardar corrección",exact=True).click()
+        expect(page.get_by_text("Asiento corregido UI",exact=True)).to_be_visible()
+        page.once("dialog",lambda d:d.accept("Correccion UI"))
+        page.get_by_role("row").filter(has_text="Asiento corregido UI").get_by_role("button",name="Anular").click()
+        expect(page.get_by_text("Asiento corregido UI",exact=True)).to_have_count(0)
+        page.get_by_role("button",name="Aporte / retiro en efectivo…",exact=True).click()
+        page.locator("select").filter(has=page.locator('option[value="giamigli-dolares"]')).select_option("giamigli-dolares")
+        page.get_by_label("Concepto",exact=True).fill("Aporte Lucy USD")
+        page.get_by_label("Importe",exact=True).fill("100")
+        page.get_by_label("Importe",exact=True).press("Tab")
+        page.get_by_role("button",name="Revisar efectos antes de guardar",exact=True).click()
+        expect(page.get_by_role("heading",name="Efectos antes de guardar")).to_be_visible()
+        assert state["previews"][-1]["idSocio"]==2 and state["previews"][-1]["caja"]=="giamigli-dolares"
+        page.screenshot(path=str(OUT / "socio-aporte-dolares.png"),full_page=True)
+        page.goto(f"{URL}/finanzas/cajas-efectivo/giamigli-sa",wait_until="networkidle")
         state["rol"] = "Lectura"
         page.reload(wait_until="networkidle")
-        expect(page.get_by_role("button", name="Registrar movimiento", exact=True)).to_have_count(0)
-        expect(page.get_by_role("button", name="Comparar e importar planilla")).to_have_count(0)
-        expect(page.get_by_role("button", name="Arqueos", exact=True)).to_be_visible()
+        expect(page.get_by_role("button", name="+ Nuevo movimiento", exact=True)).to_have_count(0)
+        expect(page.get_by_role("button", name="Previsualizar archivo")).to_have_count(0)
+        expect(page.get_by_role("tab", name="Arqueos", exact=True)).to_be_visible()
         page.screenshot(path=str(OUT / "solo-lectura.png"), full_page=True)
+        page.goto(f"{URL}/finanzas/cuentas-socios/2",wait_until="networkidle")
+        expect(page.get_by_role("button",name="+ Nuevo asiento",exact=True)).to_have_count(0)
+        expect(page.get_by_role("button",name="Editar",exact=True)).to_have_count(0)
+        expect(page.get_by_role("button",name="Anular",exact=True)).to_have_count(0)
+        page.screenshot(path=str(OUT / "socio-solo-lectura.png"),full_page=True)
         assert not errors, errors
         assert not state["unexpected"], state["unexpected"]
         context.close()
@@ -425,7 +494,7 @@ def run():
             "cobro",
             "gasto_sin_comprobante",
                 "compra_particular",
-            "rol_lectura",
+            "rol_lectura", "resumen_cajas_socios", "dolares", "asiento_socio", "editar_socio", "anular_socio", "aporte_socio_usd", "corregir_caja_con_aplicaciones",
         ],
     }
     (OUT / "resultado.json").write_text(

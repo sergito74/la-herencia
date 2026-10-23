@@ -6,7 +6,7 @@ import { BackLink } from "@/components/ui/BackLink";
 import { CajasNav } from "@/components/cajas-efectivo/CajasNav";
 import { Suspense } from "react";
 
-const CAJAS_VALIDAS: CajaSlug[] = ["giamigli-sa", "campo-chica", "condominio-lsc"];
+const CAJAS_VALIDAS: CajaSlug[] = ["giamigli-sa", "campo-chica", "condominio-lsc", "giamigli-dolares"];
 
 export const metadata = {
   title: "Caja de efectivo",

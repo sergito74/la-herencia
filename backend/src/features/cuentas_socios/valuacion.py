@@ -46,3 +46,17 @@ def a_fecha(importe, fecha):
         "fuenteDolar": "Dolar BNA.Prom_billete",
         "fuenteNovillo": "IndiceINMAG.Indice",
     }
+
+
+def dolares_a_fecha(importe, fecha):
+    """Billetes USD: íntegramente USD, sin kg; equivalencia nominal separada."""
+    dol = fetch_one(
+        "SELECT TOP 1 Fecha fecha,Prom_billete valor FROM dbo.[Dolar BNA] "
+        "WHERE Fecha<=? AND Prom_billete>0 ORDER BY Fecha DESC", (fecha,),
+    )
+    if not dol:
+        raise ValueError("No hay dólar BNA disponible a la fecha para la equivalencia del socio.")
+    usd = Decimal(str(importe))
+    return {"importeUSD": usd, "importeKgCarne": Decimal(0),
+            "importePesos": (usd * Decimal(str(dol["valor"]))).quantize(Decimal(".01"), rounding=ROUND_HALF_UP),
+            "dolar": dol, "novillo": None, "fuenteDolar": "Dolar BNA.Prom_billete", "monedaOrigen": "Dolares"}
