@@ -12,7 +12,7 @@ def _f(value) -> float:
 
 def calcular_saldo(caja: str) -> float:
     fila = fetch_one(
-        "SELECT SUM(Importe) AS saldo FROM dbo.MovimientosCajaEfectivo WHERE Caja = ? AND Anulada = 0",
+        "SELECT SUM(Importe) AS saldo FROM dbo.vw_MovimientosCajaEfectivoOperativos WHERE Caja = ? AND Anulada = 0",
         (caja,),
     )
     return round(_f(fila["saldo"] if fila else None), 2)
@@ -20,7 +20,7 @@ def calcular_saldo(caja: str) -> float:
 
 def listar_movimientos(caja: str, page: int, page_size: int) -> tuple[list[dict], int]:
     total_row = fetch_one(
-        "SELECT COUNT(*) AS total FROM dbo.MovimientosCajaEfectivo WHERE Caja = ? AND Anulada = 0",
+        "SELECT COUNT(*) AS total FROM dbo.vw_MovimientosCajaEfectivoOperativos WHERE Caja = ? AND Anulada = 0",
         (caja,),
     )
     total = total_row["total"] if total_row else 0
@@ -38,7 +38,7 @@ def listar_movimientos(caja: str, page: int, page_size: int) -> tuple[list[dict]
             FormaPago AS formaPago,
             NumeroDocumento AS numeroDocumento,
             IdContactoRelacionado AS idContactoRelacionado
-        FROM dbo.MovimientosCajaEfectivo
+        FROM dbo.vw_MovimientosCajaEfectivoOperativos
         WHERE Caja = ? AND Anulada = 0
         ORDER BY Fecha ASC, IdMovimiento ASC
         OFFSET ? ROWS FETCH NEXT ? ROWS ONLY
@@ -85,7 +85,7 @@ def consultar_movimientos(
     cte = """WITH base AS (
         SELECT *,SUM(CASE WHEN Anulada=0 THEN Importe ELSE 0 END)
         OVER (ORDER BY Fecha,IdMovimiento ROWS UNBOUNDED PRECEDING) saldoReal
-        FROM dbo.MovimientosCajaEfectivo WHERE Caja=?) """
+        FROM dbo.vw_MovimientosCajaEfectivoOperativos WHERE Caja=?) """
     filter_sql = " AND ".join(where)
     totals = db.one(
         cte
@@ -107,7 +107,7 @@ def consultar_movimientos(
     )
     previous = (
         db.one(
-            "SELECT ISNULL(SUM(Importe),0) saldo FROM dbo.MovimientosCajaEfectivo "
+            "SELECT ISNULL(SUM(Importe),0) saldo FROM dbo.vw_MovimientosCajaEfectivoOperativos "
             "WHERE Caja=? AND Anulada=0 AND CAST(Fecha AS date)<?",
             (caja, desde),
         )

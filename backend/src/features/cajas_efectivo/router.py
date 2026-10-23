@@ -220,12 +220,12 @@ async def saldo_caja(caja: str, detalleSaldo: bool = False) -> SaldoCaja:
     caja_real = _resolver_caja(caja)
     if detalleSaldo:
         row = await _ejecutar(operaciones.one,
-                             'SELECT ISNULL(SUM(Importe),0) saldo FROM dbo.MovimientosCajaEfectivo '
+                             'SELECT ISNULL(SUM(Importe),0) saldo FROM dbo.vw_MovimientosCajaEfectivoOperativos '
                              'WHERE Caja=? AND Anulada=0', (caja_real,))
         latest = await _ejecutar(arqueos.listar, caja, 1, 1)
         return SaldoCaja(caja=caja, saldo=float(row['saldo']), saldoDecimal=f"{row['saldo']:.2f}",
                          ultimoArqueo=latest['items'][0] if latest['items'] else None,
-                         cobertura='Solo relaciones con Giamigli; historia completa conservada.'
+                         cobertura='Neto de movimientos documentados con Giamigli; no representa efectivo físico ni saldo de la cuenta del socio.'
                          if caja == 'condominio-lsc' else ('Tenencia de billetes en dólares estadounidenses.' if caja == 'giamigli-dolares' else 'Caja de Giamigli en pesos.'))
     saldo = await run_in_threadpool(repository.calcular_saldo, caja_real)
     return SaldoCaja(caja=caja, saldo=saldo, saldoDecimal=f'{saldo:.2f}')

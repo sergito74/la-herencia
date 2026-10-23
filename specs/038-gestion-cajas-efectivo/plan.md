@@ -5,7 +5,7 @@
 Fecha: 22/10/2026. Spec: [spec.md](spec.md). Rama real: main; contexto Spec Kit: 038-gestion-cajas-efectivo.
 
 ## Summary
-Ampliar 027 para operar tres cajas en pesos. Una operación coordina caja, pago/cobro, aplicaciones, socio y banco en una transacción. Conservar historia y comparar con Excel durante la convivencia. Condominio solo admite nuevos movimientos relacionados con Giamigli.
+Ampliar 027 para operar tres cajas en pesos. Una operación coordina caja, pago/cobro, aplicaciones, socio y banco en una transacción. Conservar historia y comparar con Excel durante la convivencia. Condominio muestra únicamente movimientos documentados con Giamigli; la historia ajena/sin vínculo queda archivada y se conserva auditada.
 
 ## Technical Context
 - Language/Version: Python (Ruff py313), TypeScript 5, Next.js 14 y React 18 existentes.
@@ -44,3 +44,7 @@ Sin excepciones. La cabecera de operación y sus vínculos no forman un libro pa
 
 ## Corrección del análisis — 22/10/2026
 Autorización de Sergio: corregir los siete hallazgos. Ver precisiones vinculantes en spec.md, data-model.md y contracts/api.md. Contrato SQL/API ejecutado y verificado es puerta antes de cliente/UI, no solo antes de habilitar botones. Añadir GastoCajaEfectivo/RepartosGastoCaja como origen no fiscal único integrado a costos, sin duplicar compras. Separar traspaso interno de aportes/devoluciones Condominio. Invalidación/desactualización de arqueos, saldo real frente a subtotal filtrado, compatibilidad numérica GET y opción A acotada quedan definidos. Siguiente fase: implementar las 57 tareas; esquema vivo aún pendiente de lectura.
+
+
+## Corrección de alcance aprobada — 23/10/2026
+Sergio reemplaza la conservación visible de toda la caja del Condominio por un registro exclusivo de relaciones con Giamigli. Ver [criterios, contrato y plan de corrección](limpieza-condominio-20261023.md). Históricos ajenos/sin vínculo documentado permanecen archivados, fuera de saldos, filtros y comparaciones operativas. El neto parcial no representa tenencia física ni deuda; no admite arqueos físicos. Una sola entrada de Condominio con cuenta de socio y movimientos vinculados, sin sumar ni duplicar sus efectos.

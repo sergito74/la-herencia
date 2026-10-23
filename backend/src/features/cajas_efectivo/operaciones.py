@@ -79,7 +79,7 @@ def detail(id_operation):
         "movimientos": read(
             "SELECT IdMovimiento idMovimiento,Caja caja,Fecha fecha, "
             "CONVERT(varchar(40),CAST(Importe AS decimal(19,2))) importeDecimal,"
-            "Anulada anulada FROM dbo.MovimientosCajaEfectivo "
+            "Anulada anulada FROM dbo.vw_MovimientosCajaEfectivoOperativos "
             "WHERE IdOperacionCaja=? ORDER BY IdMovimiento",
             (id_operation,),
         ),
@@ -166,7 +166,7 @@ def caja_context(box, when, excluir_operacion=None):
     start = datetime.combine(when, time.min)
     rows = read(
         "SELECT IdMovimiento id,Fecha fecha,Importe importe,Anulada anulada,IdOperacionCaja operacion "
-        "FROM dbo.MovimientosCajaEfectivo WHERE Caja=? ORDER BY Fecha,IdMovimiento",
+        "FROM dbo.vw_MovimientosCajaEfectivoOperativos WHERE Caja=? ORDER BY Fecha,IdMovimiento",
         (CAJAS[box],),
     )
     balance = Decimal(0)

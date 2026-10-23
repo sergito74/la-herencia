@@ -71,3 +71,7 @@ Comparación final: las 24.065 filas de la vista de cuentas corrientes conservan
 Última ejecución: `python -m pytest tests/ -q -k 038` → 81 passed; `npx tsc --noEmit` sin errores. Suite completa (sin tests/ui): 1400 passed, 5 failed. Las 5 fallas (test_auditoria_cuentas_api ×2, test_revision_cuentas_api ×2 Jáuregui, test_vista_cuenta_tarjetas ×1) fallan idénticas con el código anterior a 038 (git stash): son pruebas contra datos vivos desactualizadas por las conciliaciones de 036, no regresiones de este módulo. Quedan como pendiente de mantenimiento de pruebas.
 Revisión T057: git diff --check limpio, sin secretos ni binarios en el diff; respaldos y capturas en backups/ (ignorado por Git). 57/57 tareas cerradas con evidencia registrada arriba.
 Pendiente real: uso operativo en paralelo con la planilla hasta que Sergio confíe en el sistema (aclaración de spec).
+
+
+## Corrección de alcance del Condominio — 23/10/2026
+Aplicada y verificada: 31 vínculos documentados visibles, 1.195 filas archivadas sin borrar originales. Ver [informe completo, respaldo y continuidad](limpieza-condominio-20261023.md). Una sola entidad Condominio LSC con Cuenta con Giamigli / Movimientos vinculados. No usar neto del subconjunto como efectivo ni deuda. Pruebas 82 y luego 31 focalizadas PASS; TypeScript/lint PASS; navegador 22 escenarios con 129 API interceptadas, sin errores y sin pruebas en WC. Los pendientes de conciliación/contrapartidas 036 siguen abiertos y no se duplicaron efectos.

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from src.features.cajas_efectivo.alcance_condominio import evidencia_relacion
+
 from datetime import date, datetime
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from hashlib import sha256
@@ -77,6 +79,7 @@ def parse(content, libro, cutoff):
             ws = wb[name]
             if ws.max_row and ws.max_row > 20001:
                 raise ValueError("La hoja supera las 20.000 filas de datos.")
+            saldo_relacionado = Decimal(0)
             for index, values in enumerate(ws.iter_rows(min_row=2, max_col=9, values_only=True), 2):
                 if index > 20001:
                     raise ValueError("La hoja supera el límite de filas.")
@@ -111,6 +114,12 @@ def parse(content, libro, cutoff):
                         v[1],
                         None,
                     )
+                if box == "condominio-lsc":
+                    if not evidencia_relacion(concept, when, amount, index):
+                        continue
+                    if amount is not None:
+                        saldo_relacionado += amount
+                    balance = saldo_relacionado if amount is not None else None
                 normalized = {
                     "caja": box,
                     "fecha": str(when) if when else None,
@@ -152,7 +161,7 @@ def _candidates(row):
         return []
     return db.read(
         "SELECT TOP 20 IdMovimiento idMovimiento,IdOperacionCaja idOperacion,FilaPlanilla filaPlanilla,"
-        "Concepto concepto,Cuenta cuenta,Anulada anulada FROM dbo.MovimientosCajaEfectivo "
+        "Concepto concepto,Cuenta cuenta,Anulada anulada FROM dbo.vw_MovimientosCajaEfectivoOperativos "
         "WHERE Caja=? AND CAST(Fecha AS date)=? AND Importe=? ORDER BY IdMovimiento",
         (db.CAJAS[n["caja"]], n["fecha"], Decimal(n["importe"])),
     )
@@ -164,14 +173,14 @@ def previsualizar(content, libro, cutoff, user):
     fingerprint = sha256(content).hexdigest()
     previous = db.one(
         "SELECT TOP 1 IdLote FROM dbo.ImportacionesCaja "
-        "WHERE Libro=? AND HuellaArchivo=? AND FechaCorte=? ORDER BY IdLote DESC",
+        "WHERE Libro=? AND HuellaArchivo=? AND FechaCorte=? AND VersionParser=2 ORDER BY IdLote DESC",
         (libro, fingerprint, cutoff),
     )
     if previous:
         return detalle(previous["IdLote"])
     id_lote = db.insert(
         "INSERT INTO dbo.ImportacionesCaja "
-        "(Libro,HuellaArchivo,FechaCorte,VersionParser,Usuario) OUTPUT INSERTED.IdLote VALUES (?,?,?,1,?)",
+        "(Libro,HuellaArchivo,FechaCorte,VersionParser,Usuario) OUTPUT INSERTED.IdLote VALUES (?,?,?,2,?)",
         (libro, fingerprint, cutoff, user),
     )
     for row in parsed:
@@ -210,7 +219,7 @@ def previsualizar(content, libro, cutoff, user):
             row["motivo"] = "Coincidencias requieren vinculación explícita."
         elif row["estado"] == "Nueva":
             position = db.one(
-                "SELECT TOP 1 IdMovimiento FROM dbo.MovimientosCajaEfectivo "
+                "SELECT TOP 1 IdMovimiento FROM dbo.vw_MovimientosCajaEfectivoOperativos "
                 "WHERE Caja=? AND FilaPlanilla=?",
                 (db.CAJAS[row["normalizada"]["caja"]], row["fila"]),
             )
@@ -285,7 +294,7 @@ def detalle(id_lote):
             comp["pendientes"] += 1
     for box, comp in comparison.items():
         system = db.one(
-            "SELECT ISNULL(SUM(Importe),0) saldo FROM dbo.MovimientosCajaEfectivo "
+            "SELECT ISNULL(SUM(Importe),0) saldo FROM dbo.vw_MovimientosCajaEfectivoOperativos "
             "WHERE Caja=? AND Anulada=0 AND CAST(Fecha AS date)<=?",
             (db.CAJAS[box], lot["FechaCorte"]),
         )["saldo"]
@@ -299,7 +308,7 @@ def detalle(id_lote):
         comp["excluidas"] = [x["idFila"] for x in box_rows if x["estado"] == "Excluida"]
         linked = {x["idMovimiento"] for x in box_rows if x["idMovimiento"] is not None}
         all_movements = db.read(
-            "SELECT TOP 20001 IdMovimiento id FROM dbo.MovimientosCajaEfectivo "
+            "SELECT TOP 20001 IdMovimiento id FROM dbo.vw_MovimientosCajaEfectivoOperativos "
             "WHERE Caja=? AND Anulada=0 AND CAST(Fecha AS date)<=? ORDER BY IdMovimiento",
             (db.CAJAS[box], lot["FechaCorte"]),
         )
@@ -309,7 +318,7 @@ def detalle(id_lote):
             "Sin vínculo confirmado; revisar también las filas ambiguas antes de atribuir omisión."
         )
         comp["cobertura"] = (
-            "Solo relaciones con Giamigli; historia propia fuera de nuevas cargas."
+            "Solo movimientos documentados con Giamigli; saldo de fuente = suma del subconjunto, no efectivo total del Condominio."
             if box == "condominio-lsc"
             else "Libro al corte"
         )
@@ -389,6 +398,8 @@ def confirmar(id_lote, body, user):
                 raise service.ConflictoCaja(
                     "El vínculo no coincide de forma única con caja/fecha/importe vigente."
                 )
+            if n["caja"] == "condominio-lsc" and not evidencia_relacion(n["concepto"], n["fecha"], n["importe"], row["NumeroFila"]):
+                raise ValueError("La fila no tiene relación documental con Giamigli y no puede vincularse.")
             movement, operation = chosen[0]["idMovimiento"], chosen[0]["idOperacion"]
             actual_account = {'White':'A','W':'A','Blue':'B'}.get(chosen[0].get('cuenta'),chosen[0].get('cuenta'))
             if n['caja'] in ('giamigli-sa','giamigli-dolares') and actual_account != n['cuenta'] and not decision.motivo:
@@ -419,6 +430,8 @@ def confirmar(id_lote, body, user):
                     "Importar requiere clasificar la operación y confirmar su vista previa."
                 )
             op = decision.operacion.operacion
+            if n["caja"] == "condominio-lsc" and not evidencia_relacion(n["concepto"], n["fecha"], n["importe"], row["NumeroFila"]):
+                raise ValueError("La fila no tiene relación documental con Giamigli y no puede importarse.")
             if n['caja'] in ('giamigli-sa','giamigli-dolares') and n['cuenta'] in ('A','B') and op.cuenta != n['cuenta']:
                 raise ValueError('La cuenta A/B debe conservar la marca de la fila de planilla.')
             if (
@@ -445,7 +458,7 @@ def confirmar(id_lote, body, user):
             result, _ = service.crear(rebased, key, user)
             operation = result["idOperacion"]
             actual = db.one(
-                "SELECT IdMovimiento FROM dbo.MovimientosCajaEfectivo WHERE IdOperacionCaja=? AND Caja=?",
+                "SELECT IdMovimiento FROM dbo.vw_MovimientosCajaEfectivoOperativos WHERE IdOperacionCaja=? AND Caja=?",
                 (operation, db.CAJAS[n["caja"]]),
             )
             movement = actual["IdMovimiento"]

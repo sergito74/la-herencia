@@ -23,7 +23,7 @@ Arqueo: IdArqueo PK, Caja, FechaCorte, SecuenciaCorte, Estado Borrador/Confirmad
 
 ## ImportacionesCaja y FilasOrigenCaja (nuevas)
 Lote: IdLote, libro lógico, huella archivo, fecha/corte, usuario, estado Preview/Confirmado, versión del parser. Fila: lote, hoja, fila, huella de contenido normalizado, datos originales, estado Nueva/Vinculada/Ambigua/Modificada/Excluida, IdMovimiento nullable, IdOperacion nullable, motivo y resolución auditada. Unicidad de fila dentro del lote y de vínculo de origen confirmado; cambios de posición se reconcilian por identidad explícita o revisión, nunca por coincidencia débil. No imponer unicidad global de contenido: filas legítimas pueden ser iguales.
-Comparación al mismo corte: saldo de cada fuente, cobertura, filas faltantes/extras/modificadas/ambiguas. No se almacena otro saldo operativo. La historia Condominio excluida de nuevas cargas queda visible como tal.
+Comparación al mismo corte: saldo de cada fuente, cobertura, filas faltantes/extras/modificadas/ambiguas. No se almacena otro saldo operativo. La historia ajena/sin vínculo del Condominio queda archivada fuera de lecturas operativas, con snapshot y evidencia en AlcanceHistoricoCaja.
 
 ## Concurrencia y reversión
 Bloquear cajas afectadas en orden estable y referencias de documentos/banco; revalidar capacidad y advertencias al guardar. Cualquier fallo revierte todos los efectos. Anulación con dependencias posteriores devuelve conflicto con identificadores. Migración reversible mediante respaldo verificado y cambios aditivos; nunca restaurar producción automáticamente ni borrar historia.
@@ -60,3 +60,7 @@ DDL reproducible: backend/scripts/migrar_gestion_cajas_038.py. Persistencia Deci
 Vista vw_PagosEfectivoVigentes y lectores de ajustes excluyen efectos de operaciones anuladas sin borrar filas. Índice UX_Caja038_PagoFisico, filtrado por vínculo de operación/IdPagoEfectivo/vigente, impide dos movimientos físicos vigentes para el mismo pago. IdOperacionAjuste usa índice UNIQUE filtrado para admitir varios NULL.
 La ausencia de PK/clave única en Centro de costos se conserva: IdCentroCostos se valida contra el catálogo dentro de la transacción, sin añadir una clave sobre datos heredados. Lecturas de datetime2 se normalizan cuando ODBC las devuelve como texto. Ninguna migración altera movimientos o saldos iniciales.
 La previsualización de anulación calcula el saldo corrido real excluyendo los movimientos de esa operación, desde su posición cronológica, y liga advertencias al contexto actual mediante SHA-256. Se conservan observaciones de arqueo; ajustes anulados invalidan el recuento y cambios retroactivos desactualizan los afectados.
+
+
+## Corrección de alcance aprobada — 23/10/2026
+Sergio reemplaza la conservación visible de toda la caja del Condominio por un registro exclusivo de relaciones con Giamigli. Ver [criterios, contrato y plan de corrección](limpieza-condominio-20261023.md). Históricos ajenos/sin vínculo documentado permanecen archivados, fuera de saldos, filtros y comparaciones operativas. El neto parcial no representa tenencia física ni deuda; no admite arqueos físicos. Una sola entrada de Condominio con cuenta de socio y movimientos vinculados, sin sumar ni duplicar sus efectos.

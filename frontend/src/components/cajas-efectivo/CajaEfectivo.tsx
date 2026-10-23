@@ -29,7 +29,7 @@ const NOMBRES: Record<CajaSlug, string> = {
   "giamigli-dolares": "Caja de efectivo — Giamigli US$",
   "giamigli-sa": "Caja de efectivo — Giamigli SA",
   "campo-chica": "Caja chica del campo",
-  "condominio-lsc": "Caja del Condominio LSC",
+  "condominio-lsc": "Movimientos del Condominio con Giamigli",
 };
 
 const COLUMNS: DataTableColumn<MovimientoCajaEfectivo>[] = [
@@ -54,8 +54,9 @@ const COLUMNS: DataTableColumn<MovimientoCajaEfectivo>[] = [
 
 /** Caja 038: operaciones, consulta, arqueos e importación con permisos existentes. */
 export function CajaEfectivo({ caja }: { caja: CajaSlug }) {
+  const esCondominio = caja === "condominio-lsc";
   const moneda = monedaCaja(caja);
-  const columns = COLUMNS.map(c => c.key === "importe" ? { ...c, render: (m: MovimientoCajaEfectivo) => formatMoneda(m.importe, moneda) } : c.key === "saldo" ? { ...c, render: (m: MovimientoCajaEfectivo) => m.saldoCorridoDecimal == null ? "—" : formatMoneda(Number(m.saldoCorridoDecimal), moneda) } : c);
+  const columns = COLUMNS.map(c => c.key === "importe" ? { ...c, render: (m: MovimientoCajaEfectivo) => formatMoneda(m.importe, moneda) } : c.key === "saldo" ? { ...c, header: esCondominio ? "Neto acumulado" : "Saldo real de caja", render: (m: MovimientoCajaEfectivo) => m.saldoCorridoDecimal == null ? "—" : formatMoneda(Number(m.saldoCorridoDecimal), moneda) } : c);
   const [page, setPage] = useState(1);
   const params = useSearchParams();
   const [vista, setVista] = useState<"movimientos" | "arqueos" | "importar">("movimientos");
@@ -70,7 +71,7 @@ export function CajaEfectivo({ caja }: { caja: CajaSlug }) {
   const [socio, setSocio] = useState(0);
   const [anulados, setAnulados] = useState(false);
   const pageSize = 50;
-  const ultimo = useQuery({ queryKey: ["caja-arqueos", caja, 1], queryFn: () => listarArqueosCaja(caja) });
+  const ultimo = useQuery({ queryKey: ["caja-arqueos", caja, 1], queryFn: () => listarArqueosCaja(caja), enabled: !esCondominio });
   const socios = useQuery({ queryKey: ["cuentas-socios"], queryFn: fetchSocios });
 
   const { data: saldo, isLoading: cargandoSaldo } = useQuery({
@@ -93,16 +94,16 @@ export function CajaEfectivo({ caja }: { caja: CajaSlug }) {
       <div className="flex items-center justify-between gap-4 rounded-md border border-border bg-surface p-4">
         <h2 className="text-lg font-semibold text-ink-primary">{NOMBRES[caja]}</h2>
         <KpiCard
-          label="Saldo"
+          label={esCondominio ? "Neto de movimientos vinculados" : "Saldo"}
           value={cargandoSaldo ? "…" : formatMoneda(saldo?.saldo ?? 0, moneda)}
-          tone={saldo && saldo.saldo < 0 ? "danger" : "success"}
+          tone={esCondominio ? "neutral" : saldo && saldo.saldo < 0 ? "danger" : "success"}
         />
       </div>
-      {caja === "condominio-lsc" && <p>Se conserva la historia completa. Las operaciones nuevas registran únicamente la relación con Giamigli; la administración propia del Condominio sigue fuera de este módulo.</p>}
-      {ultimo.data?.items[0] && <p>Último arqueo: {formatFecha(ultimo.data.items[0].fechaCorte)} · {ultimo.data.items[0].estado} · diferencia vigente {formatMoneda(Number(ultimo.data.items[0].diferenciaVigenteDecimal), moneda)}</p>}
-      {ultimo.isError && <p role="alert">No se pudo consultar el último arqueo. <button onClick={() => ultimo.refetch()}>Reintentar</button></p>}
+      {caja === "condominio-lsc" && <p>Solo relaciones documentadas con Giamigli. Salidas del Condominio negativas; entradas positivas. El neto no representa el efectivo físico del Condominio ni su deuda o crédito con Giamigli, que se consulta en «Cuenta con Giamigli». Los gastos propios y las filas sin vínculo comprobado quedaron fuera de este registro.</p>}
+      {!esCondominio && ultimo.data?.items[0] && <p>Último arqueo: {formatFecha(ultimo.data.items[0].fechaCorte)} · {ultimo.data.items[0].estado} · diferencia vigente {formatMoneda(Number(ultimo.data.items[0].diferenciaVigenteDecimal), moneda)}</p>}
+      {!esCondominio && ultimo.isError && <p role="alert">No se pudo consultar el último arqueo. <button onClick={() => ultimo.refetch()}>Reintentar</button></p>}
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="text-sm text-ink-secondary">{moneda === "Dolares" ? "Tenencias, entradas y salidas de dólares billete, aportes y retiros de socios." : "Pagos, cobros, aportes y retiros de socios, traspasos, banco y gastos."} Un movimiento mal cargado se anula (queda en el historial) y se vuelve a cargar con «Corregir».</p>
+        <p className="text-sm text-ink-secondary">{esCondominio ? "Pagos de gastos de Giamigli realizados por el Condominio. Los aportes y devoluciones se registran desde Cuenta con Giamigli." : moneda === "Dolares" ? "Tenencias, entradas y salidas de dólares billete, aportes y retiros de socios." : "Pagos, cobros, aportes y retiros de socios, traspasos, banco y gastos."} Un movimiento mal cargado se anula (queda en el historial) y se vuelve a cargar con «Corregir».</p>
         <SoloLectura><button className="rounded-sm bg-agro px-4 py-2 text-sm text-white hover:opacity-90" onClick={() => setNuevo(true)}>+ Nuevo movimiento</button></SoloLectura>
       </div>
       <SideDrawer open={nuevo} onClose={() => setNuevo(false)} title={`Nuevo movimiento — ${NOMBRES[caja]}`} maxWidthClass="max-w-3xl">
@@ -111,8 +112,8 @@ export function CajaEfectivo({ caja }: { caja: CajaSlug }) {
       <SideDrawer open={detalle !== null} onClose={() => setDetalle(null)} title="Detalle, auditoría y anulación" maxWidthClass="max-w-2xl">
         {detalle && <DetalleOperacionCaja key={detalle} id={detalle} onClose={() => setDetalle(null)} />}
       </SideDrawer>
-      <Tabs idBase="caja" activa={vista} onChange={setVista} tabs={[{ id: "movimientos", label: "Movimientos" }, { id: "arqueos", label: "Arqueos" }, { id: "importar", label: "Comparar con la planilla" }]}>
-      {vista === "arqueos" && <ArqueoCajaPanel key={caja} caja={caja} onOperation={setDetalle} />}
+      <Tabs idBase="caja" activa={vista} onChange={setVista} tabs={esCondominio ? [{ id: "movimientos", label: "Movimientos vinculados" }, { id: "importar", label: "Comparar vínculos con la planilla" }] : [{ id: "movimientos", label: "Movimientos" }, { id: "arqueos", label: "Arqueos" }, { id: "importar", label: "Comparar con la planilla" }]}>
+      {!esCondominio && vista === "arqueos" && <ArqueoCajaPanel key={caja} caja={caja} onOperation={setDetalle} />}
       {vista === "importar" && <SoloLectura><ImportacionCajaPanel /></SoloLectura>}
       {vista === "movimientos" && <><div className="grid gap-3 rounded border border-border p-3 md:grid-cols-3">
         <label>Desde<input className="block rounded border border-border p-2" type="date" value={desde} onChange={e => { setDesde(e.target.value); setPage(1); }} /></label>
@@ -122,7 +123,7 @@ export function CajaEfectivo({ caja }: { caja: CajaSlug }) {
         <label>Socio<select className="block rounded border border-border p-2" value={socio} onChange={e => { setSocio(Number(e.target.value)); setPage(1); }}><option value={0}>Todos</option>{socios.data?.socios.map(s => <option key={s.idSocio} value={s.idSocio}>{s.nombre}</option>)}</select></label>
         <label><input type="checkbox" checked={anulados} onChange={e => { setAnulados(e.target.checked); setPage(1); }} /> Incluir anulados</label>
       </div>
-      {movimientos && <p>Arrastre real: {formatMoneda(Number(movimientos.saldoAnteriorDecimal ?? 0), moneda)} · subtotal de movimientos filtrados: {formatMoneda(Number(movimientos.subtotalFiltradoDecimal ?? 0), moneda)}. El saldo corrido incluye los movimientos ocultos por los filtros.</p>}
+      {movimientos && <p>{esCondominio ? "Neto anterior al período" : "Arrastre real"}: {formatMoneda(Number(movimientos.saldoAnteriorDecimal ?? 0), moneda)} · subtotal de movimientos filtrados: {formatMoneda(Number(movimientos.subtotalFiltradoDecimal ?? 0), moneda)}. {esCondominio ? "El neto acumulado" : "El saldo corrido"} incluye los movimientos ocultos por los filtros.</p>}
 
       {isLoading && <LoadingState />}
       {isError && <ErrorState message="Ocurrió un error al obtener los movimientos." onRetry={() => refetch()} />}

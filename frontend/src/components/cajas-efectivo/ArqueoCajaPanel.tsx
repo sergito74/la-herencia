@@ -27,7 +27,7 @@ export function ArqueoCajaPanel({ caja, onOperation }: { caja: CajaSlug; onOpera
   const firma = (d: { valor: string; cantidad: number }[]) => JSON.stringify([...d].sort((a, b) => Number(a.valor) - Number(b.valor)));
   const dirty = draft ? fecha !== draft.fechaCorte || firma(denominaciones.map(d => ({ valor: d.valor.toFixed(2), cantidad: Number(d.cantidad) }))) !== firma(draft.denominaciones) : false;
   return <section className="space-y-3 rounded border border-border p-4"><h3 className="font-semibold">Arqueos de efectivo en {monedaCaja(caja) === "Dolares" ? "dólares" : "pesos"}</h3>
-    {caja === "condominio-lsc" && <p>La historia completa sigue visible. Los movimientos nuevos solo cubren su relación con Giamigli; este recuento no certifica el sistema propio del Condominio.</p>}
+    {caja === "condominio-lsc" && <p>El registro parcial del Condominio no admite arqueos físicos.</p>}
     {data.isLoading && <p>Cargando arqueos…</p>}{data.isError && <p role="alert">{data.error.message} <button onClick={() => data.refetch()}>Reintentar</button></p>}
     {data.data?.items.length === 0 && <p>No hay arqueos registrados.</p>}
     <ul className="space-y-2">{data.data?.items.map(a => <li className="rounded border border-border p-2" key={a.idArqueo}><p>{formatFecha(a.fechaCorte)} · {a.estado} · contado {formatMoneda(Number(a.totalContado), monedaCaja(caja))} · diferencia original {formatMoneda(Number(a.diferencia), monedaCaja(caja))} · diferencia vigente {formatMoneda(Number(a.diferenciaVigenteDecimal), monedaCaja(caja))}</p>

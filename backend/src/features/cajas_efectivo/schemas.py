@@ -81,6 +81,8 @@ class OperacionCaja(Estricto):
 
     @model_validator(mode="after")
     def validar_combinacion(self):
+        if self.caja == "condominio-lsc" and self.tipo != "pago":
+            raise ValueError("Condominio: los aportes/devoluciones se registran desde la caja de Giamigli con contraparte Condominio; aquí solo pagos directos de gastos de Giamigli.")
         es_usd = self.caja == "giamigli-dolares"
         if es_usd and self.tipo not in ("ingreso_dolares", "egreso_dolares", "aporte", "retiro_a_cuenta", "retiro_ganancias"):
             raise ValueError("Caja USD: elegir entrada/salida de dólares o aporte/retiro de socio.")

@@ -17,7 +17,6 @@ export function EfectivoSocioForm({ idSocio, onListo }: { idSocio: number; onLis
             <option value="giamigli-sa">Giamigli SA</option>
             <option value="giamigli-dolares">Giamigli US$ (billetes)</option>
             <option value="campo-chica">Caja chica del campo</option>
-            <option value="condominio-lsc">Condominio LSC</option>
           </select>
         </label>
         <label>Qué hace el socio

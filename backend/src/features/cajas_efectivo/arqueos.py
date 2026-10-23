@@ -40,7 +40,7 @@ class Confirmacion(Estricto):
 
 def _saldo(caja, fecha, secuencia):
     return db.one(
-        "SELECT ISNULL(SUM(Importe),0) saldo FROM dbo.MovimientosCajaEfectivo "
+        "SELECT ISNULL(SUM(Importe),0) saldo FROM dbo.vw_MovimientosCajaEfectivoOperativos "
         "WHERE Caja=? AND Anulada=0 AND (CAST(Fecha AS date)<? OR "
         "(CAST(Fecha AS date)=? AND IdMovimiento<=?))",
         (db.CAJAS[caja], fecha, fecha, secuencia),
@@ -123,6 +123,8 @@ def listar(caja, page=1, size=20):
 
 @atomic_reconciliation
 def guardar(caja, body, user, id_arqueo=None):
+    if caja == "condominio-lsc":
+        raise ValueError("El registro parcial de vínculos con Giamigli no admite arqueos físicos.")
     if id_arqueo:
         previous = detalle(caja, id_arqueo)
         if previous["estado"] != "Borrador" or body.versionEsperada != previous["version"]:
@@ -132,7 +134,7 @@ def guardar(caja, body, user, id_arqueo=None):
         if previous["estado"] not in ("Invalidado", "Desactualizado"):
             raise ValueError("Solo se corrige un arqueo invalidado/desactualizado.")
     last = db.one(
-        "SELECT ISNULL(MAX(IdMovimiento),0) secuencia FROM dbo.MovimientosCajaEfectivo "
+        "SELECT ISNULL(MAX(IdMovimiento),0) secuencia FROM dbo.vw_MovimientosCajaEfectivoOperativos "
         "WHERE Caja=? AND CAST(Fecha AS date)<=?",
         (db.CAJAS[caja], body.fechaCorte),
     )["secuencia"]
@@ -168,6 +170,8 @@ def guardar(caja, body, user, id_arqueo=None):
 
 @atomic_reconciliation
 def confirmar(caja, id_arqueo, body, user):
+    if caja == "condominio-lsc":
+        raise ValueError("El registro parcial de vínculos con Giamigli no admite arqueos físicos.")
     a = detalle(caja, id_arqueo)
     if a["estado"] == "Confirmado":
         return a
@@ -183,7 +187,7 @@ def confirmar(caja, id_arqueo, body, user):
     # The adjustment belongs to end-of-cutoff. Refuse an obsolete partial cutoff,
     # since a physical count cannot certify cash movements excluded on the same day.
     last = db.one(
-        "SELECT ISNULL(MAX(IdMovimiento),0) secuencia FROM dbo.MovimientosCajaEfectivo "
+        "SELECT ISNULL(MAX(IdMovimiento),0) secuencia FROM dbo.vw_MovimientosCajaEfectivoOperativos "
         "WHERE Caja=? AND CAST(Fecha AS date)<=?",
         (db.CAJAS[caja], a["fechaCorte"]),
     )["secuencia"]

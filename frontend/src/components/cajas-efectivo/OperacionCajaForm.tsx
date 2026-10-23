@@ -114,7 +114,7 @@ export function OperacionCajaForm({ caja, initial, onSaved, onPrepared }: {
     {usd && <p>Importes y saldo en US$ billete. Los aportes y retiros a cuenta del socio se registran íntegramente en dólares, sin kg INMAG.</p>}
     <div className="grid gap-3 md:grid-cols-3">
       <label>Operación<select className={input} value={tipo} onChange={e => { setTipo(e.target.value as TipoOperacionCaja); setSeleccion({}); setParticular(false); setCompra(0); }}>
-        {Object.entries(TIPOS_CAJA).filter(([t]) => usd ? ["ingreso_dolares", "egreso_dolares", "aporte", "retiro_a_cuenta", "retiro_ganancias"].includes(t) : !["ingreso_dolares", "egreso_dolares"].includes(t) && (caja !== "condominio-lsc" || t !== "traspaso_cajas")).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+        {Object.entries(TIPOS_CAJA).filter(([t]) => caja === "condominio-lsc" ? t === "pago" : usd ? ["ingreso_dolares", "egreso_dolares", "aporte", "retiro_a_cuenta", "retiro_ganancias"].includes(t) : !["ingreso_dolares", "egreso_dolares"].includes(t)).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
       </select></label>
       <label>Fecha<input className={input} type="date" required value={fecha} onChange={e => setFecha(e.target.value)} /></label>
       <label>Cuenta<select className={input} value={cuenta} onChange={e => setCuenta(e.target.value as "A" | "B")}><option>A</option><option>B</option></select></label>
@@ -134,7 +134,7 @@ export function OperacionCajaForm({ caja, initial, onSaved, onPrepared }: {
         <label className="block"><input type="checkbox" checked={asientoNuevo} onChange={e => setAsientoNuevo(e.target.checked)} /> Confirmo que debe crearse un asiento particular nuevo</label></>}
     </>}
     {(esSocio || particular) && <label>Socio<select className={input} value={socio} onChange={e => setSocio(Number(e.target.value))}><option value={0}>Elegir socio</option>{socios.data?.socios.map(s => <option key={s.idSocio} value={s.idSocio}>{s.nombre}</option>)}</select></label>}
-    {esSocio && socio === 3 && !usd && caja !== "condominio-lsc" && tipo !== "retiro_ganancias" && <label className="block"><input type="checkbox" checked={contraparte} onChange={e => setContraparte(e.target.checked)} /> El efectivo sale de / vuelve a la caja del Condominio (registrar ambas cajas)</label>}
+    {esSocio && socio === 3 && !usd && caja !== "condominio-lsc" && tipo !== "retiro_ganancias" && <label className="block"><input type="checkbox" checked={contraparte} onChange={e => setContraparte(e.target.checked)} /> Registrar también la salida / devolución en los movimientos vinculados del Condominio</label>}
     {(caja === "condominio-lsc" || (socio === 3 && contraparte)) && <label>Relación con Giamigli<input className={input} required maxLength={255} value={motivo} onChange={e => setMotivo(e.target.value)} /></label>}
     {tipo === "retiro_ganancias" && <p>Distribución de ganancias: no genera deuda ni crédito del socio.</p>}
     {tipo === "traspaso_cajas" && <label>Caja de destino<select className={input} value={destino} onChange={e => setDestino(e.target.value as CajaSlug)}>{(["giamigli-sa", "campo-chica"] as CajaSlug[]).filter(c => c !== caja).map(c => <option value={c} key={c}>{nombresCaja[c]}</option>)}</select></label>}

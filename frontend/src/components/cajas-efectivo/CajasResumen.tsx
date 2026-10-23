@@ -13,7 +13,6 @@ const CAJAS: { slug: CajaSlug; nombre: string; detalle: string }[] = [
   { slug: "giamigli-sa", nombre: "Caja Giamigli SA", detalle: "Efectivo de la empresa" },
   { slug: "giamigli-dolares", nombre: "Caja Giamigli US$", detalle: "Tenencia y movimientos de billetes en dólares" },
   { slug: "campo-chica", nombre: "Caja chica del campo", detalle: "Gastos menores en La Herencia" },
-  { slug: "condominio-lsc", nombre: "Caja Condominio LSC", detalle: "Solo movimientos con Giamigli" },
 ];
 
 function TarjetaCaja({ slug, nombre, detalle }: (typeof CAJAS)[number]) {
@@ -53,7 +52,7 @@ export function CajasResumen() {
     <div className="space-y-8">
       <section>
         <h2 className="mb-3 text-lg font-semibold">Cajas de efectivo</h2>
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <div className="grid gap-4 md:grid-cols-3">
           {CAJAS.map((c) => (
             <TarjetaCaja key={c.slug} {...c} />
           ))}
@@ -61,7 +60,7 @@ export function CajasResumen() {
       </section>
 
       <section>
-        <h2 className="text-lg font-semibold">Cuentas de socios</h2>
+        <h2 className="text-lg font-semibold">Cuentas de socios y Condominio</h2>
         <p className="mb-3 text-sm text-ink-secondary">
           Deuda actualizada = kg de novillo × INMAG de hoy + US$ × dólar BNA de hoy. Positivo: el socio le debe a la empresa; negativo: a favor del socio.
         </p>
@@ -72,12 +71,9 @@ export function CajasResumen() {
             const a = s.actualizada;
             const deuda = a?.deudaActualizada ?? s.saldo;
             return (
-              <Link
-                key={s.idSocio}
-                href={`/finanzas/cuentas-socios/${s.idSocio}`}
-                className="rounded-md border border-border bg-surface p-4 hover:border-agro"
-              >
-                <h3 className="font-semibold">{s.nombre}</h3>
+              <article key={s.idSocio} className="rounded-md border border-border bg-surface p-4">
+                <Link href={`/finanzas/cuentas-socios/${s.idSocio}`} className="hover:underline">
+                <h3 className="font-semibold">{s.idSocio === 3 ? "Condominio LSC" : s.nombre}</h3></Link>
                 <p className={`font-data mt-2 text-2xl font-semibold ${deuda > 0 ? "text-status-danger" : deuda < 0 ? "text-status-success" : ""}`}>
                   {formatMoneda(deuda)}
                 </p>
@@ -88,7 +84,8 @@ export function CajasResumen() {
                     {a.mutuoUSD !== 0 && ` · mutuo ${formatMoneda(a.mutuoUSD, "Dolares")}`}
                   </p>
                 )}
-              </Link>
+                {s.idSocio === 3 && <div className="mt-3 flex flex-wrap gap-3 text-sm"><Link className="underline" href="/finanzas/cuentas-socios/3">Cuenta con Giamigli</Link><Link className="underline" href="/finanzas/cajas-efectivo/condominio-lsc">Movimientos vinculados</Link></div>}
+              </article>
             );
           })}
         </div>

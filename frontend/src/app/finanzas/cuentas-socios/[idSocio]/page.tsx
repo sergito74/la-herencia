@@ -11,7 +11,7 @@ export default function CuentaSocioPage({ params }: { params: { idSocio: string 
   return (
     <main className="mx-auto max-w-none px-8 py-6">
       <BackLink href="/finanzas/cajas">Volver a Cajas y socios</BackLink>
-      <h1 className="mt-2 text-2xl font-semibold">Cuenta corriente del socio</h1>
+      <h1 className="mt-2 text-2xl font-semibold">{idSocio === "3" ? "Condominio LSC — Cuenta con Giamigli" : "Cuenta corriente del socio"}</h1>
       <div className="mt-4"><CajasNav /></div>
       <div className="mt-6">
         <CuentaSocio idSocio={Number(idSocio)} />

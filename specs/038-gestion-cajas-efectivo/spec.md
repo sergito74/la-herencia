@@ -154,14 +154,14 @@ Ver cada caja con su saldo, movimientos y filtros (fecha, tipo, socio, contacto)
 - **FR-011**: La anulación MUST ser no destructiva: el movimiento queda visible como anulado, con motivo, usuario y fecha, y se revierten juntos todos sus efectos (caja, cuenta corriente, cuenta de socio, vínculos).
 - **FR-012**: Solo los usuarios con permiso de escritura MUST poder registrar o anular; los de solo lectura ven las cajas sin poder operar (mismo criterio que el resto del sistema).
 - **FR-013**: Los movimientos históricos cargados desde las planillas (027/036) MUST seguir visibles y mantener sus vínculos (fila de planilla, pago de Access), sin duplicarse con los nuevos.
-- **FR-014**: Para la caja del Condominio LSC, el sistema MUST registrar solo los movimientos que la vinculan con Giamigli (aportes y préstamos a Giamigli, pagos de gastos de Giamigli, devoluciones, retiros relacionados). Las operaciones propias del Condominio (alquileres, gastos de los inmuebles, retiros de los socios que no involucran a Giamigli) quedan fuera: el Condominio tiene su propio sistema. La historia ya cargada de su caja (036) queda como consulta.
+- **FR-014**: Para la caja del Condominio LSC, el sistema MUST registrar solo los movimientos que la vinculan con Giamigli (aportes y préstamos a Giamigli, pagos de gastos de Giamigli, devoluciones, retiros relacionados). Las operaciones propias del Condominio (alquileres, gastos de los inmuebles, retiros de los socios que no involucran a Giamigli) quedan fuera: el Condominio tiene su propio sistema. La historia 036 ajena o sin vínculo comprobado queda archivada fuera del libro operativo, conservando originales y clasificación auditada. Solo las relaciones documentadas se muestran como movimientos vinculados.
 - **FR-015**: Durante un período de convivencia (hasta que Sergio lo dé por terminado), la planilla Cajas Giamigli.xlsx sigue en uso: el sistema MUST poder importar sus filas nuevas sin duplicar las ya registradas (en el sistema o importadas antes), identificando cada fila de la planilla, y MUST mostrar una comparación caja por caja (saldo y movimientos) entre planilla y sistema que señale diferencias. Al terminar la convivencia, el sistema pasa a ser la única fuente.
 - **FR-016**: Un movimiento con fecha anterior a un arqueo confirmado MUST mostrar una advertencia antes de guardarse.
 - **FR-017**: Un movimiento que deje la caja en saldo negativo MUST pedir confirmación explícita.
 
 ### Key Entities
 
-- **Caja**: lugar físico de efectivo (Giamigli SA, caja chica del campo, Condominio LSC), con su saldo.
+- **Caja**: lugar físico de efectivo de Giamigli SA o caja chica, con su saldo. El Condominio LSC tiene un registro parcial de movimientos vinculados con Giamigli, cuyo neto no representa caja física ni saldo de socio.
 - **Movimiento de caja**: entrada o salida de efectivo, con tipo, fecha, importe, cuenta A/B, contraparte (contacto, socio, otra caja o banco), usuario y estado (vigente/anulado).
 - **Aplicación**: relación entre un pago/cobro de caja y los documentos del contacto que cancela.
 - **Movimiento de socio**: efecto del aporte/retiro en la cuenta de socio valuada (existente, 021).
@@ -175,7 +175,7 @@ Ver cada caja con su saldo, movimientos y filtros (fecha, tipo, socio, contacto)
 - **SC-001**: Un pago en efectivo de una factura se registra en menos de 1 minuto y queda reflejado en la caja y en la cuenta del proveedor sin carga adicional.
 - **SC-002**: Cero movimientos duplicados entre caja, cuentas corrientes y cuentas de socio en una muestra de 50 operaciones de prueba (cada operación produce exactamente un efecto en cada cuenta que corresponde).
 - **SC-003**: Al terminar un mes, el saldo de cada caja coincide con el arqueo físico, o la diferencia queda registrada explícitamente.
-- **SC-004**: Los saldos iniciales al poner en marcha el módulo coinciden con los reconstruidos: Giamigli $381.785,15, caja chica $96.907, Condominio LSC $0,23.
+- **SC-004**: Conservar los saldos reconstruidos de Giamigli $381.785,15 y caja chica $96.907. El $0,23 del Condominio corresponde al archivo completo 036 y deja de ser indicador operativo: la vista del Condominio contiene únicamente relaciones documentadas (31 históricas, neto -$9.298.765,84 al corte de la limpieza del 23/10/2026), sin ajustes ficticios para reproducir el saldo completo.
 - **SC-005**: Toda anulación revierte el 100% de sus efectos en las cuentas relacionadas.
 
 ## Assumptions
@@ -196,3 +196,7 @@ Sergio autorizó corregir los siete hallazgos. Estas precisiones complementan lo
 - FR-009 / US5: anular ajuste de arqueo invalida el arqueo en la misma transacción. Conservar recuento, saldo observado y diferencia original; mostrar saldo recalculado y diferencia vigente aparte. No reabrir el recuento: corregir con un nuevo arqueo enlazado. Operación retroactiva aceptada marca los arqueos posteriores afectados como Desactualizado; no acreditan conciliación vigente hasta nuevo recuento.
 - FR-010: calcular saldo real antes de filtros de tipo/contacto/socio y paginación; mostrar subtotal filtrado separado. Filas anuladas visibles no afectan saldo.
 - US3, opción A: exigir liquidación salarial, débito bancario y retorno de efectivo documentados. Para liquidación/débito/retorno de $10.000: caja +$10.000, banco −$10.000, débito excluido como pago salarial y liquidación cancelada por Ajuste Interno explícito «no cobrado» de 036; cero aporte al socio. No sumar otro cobro salarial. Anulación revierte efectos propios y restaura clasificación/aplicaciones previas bajo versión. Montos parciales o diferencias sin regla documentada quedan pendientes, sin cancelación automática. Los pares compensados de cuenta de socio desde noviembre de 2017 conservan su tratamiento histórico: no convertirlos automáticamente en opción A.
+
+
+## Corrección de alcance aprobada — 23/10/2026
+Sergio reemplaza la conservación visible de toda la caja del Condominio por un registro exclusivo de relaciones con Giamigli. Ver [criterios, contrato y plan de corrección](limpieza-condominio-20261023.md). Históricos ajenos/sin vínculo documentado permanecen archivados, fuera de saldos, filtros y comparaciones operativas. El neto parcial no representa tenencia física ni deuda; no admite arqueos físicos. Una sola entrada de Condominio con cuenta de socio y movimientos vinculados, sin sumar ni duplicar sus efectos.

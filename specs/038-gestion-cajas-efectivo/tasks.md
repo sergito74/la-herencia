@@ -140,3 +140,13 @@ Primer incremento: preparación/fundamentos + US1, incluyendo valuación T021 pa
 Sergio aprobó corregir todos los hallazgos de analyze. Se precisaron siete temas en spec/modelo/contrato y se agregaron ocho puertas de verificación de contrato previas al cliente/UI. Hay 57 tareas pendientes, renumeradas en orden documental; la dependencia explícita de valuación para particular sigue indicada arriba. No se aplicó DDL ni se ejecutó implementación.
 
 Registro de implementación: fundamentos y contratos backend completados según pruebas y lecturas de quickstart.md. Los adaptadores nuevos se separaron en operaciones.py, arqueos.py e importacion.py para mantener archivos acotados. UI y validaciones finales siguen pendientes.
+
+
+## Corrección de alcance Condominio autorizada — 23/10/2026
+- [X] T058 Relevar historia y fuentes, documentar criterio positivo y ambigüedades en limpieza-condominio-20261023.md.
+- [X] T059 Contrato y pruebas simuladas de clasificación, importación y registro parcial sin arqueo físico.
+- [X] T060 Aplicar clasificación auditable y vista operativa con respaldo verificado, preservando originales y otras cuentas.
+- [X] T061 Usar alcance operativo en saldos, libro, contextos e importador; impedir recarga completa 036.
+- [X] T062 Unificar Condominio LSC en navegación con Cuenta con Giamigli y Movimientos vinculados; aclarar neto parcial y quitar arqueos físicos.
+- [X] T063 Validar pruebas, TypeScript/lint, navegador y lecturas WC sin datos de prueba.
+- [ ] T064 Actualizar evidencia compartida, commit y push para continuidad Claude/Codex.

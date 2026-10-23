@@ -331,7 +331,7 @@ def previsualizar(op: OperacionCaja):
     warnings = []
     for box, amount in piernas(op).items():
         current = context["cajas"][box]
-        if current["minimoPosterior"] + amount < 0:
+        if box != "condominio-lsc" and current["minimoPosterior"] + amount < 0:
             warnings.append("SALDO_NEGATIVO")
         if current["arqueos"]:
             warnings.append("PERIODO_ARQUEADO")
@@ -704,10 +704,10 @@ def previsualizar_anulacion(id_op):
     boxes = [raw['caja']] if raw['tipo'] == 'diferencia_arqueo' else sorted(piernas(OperacionCaja.model_validate(raw)))
     contexts = {box: db.caja_context(box, when, excluir_operacion=id_op) for box in boxes}
     warnings = set()
-    for context in contexts.values():
+    for box, context in contexts.items():
         if context.get('movimientosExcluidos', 1) == 0:
             raise ConflictoCaja('El movimiento físico ya cambió fuera de la operación; revisar sus vínculos.')
-        if context['minimoPosterior'] < 0:
+        if box != 'condominio-lsc' and context['minimoPosterior'] < 0:
             warnings.add('SALDO_NEGATIVO')
         if context['arqueos']:
             warnings.add('PERIODO_ARQUEADO')

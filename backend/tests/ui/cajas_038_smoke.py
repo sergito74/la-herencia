@@ -145,8 +145,8 @@ def run():
                 "page": 1,
                 "pageSize": 20,
             }
-        elif path == "/api/cuentas-socios/2/movimientos":
-            body = {"idSocio":2,"nombre":"Lucy","saldo":100,"saldoUSD":.05,"saldoKgCarne":.025,"actualizada":None,"movimientos":socio_movs}
+        elif path in ("/api/cuentas-socios/2/movimientos", "/api/cuentas-socios/3/movimientos"):
+            body = {"idSocio":3 if "/3/" in path else 2,"nombre":"Condominio LSC" if "/3/" in path else "Lucy","saldo":100,"saldoUSD":.05,"saldoKgCarne":.025,"actualizada":None,"movimientos":socio_movs if "/2/" in path else []}
         elif path == "/api/cuentas-socios/2/asientos":
             m = {**socio_movs[0],"idMovimiento":11,"motivo":data["motivo"],"importe":data["importe"]}
             socio_movs.append(m);body=m
@@ -422,7 +422,24 @@ def run():
         page.get_by_role("button",name="Cerrar",exact=True).click()
         page.goto(f"{URL}/finanzas/cajas",wait_until="networkidle")
         expect(page.get_by_role("heading",name="Caja Giamigli US$",exact=True)).to_be_visible()
+        expect(page.get_by_role("heading",name="Caja Condominio LSC",exact=True)).to_have_count(0)
+        expect(page.get_by_role("heading",name="Condominio LSC",exact=True)).to_have_count(1)
+        expect(page.get_by_role("navigation",name="Cajas y cuentas de socios").get_by_role("link",name="Condominio LSC",exact=True)).to_have_count(1)
         page.screenshot(path=str(OUT / "resumen-cajas-socios.png"),full_page=True)
+        page.goto(f"{URL}/finanzas/cajas-efectivo/condominio-lsc",wait_until="networkidle")
+        expect(page.get_by_role("heading",name="Condominio LSC — Movimientos vinculados",exact=True)).to_be_visible()
+        expect(page.get_by_role("tab",name="Arqueos",exact=True)).to_have_count(0)
+        expect(page.get_by_text(re.compile("^Último arqueo:"))).to_have_count(0)
+        expect(page.get_by_role("navigation",name="Secciones del Condominio LSC").get_by_role("link",name="Cuenta con Giamigli",exact=True)).to_be_visible()
+        expect(page.get_by_text("Neto de movimientos vinculados",exact=True)).to_be_visible()
+        page.get_by_role("button",name="+ Nuevo movimiento",exact=True).click()
+        expect(page.locator("form").get_by_label(re.compile("^Operación"))).to_have_value("pago")
+        expect(page.locator("form option[value=aporte]")).to_have_count(0)
+        page.get_by_role("button",name="Cerrar",exact=True).click()
+        page.screenshot(path=str(OUT / "condominio-vinculos.png"),full_page=True)
+        page.get_by_role("navigation",name="Secciones del Condominio LSC").get_by_role("link",name="Cuenta con Giamigli",exact=True).click()
+        expect(page.get_by_role("heading",name="Condominio LSC — Cuenta con Giamigli",exact=True)).to_be_visible()
+
         page.goto(f"{URL}/finanzas/cajas-efectivo/giamigli-dolares",wait_until="networkidle")
         page.get_by_role("button",name="+ Nuevo movimiento",exact=True).click()
         expect(page.locator("form").get_by_label(re.compile("^Operación"))).to_have_value("ingreso_dolares")
@@ -494,7 +511,7 @@ def run():
             "cobro",
             "gasto_sin_comprobante",
                 "compra_particular",
-            "rol_lectura", "resumen_cajas_socios", "dolares", "asiento_socio", "editar_socio", "anular_socio", "aporte_socio_usd", "corregir_caja_con_aplicaciones",
+            "rol_lectura", "resumen_cajas_socios", "dolares", "asiento_socio", "editar_socio", "anular_socio", "aporte_socio_usd", "corregir_caja_con_aplicaciones", "condominio_unico", "condominio_solo_vinculos_sin_arqueos",
         ],
     }
     (OUT / "resultado.json").write_text(

@@ -21,13 +21,13 @@ export default function CajaEfectivoPage({ params }: { params: { caja: string } 
   return (
     <main className="mx-auto max-w-none px-8 py-6">
       <BackLink href="/finanzas/cajas">Volver a Cajas y socios</BackLink>
-      <h1 className="mt-2 text-2xl font-semibold">Caja de efectivo</h1>
+      <h1 className="mt-2 text-2xl font-semibold">{caja === "condominio-lsc" ? "Condominio LSC — Movimientos vinculados" : "Caja de efectivo"}</h1>
       <p className="mt-1 text-ink-secondary">
-        Movimientos, pagos, aportes, traspasos, arqueos y comparación con la planilla.
+        {caja === "condominio-lsc" ? "Relaciones documentadas con Giamigli; la administración del Condominio sigue en su propio sistema." : "Movimientos, pagos, aportes, traspasos, arqueos y comparación con la planilla."}
       </p>
       <div className="mt-4"><CajasNav /></div>
       <div className="mt-6">
-        <Suspense><CajaEfectivo caja={caja as CajaSlug} /></Suspense>
+        <Suspense><CajaEfectivo key={caja} caja={caja as CajaSlug} /></Suspense>
       </div>
     </main>
   );
