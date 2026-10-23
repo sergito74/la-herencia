@@ -49,11 +49,17 @@ export function Facturas({ contrato }: { contrato: ContratoFicha }) {
           Facturas emitidas en ARCA. Se cargan desde el PDF; las correcciones van con ND/NC vinculadas, sin tocar la factura.
         </p>
         <SoloLectura>
-          <button className={btnPrimario} disabled={!confirmadas.length} onClick={() => setCargar(true)}>
+          <button className={btnPrimario} disabled={!confirmadas.length} aria-describedby="motivo-sin-liquidacion" onClick={() => setCargar(true)}>
             + Cargar comprobante desde PDF
           </button>
         </SoloLectura>
       </div>
+      {!confirmadas.length && (
+        <p id="motivo-sin-liquidacion" role="status" className="rounded-sm bg-status-warning-bg px-3 py-2 text-sm text-status-warning">
+          Para cargar una factura primero tiene que haber una liquidación confirmada del mes: registrá el ingreso de la hacienda en
+          Bitácora y después preparala y confirmala en Liquidaciones. La factura se vincula a esa liquidación.
+        </p>
+      )}
       {sinFactura.length > 0 && (
         <p role="status" className="rounded-sm bg-status-warning-bg px-3 py-2 text-sm text-status-warning">
           ⚠ Liquidaciones confirmadas sin factura: {sinFactura.map((l) => mesTexto(l.periodo)).join(", ")}.
