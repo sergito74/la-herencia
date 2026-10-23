@@ -21,7 +21,7 @@ Se hicieron tres cosas desde el traspaso anterior:
   - `tests/contract/test_revision_cuentas_api.py::test_ficha_de_jauregui_tiene_los_siete_criterios_y_no_escribe`
   - `tests/test_vista_cuenta_tarjetas.py::test_ramas_nuevas_solo_tocan_contactos_de_tarjeta_salvo_uatre`
 
-## 2. Rediseño de «Cajas y socios» (23/10). PARCIAL: completar y verificar en el navegador
+## 2. Rediseño de «Cajas y socios» (23/10). VERIFICADO por Codex; correcciones al final
 
 Sergio pidió:
 - un menú común para todas las cajas;
@@ -52,9 +52,9 @@ Sergio pidió:
   - Pruebas en `tests/test_cuentas_socios_repository.py`: 20 pasan, 2 son nuevas.
 
 **Pendiente:**
-1. **Recorrido en el navegador:** nadie lo abrió todavía. Pasa `tsc` y `eslint`, pero no se recorrió la interfaz. Revisar resumen, caja (nuevo, detalle, anular, corregir), socio (asiento, editar, anular, aporte/retiro) y rol Lectura.
+1. **Recorrido en el navegador — resuelto por Codex:** el estado inicial era sin recorrido. Pasaba `tsc` y `eslint`, pero no se recorrió la interfaz. Revisar resumen, caja (nuevo, detalle, anular, corregir), socio (asiento, editar, anular, aporte/retiro) y rol Lectura.
 2. **Hojas de la planilla que no tienen lugar en el sistema** (preguntarle a Sergio si las quiere):
-   - `Caja Efectivo Dolares` (1.655 filas): **no hay caja en US$ en el sistema**. Es la más importante.
+   - `Caja Efectivo Dolares`: resuelta en 040. Son 1.655 filas de formato y seis movimientos reales, saldo US$360; caja GiamigliUSD.
    - `Sueldo Sergio`, `Caja Sindicatos` y `Caja Elisabet`.
 3. **Paginación de la cuenta de socio:** `DataTable` recibe todas las filas filtradas en una página (hasta unas 500). Si molesta, paginar de a 50.
 4. **Devoluciones viejas (`/devolucion`)** se guardaban sin kg ni US$. El formulario nuevo de asiento valúa; la devolución vieja sigue disponible pero conviene reemplazarla por el asiento.
@@ -171,4 +171,8 @@ Estado al iniciar: la importación 036 copió toda la hoja Caja Efectivo del Con
 
 
 ### Avance de la limpieza Condominio — aplicado, 23/10/2026
-Primer commit/push cumplido: a160622. Se aplicó clasificación respaldada: 31 vínculos documentados activos; 1.195 filas archivadas fuera del libro operativo. Originales íntegros; ninguna alteración de socios/pagos/otras cajas. Evidencia, respaldo y decisiones en specs/038-gestion-cajas-efectivo/limpieza-condominio-20261023.md. El neto -$9.298.765,84 NO es deuda ni caja física; no usar como tal. Se unifica la entrada de Condominio, con secciones Cuenta con Giamigli / Movimientos vinculados. No reactivar el importador completo 036. La vinculación/conciliación con contrapartidas no forma parte de esta clasificación y sigue pendiente; no duplicar efectos de socio ni caja Giamigli. Validaciones finales completas: pruebas focalizadas, TypeScript/lint y navegador (22 escenarios, 129 API interceptadas, cero errores) PASS. Código/documentación listos para el segundo commit/push.
+Primer commit/push cumplido: a160622. Se aplicó clasificación respaldada: 31 vínculos documentados activos; 1.195 filas archivadas fuera del libro operativo. Originales íntegros; ninguna alteración de socios/pagos/otras cajas. Evidencia, respaldo y decisiones en specs/038-gestion-cajas-efectivo/limpieza-condominio-20261023.md. El neto -$9.298.765,84 NO es deuda ni caja física; no usar como tal. Se unifica la entrada de Condominio, con secciones Cuenta con Giamigli / Movimientos vinculados. No reactivar el importador completo 036. La vinculación/conciliación con contrapartidas no forma parte de esta clasificación y sigue pendiente; no duplicar efectos de socio ni caja Giamigli. Validaciones finales completas: pruebas focalizadas, TypeScript/lint y navegador (22 escenarios, 129 API interceptadas, cero errores) PASS. Segundo commit/push aplicado: 58ebe14 (main).
+
+
+### Cierre para continuidad Claude/Codex
+Todo el trabajo solicitado quedó pusheado: a160622 (USD y validación inicial del rediseño) y 58ebe14 (depuración, protección de importación y entidad única Condominio). T058–T064 completas. WC ya tiene AlcanceHistoricoCaja y la vista operativa aplicadas con respaldo; no hace falta reimportar. Guía funcional vigente: no mostrar gastos propios/sin vínculo del Condominio, no sumar neto parcial como deuda o efectivo, y no duplicar sus 31 filas con nuevas operaciones. Los 1.195 históricos excluidos siguen disponibles en tabla original y snapshots para auditoría, fuera de la operatoria. No se reabrieron conciliaciones ni se tocó pastaje.

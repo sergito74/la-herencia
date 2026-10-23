@@ -24,7 +24,7 @@ Importación 036: 1.226 filas, sin IdOperacionCaja ni IdPagoEfectivo ni IdContac
 ## Hallazgos que no se corrigen por inferencia
 En la fuente, el aporte de fila 1107 tiene fecha 11/09/2024 aunque está entre movimientos de agosto/octubre 2025. Se conserva la fecha original y se deja señalado; no cambiar por posición. Las hojas mensuales mencionan otros importes Giamigli que no permiten identificar de forma inequívoca una fila del libro: no inventar movimientos ni reclasificar retiros personales.
 
-Estado: limpieza aplicada en WC y verificada. Pendiente de registrar commit/push final.
+Estado: limpieza aplicada en WC, verificada y pusheada en main: 58ebe14. Primer incremento USD/rediseño: a160622.
 
 ## Aplicación verificada
 - Script: backend/scripts/depurar_condominio_038.py, inspección por defecto; --aplicar toma respaldo y ejecuta una transacción explícita.

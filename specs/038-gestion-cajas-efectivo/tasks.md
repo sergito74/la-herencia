@@ -149,4 +149,4 @@ Registro de implementación: fundamentos y contratos backend completados según 
 - [X] T061 Usar alcance operativo en saldos, libro, contextos e importador; impedir recarga completa 036.
 - [X] T062 Unificar Condominio LSC en navegación con Cuenta con Giamigli y Movimientos vinculados; aclarar neto parcial y quitar arqueos físicos.
 - [X] T063 Validar pruebas, TypeScript/lint, navegador y lecturas WC sin datos de prueba.
-- [ ] T064 Actualizar evidencia compartida, commit y push para continuidad Claude/Codex.
+- [X] T064 Actualizar evidencia compartida, commit y push para continuidad Claude/Codex.
