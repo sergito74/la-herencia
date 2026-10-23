@@ -264,3 +264,7 @@ Task: "T016 [P] [US1] Componente PagosSinFactura.tsx en frontend/src/components/
 - [X] Atribuir los dos depósitos documentados BNA10310/10824 ($22.150) con respaldo, auditoría y control de saldo; no duplicar caja/socio.
 - [ ] Validar documentos/enlaces de los105 pagos directos; resolver discrepancia fuenteAFIP frente a PagoEfectivo581 UATRE sin reabrir cuentas cerradas por inferencia.
 - [ ] Completar representación en socio3 y vínculos de caja solo tras cruzar banco/cuenta549 y fuentes ya registradas; no importar dos veces el préstamo28/03/2016.
+
+
+- [X] 23/10/2026: desglosar los18 pagos por medio; completar los3 vínculos efectivos sin modificar saldos y documentar evidencia interna AFIP/UATRE. Ver condominio-18-pagos-20261023.md.
+- [ ] Contrastar los15 medios no efectivos con bancos/valores/tarjetas y obtener original del aporte sindical04/2014 si está disponible; no forzar enlaces de caja ni reasignaciones fiscales.

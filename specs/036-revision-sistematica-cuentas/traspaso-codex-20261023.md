@@ -184,3 +184,7 @@ Punto de entrada consolidado: [retoma-conciliaciones-20261023.md](retoma-concili
 
 ### Avance efectivo del siguiente paso — Condominio EF2011–mar2016
 Registro compartido vigente: [condominio-ef-2011-2016-20261023.md](condominio-ef-2011-2016-20261023.md). Matriz122 filas producida; dos depósitos BNA10310/10824 ($22.150) atribuidos al549 con tres planillas de respaldo, backup verificado y auditoría128. Nada agregado a caja/socio; originales bancarios intactos salvo contacto. Saldo nominal549=-$296.987,50, no equivale a deuda actualizada del socio. Pendientes siguientes:18 pagos sin enlace explícito (no necesariamente faltantes), discrepancia PagoAFIP fuente/Pago581 UATRE y comprobación del resto de candidatos. No recargar el préstamo28/03/2016 ni duplicar aportes bancarios/caja. Scripts de inspección y evidencia local detallados en el registro; ambos agentes pueden continuar desde allí.
+
+
+### Avance posterior: revisión de18 pagos
+Ver [registro actualizado](condominio-18-pagos-20261023.md). Solo3 eran efectivo: vínculos caja3→pago223, caja4→222 y caja29→581 aplicados con respaldo/auditoría y saldos íntegros. Los otros15 están registrados como débito/valor3ros/tarjeta ajena; no generarles egresos de caja. AFIP/UATRE: pago581 e Impuesto228 comparten operación1046 de aporte sindicalabril2014; se conserva UATRE315 y concepto originalAFIP con nota de trazabilidad, sin reasignar. Falta original externo. Próxima investigación: los15 medios no efectivos y su representación en socio3, sin duplicar ni reabrir cuentas.

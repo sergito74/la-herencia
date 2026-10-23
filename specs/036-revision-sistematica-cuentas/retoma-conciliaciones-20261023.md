@@ -31,3 +31,7 @@ Relevamiento de solo lectura del tramo EF 2011–marzo2016 del Condominio, cruza
 
 ## Próximo paso ejecutado — 23/10/2026
 Ver [relevamiento y aplicación](condominio-ef-2011-2016-20261023.md). Se generó matriz de122 fuentes EF (105 pagos directos y17 retiros); se identificó la superposición del préstamo2016 y se atribuyeron dos depósitos adicionales al Condominio por $22.150 con respaldo y auditoría128. No se cargaron nuevos movimientos de caja/socio. Queda validar documentalmente105 pagos, empezando por18 sin enlace explícito y la discrepancia AFIP/UATRE. El saldo del contacto549 (no socioactualizado) pasó a -$296.987,50; no se declaró cierre. La lista antigua de13 no identificados requiere contraste por IDs y no debe restarse automáticamente con estos depósitos.
+
+
+### Avance posterior: revisión de18 pagos
+Ver [registro actualizado](condominio-18-pagos-20261023.md). Solo3 eran efectivo: vínculos caja3→pago223, caja4→222 y caja29→581 aplicados con respaldo/auditoría y saldos íntegros. Los otros15 están registrados como débito/valor3ros/tarjeta ajena; no generarles egresos de caja. AFIP/UATRE: pago581 e Impuesto228 comparten operación1046 de aporte sindicalabril2014; se conserva UATRE315 y concepto originalAFIP con nota de trazabilidad, sin reasignar. Falta original externo. Próxima investigación: los15 medios no efectivos y su representación en socio3, sin duplicar ni reabrir cuentas.
