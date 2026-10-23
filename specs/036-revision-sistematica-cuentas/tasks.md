@@ -257,3 +257,10 @@ Task: "T016 [P] [US1] Componente PagosSinFactura.tsx en frontend/src/components/
 - Primero lo que cambia el saldo (documentos, movimientos), al final las imputaciones (FIFO).
 - Nada se escribe en `LaHerencia` ni en los Access; toda aplicación es reversible y con respaldo; el sistema no entra a portales (regla de oro).
 - Solo Sergio audita y aprueba cierres y excepciones.
+
+
+## Retoma de conciliaciones Condominio — 23/10/2026
+- [X] Relevar EF2011–mar2016, generar matriz de candidatos y distinguir pagos directos, depósitos, aportes a caja y solapamiento2016. Registro: condominio-ef-2011-2016-20261023.md.
+- [X] Atribuir los dos depósitos documentados BNA10310/10824 ($22.150) con respaldo, auditoría y control de saldo; no duplicar caja/socio.
+- [ ] Validar documentos/enlaces de los105 pagos directos; resolver discrepancia fuenteAFIP frente a PagoEfectivo581 UATRE sin reabrir cuentas cerradas por inferencia.
+- [ ] Completar representación en socio3 y vínculos de caja solo tras cruzar banco/cuenta549 y fuentes ya registradas; no importar dos veces el préstamo28/03/2016.

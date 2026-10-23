@@ -27,3 +27,7 @@ Relevamiento de solo lectura del tramo EF 2011–marzo2016 del Condominio, cruza
 - sergio-375-pendientes-resumen-20261022.md: bloque CUENTA375 CERRADA y aplicaciones de salarios/retornos.
 - traspaso-codex-20261022-tarde.md y cajas-y-socios-plan-20261022.md: pausa levantada, orden de vínculos y partidas no identificadas.
 - traspaso-codex-20261023.md y specs/038-gestion-cajas-efectivo/limpieza-condominio-20261023.md: estado vigente después de cajas/depuración.
+
+
+## Próximo paso ejecutado — 23/10/2026
+Ver [relevamiento y aplicación](condominio-ef-2011-2016-20261023.md). Se generó matriz de122 fuentes EF (105 pagos directos y17 retiros); se identificó la superposición del préstamo2016 y se atribuyeron dos depósitos adicionales al Condominio por $22.150 con respaldo y auditoría128. No se cargaron nuevos movimientos de caja/socio. Queda validar documentalmente105 pagos, empezando por18 sin enlace explícito y la discrepancia AFIP/UATRE. El saldo del contacto549 (no socioactualizado) pasó a -$296.987,50; no se declaró cierre. La lista antigua de13 no identificados requiere contraste por IDs y no debe restarse automáticamente con estos depósitos.

@@ -180,3 +180,7 @@ Todo el trabajo solicitado quedó pusheado: a160622 (USD y validación inicial d
 
 ### Retoma de conciliaciones solicitada por Sergio — 23/10/2026
 Punto de entrada consolidado: [retoma-conciliaciones-20261023.md](retoma-conciliaciones-20261023.md). Se contrastaron antecedentes para evitar reabrir375/P18/P31 o mantener una pausa Condominio/Virginia ya levantada. Siguiente paso: relevar EF2011–mar2016 del Condominio y cruzar con caja/bancos/socio3, sin duplicar. Esta retoma fue documental; no se aplicaron correcciones contables. Pendientes y criterios de precedencia en el nuevo registro compartido.
+
+
+### Avance efectivo del siguiente paso — Condominio EF2011–mar2016
+Registro compartido vigente: [condominio-ef-2011-2016-20261023.md](condominio-ef-2011-2016-20261023.md). Matriz122 filas producida; dos depósitos BNA10310/10824 ($22.150) atribuidos al549 con tres planillas de respaldo, backup verificado y auditoría128. Nada agregado a caja/socio; originales bancarios intactos salvo contacto. Saldo nominal549=-$296.987,50, no equivale a deuda actualizada del socio. Pendientes siguientes:18 pagos sin enlace explícito (no necesariamente faltantes), discrepancia PagoAFIP fuente/Pago581 UATRE y comprobación del resto de candidatos. No recargar el préstamo28/03/2016 ni duplicar aportes bancarios/caja. Scripts de inspección y evidencia local detallados en el registro; ambos agentes pueden continuar desde allí.
