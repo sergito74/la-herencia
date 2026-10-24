@@ -67,3 +67,11 @@ Siguiente trabajo, en este orden:
 3. Construir una única matriz de financiación histórica para socio3: aportes733781, pagos directos y movimientos ya incluidos en caja/banco/contacto549. Identificar aperturas o compensaciones posteriores y vincular cada operación una sola vez antes de calcular kg/US$ o cargar asientos. Pago290 pertenece a ese universo, no a un lote adicional.
 
 No se declara cerrada la conciliación ni resuelto el original AFIP/UATRE de pago581: ese pendiente es distinto de estos15. No hubo cambios productivos ni cierre por campaña en este tramo.
+
+## Ejecución posterior del plan autorizado — 24/10/2026
+
+Estado y evidencia vigentes en [condominio-ejecucion-plan-20261024.md](condominio-ejecucion-plan-20261024.md). Se corrigieron originales Easy/Cooperativa con respaldo y auditoría130, sin cambiar importes de pagos/cajas/socios. Ambas fichas quedan esperando-evidencia por revisión puntual, sin declarar deuda externa nueva. Se anuló aplicación8568 (origen de peaje2022 incorrecto) y se vinculó pago561 existente mediante21107.
+
+La ampliación de búsqueda encontró HSBC2011–2014 fuera de la carpeta inicial: los dos ARBA20009,40 están documentados en cuenta del Condominio. Los95 de AFIP aparecen en cuenta titulada Oscar: cuatro identifican aIrma, junio solo candidato; se consultó clasificación patrimonial antes de socio3. Planillas Maignal identifican cheque87678128 por2926, aún sin recibo/endoso. La ausencia de fuentes del primer rastreo no prevalece sobre estos hallazgos.
+
+Matriz histórica producida:61 filas aportes733781 y105 pagos110536,02 →165 operaciones fuente/841286,02 al quitar cheque3031 repetido; NO saldo ni importe a cargar. Los7500 efectivo y préstamo/devolución10000 ya integran733781. Los140 puentes de caja se relacionan a egresos;72 ya dentro de ese universo y68 por15109,68 pendientes separados, sin sumarlos. Siguen faltando titular/resumen de tarjetas, clasificación HSBC Oscar y controles de financiación/reintegros antes de incorporar historia en socio3.
