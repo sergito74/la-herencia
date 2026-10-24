@@ -321,7 +321,8 @@ def _insert_asiento(id_socio: int, lado: str, importe: float, fecha: date, medio
     return (
         "INSERT INTO dbo.MovimientosCuentaSocio (IdSocio, Tipo, Importe, ImporteUSD, ImporteKgCarne, Fecha, Origen, Medio, Motivo, Usuario) "
         "OUTPUT INSERTED.IdMovimiento VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-        (id_socio, tipo, importe, float(v["importeUSD"]), float(v["importeKgCarne"]), fecha, ORIGEN_MANUAL,
+        # Origen NULL: UX_MovimientosCuentaSocio_Origen exige (Origen, IdOrigen) único para los Debe con origen.
+        (id_socio, tipo, importe, float(v["importeUSD"]), float(v["importeKgCarne"]), fecha, None,
          medio, motivo.strip(), usuario),
     )
 

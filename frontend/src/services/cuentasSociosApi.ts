@@ -124,6 +124,8 @@ export interface ControlBancoSocio {
   banco: number;
   conAsiento: number;
   sinAsiento: { fecha: string; origen: string; idOrigen: number; documento: string; importe: number; sentido: string }[];
+  /** Transferencias al socio que son su retiro de lo aportado por el Condominio: el asiento está en la cuenta del Condominio. */
+  enCuentaCondominio: { fecha: string; importe: number; asiento: string; diferencia: number }[];
 }
 
 /** Movimientos de banco del contacto del socio que no tienen su asiento en la cuenta de socio. */

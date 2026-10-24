@@ -302,7 +302,7 @@ def test_asiento_manual_se_valua_con_magnitudes_positivas(monkeypatch):
     monkeypatch.setattr(valuacion, "a_fecha", lambda imp, f: {"importeUSD": Decimal("10"), "importeKgCarne": Decimal("2.5")})
     sql, params = repository._insert_asiento(1, "haber", 1000.0, date(2026, 10, 1), None, "Aporte", "sergio")
     # El Tipo da el signo; US$ y kg van positivos como en el resto de la tabla.
-    assert params[1] == "Devolucion" and params[3] == 10.0 and params[4] == 2.5 and params[6] == "Manual"
+    assert params[1] == "Devolucion" and params[3] == 10.0 and params[4] == 2.5 and params[6] is None
 
 
 def test_movimiento_de_caja_no_se_edita_ni_anula(monkeypatch):

@@ -22,6 +22,7 @@ export function ControlBancoSocio({ idSocio }: { idSocio: number }) {
         <p>
           <strong>Control con el banco:</strong> {d.conAsiento} de {d.banco} movimientos de banco marcados con este socio tienen su asiento
           {ok ? " — todo conciliado." : <>; <strong>{d.sinAsiento.length} sin asiento</strong> por {formatMoneda(d.sinAsiento.reduce((s, x) => s + x.importe, 0))}.</>}
+          {d.enCuentaCondominio.length > 0 && <> {d.enCuentaCondominio.length} de ellos son retiros de aportes del Condominio y su asiento está en la cuenta del Condominio{d.enCuentaCondominio.some((x) => x.diferencia) && <> (con diferencias de redondeo: {d.enCuentaCondominio.filter((x) => x.diferencia).map((x) => `${formatFecha(x.fecha)} ${formatMoneda(x.diferencia)}`).join(", ")})</>}.</>}
         </p>
         {!ok && <button className="underline" onClick={() => setAbierto((v) => !v)}>{abierto ? "Ocultar" : "Ver cuáles"}</button>}
       </div>
