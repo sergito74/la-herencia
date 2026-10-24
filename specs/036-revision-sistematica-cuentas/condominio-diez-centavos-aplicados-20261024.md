@@ -46,3 +46,7 @@ Del universo68:59 débitos documentados,1 tarjetaSodimac (financiadaLucy) y8 pen
 Ocho pendientes concretos:14,40,362,530,660 tienen candidato bancario cercano pero ticketEfectivo;177,331,360 dicenEfectivo y no tienen candidato. No se les aplicó el tratamiento deVisa por analogía. La continuidadSucesión aclarada porSergio se conserva y no elimina por sí sola las contradicciones del medio.
 
 Además continúan: diferenciasEasy110,57 yCooperativa0,01 (titularLucy y no reintegro ya aclarados); origen/reintegro de otros3 combustibles519,53; reconstrucción históricaCond y2016–2026 sin apertura consolidada localizada; boletaAFIP junio2011, comprobante sindical04/2014, recibo/endoso cheque2926 y ruta cheque2968. No requiere nuevas respuestas de Sergio para lo aplicado hoy; no se declaran cerrados estos pendientes por falta de documentación.
+
+
+## Corrección posterior del control de aplicaciones
+La afirmación de que no había aplicaciones activas era errónea por consultar un nombre de origen que no usa esa tabla. Se corrigió y aplicó reparación con respaldo:8 anulaciones/3 reemplazos, ahora10 aplicaciones propias sin superar banco. Saldos intactos. Ver condominio-continuacion-ampliada-20261024.md para evidencia y alcance.

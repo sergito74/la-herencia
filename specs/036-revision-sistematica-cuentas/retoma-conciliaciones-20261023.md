@@ -79,3 +79,11 @@ Sergio confirmó pago íntegro624,29 porLucy sin reintegro. No hay productos par
 
 ### Diez débitos aplicados — 24/10
 Auditoría137 con respaldo:10 pagos vigentes de total fiscal2130,55 a banco exacto2130,51/medio10;10 componentes no bancarios documentados (vuelto/complemento),20 filas compensatorias de caja anuladas. Todos los saldos de contactos/cajas/socios idénticos; no nuevos pagos/gastos ni aportes. 68=59débitos+1tarjetaLucy+8pendientes. Detalle individual, respaldo y controles en [condominio-diez-centavos-aplicados-20261024.md](condominio-diez-centavos-aplicados-20261024.md).
+
+
+### Continuación sin pausa solicitada — 24/10
+Registro en curso [condominio-continuacion-ampliada-20261024.md](condominio-continuacion-ampliada-20261024.md). Corregido control errado deOrigenMovimiento: aplicaciones usaefectivo, noPagosEfectivo. Aplicada reparación8 anulaciones/3 reemplazos/saldos intactos conbackup. Fuentes nuevas:6 efectivos clasificadosCondominio, cheque2968 identificado87678103 con candidatoBNA10327, cajaXLSM2016–2026 relevada. Easy/Coop pendientes de corrección e imputación; no cerrar todavía.
+
+
+### Aportes BNA atribuidos y Easy/Coop confirmados — 24/10 (Claude)
+Easy/Cooperativa: corrección aplicada y verificada (no quedó pendiente). 35 depósitos BNA de la planilla de aportes ($428.698: cheques de la venta del camión, transferencias y Citi) atribuidos a 549 por regla de importe exacto y candidato único, con respaldo; 549 pasa a −$725.685,50. Quedan sin candidato 3 cheques de $3.134 (2012). Detalle en [condominio-continuacion-ampliada-20261024.md](condominio-continuacion-ampliada-20261024.md).

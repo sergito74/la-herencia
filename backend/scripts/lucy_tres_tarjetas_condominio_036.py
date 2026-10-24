@@ -23,7 +23,11 @@ def run(apply=False):
     entries = read("SELECT * FROM dbo.MovimientosCuentaSocio WHERE Origen='PagosEfectivo' AND IdOrigen IN (315,503,561) AND Anulada=0")
     if read("SELECT 1 x FROM dbo.AuditoriaCorrecciones WHERE Regla=? AND Estado='aplicada'", (RULE,)):
         assert len(entries) == 3
-        assert all(e["IdSocio"] == 2 and e["Tipo"] == "Devolucion" and e["Importe"] == TARGETS[e["IdOrigen"]][1] for e in entries)
+        for entry in entries:
+            expected = TARGETS[entry["IdOrigen"]][1]
+            if read("SELECT 1 x FROM dbo.AuditoriaCorrecciones WHERE Regla='lucy-importes-fiscales-easy-coop-036' AND Estado='aplicada'"):
+                expected = {315: Decimal("1578"), 503: Decimal("2253.03"), 561: Decimal("1361.54")}[entry["IdOrigen"]]
+            assert entry["IdSocio"] == 2 and entry["Tipo"] == "Devolucion" and entry["Importe"] == expected
         return {"estado": "ya_aplicado_sin_escrituras"}
     assert not entries, "Ya existe representación de alguno de los pagos; revisar antes de sumar."
     sources = read("SELECT * FROM dbo.[Pagos efectivo] WHERE IdPagoEfectivo IN (315,503,561) ORDER BY IdPagoEfectivo")

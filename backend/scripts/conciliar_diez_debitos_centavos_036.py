@@ -58,7 +58,7 @@ def run(apply=False):
         assert p["Importe imputado"] == fiscal and p["IdFormaPago"] == 3 and p["Caja"] == "Condominio" and p["IdContacto"] == 30
         docs = read("SELECT c.*,t.ImporteDocumento FROM dbo.Compras c JOIN dbo.vw_Compras_ImporteDocumento t ON t.IdDeuda=c.IdDeuda WHERE c.IdOperacion=?", (p["IdOperacion"],))
         assert len(docs) == 1 and round(docs[0]["ImporteDocumento"], 2) == fiscal
-        assert not read("SELECT IdAplicacion FROM dbo.AplicacionesPago WHERE OrigenMovimiento='PagosEfectivo' AND IdMovimientoOrigen=? AND Anulada=0", (identifier,))
+        applications = read("SELECT * FROM dbo.AplicacionesPago WHERE OrigenMovimiento='efectivo' AND IdMovimientoOrigen=? AND Anulada=0 ORDER BY IdAplicacion", (identifier,))
         assert not read("SELECT IdAjuste FROM dbo.AjustesCuentaCorriente WHERE Motivo LIKE ?", (f"036-CENT-P{identifier}:%",))
         legs = read("SELECT * FROM dbo.MovimientosCajaEfectivo WHERE IdPagoEfectivo=?", (identifier,))
         assert len(legs) == 1
@@ -70,7 +70,7 @@ def run(apply=False):
         label = "vuelto" if delta > 0 else "complemento Su pago"
         note = f"036-CENT-P{identifier}: FC{docs[0]['Nro Documento']} total{fiscal}; Visa HSBC{bank}; {label}{abs(delta)} documentado. Origen/destino patrimonial del componente no identificado; sin aporte nuevo."
         assert len(note) <= 255
-        plans.append({"pago": p, "banco": tx, "original": originals[identifier], "compra": docs[0], "parCaja": pair, "importeBanco": bank, "componente": abs(delta), "lado": "Deuda" if delta > 0 else "Credito", "motivo": note})
+        plans.append({"pago": p, "banco": tx, "original": originals[identifier], "compra": docs[0], "parCaja": pair, "importeBanco": bank, "componente": abs(delta), "lado": "Deuda" if delta > 0 else "Credito", "motivo": note, "aplicacionesAntes": applications})
     assert sum(x["importeBanco"] for x in plans) == Decimal("2130.51")
     result = {"estado": "inspeccion", "planes": plans}
     if not apply:
@@ -85,7 +85,7 @@ def run(apply=False):
             for plan in plans:
                 p = plan["pago"]
                 assert rows(c, "SELECT * FROM dbo.[Pagos efectivo] WITH (UPDLOCK,HOLDLOCK) WHERE IdPagoEfectivo=?", (p["IdPagoEfectivo"],))[0] == p
-                assert not rows(c, "SELECT IdAplicacion FROM dbo.AplicacionesPago WITH (UPDLOCK,HOLDLOCK) WHERE OrigenMovimiento='PagosEfectivo' AND IdMovimientoOrigen=? AND Anulada=0", (p["IdPagoEfectivo"],))
+                assert rows(c, "SELECT * FROM dbo.AplicacionesPago WITH (UPDLOCK,HOLDLOCK) WHERE OrigenMovimiento='efectivo' AND IdMovimientoOrigen=? AND Anulada=0 ORDER BY IdAplicacion", (p["IdPagoEfectivo"],)) == plan["aplicacionesAntes"]
                 c.execute("UPDATE dbo.[Pagos efectivo] SET IdFormaPago=10,[Importe imputado]=? WHERE IdPagoEfectivo=?", plan["importeBanco"], p["IdPagoEfectivo"])
                 c.execute("INSERT INTO dbo.AjustesCuentaCorriente (IdContacto,Fecha,Lado,Importe,Motivo,Usuario) VALUES (30,?,?,?,?, 'Codex036')", p["Fecha"], plan["lado"], plan["componente"], plan["motivo"])
                 for old in plan["parCaja"]:

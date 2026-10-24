@@ -1,0 +1,33 @@
+# Continuación ampliada de pendientes — 24/10/2026
+
+Sergio pidió no detenerse mientras se pueda avanzar sin su intervención. Se continúa con fuentes locales yWC; no volver a preguntar datos ya confirmados.
+
+## Corrección de control de aplicaciones (aplicada)
+La auditoría137 consultaba OrigenMovimiento='PagosEfectivo', pero AplicacionesPago usa 'efectivo'. La afirmación anterior de que no existían aplicaciones activas era incorrecta. Se informó aSergio, se corrigió elscript para consultar y fotografiar el origen real y se revisaron todas las aplicaciones de10 pagos.
+
+Aplicado corregir_aplicaciones_diez_centavos_036.py:8 aplicaciones anuladas (5 cruces de centavos a facturas siguientes y3 aplicaciones superiores al banco),3 reemplazos;7 aplicaciones correctas conservadas. Queda1 aplicación por pago, a su propia factura, importe mínimo entre total fiscal y débito bancario. Los componentes documentales siguen en AjustesCuentaCorriente; no se atribuyen a caja o socio. Los4 vueltos no se aplican a otras facturas. Sin cambios en pagos/facturas/saldos de contactos/cajas/socios. Respaldo WC_aplicaciones_diez_centavos_036_20261024_120703_092630.bak; snapshot backups/condominio-15-medios-036/aplicaciones-diez-centavos-20261024-120704.json. Repetición sin escrituras. Esta corrección sustituye expresamente la afirmación de ausencia de aplicaciones del informe anterior.
+
+## Fuentes nuevas, investigación en curso
+
+Movimientos Condominios.xlsx/Gastos Campo identificaCondominio en6 pagos:177fila513;331fila738;360fila813;441fila1002;442fila1009;467fila1057. Copia Gastos Campo85/86/90 repite441/442/467: copias, no operaciones nuevas. Esto corrobora el registro histórico del financiador, no acredita por sí solo ausencia de reintegro ni sustituye recibo externo. Evidencia privados efectivos-fuentes-ampliadas.json.
+
+Extracto Banco del mismo archivo identifica los5 candidatos14/40/362/530/660 como CombustibleCampo/Giamigli, con operación bancaria explícita:095313,103113,136332,129042,174398. Filas18,185,958,1134,1787; impuestos asociados y promoción de14fila17 separados. LosPDF HSBC coinciden con esos débitos. Los tickets dicenEfectivo: conservar contradicción. Además40:ticket efectivo173,74 frente banco173,75 (no coincide tampoco cobro exacto). No extender automáticamente la corrección deVisa a esos5. Evidencia contradicciones-clasificacion-banco.json.
+
+Cheque2968 de07/03/2012 identificado: Movs386 número87678103; AportesCampo9; Maignal/Pagos Venta Camion.xlsx/Cheques3os12 indica DepósitoNación, Macro2968. BNA10327,07/03/2012,depósito2968 existe, contacto0. Es candidato muy respaldado para atribución549, todavía sin modificar banco/socio; comprobar no duplicación y conservar aporte fuente ya incluido. Cheque2926/87678128: MaignalCheques3os8 confirma origen pero Destino vacío; no resuelve el recibo/endoso.
+
+Relevadas todas las hojas de Movimientos LSC desde Abr2016.xlsm (hastaOct26), MovimientosCondominios yMovimientosLSC. Evidencia reconstruccion-2016-2026-fuentes.json. CajaEfectivo deXLSM trae aportes2023–2026 y operaciones anteriores (retiro13645,84/20-04-2016, gastos bancarios490,15/26-04-2016 y cobrosmotosierra2203,85/2204); revisar contra las31 relaciones operativas y41 asientos sin importar gastos propios. Dos discrepancias de fecha visibles en fuente: aporte300000 deabril2024 figura10/04 allí y11/04 en hojaCuentaCond; fila1107 de400000 tiene año2024 dentro de tramo2025. No corregir por posición de fila sin corroboración.
+
+Easy/Coop: revisados originales de nuevo. Coop recibeTarjeta2253,03 y vuelto0,00; pagoWC2253,04 incorrecto por0,01. Easy cobraTarjeta1362 y devuelve0,46,totalfiscal1361,54. TitularLucy/sin reintegro confirmado. PagoCoop503 tiene7 aplicacionesFIFO, su factura recibe tambiénBNA14405 por1317,93: reconstruir cadena antes de duplicar imputación. Easy561 tiene aplicación21107 a su propia factura1250,97. No trasladar el nombrePagosEfectivo al campoOrigenMovimiento: cada tabla usa su catálogo. **Actualización (Claude, 24/10):** la corrección SÍ quedó aplicada por `lucy_completar_easy_cooperativa_036.py` (regla `lucy-importes-fiscales-easy-coop-036`, respaldo `WC_lucy_easy_coop_importes_036_20261024_121141_106910.bak`, informe `backups/condominio-15-medios-036/lucy-easy-coop-20261024-121142.json`): pagos 503=2253,03 y 561=1361,54, créditos Lucy reemplazados por el importe fiscal, aplicación a la factura propia, y la aplicación BNA 12052 por 1317,93 anulada (queda disponible, no es deuda nueva). Repetición: `ya_aplicado_sin_escrituras`.
+
+
+## Aportes BNA de la planilla atribuidos al Condominio — aplicado (Claude, 24/10)
+
+Ejecutado el paso pendiente de la matriz («54 depósitos/transferencias según referencia: banco candidato, no todos atribuidos»), con la decisión ya registrada de Sergio: el universo de $733.781 de `Aportes de Capital Directores.xlsx / Depositos 1` son aportes del Condominio.
+
+Script `backend/scripts/atribuir_aportes_bna_condominio_036.py` (inspección por defecto, `--aplicar` con respaldo). Regla: por cada fila de la planilla (salvo efectivo, cheque de avena a Torrontegui y préstamo/devolución 2016), un crédito en Movimientos BNA de **importe exacto** entre la fecha de la fila y +3 días, **candidato único**, sin contacto y sin aplicaciones, conciliaciones, traspasos ni reasignaciones. Valida que la planilla siga sumando 733.781 y guarda su SHA256.
+
+- **35 atribuidos a 549 por $428.698** (regla `condominio-aportes-bna-sistematico-036`, respaldo `WC_condominio_aportes_bna_sistematico_036_20261024_122731_875246.bak`, informe `backups/condominio-ef-2011-2016-036/aportes-bna-sistematico-20261024-122732.json`): 25 cheques de la venta del camión a Maignal («DEP. CH. 48 HS»; incluye los cuatro de $2.968 — cheques Macro 87678102-105 —, entre ellos el 2968 del 07/03/2012 = BNA 10327), 5 transferencias «BCA.E.TR» y 9 transferencias Citi «TRANSF. INTERBANCARIAS» 2014-2015. Concepto bancario coherente en todos.
+- Saldo nominal del contacto 549: −$296.987,50 → **−$725.685,50** (más crédito a favor del Condominio, exacto por el importe atribuido). Repetición: 49 ya atribuidos, 0 escrituras.
+- No se superponen con los 13 depósitos en efectivo «no identificados» ($211.716,52); esa lista sigue igual.
+- **Sin candidato (no tocados):** 3 cheques de $3.134 (04/10, 08/11 y 06/12/2012) sin depósito en BNA; el depósito de $15.000 «Sucursal Pacheco» del 06/02/2013 coincide con BNA 10790 del 04/02/2013, ya atribuido a 549 (probable misma operación con fecha distinta; no se duplicó).
+- No se crearon caja, asientos de socio 3 ni kg/US$: la cuenta del socio 3 sigue pendiente de la matriz única (no sumar estos depósitos otra vez como aportes).
