@@ -38,3 +38,7 @@ Evidencia aplicada: backups/condominio-18-pagos-036/aplicacion-20261023-121250.j
 
 ## Continuidad Claude/Codex
 La observación anterior de18 pagos sin IdPagoEfectivo en caja queda desglosada: tres vínculos resueltos y15 registros con medios no efectivos, no15 egresos faltantes. Próximo paso: contrastar esos15 con débitos bancarios, valores y tarjetas/compensaciones del Condominio; luego revisar cómo se representan en socio3 sin duplicar cuentas/pagos existentes. No recargar las fuentes ni reabrir UATRE/AFIP/ARBA/otras cuentas cerradas por inferencia. No declarar cierre del Condominio todavía.
+
+### Actualización 24/10: medio registrado contrastado con originales
+
+Ver [rastreo de los15](condominio-15-medios-20261024.md). «No efectivos» describía el catálogo, no el pago probado: los tres combustibles519,53 dicen efectivo en sus tickets. Cheque95512293/pago290 por3031 ya integra los aportes733781; no duplicar. Diferencias documentales Easy110,57 y Cooperativa0,01, y Naldo a cuenta corriente sin identificación de tarjeta. Sin coincidencias directas de banco/tarjeta/socio en la búsqueda acotada; quedan pendientes comprobantes y financiación histórica conjunta de socio3. Sin nuevas escrituras en WC.

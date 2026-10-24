@@ -98,3 +98,7 @@ Hay 30 créditos en el BNA (DEP.EFECTIVO, DEPOSITO DE TER-SUC, DEP.P/T.INT.M.M-B
 - **Pendiente para la caja Condominio:**
   - Tramo 2011–mar-2016, desde `Movimientos LSC.xlsx` > Movs, TIPO CAJA 'EF'.
   - Vincular los movimientos entre cajas y bancos: "Retiro Giamigli (Préstamo)", aportes a Giamigli, retiros de socios.
+
+
+## Corrección documental 24/10/2026: alcance de los aportes733781
+La caracterización anterior como íntegramente depósitos bancarios requiere corrección: Depositos 1 fila14 incluye el cheque95512293 por3031 entregado directamente por siembra de avena (pago290/op485), también repetido en Movs725–726 y Aportes Campo15. No sumarlo otra vez al formar socio3. Ver condominio-15-medios-20261024.md para evidencia, contradicciones de medios y pendientes. La etapa de representación histórica de socio3 sigue abierta; no hubo escrituras en esta investigación.

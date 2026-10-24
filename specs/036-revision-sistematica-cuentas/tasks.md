@@ -267,4 +267,6 @@ Task: "T016 [P] [US1] Componente PagosSinFactura.tsx en frontend/src/components/
 
 
 - [X] 23/10/2026: desglosar los18 pagos por medio; completar los3 vínculos efectivos sin modificar saldos y documentar evidencia interna AFIP/UATRE. Ver condominio-18-pagos-20261023.md.
-- [ ] Contrastar los15 medios no efectivos con bancos/valores/tarjetas y obtener original del aporte sindical04/2014 si está disponible; no forzar enlaces de caja ni reasignaciones fiscales.
+- [X] 24/10/2026: rastrear los15 medios registrados contra bancos/valores/tarjetas, originales disponibles y socio3; matriz y límites en condominio-15-medios-20261024.md. Investigación sin escrituras; no equivale a conciliación cerrada.
+- [ ] Resolver pruebas pendientes por pago: AFIP475, ARBA20009,40, cheque2926, origen/reintegro de combustible519,53; titular/resumen de tarjetas, diferencias Easy110,57 y Cooperativa0,01. Obtener original sindical04/2014 del pago581 (pendiente distinto).
+- [ ] Conciliar financiación histórica única de socio3 antes de incorporar asientos: pago290/cheque95512293 por3031 ya está incluido en733781. Revisar aperturas/compensaciones y excluir doble cómputo entre planillas, pagos, caja, bancos y contacto549.
