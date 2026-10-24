@@ -63,3 +63,11 @@ Comparados los 31 movimientos operativos de la caja Condominio con Giamigli cont
 3. **2016, seis movimientos de la caja Condominio sin asiento en socio 3:** retiro Giamigli $13.645,84 y honorarios Criado $3.818 (20/04/2016), gastos bancarios Giamigli +$490,15 (26/04/2016), cobro de cuotas 1/6 y 2/6 de motosierra de Giamigli +$2.203,85 y +$2.204 (27/06 y 20/07/2016). Los egresos serían aportes (Haber) y los ingresos dinero de Giamigli retenido por el Condominio (Debe), pero el retiro de $13.645,84 cae el mismo día que la devolución del préstamo de $10.000 (fila 62 de la planilla, ya cargada) y puede estar relacionado.
 
 Pendientes que siguen del bloque Condominio: los 3 cheques de $3.134 (2012) sin depósito en BNA; AFIP junio 2011 ($95) sin boleta; recibo/endoso del cheque 2926 a Jáuregui y Morales; original sindical 04/2014 (pago 581); los 13 depósitos BNA en efectivo y el remanente de caja de $144.350,52 siguen no identificados.
+
+## Cuenta de socio = cuenta oficial; el contacto solo marca el banco (Sergio, 24/10)
+
+Sergio: «no confundamos cajas con cuentas corrientes». Criterio aplicado en el sistema:
+- La **cuenta de socio** (Finanzas → Cajas y socios) es la única cuenta oficial de cada socio, valuada en US$/kg.
+- El **contacto** del socio (Sergio 5670, Lucy 390, Condominio 549; Ceci no tiene) solo identifica de quién es un movimiento de banco o un pago. En Cuentas corrientes su saldo se muestra como «Saldo nominal (no es deuda del socio)», con aviso y enlace a la cuenta de socio; en el listado de saldos llevan la marca «socio». 375 sigue siendo Sergio empleado (solo sueldos).
+- Vínculo en `backend/src/features/cuentas_socios/contactos.py` (`SOCIO_CONTACTO`), endpoints `GET /api/cuentas-socios/contactos` y `GET /api/cuentas-socios/{id}/control-banco`.
+- **Control con el banco** en la cuenta de cada socio: movimientos de banco del contacto sin asiento (mismo importe, ±5 días). Estado al 24/10: Condominio 52 de 55 (sin asiento: 18635 −$4.134 «cobrado por caja» impuestos del Condominio, 10348 $5.971,50 y 11240 $10.000, ya marcados por Codex); Sergio 35 de 44 (9 sin asiento, $3.130.360); Lucy 44 de 58 (14 sin asiento, $2.925.804,15). Esos 23 movimientos son la próxima revisión del bloque socios.

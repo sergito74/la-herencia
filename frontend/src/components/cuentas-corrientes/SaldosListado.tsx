@@ -1,6 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
+import { SOCIO_DE_CONTACTO } from "@/components/ui/AvisoCuentaContacto";
 import Link from "next/link";
 import { useState } from "react";
 
@@ -20,6 +21,7 @@ const COLUMNS: DataTableColumn<SaldoContacto>[] = [
         className="text-finance underline"
       >
         {s.razonSocial ?? "—"}
+        {SOCIO_DE_CONTACTO[s.idContacto] && <span className="ml-2 rounded-sm bg-surface-sunken px-1.5 text-xs text-ink-secondary" title="Su saldo en pesos no es deuda: ver la cuenta de socio">socio</span>}
       </Link>
     ),
   },

@@ -12,12 +12,23 @@ const AVISOS: Record<number, { titulo: string; texto: string }> = {
       "y a Cuentas de socios.",
   },
   5670: {
-    titulo: "Cuenta de Sergio como SOCIO (lado bancario)",
+    titulo: "Sergio como SOCIO — solo identifica movimientos de banco",
     texto:
-      "Transferencias que no son sueldo: compensaciones, retiros, aportes, préstamos y retiros del Condominio. " +
-      "El registro valuado (kg novillo / US$) está en Cuentas de socios → Sergio. Los sueldos van al contacto 375.",
+      "Transferencias que no son sueldo: compensaciones, retiros, aportes y préstamos. La cuenta oficial de Sergio, " +
+      "valuada en US$ y kg, es su cuenta de socio. Los sueldos van al contacto 375.",
+  },
+  390: {
+    titulo: "Lucy como SOCIA — solo identifica movimientos de banco",
+    texto: "La cuenta oficial de Lucy, valuada en US$ y kg, es su cuenta de socio.",
+  },
+  549: {
+    titulo: "Condominio LSC — solo identifica movimientos de banco",
+    texto: "La cuenta oficial del Condominio con Giamigli, valuada en US$ y kg, es su cuenta de socio.",
   },
 };
+
+/** Contacto «lado bancario» → socio (igual que backend cuentas_socios/contactos.py). Su saldo en pesos no es deuda. */
+export const SOCIO_DE_CONTACTO: Record<number, number> = { 5670: 1, 390: 2, 549: 3 };
 
 export function avisoCuenta(idContacto: number | null | undefined) {
   return idContacto != null ? AVISOS[idContacto] : undefined;
@@ -30,6 +41,12 @@ export function AvisoCuentaContacto({ idContacto }: { idContacto: number | null 
     <div role="alert" className="rounded-md border-l-4 border-status-warning bg-status-warning/10 p-3 text-sm">
       <p className="font-semibold">⚠ {aviso.titulo}</p>
       <p className="text-ink-secondary">{aviso.texto}</p>
+      {idContacto != null && SOCIO_DE_CONTACTO[idContacto] && (
+        <p className="mt-1">
+          El saldo en pesos de esta cuenta corriente <strong>no es la deuda del socio</strong>.{" "}
+          <a className="underline" href={`/finanzas/cuentas-socios/${SOCIO_DE_CONTACTO[idContacto]}`}>Ver la cuenta de socio</a>
+        </p>
+      )}
     </div>
   );
 }

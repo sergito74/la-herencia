@@ -18,7 +18,7 @@ import { Breadcrumb } from "@/components/ui/Breadcrumb";
 import { DataTable, type DataTableColumn, type SortState } from "@/components/ui/DataTable";
 import { FilterBar, FilterField, FilterSubmitButton, filterInputClass } from "@/components/ui/FilterBar";
 import { KpiCard } from "@/components/ui/KpiCard";
-import { AvisoCuentaContacto } from "@/components/ui/AvisoCuentaContacto";
+import { AvisoCuentaContacto, SOCIO_DE_CONTACTO } from "@/components/ui/AvisoCuentaContacto";
 import { ErrorState, LoadingState } from "@/components/ui/States";
 import { formatMoneda, formatFecha, formatMonto } from "@/lib/format";
 
@@ -312,7 +312,7 @@ export function CuentaCorriente() {
               <p className="text-sm text-ink-secondary">{selected.tipoContacto ?? "sin tipo"}</p>
             </div>
             <KpiCard
-              label="Saldo"
+              label={SOCIO_DE_CONTACTO[selected.idContacto] ? "Saldo nominal (no es deuda del socio)" : "Saldo"}
               value={
                 loadingSaldo
                   ? "…"
@@ -321,7 +321,7 @@ export function CuentaCorriente() {
                     : "—"
               }
               tone={
-                saldo?.saldoParcial == null ? "neutral" : saldo.saldoParcial < 0 ? "danger" : "success"
+                saldo?.saldoParcial == null || SOCIO_DE_CONTACTO[selected.idContacto] ? "neutral" : saldo.saldoParcial < 0 ? "danger" : "success"
               }
             />
             {saldo?.saldoDolares != null && (

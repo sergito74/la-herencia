@@ -118,3 +118,15 @@ export function registrarAsiento(idSocio: number, body: AsientoSocioInput): Prom
 export function editarAsiento(idMovimiento: number, body: AsientoSocioInput): Promise<MovimientoCuentaSocio> {
   return apiPut<MovimientoCuentaSocio>(`/api/cuentas-socios/movimientos/${idMovimiento}`, body);
 }
+
+export interface ControlBancoSocio {
+  idContacto: number | null;
+  banco: number;
+  conAsiento: number;
+  sinAsiento: { fecha: string; origen: string; idOrigen: number; documento: string; importe: number; sentido: string }[];
+}
+
+/** Movimientos de banco del contacto del socio que no tienen su asiento en la cuenta de socio. */
+export function fetchControlBanco(idSocio: number): Promise<ControlBancoSocio> {
+  return apiGet<ControlBancoSocio>(`/api/cuentas-socios/${idSocio}/control-banco`);
+}

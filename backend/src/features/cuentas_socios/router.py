@@ -33,6 +33,21 @@ def _usuario_actual(request: Request) -> str:
     return fila["n"] if fila else "desconocido"
 
 
+@router.get("/contactos")
+async def contactos_socios() -> list[dict]:
+    """Contacto «lado bancario» de cada socio: su saldo en pesos no es la deuda del socio."""
+    from src.features.cuentas_socios import contactos
+
+    return await run_in_threadpool(contactos.mapa)
+
+
+@router.get("/{idSocio}/control-banco")
+async def control_banco(idSocio: int) -> dict:
+    from src.features.cuentas_socios import contactos
+
+    return await run_in_threadpool(contactos.control_banco, idSocio)
+
+
 @router.get("", response_model=ListaSociosResponse)
 async def listar_socios() -> ListaSociosResponse:
     socios = await run_in_threadpool(repository.listar_socios_con_saldo)
