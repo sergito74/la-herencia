@@ -279,3 +279,11 @@ Task: "T016 [P] [US1] Componente PagosSinFactura.tsx en frontend/src/components/
 - [ ] Obtener boleta fiscal de junio2011 y recibo/endoso cheque2926. La procedencia de fondos de junio está aclarada, su identificación fiscal sigue pendiente; no reasignar por monto solamente.
 - [ ] Obtener titular/resumen/reintegros de Naldo/Cooperativa/Easy y origen/reintegro combustible519,53; cerrar diferencias solo contra respaldo externo, sin aumentar pagos por la corrección de factura.
 - [ ] Validar68 puentes históricos restantes, vínculos bancarios y2016–2026; luego incorporar solo operaciones únicas comprobadas en socio3 y su valuación. No cargar841286,02 como aporte global ni sumar los puentes al universo sin contrastar.
+
+
+### Continuación 24/10 — medios y destinatarios
+Aplicadas auditorías131–133:49 débitos y1 tarjeta documentados,100 filas históricas de caja anuladas sin cambiar saldo;18 pares pendientes. Jumbo/Sodimac originales corregidos con respaldos. Sin asientos socio3. Detalle aplicado y controles en [condominio-puentes-68-20261024.md](condominio-puentes-68-20261024.md). Control visual completo de68 originales:62 Giamigli,5 Sucesión,1 consumidor final; dos rutas documentales incorrectas pendientes de corregir. Registro individual y fuentes en [condominio-destinatarios-68-20261024.md](condominio-destinatarios-68-20261024.md). No trasladar automáticamente estos importes a socios. Sergio pregunta ahora si los comprobantes están en Access: pendiente comprobar directamente su presencia allí, separando registro histórico de los puentes creados en WC.
+
+- [X] Confirmar presencia de68 compras y68 pagos en el origen enlazado por Access, solo lectura: todos presentes; diferenciasWC documentadas131–133.
+- [X] Revisar destinatario fiscal de68 originales:62 Giamigli,5 Sucesión,1 consumidor final; registro individual en condominio-destinatarios-68-20261024.md.
+- [ ] Justificar seis excepciones fiscales y corregir dos enlacesPDF375/568 con respaldo; no generar aportes por mera presencia histórica.

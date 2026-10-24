@@ -171,11 +171,7 @@ def run():
     assert len(source_expenses) == 105
     assert sum(r["importe"] for r in source_expenses) == Decimal("110536.02")
     bycash = {x["id"]: x for x in cash}
-    bridges = [
-        x
-        for x in cash
-        if x["concepto"] == "Aporte Condominio LSC (pago directo)" and not x["anulada"]
-    ]
+    bridges = [x for x in cash if x["concepto"] == "Aporte Condominio LSC (pago directo)"]
     bridge_pending = []
     for bridge in bridges:
         match = re.search(r"egreso mov\. (\d+)", bridge["detalle"] or "")
@@ -205,6 +201,8 @@ def run():
                 payment_keys[leg["pago"]] = key
         canonical[key]["cajas"].append(leg["id"])
         canonical[key]["puentes"].append(bridge["id"])
+        if bridge["anulada"] and leg["anulada"]:
+            canonical[key]["estado"] = "par_caja_anulado_con_historia_conservada_revisar_medio"
     # No sumar de nuevo un crédito BNA a su aporte de planilla candidato.
     account = read(
         "SELECT * FROM dbo.vw_MovimientosCuenta_Base WHERE IdContacto=549 ORDER BY Fecha,IdOrigen"
@@ -244,6 +242,19 @@ def run():
         entry["observacionesDocumentales"] = {
             str(p): documentary[p] for p in entry["pagos"] if p in documentary
         }
+        entry["pagosVigentes"] = [p for p in payments if p["id"] in entry["pagos"]]
+        if (
+            entry["clave"].startswith("CAJA-EGRESO-")
+            and entry["estado"] == "par_caja_anulado_con_historia_conservada_revisar_medio"
+            and entry["pagosVigentes"]
+            and all(p["medio"] in (10, 20) for p in entry["pagosVigentes"])
+        ):
+            entry["tipo"] = (
+                "tarjeta_documentada"
+                if all(p["medio"] == 20 for p in entry["pagosVigentes"])
+                else "debito_bancario_documentado"
+            )
+            entry["estado"] = "pago_vigente_par_caja_anulado_por_reclasificacion"
     return {
         "fecha": datetime.now().isoformat(),
         "modo": "solo_lectura_no_es_saldo",
@@ -272,11 +283,17 @@ def run():
             "puentesCaja": len(bridges),
             "totalPuentesCaja": sum((x["importe"] for x in bridges), Decimal(0)),
             "puentesYaEnAportesOPagos": sum(
-                bool(x["puentes"]) and x["tipo"] != "puente_caja_pendiente_validar_origen"
+                bool(x["puentes"]) and not x["clave"].startswith("CAJA-EGRESO-")
                 for x in canonical.values()
             ),
             "restantesPuentesPendientes": sum(
                 x["tipo"] == "puente_caja_pendiente_validar_origen" for x in canonical.values()
+            ),
+            "puentesReclasificadosDebito": sum(
+                x["tipo"] == "debito_bancario_documentado" for x in canonical.values()
+            ),
+            "puentesReclasificadosTarjeta": sum(
+                x["tipo"] == "tarjeta_documentada" for x in canonical.values()
             ),
             "categorias": dict(Counter(x["tipo"] for x in canonical.values())),
         },

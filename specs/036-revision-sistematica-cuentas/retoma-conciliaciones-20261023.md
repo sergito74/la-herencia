@@ -49,3 +49,13 @@ Matriz única producida:165 operaciones fuente al unir61 aportes y105 pagos quit
 
 ### Respuesta de Sergio — HSBC Oscar, 24/10/2026
 Sergio respondió «1»: la cuenta HSBC a nombre de Oscar Vicente se administraba como fondos del Condominio LSC. Queda resuelta la clasificación patrimonial consultada; pagos190/191/193/194 por380 con identificación deIrma y fondos Condominio. Pago192/junio95 mantiene pendiente boleta/identificación fiscal, no el patrimonio de la cuenta. Matriz actualizada sin crear pagos, asientos ni modificar titularidad; no importar otros gastos de la cuenta. Pendientes restantes en condominio-ejecucion-plan-20261024.md.
+
+
+### Continuación 24/10 — medios y destinatarios
+Aplicadas auditorías131–133:49 débitos y1 tarjeta documentados,100 filas históricas de caja anuladas sin cambiar saldo;18 pares pendientes. Jumbo/Sodimac originales corregidos con respaldos. Sin asientos socio3. Detalle aplicado y controles en [condominio-puentes-68-20261024.md](condominio-puentes-68-20261024.md). Control visual completo de68 originales:62 Giamigli,5 Sucesión,1 consumidor final; dos rutas documentales incorrectas pendientes de corregir. Registro individual y fuentes en [condominio-destinatarios-68-20261024.md](condominio-destinatarios-68-20261024.md). No trasladar automáticamente estos importes a socios. Sergio pregunta ahora si los comprobantes están en Access: pendiente comprobar directamente su presencia allí, separando registro histórico de los puentes creados en WC.
+
+
+### Presencia en el sistema Access comprobada — 24/10/2026
+Lectura puntual y exclusiva de SELECT sobre LaHerencia, base enlazada por los archivos Access; no se abrieron ni modificaron archivos accdb. Coinciden los identificadores de las68 compras y los68 pagos: ninguno falta en origen. Comparación normalizada contra WC vivo:50 diferencias de medio y1 diferencia de importe (pago31/Jumbo356→511,79), correspondientes a auditorías131–133; ninguna diferencia de contacto u operación. No confundir esos documentos históricos con los puentes compensatorios creados después en WC. Evidencia privada: backups/condominio-15-medios-036/comparacion-access-68-20261024.json. La presencia en Access no valida destinatario, destino económico, saldo ni aporte de socio.
+
+Pendientes inmediatos: justificar relación económica de pagos13,14,15,16,18 (Sucesión) y75 (consumidor final); corregir enlaces documentales375/568 con respaldo; resolver18 medios/reintegros sin prueba suficiente, las tarjetas y las diferencias fiscales; contrastar apertura/compensaciones de socio3 y continuación2016–2026 antes de nuevos asientos. Ninguna escritura financiera en este control de destinatarios/origen.
