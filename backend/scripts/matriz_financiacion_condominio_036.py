@@ -224,11 +224,13 @@ def run():
     documentary = {
         333: "HSBC Condominio12/11/2012,RSBA,partida0079575; origen documentado, sin pago nuevo.",
         378: "HSBC Condominio11/03/2013,RSBA,partida0079575; origen documentado, sin pago nuevo.",
-        190: "HSBC Oscar12/04/2011,DA95 Irma período03/2011; WC11/04. Patrimonio por confirmar.",
-        191: "HSBC Oscar11/05/2011,DA95 Irma período04/2011; patrimonio por confirmar.",
-        192: "HSBC Oscar13/06/2011,95 sin identificación fiscal; candidato bancario.",
-        193: "HSBC Oscar08/08/2011,DA95 Irma período07/2011; patrimonio por confirmar.",
-        194: "HSBC Oscar19/09/2011,DA95 Irma período08/2011; patrimonio por confirmar.",
+        190: "HSBC Oscar12/04/2011,DA95 Irma período03/2011; WC11/04. "
+        "Fondos Condominio confirmados.",
+        191: "HSBC Oscar11/05/2011,DA95 Irma período04/2011; fondos Condominio confirmados.",
+        192: "HSBC Oscar13/06/2011,95 sin identificación fiscal; "
+        "fondos Condominio; boleta pendiente.",
+        193: "HSBC Oscar08/08/2011,DA95 Irma período07/2011; fondos Condominio confirmados.",
+        194: "HSBC Oscar19/09/2011,DA95 Irma período08/2011; fondos Condominio confirmados.",
         28: "Cheque87678128 Maignal2926 respaldado en dos libros; destino sin recibo de endoso.",
         290: "Cheque95512293 Maignal3031,siembra avena; incluido enAPORTE-F14.",
         315: "Factura1578 a cuenta corriente, sin voucher/resumen/titular identificado.",
@@ -251,9 +253,9 @@ def run():
             "ARBA333_378": "HSBC Condominio: 12/11/2012 y11/03/2013,10004.70 cada uno; "
             "servicioRSBA y partida0079575 coinciden. No importar otro pago.",
             "AFIP190_191_193_194": "HSBC titularOscar: 12/04,11/05,08/08,19/09/2011; "
-            "DA95 identifica aIrma. Clasificación patrimonial pendiente de Sergio.",
+            "DA95 identifica aIrma. Sergio confirmó fondos Condominio, opción1 24/10/2026.",
             "AFIP192": "HSBC titularOscar13/06/2011:95, sin identificación del contribuyente "
-            "en la línea. Candidato, no prueba fiscal completa.",
+            "en la línea. Fondos Condominio confirmados; candidato, no prueba fiscal completa.",
             "pago28": "Maignal/Cheques 3os fila8 y Pagos Venta Camion1/Pagos fila4: "
             "87678128,2926,25/10/2011. Origen del cheque respaldado; destino vacío.",
             "tarjetas315_503_561": "Sin resumen/titular de tarjeta localizado2012–2014. "

@@ -37,7 +37,7 @@ Snapshot: `backups/condominio-15-medios-036/correccion-documentos-20261024-10354
 La búsqueda fuera de la carpeta Condominio LSC encontró originales anteriores bajo:
 
 - `Documents/Alquileres urbanos/Estacion de Servicio/Condiminio/Resumenes de cuenta/HSBC`: cuenta titulada **Condominio Giamberardini Oscar y otros**.
-- `Documents/Resumenes Bancarios/HSBC`: cuenta titulada **Oscar Vicente Giamberardini**. No equiparar ambas patrimonialmente sin confirmación.
+- `Documents/Resumenes Bancarios/HSBC`: cuenta titulada **Oscar Vicente Giamberardini**. Sergio confirmó el24/10/2026 (opción1) que se administraba como fondos del Condominio LSC; conservar la titularidad bancaria original.
 - `Documents/Maignal/Pagos Venta Camion.xlsx` y `Pagos Venta Camion 1.xlsx`.
 
 Se corrigió la cobertura insuficiente del rastreo anterior: ahora hay23 originales HSBC/104 páginas consultados en los meses pertinentes. Script de extracción de solo lectura `backend/scripts/rastrear_resumenes_hsbc_condominio_036.py` (Python del sistema con pdfplumber); huellas y cobertura en `hsbc-cobertura-verificada.json`, líneas/fecha/página en `hsbc-coincidencias.json`, todo bajo backups/condominio-15-medios-036. Páginas bancarias relevantes renderizadas e inspeccionadas; originales intactos.
@@ -46,15 +46,15 @@ Se corrigió la cobertura insuficiente del rastreo anterior: ahora hay23 origina
 |---|---|---|
 | 333 | HSBC Condominio noviembre2012, pág2, 12/11, P.SERV.PCBE ref33023,10004,70; servicioRSBA y partida de boleta0079575 | **Origen Condominio comprobado**, mismo pago existente. No importar otro débito. |
 | 378 | HSBC Condominio marzo2013, pág2, 11/03, ref37948,10004,70; servicioRSBA y misma partida | **Origen Condominio comprobado**, pago anterior al vencimiento12/03 coherente. No tocar ARBA cerrada. |
-| 190 | HSBC Oscar abril2011, pág4:12/04,ref72238,95; servicioDA95 identifica CUIT de Irma y período03/2011 | Contrasta fechaWC11/04 vs débito12/04. Pagador bancario identificado; patrimonio a confirmar antes de socio3. |
-| 191 | HSBC Oscar mayo2011, pág4:11/05,ref73665,95; DA95 Irma/período04/2011 | Mismo pendiente patrimonial. |
+| 190 | HSBC Oscar abril2011, pág4:12/04,ref72238,95; servicioDA95 identifica CUIT de Irma y período03/2011 | Contrasta fechaWC11/04 vs débito12/04. Fondos del Condominio confirmados por Sergio; no crear otro pago ni duplicar aporte. |
+| 191 | HSBC Oscar mayo2011, pág4:11/05,ref73665,95; DA95 Irma/período04/2011 | Fondos del Condominio confirmados por Sergio; sin asiento nuevo. |
 | 192 | HSBC Oscar junio2011, pág3:13/06,ref90290,95; la línea no identifica contribuyente | Candidato bancario fuerte, aún falta comprobante fiscal/identificación. No afirmar prueba completa. |
-| 193 | HSBC Oscar agosto2011, pág5:08/08,ref07309,95; DA95 Irma/período07/2011 | Mismo pendiente patrimonial. |
-| 194 | HSBC Oscar septiembre2011, pág4:19/09,ref21794,95; DA95 Irma/período08/2011 | Mismo pendiente patrimonial. |
+| 193 | HSBC Oscar agosto2011, pág5:08/08,ref07309,95; DA95 Irma/período07/2011 | Fondos del Condominio confirmados por Sergio; sin asiento nuevo. |
+| 194 | HSBC Oscar septiembre2011, pág4:19/09,ref21794,95; DA95 Irma/período08/2011 | Fondos del Condominio confirmados por Sergio; sin asiento nuevo. |
 | 28 | Maignal/Pagos Venta Camion.xlsx, Cheques 3os A8:H8; libro1/Pagos A4:L4: cheque87678128,Macro,titularMaignal,2926,vto25/10/2011 | Origen del cheque identificado por número, no por importe. Destino vacío: falta recibo/endoso a Jauregui. |
 | 290 | Mismos libros: Cheques 3os A17:H17 y libro1/Pagos A13:L13:95512293,3031,Carlos Torrontegui/siembra avena | Origen/destino respaldados, una sola financiación ya incluida en733781. Sin reasignar97 cerrado. |
 
-Se consultó a Sergio por la clasificación de la cuenta titulada Oscar (fondos Condominio o separados de Oscar/sucesión), dado el hallazgo documental; mientras no responda queda pendiente, sin reasignaciones. No se crearon impuestos de Irma ni se reabrieron su cuenta46/AFIP por inferencia. Los otros gastos personales de esos resúmenes quedan fuera del sistema.
+Sergio respondió opción1 el24/10/2026: la cuenta HSBC titulada Oscar se administraba como fondos del Condominio LSC. Clasificación patrimonial resuelta para este rastreo; los pagos190/191/193/194 por380 tienen origen Condominio confirmado, además del respaldo bancario que identifica aIrma. Pago192 por95 mantiene pendiente su identificación fiscal, aunque la procedencia patrimonial de la cuenta ya está aclarada. Conservar la titularidad bancaria original, los pagos existentes y el control de eventuales reintegros antes de socio3. No se crearon impuestos de Irma ni se reabrieron su cuenta46/AFIP por inferencia. Los otros gastos personales de esos resúmenes quedan fuera del sistema.
 
 ## Matriz única producida
 
@@ -82,6 +82,11 @@ Socio3 sigue con41 movimientos desde29/12/2023, sin asiento individual de2011–
 - Ruff check de los tres scripts PASS; inspección SQL de originales, controles transaccionales y repetición idempotente PASS.
 - Auditoría de campañas posterior:16341 renglones de compras y55 labores; solo permanece la excepción conocida sin_asignacion del redondeo ajeno a estos documentos. Informe `backups/auditoria-campanias/auditoria-20261024_103940.json`. No se validó ni cerró una campaña nueva.
 - Siguen faltando resúmenes/titular y eventual reintegro para Naldo/Cooperativa/Easy; no hay respaldo para aumentar los pagos registrados ni cargar la diferencia al socio. Las facturas sí están corregidas.
-- AFIP: pendiente respuesta patrimonial y boleta de junio; ARBA20009,40 ya tiene fuente bancaria; cheque2926 ya tiene origen, todavía no recibo/endoso; combustibles519,53 tienen medio efectivo documentado, pero no origen/reintegro. No crear egresos de caja nuevos.
+- AFIP: clasificación patrimonial confirmada por Sergio (fondos Condominio); pendiente boleta de junio; ARBA20009,40 ya tiene fuente bancaria; cheque2926 ya tiene origen, todavía no recibo/endoso; combustibles519,53 tienen medio efectivo documentado, pero no origen/reintegro. No crear egresos de caja nuevos.
 - La matriz evita las duplicaciones detectadas, pero falta revisar los68 puentes restantes y completar los vínculos de banco/2016–2026 antes de llevar historia a socio3. No cargar841286,02 como un aporte global.
 - Pago581/AFIP-UATRE conserva el pendiente externo anterior. No se modificó en este tramo.
+
+## Aclaración de Sergio incorporada — 24/10/2026
+Respuesta «1» a la consulta sobre HSBC Oscar: fondos del Condominio LSC. Matriz y tareas actualizadas; no supone aprobación de todos los gastos de la cuenta como gastos de Giamigli, ni valida el documento de junio ni habilita sumar otra vez pagos/aportes. No hubo escrituras contables en esta actualización.
+
+Matriz regenerada con la aclaración: `backups/condominio-15-medios-036/matriz-financiacion-20261024-105647.json` y CSV homónimo. Universos e importes sin cambio; actualización de evidencia solamente. La respuesta explícita posterior «Fondos del Condominio LSC» ratifica la opción1, sin ampliar el alcance a gastos propios.
