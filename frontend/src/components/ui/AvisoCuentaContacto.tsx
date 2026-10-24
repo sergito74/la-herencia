@@ -21,6 +21,10 @@ const AVISOS: Record<number, { titulo: string; texto: string }> = {
     titulo: "Lucy como SOCIA — solo identifica movimientos de banco",
     texto: "La cuenta oficial de Lucy, valuada en US$ y kg, es su cuenta de socio.",
   },
+  564: {
+    titulo: "Ceci (Virginia Giamberardini) como SOCIA — solo identifica movimientos de banco",
+    texto: "La cuenta oficial de Ceci, valuada en US$ y kg, es su cuenta de socio.",
+  },
   549: {
     titulo: "Condominio LSC — solo identifica movimientos de banco",
     texto: "La cuenta oficial del Condominio con Giamigli, valuada en US$ y kg, es su cuenta de socio.",
@@ -28,7 +32,7 @@ const AVISOS: Record<number, { titulo: string; texto: string }> = {
 };
 
 /** Contacto «lado bancario» → socio (igual que backend cuentas_socios/contactos.py). Su saldo en pesos no es deuda. */
-export const SOCIO_DE_CONTACTO: Record<number, number> = { 5670: 1, 390: 2, 549: 3 };
+export const SOCIO_DE_CONTACTO: Record<number, number> = { 5670: 1, 390: 2, 549: 3, 564: 4 };
 
 export function avisoCuenta(idContacto: number | null | undefined) {
   return idContacto != null ? AVISOS[idContacto] : undefined;

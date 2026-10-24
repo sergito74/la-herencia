@@ -11,8 +11,8 @@ from datetime import date, datetime
 
 from src.db.connection import fetch_all
 
-# IdSocio -> IdContacto «lado bancario». 375 (Sergio empleado) queda fuera: solo sueldos. Ceci no tiene contacto.
-SOCIO_CONTACTO = {1: 5670, 2: 390, 3: 549}
+# IdSocio -> IdContacto «lado bancario». 375 (Sergio empleado) queda fuera: solo sueldos. Ceci = Virginia (564).
+SOCIO_CONTACTO = {1: 5670, 2: 390, 3: 549, 4: 564}
 CONTACTO_SOCIO = {v: k for k, v in SOCIO_CONTACTO.items()}
 ORIGENES_BANCO = ("Banco Nacion", "Galicia", "Mercado Pago", "Conciliación Tesorería")
 DIAS = 5
