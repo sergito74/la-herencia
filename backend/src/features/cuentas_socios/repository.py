@@ -316,12 +316,12 @@ def _insert_asiento(id_socio: int, lado: str, importe: float, fecha: date, medio
     if not fetch_one("SELECT 1 AS x FROM dbo.Socios WHERE IdSocio = ?", (id_socio,)):
         raise ValueError(f"El socio {id_socio} no existe.")
     v = a_fecha(importe, fecha)
-    signo = 1 if lado == "debe" else -1
+    # US$ y kg se guardan siempre positivos: el Tipo da el signo (calcular_saldo / deuda_actualizada).
     tipo = "AsignacionGasto" if lado == "debe" else "Devolucion"
     return (
         "INSERT INTO dbo.MovimientosCuentaSocio (IdSocio, Tipo, Importe, ImporteUSD, ImporteKgCarne, Fecha, Origen, Medio, Motivo, Usuario) "
         "OUTPUT INSERTED.IdMovimiento VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-        (id_socio, tipo, importe, float(v["importeUSD"]) * signo, float(v["importeKgCarne"]) * signo, fecha, ORIGEN_MANUAL,
+        (id_socio, tipo, importe, float(v["importeUSD"]), float(v["importeKgCarne"]), fecha, ORIGEN_MANUAL,
          medio, motivo.strip(), usuario),
     )
 

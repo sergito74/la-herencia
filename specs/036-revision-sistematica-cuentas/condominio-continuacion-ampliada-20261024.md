@@ -31,3 +31,25 @@ Script `backend/scripts/atribuir_aportes_bna_condominio_036.py` (inspección por
 - No se superponen con los 13 depósitos en efectivo «no identificados» ($211.716,52); esa lista sigue igual.
 - **Sin candidato (no tocados):** 3 cheques de $3.134 (04/10, 08/11 y 06/12/2012) sin depósito en BNA; el depósito de $15.000 «Sucursal Pacheco» del 06/02/2013 coincide con BNA 10790 del 04/02/2013, ya atribuido a 549 (probable misma operación con fecha distinta; no se duplicó).
 - No se crearon caja, asientos de socio 3 ni kg/US$: la cuenta del socio 3 sigue pendiente de la matriz única (no sumar estos depósitos otra vez como aportes).
+
+## Cinco tickets «Efectivo» con débito HSBC — aplicado (Claude, 24/10)
+
+Decisión de Sergio (24/10): **vale el extracto bancario**; los cinco tickets de combustible 14, 40, 362, 530 y 660 se pagaron con la tarjeta de débito del HSBC del Condominio (el «Efectivo» del ticket es error de la estación). Script `backend/scripts/conciliar_cinco_debitos_efectivo_036.py`, mismo tratamiento que los diez débitos con centavos: medio 3→10 e importe = débito HSBC (operaciones 095313, 103113, 136332, 129042, 174398 del Extracto Banco), componente documental 036-CENT-P{id} en AjustesCuentaCorriente por la diferencia con la factura (14: +0,01; 40: +0,02; 362 y 530: −0,01; 660: sin componente, el pago pasa de 510,12 a 510,13 = factura), 10 filas de caja Giamigli (egreso + puente) anuladas con nota, y una sola aplicación a la factura propia (se anulan los cruces de 0,02 y 0,03 de los pagos 530 y 660). Regla `condominio-cinco-debitos-ticket-efectivo-036`, respaldo `WC_condominio_cinco_debitos_036_20261024_123313_955373.bak`, informe `backups/condominio-15-medios-036/cinco-debitos-20261024-123315.json`. Cajas y socios intactos; solo se mueven los proveedores de esos pagos por los centavos de factura. Repetición sin escrituras.
+
+## Historia 2011–2016 de la cuenta de socio del Condominio (socio 3) — aplicado (Claude, 24/10)
+
+Decisión de Sergio (24/10): «Sí, cargar en socio 3», valuada como Sergio y Lucy (antes del 16/03/2020: 100% US$ al dólar BNA billete de la fecha). Script `backend/scripts/socio3_historia_condominio_036.py` sobre la matriz única (`matriz_financiacion_condominio_036.run`), cada operación una sola vez:
+
+| Grupo | Asientos | Importe |
+|---|---:|---:|
+| A. Planilla «Depositos 1» (aportes; préstamo 2016 al Haber y su devolución al Debe) | 61 | neto $733.781 |
+| B. Pagos directos del Condominio por Giamigli (Movs «Compra Giamigli» EF) | 101 | $102.423,01 |
+| **Total neto a favor del Condominio** | **162** | **$836.204,01** |
+
+Excluidos de B: pago 290 (cheque de la avena = fila 14 de A) y los pagados por Lucy sin reintegro (315 Naldo, 503 Cooperativa, 561 Easy; Sodimac 88 no está entre los 105). Las dos filas Movs 1709/1919 sin pago único son Cooperativa y Easy (importes corregidos), también de Lucy. Origen `CondominioHist036`; IdOrigen negativo = fila de la planilla, positivo = IdPagoEfectivo. Regla `socio3-historia-condominio-2011-2016-036`, respaldo `WC_socio3_historia_condominio_036_20261024_123457_272588.bak`, informe `backups/condominio-15-medios-036/socio3-historia-20261024-123457.json`. Otros socios intactos.
+
+**Error de signo corregido en el momento:** en `MovimientosCuentaSocio` el US$ y los kg se guardan siempre **positivos** y el Tipo (Devolucion/AsignacionGasto) da el signo. La primera carga guardó el US$ de los 161 Haber en negativo (el saldo salía al revés); se corrigió con `ABS` sobre esas 161 filas y se arregló el mismo error en `cuentas_socios.repository._insert_asiento` (asientos manuales del 23/10, sin filas cargadas todavía) y en su prueba.
+
+Socio 3 resultante (203 movimientos): saldo nominal −$5.656.204,01; **US$ −131.927,68 y −1.228,86 kg** a favor del Condominio; deuda actualizada al 21/10/2026 (INMAG 3.926,16, dólar 1.520): **−$205.354.786,61** a favor. La cuenta corriente del contacto 549 (−$725.685,50, lado bancario) no se tocó: igual que Sergio 375/5670, contacto y socio son dos vistas del mismo hecho.
+
+**Para que Sergio revise:** la valuación 100% US$ de 2011–2016 multiplica mucho el peso de esos aportes en pesos de hoy (US$129.432 de aportes ≈ $197 millones). Es la regla vigente de 036 para todas las cuentas de socios, pero conviene que la vea antes de usar el saldo.
