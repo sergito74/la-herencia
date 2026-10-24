@@ -28,3 +28,7 @@ Otros5 candidatos14,40,362,530,660: cercanía bancaria de0,01–0,02 pero los or
 Restantes3 pagos177,331,360: originales dicen Efectivo, sin candidato bancario bajo este criterio. Falta acreditar procedencia/reintegro y representación de socio; no generar un aporte porque no aparezca banco.
 
 Los18 siguen sin reclasificación aplicada; ahora10 tienen prueba concordante de débito con detalle de centavos,5 contradicción y3 efectivo sin origen acreditado. Las6 excepciones de destinatario (13,14,15,16,18,75) siguen sin justificación económica; no trasladar automáticamente a socios. No declarar conciliación cerrada.
+
+
+### Diez débitos aplicados — 24/10
+Auditoría137 con respaldo:10 pagos vigentes de total fiscal2130,55 a banco exacto2130,51/medio10;10 componentes no bancarios documentados (vuelto/complemento),20 filas compensatorias de caja anuladas. Todos los saldos de contactos/cajas/socios idénticos; no nuevos pagos/gastos ni aportes. 68=59débitos+1tarjetaLucy+8pendientes. Detalle individual, respaldo y controles en [condominio-diez-centavos-aplicados-20261024.md](condominio-diez-centavos-aplicados-20261024.md).

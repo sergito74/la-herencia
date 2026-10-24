@@ -228,3 +228,7 @@ Sergio confirmó continuidad de etapaSucesión y que Naldo/Cooperativa/Easy son 
 
 ### Sodimac resuelto con confirmación — 24/10
 Sergio confirmó pago íntegro624,29 porLucy sin reintegro. No hay productos particulares;52,37 venía de detalle/percepción incompletos. Corregido pago88 y agregadoHaberLucy624,29/143,9451USD históricos,kg0, con respaldo; no duplicar enCond. Ver secciónSodimac de [lucy-continuidad-apertura-20261024.md](lucy-continuidad-apertura-20261024.md). Total4créditosLucy5706,30nominal/1007,2341USD.
+
+
+### Diez débitos aplicados — 24/10
+Auditoría137 con respaldo:10 pagos vigentes de total fiscal2130,55 a banco exacto2130,51/medio10;10 componentes no bancarios documentados (vuelto/complemento),20 filas compensatorias de caja anuladas. Todos los saldos de contactos/cajas/socios idénticos; no nuevos pagos/gastos ni aportes. 68=59débitos+1tarjetaLucy+8pendientes. Detalle individual, respaldo y controles en [condominio-diez-centavos-aplicados-20261024.md](condominio-diez-centavos-aplicados-20261024.md).

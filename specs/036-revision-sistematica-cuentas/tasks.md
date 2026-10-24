@@ -297,3 +297,6 @@ Aplicadas auditorías131–133:49 débitos y1 tarjeta documentados,100 filas his
 - [ ] Continuar reconstrucción previa a la hojaCond y2016–2026; resolver diferenciasEasy/Cooperativa ySodimac sin extender confirmaciones de titular ni duplicar pagos.
 
 - [X] Sodimac: confirmaciónSergio pago total624,29 porLucy sin reintegro. Comprobado sin particulares, corregido pago88 yHaberLucy valuado100%USD histórico; respaldo e idempotencia en lucy-continuidad-apertura-20261024.md.
+
+- [X] Conciliar10 débitos con centavos: banco exacto, componentes documentales individualizados,20 filas compensatorias anuladas; saldos intactos, auditoría137, respaldo e idempotencia. Ver condominio-diez-centavos-aplicados-20261024.md.
+- [ ] Resolver8 restantes:5 contradiccionesEfectivo/banco y3 efectivos sin candidato. Continuar demás pendientes de financiación/documentación sin duplicar fuentes ni créditosLucy.

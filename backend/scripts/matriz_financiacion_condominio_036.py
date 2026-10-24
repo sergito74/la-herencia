@@ -239,11 +239,19 @@ def run():
         442: "Ticket efectivo204.44; WC medio10. Falta fondeo/reintegro.",
         467: "Ticket efectivo140.05; WC medio10. Falta fondeo/reintegro.",
     }
+    components = read(
+        "SELECT IdAjuste,Fecha,Lado,Importe,Motivo FROM dbo.AjustesCuentaCorriente "
+        "WHERE IdContacto=30 AND Motivo LIKE '036-CENT-P%:%'"
+    )
     for entry in canonical.values():
         entry["observacionesDocumentales"] = {
             str(p): documentary[p] for p in entry["pagos"] if p in documentary
         }
         entry["pagosVigentes"] = [p for p in payments if p["id"] in entry["pagos"]]
+        entry["componentesNoBancariosTicket"] = [
+            item for item in components
+            if any(item["Motivo"].startswith(f"036-CENT-P{pid}:") for pid in entry["pagos"])
+        ]
         entry["financiacionLucyConfirmada"] = [p for p in entry["pagos"] if p in (88, 315, 503, 561)]
         entry["excluirDeAportesCondominio"] = bool(entry["financiacionLucyConfirmada"])
         if any(p in (13, 14, 15, 16, 18, 75) for p in entry["pagos"]):
