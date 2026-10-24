@@ -236,3 +236,13 @@ Auditoría137 con respaldo:10 pagos vigentes de total fiscal2130,55 a banco exac
 
 ### Continuación sin pausa solicitada — 24/10
 Registro en curso [condominio-continuacion-ampliada-20261024.md](condominio-continuacion-ampliada-20261024.md). Corregido control errado deOrigenMovimiento: aplicaciones usaefectivo, noPagosEfectivo. Aplicada reparación8 anulaciones/3 reemplazos/saldos intactos conbackup. Fuentes nuevas:6 efectivos clasificadosCondominio, cheque2968 identificado87678103 con candidatoBNA10327, cajaXLSM2016–2026 relevada. Easy/Coop pendientes de corrección e imputación; no cerrar todavía.
+
+
+## Actualización 24/10/2026 (Claude, tras el corte de Codex)
+
+- Easy/Cooperativa: aplicado por Codex y verificado (regla `lucy-importes-fiscales-easy-coop-036`).
+- 35 depósitos BNA de la planilla de aportes atribuidos a 549 ($428.698), regla de importe exacto y candidato único: `scripts/atribuir_aportes_bna_condominio_036.py`.
+- Cinco tickets «Efectivo» (14, 40, 362, 530, 660) tratados como débito HSBC del Condominio por decisión de Sergio: `scripts/conciliar_cinco_debitos_efectivo_036.py`.
+- **Socio 3 con historia 2011–2016** (decisión de Sergio): 162 asientos, neto $836.204,01, US$ −131.927,68 a favor; `scripts/socio3_historia_condominio_036.py`, Origen `CondominioHist036`.
+- **Regla de datos:** en `MovimientosCuentaSocio`, US$ y kg van siempre positivos; el Tipo da el signo. Corregido en `cuentas_socios.repository._insert_asiento`.
+- Detalle, respaldos y pendientes que necesitan a Sergio (2016–2026: pago de $400.000 con año distinto, «Pago Balance» 2024/2025, seis movimientos de 2016): [condominio-continuacion-ampliada-20261024.md](condominio-continuacion-ampliada-20261024.md).

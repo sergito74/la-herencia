@@ -53,3 +53,13 @@ Excluidos de B: pago 290 (cheque de la avena = fila 14 de A) y los pagados por L
 Socio 3 resultante (203 movimientos): saldo nominal −$5.656.204,01; **US$ −131.927,68 y −1.228,86 kg** a favor del Condominio; deuda actualizada al 21/10/2026 (INMAG 3.926,16, dólar 1.520): **−$205.354.786,61** a favor. La cuenta corriente del contacto 549 (−$725.685,50, lado bancario) no se tocó: igual que Sergio 375/5670, contacto y socio son dos vistas del mismo hecho.
 
 **Para que Sergio revise:** la valuación 100% US$ de 2011–2016 multiplica mucho el peso de esos aportes en pesos de hoy (US$129.432 de aportes ≈ $197 millones). Es la regla vigente de 036 para todas las cuentas de socios, pero conviene que la vea antes de usar el saldo.
+
+## Tramo 2016–2026 del socio 3: diferencias que necesitan a Sergio (Claude, 24/10, sin aplicar)
+
+Comparados los 31 movimientos operativos de la caja Condominio con Giamigli contra los 41 asientos del socio 3 (2023–2026). Los aportes mensuales en efectivo coinciden uno a uno, salvo:
+
+1. **Mismo pago con año distinto:** caja 3224 $400.000 del 11/09/**2024** ↔ socio 2794 $400.000 del 12/09/**2025** (Codex ya había marcado la fila 1107 de la planilla con año 2024 dentro del tramo 2025). Probablemente la caja tiene el año mal; no se corrigió sin confirmación.
+2. **«Pago Balance Giamigli»:** caja 3225 $1.456.200 del 10/09/2025 sin asiento en socio 3; socio 2781 $811.100 del 14/09/2024 (repartido como retiros de Lucy, Ceci y Sergio por $270.366,67 c/u) sin movimiento en la caja. ¿Son dos balances distintos (2024 y 2025) y falta cargar el de 2025 en el socio, o es el mismo con importes/fechas distintos?
+3. **2016, seis movimientos de la caja Condominio sin asiento en socio 3:** retiro Giamigli $13.645,84 y honorarios Criado $3.818 (20/04/2016), gastos bancarios Giamigli +$490,15 (26/04/2016), cobro de cuotas 1/6 y 2/6 de motosierra de Giamigli +$2.203,85 y +$2.204 (27/06 y 20/07/2016). Los egresos serían aportes (Haber) y los ingresos dinero de Giamigli retenido por el Condominio (Debe), pero el retiro de $13.645,84 cae el mismo día que la devolución del préstamo de $10.000 (fila 62 de la planilla, ya cargada) y puede estar relacionado.
+
+Pendientes que siguen del bloque Condominio: los 3 cheques de $3.134 (2012) sin depósito en BNA; AFIP junio 2011 ($95) sin boleta; recibo/endoso del cheque 2926 a Jáuregui y Morales; original sindical 04/2014 (pago 581); los 13 depósitos BNA en efectivo y el remanente de caja de $144.350,52 siguen no identificados.
