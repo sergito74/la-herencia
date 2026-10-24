@@ -220,3 +220,11 @@ Registro vigente: [condominio-18-centavos-20261024.md](condominio-18-centavos-20
 
 ### Consultas para cierre — 24/10
 Sergio pidió continuar y precisar qué necesita aportar. Consultas enviadas y evidencia faltante en [condominio-informacion-para-cierre-20261024.md](condominio-informacion-para-cierre-20261024.md). Esperar respuestas sobre destino de6 comprobantes, apertura y tarjetas; no asumirlas. Búsqueda adicional de441/442/467 con centavos en HSBC2013 sin candidatos. Sin nuevas escrituras financieras.
+
+
+### Respuestas y aplicaciónLucy — 24/10
+Sergio confirmó continuidad de etapaSucesión y que Naldo/Cooperativa/Easy son pagos deLucy sin reintegro. Aplicados créditos2970–2972/auditoría135:5082,01 nominales y863,2890USD históricos,kg0 (regla anterior16/03/2020). Sin otros saldos modificados. Búsqueda local:29/12/2023 es aporte150000, no apertura consolidada demostrada. Detalle, reglas verificadas, respaldo y pendientes en [lucy-continuidad-apertura-20261024.md](lucy-continuidad-apertura-20261024.md). Las hipótesis anteriores de apertura y exclusión fiscal automática quedan reemplazadas por este hallazgo y aclaración.
+
+
+### Sodimac resuelto con confirmación — 24/10
+Sergio confirmó pago íntegro624,29 porLucy sin reintegro. No hay productos particulares;52,37 venía de detalle/percepción incompletos. Corregido pago88 y agregadoHaberLucy624,29/143,9451USD históricos,kg0, con respaldo; no duplicar enCond. Ver secciónSodimac de [lucy-continuidad-apertura-20261024.md](lucy-continuidad-apertura-20261024.md). Total4créditosLucy5706,30nominal/1007,2341USD.

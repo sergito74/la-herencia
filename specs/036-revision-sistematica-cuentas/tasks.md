@@ -291,3 +291,9 @@ Aplicadas auditorías131–133:49 débitos y1 tarjeta documentados,100 filas his
 - [X] Corregir enlacesPDF375/568 con backup, transacción, control de saldos y repetición sin escrituras.
 - [X] Revisar18 originales contra cobro bancario con centavos:10 Visa débito concordantes,5 contradicciones,3 efectivos sin candidato. Ver condominio-18-centavos-20261024.md.
 - [ ] Resolver representación fiscal/banco/centavos de10 pagos sin duplicar ni inventar aportes; aclarar5 contradicciones y3 procedencias. Las6 excepciones de destinatario y apertura de socio3 siguen pendientes.
+
+- [X] Incorporar confirmacionesSergio: continuidadSucesión;3 tarjetasLucy sin reintegro. Aplicados3HaberLucy5082,01 nominales/863,2890USD,kg0, auditoría135; no sumar a socio3.
+- [X] Buscar respaldo deapertura: hojaCond empieza con aporte150000 el29/12/2023, sin arrastre visible; no es consolidación comprobada. Fuentes ymutuos revisados en lucy-continuidad-apertura-20261024.md.
+- [ ] Continuar reconstrucción previa a la hojaCond y2016–2026; resolver diferenciasEasy/Cooperativa ySodimac sin extender confirmaciones de titular ni duplicar pagos.
+
+- [X] Sodimac: confirmaciónSergio pago total624,29 porLucy sin reintegro. Comprobado sin particulares, corregido pago88 yHaberLucy valuado100%USD histórico; respaldo e idempotencia en lucy-continuidad-apertura-20261024.md.

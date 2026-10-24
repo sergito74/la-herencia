@@ -220,6 +220,7 @@ def run():
         )
         mappings.append({"movimiento": row, "clavesCandidatas": keys})
     documentary = {
+        88: "Sergio24/10/2026: Lucy pagó624.29 totalSodimac sin reintegro. Pago88 corregido y crédito socio2; no socio3.",
         333: "HSBC Condominio12/11/2012,RSBA,partida0079575; origen documentado, sin pago nuevo.",
         378: "HSBC Condominio11/03/2013,RSBA,partida0079575; origen documentado, sin pago nuevo.",
         190: "HSBC Oscar12/04/2011,DA95 Irma período03/2011; WC11/04. "
@@ -231,9 +232,9 @@ def run():
         194: "HSBC Oscar19/09/2011,DA95 Irma período08/2011; fondos Condominio confirmados.",
         28: "Cheque87678128 Maignal2926 respaldado en dos libros; destino sin recibo de endoso.",
         290: "Cheque95512293 Maignal3031,siembra avena; incluido enAPORTE-F14.",
-        315: "Factura1578 a cuenta corriente, sin voucher/resumen/titular identificado.",
-        503: "Original2253.03 corregido; pago2253.04 conservado. Falta titular/resumen.",
-        561: "Original1361.54 corregido; pago1250.97 conservado. Falta titular/resumen.",
+        315: "Lucy titular y sin reintegro, Sergio24/10/2026. Pago1578 representado en socio2; no sumar a socio3.",
+        503: "Lucy titular y sin reintegro, Sergio24/10/2026. Pago2253.04 en socio2; fiscal2253.03, centavo pendiente.",
+        561: "Lucy titular y sin reintegro, Sergio24/10/2026. Pago1250.97 en socio2; diferencia fiscal110.57 pendiente.",
         441: "Ticket efectivo175.03 más0.01; WC175.04 medio10. Falta fondeo/reintegro.",
         442: "Ticket efectivo204.44; WC medio10. Falta fondeo/reintegro.",
         467: "Ticket efectivo140.05; WC medio10. Falta fondeo/reintegro.",
@@ -243,6 +244,13 @@ def run():
             str(p): documentary[p] for p in entry["pagos"] if p in documentary
         }
         entry["pagosVigentes"] = [p for p in payments if p["id"] in entry["pagos"]]
+        entry["financiacionLucyConfirmada"] = [p for p in entry["pagos"] if p in (88, 315, 503, 561)]
+        entry["excluirDeAportesCondominio"] = bool(entry["financiacionLucyConfirmada"])
+        if any(p in (13, 14, 15, 16, 18, 75) for p in entry["pagos"]):
+            entry["continuidadSucesion"] = (
+                "Sergio24/10/2026: gastos de la etapaSucesión previa a Giamigli; "
+                "continuidad de cuentas posible, no exclusión automática ni aporte nuevo."
+            )
         if (
             entry["clave"].startswith("CAJA-EGRESO-")
             and entry["estado"] == "par_caja_anulado_con_historia_conservada_revisar_medio"
