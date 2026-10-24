@@ -4,6 +4,7 @@ Python del sistema con pdfplumber; ejecutar desde raíz. No escribe WC ni origin
 La elección de comercio queda explícita; coincidencias ambiguas no se aplican.
 """
 
+import argparse
 import hashlib
 import json
 import re
@@ -36,7 +37,7 @@ MERCHANT = {
 }
 
 
-def run():
+def run(explorar_centavos=False):
     targets = json.loads((OUT / "puentes-68-pagos.json").read_text(encoding="utf-8"))
     cache_root = OUT / "hsbc-68"
     cache_root.mkdir(exist_ok=True)
@@ -108,13 +109,16 @@ def run():
         candidates = []
         for tx in transactions.values():
             diff = (date.fromisoformat(tx["fecha"]) - date.fromisoformat(p["fecha"][:10])).days
-            if Decimal(tx["importe"]) != Decimal(p["importe"]) or abs(diff) > 5:
+            difference = Decimal(tx["importe"]) - Decimal(p["importe"])
+            tolerance = Decimal("0.03") if explorar_centavos else Decimal(0)
+            if abs(difference) > tolerance or abs(diff) > 5:
                 continue
             expected = MERCHANT.get(p["contacto"])
             candidates.append(
                 {
                     **tx,
                     "dias": diff,
+                    "diferenciaImporte": str(difference),
                     "comercioCoincide": bool(
                         expected and tx["comercio"] and expected in tx["comercio"].upper()
                     ),
@@ -125,7 +129,11 @@ def run():
             {
                 "pago": p,
                 "candidatos": candidates,
-                "estado": "debito_comercio_unico" if len(valid) == 1 else "pendiente",
+                "estado": (
+                    "candidato_diferencia_centavos"
+                    if len(valid) == 1 and Decimal(valid[0]["diferenciaImporte"]) != 0
+                    else "debito_comercio_unico" if len(valid) == 1 else "pendiente"
+                ),
                 "evidencia": valid[0] if len(valid) == 1 else None,
             }
         )
@@ -134,7 +142,8 @@ def run():
         "matriz": matrix,
         "titularidadFondos": "Sergio24/10/2026: HSBC Oscar administrada como fondos Condominio LSC.",
     }
-    path = OUT / "puentes-68-hsbc-verificado.json"
+    filename = "puentes-68-hsbc-explorar-centavos.json" if explorar_centavos else "puentes-68-hsbc-verificado.json"
+    path = OUT / filename
     path.write_text(json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8")
     good = [r for r in matrix if r["estado"] == "debito_comercio_unico"]
     print(
@@ -165,4 +174,6 @@ def run():
 
 
 if __name__ == "__main__":
-    run()
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--explorar-centavos", action="store_true")
+    run(parser.parse_args().explorar_centavos)

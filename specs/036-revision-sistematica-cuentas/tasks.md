@@ -287,3 +287,7 @@ Aplicadas auditorías131–133:49 débitos y1 tarjeta documentados,100 filas his
 - [X] Confirmar presencia de68 compras y68 pagos en el origen enlazado por Access, solo lectura: todos presentes; diferenciasWC documentadas131–133.
 - [X] Revisar destinatario fiscal de68 originales:62 Giamigli,5 Sucesión,1 consumidor final; registro individual en condominio-destinatarios-68-20261024.md.
 - [ ] Justificar seis excepciones fiscales y corregir dos enlacesPDF375/568 con respaldo; no generar aportes por mera presencia histórica.
+
+- [X] Corregir enlacesPDF375/568 con backup, transacción, control de saldos y repetición sin escrituras.
+- [X] Revisar18 originales contra cobro bancario con centavos:10 Visa débito concordantes,5 contradicciones,3 efectivos sin candidato. Ver condominio-18-centavos-20261024.md.
+- [ ] Resolver representación fiscal/banco/centavos de10 pagos sin duplicar ni inventar aportes; aclarar5 contradicciones y3 procedencias. Las6 excepciones de destinatario y apertura de socio3 siguen pendientes.
