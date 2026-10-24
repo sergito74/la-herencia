@@ -216,3 +216,7 @@ Pendientes inmediatos: justificar relación económica de pagos13,14,15,16,18 (S
 
 ### Continuación — enlaces y centavos, 24/10/2026
 Registro vigente: [condominio-18-centavos-20261024.md](condominio-18-centavos-20261024.md). Aplicada corrección de los2 enlacesPDF375/568, con respaldo y controles de saldos idénticos; idempotencia comprobada. Nueva revisión de18:10 tickets Visa débito coinciden exactamente con el importe bancario separado de su total fiscal por centavos;5 candidatos contradicen el medio Efectivo del original;3 sin candidato. Los18 conservan su contabilización: no aplicar tolerancia automática ni aumentar/aplicar pagos por inferencia. Siguiente: resolver representación de total fiscal/cobro bancario/centavos en esos10 y preservar ambos valores; aclarar5 contradicciones y procedencia/reintegro de3 efectivos, además de6 excepciones fiscales y apertura de socio3. Sin asientos nuevos de socio ni importes financieros modificados en este tramo. Evidencia y respaldo en el registro enlazado.
+
+
+### Consultas para cierre — 24/10
+Sergio pidió continuar y precisar qué necesita aportar. Consultas enviadas y evidencia faltante en [condominio-informacion-para-cierre-20261024.md](condominio-informacion-para-cierre-20261024.md). Esperar respuestas sobre destino de6 comprobantes, apertura y tarjetas; no asumirlas. Búsqueda adicional de441/442/467 con centavos en HSBC2013 sin candidatos. Sin nuevas escrituras financieras.
