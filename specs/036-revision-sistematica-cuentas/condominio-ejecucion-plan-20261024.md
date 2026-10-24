@@ -85,4 +85,3 @@ Socio3 sigue con41 movimientos desde29/12/2023, sin asiento individual de2011–
 - AFIP: pendiente respuesta patrimonial y boleta de junio; ARBA20009,40 ya tiene fuente bancaria; cheque2926 ya tiene origen, todavía no recibo/endoso; combustibles519,53 tienen medio efectivo documentado, pero no origen/reintegro. No crear egresos de caja nuevos.
 - La matriz evita las duplicaciones detectadas, pero falta revisar los68 puentes restantes y completar los vínculos de banco/2016–2026 antes de llevar historia a socio3. No cargar841286,02 como un aporte global.
 - Pago581/AFIP-UATRE conserva el pendiente externo anterior. No se modificó en este tramo.
-
