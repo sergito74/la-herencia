@@ -191,7 +191,7 @@ def cotizaciones_actuales() -> dict:
 
 def deuda_actualizada(id_socio: int, cot: dict | None = None) -> dict:
     """Deuda actualizada como la planilla: kg × índice novillo + US$ × dólar
-    de hoy (50% kg / 50% US$; 100% US$ antes del 16/03/2020). El mutuo en
+    de hoy (50% kg / 50% US$ también antes de 2020). El mutuo en
     dólares (Lucy 2018) va aparte, solo en US$. Positivo: el socio le debe a
     la empresa; negativo: a favor del socio."""
     cot = cot or cotizaciones_actuales()

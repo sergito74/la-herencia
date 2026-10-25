@@ -82,7 +82,7 @@ Una carga mal hecha se anula con motivo; vuelve a ser costo de Giamigli y el Deb
 ### Functional Requirements
 
 - **FR-001**: El sistema DEBE permitir cargar un impuesto a la cuenta de un socio (Sergio, Lucy, Ceci o Condominio LSC), por el total o por un importe parcial (o porcentaje), con motivo obligatorio y partida inmobiliaria opcional.
-- **FR-002**: Cada carga DEBE generar un único Debe en la cuenta del socio, con la fecha del impuesto, valuado con la regla vigente de cuentas de socios (antes del 16/03/2020: 100% US$; después: 50% US$ y 50% kg de novillo INMAG), y enlazado al impuesto.
+- **FR-002**: Cada carga DEBE generar un único Debe en la cuenta del socio, con la fecha del impuesto, valuado con la regla vigente de cuentas de socios (decisión de Sergio 25/10/2026: 50% US$ BNA y 50% kg de novillo también antes de 2020; histórico INML de Liniers, continuado por INMAG), y enlazado al impuesto.
 - **FR-003**: La suma de las cargas vigentes de un impuesto NO DEBE superar su importe; un impuesto puede tener cargas a distintos socios.
 - **FR-004**: El Condominio LSC DEBE tratarse como un único socio; el sistema no reparte internamente entre condóminos. Las partidas a nombre de Oscar Vicente se asignan siempre al Condominio LSC (no existe titular «Oscar»).
 - **FR-005**: La boleta, su pago y la cuenta corriente del organismo NO DEBEN cambiar: el organismo sigue viendo la deuda y el pago completos.

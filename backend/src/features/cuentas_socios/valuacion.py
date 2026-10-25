@@ -1,20 +1,20 @@
-"""Regla histórica 036: antes de 16/03/2020 US$; luego mitad US$/mitad kg."""
+"""036, Sergio 25/10/2026: mitad US$/mitad kg también antes de 2020.
 
-from datetime import date
+La serie de novillo continúa INML (Liniers) con INMAG. Billetes USD y
+Mutuo2018 conservan su tratamiento específico fuera de esta fórmula.
+"""
+
 from decimal import Decimal, ROUND_HALF_UP
 
 from src.db.connection import fetch_one
 
-INICIO_NOVILLO = date(2020, 3, 16)
-
-
 def proporciones(fecha):
-    return (0.0, 1.0) if fecha < INICIO_NOVILLO else (0.5, 0.5)
+    return (0.5, 0.5)
 
 
 def calcular(importe, fecha, dolar, novillo=None):
     importe, dolar = Decimal(str(importe)), Decimal(str(dolar))
-    if dolar <= 0 or (fecha >= INICIO_NOVILLO and (novillo is None or Decimal(str(novillo)) <= 0)):
+    if dolar <= 0 or novillo is None or Decimal(str(novillo)) <= 0:
         raise ValueError("Falta cotización válida para valuar la operación.")
     parte_kg, parte_usd = proporciones(fecha)
     usd = importe * Decimal(str(parte_usd)) / dolar

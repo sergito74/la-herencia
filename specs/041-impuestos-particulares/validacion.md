@@ -28,3 +28,7 @@ Fecha: 25/10/2026. Sergio autorizó corregir las ocho observaciones de speckit-a
 - Pruebas: 19 de `test_impuestos_particulares_041.py` + cuentas de socios + cajas 038/040 = 149 passed; impuestos + flujo de caja + revisión + endpoints de socios = 229 passed. `tsc --noEmit` y ESLint sobre impuestos/services sin errores.
 - Frontend: `ImpuestoParticularPanel` en la ficha (carga por importe o %, avisos con confirmación explícita, devoluciones a Haber existente o nuevo, quitar vínculo, anular con motivo, UUID persistente entre reintentos); grilla con columna «A cargo de socio», estado y filtro.
 - T038: Sergio confirmó el 25/10/2026 que la funcionalidad quedó visible en el sistema (grilla y ficha).
+
+## Regla ampliada después del cierre (25/10/2026)
+
+Sergio decidió 50% USD / 50% kg también antes de 2020 y confirmó INML Liniers como histórico de INMAG. La revaluación 036 alcanzó el Debe y el Haber vigentes del caso3206, conservando importe nominal, enlaces, estado devuelto y cuenta ARBA; los valores 100% USD de la sección anterior son evidencia del estado previo. FR-002, T009, fórmula compartida y fixture histórico actualizados. Ver `../036-revision-sistematica-cuentas/socios-inml-5050-20261025.md`; 30 pruebas focalizadas de cajas/socios/particulares pasan con la regla ampliada.

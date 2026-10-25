@@ -48,6 +48,8 @@ El detalle de cada paso, con evidencia, respaldos y reglas, está en [condominio
 
 ## 2. Decisiones pendientes de Sergio (preguntadas el 25/10, sin respuesta)
 
+**Actualización de Codex, 25/10:** Sergio respondió ambas: mantener sistema **y** planilla actualizados; aplicar **50% USD / 50% kg también antes de 2020**. Aclaró que el histórico es **INML de Liniers**, continuidad de INMAG. El estado de aplicación está en [socios-inml-5050-20261025.md](socios-inml-5050-20261025.md). Lo que sigue conserva el antecedente de las preguntas y sus saldos con la regla anterior; ya no son decisiones pendientes ni saldos vigentes bajo el nuevo criterio.
+
 1. **Planilla vs sistema.**
    - Propuesta: llevar las cuentas de socios solo en el sistema (Cajas y socios) y dejar `Cajas Giamigli.xlsx` como histórico.
    - Alternativa: generar un listado de los más de 100 asientos que la planilla no tiene y de la fila 346 que hay que quitar.
@@ -82,7 +84,7 @@ Saldos actuales, a favor del socio, valuados al 21/10/2026 (INMAG 3.926,16, dól
 
 ## 4. Pendientes, en orden sugerido
 
-1. Esperar las dos decisiones de la sección 2. Si Sergio elige seguir con la planilla, generar el listado de diferencias desde el script de cruce (copiarlo de la sección «Cuentas de socios» del registro).
+1. **Resuelto y aplicado por Codex el 25/10:** mantener sistema y planilla, 50/50 también antes de 2020, histórico INML. Se revaluaron 503 asientos históricos y se sincronizó el Excel original (343 asientos incorporados a la planilla). Saldos conciliados, respaldos, pruebas y continuidad en [socios-inml-5050-20261025.md](socios-inml-5050-20261025.md). Seguir con Zurra.
 2. **Caja Giamigli posterior a 2015:** el canje del 20/04/2016 (caja Giamigli 78 «Devolución a Condominio» −$10.000 y 79 «Ingreso Efectivo (Cheques Feria del Centro)» +$13.645,84) está registrado como efectivo. Según la rendición del Condominio, los $10.000 se cancelaron con cheques, no en efectivo. No se tocó: la caja 2016+ sale de la planilla con arqueos. Revisar solo si un arqueo no cierra.
 3. **Cuentas no revisadas o en espera** (ver `MEMORY.md` de Claude y la sección 5 del traspaso del 23/10):
    - Zurra 406 (−$9,79 M, sin revisar);

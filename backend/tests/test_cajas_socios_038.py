@@ -10,8 +10,8 @@ from src.features.cuentas_socios.valuacion import calcular, proporciones
 def test_formula_compartida_preserva_regla_036(fecha):
     for amount in (100, 134724.39, 1800000):
         kg_part, usd_part = proporciones(fecha)
-        legacy_usd = amount / 1000 if fecha < date(2020, 3, 16) else amount * 0.5 / 1000
-        legacy_kg = 0 if fecha < date(2020, 3, 16) else amount * 0.5 / 2000
+        legacy_usd = amount * 0.5 / 1000
+        legacy_kg = amount * 0.5 / 2000
         assert amount * usd_part / 1000 == legacy_usd
         assert (amount * kg_part / 2000 if kg_part else 0) == legacy_kg
         new = calcular(amount, fecha, 1000, 2000)

@@ -300,3 +300,13 @@ Aplicadas auditorías131–133:49 débitos y1 tarjeta documentados,100 filas his
 
 - [X] Conciliar10 débitos con centavos: banco exacto, componentes documentales individualizados,20 filas compensatorias anuladas; saldos intactos, auditoría137, respaldo e idempotencia. Ver condominio-diez-centavos-aplicados-20261024.md.
 - [ ] Resolver8 restantes:5 contradiccionesEfectivo/banco y3 efectivos sin candidato. Continuar demás pendientes de financiación/documentación sin duplicar fuentes ni créditosLucy.
+
+## Continuidad del 25/10/2026: socios e histórico INML
+
+El cierre documental previo de Condominio/caja y la resolución de los pendientes históricos de arriba constan en `traspaso-codex-20261025.md`; no interpretarlos como pendientes nuevos sin consultar ese cierre.
+
+- [X] Registrar las decisiones de Sergio: sistema y planilla actualizados; 50% USD/50% kg también pre2020; INML Liniers continuado por INMAG.
+- [X] Incorporar 1.448 índices históricos oficiales con HTML/hash, backup WC verificado y auditoría.
+- [X] Revaluar 503 asientos pre2020 y conciliar 30 diferencias USD posteriores; conservar nominales, vínculos, cajas, proveedores y mutuo.
+- [X] Sincronizar las cuatro hojas de socios del Excel original: 343 incorporaciones, 1.318 identidades vigentes conciliadas, fórmulas y fuentes, mutuo separado, respaldo íntegro; otras siete hojas intactas.
+- [X] Verificar fila por fila, saldos, idempotencia DB, preservación nativa y vistas; 38 pruebas focalizadas aprobadas (incluida caja USD). Evidencia y saldos: `socios-inml-5050-20261025.md`.

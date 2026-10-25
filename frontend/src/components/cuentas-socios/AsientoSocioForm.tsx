@@ -41,7 +41,7 @@ export function AsientoSocioForm({ idSocio, movimiento, onListo }: { idSocio: nu
       <label className="block text-sm">Concepto<input autoFocus required maxLength={255} className={input} value={motivo} onChange={(e) => setMotivo(e.target.value)} placeholder="Ej: ARBA – Patente camioneta" /></label>
       <label className="block text-sm">Medio (opcional)<input className={input} maxLength={100} value={medio} onChange={(e) => setMedio(e.target.value)} placeholder="Efectivo, transferencia, cheque…" /></label>
       <p className="text-xs text-ink-secondary">
-        Se valúa solo: antes del 16/03/2020 100% en US$; desde entonces 50% US$ (dólar BNA) y 50% kg de novillo (INMAG) a la fecha.
+        Se valúa solo: 50% US$ (dólar BNA) y 50% kg de novillo (histórico INML / INMAG) a la fecha, también antes de 2020.
         {movimiento && " Editar anula el asiento anterior y crea el corregido: los dos quedan en el historial."}
       </p>
       {guardar.error && <p role="alert" className="text-sm text-status-danger">{(guardar.error as Error).message}</p>}

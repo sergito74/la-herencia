@@ -1,5 +1,7 @@
 """039: índice INMAG diario (Mercado Agroganadero de Cañuelas, haciinfo000011).
 
+La serie histórica es INML del Mercado de Liniers, continuada por INMAG
+(aclaración de Sergio, 25/10/2026); se conserva en la misma serie con su fuente.
 Es el índice pactado en los contratos de pastaje y, por FR-019, el único índice de
 novillo del sistema. Días sin índice publicado ("- *", menos de 300 novillos) no se
 guardan. Las cantidades usan '.' como separador de miles.

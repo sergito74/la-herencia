@@ -42,8 +42,12 @@ def test_ganancias_sin_deuda(monkeypatch):
     assert not store.rows("MovimientosCuentaSocio")
 
 
-def test_corte_formula_y_cotizacion_faltante():
-    assert calcular(100, date(2020, 3, 15), 10)["importeUSD"] == 10
+def test_formula_historica_y_cotizacion_faltante():
+    assert calcular(100, date(2020, 3, 15), 10, 20) == {
+        "importeUSD": Decimal("5.0000"), "importeKgCarne": Decimal("2.500"),
+    }
+    with pytest.raises(ValueError):
+        calcular(100, date(2011, 3, 21), 10)
     assert calcular(100, date(2020, 3, 16), 10, 20) == {
         "importeUSD": Decimal("5.0000"),
         "importeKgCarne": Decimal("2.500"),

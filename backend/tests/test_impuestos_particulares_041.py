@@ -94,7 +94,8 @@ class Mem:
 
 
 def valuar(imp, fecha):
-    return {"importeUSD": (imp / D("17.65")).quantize(D("0.0001")) if fecha < date(2020, 3, 16) else D("1"), "importeKgCarne": D(0)}
+    from src.features.cuentas_socios.valuacion import calcular
+    return calcular(imp, fecha, D("17.65"), D("31"))
 
 
 def carga(s, imp=3206, **kw):
@@ -134,7 +135,9 @@ def test_carga_total_genera_un_debe_enlazado_positivo_a_la_fecha_del_impuesto():
     assert creada and c["estado"] == "vigente" and c["estadoDevolucion"] == "pendiente"
     debe = s.movs[c["idMovimientoSocio"]]
     assert debe["Tipo"] == "AsignacionGasto" and debe["Origen"] == "ImpuestoParticular" and debe["IdOrigen"] == c["idCarga"]
-    assert debe["Fecha"] == date(2017, 11, 7) and debe["ImporteUSD"] > 0 and debe["ImporteKgCarne"] == 0
+    assert debe["Fecha"] == date(2017, 11, 7)
+    assert debe["ImporteUSD"] == D("250.7677")
+    assert debe["ImporteKgCarne"] == D("142.776")
     assert s.movs[3149]["Anulada"]  # el manual reemplazado
     assert len([m for m in s.movs.values() if m["Tipo"] == "AsignacionGasto" and not m["Anulada"]]) == 1
 
