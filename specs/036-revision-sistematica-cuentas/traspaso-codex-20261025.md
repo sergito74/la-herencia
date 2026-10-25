@@ -84,6 +84,8 @@ Saldos actuales, a favor del socio, valuados al 21/10/2026 (INMAG 3.926,16, dól
 
 ## 4. Pendientes, en orden sugerido
 
+**Actualización posterior de Codex (25/10):** contrastada esta lista con22 cuentas reales, varios puntos ya estaban cerrados. **Seguir el estado actualizado en [continuacion-cuentas-20261025.md](continuacion-cuentas-20261025.md)**: Zurra/Municipalidad/Movistar junio/Syngenta/alquileres Fideicomiso ya resueltos; siguen Criado (NC), pagos bancarios de octubre y AFIP. Se incorporaron seis F931 por$6.869.246,62 con respaldo; AFIP sigue esperando evidencia, saldo contable +$5.739.479,41 no confirmado como crédito fiscal. No volver a ejecutar las correcciones antiguas por las cifras históricas listadas abajo.
+
 1. **Resuelto y aplicado por Codex el 25/10:** mantener sistema y planilla, 50/50 también antes de 2020, histórico INML. Se revaluaron 503 asientos históricos y se sincronizó el Excel original (343 asientos incorporados a la planilla). Saldos conciliados, respaldos, pruebas y continuidad en [socios-inml-5050-20261025.md](socios-inml-5050-20261025.md). Seguir con Zurra.
 2. **Caja Giamigli posterior a 2015:** el canje del 20/04/2016 (caja Giamigli 78 «Devolución a Condominio» −$10.000 y 79 «Ingreso Efectivo (Cheques Feria del Centro)» +$13.645,84) está registrado como efectivo. Según la rendición del Condominio, los $10.000 se cancelaron con cheques, no en efectivo. No se tocó: la caja 2016+ sale de la planilla con arqueos. Revisar solo si un arqueo no cierra.
 3. **Cuentas no revisadas o en espera** (ver `MEMORY.md` de Claude y la sección 5 del traspaso del 23/10):

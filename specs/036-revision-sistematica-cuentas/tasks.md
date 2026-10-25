@@ -310,3 +310,14 @@ El cierre documental previo de Condominio/caja y la resolución de los pendiente
 - [X] Revaluar 503 asientos pre2020 y conciliar 30 diferencias USD posteriores; conservar nominales, vínculos, cajas, proveedores y mutuo.
 - [X] Sincronizar las cuatro hojas de socios del Excel original: 343 incorporaciones, 1.318 identidades vigentes conciliadas, fórmulas y fuentes, mutuo separado, respaldo íntegro; otras siete hojas intactas.
 - [X] Verificar fila por fila, saldos, idempotencia DB, preservación nativa y vistas; 38 pruebas focalizadas aprobadas (incluida caja USD). Evidencia y saldos: `socios-inml-5050-20261025.md`.
+
+## Cuentas pendientes: contraste y avance del 25/10
+
+- [X] Contrastar22 cuentas con WC, fichas, auditorías y moneda; corregir la cola histórica sin repetir cierres ni movimientos.
+- [X] Recuperar y verificar seis F931 globales de Giamigli (oct-dic2025, jun-ago2026), incorporarlos con respaldo e invariantes; $6.869.246,62 de obligaciones faltantes, sin nuevos pagos.
+- [X] Separar diferencia236.381,79 entre F931dic2025 y Galicia2991; registrar la obligación confirmada por DDJJ+aviso sin inventar una cancelación exacta.
+- [X] Actualizar fichas AFIP/Criado e historial; eliminar de la nota de Criado la pregunta ya resuelta de275.500. Mantener esperando-evidencia.
+- [X] Verificar repetición de cuatro aplicaciones sin escrituras y conservación de bancos/cajas/socios/otras cuentas; registrar fuentes y respaldos en `continuacion-cuentas-20261025.md`.
+- [ ] AFIP: recuperar otros períodos, identificar pagos/planes/retenciones y aclarar Galicia2991; conciliar con estado externo ARCA. No equiparar saldo contable positivo con crédito fiscal confirmado.
+- [ ] Incorporar NC real de Criado cuando se reciba y pagos de octubre con su fuente bancaria; no inventar documentos ni movimientos.
+- [ ] Recontar y abordar boletas/compras sin archivo sobre el estado vigente, en lugar de repetir cantidades históricas.
