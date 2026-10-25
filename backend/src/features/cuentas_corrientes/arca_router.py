@@ -4,10 +4,11 @@ from decimal import Decimal
 from typing import Annotated
 
 from fastapi import APIRouter, HTTPException, Query, Request
+from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field, field_validator
 from starlette.concurrency import run_in_threadpool
 
-from src.features.cuentas_corrientes import arca
+from src.features.cuentas_corrientes import arca, arca_documentos
 from src.features.revision_cuentas.router import _usuario_actual
 
 router = APIRouter(prefix="/api/arca", tags=["arca"])
@@ -51,6 +52,14 @@ class Resumen(BaseModel):
     cantidad: int
 
 
+class Documento(BaseModel):
+    idDocumento: int
+    tipo: str
+    periodo: str | None = None
+    numero: str | None = None
+    esOriginal: bool
+
+
 class Movimiento(BaseModel):
     fecha: date
     documento: str | None
@@ -68,6 +77,7 @@ class Movimiento(BaseModel):
     manual: bool
     revisarReparto: bool
     motivo: str | None
+    documentos: list[Documento] = Field(default_factory=list)
 
 
 class Cuenta(BaseModel):
@@ -96,6 +106,17 @@ async def historial(origen: str = Query(min_length=1, max_length=80), idOrigen: 
     return await run_in_threadpool(arca.read,
         "SELECT TOP (100) IdClasificacion version,Reparto reparto,Motivo motivo,Usuario usuario,Fecha fecha "
         "FROM dbo.ArcaClasificaciones WHERE Origen=? AND IdOrigen=? ORDER BY IdClasificacion DESC", (origen, idOrigen))
+
+
+@router.get("/documentos/{id_documento}/archivo")
+async def documento(id_documento: int):
+    try:
+        ruta = await run_in_threadpool(arca_documentos.archivo, id_documento)
+        return FileResponse(ruta, media_type="application/pdf", filename=ruta.name, content_disposition_type="inline")
+    except FileNotFoundError as exc:
+        raise HTTPException(404, str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(409, str(exc)) from exc
 
 
 @router.put("/clasificacion")

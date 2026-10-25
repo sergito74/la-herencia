@@ -1,4 +1,4 @@
-import { apiGet, apiPut } from "@/services/apiClient";
+import { apiGet, apiPut, API_BASE_URL } from "@/services/apiClient";
 
 export interface ParteArca { subcuenta: string; deuda: string; credito: string }
 export interface MovimientoArca {
@@ -6,6 +6,7 @@ export interface MovimientoArca {
   origen: string; idOrigen: number; detalle: string; deuda: string; credito: string;
   deudaOriginal: string; creditoOriginal: string; saldo: string;
   partes: ParteArca[]; version: number; manual: boolean; revisarReparto: boolean; motivo: string | null;
+  documentos?: {idDocumento: number; tipo: string; periodo: string | null; numero: string | null; esOriginal: boolean}[];
 }
 export interface ResumenArca {
   clave: string; nombre: string; deuda: string; credito: string; saldo: string; cantidad: number;
@@ -20,3 +21,4 @@ export const guardarArca = (m: MovimientoArca, partes: ParteArca[], motivo: stri
   apiPut<{version: number}>("/api/arca/clasificacion", {origen: m.origen, idOrigen: m.idOrigen, version: m.version, partes, motivo});
 export const historialArca = (m: MovimientoArca) => apiGet<{version: number; reparto: string; motivo: string; usuario: string; fecha: string}[]>(
   "/api/arca/historial", {origen: m.origen, idOrigen: m.idOrigen});
+export const urlDocumentoArca = (id: number) => `${API_BASE_URL}/api/arca/documentos/${id}/archivo`;

@@ -79,6 +79,7 @@ def validar_partes(partes, deuda, credito):
 
 
 def cargar():
+    from src.features.cuentas_corrientes.arca_documentos import por_movimiento
     filas = read("""
         SELECT b.Fecha fecha,b.Documento documento,b.[Nro Documento] numeroDocumento,
           b.Deuda deuda,b.Credito credito,b.Origen origen,b.IdOrigen idOrigen,
@@ -97,6 +98,9 @@ def cargar():
     marcas = read("""SELECT IdClasificacion version,Origen origen,IdOrigen idOrigen,Reparto reparto,Motivo motivo,
         Usuario usuario,Fecha fecha FROM (SELECT *,ROW_NUMBER() OVER
         (PARTITION BY Origen,IdOrigen ORDER BY IdClasificacion DESC) rn FROM dbo.ArcaClasificaciones) q WHERE rn=1""")
+    documentos = por_movimiento()
+    for f in filas:
+        f["documentos"] = documentos.get((f["origen"], f["idOrigen"]), [])
     return filas, {(m["origen"], m["idOrigen"]): m for m in marcas}
 
 

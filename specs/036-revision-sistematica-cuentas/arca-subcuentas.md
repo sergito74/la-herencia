@@ -21,4 +21,6 @@ Backend `cuentas_corrientes/arca.py` y router independiente `/api/arca`; fronten
 
 ## Verificación requerida
 
+Ampliación solicitada por Sergio durante la continuación: descargar los PDF de DDJJ, acuses y pagos y vincularlos a sus movimientos. `ArcaDocumentos` conserva origen/id, tipo de documento, ruta local permanente, SHA256, período, número y carácter original descargado o copia de pantalla. No reemplazar originales; las DDJJ HTML impresas se identifican como copias del portal. La cuenta muestra enlaces autenticados a sus PDF. `GET /api/arca/documentos/{id}/archivo` solo sirve documentos registrados de ARCA, dentro de la carpeta local administrada, con PDF/huella verificados; no admite rutas libres. Metadatos insertados por scripts auditados con respaldo, sin cambios de importes. Las obligaciones enlazan además su documento principal por el mecanismo existente.
+
 Pruebas puras de conservación, reparto, saldo de apertura, precisión, fechas, clasificación ambigua y reversión; contrato con base simulada; esquema y lectura real sobre WC; compilación/lint focalizados y recorrido del navegador. Ninguna prueba automática escribe datos reales.

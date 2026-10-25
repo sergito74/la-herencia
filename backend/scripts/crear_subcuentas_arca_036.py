@@ -18,6 +18,18 @@ BEGIN
   Fecha datetime2 NOT NULL DEFAULT SYSDATETIME()
  );
  CREATE INDEX IX_ArcaClasificaciones_Origen ON dbo.ArcaClasificaciones(Origen,IdOrigen,IdClasificacion DESC);
+END;
+IF OBJECT_ID('dbo.ArcaDocumentos','U') IS NULL
+BEGIN
+ CREATE TABLE dbo.ArcaDocumentos (
+  IdDocumento int IDENTITY(1,1) NOT NULL PRIMARY KEY,
+  Origen nvarchar(80) NOT NULL, IdOrigen int NOT NULL,
+  Tipo nvarchar(80) NOT NULL, Periodo varchar(10) NULL, Numero nvarchar(80) NULL,
+  Ruta nvarchar(1000) NOT NULL, Sha256 char(64) NOT NULL,
+  EsOriginal bit NOT NULL, Usuario nvarchar(100) NOT NULL,
+  Fecha datetime2 NOT NULL DEFAULT SYSDATETIME()
+ );
+ CREATE UNIQUE INDEX UX_ArcaDocumentos ON dbo.ArcaDocumentos(Origen,IdOrigen,Sha256);
 END"""
 
 
@@ -27,7 +39,7 @@ def estado():
 
 def main():
     _assert_target_is_wc()
-    existe = read("SELECT OBJECT_ID('dbo.ArcaClasificaciones','U') id")[0]["id"]
+    existe = all(read("SELECT OBJECT_ID('dbo.ArcaClasificaciones','U') clasificaciones,OBJECT_ID('dbo.ArcaDocumentos','U') documentos")[0].values())
     if existe or "--aplicar" not in sys.argv:
         print(json.dumps({"existe": bool(existe), "arca": estado()}, default=str))
         return

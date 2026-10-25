@@ -8,6 +8,7 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from src.features.cuentas_corrientes import arca, arca_router
+from src.features.cuentas_corrientes import arca_documentos
 
 
 def fila(i, fecha="2026-01-01", deuda="0", credito="0", detalle="", origen="Galicia"):
@@ -125,3 +126,35 @@ def test_guardado_valida_pertenencia_y_version_antes_de_insertar(monkeypatch):
     assert arca.guardar.__wrapped__("Galicia",1,8,[],"Revertir", "prueba") == {"version":9}
     assert escrituras[0][2] == "[]"
     assert consultas[0] == ("Galicia",1)
+
+
+def test_pdf_solo_en_raiz_registrada_con_huella_intacta(tmp_path,monkeypatch):
+    import hashlib
+    raiz=tmp_path/"arca"
+    raiz.mkdir()
+    monkeypatch.setattr(arca_documentos,"RAIZ",raiz)
+    contenido=b"%PDF-1.7\nfixture"
+    p=raiz/"comprobante.pdf"
+    p.write_bytes(contenido)
+    h=hashlib.sha256(contenido).hexdigest()
+    assert arca_documentos.verificar_archivo(p,h)==p
+    with pytest.raises(ValueError):arca_documentos.verificar_archivo(p,"0"*64)
+    fuera=tmp_path/"otro.pdf"
+    fuera.write_bytes(contenido)
+    with pytest.raises(FileNotFoundError):arca_documentos.verificar_archivo(fuera,h)
+    p.write_bytes(b"archivo cambiado")
+    with pytest.raises(ValueError):arca_documentos.verificar_archivo(p,h)
+
+
+def test_endpoint_pdf_sirve_archivo_registrado_y_no_ruta_libre(tmp_path,monkeypatch):
+    p=tmp_path/"acuse.pdf"
+    p.write_bytes(b"%PDF-1.7\nfixture")
+    monkeypatch.setattr(arca_documentos,"archivo",lambda ident: p)
+    c=cliente()
+    r=c.get("/api/arca/documentos/123/archivo")
+    assert r.status_code==200 and r.content.startswith(b"%PDF-")
+    assert r.headers["content-type"]=="application/pdf"
+    assert "inline" in r.headers["content-disposition"]
+    def ausente(ident):raise FileNotFoundError("No encontrado")
+    monkeypatch.setattr(arca_documentos,"archivo",ausente)
+    assert c.get("/api/arca/documentos/123/archivo").status_code==404

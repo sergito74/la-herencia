@@ -14,7 +14,8 @@ catalogo = {"iva":"IVA — retenciones, pagos y devoluciones", "ganancias":"Gana
 mov = {"fecha":"2026-09-01","documento":"VEP","numeroDocumento":"123", "origen":"Galicia", "idOrigen":101,
        "detalle":"VEP sin concepto", "deuda":"0", "credito":"100.0001", "deudaOriginal":"0", "creditoOriginal":"100.0001",
        "saldo":"100.0001", "partes":[{"subcuenta":"por-identificar","deuda":"0","credito":"100.0001"}],
-       "version":0,"manual":False,"revisarReparto":False,"motivo":None}
+       "version":0,"manual":False,"revisarReparto":False,"motivo":None,
+       "documentos":[{"idDocumento":777,"tipo":"Acuse de presentación","periodo":"09/2026","numero":None,"esOriginal":True}]}
 historia = []
 rol = "Administrador"
 errores = []
@@ -72,6 +73,7 @@ with sync_playwright() as pw:
     page.get_by_role("button",name=re.compile("Retenciones de Ganancias efectuadas")).click()
     expect(page.get_by_text("Sin movimientos para este período y subcuenta.")).to_be_visible()
     page.get_by_role("button",name=re.compile("Toda ARCA")).click()
+    expect(page.get_by_role("link",name="Acuse de presentación (PDF)")).to_have_attribute("href",re.compile(r"/api/arca/documentos/777/archivo$"))
     page.get_by_role("button",name="Clasificar / repartir",exact=True).click()
     dialog=page.get_by_role("dialog")
     dialog.get_by_label("Subcuenta 1",exact=True).select_option("iva")

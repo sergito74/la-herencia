@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { fetchArca, guardarArca, historialArca, MovimientoArca, ParteArca } from "@/services/arcaApi";
+import { fetchArca, guardarArca, historialArca, MovimientoArca, ParteArca, urlDocumentoArca } from "@/services/arcaApi";
 import { formatFecha, formatMoneda } from "@/lib/format";
 import { ErrorState, LoadingState } from "@/components/ui/States";
 import { SoloLectura } from "@/components/auth/SoloLectura";
@@ -74,7 +74,9 @@ export function ArcaSubcuentas({fechaDesde, fechaHasta}: {fechaDesde: string; fe
           {['Fecha','Concepto / documento','Subcuenta','Débitos','Créditos','Saldo','Origen',''].map((h,i) => <th key={i} className="p-2 text-left">{h}</th>)}
         </tr></thead><tbody>{d.items.map(m => <tr key={`${m.origen}-${m.idOrigen}`} className="border-t border-border align-top">
           <td className="whitespace-nowrap p-2">{formatFecha(m.fecha)}</td>
-          <td className="p-2"><span className="block">{m.detalle || m.documento || "Sin concepto identificado"}</span><span className="text-xs text-ink-secondary">{m.documento} · {m.numeroDocumento || "Sin número"}</span></td>
+          <td className="p-2"><span className="block">{m.detalle || m.documento || "Sin concepto identificado"}</span><span className="text-xs text-ink-secondary">{m.documento} · {m.numeroDocumento || "Sin número"}</span>
+            {m.documentos?.map(doc => <a key={doc.idDocumento} className="block text-xs text-finance underline" href={urlDocumentoArca(doc.idDocumento)} target="_blank" rel="noreferrer" title={doc.esOriginal ? "PDF descargado de ARCA" : "Copia del formulario consultado en el portal"}>{doc.tipo}{doc.numero ? ` · ${doc.numero}` : ""} (PDF)</a>)}
+          </td>
           <td className="p-2">{m.partes.map(p => <span className="block" key={p.subcuenta}>{nombres[p.subcuenta]}{m.partes.length > 1 ? ` · ${monto(String(Number(p.credito)-Number(p.deuda)))}` : ""}</span>)}<span className="text-xs text-ink-secondary">{m.revisarReparto ? "El original cambió: revisar reparto" : m.manual ? "Clasificación registrada" : "Por concepto del original"}</span></td>
           <td className="whitespace-nowrap p-2 text-right">{monto(m.deuda)}</td><td className="whitespace-nowrap p-2 text-right">{monto(m.credito)}</td><td className="whitespace-nowrap p-2 text-right">{monto(m.saldo)}</td>
           <td className="p-2">{origenHref(m) ? <Link className="text-finance underline" href={origenHref(m)!}>{m.origen} #{m.idOrigen}</Link> : `${m.origen} #${m.idOrigen}`}</td>

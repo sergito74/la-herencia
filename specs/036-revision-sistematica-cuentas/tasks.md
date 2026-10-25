@@ -313,9 +313,13 @@ El cierre documental previo de Condominio/caja y la resolución de los pendiente
 
 ## Cuentas pendientes: contraste y avance del 25/10
 
+**Ejecución de los seis puntos autorizada después del informe:** ver [arca-continuacion-6-puntos-20261025.md](arca-continuacion-6-puntos-20261025.md). Diez F931 ya incorporados por9.442.305,95 con44vínculosPDF; no repetirlos. Continuar identificación de excedentes y los demás puntos. La conciliación no está cerrada.
+
 - [X] Implementar subcuentas ARCA antes de continuar conciliación: catálogo, reparto conservativo, historial/versionado, API e interfaz en contacto119; esquema WC con respaldo,24clasificaciones documentales sin tocar importes,28pruebas, TypeScript y navegador. Contrato: `arca-subcuentas.md`; evidencia y pendientes: `arca-analisis-20261025.md`.
 - [X] Consultar ARCA para Giamigli: deuda actual13renglones/$5.598,01, sieteplanes,15retencionesGanancias ya presentes, exportación767completa244filas y16retencionesIVA identificadas por comprobante/importe. No interpretar la deuda de25/10 como saldo al30/09.
-- [ ] Continuar por subcuenta en el orden de `arca-analisis-20261025.md`: diez F931/DDJJ-VEP, devoluciones IVA, Ganancias/SICORE, Autónomos/financiación y dos Debe2018, Bienes Sustitutos e importes sin concepto. No duplicar pagos ni modificar socios por inferencia.
+- [X] Punto 1 (F931/DDJJ-VEP) y Punto 2 parcial (9 reintegros oficiales RE-Granos aplicados a 26 certificados por $13.179.515,62; 59 VEP pagados vinculados a 54 débitos Galicia): respaldos, PDF con huella SHA-256 y enlaces verificados (`afip_f931_pendientes_portal_036.py`, `clasificar_veps_arca_036.py`, `aplicar_devoluciones_iva_arca_036.py`).
+- [X] Punto 4 (Autónomos CCMA y socios) y Punto 5 (Bienes Sustitutos): incorporadas 48 obligaciones CCMA `09/2024–08/2026` ($3.972.687,80), vinculados 47 pagos de socios ($3.619.422,36), ajustados asientos `2255` ($160.290,79) y `2734` ($56.016,36) y sincronizada planilla `Cajas Giamigli.xlsx`; incorporadas 15 obligaciones de planes `U657364` y `W143471` al corte ($1.427.555,70) y clasificados 32 débitos Galicia históricos ($914.443,36) con sus PDF vinculados (`arca_autonomos_ccma_036.py`, `arca_bienes_sustitutos_036.py`).
+- [ ] Continuar pendientes de ARCA en `arca-continuacion-6-puntos-20261025.md`: decisión Q3 de Sergio sobre asientos 2018 (`1872`/`1876` y `1885`), clasificación de pagos históricos en `por-identificar` (27 de Bienes Sustitutos 2012–2021 por $126.956,19 y pagos `Caja: La Herencia` de Autónomos/Cargas Sociales), exposición de compensaciones/obligaciones SCT de IVA/Ganancias/SICORE y conciliación final al corte 30/09/2026 (Punto 6).
 
 - [X] Contrastar22 cuentas con WC, fichas, auditorías y moneda; corregir la cola histórica sin repetir cierres ni movimientos.
 - [X] Recuperar y verificar seis F931 globales de Giamigli (oct-dic2025, jun-ago2026), incorporarlos con respaldo e invariantes; $6.869.246,62 de obligaciones faltantes, sin nuevos pagos.
