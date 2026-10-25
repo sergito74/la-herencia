@@ -115,7 +115,7 @@ def _movimiento_por_id(id_movimiento: int) -> dict:
     return {**fila, "importe": _f(fila["importe"]), "importeUSD": _f(fila["importeUSD"]), "importeKgCarne": _f(fila["importeKgCarne"])}
 
 
-def anular_movimiento(id_movimiento: int, motivo: str, usuario: str) -> dict:
+def anular_movimiento(id_movimiento: int, motivo: str, usuario: str, desde_operacion_caja: bool = False) -> dict:
     """Anulación no destructiva (spec FR-006): nunca `UPDATE`/`DELETE` del
     importe/tipo/origen — solo se marca `Anulada`. Registra en
     `AuditoriaReflejoSocio` la reversión correspondiente según el `Tipo`
@@ -130,8 +130,9 @@ def anular_movimiento(id_movimiento: int, motivo: str, usuario: str) -> dict:
     if movimiento["anulada"]:
         raise ValueError(f"El movimiento {id_movimiento} ya está anulado.")
     operacion = _operacion_caja(id_movimiento)
-    if operacion:
+    if operacion and not desde_operacion_caja:
         raise ValueError(f"El movimiento viene de la operación de caja {operacion}: anulala desde la caja para revertir todo junto.")
+    _guardia_impuesto(id_movimiento)
 
     accion = "ReversionAsignacion" if movimiento["tipo"] == "AsignacionGasto" else "ReversionDevolucion"
     execute_write_transaction(
@@ -332,13 +333,14 @@ def registrar_asiento(id_socio: int, lado: str, importe: float, fecha: date, med
     res = execute_write_transaction([
         sql,
         lambda r: ("INSERT INTO dbo.AuditoriaReflejoSocio (Accion, IdMovimiento, IdSocio, Usuario, Detalle) VALUES (?, ?, ?, ?, ?)",
-                   ("AsientoManual", r[0], id_socio, usuario, motivo)),
+                   ("Asignacion" if lado == "debe" else "Devolucion", r[0], id_socio, usuario, f"Asiento manual: {motivo}")),
     ])
     return _movimiento_por_id(res[0])
 
 
 def editar_asiento(id_movimiento: int, lado: str, importe: float, fecha: date, medio: str | None, motivo: str, usuario: str) -> dict:
     """Editar = anular el asiento anterior y crear el corregido en una transacción: el historial queda completo."""
+    _guardia_impuesto(id_movimiento)
     actual = _movimiento_por_id(id_movimiento)
     actual["idOperacionCaja"] = _operacion_caja(id_movimiento)
     if not editable(actual):
@@ -350,7 +352,8 @@ def editar_asiento(id_movimiento: int, lado: str, importe: float, fecha: date, m
          ("Corregido por edición", usuario, id_movimiento)),
         sql,
         lambda r: ("INSERT INTO dbo.AuditoriaReflejoSocio (Accion, IdMovimiento, IdSocio, Usuario, Detalle) VALUES (?, ?, ?, ?, ?)",
-                   ("EdicionAsiento", r[1], actual["idSocio"], usuario, f"Reemplaza al movimiento {id_movimiento}: {motivo}")),
+                   ("Asignacion" if lado == "debe" else "Devolucion", r[1], actual["idSocio"], usuario,
+                    f"Edición de asiento: reemplaza al movimiento {id_movimiento}: {motivo}")),
     ])
     if res[0] != 1:
         raise ValueError("El movimiento ya fue anulado o modificado por otra persona.")
@@ -362,3 +365,17 @@ def _operaciones_caja_socios() -> dict[int, int]:
     return {r["IdRegistro"]: r["IdOperacion"] for r in fetch_all(
         "SELECT e.IdRegistro, e.IdOperacion FROM dbo.EfectosOperacionCaja e JOIN dbo.OperacionesCajaEfectivo o "
         "ON o.IdOperacion = e.IdOperacion WHERE e.TipoEfecto = 'MovimientoSocio' AND o.Estado = 'Vigente'")}
+
+
+def _guardia_impuesto(id_movimiento: int) -> None:
+    """041: un Debe de carga de impuesto vigente o un Haber con devoluciones vinculadas se corrige desde la ficha del
+    impuesto (ErrorParticular 409 MOVIMIENTO_VINCULADO_A_IMPUESTO)."""
+    from src.features.impuestos import particular
+
+    try:
+        particular.guardia_movimiento(id_movimiento)
+    except particular.ErrorParticular:
+        raise
+    except Exception as exc:  # tablas 041 todavía no creadas
+        if "Invalid object name" not in str(exc):
+            raise

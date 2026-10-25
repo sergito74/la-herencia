@@ -9,6 +9,7 @@ from starlette.concurrency import run_in_threadpool
 
 from src.db.connection import fetch_one
 from src.features.cuentas_socios import repository
+from src.features.impuestos.particular import ErrorParticular as _ErrorParticular
 from src.features.cuentas_socios.schemas import (
     AnularMovimientoRequest,
     AsientoRequest,
@@ -94,6 +95,8 @@ async def anular_movimiento(idMovimiento: int, body: AnularMovimientoRequest, re
     usuario = _usuario_actual(request)
     try:
         movimiento = await run_in_threadpool(repository.anular_movimiento, idMovimiento, body.motivo, usuario)
+    except _ErrorParticular as e:
+        raise HTTPException(status_code=409, detail=e.detalle()) from e
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
     return MovimientoCuentaSocio(**movimiento)
@@ -128,6 +131,8 @@ async def editar_asiento(idMovimiento: int, body: AsientoRequest, request: Reque
     try:
         m = await run_in_threadpool(repository.editar_asiento, idMovimiento, body.lado, body.importe, body.fecha, body.medio,
                                     body.motivo, usuario)
+    except _ErrorParticular as e:
+        raise HTTPException(status_code=409, detail=e.detalle()) from e
     except ValueError as e:
         raise HTTPException(status_code=409, detail=str(e)) from e
     return MovimientoCuentaSocio(**m)

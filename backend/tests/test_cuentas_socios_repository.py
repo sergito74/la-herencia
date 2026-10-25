@@ -15,6 +15,7 @@ def _sin_cajas(monkeypatch):
     """038: ningún movimiento de estas pruebas viene de una operación de caja."""
     monkeypatch.setattr(repository, "_operacion_caja", lambda idm: None)
     monkeypatch.setattr(repository, "_operaciones_caja_socios", lambda: {})
+    monkeypatch.setattr(repository, "_guardia_impuesto", lambda idm: None)  # 041: sin cargas de impuestos
 
 
 def test_listar_compras_particulares_candidatas_filtra_asignadas(monkeypatch):

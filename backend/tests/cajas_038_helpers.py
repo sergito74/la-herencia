@@ -29,6 +29,9 @@ class CajaSimulada:
             raise AssertionError("Prueba 038 intentó conectarse a WC")
 
         monkeypatch.setattr(connection.pyodbc, "connect", forbidden)
+        # 041: sin cargas de impuestos en estas pruebas (la guardia no debe leer WC).
+        from src.features.impuestos import particular as _particular
+        monkeypatch.setattr(_particular, "guardia_movimiento", lambda id_movimiento: None)
 
         @contextmanager
         def transaction():
@@ -112,7 +115,7 @@ class CajaSimulada:
             apps, "anular_aplicacion", lambda id, *a: self._annul("AplicacionesPago", id)
         )
         monkeypatch.setattr(
-            socios, "anular_movimiento", lambda id, *a: self._annul("MovimientosCuentaSocio", id)
+            socios, "anular_movimiento", lambda id, *a, **k: self._annul("MovimientosCuentaSocio", id)
         )
         monkeypatch.setattr(
             transfers,

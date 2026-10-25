@@ -16,6 +16,10 @@ class Impuesto(BaseModel):
     importe: float | None = None
     idOrganismo: int | None = None
     organismo: str | None = None
+    # 041: cargas vigentes a socios (vacío si no hay)
+    aCargoDe: list[dict] = []
+    estadoDevolucion: str | None = None
+    pendienteNominal: str | None = None
 
 
 class ImpuestosListResponse(BaseModel):
@@ -80,3 +84,34 @@ class ImpuestoDetalle(BaseModel):
     numeroDocumento: str | None = None
     importe: float | None = None
     documentoOriginal: str | None = None
+
+
+# --- 041 impuestos particulares (contracts/api.md) ---------------------------------------------------------------
+
+from uuid import UUID  # noqa: E402
+
+
+class CargaInput(BaseModel):
+    claveIdempotencia: UUID
+    idSocio: int
+    importe: str | None = None
+    porcentaje: str | None = None
+    motivo: str = Field(min_length=1, max_length=255)
+    partida: str | None = Field(default=None, max_length=60)
+    titularOscar: bool = False
+    reemplazarMovimientoManual: int | None = None
+    confirmarCuentaCerrada: bool = False
+    ignorarManuales: bool = False
+
+
+class DevolucionInput(BaseModel):
+    claveIdempotencia: UUID
+    idMovimientoSocio: int | None = None
+    importe: str
+    fecha: date | None = None
+    medio: str | None = Field(default=None, max_length=100)
+    motivo: str | None = Field(default=None, max_length=255)
+
+
+class AnularInput(BaseModel):
+    motivo: str = Field(min_length=1, max_length=255)

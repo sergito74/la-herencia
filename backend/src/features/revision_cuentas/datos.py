@@ -54,13 +54,29 @@ def movimientos_de_cuenta(id_contacto: int, hasta: date | None = None) -> list[d
         "FROM dbo.vw_MovimientosCuenta_Base WHERE IdContacto = ?" + filtro + " ORDER BY Fecha, Origen, IdOrigen", tuple(params))
     bim = _bimonetaria(id_contacto)
     if bim is not None:  # cuenta con documentos en US$: la vista suma dólares como pesos; se usan los pesos valuados
-        return [{"fecha": f["fecha"], "documento": f["documento"], "nro": f["numeroDocumento"],
+        return _marcar_cargados_a_socio([{"fecha": f["fecha"], "documento": f["documento"], "nro": f["numeroDocumento"],
                  "deuda": round(f["deudaPesos"], 2), "credito": round(f["creditoPesos"], 2),
                  "origen": f["origenTipo"], "idOrigen": int(f["idOrigen"] or 0)}
-                for f in bim["filas"] if hasta is None or f["fecha"] <= hasta]
-    return [{"fecha": _dia(f["Fecha"]), "documento": f["Documento"], "nro": f["nro"],
+                for f in bim["filas"] if hasta is None or f["fecha"] <= hasta])
+    return _marcar_cargados_a_socio([{"fecha": _dia(f["Fecha"]), "documento": f["Documento"], "nro": f["nro"],
              "deuda": round(float(f["Deuda"] or 0), 2), "credito": round(float(f["Credito"] or 0), 2),
-             "origen": f["Origen"], "idOrigen": int(f["IdOrigen"]) if f["IdOrigen"] is not None else 0} for f in filas]
+             "origen": f["Origen"], "idOrigen": int(f["IdOrigen"]) if f["IdOrigen"] is not None else 0} for f in filas])
+
+
+def _marcar_cargados_a_socio(movs: list[dict]) -> list[dict]:
+    """041: en las boletas de impuestos agrega `cargadoASocio` (importe a cargo de socios) y `cargadoASocioTotal`.
+    El saldo del organismo no cambia: es solo una marca para no tratar esa parte como costo de Giamigli."""
+    ids = [m["idOrigen"] for m in movs if m["origen"] == "Impuestos" and m["idOrigen"]]
+    if not ids:
+        return movs
+    from src.features.impuestos.particular import fraccion_a_socios
+
+    fr = fraccion_a_socios(ids)
+    for m in movs:
+        if m["origen"] == "Impuestos" and fr.get(m["idOrigen"]):
+            m["cargadoASocio"] = round(m["deuda"] * fr[m["idOrigen"]], 2)
+            m["cargadoASocioTotal"] = fr[m["idOrigen"]] >= 0.99999
+    return movs
 
 
 def _bimonetaria(id_contacto: int) -> dict | None:

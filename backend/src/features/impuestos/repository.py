@@ -23,9 +23,13 @@ def search_impuestos(
     fecha_hasta: date | None,
     page: int,
     page_size: int,
+    particular: bool = False,
 ) -> tuple[list[dict], int]:
     where_clauses: list[str] = []
     params: list = []
+
+    if particular:  # 041: boletas con cargas vigentes a socios
+        where_clauses.append("EXISTS (SELECT 1 FROM dbo.ImpuestosParticulares p WHERE p.IdImpuesto = i.IdImpuesto AND p.Estado = 'vigente')")
 
     if organismo:
         where_clauses.append("c.[Razon Social] LIKE ?")
@@ -246,7 +250,45 @@ def crear(datos: dict) -> int:
     )
 
 
+class ImpuestoConCargas(Exception):
+    """041: la boleta tiene cargas vigentes a socios; no se cambian sus datos financieros ni se da de baja."""
+
+
+def _bloquear_si_cargas(cursor, id_impuesto: int, datos: dict | None) -> None:
+    """Dentro de la transacción y con la boleta bloqueada: rechaza baja o cambio financiero si hay cargas vigentes."""
+    try:
+        cursor.execute("SELECT COUNT(*) FROM dbo.ImpuestosParticulares WHERE IdImpuesto = ? AND Estado = 'vigente'", id_impuesto)
+    except Exception as exc:
+        if "Invalid object name" in str(exc):
+            return
+        raise
+    if not cursor.fetchone()[0]:
+        return
+    if datos is None:
+        raise ImpuestoConCargas("La boleta tiene cargas a socios vigentes: anulalas antes de darla de baja.")
+    cursor.execute("SELECT Fecha, Importe, IdOrganismo, IdTipoImpuesto FROM dbo.Impuestos WITH (UPDLOCK, HOLDLOCK) WHERE IdImpuesto = ?",
+                   id_impuesto)
+    actual = cursor.fetchone()
+    nuevo = _valores(datos)
+    if (str(actual[0])[:10] != str(nuevo[0])[:10] or round(float(actual[1]), 2) != nuevo[5] or actual[2] != nuevo[1]
+            or actual[3] != nuevo[2]):
+        raise ImpuestoConCargas("La boleta tiene cargas a socios vigentes: no se pueden cambiar fecha, importe, organismo ni tipo.")
+
+
 def actualizar(id_impuesto: int, datos: dict) -> None:
+    from src.db.connection import _reconciliation_connection, reconciliation_transaction
+
+    with reconciliation_transaction():
+        c = _reconciliation_connection.get().cursor()
+        _bloquear_si_cargas(c, id_impuesto, datos)
+        c.execute(
+            "UPDATE dbo.Impuestos SET Fecha = ?, IdOrganismo = ?, IdTipoImpuesto = ?, [Periodo liquidado] = ?, "
+            "[Numero de documento] = ?, Importe = ?, [Documento Original] = ? WHERE IdImpuesto = ?",
+            *(_valores(datos) + (id_impuesto,)),
+        )
+
+
+def _actualizar_sin_guardia(id_impuesto: int, datos: dict) -> None:
     execute_write_transaction([(
         "UPDATE dbo.Impuestos SET Fecha = ?, IdOrganismo = ?, IdTipoImpuesto = ?, [Periodo liquidado] = ?, "
         "[Numero de documento] = ?, Importe = ?, [Documento Original] = ? WHERE IdImpuesto = ?",
@@ -272,4 +314,9 @@ def vinculos(id_impuesto: int) -> list[str]:
 
 
 def eliminar(id_impuesto: int) -> None:
-    execute_write_transaction([("DELETE FROM dbo.Impuestos WHERE IdImpuesto = ?", (id_impuesto,))])
+    from src.db.connection import _reconciliation_connection, reconciliation_transaction
+
+    with reconciliation_transaction():
+        c = _reconciliation_connection.get().cursor()
+        _bloquear_si_cargas(c, id_impuesto, None)
+        c.execute("DELETE FROM dbo.Impuestos WHERE IdImpuesto = ?", id_impuesto)

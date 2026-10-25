@@ -629,6 +629,15 @@ def anular(id_op, body, user):
             if external:
                 raise ConflictoCaja(f"El efectivo tiene vínculos posteriores ajenos: {external}.")
         if e["TipoEfecto"] == "MovimientoSocio" and e["EsCreadoPorOperacion"]:
+            from src.features.impuestos import particular
+
+            try:
+                particular.guardia_movimiento(e["IdRegistro"])
+            except particular.ErrorParticular as exc:
+                raise ConflictoCaja(exc.mensaje) from exc
+            except Exception as exc:  # tablas 041 todavía no creadas
+                if "Invalid object name" not in str(exc):
+                    raise
             linked = db.read(
                 "SELECT IdMovimientoSocio id,IdContacto contacto FROM dbo.PagosSocioProveedor "
                 "WHERE IdMovimientoSocio=?",
@@ -657,7 +666,7 @@ def anular(id_op, body, user):
                 "SELECT Anulada FROM dbo.MovimientosCuentaSocio WHERE IdMovimiento=?", (ref,)
             )
             if current and not current["Anulada"]:
-                socios.anular_movimiento(ref, body.motivo, user)
+                socios.anular_movimiento(ref, body.motivo, user, desde_operacion_caja=True)
         elif kind == "GastoCaja":
             db.write(
                 "UPDATE dbo.GastoCajaEfectivo SET Anulada=1,MotivoAnulacion=?,UsuarioAnulacion=?,"

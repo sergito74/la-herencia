@@ -86,6 +86,20 @@ def _rubro_de_impuesto(id_impuesto: int, memo: dict) -> str:
     return memo[clave]
 
 
+RUBRO_CUENTA_SOCIOS = "Cuenta de socios"
+CENTRO_COSTO_SOCIOS = "Socios"
+
+
+def _fraccion_a_socios(id_impuesto: int, memo: dict) -> float:
+    """041: fracción (0..1) del importe de la boleta cargada a cuentas de socios."""
+    clave = ("ImpuestoParticular", id_impuesto)
+    if clave not in memo:
+        from src.features.impuestos.particular import fraccion_a_socios
+
+        memo[clave] = fraccion_a_socios([id_impuesto]).get(id_impuesto, 0.0)
+    return memo[clave]
+
+
 def rubro_sin_aplicar(fecha) -> str:
     """Remanente o movimiento sin aplicación: histórico antes del corte, pendiente después."""
     return HISTORICO_SIN_APLICAR if _fecha(fecha) < FECHA_CORTE_APLICACION else PENDIENTE_DE_APLICAR
@@ -112,8 +126,14 @@ def partes_desde_aplicaciones(aplicaciones: list[dict], importe_movimiento: floa
         importe = float(a["importeAplicado"]) * escala
         doc = {"tipo": a["tipoDocumento"], "id": a["idDocumentoAplicado"], "via": a.get("via", "aplicacion")}
         if a["tipoDocumento"] == "Impuesto":
-            partes.append({"rubro": _rubro_de_impuesto(a["idDocumentoAplicado"], memo), "centroCosto": CENTRO_COSTO_IMPUESTOS,
-                           "importe": importe, "documentoAplicado": doc})
+            # 041: la parte de la boleta cargada a socios no es costo de Giamigli (sale igual del banco).
+            fraccion = _fraccion_a_socios(a["idDocumentoAplicado"], memo)
+            if fraccion > 0:
+                partes.append({"rubro": RUBRO_CUENTA_SOCIOS, "centroCosto": CENTRO_COSTO_SOCIOS,
+                               "importe": importe * fraccion, "documentoAplicado": doc})
+            if fraccion < 1:
+                partes.append({"rubro": _rubro_de_impuesto(a["idDocumentoAplicado"], memo), "centroCosto": CENTRO_COSTO_IMPUESTOS,
+                               "importe": importe * (1 - fraccion), "documentoAplicado": doc})
         elif a["tipoDocumento"] == "Remuneracion":
             partes.append({"rubro": RUBRO_SUELDOS, "centroCosto": CENTRO_COSTO_PERSONAL, "importe": importe, "documentoAplicado": doc})
         elif a["tipoDocumento"] == "CompraDeuda":
