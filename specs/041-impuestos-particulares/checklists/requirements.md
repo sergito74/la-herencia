@@ -32,4 +32,4 @@
 ## Notes
 
 - Diseño consultado con agentes 07 (dirección financiera) y administracion-cuentas el 25/10/2026.
-- Preguntas abiertas para /speckit-clarify: padrón de partidas de socios/Oscar/Condominio (fuera de alcance por ahora), si Oscar Vicente entra como socio, lo no devuelto (deuda o compensación con ganancias).
+- Aclaraciones del 25/10/2026 incorporadas: padrón por marcas (B), Oscar → Condominio, no devuelto = deuda.

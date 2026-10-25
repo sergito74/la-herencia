@@ -8,6 +8,14 @@
 
 **Input**: User description: "Poder marcar un impuesto pagado por Giamigli de Bolívar S.A. como gasto a cargo de un socio (Sergio, Lucy, Ceci) o del Condominio LSC, igual que la compra particular, para que deje de contar como costo de Giamigli." Diseño consultado con los agentes 07 (dirección financiera) y administracion-cuentas (25/10/2026).
 
+## Clarifications
+
+### Session 2026-10-25
+
+- Q: ¿Padrón de partidas con titular para avisar solo? → A: B — marca manual con partida; el padrón se arma con esas marcas y avisa en impuestos nuevos de la misma partida.
+- Q: ¿A quién se cargan los impuestos de partidas a nombre de Oscar Vicente? → A: Siempre al Condominio LSC; Oscar no es titular aparte.
+- Q: Si un socio no devuelve un impuesto cargado, ¿qué hace el sistema? → A: Queda como deuda en su cuenta; se cancela con devolución o con un asiento de compensación explícito (nunca automático).
+
 ## Contexto
 
 - Las **compras** ya tienen el mecanismo de compra particular: el gasto de un socio pagado por la empresa sale de los costos de Giamigli y queda como Debe en la cuenta del socio. Los **impuestos** no tienen equivalente.
@@ -76,16 +84,17 @@ Una carga mal hecha se anula con motivo; vuelve a ser costo de Giamigli y el Deb
 - **FR-001**: El sistema DEBE permitir cargar un impuesto a la cuenta de un socio (Sergio, Lucy, Ceci o Condominio LSC), por el total o por un importe parcial (o porcentaje), con motivo obligatorio y partida inmobiliaria opcional.
 - **FR-002**: Cada carga DEBE generar un único Debe en la cuenta del socio, con la fecha del impuesto, valuado con la regla vigente de cuentas de socios (antes del 16/03/2020: 100% US$; después: 50% US$ y 50% kg de novillo INMAG), y enlazado al impuesto.
 - **FR-003**: La suma de las cargas vigentes de un impuesto NO DEBE superar su importe; un impuesto puede tener cargas a distintos socios.
-- **FR-004**: El Condominio LSC DEBE tratarse como un único socio; el sistema no reparte internamente entre condóminos.
+- **FR-004**: El Condominio LSC DEBE tratarse como un único socio; el sistema no reparte internamente entre condóminos. Las partidas a nombre de Oscar Vicente se asignan siempre al Condominio LSC (no existe titular «Oscar»).
 - **FR-005**: La boleta, su pago y la cuenta corriente del organismo NO DEBEN cambiar: el organismo sigue viendo la deuda y el pago completos.
 - **FR-006**: La parte cargada a socios DEBE excluirse de los costos de Giamigli: en el flujo de caja por rubro la salida se mantiene pero se clasifica como "Cuenta de socios" (no "Impuestos"); la revisión de cuentas lo muestra como "cargado a socio"; el libro de impuestos lo conserva con la etiqueta "a cargo de socio".
-- **FR-007**: La lista de impuestos DEBE mostrar la etiqueta del socio y el importe cargado, permitir filtrar por "a cargo de socio" y mostrar el estado devuelto/pendiente según los Haber de la cuenta del socio que lo cancelan.
+- **FR-007**: La lista de impuestos DEBE mostrar la etiqueta del socio y el importe cargado, permitir filtrar por "a cargo de socio" y mostrar el estado devuelto/pendiente según los Haber de la cuenta del socio que lo cancelan. Lo no devuelto queda como deuda del socio; solo se cancela con una devolución o con un asiento de compensación explícito cargado por el usuario, nunca de forma automática.
 - **FR-008**: La anulación DEBE ser no destructiva: el Debe queda anulado con usuario, fecha y motivo, y el impuesto vuelve a costos.
 - **FR-009**: NO DEBE poder darse de baja un impuesto con cargas vigentes.
 - **FR-010**: El sistema DEBE avisar antes de cargar a una cuenta de socio cerrada y exigir confirmación explícita.
 - **FR-011**: El sistema DEBE detectar un Debe manual equivalente (mismo socio, importe y fecha cercana) y ofrecer reemplazarlo por el vinculado, sin duplicar.
 - **FR-012**: Usuarios de solo lectura DEBEN poder consultar sin poder cargar ni anular; toda carga y anulación queda auditada.
 - **FR-013**: Toda escritura DEBE ir solo a la base de trabajo, con respaldo verificado antes de cambios de esquema o de carga en lote.
+- **FR-015**: Cada carga con partida (inmobiliaria, patente o tasa) DEBE alimentar un padrón partida → titular (socio o Condominio). Al cargar un impuesto nuevo de una partida del padrón, el sistema DEBE avisar y proponer la carga al mismo titular; la decisión sigue siendo del usuario.
 - **FR-014**: El caso 3206 DEBE migrarse al mecanismo nuevo: el Debe manual del 25/10/2026 se reemplaza por la carga vinculada; el Haber de la devolución de Lucy se conserva.
 
 ### Key Entities
@@ -108,4 +117,4 @@ Una carga mal hecha se anula con motivo; vuelve a ser costo de Giamigli y el Deb
 - El resultado por campaña hoy no incluye impuestos; si en el futuro se incorporan, se excluye la parte cargada a socios.
 - La devolución del socio se sigue registrando como Haber en su cuenta (por banco o caja), como hoy; esta funcionalidad no crea cobros.
 - Implicancia fiscal (gasto no deducible para la S.A.) se informa al estudio contable; el sistema no calcula impuestos.
-- Fuera de alcance: padrón de partidas inmobiliarias con detección automática de impuestos de socios (se puede proponer después con la información de partidas que aporte Sergio), y el caso inverso (socio que paga impuestos de Giamigli).
+- Fuera de alcance: carga inicial masiva del padrón y marcado automático sin confirmación; el caso inverso (socio que paga impuestos de Giamigli).
