@@ -13,6 +13,7 @@ import {
   type MovimientoCuentaCorriente,
 } from "@/services/cuentasCorrientesApi";
 import { OrigenMovimiento } from "@/components/cuentas-corrientes/OrigenMovimiento";
+import { ArcaSubcuentas } from "@/components/cuentas-corrientes/ArcaSubcuentas";
 import { ReasignarMovimientoButton } from "@/components/cuentas-corrientes/ReasignarMovimientoButton";
 import { Breadcrumb } from "@/components/ui/Breadcrumb";
 import { DataTable, type DataTableColumn, type SortState } from "@/components/ui/DataTable";
@@ -200,7 +201,7 @@ export function CuentaCorriente() {
         sortBy: sort?.key,
         sortDir: sort?.direction,
       }),
-    enabled: selected !== null,
+    enabled: selected !== null && selected.idContacto !== 119,
   });
 
   function handleReasignado() {
@@ -312,7 +313,7 @@ export function CuentaCorriente() {
               <p className="text-sm text-ink-secondary">{selected.tipoContacto ?? "sin tipo"}</p>
             </div>
             <KpiCard
-              label={SOCIO_DE_CONTACTO[selected.idContacto] ? "Saldo nominal (no es deuda del socio)" : "Saldo"}
+              label={selected.idContacto === 119 ? "Saldo contable total histórico" : SOCIO_DE_CONTACTO[selected.idContacto] ? "Saldo nominal (no es deuda del socio)" : "Saldo"}
               value={
                 loadingSaldo
                   ? "…"
@@ -338,7 +339,7 @@ export function CuentaCorriente() {
               })}
               className="rounded border border-border px-3 py-1.5 text-sm hover:bg-surface-sunken"
             >
-              Exportar a Excel
+              {selected.idContacto === 119 ? "Exportar cuenta completa a Excel" : "Exportar a Excel"}
             </a>
             <button
               type="button"
@@ -369,10 +370,11 @@ export function CuentaCorriente() {
             <FilterSubmitButton>Filtrar</FilterSubmitButton>
           </FilterBar>
 
-          {loadingMovimientos && <LoadingState />}
-          {errorMovimientos && <ErrorState message="Ocurrió un error al obtener movimientos." />}
+          {selected.idContacto === 119 && <ArcaSubcuentas key={`${selected.idContacto}-${appliedDates.fechaDesde}-${appliedDates.fechaHasta}`} fechaDesde={appliedDates.fechaDesde} fechaHasta={appliedDates.fechaHasta} />}
+          {selected.idContacto !== 119 && loadingMovimientos && <LoadingState />}
+          {selected.idContacto !== 119 && errorMovimientos && <ErrorState message="Ocurrió un error al obtener movimientos." />}
 
-          {movimientos && (
+          {selected.idContacto !== 119 && movimientos && (
             <DataTable
               columns={columns}
               rows={movimientos.items}

@@ -313,6 +313,10 @@ El cierre documental previo de Condominio/caja y la resolución de los pendiente
 
 ## Cuentas pendientes: contraste y avance del 25/10
 
+- [X] Implementar subcuentas ARCA antes de continuar conciliación: catálogo, reparto conservativo, historial/versionado, API e interfaz en contacto119; esquema WC con respaldo,24clasificaciones documentales sin tocar importes,28pruebas, TypeScript y navegador. Contrato: `arca-subcuentas.md`; evidencia y pendientes: `arca-analisis-20261025.md`.
+- [X] Consultar ARCA para Giamigli: deuda actual13renglones/$5.598,01, sieteplanes,15retencionesGanancias ya presentes, exportación767completa244filas y16retencionesIVA identificadas por comprobante/importe. No interpretar la deuda de25/10 como saldo al30/09.
+- [ ] Continuar por subcuenta en el orden de `arca-analisis-20261025.md`: diez F931/DDJJ-VEP, devoluciones IVA, Ganancias/SICORE, Autónomos/financiación y dos Debe2018, Bienes Sustitutos e importes sin concepto. No duplicar pagos ni modificar socios por inferencia.
+
 - [X] Contrastar22 cuentas con WC, fichas, auditorías y moneda; corregir la cola histórica sin repetir cierres ni movimientos.
 - [X] Recuperar y verificar seis F931 globales de Giamigli (oct-dic2025, jun-ago2026), incorporarlos con respaldo e invariantes; $6.869.246,62 de obligaciones faltantes, sin nuevos pagos.
 - [X] Separar diferencia236.381,79 entre F931dic2025 y Galicia2991; registrar la obligación confirmada por DDJJ+aviso sin inventar una cancelación exacta.

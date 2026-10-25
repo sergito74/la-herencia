@@ -26,6 +26,7 @@ from src.features.cuentas_socios.router import router as cuentas_socios_router
 from src.features.conciliacion_historico.router import router as conciliacion_historico_router
 from src.features.contactos.router import router as contactos_router
 from src.features.cuentas_corrientes.router import router as cuentas_corrientes_router
+from src.features.cuentas_corrientes.arca_router import router as arca_router
 from src.features.descarga_peajes.router import router as descarga_peajes_router
 from src.features.documentos.router import router as documentos_router
 from src.features.flujo_caja.router import router as flujo_caja_router
@@ -164,6 +165,7 @@ app.include_router(cuentas_socios_router)
 app.include_router(conciliacion_historico_router)
 app.include_router(contactos_router)
 app.include_router(cuentas_corrientes_router)
+app.include_router(arca_router)
 app.include_router(descarga_peajes_router)
 app.include_router(documentos_router)
 app.include_router(flujo_caja_router)

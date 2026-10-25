@@ -1,5 +1,7 @@
 # Quickstart: validar el método de revisión de cuentas
 
+Subcuentas ARCA25/10: desdebackend, `python -m scripts.crear_subcuentas_arca_036` inspecciona; `--aplicar` crea el esquema con respaldo verificado. `python -m pytest tests/test_arca_subcuentas.py tests/test_auth_middleware.py -q` no escribeWC. Navegador con API simulada: servidorNext3100 y `python frontend/tests/arca-subcuentas.e2e.py` desde raíz; variable `ARCA_UI_BASE` permite otra URL. Clasificaciones iniciales documentales: `python -m scripts.clasificar_arca_evidencia_036` simula y `--aplicar` registra metadatos con respaldo. Repetir da0pendientes. Validación y fuentes en [arca-analisis-20261025.md](arca-analisis-20261025.md).
+
 Todo en `WC`. Desde `backend/`, con `PYTHONIOENCODING=utf-8`. Referencias: [data-model.md](data-model.md), [contracts/revision-cuentas-api.md](contracts/revision-cuentas-api.md) y [research.md](research.md). Los pasos que escriben se hacen sobre cuentas de prueba o con la aprobación de Sergio; ninguno toca `LaHerencia` ni los archivos Access.
 
 ## Preparación

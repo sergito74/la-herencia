@@ -1,5 +1,7 @@
 # Traspaso a Codex — 25/10/2026
 
+**Actualización posterior de Codex:** subcuentas ARCA implementadas antes de continuar la conciliación, por pedido expreso de Sergio. Catálogo, reparto e historial en la cuenta119;24clasificaciones documentales aplicadas con respaldo, sin cambiar el mayor ni socios/Excel. Portal oficial consultado solo lectura; deudaactual$5.598,01, retencionesGanancias eIVA ya identificadas en sus originales. Diez F931 faltantes y demás pendientes individualizados en [arca-analisis-20261025.md](arca-analisis-20261025.md). No usar saldo contable+5,739M como crédito fiscal ni darARCA por cerrada. No guardar credenciales ni repetir financiación de socios.
+
 Este documento es el punto de entrada para continuar. Reemplaza a `traspaso-codex-20261023.md`, cuyos pendientes que siguen abiertos están repetidos en la sección 4. Antes de empezar, leer `.specify/memory/agent-guidance.md` y `.specify/memory/constitution.md`. Todo lo de abajo está en `main` (último commit de esta tanda: cruce de cuentas de socios).
 
 El detalle de cada paso, con evidencia, respaldos y reglas, está en [condominio-continuacion-ampliada-20261024.md](condominio-continuacion-ampliada-20261024.md), desde la sección «Cierre del Condominio — respuestas de Sergio A–J».

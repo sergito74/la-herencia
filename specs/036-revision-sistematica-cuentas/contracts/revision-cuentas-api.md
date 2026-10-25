@@ -1,5 +1,7 @@
 # Contrato: API de revisión sistemática de cuentas (036)
 
+Extensión ARCA25/10: router separado `/api/arca`, con `GET /cuenta`, `GET /historial` y `PUT /clasificacion`. Contrato completo, decimales y control de versión en [../arca-subcuentas.md](../arca-subcuentas.md). No altera los endpoints de revisión ni los importes del mayor.
+
 Base: `/api/revision-cuentas`. JSON, textos en español simple. Modelo de datos en [../data-model.md](../data-model.md). Las lecturas no escriben. Todo cambio exige el rol con permiso de escritura (el rol `Lectura` recibe 403), registra quién, cuándo y por qué, y nunca borra filas. Los importes son en la moneda que gobierna la cuenta; el signo es crédito menos deuda (positivo = a favor nuestro). Los endpoints de la 035 (`/api/auditoria-cuentas`) no cambian de contrato, salvo la puerta del FIFO (ver al final).
 
 ## Códigos de error comunes

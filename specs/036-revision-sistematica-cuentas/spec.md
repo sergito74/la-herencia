@@ -10,6 +10,8 @@
 
 ## Contexto
 
+**25/10/2026 — Subcuentas ARCA:** Sergio pide implementarlas antes de continuar conciliando. Alcance, reglas de conservación, reparto y aceptación en [arca-subcuentas.md](arca-subcuentas.md). No crear nuevos contactos ni pagos: clasificación trazable del libro existente.
+
 **Auditoría transversal de campañas (20/10/2026):** detectar texto de campaña sin vínculo, referencias inválidas y discrepancias entre ambos campos en todas las compras y labores, sin limitar por proveedor. Informe reproducible de solo lectura; candidatos por catálogo sin corrección automática ni reasignación de No Aplica. Procedimiento y alcance: [auditoria-campanias.md](auditoria-campanias.md).
 
 **Premisa general confirmada por Sergio el 20/10/2026:** en cuentas con resumen del proveedor, la conciliación debe reproducir sus documentos, aplicaciones, tipos de cambio y saldos por moneda al mismo corte. El FIFO y las conversiones genéricas del sistema ceden ante las aplicaciones documentadas. Conservar originales fiscales y movimientos bancarios; tratar diferencias mediante valuación/aplicación trazable, sin inventar ajustes para forzar cero. Separar costo económico en dólares del cultivo de movimientos que solo pertenecen a la subcuenta en pesos del proveedor. Ver instructivo compartido `.specify/memory/agent-guidance.md`, sección Conciliación con resúmenes de proveedores. Cuando no exista resumen, documentar la ausencia y conciliar con evidencia disponible.
