@@ -9,7 +9,7 @@ Autorización de Sergio: avanzar punto por punto hasta terminar y pedir ayuda so
 |1. F931 y diferencias de pagos|Resuelto|Diez DDJJ incorporadas. Excedentes identificados por VEP originales: SICOREsept2025/mayo2026 y anticipo5Ganancias2026 enenero2026.|
 |2. IVA y devoluciones|En curso|Nueve reintegros oficiales RE-Granos aplicados a26certificados; SIRE216 sin resultados; percepciones en revisión.|
 |3. Ganancias / anticipos / SICORE|En curso|Estados SCT 2025/2026 descargados; pendiente definir criterio de registración de obligaciones/créditos.|
-|4. Autónomos y financiación socios|Aplicado (resta decisión Q3 sobre 2018)|48 obligaciones 09/2024–08/2026 ($3.972.687,80) y 47 vínculos de socios ($3.619.422,36) aplicados; asientos 2255 y 2734 actualizados y Excel sincronizado; 305 obligaciones históricas y 207 pagos Particular S/L clasificados.|
+|4. Autónomos y financiación socios|Resuelto|48 obligaciones 09/2024–08/2026 ($3.972.687,80) y 47 vínculos de socios ($3.619.422,36) aplicados; asientos 2255 y 2734 actualizados; Opción A aplicada en asientos 2018 (1872 Devolución y 1876 AsignaciónGasto) y Excel sincronizado; 305 obligaciones históricas y 207 pagos Particular S/L clasificados.|
 |5. Bienes Sustitutos|Aplicado (2022–2026 conciliado a $0,00)|Incorporadas 15 obligaciones de planes U657364 y W143471 al corte ($1.427.555,70) con PDF vinculados y clasificados 32 débitos Galicia históricos ($914.443,36). Resta clasificar 27 pagos pre-2022 ($126.956,19).|
 |6. Conciliación final al corte|Pendiente|Solo después del contraste por concepto; no cierre por ajuste global.|
 
@@ -73,14 +73,17 @@ Estados SCT de Ganancias2025/2026 y SICORE2025/2026 descargados enPDF, detalles 
 
 SICORE217: capital cancelado en períodos revisados; intereses residuales oficiales **471,21 (07/2025), 54,58 (10/2025), 610,69 (06/2026)**. Septiembre2026 fue presentado06/10 y completado con9.056,60 el08/10, además del pago26.202,18 de septiembre: separar el hecho posterior al corte. No cargar retenciones practicadas a proveedores como gasto propio; el tipo20 está excluido del móduloImpuestos. Falta resolver exposición fiscal sin duplicar fuentes comerciales y descargar las DDJJ/acuses originales que estén disponibles.
 
-## Punto 4: aplicado en `WC` y planilla Excel sincronizada (queda abierta la decisión Q3 sobre 2018)
+## Punto 4: resuelto en `WC` y planilla Excel sincronizada (Opción A aplicada para 2018)
 
-Con la confirmación de Sergio sobre las preguntas **Q1 y Q2**, se ejecutó `backend/scripts/arca_autonomos_ccma_036.py --aplicar` (regla `arca-autonomos-ccma-socios-036` en `dbo.AuditoriaCorrecciones`, respaldo verificado `WC_arca-autonomos-ccma-036_20261025_203523_160767.bak`):
+Con la confirmación de Sergio sobre las preguntas **Q1 y Q2**, y la elección expresa de la **Opción A** para los asientos de 2018 (Pregunta 3):
 
 1. **Ajuste de los dos asientos de socios contra CCMA oficial y sincronización de `Cajas Giamigli.xlsx`:**
    - **Sergio `IdMovimiento = 2255` (`05/10/2026`, `"ARCA — Autonomos Sergio 4 2026"`):** actualizado de `$136.628,92` (`45.0921 USD`, `16.761 kg`) a **`$160.290,79`** (`52.9013 USD`, `19.664 kg`), coincidiendo con el pago en CCMA del `05/10/2026` (`$153.985,59` capital + `$6.305,20` interés resarcitorio).
    - **Lucy `IdMovimiento = 2734` (`07/04/2026`, `"ARCA — Autonomos 03 2026"`):** actualizado de `$59.916,00` (`21.5525 USD`, `7.132 kg`) a **`$56.016,36`** (`20.1498 USD`, `6.667 kg`), coincidiendo con la obligación y el pago oficial en CCMA del `07/04/2026`.
-   - Se actualizaron `backups/socios-inml-5050-20261025-036/sistema.json` y la planilla `Cajas Giamigli.xlsx` mediante `preparar_planilla_socios_036.py`, `editar_planilla_socios_036.mjs apply` y `publicar_planilla_socios_036.py --publicar` (`sha256Final = 8fd6f92825af5f12aaa75f9af475cea363d96f645c31f89dd979493de377b488`).
+2. **Aplicación de la Opción A en los asientos de 2018 (`IdMovimiento = 1872` y `1876`) en `WC` (`corregir_1872_1876_036.py`, regla `socio-sergio-autonomos-1872-1876-036`, respaldo `WC_socio_sergio_1872_1876_036_20261025_205635_147753.bak`):**
+   - **`1872` (`07/05/2018`, `$2.842,12`, `Pago ICBC`):** pasó de `AsignacionGasto` (Debe) a **`Devolucion` (Haber)** con motivo `"Autonomos 04 2018"`, reflejando fielmente el pago personal realizado por Sergio desde su cuenta bancaria.
+   - **`1876` (`29/05/2018`, `$2.842,12`, `Efectivo`):** pasó de `Devolucion` (Haber) a **`AsignacionGasto` (Debe)** con motivo `"Pago — Reintegro efectivo Autonomos 04 2018"`, reflejando el reintegro en efectivo que la caja de la empresa (`Caja Efectivo Pesos` fila 1217, `IdPagoEfectivo = 1432`) le entregó a Sergio en mano.
+   - Sincronización completa de la planilla `Cajas Giamigli.xlsx` realizada con `preparar_planilla_socios_036.py`, `editar_planilla_socios_036.mjs apply` y `publicar_planilla_socios_036.py --publicar` (`sha256Final = d6293dc0dcc3f3bc78cc42181fc31ba5ecc12a251962ebed6f557fb7b200fa9e`), revaluando Sergio con `+15.6358 USD` y `+3.974 kg` de carne a favor por la restitución de la secuencia temporal correcta.
 2. **Incorporación de las 48 obligaciones mensuales de Autónomos (`09/2024 – 08/2026`) al corte `30/09/2026`:**
    - Insertadas en `dbo.Impuestos` (`IdOrganismo = 119`, `IdTipoImpuesto = 5`): **24 de Sergio** por **`$2.796.545,05`** (`IdImpuesto = 1326..1349`) y **24 de Lucy** por **`$1.176.142,75`** (`IdImpuesto = 1350..1373`), total **`$3.972.687,80`**.
    - Copias PDF de los estados CCMA copiadas a `Documents/La Herencia/Administracion y gestion/Impuestos y Sociedades/ARCA/Giamigli/Autonomos/` (`CCMA-Sergio-202409-202609-copia.pdf` y `CCMA-Lucy-202409-202609-copia.pdf`) y vinculadas en `dbo.ArcaDocumentos` tanto a las 48 obligaciones como a los pagos por socio.
