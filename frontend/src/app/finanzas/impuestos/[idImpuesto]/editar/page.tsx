@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useParams } from "next/navigation";
 
 import { ImpuestoForm } from "@/components/impuestos/ImpuestoForm";
+import { ImpuestoParticularPanel } from "@/components/impuestos/ImpuestoParticularPanel";
 import { BackLink } from "@/components/ui/BackLink";
 import { ErrorState, LoadingState } from "@/components/ui/States";
 import { fetchImpuesto } from "@/services/impuestosApi";
@@ -23,6 +24,7 @@ export default function EditarBoletaPage() {
       {isLoading && <LoadingState />}
       {isError && <ErrorState message="No se pudo cargar la boleta." onRetry={() => refetch()} />}
       {data && <ImpuestoForm inicial={data} />}
+      {data && <ImpuestoParticularPanel idImpuesto={idImpuesto} />}
     </main>
   );
 }

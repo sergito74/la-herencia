@@ -21,9 +21,10 @@ Fecha: 25/10/2026. Sergio autorizó corregir las ocho observaciones de speckit-a
 - Caso 3206: Debe manual 3149 al 07/11/2017, 8852,10 nominales, 501,5354 USD, kg 0; Haber 3150 al 13/11/2017, 8852,10 nominales, 505,8343 USD, kg 0. La migración debe verificar el estado vigente y estos valores, no basarse ciegamente en identificadores.
 - La diferencia histórica de 4,2989 USD no se corrige automáticamente para etiquetar el impuesto como devuelto nominalmente.
 
-## Estado
+## Estado (implementación 2026-10-25)
 
-- Correcciones documentales: presentes en spec, plan, research, modelo, API, quickstart y tareas.
-- Implementación y migración: pendientes; las 39 tareas siguen sin marcar.
-- Pruebas de comportamiento, seguridad/concurrencia, navegador y respaldo real de migración: pendientes. No se afirma PASS de código todavía.
-- Revisión documental completada: 22 FR únicos y consecutivos, 39 tareas con IDs/formato/rutas válidos, 21 escenarios de quickstart y ocho hallazgos con resolución y tareas trazables. Orígenes de 16/18 caracteres compatibles con varchar(20); no quedan referencias operativas al origen de 28 caracteres. git diff --check sin errores. No hubo cambios en código ni datos.
+- Esquema aplicado en WC con respaldo verificado `WC_impuestos_particulares_041_20261025_123544_626816.bak`; migración 3206 con respaldo `WC_impuestos_particulares_041_20261025_123637_926741.bak`. Resultado: carga 3 → Debe 3153 (Origen ImpuestoParticular, 501,5354 USD), manual 3149 anulado, vínculo 1 → Haber 3150, estado devuelto; saldo del Condominio sin cambios (−5.656.204,01 / US$ −131.931,98 / kg −1.228,86). Segunda inspección: migrado, sin escrituras.
+- Lectura real (solo lectura): resumen de lista del 3206 = `aCargoDe` Cond LSC $8.852,10, devuelto, pendiente 0,00; ficha: a cargo de socios 8.852,10, parte empresa 0,00. Guardias verificadas: anular 3153/3150 y baja del 3206 devuelven MOVIMIENTO_VINCULADO_A_IMPUESTO / IMPUESTO_CON_CARGAS.
+- Pruebas: 19 de `test_impuestos_particulares_041.py` + cuentas de socios + cajas 038/040 = 149 passed; impuestos + flujo de caja + revisión + endpoints de socios = 229 passed. `tsc --noEmit` y ESLint sobre impuestos/services sin errores.
+- Frontend: `ImpuestoParticularPanel` en la ficha (carga por importe o %, avisos con confirmación explícita, devoluciones a Haber existente o nuevo, quitar vínculo, anular con motivo, UUID persistente entre reintentos); grilla con columna «A cargo de socio», estado y filtro.
+- Pendiente: T038, verificación en navegador del flujo real.

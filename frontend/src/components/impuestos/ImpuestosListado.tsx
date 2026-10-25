@@ -45,6 +45,21 @@ const COLUMNS: DataTableColumn<Impuesto>[] = [
     sortValue: (i) => i.importe,
     render: (i) => (i.importe != null ? formatMoneda(i.importe) : "—"),
   },
+  {
+    key: "aCargoDe",
+    header: "A cargo de socio",
+    render: (i) =>
+      i.aCargoDe?.length ? (
+        <span title={i.pendienteNominal ? `Pendiente $${i.pendienteNominal}` : undefined}>
+          {i.aCargoDe.map((a) => a.socio).join(", ")}
+          {i.estadoDevolucion && (
+            <span className={`ml-1 rounded px-1 text-xs ${i.estadoDevolucion === "devuelto" ? "bg-green-100" : "bg-amber-100"}`}>
+              {i.estadoDevolucion === "devuelto" ? "devuelto" : i.estadoDevolucion === "parcial" ? "devuelto parcial" : "pendiente"}
+            </span>
+          )}
+        </span>
+      ) : "",
+  },
 ];
 
 /**
@@ -57,13 +72,14 @@ export function ImpuestosListado({ highlightKey }: { highlightKey?: number }) {
     nombre: null,
   });
   const [appliedOrganismo, setAppliedOrganismo] = useState("");
+  const [particular, setParticular] = useState(false);
   const [page, setPage] = useState(1);
   const pageSize = 50;
 
   const { data, isLoading, isError, refetch } = useQuery({
-    queryKey: ["impuestos", appliedOrganismo, page],
+    queryKey: ["impuestos", appliedOrganismo, particular, page],
     queryFn: () =>
-      fetchImpuestos({ organismo: appliedOrganismo || undefined, page, pageSize }),
+      fetchImpuestos({ organismo: appliedOrganismo || undefined, page, pageSize, particular }),
   });
 
   function handleSubmit(e: React.FormEvent) {
@@ -83,6 +99,10 @@ export function ImpuestosListado({ highlightKey }: { highlightKey?: number }) {
           onChange={(id, nombre) => setOrganismo({ id, nombre })}
           placeholder="Buscar organismo…"
         />
+        <label className="flex items-center gap-1 self-end text-sm">
+          <input type="checkbox" checked={particular} onChange={(e) => { setParticular(e.target.checked); setPage(1); }} />
+          A cargo de socio
+        </label>
         <FilterSubmitButton />
         <SoloLectura>
           <Link

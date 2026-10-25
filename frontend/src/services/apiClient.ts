@@ -20,12 +20,26 @@ export const API_BASE_URL =
 
 export class ApiError extends Error {
   status: number;
+  /** Detalle estructurado `{codigo, mensaje, ...}` cuando el backend lo envía (041 y siguientes). */
+  detalle?: Record<string, unknown>;
 
-  constructor(status: number, message: string) {
+  constructor(status: number, message: string, detalle?: Record<string, unknown>) {
     super(message);
     this.status = status;
     this.name = "ApiError";
+    this.detalle = detalle;
   }
+}
+
+/** Detalle estructurado de un error `{"detail": {"codigo", "mensaje", ...}}`, si lo hay. */
+export function detalleDeError(texto: string): Record<string, unknown> | undefined {
+  try {
+    const parsed = JSON.parse(texto);
+    if (parsed?.detail && typeof parsed.detail === "object" && !Array.isArray(parsed.detail)) return parsed.detail;
+  } catch {
+    // no es JSON
+  }
+  return undefined;
 }
 
 /** FastAPI devuelve errores como `{"detail": "mensaje"}` — sin esto,
@@ -36,6 +50,7 @@ async function leerDetalleError(response: Response): Promise<string> {
   try {
     const parsed = JSON.parse(texto);
     if (typeof parsed?.detail === "string") return parsed.detail;
+    if (typeof parsed?.detail?.mensaje === "string") return parsed.detail.mensaje;
     // Errores de validación de negocio: el backend devuelve una lista de mensajes.
     if (Array.isArray(parsed?.detail)) {
       return parsed.detail
@@ -46,6 +61,14 @@ async function leerDetalleError(response: Response): Promise<string> {
     // No era JSON — se usa el texto crudo tal cual.
   }
   return texto;
+}
+
+/** ApiError con el mensaje legible y, si existe, el detalle estructurado del backend. */
+async function errorDeRespuesta(response: Response): Promise<ApiError> {
+  const texto = await response.text().catch(() => "");
+  const detalle = detalleDeError(texto);
+  const mensaje = await leerDetalleError(new Response(texto));
+  return new ApiError(response.status, mensaje || response.statusText, detalle);
 }
 
 /** Cuerpo JSON de una respuesta, o `undefined` si viene vacía (204 No Content). */
@@ -76,8 +99,7 @@ export async function apiGet<T>(
   const response = await fetch(url.toString(), { method: "GET", credentials: "include" });
 
   if (!response.ok) {
-    const detail = await leerDetalleError(response);
-    throw new ApiError(response.status, detail || response.statusText);
+    throw await errorDeRespuesta(response);
   }
 
   return (await response.json()) as T;
@@ -94,8 +116,7 @@ export async function apiPatch<T>(path: string, body: unknown): Promise<T> {
   });
 
   if (!response.ok) {
-    const detail = await leerDetalleError(response);
-    throw new ApiError(response.status, detail || response.statusText);
+    throw await errorDeRespuesta(response);
   }
 
   return (await leerRespuesta(response)) as T;
@@ -116,8 +137,7 @@ export async function apiPost<T>(
   });
 
   if (!response.ok) {
-    const detail = await leerDetalleError(response);
-    throw new ApiError(response.status, detail || response.statusText);
+    throw await errorDeRespuesta(response);
   }
 
   return (await leerRespuesta(response)) as T;
@@ -127,8 +147,7 @@ export async function apiPost<T>(
 export async function apiPostForm<T>(path: string, form: FormData): Promise<T> {
   const response = await fetch(new URL(path, API_BASE_URL).toString(), { method: "POST", body: form, credentials: "include" });
   if (!response.ok) {
-    const detail = await leerDetalleError(response);
-    throw new ApiError(response.status, detail || response.statusText);
+    throw await errorDeRespuesta(response);
   }
   return (await leerRespuesta(response)) as T;
 }
@@ -148,8 +167,7 @@ export async function apiPut<T>(
   });
 
   if (!response.ok) {
-    const detail = await leerDetalleError(response);
-    throw new ApiError(response.status, detail || response.statusText);
+    throw await errorDeRespuesta(response);
   }
 
   return (await leerRespuesta(response)) as T;
@@ -173,8 +191,7 @@ export async function apiDelete(
   });
 
   if (!response.ok) {
-    const detail = await leerDetalleError(response);
-    throw new ApiError(response.status, detail || response.statusText);
+    throw await errorDeRespuesta(response);
   }
 }
 

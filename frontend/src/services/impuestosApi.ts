@@ -15,6 +15,10 @@ export interface Impuesto {
   importe: number | null;
   idOrganismo: number | null;
   organismo: string | null;
+  /** 041: cargas vigentes a socios de esta boleta. */
+  aCargoDe?: { idSocio: number; socio: string; importe: string }[];
+  estadoDevolucion?: EstadoDevolucion | null;
+  pendienteNominal?: string | null;
 }
 
 export interface ImpuestosListResponse {
@@ -46,8 +50,10 @@ export function fetchImpuestos(params: {
   fechaHasta?: string;
   page?: number;
   pageSize?: number;
+  particular?: boolean;
 }): Promise<ImpuestosListResponse> {
-  return apiGet<ImpuestosListResponse>("/api/impuestos", { ...params });
+  const { particular, ...resto } = params;
+  return apiGet<ImpuestosListResponse>("/api/impuestos", { ...resto, particular: particular ? "true" : undefined });
 }
 
 export function fetchRetenciones(params: {
@@ -108,3 +114,81 @@ export function editarImpuesto(idImpuesto: number, body: ImpuestoInput): Promise
 export function eliminarImpuesto(idImpuesto: number): Promise<void> {
   return apiDelete(`/api/impuestos/${idImpuesto}`);
 }
+
+
+// --- 041 impuestos particulares (specs/041-impuestos-particulares/contracts/api.md) ---
+
+export type EstadoDevolucion = "devuelto" | "parcial" | "pendiente";
+
+export interface DevolucionVinculo {
+  idVinculo: number;
+  idMovimientoSocio: number;
+  importe: string;
+  estado: "vigente" | "anulada";
+}
+
+export interface CargaParticular {
+  idCarga: number;
+  idImpuesto: number;
+  idSocio: number;
+  socio: string;
+  importe: string;
+  motivo: string;
+  partida: string | null;
+  titularOscar: boolean;
+  estado: "vigente" | "anulada";
+  idMovimientoSocio: number;
+  devuelto: string;
+  pendienteNominal: string;
+  estadoDevolucion: EstadoDevolucion | null;
+  devoluciones: DevolucionVinculo[];
+  motivoAnulacion: string | null;
+}
+
+export interface PartidaInfo {
+  partida: string | null;
+  estado: "vigente" | "ambigua" | "sin_cargas" | "desconocida";
+  idSocio: number | null;
+  socio: string | null;
+  candidatos: { idSocio: number; socio: string }[];
+  titularOscar: boolean;
+}
+
+export interface ParticularImpuesto {
+  idImpuesto: number;
+  importe: string;
+  aCargoDeSocios: string;
+  parteEmpresa: string;
+  cargas: CargaParticular[];
+  avisos: ({ tipo: "partida" } & PartidaInfo)[];
+}
+
+export interface CargaInput {
+  claveIdempotencia: string;
+  idSocio: number;
+  importe?: string;
+  porcentaje?: string;
+  motivo: string;
+  partida?: string | null;
+  titularOscar?: boolean;
+  reemplazarMovimientoManual?: number;
+  confirmarCuentaCerrada?: boolean;
+  ignorarManuales?: boolean;
+}
+
+export type DevolucionInput =
+  | { claveIdempotencia: string; idMovimientoSocio: number; importe: string }
+  | { claveIdempotencia: string; fecha: string; importe: string; medio?: string; motivo: string };
+
+export const fetchParticular = (idImpuesto: number, partida?: string) =>
+  apiGet<ParticularImpuesto>(`/api/impuestos/${idImpuesto}/particular`, { partida });
+export const crearCargaParticular = (idImpuesto: number, body: CargaInput) =>
+  apiPost<CargaParticular>(`/api/impuestos/${idImpuesto}/particular`, body);
+export const registrarDevolucion = (idCarga: number, body: DevolucionInput) =>
+  apiPost<CargaParticular & { idVinculo: number }>(`/api/impuestos/particular/${idCarga}/devoluciones`, body);
+export const anularDevolucion = (idCarga: number, idVinculo: number, motivo: string) =>
+  apiPost<CargaParticular>(`/api/impuestos/particular/${idCarga}/devoluciones/${idVinculo}/anular`, { motivo });
+export const anularCargaParticular = (idCarga: number, motivo: string) =>
+  apiPost<CargaParticular>(`/api/impuestos/particular/${idCarga}/anular`, { motivo });
+export const consultarPartida = (partida: string) =>
+  apiGet<PartidaInfo>(`/api/impuestos/partidas/${partida.split("/").map(encodeURIComponent).join("/")}`);
