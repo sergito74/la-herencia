@@ -17,6 +17,10 @@ CONTACTO_SOCIO = {v: k for k, v in SOCIO_CONTACTO.items()}
 ORIGENES_BANCO = ("Banco Nacion", "Galicia", "Mercado Pago", "Conciliación Tesorería")
 DIAS = 5
 NOMBRE_EN_CONDOMINIO = {1: "Sergio", 2: "Lucy", 4: "Ceci"}
+# Movimientos explicados por Sergio que no llevan asiento (origen de la vista, IdOrigen) -> explicación.
+EXPLICADOS = {
+    ("Banco Nacion", 18536): "Retiro de ganancias del 10/08/2017 (Sergio, 25/10/2026): no va a la cuenta de socio",
+}
 SOCIO_NOMBRE = {1: "Sergio", 2: "Lucy", 3: "Cond LSC", 4: "Ceci"}
 
 
@@ -88,7 +92,7 @@ def _combinacion(importe: float, fecha: date, id_socio: int) -> list[dict] | Non
     nombre = NOMBRE_EN_CONDOMINIO.get(id_socio, "")
     cands = [{"socio": r["Nombre"], "importe": round(float(r["Importe"]), 2), "motivo": r["Motivo"]} for r in filas
              if r["IdSocio"] == id_socio or (r["IdSocio"] == 3 and str(r["Motivo"]).startswith(f"{nombre} —"))
-             or "devolucion por aporte" in str(r["Motivo"]).lower().replace("ó", "o")]
+             or "devolucion por aporte" in str(r["Motivo"]).lower().replace("ó", "o") or "lote haberes" in str(r["Motivo"])]
     for n in (2, 3):
         for c in combinations(cands, n):
             if abs(sum(x["importe"] for x in c) - importe) < 0.005 and any(x["socio"] == SOCIO_NOMBRE.get(id_socio) or
@@ -102,6 +106,8 @@ def _explicacion(b: dict, importe: float, fecha: date, id_socio: int) -> str | N
     - pase banco → caja: Giamigli le transfiere y el mismo día él deposita lo mismo en la caja como «Aporte Efectivo»
       (es efectivo de Giamigli que cambia de lugar; no es aporte ni retiro del socio);
     - retiro de ganancias (no genera deuda), según la explicación registrada al reasignar el movimiento."""
+    if (b["Origen"], b["IdOrigen"]) in EXPLICADOS:
+        return EXPLICADOS[(b["Origen"], b["IdOrigen"])]
     nombre = SOCIO_NOMBRE.get(id_socio, "")
     caja = fetch_all(
         "SELECT TOP 1 IdMovimiento FROM dbo.MovimientosCajaEfectivo WHERE Anulada=0 AND Caja='GiamigliSA' AND Importe=? "
