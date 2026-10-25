@@ -4,7 +4,7 @@
 
 **Created**: 2026-10-25
 
-**Status**: Draft
+**Status**: Especificación refinada tras análisis (25/10/2026)
 
 **Input**: User description: "Poder marcar un impuesto pagado por Giamigli de Bolívar S.A. como gasto a cargo de un socio (Sergio, Lucy, Ceci) o del Condominio LSC, igual que la compra particular, para que deje de contar como costo de Giamigli." Diseño consultado con los agentes 07 (dirección financiera) y administracion-cuentas (25/10/2026).
 
@@ -91,11 +91,25 @@ Una carga mal hecha se anula con motivo; vuelve a ser costo de Giamigli y el Deb
 - **FR-008**: La anulación DEBE ser no destructiva: el Debe queda anulado con usuario, fecha y motivo, y el impuesto vuelve a costos.
 - **FR-009**: NO DEBE poder darse de baja un impuesto con cargas vigentes.
 - **FR-010**: El sistema DEBE avisar antes de cargar a una cuenta de socio cerrada y exigir confirmación explícita.
-- **FR-011**: El sistema DEBE detectar un Debe manual equivalente (mismo socio, importe y fecha cercana) y ofrecer reemplazarlo por el vinculado, sin duplicar.
+- **FR-011**: El sistema DEBE detectar un Debe manual equivalente (mismo socio e importe nominal exacto, fecha histórica con diferencia máxima de tres días corridos, Debe vigente de origen Manual o NULL) y ofrecer reemplazarlo por el vinculado, sin duplicar.
 - **FR-012**: Usuarios de solo lectura DEBEN poder consultar sin poder cargar ni anular; toda carga y anulación queda auditada.
 - **FR-013**: Toda escritura DEBE ir solo a la base de trabajo, con respaldo verificado antes de cambios de esquema o de carga en lote.
 - **FR-015**: Cada carga con partida (inmobiliaria, patente o tasa) DEBE alimentar un padrón partida → titular (socio o Condominio). Al cargar un impuesto nuevo de una partida del padrón, el sistema DEBE avisar y proponer la carga al mismo titular; la decisión sigue siendo del usuario.
 - **FR-014**: El caso 3206 DEBE migrarse al mecanismo nuevo: el Debe manual del 25/10/2026 se reemplaza por la carga vinculada; el Haber de la devolución de Lucy se conserva.
+
+### Reglas de integridad completadas — 25/10/2026
+
+- **FR-016**: Mientras existan cargas vigentes, NO DEBE poder editarse Fecha, Importe, IdOrganismo ni IdTipoImpuesto de la boleta; responder409. Para corregirlos se anulan primero las cargas. Las ediciones de campos descriptivos/documentales conservan su comportamiento actual. El bloqueo y la creación de cargas comparten protección transaccional sobre el impuesto.
+- **FR-017**: Un Debe de carga vigente solo se anula desde esa carga. Un Haber con vínculos vigentes de devolución NO DEBE editarse ni anularse desde socios o desde su operación de origen; responder409 identificando las cargas. Primero se desvincula desde la ficha del impuesto, con motivo y auditoría. Después rigen las operaciones permitidas por su origen; no se habilita editar movimientos de caja desde socios.
+- **FR-018**: Cada vínculo a un Haber existente indica un importe nominal en pesos explícito, positivo y no mayor que el pendiente de la carga ni que la capacidad del Haber no utilizada por otros vínculos vigentes. Un Haber puede repartirse entre cargas del mismo socio; un mismo par carga/Haber solo tiene un vínculo vigente. No hay recorte automático de importes. Los estados de devolución son nominales en pesos; no implican que el saldo valuado en US$/kg sea cero. Se mantienen las cotizaciones históricas de cada Debe y Haber, sin ajustes automáticos de cambio.
+- **FR-019**: Crear carga, vincular devolución o crear un Haber nuevo desde la ficha requiere clave UUID de idempotencia. Repetir clave y solicitud normalizada devuelve la operación original sin nuevas escrituras; reutilizarla con otra solicitud responde409. Tras una anulación, un reintento no reactiva ni recrea la operación; una acción nueva usa otra clave.
+- **FR-020**: Anular una carga anula también sus vínculos vigentes de devolución, con auditoría, pero NO anula los Haber, que pueden corresponder a movimientos reales o reutilizarse después. Anular un vínculo no cambia el Haber. El padrón se recalcula en la misma transacción considerando solo cargas vigentes; no conserva propuestas basadas únicamente en cargas anuladas.
+- **FR-021**: Detectar Debe manual equivalente usa mismo socio, importe nominal exacto, TipoAsignacionGasto, origenManual oNULL, vigente y diferencia máxima de tres días corridos entre fechas históricas. La fecha de creación del registro no sustituye la del movimiento. Si hay varios candidatos se muestran todos y se exige elegir uno; ninguno se anula automáticamente. También se admite reemplazo explícito de un candidato validado cuando solo hay uno.
+- **FR-022**: La partida se introduce/consulta desde el formulario o panel como dato auxiliar, sin añadir columnas a Impuestos. Antes de la primera carga no se presume una asociación impuesto/partida: el aviso aparece al ingresar la partida o al leer cargas existentes de la boleta. El padrón se deriva de cargas vigentes: un titular distinto → propone ese socio; varios → avisa titularidad ambigua y lista candidatos sin proponer uno; ninguno → sin propuesta. Las cargas de una partida declarada de Oscar Vicente siempre corresponden al Condominio, incluso ante un intento de asignarlas a otro socio.
+
+La API admite `titularOscar=true` como declaración auxiliar de procedencia de la partida; no crea un socio ni titular Oscar. La partida conserva ceros iniciales y puntuación; para comparar se recortan extremos, se colapsan espacios y se convierte a mayúsculas. No se infiere identidad entre números parecidos o de padrones diferentes; el usuario introduce la referencia completa.
+
+Las reglas técnicas de origen e idempotencia están desarrolladas en data-model.md y contracts/api.md. El origen del Haber nuevo es **DevImpParticular** (compatible con varchar(20)); el Debe conserva **ImpuestoParticular**.
 
 ### Key Entities
 
@@ -118,3 +132,12 @@ Una carga mal hecha se anula con motivo; vuelve a ser costo de Giamigli y el Deb
 - La devolución del socio se sigue registrando como Haber en su cuenta (por banco o caja), como hoy; esta funcionalidad no crea cobros.
 - Implicancia fiscal (gasto no deducible para la S.A.) se informa al estudio contable; el sistema no calcula impuestos.
 - Fuera de alcance: carga inicial masiva del padrón y marcado automático sin confirmación; el caso inverso (socio que paga impuestos de Giamigli).
+
+
+## Aceptación adicional
+
+- Reintentar una carga parcial de6000 sobre impuesto10000 con la misma clave deja una sola carga; cambiar el cuerpo conservando la clave responde409.
+- Un Haber de1000 puede vincular600 a una carga y400 a otra del mismo socio; otro vínculo de1 se rechaza. Los estados no alteran cotizaciones del Haber.
+- Editar importe/fecha/organismo/tipo de boleta cargada, editar/anular un Haber vinculado o anular un Debe ligado fuera de la ficha responde409, sin escrituras parciales.
+- Anular carga devuelta conserva el Haber y el historial de vínculos anulados, devuelve la parte a costos y recalcula el padrón. Si se vuelve a vincular el mismo Haber tras anular el vínculo, se crea otra fila histórica con nueva clave.
+- Una partida sin cargas vigentes no genera propuesta; una compartida avisa ambigüedad; declararOscar con socio distinto de3 responde409.
