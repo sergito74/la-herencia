@@ -27,4 +27,4 @@ Fecha: 25/10/2026. Sergio autorizó corregir las ocho observaciones de speckit-a
 - Lectura real (solo lectura): resumen de lista del 3206 = `aCargoDe` Cond LSC $8.852,10, devuelto, pendiente 0,00; ficha: a cargo de socios 8.852,10, parte empresa 0,00. Guardias verificadas: anular 3153/3150 y baja del 3206 devuelven MOVIMIENTO_VINCULADO_A_IMPUESTO / IMPUESTO_CON_CARGAS.
 - Pruebas: 19 de `test_impuestos_particulares_041.py` + cuentas de socios + cajas 038/040 = 149 passed; impuestos + flujo de caja + revisión + endpoints de socios = 229 passed. `tsc --noEmit` y ESLint sobre impuestos/services sin errores.
 - Frontend: `ImpuestoParticularPanel` en la ficha (carga por importe o %, avisos con confirmación explícita, devoluciones a Haber existente o nuevo, quitar vínculo, anular con motivo, UUID persistente entre reintentos); grilla con columna «A cargo de socio», estado y filtro.
-- Pendiente: T038, verificación en navegador del flujo real.
+- T038: Sergio confirmó el 25/10/2026 que la funcionalidad quedó visible en el sistema (grilla y ficha).
