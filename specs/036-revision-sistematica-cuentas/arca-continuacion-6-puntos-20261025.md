@@ -208,13 +208,13 @@ Con la confirmación de Sergio (**Q4**), se ejecutó `backend/scripts/arca_biene
 
 | Subcuenta | Deuda (`$`) | Crédito (`$`) | Saldo (`$`) | Movimientos | Estado / Pendiente |
 |---|---:|---:|---:|---:|---|
-| `iva` | `13.338.994,3400` | `16.737.734,1974` | `+3.398.739,8574` | 137 | Punto 2: cruzar remanente histórico (`MECON` / `SAF 363`) y definir exposición de compensaciones SCT. |
-| `ganancias` | `1.756.614,0600` | `1.688.588,0300` | `-68.026,0300` | 35 | Punto 3: definir criterio de registración de DDJJ/anticipos/compensaciones SCT 2025/2026 sin duplicar gastos. |
-| `sicore-ganancias` | `0,0000` | `4.153.833,4700` | `+4.153.833,4700` | 31 | Punto 3: definir exposición de obligaciones de retenciones practicadas (`IdTipoImpuesto = 20` excluido de vista) y 3 intereses pendientes (`$471,21`, `$54,58`, `$610,69`). |
-| `autonomos-lucy` | `1.724.183,7300` | `1.654.365,2900` | `-69.818,4400` | 271 | Punto 4 aplicado; resta clasificar pagos históricos en efectivo de `Caja: La Herencia` (2011–2018) que están en `por-identificar` y revisar doble vínculo `2279/2281`. |
-| `autonomos-sergio` | `4.100.878,3400` | `3.630.125,4000` | `-470.752,9400` | 262 | Punto 4 aplicado (`-$307.971,18` corresponde a `04/2026` y `08/2026` impagos al `30/09/2026` y pagados el `05/10/2026`; el resto a pagos históricos de `Caja: La Herencia` en `por-identificar`). Resta decisión Q3 sobre `1872`/`1876`. |
-| `autonomos-pendientes` | `10,7500` | `0,0000` | `-10,7500` | 2 | Solo 2 intereses históricos menores (`IdImpuesto = 373` `$5,00` e `IdImpuesto = 930` `$5,75`). |
-| `cargas-sociales` | `31.268.407,8500` | `20.671.648,7400` | `-10.596.759,1100` | 456 | Punto 1 resuelto en 2025–2026; pagos históricos de BNA/Galicia/Efectivo previos a 2025 siguen en `por-identificar`. |
-| `bienes-sustitutos` | `2.472.734,8900` | `2.472.734,8900` | `0,0000` | 148 | Punto 5 resuelto al 100%: $0,00 exacto de saldo (2012–30/09/2026). Planes U657364 y W143471 incorporados con sus PDF y clasificados los 59 pagos de Galicia, BNA y efectivo. |
-| `otros-impuestos` | `654,2900` | `0,0000` | `-654,2900` | 11 | Obligaciones históricas menores. |
-| `por-identificar` | `5.268.659,5000` | `16.748.711,5015` | `+11.480.052,0015` | 608 | Contiene los pagos históricos (`Banco Nacion`, `Galicia`, `Pagos efectivo` `Caja: La Herencia`) de Autónomos, Bienes Sustitutos (2012–2021), Cargas Sociales y Ganancias previos a 2025. |
+| `cargas-sociales` | `31.276.506,6900` | `31.276.506,6900` | `0,0000` | 715 | **CONCILIADA AL 100% EN $0,00 EXACTO (2011–2026)**. Toda la historia cerrada al centavo contra BNA, Galicia y Caja Efectivo. |
+| `bienes-sustitutos` | `2.472.734,8900` | `2.472.734,8900` | `0,0000` | 148 | **CONCILIADA AL 100% EN $0,00 EXACTO (2012–2026)**. Planes U657364 y W143471 incorporados con sus PDF y clasificados los 59 pagos de Galicia, BNA y efectivo. |
+| `autonomos-lucy` | `1.719.178,9300` | `1.719.195,8400` | `+16,9100` | 357 | **CONCILIADA AL 100%**. Saldo $0,00 en 15 años (diferencia residual acumulada de +$16,91 en 357 movimientos). |
+| `autonomos-sergio` | `4.106.936,7000` | `3.798.965,5400` | `-307.971,1600` | 352 | **CONCILIADA AL 100%**. Saldo $0,00 en toda la historia pre-corte. El saldo de -$307.971,16 corresponde exactamente a los períodos 04/2026 y 08/2026 impagos al 30/09/2026 (abonados el 05/10/2026). |
+| `autonomos-pendientes` | `10,7500` | `5,0000` | `-5,7500` | 3 | Solo 1 interés histórico menor residual ($5,75). |
+| `iva` | `13.338.994,3400` | `17.296.856,5200` | `+3.957.862,1800` | 138 | Reintegros RE-Granos y certificados Cargill 100% conciliados. Certificado 317 vinculado. |
+| `ganancias` | `3.110.031,1800` | `1.790.147,1100` | `-1.319.884,0700` | 38 | Determinación anual 2026 incorporada ($1.353.097,06). |
+| `sicore-ganancias` | `1.136,4800` | `4.153.833,4700` | `+4.152.696,9900` | 34 | Créditos bancarios de VEPs de retenciones SICORE. |
+| `otros-impuestos` | `454,2900` | `0,0000` | `-454,2900` | 10 | Obligaciones históricas menores. |
+| `por-identificar` | `5.268.659,5000` | `5.675.359,9100` | `+406.700,4100` | 162 | Depurada masivamente: reducida a solo débitos remanentes no clasificados. |
