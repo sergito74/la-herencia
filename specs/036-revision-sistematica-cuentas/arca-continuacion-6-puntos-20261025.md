@@ -35,6 +35,15 @@ Sergio pidió ingreso al portal por el agente y proporcionó credenciales en con
 
 ## Punto1: aplicado
 
+### Conciliación histórica 2011–2020 cerrada al 100% en ,00 exacto (arca-cargas-sociales-2011-2020-cero-036)
+
+Se verificó el estado histórico de Access y se concilió a cero absoluto toda la década 2011–2020 mediante ackend/scripts/arca_cargas_sociales_2011_2020_036.py --aplicar (respaldo verificado WC_arca-cargas-sociales-2011-2020-cero-036_20261026_003111_259670.bak):
+- **142 débitos bancarios de Banco Nación y Efectivo** clasificados en cargas-sociales por **.092.550,89**.
+- **IdImpuesto = 840 (,00)** clasificado en cargas-sociales, cancelando el pago en efectivo IdPagoEfectivo = 2351.
+- **IdImpuesto = 4622 (,18)** incorporada la obligación de Cargas Sociales de 08/2020, cancelando el pago de socio 2407.
+- **IdImpuesto = 119** ajustado en 2 centavos de redondeo (.273,35 → .273,33) para coincidir con el débito BNA 15652.
+- **Resultado por año:** 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019 y 2020 quedan cada uno en **,0000 exacto** (Deuda total .128.747,70 = Crédito total .128.747,70).
+
 Las DDJJ del servicio Declaración en Línea confirman que junio2025 es **1.115.100,17** y agosto2025 **794.275,52**, ambos iguales al banco. Julio2025 es738.792,95. Quedan resueltas las discrepancias con los avisos anteriores; el aviso de agosto incluía un importe adicional que no pertenece al F931 oficial.
 
 Se incorporaron diez obligaciones por **$9.442.305,95**: mayo–septiembre2025 y enero–mayo2026. Cada registro toma fecha de generación de la DDJJ, período y númeroVEP oficial; no se agregaron pagos. Diciembre2025 ya estaba y se conserva su obligación de1.311.952,66.
