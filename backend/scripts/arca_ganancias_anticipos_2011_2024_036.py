@@ -253,3 +253,4 @@ def main(aplicar=False):
 if __name__ == "__main__":
     aplicar = "--aplicar" in sys.argv
     main(aplicar=aplicar)
+

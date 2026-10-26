@@ -38,3 +38,4 @@ with get_connection(readonly=False) as conn:
     conn.commit()
 
 print("Ajustes aplicados correctamente.")
+
