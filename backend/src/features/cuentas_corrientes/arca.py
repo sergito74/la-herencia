@@ -63,6 +63,9 @@ def decimal(valor):
 def validar_partes(partes, deuda, credito):
     if not partes:
         return
+    deuda_orig = decimal(deuda)
+    credito_orig = decimal(credito)
+    permite_negativo = deuda_orig < 0 or credito_orig < 0
     claves = set()
     for p in partes:
         if p["subcuenta"] not in CATALOGO or p["subcuenta"] in claves:
@@ -70,11 +73,11 @@ def validar_partes(partes, deuda, credito):
         claves.add(p["subcuenta"])
         for campo in ("deuda", "credito"):
             valor = decimal(p[campo])
-            if not valor.is_finite() or valor < 0 or valor != valor.quantize(Decimal("0.0001")):
-                raise ValueError("Importes no negativos, con hasta cuatro decimales")
+            if not valor.is_finite() or (valor < 0 and not permite_negativo) or valor != valor.quantize(Decimal("0.0001")):
+                raise ValueError("Importes con signo consistente con el original, con hasta cuatro decimales")
         if decimal(p["deuda"]) == 0 and decimal(p["credito"]) == 0:
             raise ValueError("Una parte del reparto debe tener importe")
-    if sum(decimal(p["deuda"]) for p in partes) != decimal(deuda) or sum(decimal(p["credito"]) for p in partes) != decimal(credito):
+    if sum(decimal(p["deuda"]) for p in partes) != deuda_orig or sum(decimal(p["credito"]) for p in partes) != credito_orig:
         raise ValueError("El reparto debe sumar exactamente la deuda y el crédito del movimiento original")
 
 

@@ -63,4 +63,14 @@ Banco Nación369: saldo nominal actual -$137.500,0075, coherente con capital $13
 
 Cerradas con excepción: ARBA12, Basterrechea220, Bayá226, Cargill258, CEAMSE314, Sierra374, Sergio empleado375, Catalpa400, Starlink567, Lucas Alvarez616. Conservar decisiones: pendientes de pago/reclamo no equivalen a conciliación faltante. Lavalle32 sigue reservado por Sergio; Ferias39 también conserva su restricción.
 
-Próximo paso propuesto: revisar los108 movimientos ARCA por identificar y el respaldo del reparto de Lucy; luego actualizar la documentación/fichas con evidencia y continuar Criado/octubre. No se certificó documento por documento toda la historia ni se auditó campañas: esta revisión de estado no autoriza un cierre nuevo.
+## Cierre definitivo de subcuentas ARCA (26/10/2026)
+
+1. **Autónomos Lucy**: Cerrada a **$0,00 exacto** con respaldo oficial de CCMA ARCA (`CCMA-Lucy-202409-202609-copia.pdf`). Incorporados en `dbo.Impuestos`: intereses resarcitorios ($343,34), créditos por reimputaciones AFIP (-$3.870,38) y saldo a favor remanente ($21,31). Respaldo: `WC_arca-autonomos-lucy-cierre-definitivo-036_20261026_134903_461841.bak`.
+2. **Subcuenta `por-identificar`**: Cerrada formalmente a **0 movimientos y $0,00**. Todos los movimientos quedaron clasificados con causa justificada en `dbo.ArcaClasificaciones`:
+   - `Galicia #54`: reasignado 100% a `sicore-ganancias` ($78.062,2615), absorbiendo la fracción de redondeo ($0,0015).
+   - `Galicia #2438, #2439, #2440`: clasificados en `otros-impuestos` como débito bancario AFIP y sus 2 anulaciones inmediatas por el banco. Efecto neto: $0,00.
+   - `BNA #15788` y `Pagos efectivo #2492`: clasificados en `otros-impuestos` (transferencia estatal PEPP MECON compensada con contraasiento de caja). Efecto neto: $0,00.
+   - `BNA #15950` y `Pagos efectivo #2493`: clasificados en `otros-impuestos` (transferencia estatal SAF363 MINISTERI compensada con contraasiento de caja). Efecto neto: $0,00.
+   - `BNA #15892` y `Pagos efectivo #2494`: clasificados en `otros-impuestos` (débito VEP BNA compensado con contraasiento de caja). Efecto neto: $0,00.
+   - Respaldo verificado tomado: `WC_arca-por-identificar-cierre-final-036_20261026_142903_778919.bak`. Auditoría registrada bajo regla `arca-por-identificar-cierre-final-036`.
+
