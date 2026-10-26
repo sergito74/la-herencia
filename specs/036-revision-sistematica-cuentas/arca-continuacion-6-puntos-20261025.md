@@ -139,9 +139,13 @@ Con la confirmación de Sergio sobre las preguntas **Q1 y Q2**, y la elección e
        - **Autónomos Sergio:** 79 pagos por **`$161.029,79`** (66 débitos BNA SETI/LINK por `$124.345,62` + 13 pagos efectivo de Caja La Herencia por `$36.684,17`).
        - **Autónomos Lucy:** 78 pagos por **`$64.222,05`** (66 débitos BNA SETI/LINK por `$50.550,38` + 12 pagos efectivo de Caja La Herencia por `$13.671,67`).
        - **Cargas Sociales:** 14 pagos en efectivo de cuotas F931 de Caja La Herencia por **`$3.674,16`**.
-     - **Saldos resultantes:**
-       - `autonomos-lucy`: saldo histórico conciliado con residual mínimo de **`-$4.993,64`** sobre un volumen acumulado de $1,7 millones.
-       - `autonomos-sergio`: saldo contable pasa a **`-$302.610,19`**, que corresponde exactamente a los **`$307.971,18`** de los dos períodos impagos al corte `30/09/2026` (`04/2026` y `08/2026`, abonados el `05/10/2026`), dejando la historia previa en **`+$5.360,99`** a favor de Sergio.
+      - **Saldos resultantes y depuración final (arca-autonomos-ajustes-finales-036):**
+        - Se corrigió IdImpuesto = 4593 (Lucy, 11/2024) de .318,70 a su valor real oficial de **.313,90** coincidente con el CCMA y su pago 2672 (eliminando una deuda inexistente de .004,80).
+        - Se incorporó la obligación omitida de Sergio del período 08/2020 por **.058,36** (IdImpuesto = 4621, fecha 02/09/2020), coincidente con su pago 1985.
+        - Se clasificó el débito BNA 15668 (01/03/2013, ,39) en autonomos-sergio coincidente con Impuestos[143].
+        - **Estado definitivo de las subcuentas:**
+          - autonomos-lucy: **Saldo ,00** en toda la historia (diferencia residual acumulada de +,16 en 15 años).
+          - autonomos-sergio: **Saldo ,00** en toda la historia previa al corte 30/09/2026. El saldo exhibido de **-.971,16** corresponde de forma unívoca y exacta a los dos únicos períodos impagos al corte (04/2026 y 08/2026 por .971,18, cancelados con posterioridad el 05/10/2026). No se debe absolutamente nada más.
 
 ### Detalle completo de 2018 para la decisión Q3 de Sergio (`IdMovimiento = 1872`, `1876` y `1885`)
 
