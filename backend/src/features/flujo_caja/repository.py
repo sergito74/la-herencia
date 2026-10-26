@@ -227,36 +227,54 @@ def _clasificar_concepto_o_contacto(m: dict) -> tuple[str, str | None] | None:
         return "Tasas municipales y provinciales", atribucion.CENTRO_COSTO_IMPUESTOS
 
     # 3. Impuestos nacionales (AFIP / VEP)
-    if "AFIP" in con or "VEP" in con or "AFIP" in contacto:
+    if "AFIP" in con or "VEP" in con or "AFIP" in contacto or m.get("idContacto") == 119:
         if imp > 0:
             return "Recuperos AFIP", None
         return "Impuestos AFIP", atribucion.CENTRO_COSTO_IMPUESTOS
 
-    # 4. Gastos y comisiones bancarias
+    # 4. Gastos y comisiones bancarias y tarjetas
     if any(k in con for k in ["COMISION", "COM.", "I.V.A.", "IVA", "PERCEP. IVA", "SELLOS", "INTERESES SOBRE SALDOS", "MANTENIMIENTO", "PAQUETES", "RETEN. I.V.A", "GESTION TRANSF"]):
         return "Gastos bancarios", atribucion.CENTRO_COSTO_LEY_25413
-    if any(k in con for k in ["VISA", "AGRONACION", "TCORP", "TARJETA"]) or "AGRONACION" in contacto or "VISA" in contacto:
-        return "Tarjeta corporativa", "Adm. General"
+    if 966650 < abs(imp) < 966660:
+        return "Compensacion bancaria por error (AgroNacion)", ("Adm. General" if imp < 0 else None)
+    if "AGRONACION" in con or "AGRONACION" in contacto:
+        return "Tarjeta AgroNacion", "Adm. General"
+    if "VISA" in con or "VISA" in contacto:
+        return "Tarjeta Visa Galicia", "Adm. General"
+    if any(k in con for k in ["TCORP", "TARJETA"]):
+        return "Tarjeta Corporativa BNA", "Adm. General"
     if any(k in con for k in ["ALLIANZ", "GARANTIZAR", "SEGURO", "SANCOR"]) or "ALLIANZ" in contacto or "GARANTIZAR" in contacto:
         return "Seguros Generales", "Adm. General"
     if "PRESTAMO" in con or "PAGO PRESTAMO" in con:
         return "Financiamiento", "Adm. General"
 
     # 5. Socios: Retiros, haberes y transferencias a socios / cuentas de socios
-    if any(s in contacto or s in con for s in ["SERGIO GIAMBERARDINI", "ALBINA IGLINA", "VIRGIN", "LUCY"]):
+    if any(s in contacto or s in con for s in ["SERGIO GIAMBERARDINI", "ALBINA IGLINA", "VIRGIN", "LUCY"]) or m.get("idContacto") in [375, 390]:
         return atribucion.RUBRO_CUENTA_SOCIOS, atribucion.CENTRO_COSTO_SOCIOS
 
     # 6. Sueldos y cargas del personal
-    if "HABERES" in con or "SUELDO" in con or "SIERRA" in contacto or "SIERRA" in con:
+    if "HABERES" in con or "SUELDO" in con or "SIERRA" in contacto or "SIERRA" in con or m.get("idContacto") in [123, 374]:
         return atribucion.RUBRO_SUELDOS, atribucion.CENTRO_COSTO_PERSONAL
     if "UATRE" in con or "UATRE" in contacto:
         return "Cargas sociales (UATRE)", atribucion.CENTRO_COSTO_PERSONAL
 
     # 7. Clientes / Granos / Hacienda
-    if "CARGILL" in con or "CARGILL" in contacto or "30506792165" in con:
-        return "Venta Granos", None
-    if "CAMPOS Y MONTES" in con or "CAMPOS Y MONTES" in contacto or "BERMEJO" in con:
-        return "Venta Hacienda", None
+    if "CARGILL" in con or "CARGILL" in contacto or "30506792165" in con or m.get("idContacto") == 258:
+        f = _dia(m["fecha"])
+        if f < date(2025, 7, 20):
+            return "Venta Maiz", None
+        elif f <= date(2026, 2, 28):
+            return "Venta Soja", None
+        elif f <= date(2026, 4, 30):
+            return "Venta Girasol", None
+        elif f <= date(2026, 5, 25):
+            return "Venta Maiz", None
+        else:
+            return "Venta Soja", None
+
+    if "CAMPOS Y MONTES" in con or "CAMPOS Y MONTES" in contacto or "BERMEJO" in con or m.get("idContacto") == 432:
+        return "Venta Terneros", None
+
     if "BAYA CASAL" in con or "BAYA CASAL" in contacto:
         return "Insumos productivos", "Agricultura"
 

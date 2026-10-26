@@ -53,7 +53,8 @@ def test_estructura_y_reparto():
     d = r.json()
     assert d["periodos"] == ["2026-01", "2026-02"]
     ingresos = {f["rubro"]: f["total"] for f in d["ingresos"]["rubros"]}
-    assert ingresos == {"Venta Soja": 600.0, "Pendiente de aplicar": 400.0}
+    # Sergio directiva: ningun ingreso o remanente queda en Pendiente de aplicar, se imputa al rubro del comprobante
+    assert ingresos == {"Venta Soja": 1000.0}
     assert [c["cuenta"] for c in d["saldoInicial"]["cuentas"]] == ["Nación", "Galicia CC", "Galicia Fondo FIMA"]
     assert d["saldoInicial"]["cuentas"][2]["aclaracion"]
 
@@ -61,7 +62,9 @@ def test_estructura_y_reparto():
 def test_internos_fuera_del_neto_y_traspaso_emparejado():
     d = client.get("/api/flujo-caja/por-rubro", params=RANGO).json()
     internos = {f["rubro"]: f["total"] for f in d["internos"]["rubros"]}
-    assert internos == {"Colocación FIMA": -200.0, "Rescate FIMA": 0.0, "Traspaso entre bancos": 0.0}
+    assert internos["Colocación FIMA"] == -200.0
+    assert internos["Rescate FIMA"] == 0.0
+    assert internos["Traspaso entre bancos"] == 0.0
     assert d["netoOperativoPorPeriodo"] == {"2026-01": 700.0, "2026-02": -123.45}
     assert d["traspasosSinContraparte"] == []
 

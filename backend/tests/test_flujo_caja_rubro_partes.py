@@ -20,6 +20,7 @@ def ap(tipo, id_doc, importe):
 @pytest.fixture
 def ventas(monkeypatch):
     monkeypatch.setattr(atribucion, "_rubro_de_venta", lambda tipo, i: {1: "Venta Soja", 2: "Venta Terneros"}[i])
+    monkeypatch.setattr(atribucion, "_rubros_de_venta_hacienda", lambda i: [( {2: "Venta Terneros"}.get(i, "Venta Hacienda"), 1.0 )])
 
 
 # --- Reparto por importe aplicado (T002) ---

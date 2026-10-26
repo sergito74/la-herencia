@@ -337,7 +337,14 @@ function TablaRubros({
           </tr>
 
           {titulo("Ingresos")}
-          {data.ingresos.rubros.map((f) => filaRubro(f, "ingresos"))}
+          <IngresosConSecciones
+            rubros={data.ingresos.rubros}
+            periodos={per}
+            primera={primera}
+            td={td}
+            num={num}
+            filaRubro={filaRubro}
+          />
           {filaTotal("Total ingresos", data.ingresos.totalPorPeriodo, sumar(data.ingresos.totalPorPeriodo))}
 
           {titulo("Egresos")}
@@ -387,4 +394,102 @@ function GrupoFilas({
 
 function sumar(valores: Record<string, number>): number {
   return Math.round(Object.values(valores).reduce((a, v) => a + v, 0) * 100) / 100;
+}
+
+
+function IngresosConSecciones({
+  rubros,
+  periodos,
+  primera,
+  td,
+  num,
+  filaRubro,
+}: {
+  rubros: FilaRubro[];
+  periodos: string[];
+  primera: string;
+  td: string;
+  num: (v: number | null | undefined) => React.ReactNode;
+  filaRubro: (f: FilaRubro, seccion: SeccionRubro, centroCosto?: string, sangria?: boolean) => React.ReactNode;
+}) {
+  const [expandGranos, setExpandGranos] = useState(true);
+  const [expandHacienda, setExpandHacienda] = useState(true);
+
+  const esGrano = (r: string) =>
+    r === "Venta Granos" ||
+    r === "Venta Soja" ||
+    r === "Venta Maiz" ||
+    r === "Venta Maíz" ||
+    r === "Venta Girasol" ||
+    r === "Venta Trigo" ||
+    r === "Venta Cebada" ||
+    r === "Venta Avena" ||
+    r === "Venta Sorgo";
+
+  const esHacienda = (r: string) =>
+    r.startsWith("Venta ") && !esGrano(r);
+
+  const rubrosGranos = rubros.filter((f) => esGrano(f.rubro));
+  const rubrosHacienda = rubros.filter((f) => esHacienda(f.rubro));
+  const otrosRubros = rubros.filter((f) => !esGrano(f.rubro) && !esHacienda(f.rubro));
+
+  const subtotalGrupo = (filas: FilaRubro[]) => {
+    const vals: Record<string, number> = {};
+    for (const p of periodos) {
+      vals[p] = Math.round(filas.reduce((acc, f) => acc + (f.valores[p] || 0), 0) * 100) / 100;
+    }
+    const tot = Math.round(filas.reduce((acc, f) => acc + (f.total || 0), 0) * 100) / 100;
+    return { valores: vals, total: tot };
+  };
+
+  const filaCabeceraGrupo = (
+    titulo: string,
+    expandido: boolean,
+    onToggle: () => void,
+    filas: FilaRubro[]
+  ) => {
+    if (filas.length === 0) return null;
+    const sub = subtotalGrupo(filas);
+    return (
+      <tr className="border-t border-border bg-surface-sunken/40 font-medium">
+        <td className={primera}>
+          <button
+            type="button"
+            onClick={onToggle}
+            className="flex items-center gap-1.5 font-semibold text-ink hover:text-agro"
+          >
+            <span>{expandido ? "▾" : "▸"}</span>
+            <span>{titulo}</span>
+            <span className="text-xs text-ink-muted">({filas.length})</span>
+          </button>
+        </td>
+        {periodos.map((p) => (
+          <td key={p} className={`${td} font-semibold`}>
+            {num(sub.valores[p] || 0)}
+          </td>
+        ))}
+        <td className={`${td} font-semibold`}>{num(sub.total)}</td>
+      </tr>
+    );
+  };
+
+  return (
+    <>
+      {rubrosGranos.length > 0 && (
+        <>
+          {filaCabeceraGrupo("Venta Granos", expandGranos, () => setExpandGranos(!expandGranos), rubrosGranos)}
+          {expandGranos && rubrosGranos.map((f) => filaRubro(f, "ingresos", undefined, true))}
+        </>
+      )}
+
+      {rubrosHacienda.length > 0 && (
+        <>
+          {filaCabeceraGrupo("Venta Hacienda", expandHacienda, () => setExpandHacienda(!expandHacienda), rubrosHacienda)}
+          {expandHacienda && rubrosHacienda.map((f) => filaRubro(f, "ingresos", undefined, true))}
+        </>
+      )}
+
+      {otrosRubros.map((f) => filaRubro(f, "ingresos"))}
+    </>
+  );
 }

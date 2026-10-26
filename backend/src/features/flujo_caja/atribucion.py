@@ -55,15 +55,43 @@ PENDIENTE_DE_APLICAR = "Pendiente de aplicar"
 HISTORICO_SIN_APLICAR = "Histórico sin aplicar"
 
 
+def _rubros_de_venta_hacienda(id_venta: int) -> list[tuple[str, float]]:
+    filas = fetch_all(
+        """
+        SELECT th.[Tipo de Hacienda] AS tipoHacienda,
+               SUM(d.Cantidad * (ISNULL(d.[Precio unitario (A)], 0) + ISNULL(d.[Precio unitario (B)], 0))) AS importe
+        FROM dbo.[Det_Ventas Hacienda] d
+        LEFT JOIN dbo.[Tipo Hacienda] th ON th.IdTipoHacienda = d.IdTipoProducto
+        WHERE d.IdVenta = ?
+        GROUP BY th.[Tipo de Hacienda]
+        """,
+        (id_venta,),
+    )
+    if not filas:
+        return [("Venta Hacienda", 1.0)]
+    tot = sum(max(float(f["importe"] or 0), 0) for f in filas)
+    if tot <= 0:
+        cat = filas[0]["tipoHacienda"] or "Hacienda"
+        return [(f"Venta {cat}", 1.0)]
+    return [(f"Venta {f['tipoHacienda'] or 'Hacienda'}", max(float(f["importe"] or 0), 0) / tot) for f in filas]
+
+
 def _rubro_de_venta(tipo_documento: str, id_documento: int) -> str:
     if tipo_documento == "VentaHacienda":
-        from src.features.ventas_hacienda.repository import get_lineas_venta
-
-        lineas = get_lineas_venta(id_documento)
-        tipos = {l.get("tipoHacienda") for l in lineas if l.get("tipoHacienda")}
-        return f"Venta {tipos.pop()}" if len(tipos) == 1 else "Venta Hacienda (varias categorías)"
+        rubros = _rubros_de_venta_hacienda(id_documento)
+        if len(rubros) == 1:
+            return rubros[0][0]
+        return "Venta Hacienda"
     if tipo_documento == "VentaGranos":
-        fila = fetch_all("SELECT [Tipo de Grano] AS tipoGrano FROM dbo.[Venta Granos] WHERE IdVenta = ?", (id_documento,))
+        fila = fetch_all(
+            """
+            SELECT ISNULL(vg.[Tipo de Grano], g.Grano) AS tipoGrano
+            FROM dbo.[Venta Granos] vg
+            LEFT JOIN dbo.Granos g ON g.IdGrano = vg.IdProducto
+            WHERE vg.IdVenta = ?
+            """,
+            (id_documento,),
+        )
         tipo_grano = fila[0]["tipoGrano"] if fila else None
         return f"Venta {tipo_grano}" if tipo_grano else "Venta Granos"
     return SIN_RUBRO
@@ -148,6 +176,10 @@ def partes_desde_aplicaciones(aplicaciones: list[dict], importe_movimiento: floa
             for (rubro, centro), peso in grupos.items():
                 share = peso / total_peso if total_peso > 0 else 1 / len(grupos)
                 partes.append({"rubro": rubro, "centroCosto": centro, "importe": importe * share, "documentoAplicado": doc})
+        elif a["tipoDocumento"] == "VentaHacienda":
+            rubros_h = _rubros_de_venta_hacienda(a["idDocumentoAplicado"])
+            for rubro_h, share_h in rubros_h:
+                partes.append({"rubro": rubro_h, "centroCosto": None, "importe": importe * share_h, "documentoAplicado": doc})
         else:
             partes.append({"rubro": _rubro_de_venta(a["tipoDocumento"], a["idDocumentoAplicado"]),
                            "centroCosto": None, "importe": importe, "documentoAplicado": doc})
