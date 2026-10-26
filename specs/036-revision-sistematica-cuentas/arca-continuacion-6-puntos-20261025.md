@@ -7,8 +7,8 @@ Autorización de Sergio: avanzar punto por punto hasta terminar y pedir ayuda so
 | Punto | Estado | Resultado / siguiente paso |
 |---|---|---|
 |1. F931 y diferencias de pagos|Resuelto|Diez DDJJ incorporadas. Excedentes identificados por VEP originales: SICOREsept2025/mayo2026 y anticipo5Ganancias2026 enenero2026.|
-|2. IVA y devoluciones|En curso|Nueve reintegros oficiales RE-Granos aplicados a26certificados; SIRE216 sin resultados; percepciones en revisión.|
-|3. Ganancias / anticipos / SICORE|En curso|Estados SCT 2025/2026 descargados; pendiente definir criterio de registración de obligaciones/créditos.|
+|2. IVA y devoluciones|Cargill 100% aplicado|20 certificados Cargill (2020–2022) con devolución aplicada por $558.997,32 y sus 20 PDF verificados por SHA-256 en ArcaDocumentos. Resta un solo certificado (317 por $5.091,00) y reasignar 2 subsidios BNA (MECON/SAF363).|
+|3. Ganancias / anticipos / SICORE|En curso|Estados SCT 2025/2026 contrastados: 7 anticipos de Ganancias 2026 coinciden al centavo con el banco ($1.688.588,03); SICORE con capitales cumplidos y 3 intereses residuales por $1.136,48 documentados.|
 |4. Autónomos y financiación socios|Resuelto|48 obligaciones 09/2024–08/2026 ($3.972.687,80) y 47 vínculos de socios ($3.619.422,36) aplicados; asientos 2255 y 2734 actualizados; Opción A aplicada en asientos 2018 (1872 Devolución y 1876 AsignaciónGasto) y Excel sincronizado; 305 obligaciones históricas y 207 pagos Particular S/L clasificados.|
 |5. Bienes Sustitutos|Resuelto|Subcuenta 100% conciliada en $0,00 exacto (2012–30/09/2026). Incorporadas 15 obligaciones planes al corte ($1.427.555,70) y clasificados 59 pagos de Galicia, BNA y efectivo ($1.045.179,19) con PDF vinculados.|
 |6. Conciliación final al corte|Pendiente|Solo después del contraste por concepto; no cierre por ajuste global.|
@@ -47,11 +47,18 @@ Los59VEP se agrupan de forma única en **54débitos Galicia**, con igual CUIT, f
 
 Los primeros tres débitos contienen más de un VEP. El F931 no se aumenta para absorber otro impuesto. La registración de obligacionesGanancias/SICORE se sigue enpunto3, después de completarIVA. El punto1 queda resuelto en su alcance (DDJJ, pago y diferencias identificadas).
 
-## Punto2: devoluciones contrastadas y aplicadas
+## Punto 2: devoluciones contrastadas y aplicadas (Cargill 2020–2022 resuelto)
 
-Servicio Pago Devoluciones: selección expresa CUITGiamigli;17pagos desde2022 a2026, reportePDF oficial completo descargado. Los nueve abonos propuestos están presentes y sus detalles oficiales dicen **RE-Granos** por los importes exactos. ARCA informa fecha de orden/pago anterior a la acreditación del banco; ambas se conservan, no se cambia el banco.
-
-Se descargaron nuevePDF de detalle de pago y se verificaron visualmente junto al formularioF931. Se aplicó devolución a26certificados, antes0, por **13.179.515,62**, sin otro cobro. Documentos vinculados al banco y a cada certificado. Auditoría/script `aplicar_devoluciones_iva_arca_036.py`; respaldo `WC_arca-iva-devoluciones-036_20261025_173954_248155.bak`; repetición sin escrituras. Saldo119 **−3.702.826,5411 → +9.476.689,0789**; otros contactos/cajas/socios intactos.
+1. **Reintegros oficiales RE-Granos recientes:**
+   - Servicio Pago Devoluciones: selección expresa CUIT Giamigli; 17 pagos desde 2022 a 2026, reporte PDF oficial completo descargado.
+   - Nueve abonos aplicados previamente a 26 certificados por **$13.179.515,62** con sus vínculos a documentos y comprobación visual.
+2. **Reintegros y certificados de retención de IVA Granos de Cargill (2020–2022):**
+   - Se identificaron los **20 certificados de retención de IVA Granos de Cargill** (períodos 2020–2022) que figuraban con importe de devolución en `$0,00` a pesar de haber sido cobrados por transferencias bancarias de AFIP en Banco Galicia y Banco Nación.
+   - Se ejecutó `backend/scripts/aplicar_iva_cargill_20_036.py --aplicar` (regla `arca-iva-devoluciones-cargill-20-036`, respaldo `WC_arca_iva_devoluciones_cargill_036_20261025_213002_860339.bak`):
+     - Aplicadas las devoluciones en los 20 certificados por un total de **`$558.997,32`** (`IdRetencion = 291, 292, 293, 294, 295, 296, 297, 299, 301, 302, 303, 304, 305, 306, 307, 308, 309, 310, 311, 312`).
+     - Copiados los 20 certificados PDF a `ARCA/Giamigli/IVA/Devoluciones/` y registrados en `dbo.ArcaDocumentos` con verificación de huella SHA-256 (`vincular_docs_cargill_20_036.py`).
+     - **Saldo actual `IdContacto = 119`:** pasó de `+$7.695.867,9389` a **`+$8.254.865,2589`** (exactos `+$558.997,32` de crédito).
+   - En la tabla `dbo.[Retenciones IVA Granos]` queda pendiente un único certificado histórico (`IdRetencion = 317` del `28/04/2022` por `$5.091,00`).
 
 SIRE216, Giamigli,01/01/2025–30/09/2026: el organismo responde sin resultados (o importes0), captura textual conservada. No atribuirle retenciones faltantes.
 
