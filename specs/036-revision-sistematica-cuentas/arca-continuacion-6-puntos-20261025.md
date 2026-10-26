@@ -78,7 +78,9 @@ Los primeros tres débitos contienen más de un VEP. El F931 no se aumenta para 
      - Aplicadas las devoluciones en los 20 certificados por un total de **`$558.997,32`** (`IdRetencion = 291, 292, 293, 294, 295, 296, 297, 299, 301, 302, 303, 304, 305, 306, 307, 308, 309, 310, 311, 312`).
      - Copiados los 20 certificados PDF a `ARCA/Giamigli/IVA/Devoluciones/` y registrados en `dbo.ArcaDocumentos` con verificación de huella SHA-256 (`vincular_docs_cargill_20_036.py`).
      - **Saldo actual `IdContacto = 119`:** pasó de `+$7.695.867,9389` a **`+$8.254.865,2589`** (exactos `+$558.997,32` de crédito).
-   - En la tabla `dbo.[Retenciones IVA Granos]` queda pendiente un único certificado histórico (`IdRetencion = 317` del `28/04/2022` por `$5.091,00`).
+   - En la tabla `dbo.[Retenciones IVA Granos]` el único certificado histórico pendiente era `IdRetencion = 317` (`28/04/2022`, Cargill, `$5.091,00`, Cert `09601-2022-064957`).
+     - **Resultado de la investigación:** La venta comercial asociada (`330120705584`, `IdVenta = 161`, `$106.037,90`) se cobró íntegramente junto con las ventas `162` y `163` el `02/05/2022` en Galicia y BNA (`$2.000.157,94` exactos). Sin embargo, en el servicio oficial Pago Devoluciones de AFIP, la orden `2600531520` del `14/06/2022` por `$89.823,75` cubrió exactamente los certificados `318` (`$46.975,89`) y `319` (`$42.847,86`), dejando fuera al certificado `317`.
+     - **Resolución acordada con Sergio:** No forzar `Importe Devolucion = 5.091,00` ya que no existió una transferencia bancaria de devolución específica en efectivo por ese importe; el certificado permanece como un crédito fiscal legítimo originado en la retención practicada. Se copió y vinculó su PDF oficial `30712114602_RETIVA_096012022064957.pdf` en `dbo.ArcaDocumentos` (`IdOrigen = 161`).
 
 SIRE216, Giamigli,01/01/2025–30/09/2026: el organismo responde sin resultados (o importes0), captura textual conservada. No atribuirle retenciones faltantes.
 
