@@ -134,6 +134,14 @@ Con la confirmación de Sergio sobre las preguntas **Q1 y Q2**, y la elección e
    - Vinculados en `dbo.PagosSocioProveedor` (`IdContacto = 119`, `Criterio = 'ccma-036'`) **47 pagos por socio** existentes por **`$3.619.422,36`** (`22` de Sergio por `$2.488.573,87`, `18` de Lucy por `$822.178,61` y `7` de Lucy pagados desde la cuenta de Sergio por `$308.669,88`, que sumados a `IdMovimiento = 2160` por `$40.300,62` ya vinculado completan los 48 pagos del período por `$3.659.722,98`).
    - Los 8 pagos de Autónomos de Lucy abonados por Sergio (`2160, 2166, 2180, 2196, 2205, 2214, 2228, 2236`) quedaron clasificados en `autonomos-lucy`.
    - Clasificadas las **305 obligaciones históricas** de Autónomos (`152` en `autonomos-sergio` + `153` en `autonomos-lucy`, quedando únicamente los dos renglones de intereses menores `IdImpuesto = 373` por `$5,00` e `IdImpuesto = 930` por `$5,75` en `autonomos-pendientes`) y los **207 pagos en efectivo** de `Particular S` y `Particular L` en `autonomos-sergio`, `autonomos-lucy` y `cargas-sociales`.
+   - **Clasificación de pagos históricos BNA y Caja La Herencia (2012–2018) aplicada (`arca-autonomos-historicos-bna-pe-036`):**
+     - Se clasificaron **171 pagos históricos** por un total de **`$228.926,00`** mediante `backend/scripts/arca_autonomos_historicos_036.py --aplicar` (respaldo verificado `WC_arca-autonomos-historicos-bna-pe-036_20261025_235156_065499.bak`):
+       - **Autónomos Sergio:** 79 pagos por **`$161.029,79`** (66 débitos BNA SETI/LINK por `$124.345,62` + 13 pagos efectivo de Caja La Herencia por `$36.684,17`).
+       - **Autónomos Lucy:** 78 pagos por **`$64.222,05`** (66 débitos BNA SETI/LINK por `$50.550,38` + 12 pagos efectivo de Caja La Herencia por `$13.671,67`).
+       - **Cargas Sociales:** 14 pagos en efectivo de cuotas F931 de Caja La Herencia por **`$3.674,16`**.
+     - **Saldos resultantes:**
+       - `autonomos-lucy`: saldo histórico conciliado con residual mínimo de **`-$4.993,64`** sobre un volumen acumulado de $1,7 millones.
+       - `autonomos-sergio`: saldo contable pasa a **`-$302.610,19`**, que corresponde exactamente a los **`$307.971,18`** de los dos períodos impagos al corte `30/09/2026` (`04/2026` y `08/2026`, abonados el `05/10/2026`), dejando la historia previa en **`+$5.360,99`** a favor de Sergio.
 
 ### Detalle completo de 2018 para la decisión Q3 de Sergio (`IdMovimiento = 1872`, `1876` y `1885`)
 
