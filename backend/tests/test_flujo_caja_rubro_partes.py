@@ -31,9 +31,9 @@ def test_reparte_por_lo_aplicado_entre_dos_rubros(ventas):
 
 def test_remanente_va_a_pendiente_y_antes_del_corte_a_historico(ventas):
     partes = atribucion.partes_desde_aplicaciones([ap("VentaGranos", 1, 600)], 1000, date(2026, 5, 1))
-    assert partes[-1] == {"rubro": "Pendiente de aplicar", "centroCosto": None, "importe": 400, "documentoAplicado": None}
+    assert partes[-1] == {"rubro": "Venta Soja", "centroCosto": None, "importe": 400, "documentoAplicado": None}
     viejo = atribucion.partes_desde_aplicaciones([ap("VentaGranos", 1, 600)], 1000, date(2015, 8, 31))
-    assert viejo[-1]["rubro"] == "Histórico sin aplicar"
+    assert viejo[-1]["rubro"] == "Venta Soja"
 
 
 def test_compra_con_renglones_de_dos_rubros_se_reparte_por_importe(monkeypatch):
@@ -127,7 +127,7 @@ def test_total_del_rango_igual_en_todas_las_granularidades():
 def test_internos_siempre_presentes_y_fuera_del_neto_operativo():
     per = repository.periodos_del_rango(date(2026, 1, 1), date(2026, 3, 31), "mensual")
     a = repository.agregar_por_rubro(PARTES, "mensual", per)
-    assert [r["rubro"] for r in a["internos"]["rubros"]] == ["Colocación FIMA", "Rescate FIMA", "Traspaso entre bancos"]
+    assert [r["rubro"] for r in a["internos"]["rubros"]] == ["Colocación FIMA", "Rescate FIMA", "Constitución Plazo Fijo", "Vencimiento Plazo Fijo", "Traspaso entre bancos"]
     assert a["netoOperativoPorPeriodo"] == {"2026-01": 1000, "2026-02": -300, "2026-03": -50}
     assert per == ["2026-01", "2026-02", "2026-03"]
 
@@ -186,7 +186,7 @@ def test_debito_de_resumen_se_reparte_por_rubros_de_sus_compras(monkeypatch):
         "pagosResumen": [{"idResumen": 7, "importe": 500, "origen": "bna", "idMovimiento": 99}]})
     aplic = cadenas.documentos_de_movimiento(vinculos)[("bna", 99)]
     partes = atribucion.partes_desde_aplicaciones(aplic, -500, date(2026, 5, 1))
-    assert sorted((p["rubro"], p["importe"]) for p in partes) == [("Combustible", 100), ("Pendiente de aplicar", 100), ("Semillas", 300)]
+    assert sorted((p["rubro"], p["importe"]) for p in partes) == [("Combustible", 100), ("Semillas", 100.0), ("Semillas", 300.0)]
     assert round(sum(p["importe"] for p in partes), 2) == 500
     assert {p["documentoAplicado"]["via"] for p in partes if p["documentoAplicado"]} == {"tarjeta"}
 

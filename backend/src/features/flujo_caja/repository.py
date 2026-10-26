@@ -210,21 +210,91 @@ def _dia(fecha) -> date:
     return fecha.date() if isinstance(fecha, datetime) else fecha
 
 
-def _atribucion_fallback(m: dict, indice_ingresos) -> tuple[str, str | None]:
-    """Regla de 018 v2 para un movimiento sin aplicaciones (una sola parte)."""
-    if atribucion.es_ley_25413(m.get("concepto")):
+def _clasificar_concepto_o_contacto(m: dict) -> tuple[str, str | None] | None:
+    """Clasificación conceptual directa para que ningún movimiento quede pendiente."""
+    con = (m.get("concepto") or "").upper()
+    contacto = (m.get("contacto") or "").upper()
+    imp = m.get("importe") or 0.0
+
+    # 1. Ley 25413 / 25314
+    if atribucion.es_ley_25413(con):
         return atribucion.RUBRO_LEY_25413, atribucion.CENTRO_COSTO_LEY_25413
-    if atribucion.es_arba_recaudacion(m.get("concepto")):
+
+    # 2. Impuestos provinciales y locales (ARBA, IIBB, Tasas)
+    if any(k in con for k in ["ARBA", "ING. BRUTOS", "ING.BRUTOS", "IIBB", "INMOBIL.PCIA.BS.AS.", "INMOB.COMPL"]) or "ARBA" in contacto:
         return atribucion.RUBRO_ARBA_RECAUDACION, atribucion.CENTRO_COSTO_LEY_25413
+    if any(k in con for k in ["BOLIVAR", "MUNICIPAL", "TASAS NO IMP"]) or "BOLIVAR" in contacto or "MINISTERIO DE TRABAJO" in contacto:
+        return "Tasas municipales y provinciales", atribucion.CENTRO_COSTO_IMPUESTOS
+
+    # 3. Impuestos nacionales (AFIP / VEP)
+    if "AFIP" in con or "VEP" in con or "AFIP" in contacto:
+        if imp > 0:
+            return "Recuperos AFIP", None
+        return "Impuestos AFIP", atribucion.CENTRO_COSTO_IMPUESTOS
+
+    # 4. Gastos y comisiones bancarias
+    if any(k in con for k in ["COMISION", "COM.", "I.V.A.", "IVA", "PERCEP. IVA", "SELLOS", "INTERESES SOBRE SALDOS", "MANTENIMIENTO", "PAQUETES", "RETEN. I.V.A", "GESTION TRANSF"]):
+        return "Gastos bancarios", atribucion.CENTRO_COSTO_LEY_25413
+    if any(k in con for k in ["VISA", "AGRONACION", "TCORP", "TARJETA"]) or "AGRONACION" in contacto or "VISA" in contacto:
+        return "Tarjeta corporativa", "Adm. General"
+    if any(k in con for k in ["ALLIANZ", "GARANTIZAR", "SEGURO", "SANCOR"]) or "ALLIANZ" in contacto or "GARANTIZAR" in contacto:
+        return "Seguros Generales", "Adm. General"
+    if "PRESTAMO" in con or "PAGO PRESTAMO" in con:
+        return "Financiamiento", "Adm. General"
+
+    # 5. Socios: Retiros, haberes y transferencias a socios / cuentas de socios
+    if any(s in contacto or s in con for s in ["SERGIO GIAMBERARDINI", "ALBINA IGLINA", "VIRGIN", "LUCY"]):
+        return atribucion.RUBRO_CUENTA_SOCIOS, atribucion.CENTRO_COSTO_SOCIOS
+
+    # 6. Sueldos y cargas del personal
+    if "HABERES" in con or "SUELDO" in con or "SIERRA" in contacto or "SIERRA" in con:
+        return atribucion.RUBRO_SUELDOS, atribucion.CENTRO_COSTO_PERSONAL
+    if "UATRE" in con or "UATRE" in contacto:
+        return "Cargas sociales (UATRE)", atribucion.CENTRO_COSTO_PERSONAL
+
+    # 7. Clientes / Granos / Hacienda
+    if "CARGILL" in con or "CARGILL" in contacto or "30506792165" in con:
+        return "Venta Granos", None
+    if "CAMPOS Y MONTES" in con or "CAMPOS Y MONTES" in contacto or "BERMEJO" in con:
+        return "Venta Hacienda", None
+    if "BAYA CASAL" in con or "BAYA CASAL" in contacto:
+        return "Insumos productivos", "Agricultura"
+
+    # 8. Servicios y proveedores frecuentes sin aplicación cargada
+    if "PARDO" in contacto or "PARDO" in con:
+        return "Honorarios Profesionales", "Adm. General"
+    if "LAVALLE" in contacto or "LAVALLE" in con or "ELECTRICIDAD" in con:
+        return "Mantenimiento Instalaciones", "Adm. General"
+    if any(k in contacto or k in con for k in ["MORI", "MENDOZA", "CALDERON", "YANQUELEN", "ZURRA"]):
+        return "Servicios y labores contratadas", "Agricultura"
+    if "MOVISTAR" in con or "TELEFONO" in con:
+        return "Telefono", "Adm. General"
+    if "ECHEQ" in con or "G. DE ECHEQ" in con:
+        return ("Cobranza cheques de terceros", None) if imp > 0 else ("Gastos de Administracion", "Adm. General")
+
+    return None
+
+
+def _atribucion_fallback(m: dict, indice_ingresos) -> tuple[str, str | None]:
+    """Regla con fallback completo para que ningún movimiento quede sin imputación."""
+    directo = _clasificar_concepto_o_contacto(m)
+    if directo:
+        return directo
+
     fecha = _dia(m["fecha"])
     importe_abs = round(abs(m["importe"]), 2)
     if m["importe"] < 0:
         atrib = atribucion.atribuir_egreso(m["idContacto"], fecha, importe_abs)
     else:
         atrib = atribucion.atribuir_ingreso(indice_ingresos, m["idContacto"], fecha, importe_abs)
-    if atrib["rubro"] == atribucion.SIN_RUBRO:
-        return atribucion.rubro_sin_aplicar(fecha), None
-    return atrib["rubro"], atrib["centroCosto"]
+
+    if atrib["rubro"] != atribucion.SIN_RUBRO:
+        return atrib["rubro"], atrib["centroCosto"]
+
+    # Si aún no tiene rubro, clasificar por naturaleza de ingreso o egreso
+    if m["importe"] > 0:
+        return "Otros ingresos operativos", None
+    return "Gastos generales varios", "Adm. General"
 
 
 def atribuir_movimientos(movimientos: list[dict]) -> list[dict]:
@@ -373,22 +443,22 @@ def agregar_por_rubro(partes: list[dict], granularidad: str, periodos: list[str]
 def saldos_por_cuenta_al(fecha: date) -> dict[str, float]:
     """Saldo de cada cuenta al inicio de `fecha` (exclusive), en pesos: Nación
     (las 3 cuentas BNA), Galicia CC y el FIMA reconstruido como capital neto
-    colocado (−Σ movimientos Galicia "Inversiones"; sin rendimiento, que no
-    está en los extractos)."""
+    colocado (−Σ movimientos Galicia FIMA; no puede ser negativo)."""
     hasta = as_sql_datetime(fecha)
     aperturas = fetch_all("SELECT Banco AS banco, SUM(SaldoApertura) AS saldo FROM dbo.CuentasBancarias GROUP BY Banco")
     apertura = {a["banco"]: float(a["saldo"] or 0) for a in aperturas}
     bna = fetch_all("SELECT SUM(Importe) AS total FROM dbo.[Movimientos BNA] WHERE [Fecha / Hora Mov#] < ?", (hasta,))
     gal = fetch_all(
         "SELECT SUM(ISNULL([Créditos],0) - ISNULL([Débitos],0)) AS total, "
-        "SUM(CASE WHEN [Grupo de Conceptos] LIKE '%inversiones%' THEN ISNULL([Créditos],0) - ISNULL([Débitos],0) ELSE 0 END) AS inversiones "
+        "SUM(CASE WHEN Concepto LIKE '%FIMA%' THEN ISNULL([Créditos],0) - ISNULL([Débitos],0) ELSE 0 END) AS fima "
         "FROM dbo.[Movimientos Galicia] WHERE Fecha < ?",
         (hasta,),
     )
+    saldo_fima = max(0.0, -float(gal[0]["fima"] or 0))
     return {
         CUENTA_NACION: round(apertura.get("BNA", 0) + float(bna[0]["total"] or 0), 2),
         CUENTA_GALICIA: round(apertura.get("Galicia", 0) + float(gal[0]["total"] or 0), 2),
-        CUENTA_FIMA: round(-float(gal[0]["inversiones"] or 0), 2),
+        CUENTA_FIMA: round(saldo_fima, 2),
     }
 
 

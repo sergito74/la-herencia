@@ -39,8 +39,32 @@ def _es_interno_galicia(grupo_conceptos: str | None) -> bool:
     return "inversiones" in grupo_conceptos.casefold()
 
 
+COLOCACION_FIMA = "Colocación FIMA"
+RESCATE_FIMA = "Rescate FIMA"
+CONSTITUCION_PLAZO_FIJO = "Constitución Plazo Fijo"
+VENCIMIENTO_PLAZO_FIJO = "Vencimiento Plazo Fijo"
+TRASPASO_ENTRE_BANCOS = "Traspaso entre bancos"
+TIPOS_INTERNOS = (
+    COLOCACION_FIMA,
+    RESCATE_FIMA,
+    CONSTITUCION_PLAZO_FIJO,
+    VENCIMIENTO_PLAZO_FIJO,
+    TRASPASO_ENTRE_BANCOS,
+)
+DIAS_PAREJA_TRASPASO = 3
+
+
+def _es_plazo_fijo(concepto: str | None) -> bool:
+    if not concepto:
+        return False
+    c = concepto.upper()
+    return "PLAZO FIJO" in c or "P.FIJO" in c or "902002" in c or "912002" in c
+
+
 def es_interno(banco: str, concepto: str | None, grupo_conceptos: str | None = None) -> bool:
     """`banco` es 'BNA' o 'Galicia' (mismo valor que `CuentasBancarias.Banco`)."""
+    if _es_plazo_fijo(concepto):
+        return True
     if banco == "BNA":
         return _es_interno_bna(concepto)
     if banco == "Galicia":
@@ -48,16 +72,11 @@ def es_interno(banco: str, concepto: str | None, grupo_conceptos: str | None = N
     return False
 
 
-COLOCACION_FIMA = "Colocación FIMA"
-RESCATE_FIMA = "Rescate FIMA"
-TRASPASO_ENTRE_BANCOS = "Traspaso entre bancos"
-TIPOS_INTERNOS = (COLOCACION_FIMA, RESCATE_FIMA, TRASPASO_ENTRE_BANCOS)
-DIAS_PAREJA_TRASPASO = 3
-
-
 def tipo_interno(banco: str, importe: float, concepto: str | None, grupo_conceptos: str | None = None) -> str | None:
     """Fila de "Movimientos entre cuentas propias" (030) de un movimiento
     interno según `es_interno`; `None` si el movimiento es operativo."""
+    if _es_plazo_fijo(concepto):
+        return CONSTITUCION_PLAZO_FIJO if importe < 0 else VENCIMIENTO_PLAZO_FIJO
     if banco == "Galicia" and _es_interno_galicia(grupo_conceptos):
         return COLOCACION_FIMA if importe < 0 else RESCATE_FIMA
     if banco == "BNA" and _es_interno_bna(concepto):

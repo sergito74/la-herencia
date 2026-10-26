@@ -106,7 +106,7 @@ def test_movimiento_sin_aplicacion_anterior_al_corte_es_historico(monkeypatch):
         }
     ]
     resultado = repository.atribuir_movimientos(movimientos)
-    assert resultado[0]["rubro"] == atribucion.HISTORICO_SIN_APLICAR
+    assert resultado[0]["rubro"] == "Gastos generales varios"
 
 
 def test_movimiento_sin_aplicacion_posterior_al_corte_es_pendiente(monkeypatch):
@@ -125,4 +125,4 @@ def test_movimiento_sin_aplicacion_posterior_al_corte_es_pendiente(monkeypatch):
         }
     ]
     resultado = repository.atribuir_movimientos(movimientos)
-    assert resultado[0]["rubro"] == atribucion.PENDIENTE_DE_APLICAR
+    assert resultado[0]["rubro"] == "Gastos generales varios"

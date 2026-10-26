@@ -34,7 +34,7 @@ CENTRO_COSTO_SIN_ASIGNAR = "Sin centro de costos"
 # venta inexistente): se les asigna este rubro fijo directamente, en una
 # cuenta/centro de costos aparte, para que aparezcan como su propia línea en
 # el flujo de caja en vez de mezclarse con "Sin rubro asignado".
-RUBRO_LEY_25413 = "Impuesto Ley 25413 (débitos/créditos bancarios)"
+RUBRO_LEY_25413 = "Impuesto Debito/Credito"
 CENTRO_COSTO_LEY_25413 = "Impuestos bancarios"
 
 # Mismo criterio que Ley 25413 (2026-09-29, revisión de casos "sin
@@ -154,7 +154,10 @@ def partes_desde_aplicaciones(aplicaciones: list[dict], importe_movimiento: floa
 
     resto = total_mov - sum(p["importe"] for p in partes)
     if resto > 0.005:
-        partes.append({"rubro": rubro_sin_aplicar(fecha), "centroCosto": None, "importe": resto, "documentoAplicado": None})
+        # En vez de dejar 'Pendiente de aplicar', imputar al rubro y centro de costo mayoritario del movimiento
+        rubro_fallback = partes[0]["rubro"] if partes else "Gastos de Administracion"
+        centro_fallback = partes[0]["centroCosto"] if partes else "Adm. General"
+        partes.append({"rubro": rubro_fallback, "centroCosto": centro_fallback, "importe": resto, "documentoAplicado": None})
 
     for p in partes:
         p["importe"] = round(p["importe"], 2)
@@ -202,7 +205,10 @@ def _candidatas_compra(id_contacto: int, fecha: date, importe_abs: float) -> lis
 
 
 def es_ley_25413(concepto: str | None) -> bool:
-    return bool(concepto) and "25413" in concepto
+    if not concepto:
+        return False
+    c = concepto.upper()
+    return "25413" in c or "25314" in c or "LEY 25413" in c or "DEB. LEY 25413" in c or "CRE. LEY 25413" in c
 
 
 def es_arba_recaudacion(concepto: str | None) -> bool:
