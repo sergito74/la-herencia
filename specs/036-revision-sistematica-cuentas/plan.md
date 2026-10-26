@@ -1,5 +1,7 @@
 # Implementation Plan: Método sistemático de revisión, conciliación y FIFO de cuentas
 
+ExtensiónSCT25/10/2026 aprobada por Sergio: cuenta fiscal independiente del mayor, contrato en `arca-subcuentas.md`, persistencia documentalWC `ArcaSctExtractos`, importación auditada con respaldo e invariantes, APIs de lectura y vista TanStack Query. No duplicar anticipos/retenciones ni sumar saldos de distintas cuentas/períodos. Detectar páginas faltantes; validar parser/contrato, lectura real, TypeScript/ESLint y recorridoUI simulado.
+
 **Branch**: `036-revision-sistematica-cuentas` | **Date**: 2026-10-09 | **Spec**: [spec.md](spec.md)
 
 **Input**: Feature specification from `/specs/036-revision-sistematica-cuentas/spec.md`

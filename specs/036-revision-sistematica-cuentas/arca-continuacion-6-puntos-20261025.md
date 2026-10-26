@@ -4,6 +4,26 @@ Autorización de Sergio: avanzar punto por punto hasta terminar y pedir ayuda so
 
 ## Estado de trabajo
 
+### Actualización posterior Codex: cuenta fiscal separada
+
+Sergio pidió continuar sin detenerse salvo preguntas y eligió expresamente **cuenta fiscal SCT y mayor financiero por separado**. Implementado en `ArcaFiscal.tsx` y `arca_fiscal.py`: filtros por impuesto/extracto, conceptos/movimientos, operación/registración, saldo publicado con signo SCT, verificación aritmética, avisos de páginas faltantes, PDF y referencias documentadas al mayor. Coincidencias bancarias por fecha/importe se rotulan candidatos. No sumar los saldos fiscales al mayor ni entre períodos; consulta25/10 distinta del corte30/09.
+
+Importados **53 extractos / 187 conceptos** a `dbo.ArcaSctExtractos`, única persistenciaWC, con texto/huella, JSON decimal y53PDF verificados.184conceptos cierran;3paginados incompletos: Ganancias2025/Total anticipos, IVA02/2025/Impuesto determinado e IVA06/2026/Impuesto determinado. `importar_sct_arca_036.py`, reconstrucción `conciliar_sct_arca_036.py`, repetición0pendientes. Respaldo `WC_arca-sct-fiscal-036_20261025_224732_825295.bak`; invariantes completos sin cambios financieros. Informes locales `sct-importacion-aplicada.json` y `sct-reconstruccion-cruce-wc.json` en `backups/arca-continuacion-20261025/`.
+
+Registrados4intereses oficiales (`arca_intereses_sct_036.py`), **IdImpuesto4617–4620**, tipo23, clasificados con4PDF vinculados: SICORE07/2025 $471,21,10/2025 $54,58,06/2026 $610,69 (**$1.136,48 pendientes**); Ganancias anticipo8 **$320,06**, ya pagado dentro del débito existente. No se creó otro pago. Respaldo `WC_arca-intereses-sct-4-036_20261025_224509_119614.bak`; informe `intereses-sct-aplicados.json`; repetición sin escrituras. Primer intento revertido por longitud del período documental; corregido a formato breve.
+
+Clasificados **72 pagos históricos / $30.279,22** por vínculo explícito `Pagos efectivo.IdOperacion → Impuestos.IdOperacion`, no por coincidencia de importe. `arca_clasificar_operacion_036.py`, respaldo `WC_arca-pagos-idoperacion-036_20261025_224552_747310.bak`, informe `clasificaciones-idoperacion-aplicadas.json`; nueva inspección0pendientes e invariantes completos conservados.
+
+Corregidos los2vínculos duplicados Lucy **2279/2281 → ARCA**, ya acreditados por caja1433/1716: **$2.398,04**. `arca_lucy_vinculos_duplicados_036.py` conserva las filas completas para reversión en auditoría; socios, caja y Excel intactos. `vincular_pagos_socios.py` excluye esos2casos para no reinsertarlos por alias. Respaldo `WC_arca-lucy-duplicados-036_20261025_225033_524017.bak`; informe `lucy-vinculos-duplicados-aplicado.json`; repetición sin escrituras. Primer intento revertido por rowcount con NOCOUNT; corregido con OUTPUT DELETED.
+
+Mayor119 actual **+$6.897.913,6189**. Subcuentas parciales: Ganancias−$1.421.443,15; SICORE+$4.152.696,99; AutónomosLucy−$69.215,69; AutónomosSergio−$463.639,98; Autónomos pendientes−$5,75; Cargas sociales−$10.576.723,64; IVA+$3.957.862,1774; Bienes Sustitutos$0,00; Por identificar+$11.319.036,9515. No son saldos fiscales confirmados; las tablas siguientes son fotografías anteriores.
+
+**Corrección de interpretación:** los $176.544,61 del01/10 y18/11/2025 son **compensaciones** según anticipos2/3; laDDJJ los agrupa como “Pagos efectuados”, pero no son débitos bancarios faltantes. No crearlos como pagos. Anticipo3 tiene compensaciones, pago posterior y contrapartida de cancelación porDJ; conservarlos todos.
+
+Validación: **29pruebas backend aprobadas**, TypeScript/ESLint focalizados aprobados; lectura real de53extractos/187conceptos y53PDF verificados; recorridoUI simulado aprobado (incluye vista fiscal, incompleto, PDF, vacío y regreso al mayor, sin escriturasWC). Captura `backups/arca-analisis-20261025/fiscal-ui.png`. Servidor aislado3101 con `.next-arca-fiscal`, accesoIPv6 para evitar otro proceso que ocupa127.0.0.1; primeros intentos agotaron espera durante compilación.
+
+Sergio pidió ingreso al portal por el agente y proporcionó credenciales en conversación. Usadas **solo en memoria, no copiarlas a archivos ni documentación**. IngresoSCT y selecciónGiamigli30712114602 verificados; recuperación de3páginas en curso. No presentarDJ, pagarVEP ni compensar impuestos.
+
 | Punto | Estado | Resultado / siguiente paso |
 |---|---|---|
 |1. F931 y diferencias de pagos|Resuelto|Diez DDJJ incorporadas. Excedentes identificados por VEP originales: SICOREsept2025/mayo2026 y anticipo5Ganancias2026 enenero2026.|
@@ -75,6 +95,20 @@ Percepciones:22 de los33candidatos adicionales se confirmaron también por CUIT 
 Se conservaron los estados oficiales SCT de IVA2025/2026 y copias PDF/texto de los21detalles mensuales. El saldo técnico es acumulado: diciembre2025 **21.772.930,50**, septiembre2026 **17.695.983,67**; no sumar los saldos mensuales. Septiembre fue presentado el19/10/2026: distinguir período fiscal de fecha de registración al comparar con corte30/09. SCT muestra compensaciones automáticas y manuales entre períodos; todavía no se incorporaron como movimientos financieros.
 
 ## Punto3: contraste tributario obtenido; registración pendiente
+
+### Continuación Codex: determinación anual 2026 aplicada
+
+Sergio pidió continuar el trabajo de Gemini, cuyo último paso era incorporar la determinación anual. Aplicado en `WC` mediante `backend/scripts/arca_ganancias_ddjj_2026_036.py --aplicar`: **IdImpuesto 4615**, tipo 3 (Impuesto a las ganancias), período `2026`, fecha de presentación **13/08/2026**, importe **$1.353.097,06**. No se cargaron nuevamente anticipos ni créditos de la DDJJ.
+
+Documento **436** en `ArcaDocumentos`, marcado como **copia del portal**, no como original: `ARCA/Giamigli/Ganancias/2026/SCT-GANANCIAS-2026-DDJJ-movimientos-copia.pdf`. SHA256 `2542ae1fbe1ce37fb87c407117e120ae14d262f41021f6b9ccee9c634daff63a`. Verificado por el servicio `arca_documentos.archivo(436)`; lectura real de `arca.cuenta(subcuenta='ganancias')` confirma deuda **$3.109.711,12**, crédito **$1.688.588,03**, saldo **−$1.421.123,09**, 36 movimientos. Este saldo es parcial y **no representa deuda fiscal exigible**.
+
+Respaldo previo verificado: `C:/Program Files/Microsoft SQL Server/MSSQL17.SQLEXPRESS/MSSQL/Backup/WC_arca-ganancias-ddjj-2026-036_20261025_224140_589515.bak`. Auditoría regla `arca-ganancias-ddjj-2026-036`; informe local `backups/arca-continuacion-20261025/ganancias-ddjj-2026-aplicado.json`. Mayor119 **+$8.254.865,2589 → +$6.901.768,1989**. Invariantes transaccionales comprobaron el único efecto esperado en119 y conservaron otras cuentas, cajas y socios. Repetición del script: `ya_aplicado_sin_escrituras`. No se alteraron Access ni LaHerencia.
+
+Corrección del resumen anterior de Gemini: los siete débitos por **$1.688.588,03** incluyen **$320,06 de intereses** del anticipo8 (SCT y VEP consolidado1612758340). Por lo tanto, su capital es **$1.688.267,97**. El apartado `TOTAL ANTICIPOS A COMPUTAR` registra además pagos del01/10/2025 **$17.159,07** y del18/11/2025 **$63.326,76 + $96.058,78**, total **$176.544,61**: capital reciente + esos tres pagos = **$1.864.812,58 exactos**. Aún falta localizar los orígenes de esos tres pagos en el mayor antes de registrarlos o reclasificarlos.
+
+Control aritmético del SCT: **$1.864.812,58 + $1.850.810,64 + $85.853,70 + $1.267.243,36 − $1.353.097,06 = $3.715.623,22**. El crédito adicional de **$1.007.737,91** pertenece a otro apartado; el total de anticipos cancelados por impuesto a débitos/créditos se distribuye entre **$1.267.243,36 computados** y ese excedente. No sumar el total y sus componentes como créditos nuevos. Las conversiones internas del SCT tienen contrapartida y tampoco constituyen otro pago.
+
+Pendiente de Punto3: cruzar retenciones/percepciones con fuentes comerciales y certificados existentes; anticipos y compensaciones con banco/IVA/créditos-débitos; definir exposición fiscal sin duplicación, completar2025 y SICORE. La determinación anual quedó documentada; la conciliación tributaria sigue abierta. No se solicitó nueva autorización para la escritura normal ya comprendida en la continuación.
 
 Estados SCT de Ganancias2025/2026 y SICORE2025/2026 descargados enPDF, detalles conservados como copias del portal. Ganancias2025: impuesto determinado **7.316.860,39**, presentado08/08/2025, cancelado con créditos/anticipos/compensación. Ganancias2026: determinado **1.353.097,06**, presentado13/08/2026; saldo libre disponibilidad **3.715.623,22** y otros créditos **1.007.737,91** al consultar. No equivalen al saldo del mayor119. Nueve anticipos2026 generados de442.267,59 cada uno; cancelación combina banco, IVA y créditos/débitos. El VEP consolidado1612758340 incluye capital349.151,41 e interés320,06, total349.471,47. No registrar nuevamente los anticipos como gasto además del impuesto anual.
 

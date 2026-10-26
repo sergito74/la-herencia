@@ -22,3 +22,19 @@ export const guardarArca = (m: MovimientoArca, partes: ParteArca[], motivo: stri
 export const historialArca = (m: MovimientoArca) => apiGet<{version: number; reparto: string; motivo: string; usuario: string; fecha: string}[]>(
   "/api/arca/historial", {origen: m.origen, idOrigen: m.idOrigen});
 export const urlDocumentoArca = (id: number) => `${API_BASE_URL}/api/arca/documentos/${id}/archivo`;
+
+export interface ExtractoFiscalArca {
+  id: number; impuesto: string; periodo: string; fuente: string; fechaConsulta: string; incompleto: boolean;
+}
+export interface MovimientoFiscalArca {
+  fechaOperacion: string; fechaRegistracion: string; detalle: string; debe: string; haber: string;
+  candidatosBancoMismoDiaImporte?: {Fecha: string; Origen: string; IdOrigen: number; Credito: string}[];
+}
+export interface ConceptoFiscalArca {
+  concepto: string; saldoDeudorPublicado: string; saldoDeudorCalculado: string;
+  diferencia: string; incompleto: boolean; verificado: boolean; movimientos: MovimientoFiscalArca[];
+}
+export const fetchFiscalArca = (impuesto: string) => apiGet<{items: ExtractoFiscalArca[]; limite: number}>(
+  '/api/arca/fiscal', impuesto ? {impuesto} : undefined);
+export const fetchDetalleFiscalArca = (id: number) => apiGet<ExtractoFiscalArca & {conceptos: ConceptoFiscalArca[]; registrosMayor?: {idImpuesto: number; numero: string; importe: string}[]}>(`/api/arca/fiscal/${id}`);
+export const urlFiscalArca = (id: number) => `${API_BASE_URL}/api/arca/fiscal/${id}/archivo`;

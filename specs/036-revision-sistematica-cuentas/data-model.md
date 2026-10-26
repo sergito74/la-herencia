@@ -1,5 +1,7 @@
 # Data Model: Método sistemático de revisión de cuentas (036)
 
+ExtensiónSCT25/10: `ArcaSctExtractos` conserva IdExtracto(identity), Impuesto(GANANCIAS/SICORE/IVA), Periodo(8dígitos), FechaConsulta, Fuente, TextoSha256(único), Texto, Contenido(JSON de conceptos/movimientos con importes como cadenas), Incompleto, PdfRuta/PdfSha256, Usuario/FechaAlta. Importación documental auditada sin efectos en el mayor, versiones por huella sin reemplazo. Contrato en `arca-subcuentas.md`; PDF por identificador, raíz ySHA verificados.
+
 Ampliación ARCA25/10: `ArcaClasificaciones` contiene IdClasificacion(identity/versión), Origen, IdOrigen, Reparto(JSON de partes con subcuenta/deuda/crédito), Motivo, Usuario y Fecha. Historial append-only, índice por origen/id/versión. Reparto vacío vuelve al criterio automático; sumas exactas a cuatro decimales contra el movimiento119, sin otras partidas contables. Si cambia el importe original, se señala el reparto desactualizado y se mantiene el importe actual en Por identificar hasta reclasificar. Contrato y aceptación en [arca-subcuentas.md](arca-subcuentas.md).
 
 Todo en `WC`. Las tablas nuevas se crean con `backend/scripts/crear_esquema_revision_036.py` (modo `--verificar` que no escribe; respaldo verificado antes de crear; idempotente). Nada se borra: las bajas son lógicas. Decisiones de origen en [research.md](research.md).

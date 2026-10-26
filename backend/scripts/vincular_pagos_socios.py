@@ -39,6 +39,9 @@ from src.db.connection import CONNECTION_STRING, _assert_target_is_wc, execute_w
 ALIAS = {"arca": 119, "afip": 119, "tasa vial": 72, "imp inmobiliario": 12, "armando mori": 376,
          "franco rodriguez": 379, "mario gorosito": 566, "sindicato uatre": 315}
 EXCLUIR_CONTACTOS = {549, 386, 375}  # Condominio LSC, Giamigli de Bolívar, Sergio Giamberardini
+# Lucy: pagos personales reintegrados por caja 1433/1716; esa caja ya acredita ARCA.
+# Evidencia y corrección: spec036 arca-continuacion-6-puntos-20261025.md.
+EXCLUIR_REINTEGRADOS = {2279, 2281}
 NO_PROVEEDOR = ("aporte", "retiro", "cambio", "transferencia")
 
 DDL = """
@@ -89,7 +92,7 @@ def proponer() -> list[tuple]:
     propuestas = []
     for m in fetch_all("SELECT IdMovimiento AS id, Importe AS imp, CAST(Fecha AS date) AS f, Motivo AS mot "
                        "FROM dbo.MovimientosCuentaSocio WHERE Tipo = 'Devolucion' AND Anulada = 0 AND Importe > 0"):
-        if m["id"] in existentes:
+        if m["id"] in existentes or m['id'] in EXCLUIR_REINTEGRADOS:
             continue
         n = _norm((m["mot"] or "").split(" — ")[0])
         if not n or n.startswith(NO_PROVEEDOR):

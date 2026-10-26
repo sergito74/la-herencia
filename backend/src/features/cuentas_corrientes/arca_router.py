@@ -8,11 +8,38 @@ from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field, field_validator
 from starlette.concurrency import run_in_threadpool
 
-from src.features.cuentas_corrientes import arca, arca_documentos
+from src.features.cuentas_corrientes import arca, arca_documentos, arca_fiscal
 from src.features.revision_cuentas.router import _usuario_actual
 
 router = APIRouter(prefix="/api/arca", tags=["arca"])
 Monto = Annotated[Decimal, Field(ge=0, max_digits=19, decimal_places=4)]
+
+
+@router.get('/fiscal')
+async def fiscal_listar(impuesto: str | None = Query(None, max_length=20)):
+    try:
+        return await run_in_threadpool(arca_fiscal.listar, impuesto)
+    except ValueError as exc:
+        raise HTTPException(422, str(exc)) from exc
+
+
+@router.get('/fiscal/{ident}')
+async def fiscal_detalle(ident: int):
+    try:
+        return await run_in_threadpool(arca_fiscal.detalle, ident)
+    except LookupError as exc:
+        raise HTTPException(404, str(exc)) from exc
+
+
+@router.get('/fiscal/{ident}/archivo')
+async def fiscal_archivo(ident: int):
+    try:
+        ruta = await run_in_threadpool(arca_fiscal.archivo, ident)
+        return FileResponse(ruta, media_type='application/pdf', filename=ruta.name, content_disposition_type='inline')
+    except FileNotFoundError as exc:
+        raise HTTPException(404, str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(409, str(exc)) from exc
 
 
 class Parte(BaseModel):

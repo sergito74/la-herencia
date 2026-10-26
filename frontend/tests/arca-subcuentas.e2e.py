@@ -38,6 +38,13 @@ def route_handler(route):
         return reply({"idContacto":119,"saldoParcial":100.0001,"saldoDolares":None})
     if p == "/api/arca/historial":
         return reply(historia)
+    if p == '/api/arca/fiscal':
+        impuesto=parse_qs(u.query).get('impuesto',['GANANCIAS'])[0]
+        return reply({'items': [] if impuesto == 'IVA' else [{'id':1,'impuesto':impuesto,'periodo':'20260000','fuente':'SCT-GANANCIAS-2026-DDJJ-movimientos.txt','fechaConsulta':'2026-10-25T05:59:10','incompleto':True}], 'limite':100})
+    if p == '/api/arca/fiscal/1':
+        return reply({'id':1,'impuesto':'GANANCIAS','periodo':'20260000','fuente':'SCT-GANANCIAS-2026-DDJJ-movimientos.txt','fechaConsulta':'2026-10-25T05:59:10','incompleto':True,
+                      'conceptos':[{'concepto':'SALDO A FAVOR','saldoDeudorPublicado':'-3715623.22','saldoDeudorCalculado':'-3715623.22','diferencia':'0','incompleto':True,'verificado':False,
+                                    'movimientos':[{'fechaOperacion':'2026-08-13T17:42:00','fechaRegistracion':'2026-08-13T17:44:00','detalle':'Conversión de saldo','debe':'0','haber':'3715623.22'}]}]})
     if p == "/api/arca/clasificacion":
         b=req.post_data_json
         from decimal import Decimal as D
@@ -68,7 +75,7 @@ with sync_playwright() as pw:
     page=browser.new_page(viewport={"width":1440,"height":1000})
     page.on("pageerror",lambda e: errores.append(str(e)))
     page.route("**/api/**",route_handler)
-    page.goto(BASE+"/finanzas/cuentas-corrientes?idContacto=119&razonSocial=ARCA&tipoContacto=Organismo")
+    page.goto(BASE+"/finanzas/cuentas-corrientes?idContacto=119&razonSocial=ARCA&tipoContacto=Organismo", wait_until='domcontentloaded', timeout=90000)
     expect(page.get_by_role("heading",name="Subcuentas de ARCA")).to_be_visible()
     page.get_by_role("button",name=re.compile("Retenciones de Ganancias efectuadas")).click()
     expect(page.get_by_text("Sin movimientos para este período y subcuenta.")).to_be_visible()
@@ -101,6 +108,15 @@ with sync_playwright() as pw:
     page.reload()
     expect(page.get_by_role("heading",name="Subcuentas de ARCA")).to_be_visible()
     expect(page.get_by_role("button",name="Clasificar / repartir",exact=True)).to_have_count(0)
+    page.get_by_role('button',name='Cuenta fiscal SCT',exact=True).click()
+    expect(page.get_by_role('heading',name='Cuenta fiscal del SCT')).to_be_visible()
+    expect(page.get_by_text('Faltan páginas',exact=False)).to_be_visible()
+    expect(page.get_by_role('link',name='Ver copia del SCT (PDF)')).to_have_attribute('href',re.compile(r'/api/arca/fiscal/1/archivo$'))
+    page.screenshot(path=str(out/'fiscal-ui.png'),full_page=True)
+    page.get_by_label('Impuesto fiscal',exact=True).select_option('IVA')
+    expect(page.get_by_text('Sin extractos fiscales registrados para este impuesto.')).to_be_visible()
+    page.get_by_role('button',name='Mayor financiero',exact=True).click()
+    expect(page.get_by_role('heading',name='Subcuentas de ARCA')).to_be_visible()
     assert not errores, errores
     browser.close()
 print("ARCA UI: resumen, selección vacía, validación, reparto, historial, reversión y rol Lectura: OK; sin escrituras WC")

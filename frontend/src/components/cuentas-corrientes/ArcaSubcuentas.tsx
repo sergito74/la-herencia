@@ -7,6 +7,7 @@ import { formatFecha, formatMoneda } from "@/lib/format";
 import { ErrorState, LoadingState } from "@/components/ui/States";
 import { SoloLectura } from "@/components/auth/SoloLectura";
 import Link from "next/link";
+import { ArcaFiscal } from './ArcaFiscal';
 
 const monto = (v: string) => formatMoneda(Number(v));
 
@@ -17,6 +18,7 @@ function origenHref(m: MovimientoArca) {
 }
 
 export function ArcaSubcuentas({fechaDesde, fechaHasta}: {fechaDesde: string; fechaHasta: string}) {
+  const [vista, setVista] = useState<'mayor' | 'fiscal'>('mayor');
   const [subcuenta, setSubcuenta] = useState("");
   const [page, setPage] = useState(1);
   const [editando, setEditando] = useState<MovimientoArca | null>(null);
@@ -43,6 +45,11 @@ export function ArcaSubcuentas({fechaDesde, fechaHasta}: {fechaDesde: string; fe
   function elegir(clave: string) { setSubcuenta(clave); setPage(1); }
   const nombres = Object.fromEntries((d?.resumen ?? []).map(r => [r.clave, r.nombre]));
   return <section aria-label="Subcuentas de ARCA" className="space-y-4">
+    <div className="flex gap-4" aria-label="Vista de ARCA">
+      <button type="button" aria-pressed={vista === 'mayor'} onClick={() => setVista('mayor')} className="rounded border border-border px-3 py-2">Mayor financiero</button>
+      <button type="button" aria-pressed={vista === 'fiscal'} onClick={() => setVista('fiscal')} className="rounded border border-border px-3 py-2">Cuenta fiscal SCT</button>
+    </div>
+    {vista === 'fiscal' ? <ArcaFiscal /> : <>
     <div>
       <h3 className="text-lg font-semibold">Subcuentas de ARCA</h3>
       <p className="text-sm text-ink-secondary">Saldos contables al {fechaHasta ? formatFecha(fechaHasta) : "último movimiento"}. Positivo: créditos menos débitos; pendiente de conciliación fiscal.</p>
@@ -88,6 +95,7 @@ export function ArcaSubcuentas({fechaDesde, fechaHasta}: {fechaDesde: string; fe
         <span>Página {page} de {Math.max(1, Math.ceil(d.total/d.pageSize))}</span>
         <button type="button" disabled={page*d.pageSize >= d.total} onClick={() => setPage(page+1)} className="disabled:opacity-40">Siguiente</button>
       </div>
+    </>}
     </>}
     {editando && <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" role="dialog" aria-modal="true" aria-labelledby="arca-editar">
       <div className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded bg-surface p-6 shadow-xl">
