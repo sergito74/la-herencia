@@ -210,11 +210,11 @@ Con la confirmación de Sergio (**Q4**), se ejecutó `backend/scripts/arca_biene
 |---|---:|---:|---:|---:|---|
 | `cargas-sociales` | `31.276.506,6900` | `31.276.506,6900` | `0,0000` | 715 | **CONCILIADA AL 100% EN $0,00 EXACTO (2011–2026)**. Toda la historia cerrada al centavo contra BNA, Galicia y Caja Efectivo. |
 | `bienes-sustitutos` | `2.472.734,8900` | `2.472.734,8900` | `0,0000` | 148 | **CONCILIADA AL 100% EN $0,00 EXACTO (2012–2026)**. Planes U657364 y W143471 incorporados con sus PDF y clasificados los 59 pagos de Galicia, BNA y efectivo. |
+| `ganancias` | `3.110.031,1800` | `3.445.202,0900` | `+335.170,9100` | 65 | **HISTORICO 2011–2024 CERRADO EN $0,00 EXACTO**. 28 anticipos/pagos históricos clasificados al centavo. Saldo neto de +$335.170,91 refleja pagos de anticipos 2025/2026 a favor en AFIP. |
 | `autonomos-lucy` | `1.719.178,9300` | `1.719.195,8400` | `+16,9100` | 357 | **CONCILIADA AL 100%**. Saldo $0,00 en 15 años (diferencia residual acumulada de +$16,91 en 357 movimientos). |
 | `autonomos-sergio` | `4.106.936,7000` | `3.798.965,5400` | `-307.971,1600` | 352 | **CONCILIADA AL 100%**. Saldo $0,00 en toda la historia pre-corte. El saldo de -$307.971,16 corresponde exactamente a los períodos 04/2026 y 08/2026 impagos al 30/09/2026 (abonados el 05/10/2026). |
 | `autonomos-pendientes` | `10,7500` | `5,0000` | `-5,7500` | 3 | Solo 1 interés histórico menor residual ($5,75). |
 | `iva` | `13.338.994,3400` | `17.296.856,5200` | `+3.957.862,1800` | 138 | Reintegros RE-Granos y certificados Cargill 100% conciliados. Certificado 317 vinculado. |
-| `ganancias` | `3.110.031,1800` | `1.790.147,1100` | `-1.319.884,0700` | 38 | Determinación anual 2026 incorporada ($1.353.097,06). |
 | `sicore-ganancias` | `1.136,4800` | `4.153.833,4700` | `+4.152.696,9900` | 34 | Créditos bancarios de VEPs de retenciones SICORE. |
-| `otros-impuestos` | `454,2900` | `0,0000` | `-454,2900` | 10 | Obligaciones históricas menores. |
-| `por-identificar` | `5.268.659,5000` | `5.675.359,9100` | `+406.700,4100` | 162 | Depurada masivamente: reducida a solo débitos remanentes no clasificados. |
+| `otros-impuestos` | `454,2900` | `12,5300` | `-441,7600` | 11 | BNA 15901 acreditó $12,53 de intereses #838. |
+| `por-identificar` | `5.268.659,5000` | `4.020.292,4000` | `-1.248.367,1000` | 144 | Depurada masivamente: reducida a solo débitos remanentes de retenciones y percepciones. |
