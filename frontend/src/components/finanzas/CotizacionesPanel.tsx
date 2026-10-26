@@ -28,6 +28,13 @@ export function CotizacionesPanel() {
     },
   });
 
+  // Cálculo de promedios mensuales
+  const valoresInmag = (data ?? []).map((c) => c.inmag).filter((v): v is number => v !== null && v > 0);
+  const promedioInmag = valoresInmag.length > 0 ? valoresInmag.reduce((a, b) => a + b, 0) / valoresInmag.length : null;
+
+  const valoresDolar = (data ?? []).map((c) => c.dolarPromedioBillete).filter((v): v is number => v !== null && v > 0);
+  const promedioDolar = valoresDolar.length > 0 ? valoresDolar.reduce((a, b) => a + b, 0) / valoresDolar.length : null;
+
   return (
     <div className="space-y-6">
       <Breadcrumb items={[{ label: "Finanzas", href: "/finanzas" }, { label: "Cotizaciones" }]} />
@@ -64,6 +71,29 @@ export function CotizacionesPanel() {
         </div>
       </div>
 
+      {/* Tarjetas de Resumen / Promedios del Mes */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="rounded-md border border-border bg-surface p-4 shadow-xs">
+          <div className="text-xs font-semibold uppercase text-ink-secondary">INMAG Promedio Mensual</div>
+          <div className="mt-1 text-2xl font-bold text-agro font-data">
+            {promedioInmag !== null ? `$${promedioInmag.toFixed(3)}` : "—"}
+          </div>
+          <div className="mt-1 text-xs text-ink-secondary">
+            {valoresInmag.length} días con cotización en el mes
+          </div>
+        </div>
+
+        <div className="rounded-md border border-border bg-surface p-4 shadow-xs">
+          <div className="text-xs font-semibold uppercase text-ink-secondary">Dólar BNA Promedio Mensual (Billete)</div>
+          <div className="mt-1 text-2xl font-bold text-ink-primary font-data">
+            {promedioDolar !== null ? formatMoneda(promedioDolar) : "—"}
+          </div>
+          <div className="mt-1 text-xs text-ink-secondary">
+            Promedio oficial de días hábiles bancarios
+          </div>
+        </div>
+      </div>
+
       {act.data && (
         <div className="rounded-md border border-status-success/40 bg-status-success/10 p-3 text-sm text-status-success">
           {act.data.mensaje}
@@ -85,10 +115,11 @@ export function CotizacionesPanel() {
             <thead className="border-b border-border bg-surface-sunken text-xs font-semibold uppercase text-ink-secondary">
               <tr>
                 <th className="px-3 py-2">Fecha</th>
-                <th className="px-3 py-2 text-right">Dólar Compra (Billete)</th>
-                <th className="px-3 py-2 text-right">Dólar Venta (Billete)</th>
+                <th className="px-3 py-2 text-right">Dólar Billete (Compra)</th>
+                <th className="px-3 py-2 text-right">Dólar Billete (Venta)</th>
                 <th className="px-3 py-2 text-right">Dólar Promedio</th>
-                <th className="px-3 py-2 text-right">Dólar Divisa</th>
+                <th className="px-3 py-2 text-right">Dólar Divisa (Compra)</th>
+                <th className="px-3 py-2 text-right">Dólar Divisa (Venta)</th>
                 <th className="px-3 py-2 text-right">INMAG $/kg</th>
                 <th className="px-3 py-2 text-right">Cabezas MAG</th>
               </tr>
@@ -116,7 +147,10 @@ export function CotizacionesPanel() {
                     <td className="px-3 py-2 text-right font-data font-semibold text-ink-primary tabular-nums">
                       {c.dolarPromedioBillete != null ? formatMoneda(c.dolarPromedioBillete) : "—"}
                     </td>
-                    <td className="px-3 py-2 text-right font-data tabular-nums text-xs">
+                    <td className="px-3 py-2 text-right font-data tabular-nums">
+                      {c.dolarCompraDivisa != null ? formatMoneda(c.dolarCompraDivisa) : "—"}
+                    </td>
+                    <td className="px-3 py-2 text-right font-data tabular-nums">
                       {c.dolarVentaDivisa != null ? formatMoneda(c.dolarVentaDivisa) : "—"}
                     </td>
                     <td className="px-3 py-2 text-right font-data font-semibold text-agro tabular-nums">
@@ -137,4 +171,3 @@ export function CotizacionesPanel() {
     </div>
   );
 }
-
