@@ -10,7 +10,7 @@ Autorización de Sergio: avanzar punto por punto hasta terminar y pedir ayuda so
 |2. IVA y devoluciones|En curso|Nueve reintegros oficiales RE-Granos aplicados a26certificados; SIRE216 sin resultados; percepciones en revisión.|
 |3. Ganancias / anticipos / SICORE|En curso|Estados SCT 2025/2026 descargados; pendiente definir criterio de registración de obligaciones/créditos.|
 |4. Autónomos y financiación socios|Resuelto|48 obligaciones 09/2024–08/2026 ($3.972.687,80) y 47 vínculos de socios ($3.619.422,36) aplicados; asientos 2255 y 2734 actualizados; Opción A aplicada en asientos 2018 (1872 Devolución y 1876 AsignaciónGasto) y Excel sincronizado; 305 obligaciones históricas y 207 pagos Particular S/L clasificados.|
-|5. Bienes Sustitutos|Aplicado (2022–2026 conciliado a $0,00)|Incorporadas 15 obligaciones de planes U657364 y W143471 al corte ($1.427.555,70) con PDF vinculados y clasificados 32 débitos Galicia históricos ($914.443,36). Resta clasificar 27 pagos pre-2022 ($126.956,19).|
+|5. Bienes Sustitutos|Resuelto|Subcuenta 100% conciliada en $0,00 exacto (2012–30/09/2026). Incorporadas 15 obligaciones planes al corte ($1.427.555,70) y clasificados 59 pagos de Galicia, BNA y efectivo ($1.045.179,19) con PDF vinculados.|
 |6. Conciliación final al corte|Pendiente|Solo después del contraste por concepto; no cierre por ajuste global.|
 
 ## Punto1: aplicado
@@ -151,6 +151,6 @@ Con la confirmación de Sergio (**Q4**), se ejecutó `backend/scripts/arca_biene
 | `autonomos-sergio` | `4.100.878,3400` | `3.630.125,4000` | `-470.752,9400` | 262 | Punto 4 aplicado (`-$307.971,18` corresponde a `04/2026` y `08/2026` impagos al `30/09/2026` y pagados el `05/10/2026`; el resto a pagos históricos de `Caja: La Herencia` en `por-identificar`). Resta decisión Q3 sobre `1872`/`1876`. |
 | `autonomos-pendientes` | `10,7500` | `0,0000` | `-10,7500` | 2 | Solo 2 intereses históricos menores (`IdImpuesto = 373` `$5,00` e `IdImpuesto = 930` `$5,75`). |
 | `cargas-sociales` | `31.268.407,8500` | `20.671.648,7400` | `-10.596.759,1100` | 456 | Punto 1 resuelto en 2025–2026; pagos históricos de BNA/Galicia/Efectivo previos a 2025 siguen en `por-identificar`. |
-| `bienes-sustitutos` | `2.472.734,8900` | `2.341.999,0600` | `-130.735,8300` | 121 | Punto 5 aplicado (2022–2026 en `$0,00`). Resta clasificar los 27 pagos históricos 2012–2021 (`$126.956,19`) desde `por-identificar`. |
+| `bienes-sustitutos` | `2.472.734,8900` | `2.472.734,8900` | `0,0000` | 148 | Punto 5 resuelto al 100%: $0,00 exacto de saldo (2012–30/09/2026). Planes U657364 y W143471 incorporados con sus PDF y clasificados los 59 pagos de Galicia, BNA y efectivo. |
 | `otros-impuestos` | `654,2900` | `0,0000` | `-654,2900` | 11 | Obligaciones históricas menores. |
 | `por-identificar` | `5.268.659,5000` | `16.748.711,5015` | `+11.480.052,0015` | 608 | Contiene los pagos históricos (`Banco Nacion`, `Galicia`, `Pagos efectivo` `Caja: La Herencia`) de Autónomos, Bienes Sustitutos (2012–2021), Cargas Sociales y Ganancias previos a 2025. |
