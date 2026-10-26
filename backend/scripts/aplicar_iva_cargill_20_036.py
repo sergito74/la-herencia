@@ -124,3 +124,4 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--aplicar", action="store_true")
     print(json.dumps(run(parser.parse_args().aplicar), default=str, ensure_ascii=False, indent=2))
+

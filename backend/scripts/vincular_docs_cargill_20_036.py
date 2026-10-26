@@ -40,3 +40,4 @@ with get_connection(readonly=False) as conn:
             "Ret. IVA Granos", c["IdLiquidacion"], "Certificado Retención IVA Granos", per, c["Nro Certificado"], str(dest), sha, 1, "Gemini036"
         )
     print("VINCULADOS:", len(certs))
+
