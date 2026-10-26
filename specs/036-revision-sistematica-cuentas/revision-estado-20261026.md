@@ -63,7 +63,21 @@ Banco Nación369: saldo nominal actual -$137.500,0075, coherente con capital $13
 
 Cerradas con excepción: ARBA12, Basterrechea220, Bayá226, Cargill258, CEAMSE314, Sierra374, Sergio empleado375, Catalpa400, Starlink567, Lucas Alvarez616. Conservar decisiones: pendientes de pago/reclamo no equivalen a conciliación faltante. Lavalle32 sigue reservado por Sergio; Ferias39 también conserva su restricción.
 
-## Cierre definitivo de subcuentas ARCA (26/10/2026)
+## Reclasificación de bonificaciones del Ministerio a resultados de Soja (26/10/2026)
+
+Se identificó y verificó con precisión documental y normativa el origen de las acreditaciones bancarias del Estado:
+1. **Transferencia SAF363 MINISTERI ($134.391,10 el 11/12/2020, BNA #15950)**:
+   - CUIT `30-71121305-4` / SAF 363 correspondiente a la Secretaría de Agricultura, Ganadería y Pesca / Ministerio de Economía.
+   - Programa de Compensación y Estímulo (Decreto 786/2020) por ventas de soja de la Campaña 2019/2020.
+   - Reasignado de AFIP (`119`) a `Secretaría de Agricultura, Ganadería y Pesca` (IdContacto `5672`).
+   - Contabilizado como ajuste de bonificación en `dbo.[Venta Granos_Ajustes]` para la liquidación de Soja primera `IdVenta = 118` (Campaña 2019/2020), sumando **+$134.391,10** al resultado en pesos de la campaña.
+2. **Transferencia PEPP MECON ($1.323,00 el 14/03/2016, BNA #15788)**:
+   - Programa de Estímulo al Pequeño Productor de Granos (Resolución 126/2015 Ministerio de Economía).
+   - Reasignado de AFIP (`119`) a `Secretaría de Agricultura, Ganadería y Pesca` (IdContacto `5672`).
+   - Contabilizado como ajuste de bonificación en `dbo.[Venta Granos_Ajustes]` para la liquidación de Soja primera `IdVenta = 25` (Campaña 2015/2016), sumando **+$1.323,00** al resultado en pesos de la campaña.
+3. Se retiraron de ARCA los dos contraasientos compensatorios de caja (`Pagos efectivo #2492` y `#2493`). La cuenta de ARCA y la subcuenta `por-identificar` se mantienen limpias en **0 movimientos y $0,00**.
+4. Respaldo verificado tomado: `WC_soja-bonificaciones-ministerio-mecon-036_20261026_145025_750080.bak`. Auditoría registrada bajo regla `soja-bonificaciones-ministerio-mecon-036`.
+
 
 1. **Autónomos Lucy**: Cerrada a **$0,00 exacto** con respaldo oficial de CCMA ARCA (`CCMA-Lucy-202409-202609-copia.pdf`). Incorporados en `dbo.Impuestos`: intereses resarcitorios ($343,34), créditos por reimputaciones AFIP (-$3.870,38) y saldo a favor remanente ($21,31). Respaldo: `WC_arca-autonomos-lucy-cierre-definitivo-036_20261026_134903_461841.bak`.
 2. **Subcuenta `por-identificar`**: Cerrada formalmente a **0 movimientos y $0,00**. Todos los movimientos quedaron clasificados con causa justificada en `dbo.ArcaClasificaciones`:
