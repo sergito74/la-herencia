@@ -110,6 +110,7 @@ const NAV_ITEMS: NavItem[] = [
       { href: "/finanzas/tarjetas", label: "Tarjetas" },
       { href: "/finanzas/impuestos", label: "Impuestos y retenciones" },
       { href: "/finanzas/arrendamientos", label: "Arrendamientos" },
+      { href: "/finanzas/cotizaciones", label: "Cotizaciones (Dólar / INMAG)" },
     ],
   },
   {

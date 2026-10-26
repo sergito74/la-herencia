@@ -55,6 +55,7 @@ from src.features.ventas_granos.router import router as ventas_granos_router
 from src.features.ventas_hacienda.router import router as ventas_hacienda_router
 from src.features.vinculos.router import router as integridad_vinculos_router
 from src.features.recalculo_fifo.router import router as recalculo_fifo_router
+from src.features.cotizaciones.router import router as cotizaciones_router
 
 app = FastAPI(
     title="La Herencia API",
@@ -192,6 +193,7 @@ app.include_router(ventas_granos_router)
 app.include_router(ventas_hacienda_router)
 app.include_router(integridad_vinculos_router)
 app.include_router(recalculo_fifo_router)
+app.include_router(cotizaciones_router)
 
 
 @app.get("/health")
