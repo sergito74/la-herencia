@@ -50,9 +50,24 @@ def test_adjunto_que_falla_no_adelanta_la_marca(repo_sim, monkeypatch, sin_cuent
     def falla(*a):
         raise RuntimeError("PDF dañado")
     monkeypatch.setattr(rutina, "procesar_adjunto", falla)
+    monkeypatch.setattr(rutina, "sin_procesar", falla)
     rutina.correr()
     assert "Outlook" not in repo_sim.marcas
     assert repo_sim.corridas[-1]["estado"] == "con_problemas"
+
+
+def test_adjunto_ilegible_queda_pendiente_y_la_marca_avanza(repo_sim, monkeypatch, sin_cuentas):
+    ultimo = datetime(2026, 10, 28, 12)
+    monkeypatch.setattr(mails, "nuevos", lambda marca_de, ahora: iter([_almacen("Outlook", 1, ultimo)]))
+
+    def falla(*a):
+        raise RuntimeError("PDF dañado")
+    monkeypatch.setattr(rutina, "procesar_adjunto", falla)
+    monkeypatch.setattr(rutina, "_guardar", lambda carpeta, nombre, contenido, sha: str(carpeta / nombre))
+    rutina.correr()
+    assert repo_sim.marcas["Outlook"] == ultimo
+    (doc,) = repo_sim.docs.values()
+    assert doc["modulo"] == "sin_clasificar" and doc["motivo"].startswith("Documento pendiente de procesamiento")
 
 
 def test_outlook_caido_no_corta_la_rutina(repo_sim, monkeypatch, sin_cuentas):

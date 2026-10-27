@@ -12,13 +12,17 @@ from __future__ import annotations
 import io
 import re
 from dataclasses import dataclass, field
-from datetime import date
+from datetime import date, timedelta
 from decimal import Decimal
 from pathlib import Path
 
 from src.features.descarga_peajes.portales import COMPRAS, carpeta_ejercicio
 
 GIAMIGLI = "30712114602"
+# Comprobantes a nombre de Sergio que son gastos de Giamigli (ej. Starlink mensual): se cargan normalmente (27/10/2026).
+SERGIO = "23238598109"
+# Ganadera San Justo: no se registra ni se guarda nada suyo (Sergio, 27/10/2026), aunque nombre a Giamigli.
+SAN_JUSTO = "30715943278"
 DROPBOX = COMPRAS.parent
 BANCOS = DROPBOX / "Bancos"
 IMPUESTOS = DROPBOX / "Impuestos"
@@ -125,13 +129,19 @@ MODULO = {
 }
 
 
+def es_de_san_justo(texto: str) -> bool:
+    return SAN_JUSTO in cuits(texto) or "SAN JUSTO" in texto.upper()
+
+
 def receptor(texto: str, cuit_emisor: str | None) -> str:
     """`giamigli` (Giamigli, la Sucesión —etapa previa de Giamigli— o sin receptor visible), `persona` (a nombre
-    de una persona: un socio que pagó un gasto de la empresa, ej. Starlink; se avisa para confirmar) u `otra`
-    (otra sociedad, ej. Ganadera San Justo: se ignora)."""
+    de otra persona: se avisa para confirmar) u `otra` (otra sociedad, ej. Ganadera San Justo: no se registra ni
+    se guarda). Lo que está a nombre de Sergio es gasto de Giamigli y se carga normalmente."""
     t = texto.upper()
+    if es_de_san_justo(texto):
+        return "otra"
     otros = [c for c in cuits(texto) if c != cuit_emisor]
-    if GIAMIGLI in otros or "GIAMIGLI" in t or "SUCESI" in t or not otros:
+    if GIAMIGLI in otros or SERGIO in otros or "GIAMIGLI" in t or "SUCESI" in t or not otros:
         return "giamigli"
     return "persona" if any(c[:2] in ("20", "23", "24", "27") for c in otros) else "otra"
 
@@ -166,6 +176,27 @@ def fecha_de(texto: str) -> date | None:
         if 2000 <= f.year <= date.today().year + 1:
             return f
     return None
+
+
+def fecha_mas_reciente(texto: str) -> date | None:
+    """En los resúmenes la fecha que manda es el cierre: la más reciente del texto (sin pasar el mes próximo)."""
+    limite = date.today().replace(day=1) + timedelta(days=62)
+    fechas = []
+    for d, m, a in _FECHA.findall(texto):
+        try:
+            f = date(int(a), int(m), int(d))
+        except ValueError:
+            continue
+        if 2000 <= f.year and f <= limite:
+            fechas.append(f)
+    for d, m, a in re.findall(r"\b(\d{2})-(Ene|Feb|Mar|Abr|May|Jun|Jul|Ago|Sep|Oct|Nov|Dic)-(\d{2})\b", texto):
+        f = date(2000 + int(a), _MESES.index(m) + 1, int(d))
+        if f <= limite:
+            fechas.append(f)
+    return max(fechas) if fechas else None
+
+
+_MESES = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"]
 
 
 def numero_de(texto: str) -> str | None:
@@ -204,6 +235,10 @@ def clasificar(texto: str, buscar_contacto=None) -> Clasificacion:
     if destinatario == "persona":
         c.motivo = "Está a nombre de una persona: confirmar si es un gasto de Giamigli"
     if tipo in ("resumen_banco", "resumen_tarjeta"):
+        from src.features.documentos_nuevos.lectores import visa_galicia
+
+        visa = visa_galicia.leer(texto) if visa_galicia.es_visa_galicia(texto) else None
+        c.fecha = visa["cierre"].date() if visa else (fecha_mas_reciente(texto) or c.fecha)
         c.banco, c.producto = banco_y_producto(texto)
         if not c.banco:
             c.modulo, c.motivo = "sin_clasificar", "No se reconoce el banco del resumen"
@@ -217,7 +252,9 @@ def clasificar(texto: str, buscar_contacto=None) -> Clasificacion:
         encontrado = por_nombre(texto)
         if encontrado:
             c.id_contacto, c.contacto = encontrado
-    if not c.id_contacto:
+    if tipo == "otro":
+        c.motivo = "Documento pendiente de procesamiento: indicar a qué módulo va"
+    elif not c.id_contacto:
         c.motivo = "Emisor nuevo: darlo de alta en Contactos y cargar a mano"
     return c
 

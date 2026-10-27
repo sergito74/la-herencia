@@ -4,6 +4,9 @@ Un lector se registra por (tipo, emisor) y solo si ya fue probado contra cargas 
 automática tiene que imputar igual y cerrar al centavo. Se reusan los lectores de la bóveda (042), que cargan con
 `boveda.carga.cargar`. Todo lo que no tiene lector queda "para cargar a mano".
 
+Resúmenes de tarjeta: Visa Galicia (`visa_galicia`), validado contra los 26 resúmenes cargados a mano que cierran
+al centavo. Los demás resúmenes se guardan y se avisan en Tesorería para importarlos a mano.
+
 Allianz no está: su número de comprobante (póliza y endoso) sale del portal, no del PDF; llega por la bóveda.
 """
 
@@ -32,3 +35,12 @@ def cargar(tipo: str, id_contacto: int, proveedor: str, numero: str | None, fech
     doc = DocumentoPortal(clave=f"mail:{ruta}", fecha=fecha, tipo=tipo, proveedor=proveedor, bajar=lambda: pdf,
                           numero=numero, id_contacto=id_contacto)
     return carga.cargar(conector, doc, pdf, ruta)
+
+
+def cargar_resumen(texto: str, pdf: bytes, ruta: str) -> dict | None:
+    """Resumen de banco o tarjeta con lector probado; `None` si no hay lector para ese resumen."""
+    from src.features.documentos_nuevos.lectores import visa_galicia
+
+    if visa_galicia.es_visa_galicia(texto):
+        return visa_galicia.cargar(pdf, ruta)
+    return None

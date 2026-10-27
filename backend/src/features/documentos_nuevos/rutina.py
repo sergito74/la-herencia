@@ -118,17 +118,21 @@ def procesar_adjunto(id_corrida: int | None, mail: mails.Mail, adj: mails.Adjunt
         id_registro = boveda.compra_existente(c.id_contacto, c.numero, ruta)
         if id_registro:
             estado, motivo = "ya_estaba", None
-    if estado == "para_cargar" and c.id_contacto:
-        r = lectores.cargar(c.tipo, c.id_contacto, c.contacto or "", c.numero, c.fecha, adj.contenido, ruta)
-        if r is not None:
-            if r["estadoCarga"] == "cargado_auto":
-                estado, motivo, id_registro = "cargado_solo", None, r["idCompra"]
-            elif r["estadoCarga"] == "ya_cargado":
-                estado, motivo, id_registro = "ya_estaba", None, r["idCompra"]
-            else:
-                motivo = r["motivo"]
-        elif c.tipo in ("resumen_banco", "resumen_tarjeta"):
+    r = None
+    if estado == "para_cargar" and c.tipo in ("resumen_banco", "resumen_tarjeta"):
+        r = lectores.cargar_resumen(texto, adj.contenido, ruta)
+        if r is None:
             motivo = "Importar el resumen desde Tesorería"
+    elif estado == "para_cargar" and c.id_contacto:
+        r = lectores.cargar(c.tipo, c.id_contacto, c.contacto or "", c.numero, c.fecha, adj.contenido, ruta)
+    if r is not None:
+        registro = r.get("idRegistro") or r.get("idCompra")
+        if r["estadoCarga"] == "cargado_auto":
+            estado, motivo, id_registro = "cargado_solo", None, registro
+        elif r["estadoCarga"] == "ya_cargado":
+            estado, motivo, id_registro = "ya_estaba", None, registro
+        else:
+            motivo = r["motivo"]
     if estado == "para_cargar" and not motivo:
         motivo = ("Importar el resumen desde Tesorería" if c.modulo == "tesoreria"
                   else "Revisar el documento guardado" if c.tipo in ("contrato", "resumen_proveedor")
@@ -140,6 +144,22 @@ def procesar_adjunto(id_corrida: int | None, mail: mails.Mail, adj: mails.Adjunt
         "estado": estado, "motivo": motivo, "idRegistro": id_registro,
     })
     return estado
+
+
+def sin_procesar(id_corrida: int | None, mail: mails.Mail, adj: mails.Adjunto) -> str | None:
+    """Adjunto que no se pudo leer: se guarda en Compras del ejercicio y queda "sin clasificar" con aviso."""
+    sha = hashlib.sha256(adj.contenido).hexdigest()
+    if repository.adjunto_procesado(mail.entry_id, sha) or repository.existente(sha):
+        return None
+    carpeta = clasificador.COMPRAS / clasificador.carpeta_ejercicio(mail.recibido.date()).name
+    ruta = _guardar(carpeta, f"{mail.recibido:%Y%m%d}_{Path(adj.nombre).name}", adj.contenido, sha)
+    repository.registrar_documento({
+        "idRutinaCorrida": id_corrida, "origen": "mail", "mailEntryId": mail.entry_id, "mailRemitente": mail.remitente,
+        "mailAsunto": mail.asunto, "mailRecibido": mail.recibido, "sha256": sha, "ruta": ruta, "tipo": "otro",
+        "modulo": "sin_clasificar", "estado": "para_cargar",
+        "motivo": "Documento pendiente de procesamiento: no se pudo leer el archivo",
+    })
+    return "para_cargar"
 
 
 def _mails(id_corrida: int, r: dict, problemas: list[str], ahora: datetime) -> None:
@@ -156,8 +176,12 @@ def _mails(id_corrida: int, r: dict, problemas: list[str], ahora: datetime) -> N
                         estado = procesar_adjunto(id_corrida, mail, adj)
                     except Exception:
                         log.exception("Rutina: falló el adjunto %s del mail %s", adj.nombre, mail.asunto)
-                        completo = False
-                        continue
+                        try:  # un archivo que falla siempre no traba el almacén: queda pendiente de procesamiento
+                            estado = sin_procesar(id_corrida, mail, adj)
+                        except Exception:
+                            log.exception("Rutina: no se pudo registrar el adjunto %s", adj.nombre)
+                            completo = False
+                            continue
                     if estado in ("cargado_solo", "para_cargar"):
                         r["documentosNuevos"] += 1
                         r["cargadosSolos"] += estado == "cargado_solo"

@@ -494,6 +494,30 @@ def compra_existente(id_contacto: int | None, numero: str | None, ruta: str | No
     return fila["id"] if fila else None
 
 
+def venta_hacienda_existente(numero: str | None, fecha=None) -> dict | None:
+    """Liquidación de hacienda ya cargada a mano en Ventas (043): mismo número de comprobante, normalizado a
+    `PPPP-NNNNNNNN` ("11-82156" = "0011-00082156"). Devuelve `{idVenta, ruta}`."""
+    import re
+
+    m = re.fullmatch(r"\s*(\d{1,5})\s*-\s*(\d{1,8})\s*", numero or "")
+    if not m:
+        return None
+    normal = f"{int(m.group(1)):04d}-{int(m.group(2)):08d}"
+    # Mismo número y, si se conoce, fecha cercana: el número solo podría repetirse entre consignatarios.
+    rango = "AND ABS(DATEDIFF(day, Fecha, ?)) <= 30 " if fecha else ""
+    fila = fetch_one("SELECT TOP 1 IdVenta AS idVenta, [Documento Original] AS d FROM dbo.[Venta Hacienda] "
+                     f"WHERE REPLACE([Nro documento], ' ', '') = ? {rango}ORDER BY IdVenta",
+                     (normal, fecha) if fecha else (normal,))
+    if not fila:
+        return None
+    ruta = (fila["d"] or "").split("#")[0].strip('"') or None
+    if ruta and ruta.startswith(".."):  # rutas heredadas de Access, relativas a Documents
+        from pathlib import Path
+
+        ruta = str(Path.home() / re.sub(r"^(\.\.[\\/])+", "", ruta))
+    return {"idVenta": fila["idVenta"], "ruta": ruta}
+
+
 def documento_original(id_compra: int) -> str | None:
     fila = fetch_one("SELECT [Documento Original] AS r FROM dbo.Compras WHERE IdDeuda = ?", (id_compra,))
     return (fila["r"] or "").split("#")[0] or None if fila else None

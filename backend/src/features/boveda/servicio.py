@@ -202,8 +202,10 @@ def _procesar(portal: dict, conector, cred: Credencial, id_corrida: int) -> dict
                 sha = hashlib.sha256(contenido).hexdigest()
                 fecha = doc.fecha or date.today()
                 carpeta = _carpeta(doc.tipo, fecha)
+                venta = repository.venta_hacienda_existente(doc.numero, doc.fecha) if doc.tipo == "liquidacion" else None
+                ruta_venta = venta["ruta"] if venta and venta["ruta"] and Path(venta["ruta"]).exists() else None
                 ruta_igual = (repository.existe_sha(sha) or _archivo_igual(carpeta, sha, indice)
-                              or _archivo_de_compra(doc))
+                              or _archivo_de_compra(doc) or ruta_venta)
                 if ruta_igual:
                     ruta = ruta_igual
                 else:
@@ -211,7 +213,11 @@ def _procesar(portal: dict, conector, cred: Credencial, id_corrida: int) -> dict
                     destino.parent.mkdir(parents=True, exist_ok=True)
                     destino.write_bytes(contenido)
                     ruta = str(destino)
-                r = carga.cargar(conector, doc, contenido, ruta)
+                if venta:  # liquidación ya cargada a mano en Ventas: se vincula, sin aviso (043)
+                    r = {"estadoCarga": "ya_cargado", "motivo": None, "idCompra": None, "idRegistro": venta["idVenta"],
+                         "numeroDocumento": doc.numero, "totalImpreso": doc.total}
+                else:
+                    r = carga.cargar(conector, doc, contenido, ruta)
                 fila = {
                     "idPortal": portal["idPortal"], "clave": doc.clave, "tipo": doc.tipo, "proveedor": doc.proveedor,
                     "idContacto": doc.id_contacto, "fecha": doc.fecha, "moneda": doc.moneda, "ruta": ruta,

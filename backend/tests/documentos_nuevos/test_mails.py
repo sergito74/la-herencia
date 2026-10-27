@@ -56,3 +56,11 @@ def test_sin_mails_nuevos_la_marca_no_retrocede():
     marca = datetime(2026, 10, 28, 7, 0)
     a = mails._leer_almacen(_Store([_Mail(datetime(2026, 10, 27))]), lambda n: marca, datetime(2026, 10, 28, 14))
     assert a.ultimo == marca
+
+
+def test_con_tope_la_marca_queda_en_el_ultimo_procesado(monkeypatch):
+    monkeypatch.setattr(mails, "MAXIMO_POR_ALMACEN", 2)
+    marca = datetime(2026, 10, 28, 7, 0)
+    store = _Store([_Mail(datetime(2026, 10, 28, h, 0)) for h in (8, 9, 10, 11)])
+    a = mails._leer_almacen(store, lambda n: marca, datetime(2026, 10, 28, 14))
+    assert a.ultimo == datetime(2026, 10, 28, 9, 0)  # 10 y 11 quedan para la próxima corrida

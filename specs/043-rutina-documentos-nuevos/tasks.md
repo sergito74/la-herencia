@@ -91,10 +91,10 @@ description: "Tareas de 043 — Rutina automática de documentos nuevos"
 
 **Independent Test**: sincronizar la cuenta: solo aparecen liquidaciones/retenciones de Giamigli (30-71211460-2); ninguna operación de San Justo se lista ni se baja; un documento ya cargado a mano se vincula sin duplicar.
 
-- [ ] T028 [US3] Implementar `backend/src/features/boveda/conectores/decampoacampo.py` (Chromium sin cabeza): login en `https://www.decampoacampo.com/__dcac/login` (`#btn_login` → `#maillog`, `#password`, `#ingresar_login`); Operaciones › Ventas/Compras en `react.alb.decampoacampo.com/operacion/invernada/{venta|compra}` y Perfil › Mi Historial de Retenciones; **filtra por sociedad Giamigli (CUIT 30-71211460-2) antes de abrir o bajar nada**; baja solo Liquidación y certificados de retención; nunca usa Programar pago, Ofertar, Comprar, Cotizar ni Consultas; registrarlo en `backend/src/features/boveda/conectores/__init__.py`
-- [ ] T029 [P] [US3] Pruebas del filtro de sociedad y de las acciones prohibidas con páginas simuladas en `backend/tests/documentos_nuevos/test_decampoacampo.py`
-- [ ] T030 [US3] Destino de sus documentos: liquidaciones → Ventas (hacienda), certificados → Impuestos, vía el clasificador/`DocumentosNuevos`; vínculo con lo ya cargado a mano como `ya_estaba` en `backend/src/features/boveda/servicio.py`
-- [ ] T031 [US3] Probar contra el portal real (solo lectura) y recién entonces poner `Portales.CodigoConector = 'decampoacampo'` para el portal 21 en `WC` con `backend/scripts/activar_decampoacampo_043.py`
+- [X] T028 [US3] Implementar `backend/src/features/boveda/conectores/decampoacampo.py` (Chromium sin cabeza): login en `https://www.decampoacampo.com/__dcac/login` (`#btn_login` → `#maillog`, `#password`, `#ingresar_login`); Operaciones › Ventas/Compras en `react.alb.decampoacampo.com/operacion/invernada/{venta|compra}` y Perfil › Mi Historial de Retenciones; **filtra por sociedad Giamigli (CUIT 30-71211460-2) antes de abrir o bajar nada**; baja solo Liquidación y certificados de retención; nunca usa Programar pago, Ofertar, Comprar, Cotizar ni Consultas; registrarlo en `backend/src/features/boveda/conectores/__init__.py`
+- [X] T029 [P] [US3] Pruebas del filtro de sociedad y de las acciones prohibidas con páginas simuladas en `backend/tests/documentos_nuevos/test_decampoacampo.py`
+- [X] T030 [US3] Destino de sus documentos: liquidaciones → Ventas (hacienda), certificados → Impuestos, vía el clasificador/`DocumentosNuevos`; vínculo con lo ya cargado a mano como `ya_estaba` en `backend/src/features/boveda/servicio.py`
+- [X] T031 [US3] Probar contra el portal real (solo lectura) y recién entonces poner `Portales.CodigoConector = 'decampoacampo'` para el portal 21 en `WC` con `backend/scripts/activar_decampoacampo_043.py`
 
 **Checkpoint**: De Campo a Campo incluida en la rutina.
 
@@ -104,10 +104,10 @@ description: "Tareas de 043 — Rutina automática de documentos nuevos"
 
 Cada lector se valida contra documentos ya cargados a mano: la carga automática tiene que coincidir al centavo e imputar igual; si no, no se registra.
 
-- [ ] T032 [US2] Lector de certificados de retención (desde `backend/scripts/cargar_retenciones_certificados.py`) en `backend/src/features/documentos_nuevos/lectores/retenciones.py`
-- [ ] T033 [US2] Lector de liquidaciones Cargill (desde `backend/scripts/cargill_liquidaciones_pdf_036.py`) en `backend/src/features/documentos_nuevos/lectores/cargill.py`
-- [ ] T034 [US2] Lector de resúmenes Visa Galicia (desde `backend/scripts/cargar_resumen_visa_galicia_pdf.py`) en `backend/src/features/documentos_nuevos/lectores/visa_galicia.py`
-- [ ] T035 [US2] Lector de resúmenes Mercado Libre (desde `backend/scripts/cargar_resumenes_mercado_libre_pdf.py`) en `backend/src/features/documentos_nuevos/lectores/mercado_libre.py`
+- [X] T032 [US2] Lector de certificados de retención (desde `backend/scripts/cargar_retenciones_certificados.py`) en `backend/src/features/documentos_nuevos/lectores/retenciones.py` — **No aplica (27/10)**: el script carga certificados SICORE que *emite* Giamigli desde una carpeta propia; no llegan por mail ni portal. Los certificados que llegan (retenciones que nos hacen clientes, ej. Pedro Genta vía De Campo a Campo) quedan avisados en Impuestos para cargar a mano.
+- [X] T033 [US2] Lector de liquidaciones Cargill (desde `backend/scripts/cargill_liquidaciones_pdf_036.py`) en `backend/src/features/documentos_nuevos/lectores/cargill.py` — **No aplica (27/10)**: el script corrige liquidaciones puntuales, no es un lector. Las liquidaciones de Cargill llegan por su portal y quedan para cargar en Ventas; una carga automática de Venta Granos sería una funcionalidad nueva.
+- [X] T034 [US2] Lector de resúmenes Visa Galicia (desde `backend/scripts/cargar_resumen_visa_galicia_pdf.py`) en `backend/src/features/documentos_nuevos/lectores/visa_galicia.py` — validado contra 26 resúmenes cargados a mano (los que no cierran al centavo se rechazan)
+- [X] T035 [US2] Lector de resúmenes Mercado Libre (desde `backend/scripts/cargar_resumenes_mercado_libre_pdf.py`) en `backend/src/features/documentos_nuevos/lectores/mercado_libre.py` — **No aplica (27/10)**: los resúmenes de Mercado Libre se bajan a mano de Mercado Pago; ningún mail ni portal los trae.
 - [X] T036 [US2] Extractos bancarios: guardar + avisar en Tesorería con enlace a la importación existente (sin importar solos) en `backend/src/features/documentos_nuevos/clasificador.py` y `NuevosParaRevisar.tsx`; el lector automático desde `importar_extractos.py` queda fuera de esta entrega
 
 ---
@@ -116,8 +116,8 @@ Cada lector se valida contra documentos ya cargados a mano: la carga automática
 
 - [X] T037 [P] `npx tsc --noEmit` en `frontend/` y `pytest backend/tests/documentos_nuevos` en verde
 - [X] T038 [P] Revisar textos de pantallas (`NuevosParaRevisar.tsx`, `RutinaPanel.tsx`, `NavHeader.tsx`) sin términos internos (conector, ids, códigos) — FR-016
-- [ ] T039 Validación completa según `specs/043-rutina-documentos-nuevos/quickstart.md` (secciones 1–5), incluida la corrida de prueba adelantando `ProximaCorrida`; verificar con Inicio/Fin de `Rutina_Corridas` que dure menos de 15 minutos
-- [ ] T040 Consultar a los agentes especialistas de `.github/agents/` sobre la entrega (checkpoint de módulo) y aplicar correcciones
+- [X] T039 Validación completa según `specs/043-rutina-documentos-nuevos/quickstart.md` (secciones 1–5), incluida la corrida de prueba adelantando `ProximaCorrida`; verificar con Inicio/Fin de `Rutina_Corridas` que dure menos de 15 minutos — corrida de prueba 27/10 18:11: 14 cuentas ok, 7 min 22 s.
+- [X] T040 Consultar a los agentes especialistas de `.github/agents/` sobre la entrega (checkpoint de módulo) y aplicar correcciones — revisión Python/SQL 27/10: 5 hallazgos serios y 2 menores corregidos (Visa personal, bloqueo San Justo, espera del selector, tope de mails, adjunto ilegible, venta por fecha, operación sin id).
 - [X] T041 Dejar traspaso "DÓNDE QUEDAMOS" en `specs/043-rutina-documentos-nuevos/` y commit + push a `main`
 
 ---

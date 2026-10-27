@@ -73,17 +73,21 @@ def _leer_almacen(store, marca_de, ahora: datetime) -> Almacen:
         return Almacen(nombre, None, [], ahora)
     items = store.GetDefaultFolder(BANDEJA_ENTRADA).Items
     items.Sort("[ReceivedTime]", True)
-    mails, ultimo = [], marca
-    for i, m in enumerate(items):
-        if i >= MAXIMO_POR_ALMACEN:
-            break
+    nuevos_ = []  # todos los posteriores a la marca, del más nuevo al más viejo
+    for m in items:
         try:
             recibido = m.ReceivedTime.replace(tzinfo=None)  # pywin32 rotula UTC la hora local de Outlook
         except Exception:
             continue  # no es un mail (invitación, aviso de lectura)
         if recibido <= marca:
             break
-        ultimo = max(ultimo, recibido)
+        nuevos_.append((recibido, m))
+    # Del más viejo al más nuevo y con tope por corrida: la marca queda en el último procesado, así lo que
+    # exceda el tope se toma en la corrida siguiente y nunca se saltea un mail (SC-006).
+    nuevos_.sort(key=lambda x: x[0])
+    mails, ultimo = [], marca
+    for recibido, m in nuevos_[:MAXIMO_POR_ALMACEN]:
+        ultimo = recibido
         adjuntos = list(_adjuntos(m))
         if adjuntos:
             mails.append(Mail(m.EntryID, _remitente(m), m.Subject or "", recibido, adjuntos))

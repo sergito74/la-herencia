@@ -44,14 +44,15 @@ def desde_portal(id_portal: int, id_documento_portal: int, tipo_portal: str, d: 
     estado = ESTADO_PORTAL.get(d["estadoCarga"], "para_cargar")
     motivo = d.get("motivo")
     if estado == "para_cargar" and not motivo:
-        motivo = "Revisar y cargar a mano"
+        motivo = ("Documento pendiente de procesamiento: indicar a qué módulo va" if modulo == "sin_clasificar"
+                  else "Revisar y cargar a mano")
     try:
         _, nuevo = repository.registrar_documento({
             "idRutinaCorrida": corrida_actual(), "origen": "portal", "idPortal": id_portal,
             "idDocumentoPortal": id_documento_portal, "sha256": d["sha256"], "ruta": d["ruta"], "tipo": tipo,
             "modulo": modulo, "idContacto": d.get("idContacto"), "fecha": d.get("fecha"),
             "numero": d.get("numeroDocumento"), "total": d.get("totalImpreso"), "estado": estado, "motivo": motivo,
-            "idRegistro": d.get("idCompra"),
+            "idRegistro": d.get("idRegistro") or d.get("idCompra"),
         })
     except Exception:
         log.exception("Documentos nuevos: no se pudo registrar el documento de portal %s", id_documento_portal)

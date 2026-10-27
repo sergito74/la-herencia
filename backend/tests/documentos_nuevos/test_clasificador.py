@@ -80,3 +80,42 @@ def test_boleta_de_patente_y_ticket():
 def test_numerado_sin_leyenda_queda_sin_clasificar():
     r = c.clasificar("N 0011 - 00000144 ERNESTO HERNANDEZ CUIT 20-08614788-3", None)
     assert (r.comprobante, r.tipo, r.modulo) == (True, "otro", "sin_clasificar")
+
+
+def test_starlink_a_nombre_de_sergio_es_de_giamigli():
+    texto = FACTURA.replace("GIAMIGLI DE BOLIVAR SA  CUIT 30-71211460-2", "GIAMBERARDINI SERGIO GABRIEL CUIT:23238598109")
+    r = c.clasificar(texto, _contacto)
+    assert r.para_giamigli and r.motivo is None
+
+
+def test_sin_clasificar_avisa_pendiente_de_procesamiento():
+    r = c.clasificar("N 0011 - 00000144 ERNESTO HERNANDEZ CUIT 20-08614788-3", None)
+    assert r.motivo.startswith("Documento pendiente de procesamiento")
+
+
+def test_lector_visa_galicia_lee_y_cierra():
+    from src.features.documentos_nuevos.lectores import visa_galicia as v
+
+    texto = """Banco Galicia GIAMIGLI DE BOLIVAR SA Resumen Nº VI00000000007822346
+01-Sep-26 25-Sep-26 01-Oct-26 13-Oct-26
+27-08-26 * MERPAGO*PINTESPANA 123456 404.306,00
+02-09-26 K Starlink 07/12 654321 65.000,00
+IMPUESTO DE SELLOS $ 1.000,00
+TOTAL A PAGAR 470.306,00"""
+    r = v.leer(texto)
+    assert r["codigo"] == "VI00000000007822346" and len(r["lineas"]) == 2
+    assert r["lineas"][1]["cuota"] == "07/12" and v.contacto_de(r["lineas"][1]["detalle"]) == 567
+    assert v.total_calculado(r) == r["totalPagar"]
+
+
+def test_san_justo_bloqueado_aunque_nombre_a_giamigli():
+    texto = FACTURA.replace("Cliente: GIAMIGLI DE BOLIVAR SA  CUIT 30-71211460-2",
+                            "Cliente: GANADERA SAN JUSTO CUIT 30-71594327-8 (adm. por Giamigli)")
+    assert not c.clasificar(texto, _contacto).para_giamigli
+
+
+def test_visa_personal_no_es_de_la_empresa():
+    from src.features.documentos_nuevos.lectores import visa_galicia as v
+
+    assert not v.es_visa_galicia("Banco Galicia Resumen Nº VI0000001 Titular PEREZ JUAN")
+    assert v.es_visa_galicia("Banco Galicia Resumen Nº VI0000001 GIAMIGLI DE BOLIVAR SA")
