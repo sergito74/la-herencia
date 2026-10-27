@@ -31,7 +31,7 @@ def _fecha_hora(valor) -> str:
 
 def _enlace(d: dict) -> str | None:
     if d["modulo"] == "compras" and d["idRegistro"]:
-        return f"/compras/{d['idRegistro']}"
+        return f"/compras/{d['idRegistro']}/editar"
     if d["modulo"] == "impuestos" and d["idRegistro"]:
         return f"/finanzas/impuestos/{d['idRegistro']}"
     if d["modulo"] == "cuentas_corrientes" and d["idContacto"]:

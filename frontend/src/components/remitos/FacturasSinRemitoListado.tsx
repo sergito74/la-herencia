@@ -32,7 +32,7 @@ export function FacturasSinRemitoListado() {
       key: "doc",
       header: "Factura",
       render: (f) => (
-        <Link className="text-finance underline" href={`/compras/${f.idCompra}`}>
+        <Link className="text-finance underline" href={`/compras/${f.idCompra}/editar`}>
           {f.tipoDocumento} {f.numeroDocumento}
         </Link>
       ),

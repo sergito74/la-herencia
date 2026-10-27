@@ -196,7 +196,7 @@ export function RemitoDetalleView({ idRemito }: { idRemito: number }) {
           <ul className="mt-1 space-y-1 text-xs">
             {data.facturas.map((f) => (
               <li key={f.idCompra} className="flex items-center gap-2">
-                <Link className="text-finance underline" href={`/compras/${f.idCompra}`}>
+                <Link className="text-finance underline" href={`/compras/${f.idCompra}/editar`}>
                   {f.tipoDocumento} {f.numeroDocumento}
                 </Link>
                 <span className="text-ink-secondary">{formatFecha(f.fecha)}</span>

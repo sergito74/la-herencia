@@ -75,7 +75,7 @@ export function DocumentosTabla({ documentos, vacio, conPortal = false }: { docu
                   </a>
                 )}
                 {d.idCompra ? (
-                  <Link href={`/compras/${d.idCompra}`} className="text-finance hover:underline">
+                  <Link href={`/compras/${d.idCompra}/editar`} className="text-finance hover:underline">
                     Ver compra
                   </Link>
                 ) : (

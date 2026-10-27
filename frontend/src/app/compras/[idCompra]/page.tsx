@@ -1,31 +1,6 @@
-import Link from "next/link";
+import { redirect } from "next/navigation";
 
-import { DetalleCompra } from "@/components/compras/DetalleCompra";
-
-export const metadata = {
-  title: "Detalle de compra",
-};
-
-export default function CompraDetallePage({
-  params,
-}: {
-  params: { idCompra: string };
-}) {
-  const idCompra = Number(params.idCompra);
-
-  return (
-    <main className="mx-auto max-w-none px-8 py-6">
-      <Link className="text-sm text-finance underline" href="/compras">
-        ← Volver al listado
-      </Link>
-      <h1 className="mt-2 text-2xl font-semibold">Detalle de compra</h1>
-      <div className="mt-6">
-        {Number.isFinite(idCompra) ? (
-          <DetalleCompra idCompra={idCompra} />
-        ) : (
-          <p className="text-status-danger">Identificador de compra inválido.</p>
-        )}
-      </div>
-    </main>
-  );
+/** Una compra se ve y se corrige siempre en el formulario de carga y edición (pedido de Sergio, 27/10/2026). */
+export default function CompraPage({ params }: { params: { idCompra: string } }) {
+  redirect(`/compras/${params.idCompra}/editar`);
 }
