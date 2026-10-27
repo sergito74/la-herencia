@@ -103,7 +103,7 @@ La cuenta de De Campo a Campo baja sola sus documentos (liquidaciones de remates
 - **FR-005**: La rutina MUST cargar en el módulo correspondiente los documentos que el sistema sabe leer, con la misma imputación que su carga manual habitual, y solo si cierran al centavo contra el total impreso.
 - **FR-006**: Los documentos que el sistema no sabe leer o que no cierran MUST quedar registrados como "para cargar a mano", con el archivo y el motivo en palabras simples.
 - **FR-006b**: Si el emisor de un comprobante no está registrado en el sistema, la rutina MUST dejarlo "para cargar a mano" indicando que el emisor es nuevo; la rutina nunca da de alta contactos.
-- **FR-007**: El sistema MUST mostrar en cada menú (Compras, Impuestos, Ventas y los que correspondan) la cantidad de documentos nuevos sin revisar de ese módulo.
+- **FR-007**: El sistema MUST mostrar en cada menú (Compras —incluye los sin clasificar—, Impuestos y retenciones, Ventas, Tesorería y Cuentas corrientes) la cantidad de documentos nuevos sin revisar de ese módulo.
 - **FR-008**: Al hacer clic en el aviso, el sistema MUST llevar al módulo con la vista "Nuevos para revisar", mostrando el documento cargado (datos, renglones, imputación y archivo original).
 - **FR-009**: Los usuarios MUST poder marcar un documento como revisado; al hacerlo deja de contarse en el aviso. Queda registrado quién y cuándo lo revisó.
 - **FR-010**: Los usuarios MUST poder corregir un documento nuevo desde la vista de revisión con las mismas herramientas del módulo.

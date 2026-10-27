@@ -37,7 +37,7 @@ Marca de lectura por almacén de Outlook.
 | Almacen | nvarchar(200) PK | nombre visible del almacén |
 | UltimoRecibido | datetime2(0) | ReceivedTime del último mail procesado en una corrida completada |
 
-La marca se adelanta solo al cerrar bien la corrida (si falla, la próxima reintenta desde la marca anterior; la deduplicación por adjunto evita dobles).
+La marca de cada almacén se adelanta cuando **la lectura de mails de ese almacén** terminó bien, aunque alguna cuenta de portal haya fallado (`con_problemas`). Si la lectura del almacén falla (Outlook caído, error al procesar), la marca no se mueve y la próxima corrida reintenta desde la anterior; la deduplicación por adjunto evita dobles.
 
 ## DocumentosNuevos
 
@@ -65,12 +65,16 @@ Lo que entró por portal o mail, con su aviso y revisión.
 | IdRegistro | int NULL | id del registro creado/vinculado en su módulo (IdDeuda en Compras, etc.) |
 | Revisado | datetime2(0) NULL | |
 | RevisadoPor | nvarchar(60) NULL | |
+| ModuloAnterior | nvarchar(30) NULL | módulo antes del último cambio manual |
+| ModuloCambiado | datetime2(0) NULL | |
+| ModuloCambiadoPor | nvarchar(60) NULL | |
 | Creado | datetime2(0) default SYSDATETIME() | |
 
 Reglas:
 - Cuenta en el aviso: `Estado IN ('cargado_solo','para_cargar') AND Revisado IS NULL`.
 - Un `para_cargar` que después se carga a mano conserva su estado, recibe `IdRegistro` y sigue esperando "Revisado" (la revisión es explícita).
-- Cambiar el módulo de un `sin_clasificar` lo mueve de aviso; queda auditado.
+- Cambiar el módulo de un `sin_clasificar` lo mueve de aviso; queda auditado en `ModuloAnterior`/`ModuloCambiado`/`ModuloCambiadoPor`.
+- El menú de Compras muestra compras + sin clasificar (lo sin clasificar se revisa desde Compras con su filtro).
 - `ya_estaba`: el documento ya existía en el sistema; se registra para no reprocesarlo pero no avisa.
 
 ## Cambios a tablas existentes

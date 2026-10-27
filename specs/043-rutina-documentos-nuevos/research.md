@@ -13,7 +13,7 @@ Relevamiento del 27/10/2026 sobre el código actual (`backend/src/features/boved
 
 - **Decisión**: Outlook por COM, solo lectura (`boveda/mails.py` ya lo usa para los códigos de Allianz). Se recorren las bandejas de entrada de todos los almacenes (Outlook, La Herencia, Alquileres, Sucesion, Varios, …) y se toman solo los mails con `ReceivedTime` **posterior a la marca de la última corrida completada** de cada almacén. Cada adjunto procesado se registra por `EntryID` del mail + SHA-256 del adjunto, así no se vuelve a procesar. La primera corrida fija la marca en el momento de activación (no barre historia).
 - **Filtro de adjuntos**: PDF (y XML de comprobante si aparece). Se descarta lo que no sea comprobante (Clarification 1): factura, nota de crédito/débito, boleta, liquidación, recibo, resumen de cuenta, contrato de venta de granos.
-- **Receptor**: se carga solo lo dirigido a Giamigli de Bolívar SA (CUIT 30-71211460-2, cuando el comprobante lo indica). Los almacenes Alquileres/Sucesion y comprobantes a nombre de otras sociedades o personas no se cargan en el sistema: ver *Pendiente P1*.
+- **Receptor**: se carga solo lo dirigido a Giamigli de Bolívar SA (CUIT 30-71211460-2, cuando el comprobante lo indica) o a la Sucesión (etapa previa de Giamigli). Los almacenes Alquileres/Sucesion y comprobantes a nombre de otras sociedades o personas no se cargan en el sistema: ver *Pendiente P1*.
 - **Razón**: Sergio pidió "todo mail, pero que sea nuevo"; la marca por almacén evita la barrida completa. Ningún mail se marca, mueve ni borra (regla de oro).
 - **Alternativas**: IMAP/Gmail API (requiere credenciales y alta nueva, descartado); marcar mails como leídos (prohibido).
 
@@ -61,5 +61,5 @@ Relevamiento del 27/10/2026 sobre el código actual (`backend/src/features/boved
 
 ## Pendientes para Sergio (no bloquean el plan; se resuelven antes de la tarea correspondiente)
 
-- **P1**: comprobantes que llegan a nombre de otras sociedades o personas (Ganadera San Justo, Sucesión, socios, Alquileres): ¿se ignoran o se guardan en alguna carpeta? Por ahora: se ignoran (no se cargan en el sistema de Giamigli).
+- **P1**: comprobantes a nombre de la **Sucesión** son gastos de Giamigli (etapa previa, decisión ya cerrada de Sergio): se tratan como dirigidos a Giamigli. Los de otras sociedades o personas (Ganadera San Justo, socios, Alquileres) se ignoran (no se cargan en el sistema de Giamigli).
 - ~~P2~~ **Resuelto por Sergio (27/10/2026): no se baja ninguna información de Ganadera San Justo.** El conector filtra por sociedad Giamigli antes de abrir o bajar nada; las operaciones de San Justo ni se listan.
