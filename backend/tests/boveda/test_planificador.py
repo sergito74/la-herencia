@@ -100,7 +100,7 @@ def entorno(monkeypatch, tmp_path):
     monkeypatch.setattr(repository, "insertar_documento", lambda d: estado["docs"].append(d) or 1)
     monkeypatch.setattr(servicio, "credencial_de", lambda idc: Credencial(usuario="u", clave=Secreto("clave")))
     monkeypatch.setattr(servicio, "COMPRAS", tmp_path)
-    monkeypatch.setattr(servicio, "destino_libre", lambda f, prov: tmp_path / f"{f:%Y%m%d}_{prov}.pdf")
+    monkeypatch.setattr(servicio, "_carpeta", lambda tipo, f: tmp_path)
     monkeypatch.setattr(servicio, "_soltar_lock", lambda lock, id_portal=None: None)
 
     class PwFalso:

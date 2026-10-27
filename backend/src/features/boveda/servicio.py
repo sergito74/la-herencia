@@ -19,6 +19,7 @@ import logging
 import threading
 import traceback
 from datetime import date
+from pathlib import Path
 
 import pyodbc
 
@@ -27,7 +28,7 @@ from src.features.boveda import carga, cifrado, estado_cuenta, repository
 from src.features.boveda.conectores import (
     Credencial, CredencialesRechazadas, PortalCambio, RequiereIntervencion, cargar_conectores,
 )
-from src.features.descarga_peajes.portales import COMPRAS, destino_libre
+from src.features.descarga_peajes.portales import COMPRAS, carpeta_ejercicio
 
 log = logging.getLogger(__name__)
 
@@ -123,11 +124,43 @@ def _verificar_autorizacion(id_portal: int) -> None:
         raise SinAutorizacion("Falta autorización: el sistema no entra a este portal")
 
 
+VENTAS = COMPRAS.parent / "Ventas"
+
+
+def _carpeta(tipo: str, fecha: date) -> Path:
+    """Carpeta donde Sergio ya guarda cada clase de documento: liquidaciones de granos en Ventas del
+    ejercicio, certificados de retención en Ventas/Retenciones del ejercicio, el resto en Compras."""
+    ejercicio = carpeta_ejercicio(fecha).name
+    if tipo == "liquidacion":
+        return VENTAS / ejercicio
+    if tipo == "certificado":
+        return VENTAS / f"Retenciones {ejercicio}"
+    return COMPRAS / ejercicio
+
+
+def _destino(carpeta: Path, fecha: date, proveedor: str) -> Path:
+    """`AAAAMMDD_Proveedor.pdf` en la carpeta; si existe, " 001", " 002"... Nunca pisa un archivo."""
+    base = f"{fecha:%Y%m%d}_{proveedor}"
+    ruta, n = carpeta / f"{base}.pdf", 1
+    while ruta.exists():
+        ruta, n = carpeta / f"{base} {n:03d}.pdf", n + 1
+    return ruta
+
+
+def _archivo_igual(carpeta: Path, sha: str, indice: dict[Path, dict[str, str]]) -> str | None:
+    """Archivo idéntico ya guardado a mano en la carpeta (cualquier nombre): se reusa en vez de duplicarlo."""
+    if carpeta not in indice:
+        indice[carpeta] = {hashlib.sha256(f.read_bytes()).hexdigest(): str(f)
+                           for f in carpeta.glob("*.pdf")} if carpeta.exists() else {}
+    return indice[carpeta].get(sha)
+
+
 def _procesar(portal: dict, conector, cred: Credencial, id_corrida: int) -> dict:
     from playwright.sync_api import sync_playwright
 
     res = {"nuevos": 0, "existentes": 0, "cargados": 0, "pendientes": 0}
     errores: list[str] = []
+    indice: dict[Path, dict[str, str]] = {}
     sesion = None
     with sync_playwright() as pw:
         try:
@@ -155,11 +188,13 @@ def _procesar(portal: dict, conector, cred: Credencial, id_corrida: int) -> dict
                     errores.append(f"{doc.detalle or doc.clave}: el portal no devolvió un PDF")
                     continue
                 sha = hashlib.sha256(contenido).hexdigest()
-                ruta_igual = repository.existe_sha(sha)
+                fecha = doc.fecha or date.today()
+                carpeta = _carpeta(doc.tipo, fecha)
+                ruta_igual = repository.existe_sha(sha) or _archivo_igual(carpeta, sha, indice)
                 if ruta_igual:
                     ruta = ruta_igual
                 else:
-                    destino = destino_libre(doc.fecha or date.today(), doc.proveedor)
+                    destino = _destino(carpeta, fecha, doc.proveedor)
                     destino.parent.mkdir(parents=True, exist_ok=True)
                     destino.write_bytes(contenido)
                     ruta = str(destino)

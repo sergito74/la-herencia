@@ -32,7 +32,7 @@ def cargar(conector: Conector, doc: DocumentoPortal, pdf: bytes, ruta: str, *, s
     if doc.tipo not in TIPOS_COMPROBANTE:
         return {**resultado, "estadoCarga": "no_aplica"}
     if not conector.tiene_carga_compras:
-        return {**resultado, "motivo": "Lector no implementado para este portal: cargar a mano"}
+        return {**resultado, "motivo": "Revisar y cargar a mano"}
     try:
         leido = conector.leer_comprobante(doc, pdf)
     except Exception as e:  # PDF dañado o ilegible
