@@ -87,8 +87,11 @@ export function CompraForm({
   initial,
   proveedorNombreInicial,
   prefill,
+  alGuardar,
 }: {
   mode: "alta" | "edicion";
+  /** Reemplaza la vuelta al listado después de guardar (ej. revisión de documentos nuevos). */
+  alGuardar?: (idCompra: number) => void;
   idCompra?: number;
   initial?: CompraDetalleCompleto;
   proveedorNombreInicial?: string | null;
@@ -389,7 +392,8 @@ export function CompraForm({
       if (mode === "edicion" && idCompra != null) {
         await liberarLock(idCompra, lockToken).catch(() => {});
       }
-      router.push("/compras");
+      if (alGuardar) alGuardar(resultado.idCompra);
+      else router.push("/compras");
     } catch (err) {
       const mensaje =
         err instanceof ApiError && err.status === 400 && err.message

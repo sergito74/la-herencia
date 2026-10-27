@@ -47,11 +47,13 @@ def _inicio_ejercicio(d: date) -> date:
 
 
 class ConectorSancor:
-    codigo = "sancor"
-    nombre = "Sancor Seguros"
     tiene_estado_cuenta = True
     tiene_carga_compras = False
     mapeo_proveedores: dict = {}
+
+    def __init__(self, codigo: str = "sancor", nombre: str = "Sancor Seguros"):
+        self.codigo = codigo
+        self.nombre = nombre
 
     def ingresar(self, pw, credencial: Credencial) -> _Sesion:
         browser = pw.chromium.launch(channel="chrome", headless=True)
@@ -186,3 +188,4 @@ class ConectorSancor:
 
 
 registrar(ConectorSancor())
+registrar(ConectorSancor("sancor_giamigli", "Sancor Seguros Giamigli"))

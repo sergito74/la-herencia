@@ -18,5 +18,10 @@ Botón "Entrar con ayuda" (`POST /api/boveda/portales/{id}/asistido`, `features/
 Sin cambios de credenciales ni de datos en ninguno; solo se llegó hasta la pantalla de ingreso o verificación.
 
 ## Cuentas que esperan una acción de Sergio
-- ARCA Sergio, ARCA Lucy, Sancor Seguros Giamigli: falta la autorización en la bóveda.
 - Lartirigoyen: se va a seguir por el barrido de mails (facturas y estado de cuenta), no por el portal.
+  27/10/2026: Sergio lo sacó de las cuentas automatizadas (autorización revocada); queda solo el acceso guardado.
+
+## Conectadas el 27/10/2026 (noche)
+- ARCA Sergio (`arca_sergio`) y ARCA Lucy (`arca_lucy`): mismo conector que ARCA Giamigli, sobre la CUIT propia
+  de la clave fiscal (estado de cumplimiento). Primera corrida OK.
+- Sancor Seguros Giamigli (`sancor_giamigli`): mismo conector que Sancor. Primera corrida OK, 4 documentos nuevos.

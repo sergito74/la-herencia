@@ -48,7 +48,7 @@ class ConectorArca:
     tiene_carga_compras = False
     mapeo_proveedores: dict = {}
 
-    def __init__(self, codigo: str, nombre: str, cuit_representado: str):
+    def __init__(self, codigo: str, nombre: str, cuit_representado: str | None = None):
         self.codigo = codigo
         self.nombre = nombre
         self._cuit = cuit_representado
@@ -73,7 +73,8 @@ class ConectorArca:
                 p.get_by_text("SISTEMA DE CUENTAS TRIBUTARIAS", exact=False).first.click()
             sct = popup.value
             opciones = self._opciones(sct)
-            valor = next((v for v, texto in opciones if texto == self._cuit), None)
+            cuit = self._cuit or (credencial.usuario or "").replace("-", "")  # sin representado: la cuenta propia
+            valor = next((v for v, texto in opciones if texto == cuit), None)
             if valor is None:
                 raise PortalCambio("La clave fiscal no tiene acceso al contribuyente en Cuentas Tributarias")
             with sct.expect_navigation(wait_until="networkidle", timeout=90000):
@@ -146,3 +147,5 @@ class ConectorArca:
 
 
 registrar(ConectorArca("arca_giamigli", "ARCA Giamigli", "30712114602"))
+registrar(ConectorArca("arca_sergio", "ARCA Sergio"))
+registrar(ConectorArca("arca_lucy", "ARCA Lucy"))

@@ -7,6 +7,8 @@ automática tiene que imputar igual y cerrar al centavo. Se reusan los lectores 
 Resúmenes de tarjeta: Visa Galicia (`visa_galicia`), validado contra los 26 resúmenes cargados a mano que cierran
 al centavo. Los demás resúmenes se guardan y se avisan en Tesorería para importarlos a mano.
 
+Facturas de Agrovet (`agrovet`), validado contra las facturas cargadas a mano.
+
 Allianz no está: su número de comprobante (póliza y endoso) sale del portal, no del PDF; llega por la bóveda.
 """
 
@@ -22,6 +24,10 @@ LECTORES: dict[tuple[str, int], str] = {
 
 
 def lector_para(tipo: str | None, id_contacto: int | None):
+    from src.features.documentos_nuevos.lectores.agrovet import ID_CONTACTO as AGROVET, LectorAgrovet
+
+    if tipo == "factura" and id_contacto == AGROVET:
+        return LectorAgrovet()
     codigo = LECTORES.get((tipo or "", id_contacto or 0))
     return cargar_conectores().get(codigo) if codigo else None
 

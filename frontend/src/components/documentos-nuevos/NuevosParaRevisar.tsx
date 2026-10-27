@@ -147,7 +147,7 @@ function Lista({ modulo, titulo }: { modulo: ModuloAviso; titulo: string }) {
 }
 
 /** Vista "Nuevos para revisar" de un módulo (043, US1). Se muestra al entrar con `?nuevos=1` (desde el número
- * del menú): lo que el sistema incorporó solo, con el primero abierto. En Compras también lo "sin clasificar". */
+ * del menú): lo que el sistema incorporó solo, con el primero abierto. Compras usa `RevisionComprasEnFormulario`. */
 export function NuevosParaRevisar({ modulo }: { modulo: ModuloAviso }) {
   const params = useSearchParams();
   if (params.get("nuevos") !== "1") return null;
@@ -162,7 +162,7 @@ export function NuevosParaRevisar({ modulo }: { modulo: ModuloAviso }) {
         </p>
       </div>
       <Lista modulo={modulo} titulo={ETIQUETA_MODULO[modulo]} />
-      {modulo === "compras" && <Lista modulo="sin_clasificar" titulo="Sin clasificar" />}
+
     </section>
   );
 }
