@@ -54,7 +54,7 @@ class ConectorArba:
         self._objetos = objetos  # None = todos los del contribuyente
 
     def ingresar(self, pw, credencial: Credencial) -> _Sesion:
-        browser = pw.chromium.launch(headless=True)
+        browser = pw.chromium.launch(channel="chrome", headless=True)
         try:
             pagina = browser.new_context().new_page()
             cuit = (credencial.usuario or "").replace("-", "").strip()

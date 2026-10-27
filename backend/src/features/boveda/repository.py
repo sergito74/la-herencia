@@ -569,6 +569,21 @@ def marcar_foto_revisada(id_foto: int, revisada: bool) -> int:
 _ESTADOS_ERROR = ("error", "credenciales_rechazadas", "portal_cambio", "sin_credenciales")
 
 
+def meses_sin_factura(id_contacto: int, hoy, meses: int = 3) -> list:
+    """Meses completos recientes (los últimos `meses`, sin el actual) sin ninguna compra del contacto."""
+    from datetime import date
+
+    inicios = []
+    anio, mes = hoy.year, hoy.month
+    for _ in range(meses):
+        anio, mes = (anio - 1, 12) if mes == 1 else (anio, mes - 1)
+        inicios.append(date(anio, mes, 1))
+    con_compra = {(r["a"], r["m"]) for r in fetch_all(
+        "SELECT DISTINCT YEAR(Fecha) AS a, MONTH(Fecha) AS m FROM dbo.Compras WHERE IdContacto = ? AND Fecha >= ? "
+        "AND Fecha < ?", (id_contacto, inicios[-1], date(hoy.year, hoy.month, 1)))}
+    return sorted(i for i in inicios if (i.year, i.month) not in con_compra)
+
+
 def resumen(portales: list[int] | None = None) -> dict:
     filtro_d = filtro_c = filtro_f = ""
     params: tuple = ()

@@ -79,7 +79,7 @@ class ConectorCargill:
     mapeo_proveedores: dict = {}
 
     def ingresar(self, pw, credencial: Credencial) -> _Sesion:
-        browser = pw.chromium.launch(headless=True)
+        browser = pw.chromium.launch(channel="chrome", headless=True)
         sesion = _Sesion(browser=browser)
         try:
             sesion.ctx = browser.new_context()

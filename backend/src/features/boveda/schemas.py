@@ -186,6 +186,7 @@ class PortalSalida(BaseModel):
     progreso: Optional[Progreso] = None
     # Por qué no se puede sincronizar ahora (None = se puede).
     motivoNoSincroniza: Optional[str] = None
+    recordatorio: Optional[str] = None
 
 
 class Lista(BaseModel):

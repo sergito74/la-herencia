@@ -192,7 +192,8 @@ def _procesar(portal: dict, conector, cred: Credencial, id_corrida: int) -> dict
                 try:
                     contenido = doc.bajar()
                 except Exception as e:
-                    errores.append(f"No se pudo bajar {doc.detalle or doc.clave}: {e}")
+                    log.warning("Bóveda, %s: %s", doc.clave, _enmascarar(str(e), cred))
+                    errores.append(f"No se pudo bajar {doc.detalle or 'un documento'}")
                     continue
                 if not contenido.startswith(b"%PDF"):
                     errores.append(f"{doc.detalle or doc.clave}: el portal no devolvió un PDF")
@@ -274,7 +275,8 @@ def ejecutar(id_portal: int, origen: str, usuario: str | None, lock, id_corrida:
         estado, mensaje = "error", str(e)
     except Exception as e:
         log.warning("Bóveda, portal %s: %s", id_portal, _enmascarar(traceback.format_exc(), cred))
-        estado, mensaje = "error", f"{e.__class__.__name__}: {e}"
+        # El detalle técnico queda en el log; la pantalla solo informa en palabras simples.
+        estado, mensaje = "error", "No se pudo completar la sincronización; se vuelve a intentar en la próxima"
     finally:
         repository.cerrar_corrida(id_corrida, estado, mensaje=_enmascarar(mensaje, cred), **res)
         repository.auditar("corrida", usuario, id_portal=id_portal, detalle=f"{origen} #{id_corrida}: {estado}")

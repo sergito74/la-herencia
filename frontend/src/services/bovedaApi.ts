@@ -81,6 +81,8 @@ export interface Portal {
   progreso: { paso: string | null; hecho: number | null; total: number | null } | null;
   /** Por qué no se puede sincronizar ahora; null = se puede. */
   motivoNoSincroniza: string | null;
+  /** Factura del mes que hay que bajar a mano (portales que no se pueden automatizar). */
+  recordatorio: string | null;
 }
 
 export interface DatoEntrada {
@@ -222,6 +224,7 @@ export interface ResumenBoveda {
   conError: number;
   requiereIntervencion: number;
   diferenciasSaldo: number;
+  facturasAMano: number;
   total: number;
 }
 

@@ -54,7 +54,7 @@ class ConectorSancor:
     mapeo_proveedores: dict = {}
 
     def ingresar(self, pw, credencial: Credencial) -> _Sesion:
-        browser = pw.chromium.launch(headless=True)
+        browser = pw.chromium.launch(channel="chrome", headless=True)
         try:
             p = browser.new_context().new_page()
             p.goto(INGRESO, wait_until="networkidle", timeout=90000)

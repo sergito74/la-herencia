@@ -51,6 +51,9 @@ export function EstadoSincronizacion({ portal }: { portal: Portal }) {
       </div>
     );
   }
+  if (portal.recordatorio) {
+    return <span className="text-xs font-medium text-amber-800">{portal.recordatorio}</span>;
+  }
   const c = portal.ultimaCorrida;
   if (!c) {
     return <span className="text-xs text-ink-muted">{portal.motivoNoSincroniza ? "—" : "Nunca se sincronizó"}</span>;

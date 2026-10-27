@@ -72,6 +72,22 @@ SIN_AUTOMATIZAR = {
 }
 
 
+# Portales sin automatizar que facturan todos los meses: se recuerda bajar a mano la factura que falte en Compras.
+RECORDATORIO_MENSUAL = {"auth.allianz.com.ar"}
+_MESES = ("enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre",
+          "noviembre", "diciembre")
+
+
+def recordatorio(f: dict) -> str | None:
+    if f["codigoConector"] or not f["idContacto"] or urlparse(f.get("url") or "").hostname not in RECORDATORIO_MENSUAL:
+        return None
+    faltan = repository.meses_sin_factura(f["idContacto"], datetime.now().date())
+    if not faltan:
+        return None
+    meses = " y ".join(f"{_MESES[m.month - 1]} {m.year}" for m in faltan)
+    return f"Falta la factura de {meses}: entrá al portal y bajala"
+
+
 def motivo_no_sincroniza(f: dict) -> str | None:
     # Primero lo que el usuario puede resolver; lo que falta del lado del sistema se muestra como "Próximamente".
     if not f["codigoConector"]:
@@ -122,6 +138,7 @@ def portal_salida(f: dict, cola: list[int] | None = None) -> PortalSalida:
         enCola=f["idPortal"] in (cola if cola is not None else servicio.en_cola()) and f["ucEstado"] != "en_curso",
         progreso=Progreso(paso=f["ucPaso"], hecho=f["ucHecho"], total=f["ucTotal"]) if f["ucEstado"] == "en_curso" else None,
         motivoNoSincroniza=motivo_no_sincroniza(f),
+        recordatorio=recordatorio(f),
     )
 
 
@@ -414,4 +431,7 @@ def revisar_foto(id_foto: int, body: FotoRevision, request: Request) -> Response
 
 @router.get("/resumen")
 def resumen() -> dict:
-    return repository.resumen()
+    datos = repository.resumen()
+    datos["facturasAMano"] = sum(1 for f in repository.listar_portales() if recordatorio(f))
+    datos["total"] += datos["facturasAMano"]
+    return datos
