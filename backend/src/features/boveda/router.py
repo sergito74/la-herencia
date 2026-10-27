@@ -437,6 +437,10 @@ def revisar_foto(id_foto: int, body: FotoRevision, request: Request) -> Response
 @router.get("/resumen")
 def resumen() -> dict:
     datos = repository.resumen()
-    datos["facturasAMano"] = sum(1 for f in repository.listar_portales() if recordatorio(f))
+    # La Municipalidad no figura en la lista de cuentas (Sergio, 27/10/2026): el aviso sale de su registro dado de baja.
+    p = repository.portal_por_host(TASA_VIAL_HOST)
+    texto = recordatorio(p) if p else None
+    datos["recordatorios"] = [{"texto": texto, "url": p["url"]}] if texto else []
+    datos["facturasAMano"] = len(datos["recordatorios"])
     datos["total"] += datos["facturasAMano"]
     return datos

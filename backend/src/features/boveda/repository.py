@@ -593,6 +593,13 @@ def marcar_foto_revisada(id_foto: int, revisada: bool) -> int:
 _ESTADOS_ERROR = ("error", "credenciales_rechazadas", "portal_cambio", "sin_credenciales")
 
 
+def portal_por_host(host: str) -> dict | None:
+    """Portal por dominio, aunque esté dado de baja (ej. la Municipalidad, que solo sirve para el recordatorio)."""
+    return fetch_one("SELECT TOP 1 IdPortal AS idPortal, Url AS url, IdContacto AS idContacto, IdCredencial AS idCredencial, "
+                     "CodigoConector AS codigoConector FROM dbo.Portales WHERE Url LIKE ? ORDER BY IdPortal",
+                     (f"%://{host}/%",))
+
+
 def hay_tasa_vial(id_organismo: int, desde) -> bool:
     """Boleta de Tasa Vial (tipo 8) cargada en Impuestos desde `desde`."""
     return fetch_one("SELECT TOP 1 1 AS x FROM dbo.Impuestos WHERE IdOrganismo = ? AND IdTipoImpuesto = 8 AND Fecha >= ?",

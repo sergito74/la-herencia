@@ -225,6 +225,8 @@ export interface ResumenBoveda {
   requiereIntervencion: number;
   diferenciasSaldo: number;
   facturasAMano: number;
+  /** Boletas para bajar a mano de cuentas que no están en la lista (Tasa Vial de la Municipalidad). */
+  recordatorios: { texto: string; url: string }[];
   total: number;
 }
 

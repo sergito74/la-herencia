@@ -119,12 +119,17 @@ export default function BovedaPage() {
 
       {resumen.data && resumen.data.total > 0 && (
         <p className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900">
-          Para revisar: {[
+          {resumen.data.total > resumen.data.recordatorios.length && `Para revisar: ${[
             resumen.data.conError && `${resumen.data.conError} cuentas con error`,
             resumen.data.requiereIntervencion && `${resumen.data.requiereIntervencion} cuentas que piden intervención`,
             resumen.data.diferenciasSaldo && `${resumen.data.diferenciasSaldo} diferencias de saldo sin revisar`,
-            resumen.data.facturasAMano && `${resumen.data.facturasAMano} boletas para bajar a mano`,
-          ].filter(Boolean).join(" · ")}
+          ].filter(Boolean).join(" · ")}`}
+          {resumen.data.recordatorios.map((r) => (
+            <span key={r.texto} className="block">
+              {r.texto}.{" "}
+              <a href={r.url} target="_blank" rel="noreferrer" className="text-finance underline">Abrir la página</a>
+            </span>
+          ))}
         </p>
       )}
 
