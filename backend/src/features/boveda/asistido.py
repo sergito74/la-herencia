@@ -16,11 +16,13 @@ from __future__ import annotations
 
 import hashlib
 import logging
+import os
 import re
 import threading
 import time
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta
+from pathlib import Path
 from urllib.parse import urlparse
 
 from src.features.boveda import carga, repository
@@ -28,6 +30,8 @@ from src.features.boveda import carga, repository
 log = logging.getLogger(__name__)
 
 DURACION_MAXIMA = 30 * 60
+# Perfiles de Chrome de las ventanas asistidas: solo en esta computadora (fuera del repositorio y de Dropbox).
+PERFILES = Path(os.environ.get("LOCALAPPDATA", Path.home())) / "LaHerencia" / "boveda-perfiles"
 
 
 @dataclass(frozen=True)
@@ -122,28 +126,41 @@ def _sesion(portal: dict, usuario: str | None) -> None:
     try:
         cred = servicio.credencial_de(portal["idCredencial"])
         with sync_playwright() as pw:
-            browser = pw.chromium.launch(channel="chrome", headless=False)
-            ctx = browser.new_context(accept_downloads=True, no_viewport=True)
+            # Perfil propio y persistente por cuenta: el portal reconoce el dispositivo después del primer
+            # ingreso (como el Chrome de Sergio) y deja de pedir el código.
+            perfil = PERFILES / str(id_portal)
+            perfil.mkdir(parents=True, exist_ok=True)
+            ctx = pw.chromium.launch_persistent_context(str(perfil), channel="chrome", headless=False,
+                                                        accept_downloads=True, no_viewport=True)
             ctx.on("download", lambda d: _guardar_descarga(portal, datos, d))
-            p = ctx.new_page()
+            p = ctx.pages[0] if ctx.pages else ctx.new_page()
             p.goto(datos.login, wait_until="load", timeout=90000)
             pedido = datetime.now()
-            if datos.completar:
+            if datos.completar and p.locator("input[type=password]").count():
                 _completar_ingreso(p, cred)
-            if datos.codigo_remitente:
-                p.wait_for_selector("input[name=code]", timeout=60000)
-                p.fill("input[name=code]", esperar_codigo(datos.codigo_remitente, datos.codigo_patron, pedido))
-                p.locator("button[type=submit], #btnConfirm").first.click()
+                if datos.codigo_remitente and _pide_codigo(p):
+                    p.fill("input[name=code]", esperar_codigo(datos.codigo_remitente, datos.codigo_patron, pedido))
+                    p.locator("button[type=submit], #btnConfirm").first.click()
             limite = time.monotonic() + DURACION_MAXIMA
-            while browser.is_connected() and ctx.pages and time.monotonic() < limite:
+            while ctx.pages and time.monotonic() < limite:
                 ctx.pages[0].wait_for_timeout(2000)
-            if browser.is_connected():
-                browser.close()
+            ctx.close()
     except Exception:
         log.warning("Bóveda, ingreso asistido portal %s", id_portal, exc_info=True)
     finally:
         _abiertos.discard(id_portal)
         repository.auditar("ingreso_asistido", usuario, id_portal=id_portal, detalle="cierre")
+
+
+def _pide_codigo(p, espera_segundos: int = 30) -> bool:
+    """Después del ingreso, el portal pide el código o entra directo (dispositivo ya conocido)."""
+    for _ in range(espera_segundos):
+        if p.locator("input[name=code]").count():
+            return True
+        if "/login" not in p.url and "/2fa" not in p.url:
+            return False
+        p.wait_for_timeout(1000)
+    return False
 
 
 def _completar_ingreso(p, cred) -> None:
