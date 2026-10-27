@@ -183,6 +183,14 @@ DDL = [
     "IF COL_LENGTH('dbo.Portales_Corridas', 'Paso') IS NULL ALTER TABLE dbo.Portales_Corridas ADD Paso nvarchar(160) NULL",
     "IF COL_LENGTH('dbo.Portales_Corridas', 'AvanceHecho') IS NULL ALTER TABLE dbo.Portales_Corridas ADD AvanceHecho int NULL",
     "IF COL_LENGTH('dbo.Portales_Corridas', 'AvanceTotal') IS NULL ALTER TABLE dbo.Portales_Corridas ADD AvanceTotal int NULL",
+    # Revisión de lo cargado solo en Compras (regla de Sergio 27/10/2026): lo anterior queda como revisado.
+    """
+    IF COL_LENGTH('dbo.Portales_Documentos', 'Revisado') IS NULL
+    BEGIN
+        ALTER TABLE dbo.Portales_Documentos ADD Revisado datetime2(0) NULL;
+        EXEC('UPDATE dbo.Portales_Documentos SET Revisado = Creado WHERE EstadoCarga = ''cargado_auto''');
+    END
+    """,
     """
     IF OBJECT_ID('dbo.Boveda_Auditoria', 'U') IS NULL
     CREATE TABLE dbo.Boveda_Auditoria (

@@ -24,10 +24,11 @@ import subprocess
 import time
 from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta
+from decimal import Decimal
 from pathlib import Path
 
 from src.features.boveda.conectores import (
-    Credencial, CredencialesRechazadas, DocumentoPortal, PortalCambio, RequiereIntervencion, registrar,
+    Credencial, CredencialesRechazadas, DatosCompra, DocumentoPortal, PortalCambio, RequiereIntervencion, registrar,
 )
 
 # Perfiles de Chrome: solo en esta computadora (fuera del repositorio y de Dropbox). La carpeta de cada cuenta
@@ -133,17 +134,47 @@ def _fecha_emision(pdf: bytes) -> date | None:
         return None
 
 
+def _importe(t: str) -> Decimal:
+    return Decimal(t.replace(".", "").replace(",", "."))
+
+
+def _texto(pdf: bytes) -> str:
+    import pdfplumber
+
+    with pdfplumber.open(io.BytesIO(pdf)) as d:
+        return "\n".join(p.extract_text() or "" for p in d.pages)
+
+
+# Imputación igual a la de las facturas cargadas a mano.
+CENTRO_COSTO = 3
+DESTINO = 1
+CAMPANIA = "No Aplica"
+
+
+def _cabecera(id_contacto: int, fecha: date, numero: str, **importes) -> dict:
+    from src.features.compras import repository as compras
+
+    cabecera = {"idContacto": id_contacto, "fecha": fecha.isoformat(), "tipo": "A", "tipoDocumento": "Factura",
+                "numeroDocumento": numero, "moneda": "Pesos", "tipoDeCambio": 1.0, "ajustaTipoCambio": False}
+    for campo in compras.CAMPOS_IMPORTE_CABECERA:
+        cabecera[campo] = float(importes.get(campo, 0))
+    return cabecera
+
+
+def _linea(descripcion: str, precio: Decimal, iva: float, id_rubro: int, unidad: str = "UNIDAD") -> dict:
+    return {"productoServicio": descripcion[:50], "cantidad": 1.0, "precioUnitario": float(precio), "iva": iva,
+            "unidad": unidad, "idCentroCosto": CENTRO_COSTO, "idDestino": DESTINO, "idRubro": id_rubro,
+            "campaña": CAMPANIA, "ajusteFinanciero": False}
+
+
 class _ChromeComun:
     tiene_estado_cuenta = False
-    tiene_carga_compras = False
+    tiene_carga_compras = True
     mapeo_proveedores: dict = {}
     id_portal: int
 
     def estado_cuenta(self, sesion: _Sesion) -> list:
         return []
-
-    def leer_comprobante(self, documento, pdf):
-        return None
 
     def cerrar(self, sesion: _Sesion) -> None:
         if sesion.proceso.poll() is None:
@@ -154,6 +185,12 @@ class _ChromeComun:
 
 ALLIANZ = "https://www.miallianz.com.ar/priv"  # el login directo deja en la página pública
 ALLIANZ_CONTACTO = 515
+ALLIANZ_RUBRO = 2047893444
+
+
+def _monto(texto: str, concepto: str) -> Decimal:
+    m = re.search(concepto + r"[ .]*\.{3,}\s*([\d.]+,\d{2})", texto)
+    return _importe(m.group(1)) if m else Decimal(0)
 
 
 def _cancelar_aviso(p) -> bool:
@@ -233,6 +270,30 @@ class ConectorAllianz(_ChromeComun):
                     docs.append(doc)
         return docs
 
+    def leer_comprobante(self, documento: DocumentoPortal, pdf: bytes) -> DatosCompra | None:
+        """Como se cargan a mano: Prima con IVA 21%, OSSEG, Tasa SSN y Contribución Vial sin IVA, percepción de
+        IVA y sellos en la cabecera, y "Seguro particular" en negativo por el total (la TAOS es de uso
+        particular: la factura queda en cero)."""
+        t = _texto(pdf)
+        m = re.search(r"FACTURA A:\s*(\d{4}-\d{8})", t)
+        fecha = _fecha_emision(pdf)
+        premio = _monto(t, "Premio")
+        if not (m and fecha and premio):
+            return None
+        prima = _monto(t, "Prima")
+        sin_iva = [(c, _monto(t, patron)) for c, patron in
+                   (("OSSEG", "OSSEG"), ("Tasa SSN", "Tasa SSN"), ("Contribucion Vial", "Contribuci[oó]n Vial"),
+                    ("Recargo Financiero", "Recargo Financiero"), ("Impuestos Internos", "Impuestos Internos"))]
+        percepcion_iva = _monto(t, r"I\.V\.A\. Percepci[oó]n \(\d+%\)")
+        ingresos_brutos = _monto(t, r"II\.BB\. Percepci[oó]n \(seg[uú]n detalle\)")
+        sellos = _monto(t, "Sellos")
+        lineas = [_linea("Prima", prima, 21.0, ALLIANZ_RUBRO, "POLIZA")]
+        lineas += [_linea(c, v, 0.0, ALLIANZ_RUBRO) for c, v in sin_iva if v]
+        lineas.append(_linea("Seguro particular", -premio, 0.0, ALLIANZ_RUBRO))
+        cabecera = _cabecera(ALLIANZ_CONTACTO, fecha, documento.numero, percepcionIva=percepcion_iva,
+                             ingresosBrutos=ingresos_brutos, leyDeSellos=sellos)
+        return DatosCompra(cabecera=cabecera, lineas=lineas, numero=documento.numero, total_impreso=Decimal(0))
+
     @staticmethod
     def _bajador(p, url: str, doc: DocumentoPortal):
         def bajar() -> bytes:
@@ -255,6 +316,7 @@ class ConectorAllianz(_ChromeComun):
 MOVISTAR_LOGIN = "https://idp.movistar.com.ar/convergencia/login_A.html"
 MOVISTAR = "mimovistarempresas.movistar.com.ar"
 MOVISTAR_CONTACTO = 71
+MOVISTAR_RUBRO = 21
 
 
 class ConectorMovistar(_ChromeComun):
@@ -304,6 +366,30 @@ class ConectorMovistar(_ChromeComun):
         return [DocumentoPortal(clave=f"movistar:{ids[-1]}", fecha=_fecha_emision(pdf), tipo="factura",
                                 proveedor="Movistar", bajar=lambda: pdf, numero=ids[-1], moneda="ARS",
                                 id_contacto=MOVISTAR_CONTACTO, detalle=f"Factura {ids[-1]}")]
+
+    def leer_comprobante(self, documento: DocumentoPortal, pdf: bytes) -> DatosCompra | None:
+        """Como se cargan a mano: un renglón por línea ("Tel. movil <línea> - <período>") con su total sin
+        impuestos e IVA 27%, y la percepción de IVA en la cabecera."""
+        t = _texto(pdf)
+        numero = re.search(r"Factura (\d{4}-\d{8})", t)
+        fecha = _fecha_emision(pdf)
+        total = re.search(r"Total a Pagar \$([\d.]+,\d{2})", t)
+        periodo = re.search(r"PLANES Y SERVICIOS (\d{2})/(\d{2}) al (\d{2})/(\d{2})", t)
+        if not (numero and fecha and total and periodo):
+            return None
+        d1, m1, d2, m2 = periodo.groups()
+        anio_fin = fecha.year + (1 if int(m2) < int(m1) else 0)
+        texto_periodo = f"{d1}/{m1} al {d2}/{m2}/{anio_fin}"
+        lineas = [_linea(f"Tel. movil {linea} - {texto_periodo}", _importe(importe), 27.0, MOVISTAR_RUBRO)
+                  for linea, importe in re.findall(
+                      r"Anexo: Linea \((\d+)\).*?Total TELEFONIA MOVIL ([\d.]+,\d{2})", t, re.S)]
+        if not lineas:
+            return None
+        percepcion = re.search(r"Percepci[oó]n I\.V\.A\. [\d.]+,\d{2} [\d,]+ ([\d.]+,\d{2})", t)
+        cabecera = _cabecera(MOVISTAR_CONTACTO, fecha, numero.group(1),
+                             percepcionIva=_importe(percepcion.group(1)) if percepcion else 0)
+        return DatosCompra(cabecera=cabecera, lineas=lineas, numero=numero.group(1),
+                           total_impreso=_importe(total.group(1)))
 
 
 registrar(ConectorAllianz())

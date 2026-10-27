@@ -482,6 +482,34 @@ def documentos_de_corrida(id_corrida: int) -> list[dict]:
     )
 
 
+def cargas_para_revisar() -> list[dict]:
+    """Compras que el sistema cargó solo y todavía no se revisaron, con su imputación renglón por renglón."""
+    docs = fetch_all(
+        "SELECT d.IdDocumento AS idDocumento, p.Nombre AS portal, c.IdDeuda AS idCompra, c.Fecha AS fecha, "
+        "ct.[Razon Social] AS proveedor, c.[Tipo documento] AS tipoDocumento, c.Tipo AS tipo, "
+        "c.[Nro Documento] AS numero, d.TotalImpreso AS total, d.Ruta AS ruta "
+        "FROM dbo.Portales_Documentos d JOIN dbo.Portales p ON p.IdPortal = d.IdPortal "
+        "JOIN dbo.Compras c ON c.IdDeuda = d.IdCompra LEFT JOIN dbo.Contactos ct ON ct.IdContacto = c.IdContacto "
+        "WHERE d.EstadoCarga = 'cargado_auto' AND d.Revisado IS NULL ORDER BY c.Fecha, d.IdDocumento")
+    if not docs:
+        return []
+    ids = [d["idCompra"] for d in docs]
+    renglones = fetch_all(
+        "SELECT dc.IdCompra AS idCompra, dc.[Producto/Servicio] AS detalle, dc.Cantidad AS cantidad, "
+        "dc.[Precio Unitario] AS precioUnitario, dc.IVA AS iva, r.Rubro AS rubro, cc.[Centro de costos] AS centroCosto "
+        "FROM dbo.Det_Compras dc LEFT JOIN dbo.Rubros r ON r.IdRubro = dc.IdRubro "
+        "LEFT JOIN dbo.[Centro de costos] cc ON cc.IdCentro = dc.IdCentroCostos "
+        f"WHERE dc.IdCompra IN ({', '.join('?' for _ in ids)}) ORDER BY dc.IdDetalleCompra", tuple(ids))
+    for d in docs:
+        d["renglones"] = [r for r in renglones if r["idCompra"] == d["idCompra"]]
+    return docs
+
+
+def marcar_revisado(id_documento: int) -> int:
+    return execute_write("UPDATE dbo.Portales_Documentos SET Revisado = SYSDATETIME() "
+                         "WHERE IdDocumento = ? AND EstadoCarga = 'cargado_auto' AND Revisado IS NULL", (id_documento,))
+
+
 def compra_existente(id_contacto: int | None, numero: str | None, ruta: str | None) -> int | None:
     from src.features.descarga_peajes.repository import compra_existente as de_037
 

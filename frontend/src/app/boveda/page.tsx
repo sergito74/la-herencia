@@ -7,6 +7,7 @@ import { useEffect, useRef, useState } from "react";
 import { useAuth } from "@/components/auth/AuthContext";
 import { BarraAvance, EstadoSincronizacion, SincronizacionAutomatica } from "@/components/boveda/EstadoSincronizacion";
 import { PortalForm } from "@/components/boveda/PortalForm";
+import { RevisionCargas } from "@/components/boveda/RevisionCargas";
 import {
   crearPortal, getPortales, getResumenBoveda, sincronizar, type Portal, type ResultadoSincronizar,
 } from "@/services/bovedaApi";
@@ -178,6 +179,8 @@ export default function BovedaPage() {
         )}
         {lanzar.isError && <p className="text-sm text-red-700">{lanzar.error.message}</p>}
       </section>
+
+      <RevisionCargas />
 
       {portales.isError && <p className="text-sm text-red-700">No se pudo leer la bóveda: {portales.error.message}</p>}
       <div className="overflow-x-auto rounded-md border border-border bg-surface">
