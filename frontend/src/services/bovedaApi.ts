@@ -83,6 +83,9 @@ export interface Portal {
   motivoNoSincroniza: string | null;
   /** Factura del mes que hay que bajar a mano (portales que no se pueden automatizar). */
   recordatorio: string | null;
+  /** El portal no acepta navegador automático: se entra con una ventana asistida. */
+  ingresoAsistido: boolean;
+  asistidoAbierto: boolean;
 }
 
 export interface DatoEntrada {
@@ -237,6 +240,7 @@ export interface ResultadoSincronizar {
   omitidos: { idPortal: number; nombre: string; motivo: string }[];
 }
 
+export const entrarConAyuda = (id: number) => apiPost<{ abierto: boolean }>(`${BASE}/portales/${id}/asistido`, {});
 export const correrAhora = (id: number) => apiPost<{ encolados: number[] }>(`${BASE}/portales/${id}/corridas`, {});
 /** Sincroniza ahora las cuentas elegidas (sin ids = todas las que se pueden), de a una. */
 export const sincronizar = (idsPortales?: number[]) =>

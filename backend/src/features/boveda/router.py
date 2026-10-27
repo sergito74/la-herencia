@@ -15,7 +15,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
 from fastapi.responses import JSONResponse
 
 from src.features.auth.repository import get_usuario_por_id
-from src.features.boveda import cifrado, planificador, repository, servicio
+from src.features.boveda import asistido, cifrado, planificador, repository, servicio
 from src.features.boveda.conectores import cargar_conectores
 from src.features.boveda.schemas import (
     Autorizacion, AutorizacionEntrada, ClaveNueva, ConectorInfo, CorridaResumen, CredencialEdicion, CredencialNueva,
@@ -66,14 +66,15 @@ PROXIMAMENTE = "Próximamente"
 # Portales que piden una verificación humana en cada ingreso (relevamientos 042): no se pueden automatizar.
 SIN_AUTOMATIZAR = {
     "tributaria.hacienda.bolivar.gob.ar": "No se puede automatizar: pide un código de verificación en cada consulta",
-    "auth.allianz.com.ar": "No se puede automatizar: manda un código por mail en cada ingreso",
+    "auth.allianz.com.ar": "No se puede automatizar: pide verificación en cada ingreso. Usá \"Entrar con ayuda\"",
+    "idp.movistar.com.ar": "No se puede automatizar: no acepta ingresos automáticos. Usá \"Entrar con ayuda\" y escribí usuario y clave",
     "www.lartirigoyen.com.ar": "No se puede automatizar: pide marcar \"No soy un robot\" en cada ingreso",
     "extranet.lartirigoyen.com.ar": "No se puede automatizar: pide marcar \"No soy un robot\" en cada ingreso",
 }
 
 
 # Portales sin automatizar que facturan todos los meses: se recuerda bajar a mano la factura que falte en Compras.
-RECORDATORIO_MENSUAL = {"auth.allianz.com.ar"}
+RECORDATORIO_MENSUAL = {"auth.allianz.com.ar", "idp.movistar.com.ar"}
 _MESES = ("enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre",
           "noviembre", "diciembre")
 
@@ -85,7 +86,7 @@ def recordatorio(f: dict) -> str | None:
     if not faltan:
         return None
     meses = " y ".join(f"{_MESES[m.month - 1]} {m.year}" for m in faltan)
-    return f"Falta la factura de {meses}: entrá al portal y bajala"
+    return f"Falta la factura de {meses}: usá \"Entrar con ayuda\" y bajala"
 
 
 def motivo_no_sincroniza(f: dict) -> str | None:
@@ -139,6 +140,8 @@ def portal_salida(f: dict, cola: list[int] | None = None) -> PortalSalida:
         progreso=Progreso(paso=f["ucPaso"], hecho=f["ucHecho"], total=f["ucTotal"]) if f["ucEstado"] == "en_curso" else None,
         motivoNoSincroniza=motivo_no_sincroniza(f),
         recordatorio=recordatorio(f),
+        ingresoAsistido=asistido.asistido_de(f["url"]) is not None,
+        asistidoAbierto=asistido.abierto(f["idPortal"]),
     )
 
 
@@ -349,6 +352,22 @@ def correr_ahora(id_portal: int, request: Request):
     if not servicio.correr_varios_en_segundo_plano([id_portal], usuario_actual(request)):
         return JSONResponse(status_code=409, content={"detail": "Ya se está sincronizando"})
     return {"encolados": [id_portal]}
+
+
+@router.post("/portales/{id_portal}/asistido", status_code=202)
+def entrar_con_ayuda(id_portal: int, request: Request):
+    """Abre en esta computadora una ventana de Chrome con el ingreso completado (portales que no aceptan
+    navegador automático). Lo que se descargue en esa ventana se guarda en Compras."""
+    fila = _portal_o_404(id_portal)
+    if asistido.asistido_de(fila["url"]) is None:
+        raise HTTPException(status_code=400, detail="Esta cuenta no tiene ingreso con ayuda")
+    if repository.autorizacion_vigente(id_portal) is None:
+        raise HTTPException(status_code=409, detail="Falta tu autorización")
+    if not fila["idCredencial"] or not fila["claveConfigurada"]:
+        raise HTTPException(status_code=409, detail="Falta cargar usuario y contraseña")
+    if not asistido.iniciar(fila, usuario_actual(request)):
+        return JSONResponse(status_code=409, content={"detail": "La ventana de esta cuenta ya está abierta"})
+    return {"abierto": True}
 
 
 @router.post("/corridas", status_code=202)

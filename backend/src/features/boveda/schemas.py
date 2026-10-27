@@ -187,6 +187,8 @@ class PortalSalida(BaseModel):
     # Por qué no se puede sincronizar ahora (None = se puede).
     motivoNoSincroniza: Optional[str] = None
     recordatorio: Optional[str] = None
+    ingresoAsistido: bool = False
+    asistidoAbierto: bool = False
 
 
 class Lista(BaseModel):

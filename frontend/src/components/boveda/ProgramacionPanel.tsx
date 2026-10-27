@@ -3,6 +3,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 
+import { EntrarConAyuda } from "@/components/boveda/EntrarConAyuda";
 import { EstadoSincronizacion } from "@/components/boveda/EstadoSincronizacion";
 import { formatFechaHora } from "@/lib/format";
 import { correrAhora, programar, type Frecuencia, type Portal } from "@/services/bovedaApi";
@@ -34,7 +35,12 @@ export function ProgramacionPanel({ portal }: { portal: Portal }) {
 
   if (!portal.conector.disponible) {
     if (portal.motivoNoSincroniza?.startsWith("No se puede automatizar")) {
-      return <p className="text-sm text-ink-muted">{portal.motivoNoSincroniza}. Podés abrir el portal y entrar a mano con el acceso guardado.</p>;
+      return (
+        <div className="space-y-2">
+          <p className="text-sm text-ink-muted">{portal.motivoNoSincroniza}.</p>
+          <EntrarConAyuda portal={portal} />
+        </div>
+      );
     }
     return <p className="text-sm text-ink-muted">La sincronización automática de esta cuenta va a estar disponible próximamente. Mientras tanto podés abrir el portal y entrar a mano.</p>;
   }
