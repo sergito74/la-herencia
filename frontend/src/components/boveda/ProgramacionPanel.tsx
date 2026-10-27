@@ -33,6 +33,9 @@ export function ProgramacionPanel({ portal }: { portal: Portal }) {
   const correr = useMutation({ mutationFn: () => correrAhora(portal.idPortal), onSuccess: refrescar });
 
   if (!portal.conector.disponible) {
+    if (portal.motivoNoSincroniza?.startsWith("No se puede automatizar")) {
+      return <p className="text-sm text-ink-muted">{portal.motivoNoSincroniza}. Podés abrir el portal y entrar a mano con el acceso guardado.</p>;
+    }
     return <p className="text-sm text-ink-muted">La sincronización automática de esta cuenta va a estar disponible próximamente. Mientras tanto podés abrir el portal y entrar a mano.</p>;
   }
 

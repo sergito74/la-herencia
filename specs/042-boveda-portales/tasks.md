@@ -100,11 +100,12 @@ Cada conector: relevar el portal en solo lectura con Chromium (vía `.specify/me
 - [X] T041 [US3] `backend/src/features/boveda/conectores/cargill.py`: API del libro financiero por trimestre (customerId 35192801), estado de cuenta en US$, liquidaciones y facturas (memoria reference_portal_cargill)
 - [X] T042 [US3] `backend/src/features/boveda/conectores/arca.py`: relevamiento + conector (cuenta corriente/SCT, comprobantes en línea, retenciones/percepciones; solo consulta)
 - [X] T043 [US3] `backend/src/features/boveda/conectores/arba.py`: relevamiento + conector (boletas, estado de deuda, percepciones/retenciones)
-- [ ] T044 [US3] `backend/src/features/boveda/conectores/municipalidad_bolivar.py`: relevamiento + conector (tasas, estado de deuda)
+- [X] T044 [US3] `backend/src/features/boveda/conectores/municipalidad_bolivar.py`: relevamiento + conector (tasas, estado de deuda)
 - [X] T045 [US3] `backend/src/features/boveda/conectores/sancor.py`: relevamiento + conector (pólizas, facturas, estado de cuenta)
-- [ ] T046 [US3] `backend/src/features/boveda/conectores/allianz.py`: relevamiento + conector
+- [X] T046 [US3] `backend/src/features/boveda/conectores/allianz.py`: relevamiento + conector
 - [X] T047 [US3] `backend/src/features/boveda/conectores/jauregui_morales.py`: relevamiento + conector
-- [ ] T048 [US3] `backend/src/features/boveda/conectores/lartirigoyen.py`: relevamiento + conector
+- [X] T048 [US3] `backend/src/features/boveda/conectores/lartirigoyen.py`: relevamiento + conector
+  - 27/10/2026: Municipalidad (T044), Allianz (T046) y Lartirigoyen (T048) piden captcha o código en cada ingreso: quedan solo bóveda, ver `relevamientos/sin-automatizar.md`.
 
 ## Phase 10: Polish
 

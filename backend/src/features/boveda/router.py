@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import ntpath
 from datetime import datetime, time
+from urllib.parse import urlparse
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
 from fastapi.responses import JSONResponse
@@ -62,9 +63,21 @@ def _conector_info(codigo: str | None) -> ConectorInfo:
 
 PROXIMAMENTE = "Próximamente"
 
+# Portales que piden una verificación humana en cada ingreso (relevamientos 042): no se pueden automatizar.
+SIN_AUTOMATIZAR = {
+    "tributaria.hacienda.bolivar.gob.ar": "No se puede automatizar: pide un código de verificación en cada consulta",
+    "auth.allianz.com.ar": "No se puede automatizar: manda un código por mail en cada ingreso",
+    "www.lartirigoyen.com.ar": "No se puede automatizar: pide marcar \"No soy un robot\" en cada ingreso",
+    "extranet.lartirigoyen.com.ar": "No se puede automatizar: pide marcar \"No soy un robot\" en cada ingreso",
+}
+
 
 def motivo_no_sincroniza(f: dict) -> str | None:
     # Primero lo que el usuario puede resolver; lo que falta del lado del sistema se muestra como "Próximamente".
+    if not f["codigoConector"]:
+        host = urlparse(f.get("url") or "").hostname or ""
+        if host in SIN_AUTOMATIZAR:
+            return SIN_AUTOMATIZAR[host]
     if f["autFecha"] is None:
         return "Falta tu autorización"
     if not f["idCredencial"] or not f["claveConfigurada"]:
