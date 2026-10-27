@@ -1,6 +1,6 @@
 # Relevamiento Sancor Seguros (Autogestión) — 27/10/2026
 
-Autorización: bóveda portal 10 "Sancor Seguros", solo lectura (pólizas de personas cuyo tomador es Irma Miranda: Accidentes Personales, Salud, Vida Colectivo). "Sancor Seguros Giamigli" (portal 16) no tiene autorización: no se programa.
+Autorización: bóveda portal 10 "Sancor Seguros", solo lectura (pólizas de personas del personal: Accidentes Personales, Salud, Vida Colectivo). "Sancor Seguros Giamigli" (portal 16) no tiene autorización: no se programa.
 
 ## Ingreso
 - `www.sancorseguros.com.ar/autogestion/ingresar` → login de Grupo Sancor (usuario → Continuar → clave → Continuar). La URL guardada en la bóveda trae un `state` que vence; el conector entra siempre por esta página. Sin segundo factor al 27/10/2026.
