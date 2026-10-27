@@ -1,6 +1,5 @@
 "use client";
 
-import { EntrarConAyuda } from "@/components/boveda/EntrarConAyuda";
 import { formatFechaHora } from "@/lib/format";
 import { ETIQUETA_CORRIDA, type Portal } from "@/services/bovedaApi";
 
@@ -75,12 +74,7 @@ export function EstadoSincronizacion({ portal }: { portal: Portal }) {
 export function SincronizacionAutomatica({ portal }: { portal: Portal }) {
   // Sin acción posible del usuario: se informa en gris, no como alerta.
   if (portal.motivoNoSincroniza === "Próximamente" || portal.motivoNoSincroniza?.startsWith("No se puede automatizar")) {
-    return (
-      <span className="flex flex-col gap-1">
-        <span className="text-xs text-ink-muted">{portal.motivoNoSincroniza}</span>
-        <EntrarConAyuda portal={portal} />
-      </span>
-    );
+    return <span className="text-xs text-ink-muted">{portal.motivoNoSincroniza}</span>;
   }
   if (portal.motivoNoSincroniza) return <span className="text-xs text-red-700">{portal.motivoNoSincroniza}</span>;
   const p = portal.programacion;
