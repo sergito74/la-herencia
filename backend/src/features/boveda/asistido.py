@@ -48,14 +48,18 @@ class Asistido:
     # Allianz (Cloudflare) devuelve siempre a la verificación si Chrome se abre en modo automatizado: se abre un
     # Chrome común y el sistema se conecta después, cuando Sergio ya pasó la verificación.
     chrome_comun: bool = False
+    # Ya adentro, baja solo los documentos nuevos: (página, portal, datos).
+    bajar: object = None
 
 
 ASISTIDOS = {
     # Se entra por la página de clientes: el login directo deja en la página pública (www.allianz.com.ar).
     "auth.allianz.com.ar": Asistido("https://www.miallianz.com.ar/priv", "Allianz",
                                     "noreply@allianz.com.ar", r"Tu código es (\d{6})",
-                                    inicio="miallianz.com.ar/priv", chrome_comun=True),
-    "idp.movistar.com.ar": Asistido("https://idp.movistar.com.ar/convergencia/login_A.html", "Movistar", chrome_comun=True),
+                                    inicio="miallianz.com.ar/priv", chrome_comun=True,
+                                    bajar=lambda *a: _bajar_allianz(*a)),
+    "idp.movistar.com.ar": Asistido("https://idp.movistar.com.ar/convergencia/login_A.html", "Movistar", chrome_comun=True,
+                                    bajar=lambda *a: _bajar_movistar(*a)),
 }
 
 _abiertos: set[int] = set()
@@ -154,11 +158,18 @@ def _sesion(portal: dict, usuario: str | None) -> None:
                 if datos.codigo_remitente and _pide_codigo(p):
                     p.fill("input[name=code]", esperar_codigo(datos.codigo_remitente, datos.codigo_patron, pedido))
                     p.locator("button[type=submit], #btnConfirm").first.click()
-                if datos.inicio:
-                    _rechazar_aviso(p, datos.inicio)
+            if datos.inicio:  # también si la sesión ya estaba abierta
+                _rechazar_aviso(p, datos.inicio)
+            if datos.bajar:
+                try:
+                    datos.bajar(p, portal, datos)
+                except Exception:
+                    log.warning("Bóveda, descarga automática portal %s", id_portal, exc_info=True)
             limite = time.monotonic() + DURACION_MAXIMA
             while ctx.pages and time.monotonic() < limite:
                 ctx.pages[0].wait_for_timeout(2000)
+                if datos.inicio:
+                    _cancelar_aviso(ctx.pages[0])  # el aviso aparece tarde o al volver a la página de clientes
             ctx.close()
     except Exception:
         log.warning("Bóveda, ingreso asistido portal %s", id_portal, exc_info=True)
@@ -240,11 +251,26 @@ def _rechazar_aviso(p, inicio: str, espera_segundos: int = 300) -> None:
         p.wait_for_url(lambda u: "auth.allianz" not in u, timeout=espera_segundos * 1000)
         if inicio not in p.url:  # quedó en otro lugar del portal
             p.goto(f"https://www.{inicio}", wait_until="load", timeout=90000)
-        cancelar = p.get_by_role("button", name="Cancelar", exact=True)
-        cancelar.wait_for(timeout=15000)
-        cancelar.click()
+        # El aviso aparece varios segundos después de cargar la página.
+        for _ in range(30):
+            if _cancelar_aviso(p):
+                return
+            p.wait_for_timeout(1000)
     except Exception:
         pass  # sin aviso: Sergio sigue normalmente
+
+
+def _cancelar_aviso(p) -> bool:
+    """Si el aviso de marketing está en pantalla, lo cierra con "Cancelar" (nunca acepta)."""
+    try:
+        return bool(p.evaluate("""() => {
+            const b = [...document.querySelectorAll('.cdk-overlay-container button')]
+                .find(b => b.innerText.trim() === 'Cancelar');
+            if (b) b.click();
+            return !!b;
+        }"""))
+    except Exception:
+        return False
 
 
 def _completar_ingreso(p, cred) -> None:
@@ -260,38 +286,138 @@ def _completar_ingreso(p, cred) -> None:
     boton = p.locator("#btn-enviar")
     if boton.count():
         boton.click()
+        # Movistar a veces ignora el primer clic (la página todavía está terminando de cargar).
+        p.wait_for_timeout(8000)
+        if boton.count() and boton.is_visible():
+            boton.click()
     else:
         clave.press("Enter")
 
 
 def _guardar_descarga(portal: dict, datos: Asistido, descarga) -> None:
     """Guarda lo que Sergio baja en la ventana: carpeta de Compras del ejercicio y registro en la cuenta."""
-    from src.features.boveda import servicio
-
+    if portal["idPortal"] in _automaticas:
+        return
     try:
         contenido = open(descarga.path(), "rb").read()
-        sha = hashlib.sha256(contenido).hexdigest()
-        clave = f"asistido:{sha}"
-        if repository.existe_documento(portal["idPortal"], clave):
-            return
-        hoy = date.today()
-        carpeta = servicio._carpeta("factura", hoy)
-        ruta = repository.existe_sha(sha) or servicio._archivo_igual(carpeta, sha, {})
-        if not ruta:
-            destino = servicio._destino(carpeta, hoy, datos.proveedor)
-            if not contenido.startswith(b"%PDF"):
-                destino = destino.with_suffix(f".{descarga.suggested_filename.rsplit('.', 1)[-1][:5]}")
-            destino.parent.mkdir(parents=True, exist_ok=True)
-            destino.write_bytes(contenido)
-            ruta = str(destino)
-        doc = _Doc(clave=clave, fecha=hoy, tipo="factura", proveedor=datos.proveedor,
-                   detalle=descarga.suggested_filename[:200], id_contacto=portal["idContacto"])
-        r = carga.cargar(_SinLector(), doc, contenido, ruta)
-        repository.insertar_documento({"idPortal": portal["idPortal"], "clave": clave, "tipo": "factura",
-                                       "proveedor": datos.proveedor, "idContacto": portal["idContacto"], "fecha": hoy,
-                                       "moneda": "ARS", "ruta": ruta, "sha256": sha, **r})
+        _registrar(portal, datos, contenido, f"asistido:{hashlib.sha256(contenido).hexdigest()}", date.today(),
+                   descarga.suggested_filename)
     except Exception:
         log.warning("Bóveda, descarga asistida portal %s", portal["idPortal"], exc_info=True)
+
+
+def _registrar(portal: dict, datos: Asistido, contenido: bytes, clave: str, fecha: date, detalle: str,
+               numero: str | None = None) -> None:
+    from src.features.boveda import servicio
+
+    sha = hashlib.sha256(contenido).hexdigest()
+    if repository.existe_documento(portal["idPortal"], clave) or \
+            repository.existe_documento(portal["idPortal"], f"asistido:{sha}"):
+        return
+    carpeta = servicio._carpeta("factura", fecha)
+    ruta = repository.existe_sha(sha) or servicio._archivo_igual(carpeta, sha, {})
+    if not ruta:
+        destino = servicio._destino(carpeta, fecha, datos.proveedor)
+        if not contenido.startswith(b"%PDF"):
+            destino = destino.with_suffix(f".{detalle.rsplit('.', 1)[-1][:5]}")
+        destino.parent.mkdir(parents=True, exist_ok=True)
+        destino.write_bytes(contenido)
+        ruta = str(destino)
+    doc = _Doc(clave=clave, fecha=fecha, tipo="factura", proveedor=datos.proveedor,
+               detalle=detalle[:200], id_contacto=portal["idContacto"], numero=numero)
+    r = carga.cargar(_SinLector(), doc, contenido, ruta)
+    repository.insertar_documento({"idPortal": portal["idPortal"], "clave": clave, "tipo": "factura",
+                                   "proveedor": datos.proveedor, "idContacto": portal["idContacto"], "fecha": fecha,
+                                   "moneda": "ARS", "ruta": ruta, "sha256": sha, **r})
+
+
+# Solo las facturas recientes: las anteriores ya se cargaron a mano.
+DIAS_ATRAS = 60
+
+
+def _bajar_allianz(p, portal: dict, datos: Asistido) -> None:
+    """Facturas de los endosos recientes de las pólizas vigentes (API del propio portal, con la sesión abierta)."""
+    import base64
+
+    usuario = p.evaluate("fetch('/private/user').then(r => r.json())")
+    docu = usuario["result"]["user"]["details"]["identityDocuments"][0]
+    nro_doc = docu["documentType"]["documentTypeCode"] + docu["documentNumber"]
+    res = p.evaluate("u => fetch(u).then(r => r.json())",
+                     f"/api/mi-allianz/private/policies?docNumber={nro_doc}&validity=S&pageLines=50&currentPage=1")
+    desde = date.today() - timedelta(days=DIAS_ATRAS)
+    for bloque in res.get("PolizaAseguradoOut") or []:
+        for pol in bloque.get("polizas") or []:
+            for e in pol.get("polizasEndosos") or []:
+                fecha = datetime.strptime(e["fecha"][:10], "%Y-%m-%d").date()
+                if e.get("tieneFactura") != "S" or fecha < desde:
+                    continue
+                clave = f"allianz:{e['poliza']}:{e['endoso']}"
+                numero = f"{e['poliza']} {e['endoso']}"  # como se cargan a mano en Compras
+                if repository.existe_documento(portal["idPortal"], clave) or \
+                        repository.compra_existente(portal["idContacto"], numero, None):
+                    continue
+                url = (f"/api/mi-allianz/private/pdf/parte?nroPoliza={e['poliza']}&endoso={e['endoso']}"
+                       f"&partePoliza=FACTURA&item={pol.get('item') or 1}")
+                b64 = p.evaluate("""u => fetch(u).then(r => r.ok ? r.arrayBuffer() : null).then(b => {
+                    if (!b) return null;
+                    let s = ''; const a = new Uint8Array(b);
+                    for (let i = 0; i < a.length; i += 32768) s += String.fromCharCode(...a.subarray(i, i + 32768));
+                    return btoa(s);
+                })""", url)
+                if b64:
+                    pdf = base64.b64decode(b64)
+                    _registrar(portal, datos, pdf, clave, _fecha_emision(pdf) or fecha,
+                               f"Póliza {e['poliza']} endoso {e['endoso']} - {pol.get('detalleSecundario') or ''}",
+                               numero)
+
+
+MOVISTAR = "mimovistarempresas.movistar.com.ar"
+
+
+def _bajar_movistar(p, portal: dict, datos: Asistido) -> None:
+    """Última factura del inicio de Mi Movistar Empresas ("Descargar factura"), si no está cargada en Compras."""
+    if MOVISTAR not in p.url:
+        # Elección de "Movistar Empresas" después del ingreso, cuando el portal la pide.
+        for _ in range(30):
+            if MOVISTAR in p.url:
+                break
+            opcion = p.get_by_text("Movistar Empresas", exact=True)
+            if opcion.count():
+                opcion.first.click()
+            p.wait_for_timeout(1000)
+    boton = p.get_by_text("Descargar factura", exact=True).first
+    boton.wait_for(timeout=60000)
+    ids: list[str] = []
+    p.on("request", lambda r: ids.extend(re.findall(r"factura-digital/pdf/.*[?&]id=FA-([\d-]+)", r.url)))
+    _automaticas.add(portal["idPortal"])  # la descarga la registra esta función, no la de la ventana
+    try:
+        with p.expect_download(timeout=60000) as espera:
+            boton.evaluate("e => (e.closest('button,a') || e).click()")
+        contenido = open(espera.value.path(), "rb").read()
+    finally:
+        _automaticas.discard(portal["idPortal"])
+    numero = ids[-1] if ids else None
+    if numero and repository.compra_existente(portal["idContacto"], numero, None):
+        return
+    _registrar(portal, datos, contenido, f"movistar:{numero or hashlib.sha256(contenido).hexdigest()}",
+               _fecha_emision(contenido) or date.today(), espera.value.suggested_filename, numero)
+
+
+_automaticas: set[int] = set()
+
+
+def _fecha_emision(pdf: bytes) -> date | None:
+    """Fecha de emisión impresa en la factura (Allianz: el endoso trae la fecha de vigencia, no la de emisión)."""
+    import io
+
+    import pdfplumber
+
+    try:
+        with pdfplumber.open(io.BytesIO(pdf)) as d:
+            m = re.search(r"Fecha (?:de )?[Ee]misi[oó]n:?\s*(\d{2}/\d{2}/\d{4})", d.pages[0].extract_text() or "")
+        return datetime.strptime(m.group(1), "%d/%m/%Y").date() if m else None
+    except Exception:
+        return None
 
 
 @dataclass
