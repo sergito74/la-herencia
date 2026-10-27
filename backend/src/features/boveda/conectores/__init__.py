@@ -120,7 +120,7 @@ def registrar(conector: Conector) -> Conector:
 
 
 # Módulos con conectores; cada uno se registra con `registrar` al importarse.
-MODULOS: tuple[str, ...] = ("peajes", "cargill", "baya_casal")
+MODULOS: tuple[str, ...] = ("peajes", "cargill", "baya_casal", "arba")
 
 
 def cargar_conectores() -> dict[str, Conector]:
