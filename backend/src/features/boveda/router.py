@@ -8,7 +8,7 @@ con `Cache-Control: no-store` y queda auditado.
 from __future__ import annotations
 
 import ntpath
-from datetime import datetime, time
+from datetime import date, datetime, time
 from urllib.parse import urlparse
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
@@ -71,20 +71,26 @@ SIN_AUTOMATIZAR = {
 }
 
 
-# Portales sin automatizar que facturan todos los meses: se recuerda bajar a mano la factura que falte en Compras.
-RECORDATORIO_MENSUAL = {"auth.allianz.com.ar", "idp.movistar.com.ar"}
-_MESES = ("enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre",
-          "noviembre", "diciembre")
+# Tasa Vial de la Municipalidad de Bolívar (portal sin automatizar, pide captcha): bimestral, vence el 15 de cada
+# mes impar. Desde el 1° del mes impar, si no hay boleta cargada en Impuestos desde el mes anterior, se recuerda
+# bajarla a mano con el número de cuenta y el enlace (pedido de Sergio, 27/10/2026).
+TASA_VIAL_HOST = "tributaria.hacienda.bolivar.gob.ar"
 
 
-def recordatorio(f: dict) -> str | None:
-    if f["codigoConector"] or not f["idContacto"] or urlparse(f.get("url") or "").hostname not in RECORDATORIO_MENSUAL:
+def recordatorio(f: dict, hoy: date | None = None) -> str | None:
+    hoy = hoy or datetime.now().date()
+    if f["codigoConector"] or not f["idContacto"] or urlparse(f.get("url") or "").hostname != TASA_VIAL_HOST:
         return None
-    faltan = repository.meses_sin_factura(f["idContacto"], datetime.now().date())
-    if not faltan:
+    if hoy.month % 2 == 0:
         return None
-    meses = " y ".join(f"{_MESES[m.month - 1]} {m.year}" for m in faltan)
-    return f"Falta la factura de {meses}: bajala a mano"
+    desde = date(hoy.year - 1, 12, 1) if hoy.month == 1 else date(hoy.year, hoy.month - 1, 1)
+    if repository.hay_tasa_vial(f["idContacto"], desde):
+        return None
+    cuenta = repository.dato_credencial(f["idCredencial"], "Número de cuenta") if f["idCredencial"] else None
+    vence = date(hoy.year, hoy.month, 15)
+    estado = "vence" if hoy <= vence else "venció"
+    return (f"Falta la boleta de Tasa Vial que {estado} el {vence:%d/%m/%Y}"
+            + (f" (cuenta N° {cuenta})" if cuenta else "") + ": bajala de la página de la Municipalidad")
 
 
 def motivo_no_sincroniza(f: dict) -> str | None:

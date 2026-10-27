@@ -123,7 +123,7 @@ export default function BovedaPage() {
             resumen.data.conError && `${resumen.data.conError} cuentas con error`,
             resumen.data.requiereIntervencion && `${resumen.data.requiereIntervencion} cuentas que piden intervención`,
             resumen.data.diferenciasSaldo && `${resumen.data.diferenciasSaldo} diferencias de saldo sin revisar`,
-            resumen.data.facturasAMano && `${resumen.data.facturasAMano} cuentas con facturas para bajar a mano`,
+            resumen.data.facturasAMano && `${resumen.data.facturasAMano} boletas para bajar a mano`,
           ].filter(Boolean).join(" · ")}
         </p>
       )}

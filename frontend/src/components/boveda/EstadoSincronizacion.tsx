@@ -52,7 +52,14 @@ export function EstadoSincronizacion({ portal }: { portal: Portal }) {
     );
   }
   if (portal.recordatorio) {
-    return <span className="text-xs font-medium text-amber-800">{portal.recordatorio}</span>;
+    return (
+      <span className="text-xs font-medium text-amber-800">
+        {portal.recordatorio}{" "}
+        <a href={portal.url} target="_blank" rel="noreferrer" className="text-finance underline">
+          Abrir la página
+        </a>
+      </span>
+    );
   }
   const c = portal.ultimaCorrida;
   if (!c) {
