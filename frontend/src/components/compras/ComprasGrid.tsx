@@ -101,18 +101,23 @@ export function filasARequestLineas(rows: GridRow[], filtros: FiltrosComprasResp
 
   return rows
     .filter((r) => !esFilaVacia(r))
-    .map((r) => ({
-      productoServicio: r.productoServicio,
-      cantidad: parseNumeroLocal(r.cantidad),
-      precioUnitario: parseNumeroLocal(r.precioUnitario),
-      iva: parseNumeroLocal(r.iva),
-      unidad: r.unidad || null,
-      idCentroCosto: matchId(r.centroCosto, filtros?.centrosCosto, (c) => c.centroCosto, (c) => c.idCentroCosto),
-      idDestino: matchId(r.destino, filtros?.destinos, (d) => d.destino, (d) => d.idDestino),
-      idRubro: matchId(r.rubro, filtros?.rubros, (rb) => rb.rubro, (rb) => rb.idRubro),
-      campaña: r.campania || null,
-      ajusteFinanciero: false,
-    }));
+    .map((r) => {
+      const centroTexto = r.centroCosto.trim() || "Adm. General";
+      const destinoTexto = r.destino.trim() || "General";
+      const campaniaTexto = r.campania.trim() || "No Aplica";
+      return {
+        productoServicio: r.productoServicio,
+        cantidad: parseNumeroLocal(r.cantidad),
+        precioUnitario: parseNumeroLocal(r.precioUnitario),
+        iva: parseNumeroLocal(r.iva),
+        unidad: r.unidad || null,
+        idCentroCosto: matchId(centroTexto, filtros?.centrosCosto, (c) => c.centroCosto, (c) => c.idCentroCosto),
+        idDestino: matchId(destinoTexto, filtros?.destinos, (d) => d.destino, (d) => d.idDestino),
+        idRubro: matchId(r.rubro, filtros?.rubros, (rb) => rb.rubro, (rb) => rb.idRubro),
+        campaña: campaniaTexto,
+        ajusteFinanciero: false,
+      };
+    });
 }
 
 const inputClass =
