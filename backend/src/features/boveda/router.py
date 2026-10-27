@@ -18,8 +18,8 @@ from src.features.boveda import cifrado, planificador, repository, servicio
 from src.features.boveda.conectores import cargar_conectores
 from src.features.boveda.schemas import (
     Autorizacion, AutorizacionEntrada, ClaveNueva, ConectorInfo, CorridaResumen, CredencialEdicion, CredencialNueva,
-    CredencialResumen, CredencialSalida, FotoResumen, FotoRevision, Lista, PedidoRevelar, PortalEdicion, PortalEntrada,
-    PortalSalida, Programacion, ProgramacionEntrada, Revelado,
+    CredencialResumen, CredencialSalida, FotoResumen, FotoRevision, Lista, PedidoRevelar, PedidoSincronizar,
+    PortalEdicion, PortalEntrada, PortalSalida, Programacion, ProgramacionEntrada, Progreso, Revelado,
 )
 
 ESTADOS_CARGA = {"cargado_auto", "ya_cargado", "pendiente", "no_aplica", "historico"}
@@ -60,7 +60,19 @@ def _conector_info(codigo: str | None) -> ConectorInfo:
                         estadoCuenta=con.tiene_estado_cuenta, cargaCompras=con.tiene_carga_compras)
 
 
-def portal_salida(f: dict) -> PortalSalida:
+def motivo_no_sincroniza(f: dict) -> str | None:
+    if not f["codigoConector"] or f["codigoConector"] not in cargar_conectores():
+        return "Todavía no tiene sincronización automática: solo guarda el acceso"
+    if f["autFecha"] is None:
+        return "Falta la autorización"
+    if not f["idCredencial"] or not f["claveConfigurada"]:
+        return "Falta cargar usuario y contraseña"
+    if f["credencialRechazada"]:
+        return "El portal rechazó la contraseña: actualizarla"
+    return None
+
+
+def portal_salida(f: dict, cola: list[int] | None = None) -> PortalSalida:
     credencial = None
     if f["idCredencial"]:
         estado = "rechazada" if f["credencialRechazada"] else ("ok" if f["claveConfigurada"] else "faltante")
@@ -76,8 +88,9 @@ def portal_salida(f: dict) -> PortalSalida:
         )
     corrida = None
     if f["ucId"]:
-        corrida = CorridaResumen(idCorrida=f["ucId"], inicio=iso(f["ucInicio"]), estado=f["ucEstado"],
-                                 nuevos=f["ucNuevos"])
+        corrida = CorridaResumen(idCorrida=f["ucId"], inicio=iso(f["ucInicio"]), fin=iso(f["ucFin"]), estado=f["ucEstado"],
+                                 nuevos=f["ucNuevos"], existentes=f["ucExistentes"], cargados=f["ucCargados"],
+                                 pendientes=f["ucPendientes"], mensaje=f["ucMensaje"])
     foto = None
     if f["ufFechaCorte"]:
         foto = FotoResumen(fechaCorte=f["ufFechaCorte"], moneda=f["ufMoneda"], saldoPortal=f["ufSaldoPortal"],
@@ -89,6 +102,9 @@ def portal_salida(f: dict) -> PortalSalida:
                                   fuente=f["autFuente"]),
         programacion=programacion, ultimaCorrida=corrida, ultimaFoto=foto,
         enCurso=f["ucEstado"] == "en_curso",
+        enCola=f["idPortal"] in (cola if cola is not None else servicio.en_cola()) and f["ucEstado"] != "en_curso",
+        progreso=Progreso(paso=f["ucPaso"], hecho=f["ucHecho"], total=f["ucTotal"]) if f["ucEstado"] == "en_curso" else None,
+        motivoNoSincroniza=motivo_no_sincroniza(f),
     )
 
 
@@ -122,7 +138,8 @@ def conectores() -> list[ConectorInfo]:
 
 @router.get("/portales", response_model=Lista)
 def listar_portales() -> Lista:
-    return Lista(items=[portal_salida(f) for f in repository.listar_portales()])
+    cola = servicio.en_cola()
+    return Lista(items=[portal_salida(f, cola) for f in repository.listar_portales()])
 
 
 @router.get("/portales/{id_portal}", response_model=PortalSalida)
@@ -289,23 +306,36 @@ def programar(id_portal: int, body: ProgramacionEntrada, request: Request) -> Po
 
 @router.post("/portales/{id_portal}/corridas", status_code=202)
 def correr_ahora(id_portal: int, request: Request):
+    """Sincroniza un portal; pasa por la misma cola que las tandas (nunca dos navegadores a la vez)."""
     fila = _portal_o_404(id_portal)
     _exigir_conector(fila)
-    if repository.autorizacion_vigente(id_portal) is None:
-        raise HTTPException(status_code=409, detail="Falta autorización")
-    id_corrida, en_curso = servicio.iniciar_en_segundo_plano(id_portal, usuario_actual(request))
-    if id_corrida is None:
-        return JSONResponse(status_code=409, content={"detail": "Ya hay una corrida en curso", "idCorrida": en_curso})
-    return {"idCorrida": id_corrida}
+    motivo = motivo_no_sincroniza(fila)
+    if motivo:
+        raise HTTPException(status_code=409, detail=motivo)
+    if not servicio.correr_varios_en_segundo_plano([id_portal], usuario_actual(request)):
+        return JSONResponse(status_code=409, content={"detail": "Ya se está sincronizando"})
+    return {"encolados": [id_portal]}
 
 
 @router.post("/corridas", status_code=202)
-def correr_todos(request: Request) -> dict:
-    conectores = cargar_conectores()
-    ids = [f["idPortal"] for f in repository.listar_portales()
-           if f["codigoConector"] in conectores and f["autFecha"] is not None and f["ucEstado"] != "en_curso"]
-    servicio.correr_varios_en_segundo_plano(ids, usuario_actual(request))
-    return {"portales": ids}
+def sincronizar(request: Request, body: PedidoSincronizar | None = None) -> dict:
+    """Sincroniza ahora los portales elegidos (o todos los que se pueden), uno por vez.
+    Devuelve los encolados y, por cada omitido, el motivo en palabras."""
+    pedidos = set(body.idsPortales) if body and body.idsPortales else None
+    cola = servicio.en_cola()
+    candidatos, omitidos = [], []
+    for f in repository.listar_portales():
+        if pedidos is not None and f["idPortal"] not in pedidos:
+            continue
+        motivo = motivo_no_sincroniza(f)
+        if motivo is None and (f["ucEstado"] == "en_curso" or f["idPortal"] in cola):
+            motivo = "Ya se está sincronizando"
+        if motivo:
+            omitidos.append({"idPortal": f["idPortal"], "nombre": f["nombre"], "motivo": motivo})
+        else:
+            candidatos.append(f["idPortal"])
+    encolados = servicio.correr_varios_en_segundo_plano(candidatos, usuario_actual(request))
+    return {"encolados": encolados, "omitidos": omitidos}
 
 
 @router.get("/corridas")

@@ -33,3 +33,14 @@ body {
     transform: translateY(0);
   }
 }
+
+/* Barra de avance indeterminada (bóveda de portales, 042): mientras no se
+   conoce cuántos documentos hay, un tramo se desliza de izquierda a derecha. */
+@keyframes avance {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(300%);
+  }
+}

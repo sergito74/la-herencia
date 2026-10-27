@@ -183,7 +183,9 @@ SELECT p.IdPortal AS idPortal, p.Nombre AS nombre, p.Url AS url, p.Tipo AS tipo,
        pr.Frecuencia AS frecuencia, pr.DiaSemana AS diaSemana, pr.DiaMes AS diaMes,
        CONVERT(varchar(5), pr.Hora, 108) AS hora, pr.ProximaCorrida AS proximaCorrida,
        pr.Suspendida AS suspendida, pr.MotivoSuspension AS motivoSuspension,
-       uc.IdCorrida AS ucId, uc.Inicio AS ucInicio, uc.Estado AS ucEstado, uc.Nuevos AS ucNuevos,
+       uc.IdCorrida AS ucId, uc.Inicio AS ucInicio, uc.Fin AS ucFin, uc.Estado AS ucEstado, uc.Nuevos AS ucNuevos,
+       uc.Existentes AS ucExistentes, uc.Cargados AS ucCargados, uc.Pendientes AS ucPendientes, uc.Mensaje AS ucMensaje,
+       uc.Paso AS ucPaso, uc.AvanceHecho AS ucHecho, uc.AvanceTotal AS ucTotal,
        uf.FechaCorte AS ufFechaCorte, uf.Moneda AS ufMoneda, uf.SaldoPortal AS ufSaldoPortal,
        uf.SaldoSistema AS ufSaldoSistema, uf.Diferencia AS ufDiferencia
 FROM dbo.Portales p
@@ -333,7 +335,8 @@ def portal_para_correr(id_portal: int) -> dict | None:
 _COLS_CORRIDA = (
     "c.IdCorrida AS idCorrida, c.IdPortal AS idPortal, p.Nombre AS portal, c.Origen AS origen, c.Usuario AS usuario, "
     "c.Inicio AS inicio, c.Fin AS fin, c.Estado AS estado, c.Nuevos AS nuevos, c.Existentes AS existentes, "
-    "c.Cargados AS cargados, c.Pendientes AS pendientes, c.Mensaje AS mensaje"
+    "c.Cargados AS cargados, c.Pendientes AS pendientes, c.Mensaje AS mensaje, c.Paso AS paso, "
+    "c.AvanceHecho AS avanceHecho, c.AvanceTotal AS avanceTotal"
 )
 
 
@@ -350,8 +353,19 @@ def cerrar_corrida(id_corrida: int, estado: str, *, nuevos: int = 0, existentes:
                    pendientes: int = 0, mensaje: str | None = None) -> None:
     execute_write(
         "UPDATE dbo.Portales_Corridas SET Estado = ?, Nuevos = ?, Existentes = ?, Cargados = ?, Pendientes = ?, "
-        "Mensaje = ?, Fin = SYSDATETIME() WHERE IdCorrida = ?",
+        "Mensaje = ?, Fin = SYSDATETIME(), Paso = NULL WHERE IdCorrida = ?",
         (estado, nuevos, existentes, cargados, pendientes, (mensaje or "")[:400] or None, id_corrida),
+    )
+
+
+def avance(id_corrida: int, paso: str, hecho: int | None = None, total: int | None = None, **conteos) -> None:
+    """Paso visible de la corrida en curso ("Descargando 3 de 12…") y conteos parciales."""
+    execute_write(
+        "UPDATE dbo.Portales_Corridas SET Paso = ?, AvanceHecho = ?, AvanceTotal = ?, "
+        "Nuevos = COALESCE(?, Nuevos), Existentes = COALESCE(?, Existentes), Cargados = COALESCE(?, Cargados), "
+        "Pendientes = COALESCE(?, Pendientes) WHERE IdCorrida = ? AND Estado = 'en_curso'",
+        (paso[:160], hecho, total, conteos.get("nuevos"), conteos.get("existentes"), conteos.get("cargados"),
+         conteos.get("pendientes"), id_corrida),
     )
 
 

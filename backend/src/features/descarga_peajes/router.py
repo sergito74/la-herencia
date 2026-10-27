@@ -40,7 +40,9 @@ def estado() -> dict:
         "proximaCorrida": None if f["suspendida"] else iso(f["proximaCorrida"]),
         "ultimaCorrida": {"estado": f["ucEstado"], "inicio": iso(f["ucInicio"])} if f["ucId"] else None,
     } for f in _peajes()]
-    return {"portales": portales, "enCurso": any(f["ucEstado"] == "en_curso" for f in _peajes())}
+    cola = servicio.en_cola()
+    return {"portales": portales,
+            "enCurso": any(f["ucEstado"] == "en_curso" or f["idPortal"] in cola for f in _peajes())}
 
 
 @router.post("/ejecuciones", status_code=202)

@@ -56,7 +56,17 @@ export interface Portal {
   conector: ConectorInfo;
   autorizacion: Autorizacion;
   programacion: Programacion | null;
-  ultimaCorrida: { idCorrida: number; inicio: string; estado: string; nuevos: number } | null;
+  ultimaCorrida: {
+    idCorrida: number;
+    inicio: string;
+    fin: string | null;
+    estado: string;
+    nuevos: number;
+    existentes: number;
+    cargados: number;
+    pendientes: number;
+    mensaje: string | null;
+  } | null;
   ultimaFoto: {
     fechaCorte: string;
     moneda: "ARS" | "USD";
@@ -65,6 +75,12 @@ export interface Portal {
     diferencia: number | null;
   } | null;
   enCurso: boolean;
+  /** Esperando turno en una sincronización manual (se corre de a una cuenta). */
+  enCola: boolean;
+  /** Paso actual y avance (n de m documentos) mientras se sincroniza. */
+  progreso: { paso: string | null; hecho: number | null; total: number | null } | null;
+  /** Por qué no se puede sincronizar ahora; null = se puede. */
+  motivoNoSincroniza: string | null;
 }
 
 export interface DatoEntrada {
@@ -167,6 +183,9 @@ export interface Corrida {
   cargados: number;
   pendientes: number;
   mensaje: string | null;
+  paso: string | null;
+  avanceHecho: number | null;
+  avanceTotal: number | null;
 }
 
 export interface Foto {
@@ -210,8 +229,15 @@ export const programar = (
   id: number,
   body: { frecuencia: Frecuencia; diaSemana: number | null; diaMes: number | null; hora: string }
 ) => apiPut<Portal>(`${BASE}/portales/${id}/programacion`, body);
-export const correrAhora = (id: number) => apiPost<{ idCorrida: number }>(`${BASE}/portales/${id}/corridas`, {});
-export const correrTodos = () => apiPost<{ portales: number[] }>(`${BASE}/corridas`, {});
+export interface ResultadoSincronizar {
+  encolados: number[];
+  omitidos: { idPortal: number; nombre: string; motivo: string }[];
+}
+
+export const correrAhora = (id: number) => apiPost<{ encolados: number[] }>(`${BASE}/portales/${id}/corridas`, {});
+/** Sincroniza ahora las cuentas elegidas (sin ids = todas las que se pueden), de a una. */
+export const sincronizar = (idsPortales?: number[]) =>
+  apiPost<ResultadoSincronizar>(`${BASE}/corridas`, { idsPortales: idsPortales ?? null });
 export const getCorridas = (idPortal?: number, limite = 20, desde = 0) =>
   apiGet<Pagina<Corrida>>(`${BASE}/corridas`, { idPortal, limite, desde });
 export const getDocumentos = (idPortal?: number, estado?: EstadoCarga, limite = 50, desde = 0) =>

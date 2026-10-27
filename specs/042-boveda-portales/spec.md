@@ -31,6 +31,15 @@ Reglas que se mantienen (regla de oro de cuentas externas y Constitución): el a
 - Q: ¿Dónde se guardan los documentos bajados de todos los portales? → A: Todos (facturas, resúmenes, certificados, boletas, pólizas, liquidaciones) en la carpeta de Compras del ejercicio (abril–marzo), igual que los peajes.
 - Q: ¿Las facturas de portales no peaje se cargan solas en Compras? → A: Sí, desde el principio en todos los portales, con la regla de 037: solo si lo leído cierra exacto contra el total impreso, el formato es reconocido y no existe ya la compra (proveedor + número); si no, queda pendiente de carga manual con el motivo. Nunca se crean pagos, asientos ni ajustes automáticos.
 
+### Session 2026-10-27 (tarde, después de usarla)
+
+- Pedido de Sergio: "no sé si están corriendo; la interfaz no es clara; quiero barras de avance y mensajes en cada cuenta; no entiendo la columna Descarga; quiero seleccionar manualmente una o más cuentas para sincronizar; falta Movistar". Resolución:
+  - Cada cuenta muestra su estado en palabras: "En cola", "Sincronizando…" con barra de avance y paso ("Buscando documentos…", "Descargando 3 de 12…"), o el resultado de la última sincronización (nuevos, ya estaban, cargados, para cargar a mano) o su error.
+  - Barra general de la tanda ("Sincronizando: 2 de 4 cuentas terminadas") y mensaje final con los motivos de las cuentas que no se sincronizaron.
+  - La columna "Descarga" pasa a "Sincronización automática": "Todavía no disponible — solo guarda el acceso", "Activa · próxima …", "Disponible · solo manual", o lo que falta (autorización, contraseña).
+  - Selección con casillas y "Sincronizar seleccionadas"; además "Sincronizar todas las automáticas". Siempre de a una cuenta, sin encolar dos veces la misma.
+  - Movistar agregada (contacto 71), solo bóveda hasta tener su sincronización.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Registrar un portal en la bóveda (Priority: P1)
@@ -172,7 +181,8 @@ El usuario ve un historial de corridas por portal (inicio, fin, resultado, docum
 - **FR-012**: Cada portal con conector MUST tener su propia programación: desactivado, diaria, semanal (día y hora) o mensual (día y hora).
 - **FR-013**: El sistema MUST correr las corridas programadas sin intervención solo mientras la aplicación La Herencia esté abierta; al abrirla, MUST recuperar una sola corrida atrasada por portal. No se usan tareas de Windows para las corridas (la tarea semanal de peajes de 037 se reemplaza por esta programación).
 - **FR-014**: El sistema MUST impedir dos corridas simultáneas del mismo portal y procesar los portales de a uno, de modo que un error en uno no impida los demás.
-- **FR-015**: Usuarios con permiso MUST poder disparar "Correr ahora" por portal o para todos los portales activos.
+- **FR-015**: Usuarios con permiso MUST poder sincronizar ahora una cuenta, una selección de cuentas o todas las que tienen sincronización automática; se corren de a una, sin duplicar una cuenta ya en cola o en curso, y la respuesta MUST indicar por qué se omitió cada cuenta no sincronizable.
+- **FR-015b**: Mientras se sincroniza, cada cuenta MUST mostrar si está en cola o en curso, el paso actual y el avance (n de m documentos), y la tanda MUST mostrar cuántas cuentas terminaron.
 - **FR-016**: La pantalla MUST mostrar por portal: autorización, estado de credenciales (configuradas / rechazadas / faltantes), conector (disponible / solo bóveda), última corrida y resultado, próxima corrida.
 
 **Documentación y estado de cuenta**

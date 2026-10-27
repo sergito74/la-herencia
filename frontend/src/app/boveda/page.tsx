@@ -2,38 +2,29 @@
 
 import Link from "next/link";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { useAuth } from "@/components/auth/AuthContext";
+import { BarraAvance, EstadoSincronizacion, SincronizacionAutomatica } from "@/components/boveda/EstadoSincronizacion";
 import { PortalForm } from "@/components/boveda/PortalForm";
-import { formatFechaHora } from "@/lib/format";
-import { correrTodos, crearPortal, getPortales, getResumenBoveda, type Portal } from "@/services/bovedaApi";
+import {
+  crearPortal, getPortales, getResumenBoveda, sincronizar, type Portal, type ResultadoSincronizar,
+} from "@/services/bovedaApi";
 
-function EstadoCredencial({ portal }: { portal: Portal }) {
+function Acceso({ portal }: { portal: Portal }) {
   const c = portal.credencial;
-  if (!c) return <span className="text-ink-muted">Sin credencial</span>;
-  const color = c.estado === "ok" ? "text-ink-secondary" : "text-red-700";
-  const texto = c.estado === "ok" ? "••••••••" : c.estado === "rechazada" ? "Rechazada por el portal" : "Falta contraseña";
+  if (!c) return <span className="text-xs text-red-700">Sin usuario ni contraseña</span>;
   return (
-    <span>
-      <span className="text-ink-primary">{c.usuario ?? c.nombre}</span>{" "}
-      <span className={`font-mono text-xs ${color}`}>{texto}</span>
-    </span>
+    <div className="text-xs">
+      <div className="text-ink-primary">{c.usuario ?? c.nombre}</div>
+      <div className={c.estado === "ok" ? "text-ink-muted" : "text-red-700"}>
+        {c.estado === "ok" ? "Contraseña guardada" : c.estado === "rechazada" ? "Contraseña rechazada por el portal" : "Falta la contraseña"}
+      </div>
+    </div>
   );
 }
 
-function EstadoDescarga({ portal }: { portal: Portal }) {
-  if (!portal.conector.disponible) return <span className="rounded bg-surface-sunken px-1.5 py-0.5 text-xs">Solo bóveda</span>;
-  if (!portal.autorizacion.vigente) return <span className="text-xs text-red-700">Sin autorización</span>;
-  const p = portal.programacion;
-  if (portal.enCurso) return <span className="text-xs text-finance">Corriendo…</span>;
-  if (p?.suspendida) return <span className="text-xs text-red-700">Suspendida: {p.motivoSuspension}</span>;
-  if (!p || p.frecuencia === "desactivada") return <span className="text-xs text-ink-muted">Sin programar</span>;
-  return <span className="text-xs text-ink-secondary">Próxima: {formatFechaHora(p.proximaCorrida)}</span>;
-}
-
-/** Bóveda de portales (042): accesos, credenciales cifradas y descargas
- * programadas. Solo para el Administrador. */
+/** Bóveda de portales (042): accesos, credenciales cifradas y sincronizaciones. Solo Administrador. */
 export default function BovedaPage() {
   const { usuario } = useAuth();
   const esAdmin = usuario?.rol === "Administrador";
@@ -42,103 +33,198 @@ export default function BovedaPage() {
     queryKey: ["boveda", "portales"],
     queryFn: getPortales,
     enabled: esAdmin,
-    refetchInterval: (q) => (q.state.data?.items.some((p) => p.enCurso) ? 3000 : false),
+    // Mientras haya cuentas sincronizándose o en cola, se actualiza cada 1,5 s.
+    refetchInterval: (q) => (q.state.data?.items.some((p) => p.enCurso || p.enCola) ? 1500 : false),
   });
   const resumen = useQuery({ queryKey: ["boveda", "resumen"], queryFn: getResumenBoveda, enabled: esAdmin });
-  const todos = useMutation({ mutationFn: correrTodos, onSuccess: () => qc.invalidateQueries({ queryKey: ["boveda"] }) });
+  const [seleccion, setSeleccion] = useState<Set<number>>(new Set());
+  const [resultado, setResultado] = useState<ResultadoSincronizar | null>(null);
+  // Cuentas de la última tanda lanzada desde esta pantalla, para la barra general.
+  const [tanda, setTanda] = useState<number[]>([]);
   const [alta, setAlta] = useState(false);
-  const crear = useMutation({
-    mutationFn: crearPortal,
-    onSuccess: () => {
-      setAlta(false);
+
+  const lanzar = useMutation({
+    mutationFn: (ids?: number[]) => sincronizar(ids),
+    onSuccess: (r) => {
+      setResultado(r);
+      setTanda(r.encolados);
+      setSeleccion(new Set());
       qc.invalidateQueries({ queryKey: ["boveda"] });
     },
   });
+  const crear = useMutation({
+    mutationFn: crearPortal,
+    onSuccess: () => { setAlta(false); qc.invalidateQueries({ queryKey: ["boveda"] }); },
+  });
+
+  const items = portales.data?.items ?? [];
+  const sincronizables = items.filter((p) => !p.motivoNoSincroniza);
+  const conAutomatizacion = items.filter((p) => p.conector.disponible).length;
+  const ocupadas = items.filter((p) => p.enCurso || p.enCola);
+  const enTanda = items.filter((p) => tanda.includes(p.idPortal));
+  const terminadas = enTanda.filter((p) => !p.enCurso && !p.enCola).length;
+  const tandaActiva = tanda.length > 0 && terminadas < tanda.length;
+
+  // Al terminar la tanda, refrescar contadores y documentos.
+  const estabaActiva = useRef(false);
+  useEffect(() => {
+    if (estabaActiva.current && !tandaActiva) qc.invalidateQueries({ queryKey: ["boveda"] });
+    estabaActiva.current = tandaActiva;
+  }, [tandaActiva, qc]);
+
+  function alternar(id: number) {
+    setSeleccion((s) => {
+      const n = new Set(s);
+      if (n.has(id)) n.delete(id); else n.add(id);
+      return n;
+    });
+  }
 
   if (usuario && !esAdmin) {
-    return (
-      <main className="mx-auto max-w-none px-8 py-6">
-        <p className="text-sm text-ink-secondary">Solo el administrador accede a la bóveda de portales.</p>
-      </main>
-    );
+    return <main className="px-8 py-6 text-sm text-ink-secondary">Solo el administrador accede a la bóveda de portales.</main>;
   }
+
+  const todasMarcadas = sincronizables.length > 0 && sincronizables.every((p) => seleccion.has(p.idPortal));
 
   return (
     <main className="mx-auto max-w-none space-y-4 px-8 py-6">
       <section className="flex items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold">Bóveda de portales</h1>
-          <p className="mt-1 text-sm text-ink-secondary">
-            Accesos a portales de organismos, proveedores y clientes. Las contraseñas se guardan cifradas. El sistema
-            solo entra a los portales autorizados, para consultar y descargar.
+          <p className="mt-1 max-w-3xl text-sm text-ink-secondary">
+            Accesos a los portales de organismos, proveedores y clientes, con las contraseñas cifradas. Las cuentas con
+            sincronización automática bajan facturas y resúmenes a la carpeta de Compras; las demás, por ahora, solo
+            guardan el acceso.
           </p>
         </div>
-        <div className="flex shrink-0 gap-2">
-          <button type="button" disabled={todos.isPending} onClick={() => todos.mutate()}
-            title="Corre uno por vez los portales autorizados con descarga automática"
-            className="rounded-md border border-border px-4 py-1.5 text-sm disabled:opacity-50">
-            Correr todos ahora
+        {!alta && (
+          <button type="button" onClick={() => { crear.reset(); setAlta(true); }}
+            className="shrink-0 rounded-md border border-border px-4 py-1.5 text-sm">
+            Agregar cuenta
           </button>
-          {!alta && (
-            <button type="button" onClick={() => { crear.reset(); setAlta(true); }}
-              className="rounded-md bg-finance px-4 py-1.5 text-sm font-medium text-white">
-              Agregar portal
-            </button>
-          )}
-        </div>
+        )}
       </section>
-
-      {resumen.data && resumen.data.total > 0 && (
-        <p className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900">
-          Para revisar: {[
-            resumen.data.pendientesCarga && `${resumen.data.pendientesCarga} documentos pendientes de carga`,
-            resumen.data.conError && `${resumen.data.conError} portales con error`,
-            resumen.data.requiereIntervencion && `${resumen.data.requiereIntervencion} portales que piden intervención`,
-            resumen.data.diferenciasSaldo && `${resumen.data.diferenciasSaldo} diferencias de saldo sin revisar`,
-          ].filter(Boolean).join(" · ")}
-        </p>
-      )}
 
       {alta && (
         <PortalForm enviando={crear.isPending} error={crear.error?.message ?? null}
           onSubmit={(body) => crear.mutate(body)} onCancel={() => setAlta(false)} />
       )}
 
+      {items.length > 0 && (
+        <p className="rounded-md border border-border bg-surface px-3 py-2 text-sm">
+          <strong>{conAutomatizacion} de {items.length}</strong> cuentas tienen sincronización automática.
+          {items.length - conAutomatizacion > 0 && (
+            <> Las otras {items.length - conAutomatizacion} solo guardan el acceso: su sincronización se agrega de a una.</>
+          )}
+        </p>
+      )}
+
+      {resumen.data && resumen.data.total > 0 && (
+        <p className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+          Para revisar: {[
+            resumen.data.pendientesCarga && `${resumen.data.pendientesCarga} documentos pendientes de carga`,
+            resumen.data.conError && `${resumen.data.conError} cuentas con error`,
+            resumen.data.requiereIntervencion && `${resumen.data.requiereIntervencion} cuentas que piden intervención`,
+            resumen.data.diferenciasSaldo && `${resumen.data.diferenciasSaldo} diferencias de saldo sin revisar`,
+          ].filter(Boolean).join(" · ")}
+        </p>
+      )}
+
+      {/* Barra de acciones y avance general */}
+      <section className="space-y-3 rounded-md border border-border bg-surface p-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <button type="button" disabled={seleccion.size === 0 || lanzar.isPending}
+            onClick={() => lanzar.mutate([...seleccion])}
+            className="rounded-md bg-finance px-4 py-1.5 text-sm font-medium text-white disabled:opacity-40">
+            Sincronizar seleccionadas{seleccion.size ? ` (${seleccion.size})` : ""}
+          </button>
+          <button type="button" disabled={sincronizables.length === 0 || lanzar.isPending}
+            onClick={() => lanzar.mutate(undefined)}
+            className="rounded-md border border-border px-4 py-1.5 text-sm disabled:opacity-40">
+            Sincronizar todas las automáticas ({sincronizables.length})
+          </button>
+          <span className="text-xs text-ink-muted">Se sincronizan de a una, en orden.</span>
+        </div>
+
+        {(tandaActiva || ocupadas.length > 0) && (
+          <div className="space-y-1">
+            <div className="flex justify-between text-sm">
+              <span className="font-medium">
+                {tandaActiva ? `Sincronizando: ${terminadas} de ${tanda.length} cuentas terminadas` : `${ocupadas.length} cuenta(s) sincronizándose`}
+              </span>
+              {tandaActiva && <span className="text-ink-secondary">{Math.round((terminadas / tanda.length) * 100)}%</span>}
+            </div>
+            <BarraAvance hecho={tandaActiva ? terminadas : null} total={tandaActiva ? tanda.length : null} />
+          </div>
+        )}
+
+        {!tandaActiva && tanda.length > 0 && ocupadas.length === 0 && (
+          <p className="text-sm text-agro">
+            ✓ Terminó la sincronización de {tanda.length} cuenta(s): {enTanda.filter((p) => p.ultimaCorrida?.estado === "ok").length} bien
+            {enTanda.some((p) => p.ultimaCorrida && p.ultimaCorrida.estado !== "ok") &&
+              `, ${enTanda.filter((p) => p.ultimaCorrida && p.ultimaCorrida.estado !== "ok").length} con problemas (ver cada fila)`}.
+          </p>
+        )}
+        {resultado && resultado.encolados.length === 0 && resultado.omitidos.length === 0 && (
+          <p className="text-sm text-ink-secondary">No había cuentas para sincronizar.</p>
+        )}
+        {resultado && resultado.omitidos.length > 0 && (
+          <details className="text-sm text-ink-secondary">
+            <summary className="cursor-pointer">
+              {resultado.omitidos.length} cuenta(s) no se sincronizaron — ver por qué
+            </summary>
+            <ul className="mt-1 list-disc pl-5 text-xs">
+              {resultado.omitidos.map((o) => <li key={o.idPortal}><strong>{o.nombre}</strong>: {o.motivo}</li>)}
+            </ul>
+          </details>
+        )}
+        {lanzar.isError && <p className="text-sm text-red-700">{lanzar.error.message}</p>}
+      </section>
+
       {portales.isError && <p className="text-sm text-red-700">No se pudo leer la bóveda: {portales.error.message}</p>}
       <div className="overflow-x-auto rounded-md border border-border bg-surface">
         <table className="min-w-full text-sm">
           <thead className="bg-surface-sunken text-left text-xs text-ink-secondary">
             <tr>
-              <th className="px-3 py-2">Portal</th>
-              <th className="px-3 py-2">Contacto</th>
-              <th className="px-3 py-2">Credencial</th>
-              <th className="px-3 py-2">Descarga</th>
-              <th className="px-3 py-2">Última corrida</th>
+              <th className="w-8 px-3 py-2">
+                <input type="checkbox" aria-label="Seleccionar todas las sincronizables" checked={todasMarcadas}
+                  disabled={sincronizables.length === 0}
+                  onChange={() => setSeleccion(todasMarcadas ? new Set() : new Set(sincronizables.map((p) => p.idPortal)))} />
+              </th>
+              <th className="px-3 py-2">Cuenta</th>
+              <th className="px-3 py-2">Acceso</th>
+              <th className="px-3 py-2">Sincronización automática</th>
+              <th className="px-3 py-2">Estado</th>
               <th className="px-3 py-2" />
             </tr>
           </thead>
           <tbody>
-            {(portales.data?.items ?? []).map((p) => (
-              <tr key={p.idPortal} className="border-t border-border">
-                <td className="px-3 py-2">
-                  <Link href={`/boveda/${p.idPortal}`} className="font-medium text-finance hover:underline">{p.nombre}</Link>
-                  <div className="text-xs text-ink-muted">{p.tipo}</div>
-                </td>
-                <td className="px-3 py-2">{p.contacto ?? "—"}</td>
-                <td className="px-3 py-2"><EstadoCredencial portal={p} /></td>
-                <td className="px-3 py-2"><EstadoDescarga portal={p} /></td>
-                <td className="px-3 py-2 text-xs">
-                  {p.ultimaCorrida ? `${formatFechaHora(p.ultimaCorrida.inicio)} · ${p.ultimaCorrida.estado}` : "—"}
-                </td>
-                <td className="px-3 py-2 text-right">
-                  <a href={p.url} target="_blank" rel="noopener noreferrer" className="text-xs text-finance underline">
-                    Abrir portal
-                  </a>
-                </td>
-              </tr>
-            ))}
-            {portales.data && portales.data.items.length === 0 && (
-              <tr><td colSpan={6} className="px-3 py-4 text-center text-ink-muted">Todavía no hay portales registrados.</td></tr>
+            {items.map((p) => {
+              const puede = !p.motivoNoSincroniza && !p.enCurso && !p.enCola;
+              return (
+                <tr key={p.idPortal} className={`border-t border-border align-top ${p.enCurso ? "bg-finance-light/40" : ""}`}>
+                  <td className="px-3 py-2">
+                    <input type="checkbox" aria-label={`Seleccionar ${p.nombre}`} disabled={!puede}
+                      title={p.motivoNoSincroniza ?? (p.enCurso || p.enCola ? "Ya se está sincronizando" : undefined)}
+                      checked={seleccion.has(p.idPortal)} onChange={() => alternar(p.idPortal)} />
+                  </td>
+                  <td className="px-3 py-2">
+                    <Link href={`/boveda/${p.idPortal}`} className="font-medium text-finance hover:underline">{p.nombre}</Link>
+                    <div className="text-xs text-ink-muted">{p.contacto ?? p.tipo}</div>
+                  </td>
+                  <td className="px-3 py-2"><Acceso portal={p} /></td>
+                  <td className="px-3 py-2"><SincronizacionAutomatica portal={p} /></td>
+                  <td className="px-3 py-2"><EstadoSincronizacion portal={p} /></td>
+                  <td className="px-3 py-2 text-right">
+                    <a href={p.url} target="_blank" rel="noopener noreferrer" className="text-xs text-finance underline">
+                      Abrir portal
+                    </a>
+                  </td>
+                </tr>
+              );
+            })}
+            {portales.data && items.length === 0 && (
+              <tr><td colSpan={6} className="px-3 py-4 text-center text-ink-muted">Todavía no hay cuentas registradas.</td></tr>
             )}
             {portales.isLoading && (
               <tr><td colSpan={6} className="px-3 py-4 text-center text-ink-muted">Cargando…</td></tr>

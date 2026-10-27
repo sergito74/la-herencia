@@ -179,6 +179,10 @@ DDL = [
         Saldo decimal(18,2) NULL
     )
     """,
+    # Avance visible de la corrida (paso y n de m), agregado 27/10/2026.
+    "IF COL_LENGTH('dbo.Portales_Corridas', 'Paso') IS NULL ALTER TABLE dbo.Portales_Corridas ADD Paso nvarchar(160) NULL",
+    "IF COL_LENGTH('dbo.Portales_Corridas', 'AvanceHecho') IS NULL ALTER TABLE dbo.Portales_Corridas ADD AvanceHecho int NULL",
+    "IF COL_LENGTH('dbo.Portales_Corridas', 'AvanceTotal') IS NULL ALTER TABLE dbo.Portales_Corridas ADD AvanceTotal int NULL",
     """
     IF OBJECT_ID('dbo.Boveda_Auditoria', 'U') IS NULL
     CREATE TABLE dbo.Boveda_Auditoria (
@@ -400,6 +404,9 @@ PORTALES_NUEVOS = {
     "Jáuregui y Morales": ("https://sin-enlace.invalid/", "proveedor", 48, "2026-10-27",
                            "Pedido de Sergio 27/10/2026 (spec 042, Clarifications)",
                            "Falta el enlace del portal (.invalid = marcador): completarlo al cargar la credencial."),
+    "Movistar": ("https://www.movistar.com.ar/", "proveedor", 71, "2026-10-27",
+                 "Pedido de Sergio 27/10/2026: agregar Movistar a las cuentas de la bóveda",
+                 "Enlace general sin verificar: ajustar al acceso de Mi Movistar (facturas)."),
     "Lartirigoyen": ("https://www.lartirigoyen.com.ar/", "proveedor", 61, "2026-10-27",
                      "Pedido de Sergio 27/10/2026 (spec 042, Clarifications)", "Enlace general sin verificar: ajustar al acceso de clientes."),
 }
@@ -413,6 +420,13 @@ def registrar_portales() -> None:
             razon = cur.execute("SELECT [Razon Social] FROM dbo.Contactos WHERE IdContacto = ?", id_contacto).fetchone()
             if razon is None:
                 raise RuntimeError(f"{nombre}: el contacto {id_contacto} no existe")
+            # Sergio renombra portales desde la pantalla (ej. "ARCA Giamigli"): si ya hay uno para ese
+            # contacto, no se crea otro aunque el nombre no coincida.
+            otro = cur.execute("SELECT TOP 1 Nombre FROM dbo.Portales WHERE IdContacto = ? AND Nombre <> ?",
+                               id_contacto, nombre).fetchone()
+            if _id_portal(cur, nombre) is None and otro:
+                print(f"  {nombre}: ya existe como '{otro[0]}' (contacto {id_contacto}); no se crea otro")
+                continue
             nuevo = _id_portal(cur, nombre) is None
             id_portal = _alta_portal(cur, nombre, url, tipo, id_contacto, None, notas, fecha, fuente)
             print(f"  {nombre}: portal {id_portal} ({'nuevo' if nuevo else 'ya estaba'}), contacto {id_contacto} {razon[0]}")

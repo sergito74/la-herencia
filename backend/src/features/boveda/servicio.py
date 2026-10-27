@@ -31,6 +31,16 @@ from src.features.descarga_peajes.portales import COMPRAS, destino_libre
 
 log = logging.getLogger(__name__)
 
+# Portales esperando turno en una tanda manual ("Sincronizar seleccionados" / "todos"). Vive en el proceso del
+# backend, que es uno solo: alcanza para mostrar "En cola" y para no encolar dos veces el mismo portal.
+_cola: list[int] = []
+_cola_lock = threading.Lock()
+
+
+def en_cola() -> list[int]:
+    with _cola_lock:
+        return list(_cola)
+
 
 class SinAutorizacion(Exception):
     pass
@@ -121,12 +131,21 @@ def _procesar(portal: dict, conector, cred: Credencial, id_corrida: int) -> dict
     sesion = None
     with sync_playwright() as pw:
         try:
+            repository.avance(id_corrida, "Ingresando al portal…")
             sesion = conector.ingresar(pw, cred)
-            for doc in conector.listar_documentos(sesion):
+            repository.avance(id_corrida, "Buscando documentos en el portal…")
+            docs = conector.listar_documentos(sesion)
+            total = len(docs)
+            repository.avance(id_corrida, f"El portal ofrece {total} documentos; revisando cuáles faltan…", 0, total)
+            for i, doc in enumerate(docs, start=1):
                 _verificar_autorizacion(portal["idPortal"])
                 if repository.existe_documento(portal["idPortal"], doc.clave) or repository.existe_equivalente(doc.equivalentes):
                     res["existentes"] += 1
+                    if i % 10 == 0 or i == total:
+                        repository.avance(id_corrida, f"Revisados {i} de {total} (ya estaban {res['existentes']})", i, total,
+                                          **res)
                     continue
+                repository.avance(id_corrida, f"Descargando {i} de {total}: {doc.detalle or doc.proveedor}", i - 1, total, **res)
                 try:
                     contenido = doc.bajar()
                 except Exception as e:
@@ -155,8 +174,10 @@ def _procesar(portal: dict, conector, cred: Credencial, id_corrida: int) -> dict
                     res["cargados"] += 1
                 elif r["estadoCarga"] == "pendiente":
                     res["pendientes"] += 1
+                repository.avance(id_corrida, f"Procesados {i} de {total}", i, total, **res)
             if conector.tiene_estado_cuenta:
                 _verificar_autorizacion(portal["idPortal"])
+                repository.avance(id_corrida, "Leyendo el estado de cuenta…", total, total, **res)
                 for foto in conector.estado_cuenta(sesion):
                     estado_cuenta.guardar(portal["idPortal"], id_corrida, portal["idContacto"], foto)
         finally:
@@ -175,6 +196,7 @@ def ejecutar(id_portal: int, origen: str, usuario: str | None, lock, id_corrida:
     cred = None
     estado, mensaje, res = "error", None, {"nuevos": 0, "existentes": 0, "cargados": 0, "pendientes": 0}
     try:
+        repository.avance(id_corrida, "Preparando…")
         conector = cargar_conectores().get(portal["codigoConector"]) if portal else None
         if conector is None:
             estado, mensaje = "error", "Portal sin descarga automática (solo bóveda)"
@@ -228,29 +250,24 @@ def correr_portal(id_portal: int, origen: str, usuario: str | None) -> tuple[int
     return id_corrida, ejecutar(id_portal, origen, usuario, lock, id_corrida)
 
 
-def iniciar_en_segundo_plano(id_portal: int, usuario: str | None) -> tuple[int | None, int | None]:
-    """El lock se decide dentro de la petición HTTP: `(idCorrida, None)` si arrancó o `(None, idEnCurso)` para el 409."""
-    lock = tomar_lock(id_portal)
-    if lock is None:
-        return None, (repository.corrida_en_curso(id_portal) or {}).get("idCorrida")
-    try:
-        repository.marcar_incompletas(id_portal)
-        id_corrida = repository.crear_corrida(id_portal, "manual", usuario)
-    except Exception:
-        _soltar_lock(lock, id_portal)
-        raise
-    threading.Thread(target=ejecutar, args=(id_portal, "manual", usuario, lock, id_corrida),
-                     daemon=True, name=f"boveda-corrida-{id_corrida}").start()
-    return id_corrida, None
+def correr_varios_en_segundo_plano(ids: list[int], usuario: str | None) -> list[int]:
+    """Tanda manual: uno por vez en un solo hilo, para no abrir varios navegadores a la vez. No encola un portal
+    que ya está en cola o corriendo. Devuelve los que se encolaron."""
+    with _cola_lock:
+        nuevos = [i for i in dict.fromkeys(ids) if i not in _cola and repository.corrida_en_curso(i) is None]
+        _cola.extend(nuevos)
 
-
-def correr_varios_en_segundo_plano(ids: list[int], usuario: str | None) -> None:
-    """"Correr todos": uno por vez en un solo hilo, para no abrir varios navegadores a la vez."""
     def serie():
-        for id_portal in ids:
+        for id_portal in nuevos:
             try:
                 correr_portal(id_portal, "manual", usuario)
             except Exception:
                 log.exception("Bóveda: falló la corrida manual del portal %s", id_portal)
+            finally:
+                with _cola_lock:
+                    if id_portal in _cola:
+                        _cola.remove(id_portal)
 
-    threading.Thread(target=serie, daemon=True, name="boveda-corrida-todos").start()
+    if nuevos:
+        threading.Thread(target=serie, daemon=True, name="boveda-corrida-tanda").start()
+    return nuevos

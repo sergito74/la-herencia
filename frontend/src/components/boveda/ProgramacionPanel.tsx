@@ -3,6 +3,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 
+import { EstadoSincronizacion } from "@/components/boveda/EstadoSincronizacion";
 import { formatFechaHora } from "@/lib/format";
 import { correrAhora, programar, type Frecuencia, type Portal } from "@/services/bovedaApi";
 
@@ -32,7 +33,7 @@ export function ProgramacionPanel({ portal }: { portal: Portal }) {
   const correr = useMutation({ mutationFn: () => correrAhora(portal.idPortal), onSuccess: refrescar });
 
   if (!portal.conector.disponible) {
-    return <p className="text-sm text-ink-muted">Portal solo bóveda: no tiene descarga automática todavía.</p>;
+    return <p className="text-sm text-ink-muted">Esta cuenta todavía no tiene sincronización automática: la bóveda solo guarda el acceso. Se puede abrir el portal y entrar a mano.</p>;
   }
 
   return (
@@ -77,13 +78,14 @@ export function ProgramacionPanel({ portal }: { portal: Portal }) {
         <button type="submit" disabled={guardar.isPending} className="rounded-md bg-finance px-3 py-1.5 text-xs font-medium text-white disabled:opacity-50">
           Guardar programación
         </button>
-        <button type="button" disabled={correr.isPending || portal.enCurso || !portal.autorizacion.vigente}
-          title={portal.autorizacion.vigente ? undefined : "Falta autorización"}
+        <button type="button" disabled={correr.isPending || portal.enCurso || portal.enCola || !!portal.motivoNoSincroniza}
+          title={portal.motivoNoSincroniza ?? undefined}
           onClick={() => correr.mutate()}
           className="rounded-md border border-border px-3 py-1.5 text-xs disabled:opacity-50">
-          {portal.enCurso ? "Corriendo…" : "Correr ahora"}
+          {portal.enCurso ? "Sincronizando…" : portal.enCola ? "En cola…" : "Sincronizar ahora"}
         </button>
       </form>
+      <div className="rounded-md border border-border p-2"><EstadoSincronizacion portal={portal} /></div>
       {guardar.isError && <p className="text-xs text-red-700">{guardar.error.message}</p>}
       {correr.isError && <p className="text-xs text-red-700">{correr.error.message}</p>}
     </div>

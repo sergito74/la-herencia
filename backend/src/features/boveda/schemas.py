@@ -144,8 +144,19 @@ class Programacion(BaseModel):
 class CorridaResumen(BaseModel):
     idCorrida: int
     inicio: str
+    fin: Optional[str] = None
     estado: str
     nuevos: int
+    existentes: int = 0
+    cargados: int = 0
+    pendientes: int = 0
+    mensaje: Optional[str] = None
+
+
+class Progreso(BaseModel):
+    paso: Optional[str]
+    hecho: Optional[int]
+    total: Optional[int]
 
 
 class FotoResumen(BaseModel):
@@ -171,6 +182,10 @@ class PortalSalida(BaseModel):
     ultimaCorrida: Optional[CorridaResumen]
     ultimaFoto: Optional[FotoResumen]
     enCurso: bool
+    enCola: bool = False
+    progreso: Optional[Progreso] = None
+    # Por qué no se puede sincronizar ahora (None = se puede).
+    motivoNoSincroniza: Optional[str] = None
 
 
 class Lista(BaseModel):
@@ -192,3 +207,8 @@ class ProgramacionEntrada(BaseModel):
 
 class FotoRevision(BaseModel):
     revisada: bool
+
+
+class PedidoSincronizar(BaseModel):
+    """Portales a sincronizar ahora; vacío o ausente = todos los que se pueden."""
+    idsPortales: Optional[list[int]] = None

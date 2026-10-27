@@ -114,6 +114,14 @@ Cada conector: relevar el portal en solo lectura con Chromium (vía `.specify/me
 - [ ] T052 Revisión de checkpoint con agentes de seguridad/Python y dirección financiera (Constitución VI); `npm run build`; `pytest backend/tests/boveda -q`
   - Avance 27/10/2026: revisión Python/seguridad hecha y sus 9 defectos corregidos (ver validacion.md); `npm run build` y pytest OK. Falta la revisión de dirección financiera con el primer conector con estado de cuenta.
 
+## Phase 11: Claridad de la sincronización (pedido de Sergio 27/10/2026, tarde)
+
+- [X] T053 [US6] Columnas `Paso`, `AvanceHecho`, `AvanceTotal` en `Portales_Corridas` (DDL idempotente en `crear_esquema_boveda_042.py`, respaldo verificado) y `repository.avance()`; `servicio._procesar` informa cada paso
+- [X] T054 [US2] Cola en memoria de la tanda manual (`servicio.en_cola`), sin encolar dos veces; "Sincronizar ahora" de una cuenta pasa por la misma cola; `POST /api/boveda/corridas` acepta `idsPortales` y devuelve `encolados` y `omitidos` con motivo
+- [X] T055 [US6] `GET /portales` agrega `enCola`, `progreso` y `motivoNoSincroniza`; la vista de peajes cuenta la cola como "en curso"
+- [X] T056 [US6] Pantalla `/boveda`: casillas y "Sincronizar seleccionadas", "Sincronizar todas las automáticas", barra general de la tanda, mensaje final y motivos; columnas "Acceso", "Sincronización automática" (reemplaza "Descarga") y "Estado" con barra y paso (`components/boveda/EstadoSincronizacion.tsx`)
+- [X] T057 [US5] Alta de Movistar (contacto 71) en `--registrar-portales`; el registro reconoce portales renombrados por contacto (se borraron los duplicados 17 ARCA y 18 ARBA creados por error al registrar Movistar)
+
 ## Dependencies & Execution Order
 
 - Setup → Foundational (T003–T010) bloquea todo.

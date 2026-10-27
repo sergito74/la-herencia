@@ -38,7 +38,7 @@ export default function PortalPage() {
     queryFn: () => getPortal(idPortal),
     enabled: esAdmin,
     // Mientras corre, se actualiza cada 2 s; al terminar refresca corridas y documentos.
-    refetchInterval: (q) => (q.state.data?.enCurso ? 2000 : false),
+    refetchInterval: (q) => (q.state.data?.enCurso || q.state.data?.enCola ? 1500 : false),
   });
   const enCurso = portal.data?.enCurso ?? false;
   const corridas = useQuery({
@@ -78,7 +78,7 @@ export default function PortalPage() {
               <h1 className="text-2xl font-semibold">{p.nombre}</h1>
               <p className="text-sm text-ink-secondary">
                 {p.tipo}{p.contacto && ` · ${p.contacto}`} ·{" "}
-                {p.conector.disponible ? `Descarga automática: ${p.conector.nombre}` : "Solo bóveda (sin descarga automática)"}
+                {p.conector.disponible ? `Sincronización automática: ${p.conector.nombre}` : "Sincronización automática todavía no disponible (solo guarda el acceso)"}
               </p>
               {p.notas && <p className="mt-1 whitespace-pre-line text-sm">{p.notas}</p>}
             </div>
@@ -98,7 +98,7 @@ export default function PortalPage() {
           )}
           <Seccion titulo="Credencial"><CredencialPanel portal={p} /></Seccion>
           <Seccion titulo="Autorización"><AutorizacionPanel portal={p} /></Seccion>
-          <Seccion titulo="Descarga automática"><ProgramacionPanel portal={p} /></Seccion>
+          <Seccion titulo="Sincronización"><ProgramacionPanel portal={p} /></Seccion>
           {(p.conector.estadoCuenta || p.ultimaFoto) && (
             <Seccion titulo="Estado de cuenta"><EstadoCuentaPanel idPortal={p.idPortal} /></Seccion>
           )}
