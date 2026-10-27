@@ -56,7 +56,8 @@ def test_estructura_y_reparto():
     # Sergio directiva: ningun ingreso o remanente queda en Pendiente de aplicar, se imputa al rubro del comprobante
     assert ingresos == {"Venta Soja": 1000.0}
     assert [c["cuenta"] for c in d["saldoInicial"]["cuentas"]] == ["Nación", "Galicia CC", "Galicia Fondo FIMA"]
-    assert d["saldoInicial"]["cuentas"][2]["aclaracion"]
+    # 2. SALDO INICIAL: aclaracion eliminada por pedido expreso del usuario
+    assert d["saldoInicial"]["cuentas"][2].get("aclaracion") is None
 
 
 def test_internos_fuera_del_neto_y_traspaso_emparejado():

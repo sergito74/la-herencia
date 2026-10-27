@@ -137,27 +137,70 @@ export function FlujoCajaRubro() {
             </p>
             <ul className="divide-y divide-border">
               {detalle.data.items.map((p, i) => (
-                <li key={i} className="px-4 py-2 text-sm">
+                <li key={i} className="px-4 py-2.5 text-sm">
+                  {/* Fila superior: Fecha, Medio/Cuenta e Importe */}
                   <div className="flex items-center justify-between gap-2">
-                    <span>
+                    <span className="font-medium text-ink">
                       {formatFecha(p.fecha)} · {p.cuenta}
                     </span>
-                    <span className={p.importeArs < 0 ? "text-status-danger" : undefined}>
+                    <span className={`font-semibold ${p.importeArs < 0 ? "text-status-danger" : "text-agro"}`}>
                       {moneda === "USD" ? fmt(p.importeUsd) : fmt(p.importeArs)}
                     </span>
                   </div>
-                  <p className="text-xs text-ink-secondary">
-                    {p.concepto || "—"}
-                    {p.contacto ? ` · ${p.contacto}` : ""}
-                  </p>
-                  <p className="text-xs text-ink-secondary">
-                    {p.documentoAplicado
-                      ? `Aplicado a ${p.documentoAplicado.tipo} #${p.documentoAplicado.id} · vía ${VIAS[p.documentoAplicado.via] ?? p.documentoAplicado.via}`
-                      : "Sin aplicar"}
-                    {p.importeArs !== p.importeMovimiento && ` · parte de un movimiento de ${formatMoneda(p.importeMovimiento)}`}
-                  </p>
+
+                  {/* Tarjeta de Comprobante / Concepto Legible */}
+                  {p.documentoDetalle ? (
+                    <div className="mt-1.5 rounded-md border border-border/80 bg-surface/90 px-3 py-2 text-xs shadow-[0_1px_2px_rgba(0,0,0,0.03)]">
+                      <div className="flex items-baseline justify-between gap-2">
+                        <span className="font-semibold text-ink">
+                          {p.documentoDetalle.proveedor || p.contacto || "Comprobante"}
+                        </span>
+                        <span className="font-medium text-ink-secondary">
+                          {p.documentoDetalle.tipoComprobante} {p.documentoDetalle.nroComprobante ? `N° ${p.documentoDetalle.nroComprobante}` : ""}
+                        </span>
+                      </div>
+                      {p.documentoDetalle.detalleConcepto && (
+                        <div className="mt-1 text-ink-secondary leading-snug">
+                          {p.documentoDetalle.detalleConcepto}
+                        </div>
+                      )}
+                      <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 border-t border-border/50 pt-1 text-[11px] text-ink-tertiary">
+                        <span>Origen bancario: {p.concepto || "—"}</span>
+                        {p.documentoAplicado?.via && (
+                          <span>· vía {VIAS[p.documentoAplicado.via] ?? p.documentoAplicado.via}</span>
+                        )}
+                        {p.importeArs !== p.importeMovimiento && (
+                          <span>· Parte de un movimiento de {formatMoneda(p.importeMovimiento)}</span>
+                        )}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="mt-1 text-xs text-ink-secondary">
+                      <div className="flex items-baseline justify-between gap-2 font-medium text-ink">
+                        <span>{p.contacto || p.concepto || "—"}</span>
+                        {p.documentoAplicado ? (
+                          <span className="text-[11px] text-ink-tertiary">
+                            {VIAS[p.documentoAplicado.via] ? `vía ${VIAS[p.documentoAplicado.via]}` : ""}
+                          </span>
+                        ) : (
+                          <span className="rounded bg-status-warning-bg/40 px-1.5 py-0.5 text-[10px] text-status-warning font-medium">
+                            Sin comprobante aplicado
+                          </span>
+                        )}
+                      </div>
+                      {p.contacto && p.concepto && (
+                        <p className="mt-0.5 text-[11px] text-ink-tertiary">Banco: {p.concepto}</p>
+                      )}
+                      {p.importeArs !== p.importeMovimiento && (
+                        <p className="mt-0.5 text-[11px] text-ink-tertiary">
+                          Parte de un movimiento de {formatMoneda(p.importeMovimiento)}
+                        </p>
+                      )}
+                    </div>
+                  )}
+
                   {moneda === "USD" && (
-                    <p className="text-xs text-ink-secondary">
+                    <p className="mt-1 text-[11px] text-ink-secondary">
                       {p.cotizacion
                         ? `Cotización ${formatMoneda(p.cotizacion)} del ${formatFecha(p.fechaCotizacion)}`
                         : "Sin tipo de cambio: no suma en dólares"}
@@ -166,7 +209,7 @@ export function FlujoCajaRubro() {
                   {SIN_APLICAR.has(p.rubro) && p.origenMovimiento && p.idMovimiento != null && (
                     <button
                       type="button"
-                      className="mt-1 text-xs text-agro underline"
+                      className="mt-1.5 text-xs font-medium text-agro underline hover:text-agro-hover"
                       onClick={() => setAplicando({ origenMovimiento: p.origenMovimiento!, idMovimientoOrigen: p.idMovimiento! })}
                     >
                       Aplicar a factura/venta…
@@ -223,23 +266,18 @@ function Segmentado<T extends string>({
   );
 }
 
-function Avisos({ data, fmt }: { data: FlujoPorRubro; fmt: (v: number | null) => string }) {
+function Avisos({ data }: { data: FlujoPorRubro; fmt: (v: number | null) => string }) {
   const sinTc = data.sinTipoCambio.reduce((a, s) => a + s.cantidad, 0);
+  if (data.moneda !== "USD" || (sinTc === 0 && data.saldosSinTipoCambio.length === 0)) {
+    return null;
+  }
   return (
     <div className="space-y-2 text-sm">
-      {data.moneda === "USD" && (sinTc > 0 || data.saldosSinTipoCambio.length > 0) && (
-        <p className="rounded border border-status-warning bg-status-warning-bg px-3 py-2 text-status-warning">
-          {sinTc} movimientos sin tipo de cambio no suman en dólares
-          {data.ultimaFechaCotizacion && ` (la serie de dólar BNA llega hasta el ${formatFecha(data.ultimaFechaCotizacion)})`}. Las
-          celdas afectadas están marcadas con ⚠.
-        </p>
-      )}
-      {data.traspasosSinContraparte.length > 0 && (
-        <p className="rounded border border-status-warning bg-status-warning-bg px-3 py-2 text-status-warning">
-          {data.traspasosSinContraparte.length} traspasos entre bancos sin contraparte en el otro banco:{" "}
-          {data.traspasosSinContraparte.map((t) => `${formatFecha(t.fecha)} ${t.cuenta} ${fmt(t.importe)}`).join(" · ")}
-        </p>
-      )}
+      <p className="rounded border border-status-warning bg-status-warning-bg px-3 py-2 text-status-warning">
+        {sinTc} movimientos sin tipo de cambio no suman en dólares
+        {data.ultimaFechaCotizacion && ` (la serie de dólar BNA llega hasta el ${formatFecha(data.ultimaFechaCotizacion)})`}. Las
+        celdas afectadas están marcadas con ⚠.
+      </p>
     </div>
   );
 }

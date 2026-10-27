@@ -21,7 +21,7 @@ import re
 CUIT_EMPRESA = "30712114602"
 
 _PATRON_TITULAR_PROPIO_BNA = re.compile(
-    r"MIS TIT|DIS TIT|TRANSF\.?\s*INT\.?\s*DIST\.?\s*TITULAR", re.IGNORECASE
+    r"MIS TIT|DIS TIT|TRANSF?\.?\s*(?:INT\.?\s*DIST\.?\s*TITULAR|VAR)?|TRANS\d", re.IGNORECASE
 )
 
 
@@ -120,7 +120,7 @@ def emparejar_traspasos(movimientos: list[dict]) -> None:
         (i, m) for i, m in enumerate(movimientos) if m["banco"] == "Galicia" and not m.get("tipoInterno")
     ]
     for m in movimientos:
-        if m.get("tipoInterno") != TRASPASO_ENTRE_BANCOS or m["banco"] != "BNA":
+        if m.get("tipoInterno") != TRASPASO_ENTRE_BANCOS or m["banco"] == "Galicia":
             continue
         candidatos = [
             (abs((_dia(g["fecha"]) - _dia(m["fecha"])).days), i)

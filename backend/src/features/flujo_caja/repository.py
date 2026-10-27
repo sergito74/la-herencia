@@ -68,11 +68,13 @@ def get_movimientos_normalizados(fecha_desde: date, fecha_hasta: date) -> list[d
 
     filas_galicia = fetch_all(
         """
-        SELECT IdMovimiento AS idMovimiento, Fecha AS fecha, [Débitos] AS debitos, [Créditos] AS creditos,
-               [Descripción] AS concepto, [Grupo de Conceptos] AS grupoConceptos,
-               IdContacto AS idContacto, Contacto AS contacto
-        FROM dbo.[Movimientos Galicia]
-        WHERE Fecha BETWEEN ? AND ?
+        SELECT g.IdMovimiento AS idMovimiento, g.Fecha AS fecha, g.[Débitos] AS debitos, g.[Créditos] AS creditos,
+               g.[Descripción] AS concepto, g.[Grupo de Conceptos] AS grupoConceptos,
+               g.LeyendasAdicionales1 AS leyendasAdicionales1,
+               g.IdContacto AS idContacto, COALESCE(c.[Razon Social], g.Contacto) AS contacto
+        FROM dbo.[Movimientos Galicia] g
+        LEFT JOIN dbo.Contactos c ON c.IdContacto = g.IdContacto
+        WHERE g.Fecha BETWEEN ? AND ?
         """,
         (desde, hasta),
     )
@@ -88,6 +90,7 @@ def get_movimientos_normalizados(fecha_desde: date, fecha_hasta: date) -> list[d
                 "numeroCuentaBancaria": numero_cuenta_galicia,
                 "importe": importe,
                 "concepto": f["concepto"],
+                "leyendas": f.get("leyendasAdicionales1") or "",
                 "idContacto": f["idContacto"],
                 "contacto": f["contacto"],
                 "esInterno": es_interno("Galicia", f["concepto"], f["grupoConceptos"]),
@@ -277,55 +280,107 @@ def _dia(fecha) -> date:
 
 
 def _clasificar_concepto_o_contacto(m: dict) -> tuple[str, str | None] | None:
-    """Clasificación conceptual directa para que ningún movimiento quede pendiente."""
+    """Clasificación conceptual directa para que ningún movimiento quede pendiente ni mal imputado."""
     con = (m.get("concepto") or "").upper()
     contacto = (m.get("contacto") or "").upper()
+    leyendas = (m.get("leyendas") or "").upper()
+    texto_total = f"{con} {contacto} {leyendas}"
     imp = m.get("importe") or 0.0
+    id_con = m.get("idContacto")
 
-    # 1. Ley 25413 / 25314
+    # 1. Ley 25413 / 25314 (Impuestos bancarios)
     if atribucion.es_ley_25413(con):
         return atribucion.RUBRO_LEY_25413, atribucion.CENTRO_COSTO_LEY_25413
 
-    # 2. Impuestos provinciales y locales (ARBA, IIBB, Tasas)
-    if any(k in con for k in ["ARBA", "ING. BRUTOS", "ING.BRUTOS", "IIBB", "INMOBIL.PCIA.BS.AS.", "INMOB.COMPL"]) or "ARBA" in contacto:
+    # 2. Retenciones y Percepciones IIBB / ARBA Bancario
+    if any(k in con for k in ["GRAVAMEN IB", "RETEN. IB", "PERCEP. IB", "RECAUDACION BANCARIA", "RECAUD. BANCARIA", "SIRCREB", "IMP. ING. BRUTOS"]) or (
+        ("ARBA" in con or "ING. BRUTOS" in con or "IIBB" in con) and any(k in con for k in ["RET", "PERCEP", "GRAV", "RECAUD"])
+    ):
         return atribucion.RUBRO_ARBA_RECAUDACION, atribucion.CENTRO_COSTO_LEY_25413
-    if any(k in con for k in ["BOLIVAR", "MUNICIPAL", "TASAS NO IMP"]) or "BOLIVAR" in contacto or "MINISTERIO DE TRABAJO" in contacto:
-        return "Tasas municipales y provinciales", atribucion.CENTRO_COSTO_IMPUESTOS
+    if id_con == 12 and imp > 0:
+        # Reintegro o devolución de saldo a favor de IIBB
+        return atribucion.RUBRO_ARBA_RECAUDACION, None
 
-    # 3. Impuestos nacionales (AFIP / VEP)
-    if "AFIP" in con or "VEP" in con or "AFIP" in contacto or m.get("idContacto") == 119:
+    # 3. Tasas municipales y provinciales (Egresos)
+    if id_con == 72 or any(k in texto_total for k in ["MUNICIPALIDAD DE BOLIVAR", "TASA VIAL", "MINISTERIO DE TRABAJO", "TASAS NO IMP"]):
+        if imp < 0:
+            return "Tasas municipales y provinciales", atribucion.CENTRO_COSTO_IMPUESTOS
+    if ("BOLIVAR" in con or "BOLIVAR" in leyendas) and "GIAMIGLI" not in texto_total:
+        if imp < 0:
+            return "Tasas municipales y provinciales", atribucion.CENTRO_COSTO_IMPUESTOS
+
+    # 4. Impuestos ARBA boletas (Inmobiliario / Automotor / Sellos)
+    if id_con == 12 or any(k in texto_total for k in ["ARBA INMOB", "ARBA AUTOM", "INMOBIL.PCIA.BS.AS.", "INMOB.COMPL"]):
+        if imp < 0:
+            return "Impuestos ARBA", atribucion.CENTRO_COSTO_IMPUESTOS
+
+    # 5. Impuestos nacionales (AFIP / VEP / SENASA)
+    if "AFIP" in con or "VEP" in con or "AFIP" in contacto or id_con == 119:
         if imp > 0:
             return "Venta Granos", None
         return "Impuestos AFIP", atribucion.CENTRO_COSTO_IMPUESTOS
+    if "SENASA" in texto_total:
+        return "Tasas municipales y provinciales", atribucion.CENTRO_COSTO_IMPUESTOS
 
-    # 4. Gastos y comisiones bancarias y tarjetas
-    if any(k in con for k in ["COMISION", "COM.", "I.V.A.", "IVA", "PERCEP. IVA", "SELLOS", "INTERESES SOBRE SALDOS", "MANTENIMIENTO", "PAQUETES", "RETEN. I.V.A", "GESTION TRANSF"]):
+    # 6. Gastos y comisiones bancarias de cuenta (Centro de costos: Adm. General)
+    if any(k in con for k in ["COMISION", "COM.", "MANTENIMIENTO", "PAQUETES", "SERVICIO DE CUENTA", "GESTION TRANSF"]):
+        return "Gastos bancarios", "Adm. General"
+    if any(k in con for k in ["I.V.A.", "IVA", "PERCEP. IVA", "SELLOS", "INTERESES SOBRE SALDOS", "RETEN. I.V.A"]):
         return "Gastos bancarios", atribucion.CENTRO_COSTO_LEY_25413
+
+    # 7. Tarjetas corporativas y de crédito agropecuario
     if 966650 < abs(imp) < 966660:
         return "Compensacion bancaria por error (AgroNacion)", ("Adm. General" if imp < 0 else None)
-    if "AGRONACION" in con or "AGRONACION" in contacto:
+    if "AGRONACION" in texto_total or "AGRONAC." in con:
         return "Tarjeta AgroNacion", "Adm. General"
-    if "VISA" in con or "VISA" in contacto:
+    if "VISA" in texto_total:
         return "Tarjeta Visa Galicia", "Adm. General"
-    if any(k in con for k in ["TCORP", "TARJETA"]):
+    if "GALICIA RURAL" in texto_total:
+        return "Tarjeta Galicia Rural", "Adm. General"
+    if any(k in con for k in ["TCORP", "TARJETA", "MASTER"]):
         return "Tarjeta Corporativa BNA", "Adm. General"
-    if any(k in con for k in ["ALLIANZ", "GARANTIZAR", "SEGURO", "SANCOR"]) or "ALLIANZ" in contacto or "GARANTIZAR" in contacto:
+
+    # 8. Seguros
+    if any(k in texto_total for k in ["ALLIANZ", "GARANTIZAR", "SEGURO", "SANCOR", "GALICIA SEGUROS", "SEGUROS GALICIA"]) or id_con in [171, 515, 575]:
+        if imp > 0:
+            return "Seguros Agricolas", None
         return "Seguros Generales", "Adm. General"
+
+    # 9. Financiamiento / Préstamos
     if "PRESTAMO" in con or "PAGO PRESTAMO" in con:
         return "Financiamiento", "Adm. General"
 
-    # 5. Socios: Retiros, haberes y transferencias a socios / cuentas de socios / aportes efectivo de socios
-    if any(s in contacto or s in con for s in ["SERGIO GIAMBERARDINI", "ALBINA IGLINA", "VIRGIN", "LUCY", "APORTE EFECTIVO", "RETIRO EFECTIVO"]) or m.get("idContacto") in [375, 390]:
+    # 10. Socios (Cuentas de socios / Retiros / Aportes)
+    if any(s in texto_total for s in ["SERGIO GIAMBERARDINI", "ALBINA IGLINA", "VIRGINIA", "VIRGIN", "LUCY", "APORTE EFECTIVO", "RETIRO EFECTIVO"]) or id_con in [375, 390, 564]:
         return atribucion.RUBRO_CUENTA_SOCIOS, (atribucion.CENTRO_COSTO_SOCIOS if imp < 0 else None)
 
-    # 6. Sueldos y cargas del personal
-    if "HABERES" in con or "SUELDO" in con or "MARCELO" in con or "SIERRA" in contacto or "SIERRA" in con or m.get("idContacto") in [123, 374]:
-        return atribucion.RUBRO_SUELDOS, atribucion.CENTRO_COSTO_PERSONAL
-    if "UATRE" in con or "UATRE" in contacto:
+    # 11. Cargas sociales (UATRE)
+    if "UATRE" in texto_total or id_con == 315 or "32200018050000545700" in con or "32200018050000545700" in leyendas:
         return "Cargas sociales (UATRE)", atribucion.CENTRO_COSTO_PERSONAL
 
-    # 7. Clientes / Granos / Hacienda
-    if "CARGILL" in con or "CARGILL" in contacto or "30506792165" in con or m.get("idContacto") == 258:
+    # 12. Sueldos y contratistas rurales frecuentes
+    if any(k in texto_total for k in ["HABERES", "SUELDO", "MARCELO SIERRA", "SIERRA MARCELO"]) or id_con in [123, 374]:
+        return atribucion.RUBRO_SUELDOS, atribucion.CENTRO_COSTO_PERSONAL
+    if id_con == 376 or "MORI" in texto_total:
+        return "Servicios y labores contratadas", "Agricultura"
+    if any(k in texto_total for k in ["MENDOZA", "CALDERON", "YANQUELEN", "ZURRA", "GOROSITO"]):
+        return "Servicios y labores contratadas", "Agricultura"
+    if id_con == 210 or "CRIADO" in texto_total:
+        return "Honorarios Profesionales", "Adm. General"
+    if "PARDO" in texto_total or "PRESTISIMONE" in texto_total:
+        return "Honorarios Profesionales", "Adm. General"
+
+    # 13. Electricidad y servicios públicos
+    if id_con == 23 or any(k in texto_total for k in ["COOPERATIVA ELECTRICA", "COOP BOLIVAR", "COOP. BOLIVAR", "ELECTRICIDAD"]):
+        return "Electricidad", "Adm. General"
+    if "MOVISTAR" in texto_total or "TELEFONO" in texto_total:
+        return "Telefono", "Adm. General"
+
+    # 14. Clientes y Granos (Cargill, etc.)
+    if "CARGILL" in texto_total or id_con == 258 or "30506792165" in con:
+        if imp < 0:
+            # Los egresos de insumos no se fuerzan genéricamente a Agricultura; se atribuyen según sus comprobantes
+            return None
         f = _dia(m["fecha"])
         if f < date(2025, 7, 20):
             return "Venta Maiz", None
@@ -338,41 +393,51 @@ def _clasificar_concepto_o_contacto(m: dict) -> tuple[str, str | None] | None:
         else:
             return "Venta Soja", None
 
-    if "CAMPOS Y MONTES" in con or "CAMPOS Y MONTES" in contacto or "BERMEJO" in con or m.get("idContacto") == 432:
-        return "Venta Terneros", None
+    # 15. Alquileres / Arrendamientos (Fideicomiso La Esperanza, etc.)
+    if id_con == 562 or "ESPERANZA" in texto_total:
+        if imp > 0:
+            return "Arrendamientos", None
+        return "Gastos de Administracion", "Adm. General"
 
-    if "BAYA CASAL" in con or "BAYA CASAL" in contacto:
-        return "Insumos productivos", "Agricultura"
-
-    # 8. Servicios y proveedores frecuentes sin aplicación cargada
-    if "PARDO" in contacto or "PARDO" in con:
-        return "Honorarios Profesionales", "Adm. General"
-    if "LAVALLE" in contacto or "LAVALLE" in con or "ELECTRICIDAD" in con:
-        return "Mantenimiento Instalaciones", "Adm. General"
-    if any(k in contacto or k in con for k in ["MORI", "MENDOZA", "CALDERON", "YANQUELEN", "ZURRA"]):
-        return "Servicios y labores contratadas", "Agricultura"
-    if "MOVISTAR" in con or "TELEFONO" in con:
-        return "Telefono", "Adm. General"
+    # 16. Cheques y echeqs
     if "ECHEQ" in con or "G. DE ECHEQ" in con:
-        return ("Cobranza cheques de terceros", None) if imp > 0 else ("Gastos de Administracion", "Adm. General")
+        if imp > 0:
+            if id_con == 562:
+                return "Arrendamientos", None
+            return "Cobranza cheques de terceros", None
+        return "Gastos de Administracion", "Adm. General"
 
-    # 9. Conceptos operativos de Cajas en Efectivo
-    if "GARRAFA" in con or "EXTRAGAS" in contacto or m.get("idContacto") in [37, 560]:
-        return "Gas", "Adm. General"
+    # 17. Hacienda
+    if "CAMPOS Y MONTES" in texto_total or "BERMEJO" in texto_total or id_con == 432:
+        return "Venta Terneros", None
     if "VENTA VACA" in con or "DELASERNA" in con or "DE LA SERNA" in con:
         return "Venta Vacas", None
     if "COMISION VENTA" in con:
         return "Gastos Comercializacion", "Ganaderia"
-    if "VACUNACION" in con or "DESTETE" in con or m.get("idContacto") == 379:
+    if "VACUNACION" in con or "DESTETE" in con or id_con == 379:
         return "Aranceles Vacunacion", "Ganaderia"
-    if any(k in con for k in ["MOTOSIERRA", "MADERA", "CEMENTO", "PALOMINO", "LEMOS", "ESCOMBRO", "PRECINTOS", "ETHERNET", "J&H"]) or m.get("idContacto") in [80, 343, 573, 3655]:
+    if "YEGUA" in con:
+        return "Compra Hacienda", "Ganaderia"
+
+    # 18. Insumos y labores varias
+    if "BAYA CASAL" in texto_total:
+        return None
+    if "LAVALLE" in texto_total:
         return "Mantenimiento Instalaciones", "Adm. General"
-    if any(k in con for k in ["GATO", "ASADO", "POLLO", "MILANESA", "PAN RALLADO", "VINAGRE", "SUPERMERCADO", "PROPINA", "VIATICOS", "CAMBIO"]) or m.get("idContacto") == 249:
+
+    # 19. Conceptos operativos de Cajas en Efectivo
+    if "GARRAFA" in con or "EXTRAGAS" in contacto or id_con in [37, 560]:
+        return "Gas", "Adm. General"
+    if any(k in con for k in ["MOTOSIERRA", "MADERA", "CEMENTO", "PALOMINO", "LEMOS", "ESCOMBRO", "PRECINTOS", "ETHERNET", "J&H"]) or id_con in [80, 343, 573, 3655]:
+        return "Mantenimiento Instalaciones", "Adm. General"
+    if any(k in con for k in ["GATO", "ASADO", "POLLO", "MILANESA", "PAN RALLADO", "VINAGRE", "SUPERMERCADO", "PROPINA", "VIATICOS", "CAMBIO"]) or id_con == 249:
         return "Viaticos", "Adm. General"
     if any(k in con for k in ["NAFTA", "EESS", "COMBUSTIBLE", "GASOIL"]):
         return "Combustible", "Adm. General"
-    if "YEGUA" in con:
-        return "Compra Hacienda", "Ganaderia"
+
+    # 20. Devoluciones / Anulaciones
+    if "ANULACION DE TRANSFERENCIA" in con:
+        return "Servicios y labores contratadas", "Ganaderia"
 
     return None
 
@@ -458,6 +523,61 @@ def _sisa_reintegros_map() -> dict[tuple[str, int], list[dict]]:
     return sisa_partes
 
 
+def _partes_desde_compras_proveedor(id_contacto: int, fecha: date, importe_abs: float) -> list[dict] | None:
+    """Distribuye proporcionalmente un egreso a un proveedor de insumos/servicios según
+    los rubros y centros de costos de sus facturas/notas de débito reales cercanas a la fecha (≤ 7 días),
+    respetando si los insumos corresponden a Agricultura, Ganadería o Adm. General."""
+    if not id_contacto or not fecha:
+        return None
+    filas = fetch_all(
+        """
+        SELECT c.IdDeuda, c.Fecha,
+               ABS(DATEDIFF(day, c.Fecha, ?)) AS diff_dias
+        FROM dbo.Compras c
+        WHERE c.IdContacto = ? AND c.Fecha BETWEEN DATEADD(day, -7, ?) AND DATEADD(day, 7, ?)
+        ORDER BY diff_dias ASC
+        """,
+        (fecha, id_contacto, fecha, fecha),
+    )
+    if not filas:
+        return None
+    min_diff = filas[0]["diff_dias"]
+    compras_cercanas = [f["IdDeuda"] for f in filas if f["diff_dias"] <= min_diff + 2]
+    grupos: dict[tuple, float] = defaultdict(float)
+    doc_id_por_grupo: dict[tuple, int] = {}
+    for id_deuda in compras_cercanas:
+        for l in atribucion._rubros_de_compra(id_deuda):
+            rubro = l["rubro"] or "Insumos productivos"
+            centro = l["centroCosto"] or "Adm. General"
+            peso = max(float(l.get("peso") or 0), 0)
+            grupos[(rubro, centro)] += peso
+            doc_id_por_grupo[(rubro, centro)] = id_deuda
+    if not grupos:
+        return None
+    total_peso = sum(grupos.values())
+    if total_peso <= 0:
+        return None
+
+    partes = []
+    for (rubro, centro), peso in grupos.items():
+        share = peso / total_peso
+        partes.append({
+            "rubro": rubro,
+            "centroCosto": centro,
+            "importe": round(importe_abs * share, 2),
+            "documentoAplicado": {
+                "tipo": "CompraDeuda",
+                "id": doc_id_por_grupo[(rubro, centro)],
+                "via": "facturas_proveedor",
+            },
+        })
+    dif = round(importe_abs - sum(p["importe"] for p in partes), 2)
+    if dif != 0 and partes:
+        mayor = max(partes, key=lambda p: p["importe"])
+        mayor["importe"] = round(mayor["importe"] + dif, 2)
+    return partes
+
+
 def atribuir_movimientos(movimientos: list[dict]) -> list[dict]:
     """Agrega `partes` a cada movimiento (030): una o más `{seccion, rubro,
     centroCosto, importeArs, documentoAplicado}` cuya suma es el importe del
@@ -497,8 +617,11 @@ def atribuir_movimientos(movimientos: list[dict]) -> list[dict]:
                     aplicaciones.get((m.get("origenMovimiento"), m.get("idMovimientoOrigen")), []),
                     m["importe"], m["fecha"], memo_compras)
             if partes is None:
-                rubro, centro = _atribucion_fallback(m, indice_ingresos)
-                partes = [{"rubro": rubro, "centroCosto": centro, "importe": round(abs(m["importe"]), 2), "documentoAplicado": None}]
+                if m["importe"] < 0 and m.get("idContacto"):
+                    partes = _partes_desde_compras_proveedor(m["idContacto"], _dia(m["fecha"]), round(abs(m["importe"]), 2))
+                if partes is None:
+                    rubro, centro = _atribucion_fallback(m, indice_ingresos)
+                    partes = [{"rubro": rubro, "centroCosto": centro, "importe": round(abs(m["importe"]), 2), "documentoAplicado": None}]
             for p in partes:
                 p["seccion"] = "ingresos" if signo > 0 else "egresos"
         for p in partes:
@@ -707,7 +830,7 @@ def flujo_por_rubro(desde: date, hasta: date, granularidad: str, moneda: str) ->
         return round(valor / c[0], 2)
 
     cuentas_ini = [
-        {"cuenta": c, "importe": convertir(v, desde, "inicial"), **({"aclaracion": ACLARACION_FIMA} if c == CUENTA_FIMA else {})}
+        {"cuenta": c, "importe": convertir(v, desde, "inicial")}
         for c, v in iniciales.items()
     ]
     total_ini = convertir(sum(iniciales.values()), desde, "inicial")
@@ -731,6 +854,141 @@ def flujo_por_rubro(desde: date, hasta: date, granularidad: str, moneda: str) ->
     }
 
 
+def _obtener_detalles_documentos(documentos: list[tuple[str, int]]) -> dict[tuple[str, int], dict]:
+    resultado = {}
+    compras_ids = [doc_id for tipo, doc_id in documentos if tipo == "CompraDeuda"]
+    if compras_ids:
+        for i in range(0, len(compras_ids), 500):
+            batch = compras_ids[i:i+500]
+            placeholders = ",".join("?" for _ in batch)
+            rows = fetch_all(f"""
+                SELECT c.IdDeuda, c.[Tipo documento] as tipoComprobante, c.[Nro Documento] as nroComprobante,
+                       ct.[Razon Social] as proveedor,
+                       (SELECT STRING_AGG(dc.[Producto/Servicio], ', ') WITHIN GROUP (ORDER BY dc.IdDetalleCompra)
+                        FROM dbo.Det_Compras dc WHERE dc.IdCompra = c.IdDeuda) as detalleConcepto
+                FROM dbo.Compras c
+                LEFT JOIN dbo.Contactos ct ON ct.IdContacto = c.IdContacto
+                WHERE c.IdDeuda IN ({placeholders})
+            """, tuple(batch))
+            for r in rows:
+                resultado[("CompraDeuda", r["IdDeuda"])] = {
+                    "tipoComprobante": r["tipoComprobante"],
+                    "nroComprobante": r["nroComprobante"],
+                    "proveedor": r["proveedor"],
+                    "detalleConcepto": r["detalleConcepto"],
+                }
+
+    impuestos_ids = [doc_id for tipo, doc_id in documentos if tipo == "Impuesto"]
+    if impuestos_ids:
+        for i in range(0, len(impuestos_ids), 500):
+            batch = impuestos_ids[i:i+500]
+            placeholders = ",".join("?" for _ in batch)
+            rows = fetch_all(f"""
+                SELECT i.IdImpuesto, ti.[Nombre Impuesto] as tipoComprobante, i.[Numero de documento] as nroComprobante,
+                       c.[Razon Social] as proveedor, i.[Periodo liquidado] as detalleConcepto
+                FROM dbo.Impuestos i
+                LEFT JOIN dbo.Contactos c ON c.IdContacto = i.IdOrganismo
+                LEFT JOIN dbo.[Tipo Impuesto] ti ON ti.IdTipoImpuesto = i.IdTipoImpuesto
+                WHERE i.IdImpuesto IN ({placeholders})
+            """, tuple(batch))
+            for r in rows:
+                per = r["detalleConcepto"]
+                resultado[("Impuesto", r["IdImpuesto"])] = {
+                    "tipoComprobante": r["tipoComprobante"],
+                    "nroComprobante": r["nroComprobante"],
+                    "proveedor": r["proveedor"],
+                    "detalleConcepto": f"Periodo {per}" if per else None,
+                }
+
+    remun_ids = [doc_id for tipo, doc_id in documentos if tipo == "Remuneracion"]
+    if remun_ids:
+        for i in range(0, len(remun_ids), 500):
+            batch = remun_ids[i:i+500]
+            placeholders = ",".join("?" for _ in batch)
+            rows = fetch_all(f"""
+                SELECT r.IdSalario, 'Recibo de Sueldo' as tipoComprobante, r.Recibo as nroComprobante,
+                       c.[Razon Social] as proveedor, r.[Periodo liquidado] as detalleConcepto
+                FROM dbo.Remuneraciones r
+                LEFT JOIN dbo.Contactos c ON c.IdContacto = r.IdContacto
+                WHERE r.IdSalario IN ({placeholders})
+            """, tuple(batch))
+            for r in rows:
+                per = r["detalleConcepto"]
+                resultado[("Remuneracion", r["IdSalario"])] = {
+                    "tipoComprobante": r["tipoComprobante"],
+                    "nroComprobante": r["nroComprobante"],
+                    "proveedor": r["proveedor"],
+                    "detalleConcepto": f"Periodo {per}" if per else None,
+                }
+
+    granos_ids = [doc_id for tipo, doc_id in documentos if tipo == "VentaGranos"]
+    if granos_ids:
+        for i in range(0, len(granos_ids), 500):
+            batch = granos_ids[i:i+500]
+            placeholders = ",".join("?" for _ in batch)
+            rows = fetch_all(f"""
+                SELECT vg.IdVenta, 'Liquidacion Granos' as tipoComprobante, vg.[Nro Documento] as nroComprobante,
+                       c.[Razon Social] as proveedor, g.Grano, vg.[Campaña] as campania
+                FROM dbo.[Venta Granos] vg
+                LEFT JOIN dbo.Contactos c ON c.IdContacto = vg.IdConsignatario
+                LEFT JOIN dbo.Granos g ON g.IdGrano = vg.IdProducto
+                WHERE vg.IdVenta IN ({placeholders})
+            """, tuple(batch))
+            for r in rows:
+                grano = r["Grano"]
+                camp = r["campania"]
+                resultado[("VentaGranos", r["IdVenta"])] = {
+                    "tipoComprobante": r["tipoComprobante"],
+                    "nroComprobante": r["nroComprobante"],
+                    "proveedor": r["proveedor"],
+                    "detalleConcepto": f"{grano} (Campaña {camp})" if camp else grano,
+                }
+
+    hacienda_ids = [doc_id for tipo, doc_id in documentos if tipo == "VentaHacienda"]
+    if hacienda_ids:
+        for i in range(0, len(hacienda_ids), 500):
+            batch = hacienda_ids[i:i+500]
+            placeholders = ",".join("?" for _ in batch)
+            rows = fetch_all(f"""
+                SELECT vh.IdVenta, 'Liquidacion Hacienda' as tipoComprobante, vh.[Nro documento] as nroComprobante,
+                       c.[Razon Social] as proveedor
+                FROM dbo.[Venta Hacienda] vh
+                LEFT JOIN dbo.Contactos c ON c.IdContacto = vh.IdConsignatario
+                WHERE vh.IdVenta IN ({placeholders})
+            """, tuple(batch))
+            for r in rows:
+                resultado[("VentaHacienda", r["IdVenta"])] = {
+                    "tipoComprobante": r["tipoComprobante"],
+                    "nroComprobante": r["nroComprobante"],
+                    "proveedor": r["proveedor"],
+                    "detalleConcepto": "Liquidacion de hacienda",
+                }
+
+    pastaje_ids = [doc_id for tipo, doc_id in documentos if tipo == "Pastaje"]
+    if pastaje_ids:
+        for i in range(0, len(pastaje_ids), 500):
+            batch = pastaje_ids[i:i+500]
+            placeholders = ",".join("?" for _ in batch)
+            rows = fetch_all(f"""
+                SELECT pc.IdComprobante, 'Factura Pastaje' as tipoComprobante,
+                       CONCAT(pc.Letra, ' ', FORMAT(pc.PuntoVenta, '0000'), '-', FORMAT(pc.Numero, '00000000')) as nroComprobante,
+                       c.[Razon Social] as proveedor, pc.Detalle as detalleConcepto
+                FROM dbo.PastajeComprobantes pc
+                LEFT JOIN dbo.ContratosPastaje cp ON cp.IdContratoPastaje = pc.IdContratoPastaje
+                LEFT JOIN dbo.Contactos c ON c.IdContacto = cp.IdCliente
+                WHERE pc.IdComprobante IN ({placeholders})
+            """, tuple(batch))
+            for r in rows:
+                resultado[("Pastaje", r["IdComprobante"])] = {
+                    "tipoComprobante": r["tipoComprobante"],
+                    "nroComprobante": r["nroComprobante"],
+                    "proveedor": r["proveedor"],
+                    "detalleConcepto": r["detalleConcepto"],
+                }
+
+    return resultado
+
+
 def detalle_celda(desde: date, hasta: date, granularidad: str, moneda: str, periodo: str, seccion: str,
                   rubro: str, centro_costo: str | None) -> dict:
     """Partes que componen una celda; `total` es exactamente el valor de la
@@ -744,4 +1002,17 @@ def detalle_celda(desde: date, hasta: date, granularidad: str, moneda: str, peri
     items = [p for p in partes if _clave_periodo(p["fecha"], granularidad) == periodo and clave_celda(p) == clave]
     items.sort(key=lambda p: (p["fecha"], p["cuenta"], p["idMovimiento"] or 0))
     total = round(sum((_valor(p, moneda) or 0) for p in items if _valor(p, moneda) is not None), 2)
-    return {"total": total, "items": [{k: v for k, v in p.items() if k != "esFima"} for p in items]}
+
+    docs = [(p["documentoAplicado"]["tipo"], p["documentoAplicado"]["id"]) for p in items if p.get("documentoAplicado") and p["documentoAplicado"].get("id")]
+    detalles_doc = _obtener_detalles_documentos(docs) if docs else {}
+
+    res_items = []
+    for p in items:
+        item_dict = {k: v for k, v in p.items() if k != "esFima"}
+        if p.get("documentoAplicado") and p["documentoAplicado"].get("id"):
+            doc_key = (p["documentoAplicado"]["tipo"], p["documentoAplicado"]["id"])
+            if doc_key in detalles_doc:
+                item_dict["documentoDetalle"] = detalles_doc[doc_key]
+        res_items.append(item_dict)
+
+    return {"total": total, "items": res_items}

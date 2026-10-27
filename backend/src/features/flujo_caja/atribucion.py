@@ -43,7 +43,7 @@ CENTRO_COSTO_LEY_25413 = "Impuestos bancarios"
 # — no una compra a un proveedor — así que va al mismo centro de costos de
 # impuestos bancarios, con su propio rubro para no perder de vista cuánto es
 # cada impuesto.
-RUBRO_ARBA_RECAUDACION = "Impuesto ARBA (recaudación bancaria)"
+RUBRO_ARBA_RECAUDACION = "Percepciones/Retenciones IIBB"
 
 # 019-aplicacion-pagos-cobros, FR-009/FR-010: fecha de corte confirmada por
 # Sergio. Antes de esta fecha no se exige aplicar retroactivamente — se

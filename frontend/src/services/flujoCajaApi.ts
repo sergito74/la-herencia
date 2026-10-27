@@ -111,6 +111,13 @@ export interface FlujoPorRubro {
   ultimaFechaCotizacion: string | null;
 }
 
+export interface DocumentoDetalle {
+  tipoComprobante?: string | null;
+  nroComprobante?: string | null;
+  proveedor?: string | null;
+  detalleConcepto?: string | null;
+}
+
 export interface ParteMovimiento {
   fecha: string;
   cuenta: string;
@@ -122,6 +129,7 @@ export interface ParteMovimiento {
   importeArs: number;
   importeMovimiento: number;
   documentoAplicado: { tipo: string; id: number; via: string } | null;
+  documentoDetalle?: DocumentoDetalle | null;
   cotizacion: number | null;
   fechaCotizacion: string | null;
   importeUsd: number | null;
