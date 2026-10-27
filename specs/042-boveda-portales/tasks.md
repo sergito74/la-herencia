@@ -103,7 +103,7 @@ Cada conector: relevar el portal en solo lectura con Chromium (vía `.specify/me
 - [ ] T044 [US3] `backend/src/features/boveda/conectores/municipalidad_bolivar.py`: relevamiento + conector (tasas, estado de deuda)
 - [X] T045 [US3] `backend/src/features/boveda/conectores/sancor.py`: relevamiento + conector (pólizas, facturas, estado de cuenta)
 - [ ] T046 [US3] `backend/src/features/boveda/conectores/allianz.py`: relevamiento + conector
-- [ ] T047 [US3] `backend/src/features/boveda/conectores/jauregui_morales.py`: relevamiento + conector
+- [X] T047 [US3] `backend/src/features/boveda/conectores/jauregui_morales.py`: relevamiento + conector
 - [ ] T048 [US3] `backend/src/features/boveda/conectores/lartirigoyen.py`: relevamiento + conector
 
 ## Phase 10: Polish
