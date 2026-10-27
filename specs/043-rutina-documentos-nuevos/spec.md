@@ -16,6 +16,14 @@
 - Decisiones de Sergio (27/10/2026): la rutina es **solo programada** (sin botón); lee **todo mail nuevo** desde la corrida anterior, sin barrer la casilla completa; el aviso es **un número en el menú** de cada módulo; corre **todos los días a las 7:00 y a las 14:00**.
 - De Campo a Campo (remates de hacienda) ya está dada de alta en la bóveda con usuario, contraseña cifrada y autorización explícita de solo lectura y descarga (27/10/2026). Falta conocer su portal y automatizarla.
 
+## Clarifications
+
+### Session 2026-10-27
+
+- Q: ¿Qué hace la rutina con un PDF de mail que no es un comprobante? → A: Solo comprobantes (factura, nota de crédito/débito, boleta, liquidación, recibo, resumen de cuenta) se guardan y avisan; lo demás se ignora sin guardarse.
+- Q: ¿Qué hace la rutina con un comprobante de un emisor que no está en el sistema? → A: Lo guarda y lo deja "para cargar a mano" avisando que el emisor es nuevo; el contacto lo da de alta Sergio (la rutina nunca crea contactos).
+- Q: ¿Dónde se guardan y en qué menú se avisan los resúmenes de cuenta? → A: Bancos y tarjetas → carpeta `Dropbox\Giamigli de Bolivar SA\Bancos\<Banco>\<Producto>\<Año>\` (Extractos, Tarjetas\<tarjeta> o AgroNacion/Mastercard en BNA, Inversiones, Plazos Fijos, Préstamos, Corporativa; Mercado Libre en `Mercado Libre\Resumenes\<Año>`), conservando el nombre del banco y, si no es descriptivo, `Extracto AAAA MM` / `AAAA MM`; aviso en Tesorería. Proveedores, consignatarios y similares → `Documents\La Herencia\Administracion y gestion\Resumenes de Cuenta\<Proveedor>\` (sin año, nombre original); aviso en Cuentas corrientes, sobre la cuenta de ese contacto.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Ver en cada módulo los documentos nuevos y revisarlos (Priority: P1)
@@ -74,8 +82,9 @@ La cuenta de De Campo a Campo baja sola sus documentos (liquidaciones de remates
 - La computadora está apagada a la hora programada: la rutina corre en cuanto vuelve a estar disponible, una sola vez, y lee los mails desde la última corrida completada.
 - Outlook no está abierto o no responde: las cuentas se sincronizan igual y los mails quedan para la próxima corrida, sin perderse.
 - Un mail trae varios adjuntos o el mismo documento llega por mail y por portal: se guarda y se avisa una sola vez.
-- Adjuntos que no son documentos (logos, firmas, imágenes de publicidad): no generan avisos.
+- Adjuntos que no son comprobantes (logos, firmas, publicidad, presupuestos, catálogos, informes): se ignoran, no se guardan ni generan avisos.
 - No se sabe a qué módulo va un documento: queda en un aviso "sin clasificar" visible para que Sergio indique dónde va.
+- El comprobante es de un emisor que no está en el sistema: queda "para cargar a mano" con el aviso "emisor nuevo".
 - Una corrida anterior sigue en curso: no se lanza otra encima.
 - El documento se carga solo pero no cierra al centavo contra el total impreso: no se carga; queda "para cargar a mano" con el motivo en palabras simples.
 
@@ -86,9 +95,12 @@ La cuenta de De Campo a Campo baja sola sus documentos (liquidaciones de remates
 - **FR-001**: El sistema MUST ejecutar la rutina automáticamente según una programación, sin botón manual para dispararla.
 - **FR-002**: La rutina MUST sincronizar todas las cuentas automatizadas de la bóveda que tengan autorización vigente y contraseña cargada, de a una.
 - **FR-003**: La rutina MUST leer solo los mails recibidos desde la última corrida completada, de cualquier remitente, sin marcarlos, moverlos, responderlos ni borrarlos.
+- **FR-003b**: De los mails, la rutina MUST tomar solo los adjuntos que sean comprobantes (factura, nota de crédito o débito, boleta, liquidación, recibo, resumen de cuenta); los demás PDF se ignoran sin guardarse ni avisarse.
 - **FR-004**: La rutina MUST guardar cada documento nuevo (de portal o de mail) en la carpeta que corresponde a su tipo y ejercicio, sin duplicar archivos ya guardados.
+- **FR-004b**: Los resúmenes de bancos y tarjetas MUST guardarse en la carpeta de Bancos según banco, producto y año, y avisarse en Tesorería; los resúmenes de proveedores y consignatarios MUST guardarse en la carpeta de Resúmenes de Cuenta del proveedor y avisarse en Cuentas corrientes sobre la cuenta de ese contacto (ver Clarifications).
 - **FR-005**: La rutina MUST cargar en el módulo correspondiente los documentos que el sistema sabe leer, con la misma imputación que su carga manual habitual, y solo si cierran al centavo contra el total impreso.
 - **FR-006**: Los documentos que el sistema no sabe leer o que no cierran MUST quedar registrados como "para cargar a mano", con el archivo y el motivo en palabras simples.
+- **FR-006b**: Si el emisor de un comprobante no está registrado en el sistema, la rutina MUST dejarlo "para cargar a mano" indicando que el emisor es nuevo; la rutina nunca da de alta contactos.
 - **FR-007**: El sistema MUST mostrar en cada menú (Compras, Impuestos, Ventas y los que correspondan) la cantidad de documentos nuevos sin revisar de ese módulo.
 - **FR-008**: Al hacer clic en el aviso, el sistema MUST llevar al módulo con la vista "Nuevos para revisar", mostrando el documento cargado (datos, renglones, imputación y archivo original).
 - **FR-009**: Los usuarios MUST poder marcar un documento como revisado; al hacerlo deja de contarse en el aviso. Queda registrado quién y cuándo lo revisó.
@@ -122,7 +134,7 @@ La cuenta de De Campo a Campo baja sola sus documentos (liquidaciones de remates
 - La rutina corre en la computadora de la oficina, donde están Outlook y Chrome (los portales con Chrome común y la lectura de mails lo requieren).
 - "Leer mails" es solo lectura de la bandeja de entrada por Outlook; los adjuntos que se consideran documentos son PDF (y XML de comprobantes si aparecen).
 - La primera corrida toma como punto de partida el momento en que se activa la rutina: no procesa mails anteriores.
-- El módulo destino se decide por el tipo de documento y el contacto (proveedor → Compras, organismo de impuestos → Impuestos, liquidación de venta → Ventas); lo que no se puede decidir queda "sin clasificar".
+- El módulo destino se decide por el tipo de documento y el contacto (factura de proveedor → Compras, boleta de impuestos → Impuestos, liquidación de venta → Ventas, resumen de banco o tarjeta → Tesorería, resumen de proveedor → Cuentas corrientes); lo que no se puede decidir queda "sin clasificar".
 - La revisión la hace el Administrador; los usuarios de solo lectura ven los avisos pero no marcan revisado.
 - El botón "Sincronizar" existente en la bóveda se mantiene para correr una cuenta puntual; lo nuevo es que la rutina completa no tiene botón.
 - Depende de la bóveda (042) y de los módulos de Compras, Impuestos y Ventas existentes.
