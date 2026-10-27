@@ -109,6 +109,7 @@ La cuenta de De Campo a Campo baja sola sus documentos (liquidaciones de remates
 - **FR-010**: Los usuarios MUST poder corregir un documento nuevo desde la vista de revisión con las mismas herramientas del módulo.
 - **FR-011**: El sistema MUST retirar el listado de revisión de la pantalla de la bóveda; lo pendiente de revisar se ve solo en los módulos.
 - **FR-012**: El sistema MUST automatizar la cuenta de De Campo a Campo: ingreso, listado y descarga de sus documentos, solo lectura.
+- **FR-012b**: De De Campo a Campo MUST bajarse solo lo de Giamigli de Bolívar SA; no se baja ninguna información de Ganadera San Justo (Sergio, 27/10/2026).
 - **FR-013**: La rutina MUST registrar, por corrida, qué hizo cada cuenta y cuántos mails y documentos procesó, visible en la bóveda en palabras simples.
 - **FR-014**: Si una cuenta falla o pide verificación humana, la rutina MUST continuar con las demás e informar la cuenta afectada.
 - **FR-015**: La rutina MUST correr todos los días dos veces, a las 7:00 y a las 14:00 (decisión de Sergio, 27/10/2026).
