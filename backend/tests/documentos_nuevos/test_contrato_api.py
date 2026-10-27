@@ -39,7 +39,7 @@ def test_lista_con_renglones_y_enlace(client, repo_sim):
     item = r["items"][0]
     assert item["origen"] == "Portal Allianz"
     assert item["tipo"] == "Factura"
-    assert item["enlace"] == "/compras/2143524139"
+    assert item["enlace"] == "/compras/2143524139/editar"
     assert item["archivo"] == "20261013_Allianz.pdf"
     assert item["renglones"][0]["rubro"] == "Seguros Generales"
 

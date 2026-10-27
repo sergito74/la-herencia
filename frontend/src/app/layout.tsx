@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 
 import { Providers } from "@/app/providers";
+import { DocumentosEnVentanaNueva } from "@/components/layout/DocumentosEnVentanaNueva";
 import { NavHeader } from "@/components/layout/NavHeader";
 import "./globals.css";
 
@@ -20,6 +21,7 @@ export default function RootLayout({
       <body className="min-h-screen bg-background font-sans text-ink-primary">
         <Providers>
           <NavHeader />
+          <DocumentosEnVentanaNueva />
           {children}
         </Providers>
       </body>

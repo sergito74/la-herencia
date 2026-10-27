@@ -18,7 +18,7 @@ from datetime import date, datetime
 from decimal import Decimal
 
 from src.features.boveda.conectores import (
-    Credencial, CredencialesRechazadas, DocumentoPortal, EstadoCuentaPortal, MovimientoCuenta, PortalCambio,
+    Credencial, DatosCompra, CredencialesRechazadas, DocumentoPortal, EstadoCuentaPortal, MovimientoCuenta, PortalCambio,
     RequiereIntervencion, registrar,
 )
 from src.features.descarga_peajes import lectores
@@ -26,6 +26,14 @@ from src.features.descarga_peajes import lectores
 INGRESO = "https://www.sancorseguros.com.ar/autogestion/ingresar"
 APP = "https://autogestion.sancorseguros.com.ar"
 ID_CONTACTO = 171
+RUBRO = 2047893446  # Seguros Laborales
+CENTRO_COSTO = 3  # Adm. General
+_FACTURA = re.compile(r"([ABC]) FACTURA N\S*:\s*(\d{5})\s*-\s*(\d{8})")
+_FECHA_FACTURA = re.compile(r"Sancor Cooperativa de Seguros Limitada\s+(\d{2})/(\d{2})/(\d{4})")
+# Las dos filas de importes del pie de la factura, en el orden de sus títulos.
+_FILA1 = re.compile(r"Impuestos y Tasas\s*\n\s*([\d.,]+) ([\d.,]+) ([\d.,]+) ([\d.,]+) ([\d.,]+) ([\d.,]+)")
+_FILA2 = re.compile(r"Aum\. de Capital\s*\n\s*([\d.,]+) ([\d.,]+) ([\d.,]+) ([\d.,]+) ([\d.,]+) ([\d.,]+)")
+_TOTAL = re.compile(r"Total \$\s*([\d.,]+)")
 _NUMERO = re.compile(r"FACTURA N\S*\s*:\s*(\d{5})\s*-\s*(\d{8})")
 
 
@@ -48,7 +56,7 @@ def _inicio_ejercicio(d: date) -> date:
 
 class ConectorSancor:
     tiene_estado_cuenta = True
-    tiene_carga_compras = False
+    tiene_carga_compras = True
     mapeo_proveedores: dict = {}
 
     def __init__(self, codigo: str = "sancor", nombre: str = "Sancor Seguros"):
@@ -180,8 +188,38 @@ class ConectorSancor:
                     debe=None, haber=importe, saldo=None))
         return [EstadoCuentaPortal(fecha_corte=hoy, moneda="ARS", saldo=total, completa=False, movimientos=movimientos)]
 
-    def leer_comprobante(self, documento: DocumentoPortal, pdf: bytes):
-        return None
+    def leer_comprobante(self, documento: DocumentoPortal, pdf: bytes) -> DatosCompra | None:
+        """Como las carga Sergio (00039-00206256, 27/10/2026): Prima exenta (IVA 0), Aumento Capital sin IVA,
+        "Impuestos y Tasas" y "Percepción Tasa" en conceptos no gravados, percepciones y sellado en la cabecera.
+        Si hay conceptos gravados van en un renglón con IVA 21%."""
+        from src.features.boveda.conectores.chrome_comun import _cabecera, _texto
+
+        t = _texto(pdf)
+        m, f, f1, f2, total = (r.search(t) for r in (_FACTURA, _FECHA_FACTURA, _FILA1, _FILA2, _TOTAL))
+        if not (m and f and f1 and f2 and total):
+            return None
+        a = lambda x: Decimal(x.replace(".", "").replace(",", "."))
+        gravados, no_gravados, exentos, iva, iva_no_cat, tasas = (a(f1.group(i)) for i in range(1, 7))
+        perc_iva, perc_iibb, sellado, perc_tasa, _premio, aum_capital = (a(f2.group(i)) for i in range(1, 7))
+        if iva_no_cat or (gravados and (gravados * Decimal("0.21")).quantize(Decimal("0.01")) != iva):
+            return None
+        numero = f"{m.group(2)}-{m.group(3)}"
+
+        def linea(desc: str, precio: Decimal, alicuota: float) -> dict:
+            return {"productoServicio": desc, "cantidad": 1.0, "precioUnitario": float(precio), "iva": alicuota,
+                    "unidad": "UNIDAD", "idCentroCosto": CENTRO_COSTO, "idDestino": 1, "idRubro": RUBRO,
+                    "campaña": "No Aplica", "ajusteFinanciero": False}
+
+        lineas = [linea("Prima", exentos + no_gravados, 0.0)] if exentos + no_gravados else []
+        if gravados:
+            lineas.append(linea("Prima", gravados, 21.0))
+        if aum_capital:
+            lineas.append(linea("Aumento Capital", aum_capital, 0.0))
+        fecha = date(int(f.group(3)), int(f.group(2)), int(f.group(1)))
+        cabecera = _cabecera(ID_CONTACTO, fecha, numero, conceptosNoGravados=tasas + perc_tasa,
+                             percepcionIva=perc_iva, ingresosBrutos=perc_iibb, leyDeSellos=sellado)
+        cabecera["tipo"] = m.group(1)
+        return DatosCompra(cabecera=cabecera, lineas=lineas, numero=numero, total_impreso=a(total.group(1)))
 
     def cerrar(self, sesion: _Sesion) -> None:
         sesion.browser.close()

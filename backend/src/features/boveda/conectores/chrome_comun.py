@@ -263,7 +263,7 @@ class ConectorAllianz(_ChromeComun):
                     doc = DocumentoPortal(
                         clave=f"allianz:{e['poliza']}:{e['endoso']}", fecha=vigencia, tipo="factura",
                         proveedor="Allianz", bajar=lambda: b"",
-                        numero=f"{e['poliza']} {e['endoso']}",  # como se cargan a mano en Compras
+                        numero=f"{e['poliza']} {e['endoso']}",  # clave del portal; la compra lleva el número impreso
                         moneda="ARS", id_contacto=ALLIANZ_CONTACTO,
                         detalle=f"Póliza {e['poliza']} endoso {e['endoso']} - {pol.get('detalleSecundario') or ''}")
                     doc.bajar = self._bajador(p, url, doc)
@@ -292,7 +292,9 @@ class ConectorAllianz(_ChromeComun):
         lineas.append(_linea("Seguro particular", -premio, 0.0, ALLIANZ_RUBRO))
         cabecera = _cabecera(ALLIANZ_CONTACTO, fecha, documento.numero, percepcionIva=percepcion_iva,
                              ingresosBrutos=ingresos_brutos, leyDeSellos=sellos)
-        return DatosCompra(cabecera=cabecera, lineas=lineas, numero=documento.numero, total_impreso=Decimal(0))
+        # El número es el de la factura impresa ("FACTURA A:0007-00150949"), no póliza y endoso (Sergio, 27/10/2026).
+        cabecera["numeroDocumento"] = m.group(1)
+        return DatosCompra(cabecera=cabecera, lineas=lineas, numero=m.group(1), total_impreso=Decimal(0))
 
     @staticmethod
     def _bajador(p, url: str, doc: DocumentoPortal):

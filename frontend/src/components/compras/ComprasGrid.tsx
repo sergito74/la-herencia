@@ -453,13 +453,13 @@ export function ComprasGrid({
                       permitirNuevo={false}
                     />
                   </td>
-                  <td className="w-28">
+                  <td className="w-32">
                     <input
                       className={`${inputClass} font-data text-right`}
                       value={
                         filaPrecioEnFoco === rowIndex || !row.precioUnitario
                           ? row.precioUnitario
-                          : formatMonto(parseNumeroLocal(row.precioUnitario))
+                          : formatMoneda(parseNumeroLocal(row.precioUnitario), moneda)
                       }
                       onFocus={() => setFilaPrecioEnFoco(rowIndex)}
                       onChange={(e) => actualizarCelda(rowIndex, "precioUnitario", e.target.value)}
@@ -475,10 +475,10 @@ export function ComprasGrid({
                       onPaste={(e) => handlePaste(rowIndex, 8, e)}
                     />
                   </td>
-                  <td className="w-24 px-1.5 py-0.5 text-right font-data text-ink-secondary">
+                  <td className="w-28 whitespace-nowrap px-1.5 py-0.5 text-right font-data text-ink-secondary">
                     {importeIva ? formatMoneda(importeIva, moneda) : ""}
                   </td>
-                  <td className="w-24 px-1.5 py-0.5 text-right font-data text-ink-secondary">
+                  <td className="w-32 whitespace-nowrap px-1.5 py-0.5 text-right font-data text-ink-secondary">
                     {subtotal ? formatMoneda(subtotal, moneda) : ""}
                   </td>
                   <td className="w-6 px-1 text-center">
@@ -504,7 +504,7 @@ export function ComprasGrid({
                 Totales del cuerpo:
               </td>
               <td className="px-1.5 py-1 text-right font-data">{formatMoneda(totalIva, moneda)}</td>
-              <td className="px-1.5 py-1 text-right font-data">{formatMoneda(totalSubtotal, moneda)}</td>
+              <td className="whitespace-nowrap px-1.5 py-1 text-right font-data">{formatMoneda(totalSubtotal, moneda)}</td>
               <td />
             </tr>
           </tfoot>

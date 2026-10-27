@@ -16,13 +16,31 @@ from decimal import Decimal
 from urllib.parse import quote
 
 from src.features.boveda.conectores import (
-    Credencial, CredencialesRechazadas, DocumentoPortal, EstadoCuentaPortal, MovimientoCuenta, PortalCambio,
+    Credencial, CredencialesRechazadas, DatosCompra, DocumentoPortal, EstadoCuentaPortal, MovimientoCuenta, PortalCambio,
     registrar,
 )
 
 OFV = "https://ofv2.cebol.com.ar"
 ID_CONTACTO = 23
 _COMPROBANTE = re.compile(r"^FC([ABC]) (\d{4})-0*(\d{1,8})$")
+RUBRO = 2047893454  # Electricidad
+CENTRO_COSTO = 3  # Adm. General
+# Concepto impreso → (renglón como lo carga Sergio, IVA). Un concepto desconocido no suma y la factura no cierra:
+# queda para cargar a mano.
+CONCEPTOS = (
+    (r"Cargo Fijo T\w+", "Cargo Fijo", 27.0),
+    (r"Cargo Variable T\w+", "Consumo electrico", 27.0),
+    (r"Perdida x transformador", "Perdida por transformador", 27.0),
+    (r"Resolucion OCEBA N 61/09 (?:ICT|CTT)", "ICT-Res1001/24-MIySP A.60", 27.0),
+    (r"Ley 11769 Fondo Compensador", "Ley P.11769 Comp.", 0.0),
+    (r"Ley 11769 art\.72Bis \(0\.001%\)", "Ley P.11969 72b.", 0.0),
+    (r"Ley 11769 art\.72Ter \(6%\)", "Ley P.11969 72ter 6%", 0.0),
+    (r"Ley Provincial 7290", "Ley Provincial 7290", 0.0),
+    (r"Recargo por Mora", "Recargo por mora", 21.0),
+)
+_MONTO = r"[^\n]*?(-?[\d,]+\.\d{2})(?=\s|$)"
+_COMPROBANTE_PDF = re.compile(r"Comprobante:\s*([ABC])\s*-\s*(\d{4})\s*-\s*(\d{8})")
+_TOTAL_PDF = re.compile(r"Total (?:facturado )?Energ[ií]a:\s*\$\s*([\d,]+\.\d{2})")
 _EMISION = re.compile(r"(?:FECHA DE EMISI[OÓ]N|EMISI[OÓ]N|Fecha Emisi[oó]n)\s*:?\s*(\d{2})/(\d{2})/(\d{4})", re.I)
 
 
@@ -52,7 +70,7 @@ class ConectorCebol:
     codigo = "cebol"
     nombre = "Cooperativa Eléctrica de Bolívar"
     tiene_estado_cuenta = True
-    tiene_carga_compras = False
+    tiene_carga_compras = True
     mapeo_proveedores: dict = {}
 
     def ingresar(self, pw, credencial: Credencial) -> _Sesion:
@@ -135,8 +153,27 @@ class ConectorCebol:
         return [EstadoCuentaPortal(fecha_corte=hoy, moneda="ARS", saldo=total.quantize(Decimal("0.01")), completa=False,
                                    movimientos=movimientos)]
 
-    def leer_comprobante(self, documento: DocumentoPortal, pdf: bytes):
-        return None
+    def leer_comprobante(self, documento: DocumentoPortal, pdf: bytes) -> DatosCompra | None:
+        """Como las carga Sergio: un renglón por concepto de la factura (ver `CONCEPTOS`), Electricidad / Adm. General."""
+        from src.features.boveda.conectores.chrome_comun import _cabecera, _texto
+
+        t = _texto(pdf)
+        c, total, emision = _COMPROBANTE_PDF.search(t), _TOTAL_PDF.search(t), _fecha_emision(pdf)
+        if not (c and total and emision):
+            return None
+        lineas = []
+        for patron, descripcion, iva in CONCEPTOS:
+            m = re.search(patron + _MONTO, t)
+            if m:
+                lineas.append({"productoServicio": descripcion, "cantidad": 1.0,
+                               "precioUnitario": float(Decimal(m.group(1).replace(",", ""))), "iva": iva,
+                               "unidad": "UNIDAD", "idCentroCosto": CENTRO_COSTO, "idDestino": 1, "idRubro": RUBRO,
+                               "campaña": "No Aplica", "ajusteFinanciero": False})
+        numero = f"{c.group(2)}-{c.group(3)}"
+        cabecera = _cabecera(ID_CONTACTO, emision, numero)
+        cabecera["tipo"] = c.group(1)
+        return DatosCompra(cabecera=cabecera, lineas=lineas, numero=numero,
+                           total_impreso=Decimal(total.group(1).replace(",", "")))
 
     def cerrar(self, sesion: _Sesion) -> None:
         sesion.browser.close()
