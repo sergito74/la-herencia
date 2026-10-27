@@ -144,10 +144,11 @@ def test_usd_convierte_por_dia_y_reporta_lo_que_no_tiene_cotizacion():
 
 
 def test_colocacion_fima_pasa_de_galicia_al_fima_sin_cambiar_el_total():
-    per = ["2026-03"]
+    p_fima = parte(date(2099, 3, 6), "internos", "Colocación FIMA", -200, esFima=True)
+    per = ["2099-03"]
     finales = repository.saldos_finales({"Nación": 0, "Galicia CC": 1000, "Galicia Fondo FIMA": 0},
-                                        [PARTES[3]], "mensual", per)
-    assert finales["Galicia CC"]["2026-03"] == 800 and finales["Galicia Fondo FIMA"]["2026-03"] == 200
+                                        [p_fima], "mensual", per)
+    assert finales["Galicia CC"]["2099-03"] == 800 and finales["Galicia Fondo FIMA"]["2099-03"] == 200
 
 
 # --- Exportación (T022) ---

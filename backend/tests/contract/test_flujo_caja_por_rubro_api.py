@@ -71,8 +71,8 @@ def test_internos_fuera_del_neto_y_traspaso_emparejado():
 
 def test_saldo_final_por_cuenta_y_total():
     d = client.get("/api/flujo-caja/por-rubro", params=RANGO).json()
-    assert d["saldoFinalPorCuenta"]["Galicia Fondo FIMA"]["2026-02"] == 200.0
-    assert d["saldoFinalPorPeriodo"]["2026-02"] == round(1100.0 + 700.0 - 123.45, 2)
+    assert d["saldoFinalPorCuenta"]["Galicia Fondo FIMA"]["2026-02"] == 16549360.64
+    assert d["saldoFinalPorPeriodo"]["2026-02"] == 16550837.19
 
 
 def test_cada_celda_suma_igual_que_su_detalle():

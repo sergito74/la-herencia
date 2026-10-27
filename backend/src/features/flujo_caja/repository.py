@@ -15,7 +15,17 @@ from src.db.connection import fetch_all
 from src.db.params import as_sql_datetime
 from src.features.flujo_caja import atribucion
 from src.features.flujo_caja import cotizacion as cot
+import json
+from pathlib import Path
 from src.features.flujo_caja.clasificacion import TIPOS_INTERNOS, emparejar_traspasos, es_interno, tipo_interno
+
+def _posiciones_fima_oficiales() -> dict[str, float]:
+    json_path = Path(__file__).resolve().parent / "fima_posiciones.json"
+    if not json_path.exists():
+        return {}
+    with open(json_path, "r", encoding="utf-8") as f:
+        data = json.load(f)
+    return {item["periodo"]: float(item["saldo"]) for item in data.values()}
 
 FECHA_PRIMER_SALDO_CONOCIDO = date(2010, 8, 31)
 
@@ -248,7 +258,7 @@ CUENTA_GALICIA = "Galicia CC"
 CUENTA_FIMA = "Galicia Fondo FIMA"
 CUENTA_CAJA_GIAMIGLI = "Caja Giamigli SA"
 CUENTA_CAJA_CAMPO = "Caja chica del campo"
-ACLARACION_FIMA = "Colocado menos rescatado (FIMA y plazos fijos). No es el saldo real del fondo: los rescates incluyen rendimiento, por eso puede dar negativo"
+ACLARACION_FIMA = "Saldo valorizado del Fondo FIMA Premium Clase A según extractos oficiales de Banco Galicia"
 SIN_CENTRO = atribucion.CENTRO_COSTO_SIN_ASIGNAR
 
 
@@ -552,7 +562,12 @@ def saldos_por_cuenta_al(fecha: date) -> dict[str, float]:
         (hasta,),
     )
     saldo_cajas = {c["caja"]: float(c["total"] or 0) for c in cajas}
-    saldo_fima = max(0.0, -float(gal[0]["fima"] or 0))
+    fima_oficiales = _posiciones_fima_oficiales()
+    mes_anterior = (fecha.replace(day=1) - timedelta(days=1)).strftime("%Y-%m")
+    if mes_anterior in fima_oficiales:
+        saldo_fima = fima_oficiales[mes_anterior]
+    else:
+        saldo_fima = max(0.0, -float(gal[0]["fima"] or 0))
     return {
         CUENTA_NACION: round(apertura.get("BNA", 0) + float(bna[0]["total"] or 0), 2),
         CUENTA_GALICIA: round(apertura.get("Galicia", 0) + float(gal[0]["total"] or 0), 2),
@@ -584,11 +599,18 @@ def saldos_finales(saldos_iniciales: dict[str, float], partes: list[dict], granu
         if p["esFima"]:
             netos[CUENTA_FIMA][per] -= p["importeArs"]
     resultado: dict[str, dict[str, float]] = {}
+    fima_oficiales = _posiciones_fima_oficiales()
     for cuenta, inicial in saldos_iniciales.items():
         acumulado, serie = inicial, {}
         for per in periodos:
-            acumulado += netos[cuenta].get(per, 0.0)
-            serie[per] = round(acumulado, 2)
+            if cuenta == CUENTA_FIMA and granularidad == "mensual" and per in fima_oficiales:
+                acumulado = fima_oficiales[per]
+                serie[per] = round(acumulado, 2)
+            else:
+                acumulado += netos[cuenta].get(per, 0.0)
+                if cuenta == CUENTA_FIMA:
+                    acumulado = max(0.0, acumulado)
+                serie[per] = round(acumulado, 2)
         resultado[cuenta] = serie
     return resultado
 
@@ -625,7 +647,7 @@ def flujo_por_rubro(desde: date, hasta: date, granularidad: str, moneda: str) ->
     total_ini = convertir(sum(iniciales.values()), desde, "inicial")
     fin_por = {per: fin_de_periodo(per, desde, hasta, granularidad) for per in periodos}
     final_cuenta = {c: {per: convertir(v, fin_por[per], per) for per, v in serie_c.items()} for c, serie_c in finales.items()}
-    final_total = {per: convertir(sum(finales[c][per] for c in finales), fin_por[per], per) for per in periodos}
+    final_total = {per: (round(convertir(sum(finales[c][per] for c in finales), fin_por[per], per), 2) if convertir(sum(finales[c][per] for c in finales), fin_por[per], per) is not None else None) for per in periodos}
 
     return {
         "moneda": moneda,
