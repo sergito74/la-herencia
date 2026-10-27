@@ -8,6 +8,8 @@ coincidir exactamente con lo que agrega este módulo (SC-002).
 
 from __future__ import annotations
 
+from functools import lru_cache
+
 from collections import defaultdict
 from datetime import date, datetime, timedelta
 
@@ -293,7 +295,7 @@ def _clasificar_concepto_o_contacto(m: dict) -> tuple[str, str | None] | None:
     # 3. Impuestos nacionales (AFIP / VEP)
     if "AFIP" in con or "VEP" in con or "AFIP" in contacto or m.get("idContacto") == 119:
         if imp > 0:
-            return "Recuperos AFIP", None
+            return "Venta Granos", None
         return "Impuestos AFIP", atribucion.CENTRO_COSTO_IMPUESTOS
 
     # 4. Gastos y comisiones bancarias y tarjetas
@@ -397,6 +399,65 @@ def _atribucion_fallback(m: dict, indice_ingresos) -> tuple[str, str | None]:
     return "Gastos generales varios", "Adm. General"
 
 
+@lru_cache(maxsize=1)
+def _sisa_reintegros_map() -> dict[tuple[str, int], list[dict]]:
+    """Mapeo automatico de acreditaciones AFIP por reintegro sistemico de retenciones IVA (SISA)
+    a sus correspondientes liquidaciones de Venta Granos con grano y campania."""
+    from itertools import combinations
+    rows = fetch_all("""
+        SELECT riva.IdRetencion, riva.[Importe Retenido], vg.IdVenta, vg.Fecha, g.Grano, vg.Campaña
+        FROM dbo.[Retenciones IVA Granos] riva
+        JOIN dbo.[Venta Granos] vg ON vg.IdVenta = riva.IdLiquidacion
+        JOIN dbo.Granos g ON g.IdGrano = vg.IdProducto
+        ORDER BY riva.IdRetencion DESC
+    """)
+    creditos = fetch_all("""
+        SELECT Fecha, [Créditos], IdMovimiento
+        FROM dbo.[Movimientos Galicia]
+        WHERE (IdContacto = 119 OR Contacto LIKE '%AFIP%' OR [Descripción] LIKE '%AFIP%' OR LeyendasAdicionales1 LIKE '%AFIP%') AND [Créditos] > 0
+        ORDER BY Fecha DESC
+    """)
+    sisa_partes: dict[tuple[str, int], list[dict]] = {}
+    for c in creditos:
+        c_imp = round(float(c["Créditos"]), 2)
+        cands = [r for r in rows if r["Fecha"] <= c["Fecha"] and (c["Fecha"] - r["Fecha"]).days <= 180]
+        for r_len in range(1, min(8, len(cands) + 1)):
+            found = False
+            for combo in combinations(cands, r_len):
+                if round(sum(x["Importe Retenido"] for x in combo), 2) == c_imp:
+                    partes = []
+                    for item in combo:
+                        grano_nombre = item["Grano"]
+                        if "Girasol" in grano_nombre:
+                            rubro = "Venta Girasol"
+                        elif "Maiz" in grano_nombre or "Maíz" in grano_nombre:
+                            rubro = "Venta Maiz"
+                        elif "Soja" in grano_nombre:
+                            rubro = "Venta Soja"
+                        elif "Trigo" in grano_nombre:
+                            rubro = "Venta Trigo"
+                        else:
+                            rubro = f"Venta {grano_nombre}"
+                        partes.append({
+                            "rubro": rubro,
+                            "centroCosto": None,
+                            "importe": round(float(item["Importe Retenido"]), 2),
+                            "documentoAplicado": {
+                                "tipo": "VentaGranos",
+                                "id": item["IdVenta"],
+                                "campania": item["Campaña"],
+                                "grano": item["Grano"],
+                                "via": "sisa_reintegro",
+                            },
+                        })
+                    sisa_partes[("galicia", c["IdMovimiento"])] = partes
+                    found = True
+                    break
+            if found:
+                break
+    return sisa_partes
+
+
 def atribuir_movimientos(movimientos: list[dict]) -> list[dict]:
     """Agrega `partes` a cada movimiento (030): una o más `{seccion, rubro,
     centroCosto, importeArs, documentoAplicado}` cuya suma es el importe del
@@ -408,6 +469,7 @@ def atribuir_movimientos(movimientos: list[dict]) -> list[dict]:
     reales = [m for m in movimientos if not m["esInterno"]]
     indice_ingresos = {}
     aplicaciones = {}
+    sisa_map = _sisa_reintegros_map()
     if reales:
         fechas = [_dia(m["fecha"]) for m in reales]
         indice_ingresos = atribucion.construir_indice_ingresos(min(fechas), max(fechas))
@@ -427,7 +489,11 @@ def atribuir_movimientos(movimientos: list[dict]) -> list[dict]:
             fijo = atribucion.es_ley_25413(m.get("concepto")) or atribucion.es_arba_recaudacion(m.get("concepto"))
             partes = None
             if not fijo:
-                partes = atribucion.partes_desde_aplicaciones(
+                sisa_partes = sisa_map.get((m.get("origenMovimiento"), m.get("idMovimientoOrigen")))
+                if sisa_partes:
+                    partes = [dict(p) for p in sisa_partes]
+                else:
+                    partes = atribucion.partes_desde_aplicaciones(
                     aplicaciones.get((m.get("origenMovimiento"), m.get("idMovimientoOrigen")), []),
                     m["importe"], m["fecha"], memo_compras)
             if partes is None:

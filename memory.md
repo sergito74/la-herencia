@@ -702,3 +702,17 @@ Por pedido del usuario, Spec Kit es la herramienta de desarrollo. Se completó l
 ## 037 Descarga de peajes — 2026-10-16
 
 Módulo `backend/src/features/descarga_peajes/` + pantalla Compras › Descarga de peajes. Baja comprobantes de TelepeajePlus, TelePASE, CEAMSE y AUBASA (acceso solo lectura autorizado por Sergio) y los carga en Compras si cierran contra el total impreso (±$0,05) y no están duplicados; si no, quedan pendientes con motivo. Tablas `DescargaPeajes_Ejecuciones/EjecucionPortales/Documentos` en WC (98 claves previas importadas como `historico`). Una sola ejecución a la vez (`sp_getapplock`). Credenciales solo en el Administrador de credenciales de Windows (servicio `LaHerencia-Peajes`), cargadas por `backend/scripts/instalar_descarga_peajes.ps1`, que también programa la tarea semanal (lunes 9:00, `.venv`, `--origen semanal`). Decisión de Sergio: percepción de IVA (RG 3337 / 3 %) → `PercepcionIVA` (antes se cargaba en Ingresos Brutos). Pendientes de validación con credenciales: T036/T037. Seguimiento financiero en tasks.md T038.
+
+
+## 21. Imputación de Reintegros Sistémicos AFIP (SISA) a Venta de Granos — 2026-10-27
+
+- **Decisión del usuario (Sergio, 27/10/2026):**
+  - Los cobros bancarios provenientes de AFIP (acreditaciones en Galicia por "SNP PAGO A PROVEEDORES", CUIT 33-69345023-9) son reintegros de retenciones de IVA agropecuario del régimen SISA (RG 4310) y no deben exponerse bajo una línea genérica o tributaria llamada `Recuperos AFIP`.
+  - Deben imputarse directamente como **Venta de Granos** al cultivo respectivo (`Venta Girasol`, `Venta Soja`, `Venta Maiz`, `Venta Trigo`) y con vinculación a sus liquidaciones y campañas de origen en `partes_de_movimientos`.
+- **Implementación técnica:**
+  - En `backend/src/features/flujo_caja/repository.py`, la función `_sisa_reintegros_map()` mapea de forma determinística las acreditaciones bancarias de AFIP contra los certificados de retención en `Retenciones IVA Granos` y sus liquidaciones de `Venta Granos`.
+  - La acreditación de Junio 2026 ($ 5.652.860,97) se imputa al 100% a `Venta Girasol` (Campaña 2025/2026).
+  - La acreditación de Julio 2026 ($ 2.582.573,72) se imputa proporcionalmente a `Venta Soja` ($ 1.820.447,13) y `Venta Maiz` ($ 762.126,59).
+  - Se eliminó del Flujo de Caja el rubro `Recuperos AFIP`.
+  - Pruebas contractuales y de partes pasaron al 100% (`23 passed`).
+
