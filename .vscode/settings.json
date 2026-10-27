@@ -1,0 +1,26 @@
+{
+  // Carpetas pesadas o generadas: VS Code no las vigila, no las indexa ni busca en ellas.
+  "files.watcherExclude": {
+    "**/node_modules/**": true,
+    "**/.next/**": true,
+    "**/.venv/**": true,
+    "**/__pycache__/**": true,
+    "**/.pytest_cache/**": true,
+    "**/backups/**": true,
+    "**/.git/objects/**": true
+  },
+  "search.exclude": {
+    "**/node_modules": true,
+    "**/.next": true,
+    "**/.venv": true,
+    "**/__pycache__": true,
+    "**/.pytest_cache": true,
+    "**/backups": true
+  },
+  "files.exclude": {
+    "**/__pycache__": true,
+    "**/.pytest_cache": true
+  },
+  "python.analysis.exclude": ["**/node_modules", "**/.next", "**/.venv", "**/backups", "**/__pycache__"],
+  "typescript.tsserver.maxTsServerMemory": 4096
+}
