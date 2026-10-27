@@ -68,11 +68,7 @@ class ConectorArca:
             p.wait_for_load_state("networkidle", timeout=90000)
             if "portalcf" not in p.url:
                 raise CredencialesRechazadas("ARCA rechazó la clave fiscal")
-            p.goto(MIS_SERVICIOS, wait_until="networkidle", timeout=90000)
-            with p.expect_popup(timeout=90000) as popup:
-                p.get_by_text("SISTEMA DE CUENTAS TRIBUTARIAS", exact=False).first.click()
-            sct = popup.value
-            opciones = self._opciones(sct)
+            sct, opciones = self._abrir_cuentas_tributarias(p)
             cuit = self._cuit or (credencial.usuario or "").replace("-", "")  # sin representado: la cuenta propia
             valor = next((v for v, texto in opciones if texto == cuit), None)
             if valor is None:
@@ -86,12 +82,27 @@ class ConectorArca:
             browser.close()
             raise
 
+    def _abrir_cuentas_tributarias(self, p):
+        """A veces la ventana queda trabada en el ingreso único de ARCA (pasó 2 de 8 veces el 27/10/2026): se cierra
+        y se vuelve a abrir desde Mis servicios, hasta 3 veces."""
+        for intento in range(3):
+            p.goto(MIS_SERVICIOS, wait_until="networkidle", timeout=90000)
+            with p.expect_popup(timeout=90000) as popup:
+                p.get_by_text("SISTEMA DE CUENTAS TRIBUTARIAS", exact=False).first.click()
+            sct = popup.value
+            try:
+                return sct, self._opciones(sct, intentos=4 if intento < 2 else 10)
+            except PortalCambio:
+                if intento == 2:
+                    raise
+                sct.close()
+
     @staticmethod
-    def _opciones(sct) -> list[list[str]]:
+    def _opciones(sct, intentos: int = 10) -> list[list[str]]:
         """Contribuyentes del selector. La página se redirige un par de veces al abrir (ingreso único de ARCA)."""
         from playwright.sync_api import Error as ErrorPlaywright
 
-        for _ in range(10):
+        for _ in range(intentos):
             try:
                 sct.wait_for_load_state("networkidle", timeout=90000)
                 sct.wait_for_selector("select", state="attached", timeout=30000)
@@ -99,7 +110,7 @@ class ConectorArca:
                                                 "e => e.map(x => [x.value, x.innerText.trim()])")
             except ErrorPlaywright:
                 sct.wait_for_timeout(2000)
-        raise PortalCambio("No se pudo abrir Cuentas Tributarias")
+        raise PortalCambio("ARCA no terminó de abrir Cuentas Tributarias (se reintentó)")
 
     def listar_documentos(self, sesion: _Sesion) -> list[DocumentoPortal]:
         return []
