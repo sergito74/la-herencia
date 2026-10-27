@@ -1,7 +1,8 @@
 """Acceso a los portales de peaje (037). Solo lectura y descarga, autorizado
 por Sergio el 2026-10-16: no se paga, no se modifica nada y no se acepta nada.
 
-Cada portal expone `listar(pw) -> (documentos, contexto, avisos)`, donde cada
+Cada portal expone `listar(pw, cred=None) -> (documentos, contexto, avisos)` (`cred` = (usuario, clave)
+desde la bóveda 042; sin `cred` lee el Administrador de credenciales), donde cada
 documento es un dict con `clave` (identificador estable en el portal, la
 misma que usaba el script anterior), `fecha`, `proveedor` (nombre estándar
 del archivo), `idContacto` (proveedor en Compras), `detalle` y `bajar()`
@@ -45,6 +46,10 @@ class ErrorPortal(Exception):
     """Falla legible de un portal (se muestra tal cual en la pantalla)."""
 
 
+class ErrorIngreso(ErrorPortal):
+    """No se pudo pasar el ingreso: clave rechazada, captcha/código o página cambiada (042 lo trata como rechazo)."""
+
+
 def carpeta_ejercicio(d: date) -> Path:
     inicio = d.year if d.month >= 4 else d.year - 1
     return COMPRAS / f"04 {inicio} - 03 {inicio + 1}"
@@ -71,7 +76,7 @@ def _esperar_ingreso(pg, patron: str, portal: str) -> None:
     try:
         pg.wait_for_url(patron, timeout=TIMEOUT_MS)
     except Exception as e:
-        raise ErrorPortal(
+        raise ErrorIngreso(
             f"{portal}: no se pudo entrar. El portal requiere ingreso manual (captcha o código), "
             "rechazó el usuario o cambió su página."
         ) from e
@@ -91,8 +96,8 @@ def _doc(clave, fecha, proveedor, detalle, bajar) -> dict:
             "detalle": detalle, "bajar": bajar}
 
 
-def listar_telepeajeplus(pw):
-    usuario, clave = credencial("TelepeajePlus")
+def listar_telepeajeplus(pw, cred: tuple[str, str] | None = None):
+    usuario, clave = cred or credencial("TelepeajePlus")
     ctx = pw.chromium.launch(channel="chrome", headless=True).new_context()
     pg = ctx.new_page()
     pg.goto(TP, timeout=TIMEOUT_MS)
@@ -129,8 +134,8 @@ def listar_telepeajeplus(pw):
     return docs, ctx, avisos
 
 
-def listar_telepase(pw):
-    usuario, clave = credencial("TelePASE")
+def listar_telepase(pw, cred: tuple[str, str] | None = None):
+    usuario, clave = cred or credencial("TelePASE")
     ctx = pw.chromium.launch(channel="chrome", headless=True).new_context()
     pg = ctx.new_page()
     pg.goto(TS + "login", timeout=TIMEOUT_MS)
@@ -169,11 +174,12 @@ def listar_telepase(pw):
     return docs, ctx, avisos
 
 
-def _listar_oficina_virtual(pw, portal: str, login: str, proveedor: str, prefijo: str):
+def _listar_oficina_virtual(pw, portal: str, login: str, proveedor: str, prefijo: str,
+                            cred: tuple[str, str] | None = None):
     """Oficinas virtuales GLM/Sixon (CEAMSE y AUBASA). Facturas = filas FAPP de la
     cuenta corriente (los REC son recibos y no se guardan); el PDF se baja con
     clic en el primer ícono de la fila."""
-    usuario, clave = credencial(portal)
+    usuario, clave = cred or credencial(portal)
     ctx = pw.chromium.launch(channel="chrome", headless=True).new_context(accept_downloads=True)
     pg = ctx.new_page()
     pg.goto(login, timeout=TIMEOUT_MS)
@@ -217,12 +223,12 @@ def _listar_oficina_virtual(pw, portal: str, login: str, proveedor: str, prefijo
     return docs, ctx, avisos
 
 
-def listar_ceamse(pw):
-    return _listar_oficina_virtual(pw, "CEAMSE", LOGIN_CEAMSE, "Ceamse", "ceamse")
+def listar_ceamse(pw, cred: tuple[str, str] | None = None):
+    return _listar_oficina_virtual(pw, "CEAMSE", LOGIN_CEAMSE, "Ceamse", "ceamse", cred)
 
 
-def listar_aubasa(pw):
-    return _listar_oficina_virtual(pw, "AUBASA", LOGIN_AUBASA, "AUBASA", "aubasa")
+def listar_aubasa(pw, cred: tuple[str, str] | None = None):
+    return _listar_oficina_virtual(pw, "AUBASA", LOGIN_AUBASA, "AUBASA", "aubasa", cred)
 
 
 PORTALES = (

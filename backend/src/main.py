@@ -56,6 +56,7 @@ from src.features.ventas_hacienda.router import router as ventas_hacienda_router
 from src.features.vinculos.router import router as integridad_vinculos_router
 from src.features.recalculo_fifo.router import router as recalculo_fifo_router
 from src.features.cotizaciones.router import router as cotizaciones_router
+from src.features.boveda.router import router as boveda_router
 
 app = FastAPI(
     title="La Herencia API",
@@ -74,6 +75,17 @@ def _precalentar_auditoria() -> None:
     from src.features.auditoria_cuentas.router import precalentar
 
     threading.Thread(target=precalentar, daemon=True, name="precalentar-auditoria").start()
+
+
+@app.on_event("startup")
+def _arrancar_planificador_boveda() -> None:
+    """Corridas programadas de la bóveda de portales (042): solo mientras la aplicación está abierta."""
+    import os
+
+    if os.environ.get("LA_HERENCIA_SIN_PLANIFICADOR") != "1":
+        from src.features.boveda import planificador
+
+        planificador.arrancar()
 
 # El frontend Next.js corre en un origen distinto (localhost:3000/3001) en
 # desarrollo. Sin esto, el navegador bloquea toda llamada a /api/* por
@@ -168,6 +180,7 @@ app.include_router(contactos_router)
 app.include_router(cuentas_corrientes_router)
 app.include_router(arca_router)
 app.include_router(descarga_peajes_router)
+app.include_router(boveda_router)
 app.include_router(documentos_router)
 app.include_router(flujo_caja_router)
 app.include_router(imputacion_router)

@@ -6,6 +6,22 @@
 #    credenciales de Windows (las contrasenas se tipean aca, no quedan en archivos).
 # 2) Crea la tarea programada "LaHerencia - Descarga peajes": lunes 9:00; si la PC
 #    estaba apagada, corre apenas se prende.
+#
+# 042 (27/10/2026): las credenciales y la programacion pasaron a la Boveda de portales
+# (La Herencia > Boveda, solo Administrador) y las corridas programadas las hace la
+# aplicacion abierta. Para retirar la tarea semanal de Windows:
+#   powershell -ExecutionPolicy Bypass -File C:\dev\LaHerencia\backend\scripts\instalar_descarga_peajes.ps1 -Desinstalar
+param([switch]$Desinstalar)
+
+if ($Desinstalar) {
+    if (Get-ScheduledTask -TaskName "LaHerencia - Descarga peajes" -ErrorAction SilentlyContinue) {
+        Unregister-ScheduledTask -TaskName "LaHerencia - Descarga peajes" -Confirm:$false
+        Write-Host "Tarea semanal de peajes eliminada. La descarga sigue desde la Boveda de portales."
+    } else {
+        Write-Host "La tarea semanal de peajes no estaba instalada."
+    }
+    exit 0
+}
 
 $python = "C:\dev\LaHerencia\backend\.venv\Scripts\python.exe"
 $backend = "C:\dev\LaHerencia\backend"

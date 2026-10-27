@@ -12,6 +12,9 @@ Verificado el 19/10/2026 por pedido de Sergio. No guardar credenciales en este a
 - Autorización vigente para deCampo a Campo: consultar Pedro Genta y sus documentos, solo lectura. No comprar, vender, ofertar, programar pagos ni enviar mensajes. Otros portales siguen requiriendo autorización específica.
 - Bayá Casal autorizado expresamente por Sergio el 19/10/2026: extranet y correo para recopilar conciliación, solo lectura y descarga. Ingreso verificado con Chromium. Cuenta corriente `ctacteA/`: filtro por emisión `FC`, desde 2010, hasta corte 30/09/2026, aplicaciones `SI`; composición de deuda `ctacteApl/`. Los enlaces PDF observados devuelven HTML con PDF embebido en `data:application/pdf;base64`, no bytes PDF directos. Extraer ese contenido sin inventar rutas. No guardar credenciales. Relevamiento y pendientes en `specs/036-revision-sistematica-cuentas/baya-casal-relevamiento-20261019.md`.
 
+- **Bóveda de portales (042, 27/10/2026):** las credenciales de portales viven cifradas en la bóveda de la aplicación (La Herencia › Bóveda, solo Administrador), no en archivos ni scripts. Los conectores las reciben de `boveda.servicio`; para un relevamiento manual con Chromium, pedirlas a Sergio o usarlas desde la bóveda sin imprimirlas.
+- Autorización registrada en la bóveda, alcance solo consulta y descarga: peajes (TelepeajePlus, TelePASE, CEAMSE, AUBASA) 16/10/2026; Bayá Casal 19/10/2026; Cargill 20/10/2026; ARCA, Municipalidad de Bolívar, ARBA, Sancor Seguros, Allianz, Jáuregui y Morales y Lartirigoyen 27/10/2026 (pedido de Sergio, spec 042 Clarifications). Nunca pagar, presentar, aceptar, firmar ni enviar; ante captcha o segundo factor, detenerse.
+
 ## Outlook
 
 - Outlook clásico permite acceso estructurado local por COM desde PowerShell: `New-Object -ComObject Outlook.Application`, `GetNamespace('MAPI')`.

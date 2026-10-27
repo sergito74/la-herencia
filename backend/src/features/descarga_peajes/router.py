@@ -1,82 +1,78 @@
-"""API de la descarga de peajes (037). El POST lo bloquea el middleware
-global para el rol `Lectura` (403). Nunca expone credenciales."""
+"""API de la descarga de peajes (037), desde 042 sobre la Bóveda de portales.
+
+Conserva el permiso de 037 (sesión; el middleware bloquea el POST al rol
+`Lectura`) y **no** exige Administrador: es la vista de Compras de los 4
+portales de peaje. Lee corridas y documentos de las tablas de la bóveda y
+dispara las corridas con `boveda.servicio`. Nunca expone credenciales,
+autorizaciones editables ni programación (contracts/api.md de 042,
+"Compatibilidad 037").
+"""
 
 from __future__ import annotations
-
-import ntpath
 
 from fastapi import APIRouter, HTTPException, Query, Request
 from fastapi.responses import JSONResponse
 
-from src.features.auth.repository import get_usuario_por_id
-from src.features.descarga_peajes import configuracion, repository, servicio
-from src.features.descarga_peajes.schemas import (
-    DocumentosPagina, Ejecucion, EjecucionDetalle, EjecucionEnCurso, EjecucionesPagina, EjecucionIniciada, Estado,
-    PortalConfiguracion, ResumenContador, TareaSemanal,
-)
+from src.features.boveda import repository as boveda
+from src.features.boveda import servicio
+from src.features.boveda.router import con_nombre, corrida_iso, iso, usuario_actual
 
 router = APIRouter(prefix="/api/descarga-peajes", tags=["descarga-peajes"])
 
+CONECTORES_PEAJE = ("telepeajeplus", "telepase", "ceamse", "aubasa")
 ESTADOS_DOCUMENTO = {"pendiente", "cargado_auto", "ya_cargado"}
 
 
-def _con_nombre(doc: dict) -> dict:
-    return {**doc, "nombreArchivo": ntpath.basename(doc["ruta"]) if doc.get("ruta") else None}
+def _peajes() -> list[dict]:
+    return [f for f in boveda.listar_portales() if f["codigoConector"] in CONECTORES_PEAJE]
 
 
-def _usuario(request: Request) -> str | None:
-    payload = getattr(request.state, "usuario", None) or {}
-    try:
-        u = get_usuario_por_id(payload.get("idUsuario"))
-        return (u or {}).get("NombreUsuario")
-    except Exception:
-        return None
+def _ids() -> list[int]:
+    return [f["idPortal"] for f in _peajes()] or [0]
 
 
-@router.get("/estado", response_model=Estado)
-def estado() -> Estado:
-    en_curso = repository.ejecucion_en_curso()
-    return Estado(
-        portales=[PortalConfiguracion(portal=p, credenciales=configuracion.credenciales_configuradas(p))
-                  for p in configuracion.CUENTAS],
-        tarea=TareaSemanal(**configuracion.estado_tarea()),
-        enCurso=EjecucionEnCurso(**{k: en_curso[k] for k in ("idEjecucion", "inicio", "origen")}) if en_curso else None,
-    )
+@router.get("/estado")
+def estado() -> dict:
+    portales = [{
+        "idPortal": f["idPortal"], "portal": f["nombre"],
+        "credenciales": bool(f["claveConfigurada"]) and not f["credencialRechazada"],
+        "autorizado": f["autFecha"] is not None,
+        "proximaCorrida": None if f["suspendida"] else iso(f["proximaCorrida"]),
+        "ultimaCorrida": {"estado": f["ucEstado"], "inicio": iso(f["ucInicio"])} if f["ucId"] else None,
+    } for f in _peajes()]
+    return {"portales": portales, "enCurso": any(f["ucEstado"] == "en_curso" for f in _peajes())}
 
 
-@router.post("/ejecuciones", status_code=202, response_model=EjecucionIniciada)
+@router.post("/ejecuciones", status_code=202)
 def iniciar(request: Request):
-    id_ejecucion, id_en_curso = servicio.iniciar_en_segundo_plano(_usuario(request))
-    if id_ejecucion is None:
-        return JSONResponse(status_code=409, content={"detail": "Ya hay una descarga en curso", "idEjecucion": id_en_curso})
-    return EjecucionIniciada(idEjecucion=id_ejecucion)
+    peajes = _peajes()
+    if any(f["ucEstado"] == "en_curso" for f in peajes):
+        return JSONResponse(status_code=409, content={"detail": "Ya hay una descarga en curso"})
+    ids = [f["idPortal"] for f in peajes if f["autFecha"] is not None]
+    if not ids:
+        raise HTTPException(status_code=409, detail="Ningún portal de peaje tiene autorización vigente")
+    servicio.correr_varios_en_segundo_plano(ids, usuario_actual(request))
+    return {"portales": ids}
 
 
-@router.get("/ejecuciones", response_model=EjecucionesPagina)
-def listar_ejecuciones(limite: int = Query(20, ge=1, le=100), desde: int = Query(0, ge=0)) -> EjecucionesPagina:
-    items, total = repository.listar_ejecuciones(limite, desde)
-    return EjecucionesPagina(items=[Ejecucion(**i) for i in items], total=total)
+@router.get("/corridas")
+def listar_corridas(limite: int = Query(20, ge=1, le=100), desde: int = Query(0, ge=0)) -> dict:
+    filas, total = boveda.listar_corridas(None, limite, desde, portales=_ids())
+    return {"items": [corrida_iso(c) for c in filas], "total": total}
 
 
-@router.get("/ejecuciones/{id_ejecucion}", response_model=EjecucionDetalle)
-def detalle_ejecucion(id_ejecucion: int) -> EjecucionDetalle:
-    e = repository.obtener_ejecucion(id_ejecucion)
-    if e is None:
-        raise HTTPException(status_code=404, detail="Ejecución inexistente")
-    return EjecucionDetalle(**{**e, "documentos": [_con_nombre(d) for d in e["documentos"]]})
-
-
-@router.get("/documentos", response_model=DocumentosPagina)
+@router.get("/documentos")
 def listar_documentos(estado: str | None = Query(None), limite: int = Query(50, ge=1, le=100),
-                      desde: int = Query(0, ge=0)) -> DocumentosPagina:
+                      desde: int = Query(0, ge=0)) -> dict:
     if estado is not None and estado not in ESTADOS_DOCUMENTO:
         raise HTTPException(status_code=400, detail="Estado inválido")
-    repository.revalidar_pendientes()
-    items, total = repository.listar_documentos(estado, limite, desde)
-    return DocumentosPagina(items=[_con_nombre(d) for d in items], total=total)
+    boveda.revalidar_pendientes()
+    filas, total = boveda.listar_documentos(None, estado, limite, desde, portales=_ids())
+    return {"items": [con_nombre(d) for d in filas], "total": total}
 
 
-@router.get("/resumen", response_model=ResumenContador)
-def resumen() -> ResumenContador:
-    repository.revalidar_pendientes()
-    return ResumenContador(**repository.resumen())
+@router.get("/resumen")
+def resumen() -> dict:
+    boveda.revalidar_pendientes()
+    r = boveda.resumen(_ids())
+    return {"pendientes": r["pendientesCarga"], "portalesConError": r["conError"] + r["requiereIntervencion"]}

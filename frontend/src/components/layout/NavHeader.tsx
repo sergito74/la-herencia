@@ -6,6 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
 
 import { useAuth } from "@/components/auth/AuthContext";
+import { getResumenBoveda } from "@/services/bovedaApi";
 import { getResumen } from "@/services/descargaPeajesApi";
 
 interface NavLeaf {
@@ -24,6 +25,8 @@ interface NavItem {
   submenu?: NavLeaf[];
   disabled?: boolean;
   disabledTitle?: string;
+  /** Visible solo para el rol Administrador (bóveda de portales, 042). */
+  soloAdmin?: boolean;
 }
 
 /** Íconos SVG inline — sin agregar dependencia nueva (constitución, principio
@@ -40,6 +43,7 @@ const ICONS = {
   ),
   produccion: <path d="M12 3 4 9v12h16V9l-8-6Zm-4 18v-6h8v6" />,
   contactos: <path d="M16 7a4 4 0 1 1-8 0 4 4 0 0 1 8 0ZM4 21v-1a6 6 0 0 1 6-6h4a6 6 0 0 1 6 6v1" />,
+  boveda: <path d="M6 11h12v10H6V11Zm2 0V7a4 4 0 1 1 8 0v4m-4 4v2" />,
   bell: <path d="M6 8a6 6 0 1 1 12 0c0 4 1.5 5.5 1.5 5.5H4.5S6 12 6 8Zm4.5 9.5a1.5 1.5 0 0 0 3 0" />,
   chevron: <path d="m6 9 6 6 6-6" />,
 };
@@ -139,6 +143,12 @@ const NAV_ITEMS: NavItem[] = [
     label: "Contactos",
     icon: ICONS.contactos,
   },
+  {
+    href: "/boveda",
+    label: "Bóveda",
+    icon: ICONS.boveda,
+    soloAdmin: true,
+  },
 ];
 
 function isActive(pathname: string, href: string) {
@@ -158,6 +168,20 @@ function usePendientesPeajes(habilitado: boolean): number {
     retry: false,
   });
   return data ? data.pendientes + data.portalesConError : 0;
+}
+
+/** Contador de la bóveda (042, US6): pendientes de carga, portales con error o que
+ * requieren intervención, y diferencias de saldo sin revisar. Solo Administrador. */
+function useAvisosBoveda(habilitado: boolean): number {
+  const { data } = useQuery({
+    queryKey: ["boveda", "resumen"],
+    queryFn: getResumenBoveda,
+    enabled: habilitado,
+    refetchInterval: 5 * 60 * 1000,
+    refetchOnWindowFocus: true,
+    retry: false,
+  });
+  return data?.total ?? 0;
 }
 
 function Contador({ valor }: { valor: number }) {
@@ -220,6 +244,7 @@ export function NavHeader() {
   const router = useRouter();
   const { usuario, logout } = useAuth();
   const peajes = usePendientesPeajes(pathname !== "/login" && !!usuario);
+  const avisosBoveda = useAvisosBoveda(pathname !== "/login" && usuario?.rol === "Administrador");
 
   if (pathname === "/login") return null;
 
@@ -243,7 +268,7 @@ export function NavHeader() {
             La Herencia
           </Link>
           <div className="flex items-center gap-1">
-            {NAV_ITEMS.map((item) => {
+            {NAV_ITEMS.filter((item) => !item.soloAdmin || usuario?.rol === "Administrador").map((item) => {
               if (item.disabled) {
                 return (
                   <span
@@ -277,6 +302,7 @@ export function NavHeader() {
                 >
                   <Icon>{item.icon}</Icon>
                   {item.label}
+                  {item.soloAdmin && item.href === "/boveda" && <Contador valor={avisosBoveda} />}
                 </Link>
               );
             })}
