@@ -31,6 +31,10 @@ def cargar(conector: Conector, doc: DocumentoPortal, pdf: bytes, ruta: str, *, s
                  "numeroDocumento": doc.numero, "totalImpreso": doc.total}
     if doc.tipo not in TIPOS_COMPROBANTE:
         return {**resultado, "estadoCarga": "no_aplica"}
+    if doc.numero and doc.id_contacto:
+        existente = repository.compra_existente(doc.id_contacto, doc.numero, None if simular else ruta)
+        if existente:
+            return {**resultado, "estadoCarga": "ya_cargado", "idCompra": existente}
     if not conector.tiene_carga_compras:
         return {**resultado, "motivo": "Revisar y cargar a mano"}
     try:

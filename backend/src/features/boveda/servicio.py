@@ -155,6 +155,16 @@ def _archivo_igual(carpeta: Path, sha: str, indice: dict[Path, dict[str, str]]) 
     return indice[carpeta].get(sha)
 
 
+def _archivo_de_compra(doc) -> str | None:
+    """Comprobante ya cargado en Compras con su archivo: se usa ese archivo en vez de guardar otra copia
+    (el PDF del portal puede no ser idéntico byte a byte al guardado a mano)."""
+    if doc.tipo not in carga.TIPOS_COMPROBANTE or not (doc.numero and doc.id_contacto):
+        return None
+    id_compra = repository.compra_existente(doc.id_contacto, doc.numero, None)
+    ruta = repository.documento_original(id_compra) if id_compra else None
+    return ruta if ruta and Path(ruta).exists() else None
+
+
 def _procesar(portal: dict, conector, cred: Credencial, id_corrida: int) -> dict:
     from playwright.sync_api import sync_playwright
 
@@ -190,7 +200,8 @@ def _procesar(portal: dict, conector, cred: Credencial, id_corrida: int) -> dict
                 sha = hashlib.sha256(contenido).hexdigest()
                 fecha = doc.fecha or date.today()
                 carpeta = _carpeta(doc.tipo, fecha)
-                ruta_igual = repository.existe_sha(sha) or _archivo_igual(carpeta, sha, indice)
+                ruta_igual = (repository.existe_sha(sha) or _archivo_igual(carpeta, sha, indice)
+                              or _archivo_de_compra(doc))
                 if ruta_igual:
                     ruta = ruta_igual
                 else:

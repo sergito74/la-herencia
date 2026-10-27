@@ -485,7 +485,18 @@ def documentos_de_corrida(id_corrida: int) -> list[dict]:
 def compra_existente(id_contacto: int | None, numero: str | None, ruta: str | None) -> int | None:
     from src.features.descarga_peajes.repository import compra_existente as de_037
 
-    return de_037(id_contacto, numero, ruta)
+    encontrada = de_037(id_contacto, numero, ruta)
+    if encontrada or not (id_contacto and numero):
+        return encontrada
+    # Números cargados a mano con espacios ("0020- 00136689").
+    fila = fetch_one("SELECT TOP 1 IdDeuda AS id FROM dbo.Compras WHERE IdContacto = ? "
+                     "AND REPLACE([Nro Documento], ' ', '') = ?", (id_contacto, numero.replace(" ", "")))
+    return fila["id"] if fila else None
+
+
+def documento_original(id_compra: int) -> str | None:
+    fila = fetch_one("SELECT [Documento Original] AS r FROM dbo.Compras WHERE IdDeuda = ?", (id_compra,))
+    return (fila["r"] or "").split("#")[0] or None if fila else None
 
 
 def revalidar_pendientes() -> int:
