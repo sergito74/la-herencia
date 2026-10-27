@@ -45,6 +45,9 @@ def test_insert_incluye_id_campania():
 @pytest.fixture
 def validacion(catalogo, monkeypatch):
     monkeypatch.setattr(repository, "existe_contacto_valido_para_compra", lambda i: True)
+    monkeypatch.setattr(repository, "existe_rubro", lambda i: True)
+    monkeypatch.setattr(repository, "existe_centro_costo", lambda i: True)
+    monkeypatch.setattr(repository, "existe_destino", lambda i: True)
     monkeypatch.setattr(repository, "campanias_validas_por_destino", lambda: {1: {20}, 6: {24}, 16: {20, 24}})
     original = repository.fetch_all
 
@@ -56,32 +59,42 @@ def validacion(catalogo, monkeypatch):
     monkeypatch.setattr(repository, "fetch_all", fetch_all)
 
 
+def _linea(**kw):
+    return {"idRubro": 1, "idCentroCosto": 1, **kw}
+
+
+def test_rechaza_linea_sin_rubro_o_centro_costo(validacion):
+    errores = repository.validar_compra(1, "Pesos", None, [{}])
+    assert any("rubro asignado" in e for e in errores)
+    assert any("centro de costos asignado" in e for e in errores)
+
+
 def test_rechaza_campania_fuera_del_catalogo(validacion):
-    errores = repository.validar_compra(1, "Pesos", None, [{"campaña": "2025-2026"}])
+    errores = repository.validar_compra(1, "Pesos", None, [_linea(**{"campaña": "2025-2026"})])
     assert len(errores) == 1 and "no existe en el catálogo" in errores[0]
 
 
 def test_rechaza_id_que_no_corresponde_al_texto(validacion):
-    errores = repository.validar_compra(1, "Pesos", None, [{"campaña": "2025/2026", "idCampania": 20}])
+    errores = repository.validar_compra(1, "Pesos", None, [_linea(**{"campaña": "2025/2026", "idCampania": 20})])
     assert len(errores) == 1 and "no corresponde" in errores[0]
 
 
 def test_acepta_campania_del_plan_o_vacia_en_general(validacion):
-    assert repository.validar_compra(1, "Pesos", None, [{"campaña": "2025/2026", "idDestino": 6}, {"campaña": "", "idDestino": 1}, {}]) == []
+    assert repository.validar_compra(1, "Pesos", None, [_linea(**{"campaña": "2025/2026", "idDestino": 6}), _linea(**{"campaña": "", "idDestino": 1}), _linea()]) == []
 
 
 def test_rechaza_campania_fuera_del_plan_para_el_cultivo(validacion):
-    errores = repository.validar_compra(1, "Pesos", None, [{"campaña": "No Aplica", "idDestino": 6}])
+    errores = repository.validar_compra(1, "Pesos", None, [_linea(**{"campaña": "No Aplica", "idDestino": 6})])
     assert len(errores) == 1 and "plan agrícola" in errores[0] and "Soja primera" in errores[0]
 
 
 def test_general_solo_admite_no_aplica(validacion):
-    assert repository.validar_compra(1, "Pesos", None, [{"campaña": "2025/2026", "idDestino": 1}])
+    assert repository.validar_compra(1, "Pesos", None, [_linea(**{"campaña": "2025/2026", "idDestino": 1})])
 
 
 def test_stock_admite_campania_del_plan_y_no_aplica(validacion):
-    assert repository.validar_compra(1, "Pesos", None, [{"campaña": "2025/2026", "idDestino": 16}, {"campaña": "No Aplica", "idDestino": 16}]) == []
+    assert repository.validar_compra(1, "Pesos", None, [_linea(**{"campaña": "2025/2026", "idDestino": 16}), _linea(**{"campaña": "No Aplica", "idDestino": 16})]) == []
 
 
 def test_al_editar_se_conserva_una_combinacion_ya_guardada(validacion):
-    assert repository.validar_compra(1, "Pesos", None, [{"campaña": "No Aplica", "idDestino": 6}], {(6, 20)}) == []
+    assert repository.validar_compra(1, "Pesos", None, [_linea(**{"campaña": "No Aplica", "idDestino": 6})], {(6, 20)}) == []

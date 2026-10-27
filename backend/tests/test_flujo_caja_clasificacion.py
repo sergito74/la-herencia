@@ -37,3 +37,9 @@ def test_movimiento_sin_concepto_no_se_excluye():
     # operativo (nunca se excluye del neto en silencio).
     assert es_interno("BNA", None) is False
     assert es_interno("Galicia", None, None) is False
+
+def test_caja_efectivo_traspaso_caja_chica_es_interno():
+    assert es_interno("Caja Efectivo", "Caja Chica Campo", "GiamigliSA") is True
+    assert es_interno("Caja Efectivo", "Aporte Efectivo", "CampoChica") is True
+    assert es_interno("Caja Efectivo", "Aporte Efectivo", "GiamigliSA") is False
+    assert es_interno("Caja Efectivo", "Adicional Sueldo Marcelo", "GiamigliSA") is False

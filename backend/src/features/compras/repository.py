@@ -545,10 +545,14 @@ def validar_compra(
 
     for linea in lineas:
         id_rubro = linea.get("idRubro")
-        if id_rubro is not None and not existe_rubro(id_rubro):
+        if id_rubro is None:
+            errores.append("Cada línea de compra debe tener un rubro asignado.")
+        elif not existe_rubro(id_rubro):
             errores.append(f"El rubro {id_rubro} no existe.")
         id_centro_costo = linea.get("idCentroCosto")
-        if id_centro_costo is not None and not existe_centro_costo(id_centro_costo):
+        if id_centro_costo is None:
+            errores.append("Cada línea de compra debe tener un centro de costos asignado.")
+        elif not existe_centro_costo(id_centro_costo):
             errores.append(f"El centro de costos {id_centro_costo} no existe.")
         id_destino = linea.get("idDestino")
         if id_destino is not None and not existe_destino(id_destino):

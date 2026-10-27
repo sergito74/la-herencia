@@ -78,8 +78,45 @@ def get_movimientos_normalizados(fecha_desde: date, fecha_hasta: date) -> list[d
                 "concepto": f["concepto"],
                 "idContacto": f["idContacto"],
                 "contacto": f["contacto"],
-                "esInterno": es_interno("Galicia", None, f["grupoConceptos"]),
-                "tipoInterno": tipo_interno("Galicia", importe, None, f["grupoConceptos"]),
+                "esInterno": es_interno("Galicia", f["concepto"], f["grupoConceptos"]),
+                "tipoInterno": tipo_interno("Galicia", importe, f["concepto"], f["grupoConceptos"]),
+            }
+        )
+
+    filas_cajas = fetch_all(
+        """
+        SELECT m.IdMovimiento AS idMovimiento, m.Caja AS caja, CAST(m.Fecha AS datetime) AS fecha,
+               m.Importe AS importe, m.Concepto AS concepto, m.Detalle AS detalle,
+               m.IdContactoRelacionado AS idContacto, c.[Razon Social] AS contacto,
+               m.IdPagoEfectivo AS idPagoEfectivo, m.Tipo AS tipo
+        FROM dbo.vw_MovimientosCajaEfectivoOperativos m
+        LEFT JOIN dbo.Contactos c ON c.IdContacto = m.IdContactoRelacionado
+        WHERE m.Anulada = 0 AND m.Caja IN ('GiamigliSA', 'CampoChica')
+          AND CAST(m.Fecha AS date) BETWEEN ? AND ?
+        """,
+        (desde, hasta),
+    )
+    for f in filas_cajas:
+        importe = float(f["importe"] or 0)
+        con_base = (f["concepto"] or "").strip()
+        det_base = (f["detalle"] or "").strip()
+        concepto_completo = f"{con_base} ({det_base})" if det_base and det_base.lower() != con_base.lower() else (con_base or det_base)
+        cuenta_caja = "Giamigli SA" if f["caja"] == "GiamigliSA" else "Campo Chica"
+        es_int = es_interno("Caja Efectivo", concepto_completo, f["caja"])
+        tipo_int = tipo_interno("Caja Efectivo", importe, concepto_completo, f["caja"])
+        movimientos.append(
+            {
+                "fecha": f["fecha"],
+                "banco": "Caja Efectivo",
+                "origenMovimiento": "efectivo" if f["idPagoEfectivo"] is not None else "caja-efectivo",
+                "idMovimientoOrigen": f["idPagoEfectivo"] if f["idPagoEfectivo"] is not None else f["idMovimiento"],
+                "numeroCuentaBancaria": cuenta_caja,
+                "importe": importe,
+                "concepto": concepto_completo,
+                "idContacto": f["idContacto"],
+                "contacto": f["contacto"],
+                "esInterno": es_int,
+                "tipoInterno": tipo_int,
             }
         )
 
@@ -192,18 +229,35 @@ def ultima_fecha_por_cuenta() -> list[dict]:
             "fecha": fecha_galicia[0]["fecha"] if fecha_galicia else None,
         }
     )
+    filas_cajas = fetch_all(
+        """
+        SELECT Caja AS caja, CAST(MAX(Fecha) AS datetime) AS fecha
+        FROM dbo.vw_MovimientosCajaEfectivoOperativos
+        WHERE Anulada = 0 AND Caja IN ('GiamigliSA', 'CampoChica')
+        GROUP BY Caja
+        """
+    )
+    fechas_caja = {f["caja"]: f["fecha"] for f in filas_cajas}
+    resultado.append({"banco": "Caja Efectivo", "numeroCuenta": "Giamigli SA", "fecha": fechas_caja.get("GiamigliSA")})
+    resultado.append({"banco": "Caja Efectivo", "numeroCuenta": "Campo Chica", "fecha": fechas_caja.get("CampoChica")})
     return resultado
 
 
 CUENTA_NACION = "Nación"
 CUENTA_GALICIA = "Galicia CC"
 CUENTA_FIMA = "Galicia Fondo FIMA"
+CUENTA_CAJA_GIAMIGLI = "Caja Giamigli SA"
+CUENTA_CAJA_CAMPO = "Caja chica del campo"
 ACLARACION_FIMA = "Colocado menos rescatado (FIMA y plazos fijos). No es el saldo real del fondo: los rescates incluyen rendimiento, por eso puede dar negativo"
 SIN_CENTRO = atribucion.CENTRO_COSTO_SIN_ASIGNAR
 
 
 def _cuenta(m: dict) -> str:
-    return CUENTA_NACION if m["banco"] == "BNA" else CUENTA_GALICIA
+    if m["banco"] == "BNA":
+        return CUENTA_NACION
+    if m["banco"] == "Caja Efectivo":
+        return CUENTA_CAJA_CAMPO if m.get("numeroCuentaBancaria") == "Campo Chica" else CUENTA_CAJA_GIAMIGLI
+    return CUENTA_GALICIA
 
 
 def _dia(fecha) -> date:
@@ -248,12 +302,12 @@ def _clasificar_concepto_o_contacto(m: dict) -> tuple[str, str | None] | None:
     if "PRESTAMO" in con or "PAGO PRESTAMO" in con:
         return "Financiamiento", "Adm. General"
 
-    # 5. Socios: Retiros, haberes y transferencias a socios / cuentas de socios
-    if any(s in contacto or s in con for s in ["SERGIO GIAMBERARDINI", "ALBINA IGLINA", "VIRGIN", "LUCY"]) or m.get("idContacto") in [375, 390]:
-        return atribucion.RUBRO_CUENTA_SOCIOS, atribucion.CENTRO_COSTO_SOCIOS
+    # 5. Socios: Retiros, haberes y transferencias a socios / cuentas de socios / aportes efectivo de socios
+    if any(s in contacto or s in con for s in ["SERGIO GIAMBERARDINI", "ALBINA IGLINA", "VIRGIN", "LUCY", "APORTE EFECTIVO", "RETIRO EFECTIVO"]) or m.get("idContacto") in [375, 390]:
+        return atribucion.RUBRO_CUENTA_SOCIOS, (atribucion.CENTRO_COSTO_SOCIOS if imp < 0 else None)
 
     # 6. Sueldos y cargas del personal
-    if "HABERES" in con or "SUELDO" in con or "SIERRA" in contacto or "SIERRA" in con or m.get("idContacto") in [123, 374]:
+    if "HABERES" in con or "SUELDO" in con or "MARCELO" in con or "SIERRA" in contacto or "SIERRA" in con or m.get("idContacto") in [123, 374]:
         return atribucion.RUBRO_SUELDOS, atribucion.CENTRO_COSTO_PERSONAL
     if "UATRE" in con or "UATRE" in contacto:
         return "Cargas sociales (UATRE)", atribucion.CENTRO_COSTO_PERSONAL
@@ -289,6 +343,24 @@ def _clasificar_concepto_o_contacto(m: dict) -> tuple[str, str | None] | None:
         return "Telefono", "Adm. General"
     if "ECHEQ" in con or "G. DE ECHEQ" in con:
         return ("Cobranza cheques de terceros", None) if imp > 0 else ("Gastos de Administracion", "Adm. General")
+
+    # 9. Conceptos operativos de Cajas en Efectivo
+    if "GARRAFA" in con or "EXTRAGAS" in contacto or m.get("idContacto") in [37, 560]:
+        return "Gas", "Adm. General"
+    if "VENTA VACA" in con or "DELASERNA" in con or "DE LA SERNA" in con:
+        return "Venta Vacas", None
+    if "COMISION VENTA" in con:
+        return "Gastos Comercializacion", "Ganaderia"
+    if "VACUNACION" in con or "DESTETE" in con or m.get("idContacto") == 379:
+        return "Aranceles Vacunacion", "Ganaderia"
+    if any(k in con for k in ["MOTOSIERRA", "MADERA", "CEMENTO", "PALOMINO", "LEMOS", "ESCOMBRO", "PRECINTOS", "ETHERNET", "J&H"]) or m.get("idContacto") in [80, 343, 573, 3655]:
+        return "Mantenimiento Instalaciones", "Adm. General"
+    if any(k in con for k in ["GATO", "ASADO", "POLLO", "MILANESA", "PAN RALLADO", "VINAGRE", "SUPERMERCADO", "PROPINA", "VIATICOS", "CAMBIO"]) or m.get("idContacto") == 249:
+        return "Viaticos", "Adm. General"
+    if any(k in con for k in ["NAFTA", "EESS", "COMBUSTIBLE", "GASOIL"]):
+        return "Combustible", "Adm. General"
+    if "YEGUA" in con:
+        return "Compra Hacienda", "Ganaderia"
 
     return None
 
@@ -460,30 +532,46 @@ def agregar_por_rubro(partes: list[dict], granularidad: str, periodos: list[str]
 
 def saldos_por_cuenta_al(fecha: date) -> dict[str, float]:
     """Saldo de cada cuenta al inicio de `fecha` (exclusive), en pesos: Nación
-    (las 3 cuentas BNA), Galicia CC y el FIMA reconstruido como capital neto
-    colocado (−Σ movimientos Galicia FIMA; no puede ser negativo)."""
+    (las 3 cuentas BNA), Galicia CC, el FIMA reconstruido y las Cajas en Efectivo
+    (Caja Giamigli SA y Caja chica del campo)."""
     hasta = as_sql_datetime(fecha)
     aperturas = fetch_all("SELECT Banco AS banco, SUM(SaldoApertura) AS saldo FROM dbo.CuentasBancarias GROUP BY Banco")
     apertura = {a["banco"]: float(a["saldo"] or 0) for a in aperturas}
     bna = fetch_all("SELECT SUM(Importe) AS total FROM dbo.[Movimientos BNA] WHERE [Fecha / Hora Mov#] < ?", (hasta,))
     gal = fetch_all(
         "SELECT SUM(ISNULL([Créditos],0) - ISNULL([Débitos],0)) AS total, "
-        "SUM(CASE WHEN Concepto LIKE '%FIMA%' THEN ISNULL([Créditos],0) - ISNULL([Débitos],0) ELSE 0 END) AS fima "
+        "SUM(CASE WHEN Concepto LIKE '%FIMA%' OR [Descripción] LIKE '%FIMA%' THEN ISNULL([Créditos],0) - ISNULL([Débitos],0) ELSE 0 END) AS fima "
         "FROM dbo.[Movimientos Galicia] WHERE Fecha < ?",
         (hasta,),
     )
+    cajas = fetch_all(
+        "SELECT Caja AS caja, SUM(Importe) AS total "
+        "FROM dbo.vw_MovimientosCajaEfectivoOperativos "
+        "WHERE Anulada = 0 AND Caja IN ('GiamigliSA', 'CampoChica') AND CAST(Fecha AS date) < ? "
+        "GROUP BY Caja",
+        (hasta,),
+    )
+    saldo_cajas = {c["caja"]: float(c["total"] or 0) for c in cajas}
     saldo_fima = max(0.0, -float(gal[0]["fima"] or 0))
     return {
         CUENTA_NACION: round(apertura.get("BNA", 0) + float(bna[0]["total"] or 0), 2),
         CUENTA_GALICIA: round(apertura.get("Galicia", 0) + float(gal[0]["total"] or 0), 2),
         CUENTA_FIMA: round(saldo_fima, 2),
+        CUENTA_CAJA_GIAMIGLI: round(saldo_cajas.get("GiamigliSA", 0.0), 2),
+        CUENTA_CAJA_CAMPO: round(saldo_cajas.get("CampoChica", 0.0), 2),
     }
 
 
 def saldo_inicial_al(fecha_desde: date) -> float:
-    """Total de 018 (Nación + Galicia CC, sin el FIMA reconstruido)."""
+    """Total de disponibilidades (Nación + Galicia CC + Cajas Efectivo, sin el FIMA reconstruido)."""
     s = saldos_por_cuenta_al(fecha_desde)
-    return round(s[CUENTA_NACION] + s[CUENTA_GALICIA], 2)
+    return round(
+        s[CUENTA_NACION]
+        + s[CUENTA_GALICIA]
+        + s.get(CUENTA_CAJA_GIAMIGLI, 0.0)
+        + s.get(CUENTA_CAJA_CAMPO, 0.0),
+        2,
+    )
 
 
 def saldos_finales(saldos_iniciales: dict[str, float], partes: list[dict], granularidad: str, periodos: list[str]) -> dict[str, dict[str, float]]:

@@ -28,15 +28,19 @@ _PATRON_TITULAR_PROPIO_BNA = re.compile(
 def _es_interno_bna(concepto: str | None) -> bool:
     if not concepto:
         return False
+    if "CRED BE O BCO-M" in concepto.upper():
+        return True
     if not _PATRON_TITULAR_PROPIO_BNA.search(concepto):
         return False
     return CUIT_EMPRESA in concepto.replace("-", "").replace(" ", "")
 
 
-def _es_interno_galicia(grupo_conceptos: str | None) -> bool:
-    if not grupo_conceptos:
-        return False
-    return "inversiones" in grupo_conceptos.casefold()
+def _es_interno_galicia(grupo_conceptos: str | None, concepto: str | None = None) -> bool:
+    if grupo_conceptos and "inversiones" in grupo_conceptos.casefold():
+        return True
+    if concepto and "FIMA" in concepto.upper():
+        return True
+    return False
 
 
 COLOCACION_FIMA = "Colocación FIMA"
@@ -61,14 +65,29 @@ def _es_plazo_fijo(concepto: str | None) -> bool:
     return "PLAZO FIJO" in c or "P.FIJO" in c or "902002" in c or "912002" in c
 
 
+def _es_interno_caja_efectivo(concepto: str | None, cuenta_caja: str | None = None) -> bool:
+    if not concepto:
+        return False
+    c = concepto.upper()
+    if "CAJA CHICA CAMPO" in c:
+        return True
+    if "RETIRO EFECTIVO GALICIA" in c or "RETIRO CAJERO" in c:
+        return True
+    if cuenta_caja in ("CampoChica", "Campo Chica") and "APORTE EFECTIVO" in c:
+        return True
+    return False
+
+
 def es_interno(banco: str, concepto: str | None, grupo_conceptos: str | None = None) -> bool:
-    """`banco` es 'BNA' o 'Galicia' (mismo valor que `CuentasBancarias.Banco`)."""
+    """`banco` es 'BNA', 'Galicia' o 'Caja Efectivo'."""
     if _es_plazo_fijo(concepto):
         return True
     if banco == "BNA":
         return _es_interno_bna(concepto)
     if banco == "Galicia":
-        return _es_interno_galicia(grupo_conceptos)
+        return _es_interno_galicia(grupo_conceptos, concepto)
+    if banco == "Caja Efectivo":
+        return _es_interno_caja_efectivo(concepto, grupo_conceptos)
     return False
 
 
@@ -77,9 +96,11 @@ def tipo_interno(banco: str, importe: float, concepto: str | None, grupo_concept
     interno según `es_interno`; `None` si el movimiento es operativo."""
     if _es_plazo_fijo(concepto):
         return CONSTITUCION_PLAZO_FIJO if importe < 0 else VENCIMIENTO_PLAZO_FIJO
-    if banco == "Galicia" and _es_interno_galicia(grupo_conceptos):
+    if banco == "Galicia" and _es_interno_galicia(grupo_conceptos, concepto):
         return COLOCACION_FIMA if importe < 0 else RESCATE_FIMA
     if banco == "BNA" and _es_interno_bna(concepto):
+        return TRASPASO_ENTRE_BANCOS
+    if banco == "Caja Efectivo" and _es_interno_caja_efectivo(concepto, grupo_conceptos):
         return TRASPASO_ENTRE_BANCOS
     return None
 

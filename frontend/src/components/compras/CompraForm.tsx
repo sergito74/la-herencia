@@ -342,6 +342,10 @@ export function CompraForm({
       showToast("Agregá al menos una línea.", "danger");
       return;
     }
+    if (lineas.some((l) => l.idRubro == null || l.idCentroCosto == null)) {
+      showToast("Todas las líneas deben tener un Rubro y un Centro de Costos asignados.", "danger");
+      return;
+    }
     if (moneda === "Dolares" && (!tipoDeCambio || tipoDeCambio <= 0)) {
       showToast("El tipo de cambio es obligatorio para compras en Dólares.", "danger");
       return;

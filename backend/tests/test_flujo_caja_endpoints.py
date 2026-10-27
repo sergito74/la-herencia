@@ -146,6 +146,8 @@ def test_ultima_fecha_por_cuenta_incluye_las_4_cuentas_conocidas():
     assert ("BNA", "12301640029280") in claves
     assert ("BNA", "6150111899") in claves
     assert ("Galicia", "0000798-8 383-4") in claves
+    assert ("Caja Efectivo", "Giamigli SA") in claves
+    assert ("Caja Efectivo", "Campo Chica") in claves
 
 
 def test_movimientos_bna_2011_pertenecen_solo_a_la_primera_cuenta():
