@@ -98,6 +98,8 @@ def entorno(monkeypatch, tmp_path):
     monkeypatch.setattr(repository, "existe_equivalente", lambda patrones: False)
     monkeypatch.setattr(repository, "existe_sha", lambda sha: None)
     monkeypatch.setattr(repository, "insertar_documento", lambda d: estado["docs"].append(d) or 1)
+    # Sin esto los avisos (043) se escribían en la base real.
+    monkeypatch.setattr(servicio.avisos, "desde_portal", lambda *a, **k: None)
     monkeypatch.setattr(servicio, "credencial_de", lambda idc: Credencial(usuario="u", clave=Secreto("clave")))
     monkeypatch.setattr(servicio, "COMPRAS", tmp_path)
     monkeypatch.setattr(servicio, "_carpeta", lambda tipo, f: tmp_path)
