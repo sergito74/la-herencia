@@ -98,7 +98,7 @@ Cada conector: relevar el portal en solo lectura con Chromium (vía `.specify/me
 
 - [X] T040 [US3] `backend/src/features/boveda/conectores/baya_casal.py`: extranet `ctacteA/` (filtro FC desde 2010, aplicaciones SI), PDF embebido en `data:application/pdf;base64`, estado de cuenta ARS/USD, lector de factura (base: `specs/036-revision-sistematica-cuentas/baya-casal-relevamiento-20261019.md`)
 - [X] T041 [US3] `backend/src/features/boveda/conectores/cargill.py`: API del libro financiero por trimestre (customerId 35192801), estado de cuenta en US$, liquidaciones y facturas (memoria reference_portal_cargill)
-- [ ] T042 [US3] `backend/src/features/boveda/conectores/arca.py`: relevamiento + conector (cuenta corriente/SCT, comprobantes en línea, retenciones/percepciones; solo consulta)
+- [X] T042 [US3] `backend/src/features/boveda/conectores/arca.py`: relevamiento + conector (cuenta corriente/SCT, comprobantes en línea, retenciones/percepciones; solo consulta)
 - [X] T043 [US3] `backend/src/features/boveda/conectores/arba.py`: relevamiento + conector (boletas, estado de deuda, percepciones/retenciones)
 - [ ] T044 [US3] `backend/src/features/boveda/conectores/municipalidad_bolivar.py`: relevamiento + conector (tasas, estado de deuda)
 - [ ] T045 [US3] `backend/src/features/boveda/conectores/sancor.py`: relevamiento + conector (pólizas, facturas, estado de cuenta)
