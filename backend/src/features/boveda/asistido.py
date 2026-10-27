@@ -40,7 +40,8 @@ class Asistido:
     proveedor: str  # parte del nombre AAAAMMDD_Proveedor.pdf
     codigo_remitente: str | None = None
     codigo_patron: str | None = None
-    # Movistar rechaza ("ERROR 777") un ingreso tipeado por el sistema: ahí el usuario y la clave los escribe Sergio.
+    # False: el usuario y la clave los escribe Sergio (Movistar daba "ERROR 777" en modo automatizado; con chrome_comun
+    # se vuelve a probar el ingreso completo).
     completar: bool = True
     # Página de clientes donde aparece un aviso de marketing que se descarta con "Cancelar".
     inicio: str | None = None
@@ -54,7 +55,7 @@ ASISTIDOS = {
     "auth.allianz.com.ar": Asistido("https://www.miallianz.com.ar/priv", "Allianz",
                                     "noreply@allianz.com.ar", r"Tu código es (\d{6})",
                                     inicio="miallianz.com.ar/priv", chrome_comun=True),
-    "idp.movistar.com.ar": Asistido("https://idp.movistar.com.ar/convergencia/login_A.html", "Movistar", completar=False),
+    "idp.movistar.com.ar": Asistido("https://idp.movistar.com.ar/convergencia/login_A.html", "Movistar", chrome_comun=True),
 }
 
 _abiertos: set[int] = set()
