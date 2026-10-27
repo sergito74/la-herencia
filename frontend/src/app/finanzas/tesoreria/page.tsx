@@ -1,10 +1,11 @@
 "use client";
 
 import { useSearchParams } from "next/navigation";
-import { useState } from "react";
+import { Suspense, useState } from "react";
 
 import { MEDIO_LABELS, MovimientosPorMedio } from "@/components/tesoreria/MovimientosPorMedio";
 import { CargaExcel } from "@/components/tesoreria/CargaExcel";
+import { NuevosParaRevisar } from "@/components/documentos-nuevos/NuevosParaRevisar";
 import { BackLink } from "@/components/ui/BackLink";
 import type { Medio } from "@/services/tesoreriaApi";
 
@@ -31,6 +32,9 @@ export default function TesoreriaPage() {
   return (
     <main className="mx-auto max-w-none px-8 py-6">
       <BackLink href="/">Volver al inicio</BackLink>
+      <Suspense fallback={null}>
+        <NuevosParaRevisar modulo="tesoreria" />
+      </Suspense>
       <h1 className="mt-2 text-2xl font-semibold">Tesorería</h1>
       <p className="mt-1 text-ink-secondary">
         Consulta y conciliación de movimientos por banco, caja, valores y tarjetas.

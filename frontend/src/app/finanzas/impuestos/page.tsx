@@ -1,11 +1,12 @@
 "use client";
 
 import { useSearchParams } from "next/navigation";
-import { useState } from "react";
+import { Suspense, useState } from "react";
 
 import { ImpuestosListado } from "@/components/impuestos/ImpuestosListado";
 import { RetencionesListado } from "@/components/impuestos/RetencionesListado";
 import { RetencionesVentaHaciendaListado } from "@/components/ventas-hacienda/RetencionesVentaHaciendaListado";
+import { NuevosParaRevisar } from "@/components/documentos-nuevos/NuevosParaRevisar";
 import { BackLink } from "@/components/ui/BackLink";
 
 const TABS = ["Impuestos", "Retenciones", "Retenciones Venta Hacienda"] as const;
@@ -26,6 +27,9 @@ export default function ImpuestosPage() {
   return (
     <main className="mx-auto max-w-none px-8 py-6">
       <BackLink href="/">Volver al inicio</BackLink>
+      <Suspense fallback={null}>
+        <NuevosParaRevisar modulo="impuestos" />
+      </Suspense>
       <h1 className="mt-2 text-2xl font-semibold">Impuestos</h1>
       <p className="mt-1 text-ink-secondary">
         Boletas de impuestos (alta, edición y baja) y retenciones impositivas (solo lectura).

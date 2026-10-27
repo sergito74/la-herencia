@@ -2,7 +2,8 @@
 
 Corre dentro del backend, solo mientras la aplicación está abierta
 (Clarification 27/10: no hay tareas de Windows). Un hilo revisa cada
-`INTERVALO` segundos qué portales vencieron y los corre de a uno. La próxima
+`INTERVALO` segundos qué portales vencieron y los corre de a uno; el mismo hilo corre la rutina diaria de
+documentos nuevos (043). La próxima
 corrida se calcula **desde ahora**, no desde la hora perdida: si la app estuvo
 cerrada varios períodos, al abrirla corre una sola vez (recuperación única).
 """
@@ -84,8 +85,19 @@ def tick(ahora: datetime | None = None) -> list[int]:
 
 
 def _bucle() -> None:
+    from src.features.documentos_nuevos import repository as rutina_repo, rutina
+
+    try:
+        rutina_repo.marcar_incompletas()  # una corrida de la rutina que quedó a medias al cerrarse el sistema
+    except Exception:
+        log.exception("Rutina: no se pudieron cerrar las corridas incompletas")
     pausa = threading.Event()
     while True:
+        try:
+            # La rutina diaria (043, 7:00 y 14:00) corre en este mismo hilo: nunca se abren dos navegadores a la vez.
+            rutina.tick()
+        except Exception:
+            log.exception("Rutina: falló la revisión del horario")
         try:
             tick()
         except Exception:

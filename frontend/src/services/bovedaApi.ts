@@ -251,34 +251,6 @@ export const marcarFotoRevisada = (idFoto: number, revisada: boolean) =>
   apiPatch<void>(`${BASE}/estado-cuenta/${idFoto}`, { revisada });
 export const getResumenBoveda = () => apiGet<ResumenBoveda>(`${BASE}/resumen`);
 
-export interface RenglonRevision {
-  detalle: string | null;
-  cantidad: number | null;
-  precioUnitario: number | null;
-  iva: number | null;
-  rubro: string | null;
-  centroCosto: string | null;
-}
-
-/** Compra cargada sola por la bóveda, pendiente de revisar su imputación. */
-export interface CargaRevision {
-  idDocumento: number;
-  portal: string;
-  idCompra: number;
-  fecha: string | null;
-  proveedor: string | null;
-  tipoDocumento: string | null;
-  tipo: string | null;
-  numero: string | null;
-  total: number | null;
-  ruta: string | null;
-  renglones: RenglonRevision[];
-}
-
-export const getCargasParaRevisar = () => apiGet<CargaRevision[]>(`${BASE}/revision`);
-export const marcarRevisado = (idDocumento: number) =>
-  apiPost<{ ok: boolean }>(`${BASE}/documentos/${idDocumento}/revisado`, {});
-
 export const ETIQUETA_CARGA: Record<EstadoCarga, string> = {
   cargado_auto: "Cargado automáticamente",
   ya_cargado: "Ya cargado",

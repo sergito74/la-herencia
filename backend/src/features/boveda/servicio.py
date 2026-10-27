@@ -29,6 +29,7 @@ from src.features.boveda.conectores import (
     Credencial, CredencialesRechazadas, PortalCambio, RequiereIntervencion, cargar_conectores,
 )
 from src.features.descarga_peajes.portales import COMPRAS, carpeta_ejercicio
+from src.features.documentos_nuevos import avisos
 
 log = logging.getLogger(__name__)
 
@@ -211,11 +212,13 @@ def _procesar(portal: dict, conector, cred: Credencial, id_corrida: int) -> dict
                     destino.write_bytes(contenido)
                     ruta = str(destino)
                 r = carga.cargar(conector, doc, contenido, ruta)
-                repository.insertar_documento({
+                fila = {
                     "idPortal": portal["idPortal"], "clave": doc.clave, "tipo": doc.tipo, "proveedor": doc.proveedor,
                     "idContacto": doc.id_contacto, "fecha": doc.fecha, "moneda": doc.moneda, "ruta": ruta,
                     "sha256": sha, "idCorrida": id_corrida, **r,
-                })
+                }
+                id_doc = repository.insertar_documento(fila)
+                avisos.desde_portal(portal["idPortal"], id_doc, doc.tipo, fila)  # aviso en el módulo (043)
                 res["nuevos"] += 1
                 if r["estadoCarga"] == "cargado_auto":
                     res["cargados"] += 1

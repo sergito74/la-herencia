@@ -407,20 +407,6 @@ def listar_documentos(idPortal: int | None = None, estado: str | None = None,
     return {"items": [con_nombre(d) for d in filas], "total": total}
 
 
-@router.get("/revision")
-def cargas_para_revisar() -> list[dict]:
-    """Compras cargadas solas por la bóveda que falta revisar (proveedor, rubro, centro de costo, importes)."""
-    return [{**d, "fecha": iso(d["fecha"])} for d in repository.cargas_para_revisar()]
-
-
-@router.post("/documentos/{id_documento}/revisado")
-def marcar_revisado(id_documento: int, request: Request) -> dict:
-    if not repository.marcar_revisado(id_documento):
-        raise HTTPException(status_code=404, detail="No está pendiente de revisión")
-    repository.auditar("revision_carga", usuario_actual(request), detalle=f"documento {id_documento}")
-    return {"ok": True}
-
-
 @router.get("/estado-cuenta")
 def listar_fotos(idPortal: int | None = None) -> list[dict]:
     return [{**f, "creado": iso(f["creado"])} for f in repository.listar_fotos(idPortal)]

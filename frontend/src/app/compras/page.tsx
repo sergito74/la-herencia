@@ -3,6 +3,7 @@ import { Suspense } from "react";
 
 import { ComprasListado } from "@/components/compras/ComprasListado";
 import { LoadingState } from "@/components/ui/States";
+import { NuevosParaRevisar } from "@/components/documentos-nuevos/NuevosParaRevisar";
 import { BackLink } from "@/components/ui/BackLink";
 import { SoloLectura } from "@/components/auth/SoloLectura";
 
@@ -14,6 +15,9 @@ export default function ComprasPage() {
   return (
     <main className="mx-auto max-w-none px-8 py-6">
       <BackLink href="/">Volver al inicio</BackLink>
+      <Suspense fallback={null}>
+        <NuevosParaRevisar modulo="compras" />
+      </Suspense>
       <div className="mt-2 flex items-center justify-between">
         <h1 className="text-2xl font-semibold">Compras</h1>
         <SoloLectura>

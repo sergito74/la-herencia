@@ -8,6 +8,7 @@ import { useState } from "react";
 import { useAuth } from "@/components/auth/AuthContext";
 import { getResumenBoveda } from "@/services/bovedaApi";
 import { getResumen } from "@/services/descargaPeajesApi";
+import { getResumenNuevos, type ResumenNuevos } from "@/services/documentosNuevosApi";
 
 interface NavLeaf {
   href: string;
@@ -16,6 +17,16 @@ interface NavLeaf {
   exact?: boolean;
   /** Contador opcional (pendientes de la descarga de peajes, 037). */
   badge?: "peajes";
+  /** Documentos nuevos para revisar de este módulo (043): el número lleva a la vista "Nuevos para revisar". */
+  nuevos?: AvisoNuevos;
+}
+
+/** Clave del resumen de documentos nuevos; Compras suma lo "sin clasificar" (se revisa desde Compras). */
+type AvisoNuevos = "compras" | "ventas" | "tesoreria" | "cuentasCorrientes" | "impuestos";
+
+function cantidadNuevos(r: ResumenNuevos | undefined, aviso: AvisoNuevos | undefined): number {
+  if (!r || !aviso) return 0;
+  return aviso === "compras" ? r.compras + r.sinClasificar : r[aviso];
 }
 
 interface NavItem {
@@ -82,7 +93,7 @@ const NAV_ITEMS: NavItem[] = [
     label: "Compras",
     icon: ICONS.compras,
     submenu: [
-      { href: "/compras", label: "Compras", exact: true },
+      { href: "/compras", label: "Compras", exact: true, nuevos: "compras" },
       { href: "/compras/descarga-peajes", label: "Descarga de peajes", badge: "peajes" },
     ],
   },
@@ -91,7 +102,7 @@ const NAV_ITEMS: NavItem[] = [
     label: "Ventas",
     icon: ICONS.ventas,
     submenu: [
-      { href: "/ventas/hacienda", label: "Hacienda" },
+      { href: "/ventas/hacienda", label: "Hacienda", nuevos: "ventas" },
       { href: "/ventas/granos", label: "Granos" },
       { href: "/ventas/pastaje", label: "Pastaje" },
     ],
@@ -101,17 +112,17 @@ const NAV_ITEMS: NavItem[] = [
     label: "Finanzas",
     icon: ICONS.finanzas,
     submenu: [
-      { href: "/finanzas/tesoreria", label: "Tesorería" },
+      { href: "/finanzas/tesoreria", label: "Tesorería", nuevos: "tesoreria" },
       { href: "/finanzas/cajas", label: "Cajas y socios" },
       { href: "/finanzas/flujo-caja-real", label: "Flujo de caja real" },
       { href: "/finanzas/flujo-caja-rubro", label: "Flujo de caja por rubro" },
       { href: "/finanzas/recalculo-fifo", label: "Recálculo FIFO de cuentas" },
-      { href: "/finanzas/cuentas-corrientes", label: "Cuentas corrientes" },
+      { href: "/finanzas/cuentas-corrientes", label: "Cuentas corrientes", nuevos: "cuentasCorrientes" },
       { href: "/finanzas/auditoria-cuentas", label: "Auditoría de cuentas" },
       { href: "/finanzas/revision-cuentas", label: "Revisión de cuentas" },
       { href: "/finanzas/reasignacion-contacto", label: "Reasignación de contacto" },
       { href: "/finanzas/tarjetas", label: "Tarjetas" },
-      { href: "/finanzas/impuestos", label: "Impuestos y retenciones" },
+      { href: "/finanzas/impuestos", label: "Impuestos y retenciones", nuevos: "impuestos" },
       { href: "/finanzas/arrendamientos", label: "Arrendamientos" },
       { href: "/finanzas/cotizaciones", label: "Cotizaciones (Dólar / INMAG)" },
     ],
@@ -170,8 +181,8 @@ function usePendientesPeajes(habilitado: boolean): number {
   return data ? data.pendientes + data.portalesConError : 0;
 }
 
-/** Contador de la bóveda (042, US6): pendientes de carga, portales con error o que
- * requieren intervención, y diferencias de saldo sin revisar. Solo Administrador. */
+/** Contador de la bóveda (042, US6): portales con error o que requieren intervención y diferencias de
+ * saldo sin revisar (lo pendiente de carga se avisa en cada módulo, 043). Solo Administrador. */
 function useAvisosBoveda(habilitado: boolean): number {
   const { data } = useQuery({
     queryKey: ["boveda", "resumen"],
@@ -184,16 +195,33 @@ function useAvisosBoveda(habilitado: boolean): number {
   return data?.total ?? 0;
 }
 
-function Contador({ valor }: { valor: number }) {
+/** Documentos nuevos sin revisar por módulo (043). Se consulta cada 5 min y al volver a la pestaña. */
+function useResumenNuevos(habilitado: boolean): ResumenNuevos | undefined {
+  const { data } = useQuery({
+    queryKey: ["documentos-nuevos", "resumen"],
+    queryFn: getResumenNuevos,
+    enabled: habilitado,
+    refetchInterval: 5 * 60 * 1000,
+    refetchOnWindowFocus: true,
+    retry: false,
+  });
+  return data;
+}
+
+function Contador({ valor, titulo = "Pendientes de carga manual o portales con error", azul = false }:
+  { valor: number; titulo?: string; azul?: boolean }) {
   if (!valor) return null;
   return (
-    <span className="ml-1 rounded-full bg-amber-500 px-1.5 text-[10px] font-semibold leading-4 text-white" title="Pendientes de carga manual o portales con error">
+    <span className={`ml-1 rounded-full px-1.5 text-[10px] font-semibold leading-4 text-white ${azul ? "bg-finance" : "bg-amber-500"}`} title={titulo}>
       {valor}
     </span>
   );
 }
 
-function NavDropdown({ item, active, peajes }: { item: NavItem; active: boolean; peajes: number }) {
+const TITULO_NUEVOS = "Documentos nuevos para revisar";
+
+function NavDropdown({ item, active, peajes, nuevos }:
+  { item: NavItem; active: boolean; peajes: number; nuevos: ResumenNuevos | undefined }) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
 
@@ -212,16 +240,19 @@ function NavDropdown({ item, active, peajes }: { item: NavItem; active: boolean;
         <Icon>{item.icon}</Icon>
         {item.label}
         {item.submenu?.some((l) => l.badge === "peajes") && <Contador valor={peajes} />}
+        <Contador azul titulo={TITULO_NUEVOS}
+          valor={(item.submenu ?? []).reduce((n, l) => n + cantidadNuevos(nuevos, l.nuevos), 0)} />
         <Icon className={`h-3.5 w-3.5 transition-transform ${open ? "rotate-180" : ""}`}>{ICONS.chevron}</Icon>
       </button>
       {open && (
         <div className="absolute left-0 top-full z-10 min-w-[14rem] origin-top-left rounded-md border border-border bg-surface py-1 shadow-lg ring-1 ring-black/5 animate-[fadeIn_0.1s_ease-out]">
           {item.submenu!.map((leaf) => {
             const leafActive = leaf.exact ? pathname === leaf.href : isActive(pathname, leaf.href);
+            const cantidad = cantidadNuevos(nuevos, leaf.nuevos);
             return (
               <Link
                 key={leaf.href}
-                href={leaf.href}
+                href={cantidad ? `${leaf.href}?nuevos=1` : leaf.href}
                 className={`block px-4 py-2 text-sm ${
                   leafActive
                     ? "font-medium text-finance"
@@ -230,6 +261,7 @@ function NavDropdown({ item, active, peajes }: { item: NavItem; active: boolean;
               >
                 {leaf.label}
                 {leaf.badge === "peajes" && <Contador valor={peajes} />}
+                <Contador azul titulo={TITULO_NUEVOS} valor={cantidad} />
               </Link>
             );
           })}
@@ -245,6 +277,7 @@ export function NavHeader() {
   const { usuario, logout } = useAuth();
   const peajes = usePendientesPeajes(pathname !== "/login" && !!usuario);
   const avisosBoveda = useAvisosBoveda(pathname !== "/login" && usuario?.rol === "Administrador");
+  const nuevos = useResumenNuevos(pathname !== "/login" && !!usuario);
 
   if (pathname === "/login") return null;
 
@@ -287,7 +320,7 @@ export function NavHeader() {
                 (item.submenu?.some((leaf) => isActive(pathname, leaf.href)) ?? false);
 
               if (item.submenu) {
-                return <NavDropdown key={item.href} item={item} active={active} peajes={peajes} />;
+                return <NavDropdown key={item.href} item={item} active={active} peajes={peajes} nuevos={nuevos} />;
               }
 
               return (

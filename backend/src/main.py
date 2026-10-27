@@ -57,6 +57,7 @@ from src.features.vinculos.router import router as integridad_vinculos_router
 from src.features.recalculo_fifo.router import router as recalculo_fifo_router
 from src.features.cotizaciones.router import router as cotizaciones_router
 from src.features.boveda.router import router as boveda_router
+from src.features.documentos_nuevos.router import router as documentos_nuevos_router
 
 app = FastAPI(
     title="La Herencia API",
@@ -181,6 +182,7 @@ app.include_router(cuentas_corrientes_router)
 app.include_router(arca_router)
 app.include_router(descarga_peajes_router)
 app.include_router(boveda_router)
+app.include_router(documentos_nuevos_router)
 app.include_router(documentos_router)
 app.include_router(flujo_caja_router)
 app.include_router(imputacion_router)

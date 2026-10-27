@@ -1,6 +1,8 @@
 import Link from "next/link";
 
 import { CuentaCorriente } from "@/components/cuentas-corrientes/CuentaCorriente";
+import { Suspense } from "react";
+import { NuevosParaRevisar } from "@/components/documentos-nuevos/NuevosParaRevisar";
 import { BackLink } from "@/components/ui/BackLink";
 
 export const metadata = {
@@ -11,6 +13,9 @@ export default function CuentasCorrientesPage() {
   return (
     <main className="mx-auto max-w-none px-8 py-6">
       <BackLink href="/">Volver al inicio</BackLink>
+      <Suspense fallback={null}>
+        <NuevosParaRevisar modulo="cuentas_corrientes" />
+      </Suspense>
       <div className="mt-2 flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-semibold">Cuentas corrientes</h1>
