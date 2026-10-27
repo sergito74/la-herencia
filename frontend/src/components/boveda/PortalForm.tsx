@@ -113,7 +113,7 @@ export function PortalForm({
         <label className="text-sm">
           Descarga automática
           <select className={inputCls} value={codigoConector} onChange={(e) => setCodigoConector(e.target.value)}>
-            <option value="">Ninguna (solo bóveda)</option>
+            <option value="">Ninguna</option>
             {(conectores.data ?? []).map((c) => (
               <option key={c.codigo ?? ""} value={c.codigo ?? ""}>{c.nombre ?? c.codigo}</option>
             ))}

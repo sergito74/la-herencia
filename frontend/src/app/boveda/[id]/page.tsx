@@ -78,7 +78,7 @@ export default function PortalPage() {
               <h1 className="text-2xl font-semibold">{p.nombre}</h1>
               <p className="text-sm text-ink-secondary">
                 {p.tipo}{p.contacto && ` · ${p.contacto}`} ·{" "}
-                {p.conector.disponible ? `Sincronización automática: ${p.conector.nombre}` : "Sincronización automática todavía no disponible (solo guarda el acceso)"}
+                {p.conector.disponible ? `Sincronización automática: ${p.conector.nombre}` : "Sincronización automática: próximamente"}
               </p>
               {p.notas && <p className="mt-1 whitespace-pre-line text-sm">{p.notas}</p>}
             </div>

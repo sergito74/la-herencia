@@ -60,15 +60,19 @@ def _conector_info(codigo: str | None) -> ConectorInfo:
                         estadoCuenta=con.tiene_estado_cuenta, cargaCompras=con.tiene_carga_compras)
 
 
+PROXIMAMENTE = "Próximamente"
+
+
 def motivo_no_sincroniza(f: dict) -> str | None:
-    if not f["codigoConector"] or f["codigoConector"] not in cargar_conectores():
-        return "Todavía no tiene sincronización automática: solo guarda el acceso"
+    # Primero lo que el usuario puede resolver; lo que falta del lado del sistema se muestra como "Próximamente".
     if f["autFecha"] is None:
-        return "Falta la autorización"
+        return "Falta tu autorización"
     if not f["idCredencial"] or not f["claveConfigurada"]:
         return "Falta cargar usuario y contraseña"
     if f["credencialRechazada"]:
-        return "El portal rechazó la contraseña: actualizarla"
+        return "El portal rechazó la contraseña: actualizala"
+    if not f["codigoConector"] or f["codigoConector"] not in cargar_conectores():
+        return PROXIMAMENTE
     return None
 
 
@@ -284,7 +288,7 @@ def revocar(id_portal: int, request: Request) -> Response:
 
 def _exigir_conector(fila: dict) -> None:
     if not fila["codigoConector"] or fila["codigoConector"] not in cargar_conectores():
-        raise HTTPException(status_code=400, detail="El portal no tiene descarga automática (solo bóveda)")
+        raise HTTPException(status_code=400, detail="Esta cuenta todavía no tiene sincronización automática")
 
 
 @router.put("/portales/{id_portal}/programacion", response_model=PortalSalida)

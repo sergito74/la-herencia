@@ -69,12 +69,8 @@ export function EstadoSincronizacion({ portal }: { portal: Portal }) {
 
 /** Columna "Sincronización automática": si existe, si está activa y cuándo es la próxima. */
 export function SincronizacionAutomatica({ portal }: { portal: Portal }) {
-  if (!portal.conector.disponible) {
-    return (
-      <span className="text-xs text-ink-muted" title="La bóveda guarda el acceso; la descarga automática de esta cuenta se agrega más adelante">
-        Todavía no disponible — solo guarda el acceso
-      </span>
-    );
+  if (portal.motivoNoSincroniza === "Próximamente") {
+    return <span className="text-xs text-ink-muted">Próximamente</span>;
   }
   if (portal.motivoNoSincroniza) return <span className="text-xs text-red-700">{portal.motivoNoSincroniza}</span>;
   const p = portal.programacion;

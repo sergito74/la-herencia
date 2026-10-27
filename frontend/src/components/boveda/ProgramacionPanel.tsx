@@ -33,7 +33,7 @@ export function ProgramacionPanel({ portal }: { portal: Portal }) {
   const correr = useMutation({ mutationFn: () => correrAhora(portal.idPortal), onSuccess: refrescar });
 
   if (!portal.conector.disponible) {
-    return <p className="text-sm text-ink-muted">Esta cuenta todavía no tiene sincronización automática: la bóveda solo guarda el acceso. Se puede abrir el portal y entrar a mano.</p>;
+    return <p className="text-sm text-ink-muted">La sincronización automática de esta cuenta va a estar disponible próximamente. Mientras tanto podés abrir el portal y entrar a mano.</p>;
   }
 
   return (

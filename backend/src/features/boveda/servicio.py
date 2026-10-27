@@ -199,7 +199,7 @@ def ejecutar(id_portal: int, origen: str, usuario: str | None, lock, id_corrida:
         repository.avance(id_corrida, "Preparando…")
         conector = cargar_conectores().get(portal["codigoConector"]) if portal else None
         if conector is None:
-            estado, mensaje = "error", "Portal sin descarga automática (solo bóveda)"
+            estado, mensaje = "error", "Esta cuenta todavía no tiene sincronización automática"
             return estado
         _verificar_autorizacion(id_portal)
         cred = credencial_de(portal["idCredencial"])

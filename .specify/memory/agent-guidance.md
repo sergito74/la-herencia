@@ -54,6 +54,7 @@ Este documento es la guía común de trabajo para Claude Code, Codex y cualquier
 - Las consultas SQL deben usar parámetros, objetos conocidos y límites apropiados. Mantener los resguardos centrales de conexión; nunca construir SQL ejecutable con datos libres del usuario.
 - Cada cambio debe ser acotado, revisable y reversible; preservar los cambios locales sin commit y evitar refactors ajenos al alcance.
 - Añadir o ejecutar verificaciones solo cuando el usuario o la tarea activa lo pida o lo requiera expresamente. No afirmar que algo fue probado si no se ejecutó.
+- **Interfaz sin cosas internas (Sergio, 27/10/2026, premisa fundamental de todo el sistema):** las pantallas son para el usuario final. No mostrar términos ni estados internos (conector, código, tabla, id, "solo bóveda", motivos técnicos, nombres de procesos). Lo que es del backend se resuelve en el backend; la pantalla solo pide lo que necesita del usuario (un dato, una autorización, una contraseña) o le informa un resultado en palabras de negocio. Si algo todavía no está hecho del lado del sistema, decir "Próximamente" y nada más. Aplica también a lo que se le explica a Sergio en el chat.
 - No instalar dependencias, publicar, hacer push, modificar datos fuera de `WC` ni ejecutar acciones destructivas salvo que el usuario lo solicite explícitamente.
 
 ## Uso eficiente de recursos
