@@ -8,8 +8,8 @@ humanas las pasa Sergio. Cada archivo que se descarga en esa ventana se guarda
 en la carpeta de Compras del ejercicio y queda registrado en la cuenta, sin
 duplicar. La ventana se cierra sola a los 30 minutos.
 
-Solo completa el formulario de ingreso y el del código: no hace clic en ninguna
-otra cosa del portal.
+Solo completa el formulario de ingreso y el del código, y en Allianz cierra el
+aviso de marketing con "Cancelar": no hace clic en ninguna otra cosa del portal.
 """
 
 from __future__ import annotations
@@ -42,11 +42,18 @@ class Asistido:
     codigo_patron: str | None = None
     # Movistar rechaza ("ERROR 777") un ingreso tipeado por el sistema: ahí el usuario y la clave los escribe Sergio.
     completar: bool = True
+    # Página de clientes donde aparece un aviso de marketing que se descarta con "Cancelar".
+    inicio: str | None = None
+    # Allianz (Cloudflare) devuelve siempre a la verificación si Chrome se abre en modo automatizado: se abre un
+    # Chrome común y el sistema se conecta después, cuando Sergio ya pasó la verificación.
+    chrome_comun: bool = False
 
 
 ASISTIDOS = {
-    "auth.allianz.com.ar": Asistido("https://auth.allianz.com.ar/login", "Allianz",
-                                    "noreply@allianz.com.ar", r"Tu código es (\d{6})"),
+    # Se entra por la página de clientes: el login directo deja en la página pública (www.allianz.com.ar).
+    "auth.allianz.com.ar": Asistido("https://www.miallianz.com.ar/priv", "Allianz",
+                                    "noreply@allianz.com.ar", r"Tu código es (\d{6})",
+                                    inicio="miallianz.com.ar/priv", chrome_comun=True),
     "idp.movistar.com.ar": Asistido("https://idp.movistar.com.ar/convergencia/login_A.html", "Movistar", completar=False),
 }
 
@@ -123,6 +130,7 @@ def _sesion(portal: dict, usuario: str | None) -> None:
     id_portal = portal["idPortal"]
     datos = asistido_de(portal["url"])
     repository.auditar("ingreso_asistido", usuario, id_portal=id_portal, detalle="apertura")
+    proceso = None
     try:
         cred = servicio.credencial_de(portal["idCredencial"])
         with sync_playwright() as pw:
@@ -130,17 +138,23 @@ def _sesion(portal: dict, usuario: str | None) -> None:
             # ingreso (como el Chrome de Sergio) y deja de pedir el código.
             perfil = PERFILES / str(id_portal)
             perfil.mkdir(parents=True, exist_ok=True)
-            ctx = pw.chromium.launch_persistent_context(str(perfil), channel="chrome", headless=False,
-                                                        accept_downloads=True, no_viewport=True)
+            if datos.chrome_comun:
+                proceso, ctx = _chrome_comun(pw, perfil, datos.login)
+                p = ctx.pages[0]
+            else:
+                ctx = pw.chromium.launch_persistent_context(str(perfil), channel="chrome", headless=False,
+                                                            accept_downloads=True, no_viewport=True)
+                p = ctx.pages[0] if ctx.pages else ctx.new_page()
+                p.goto(datos.login, wait_until="load", timeout=90000)
             ctx.on("download", lambda d: _guardar_descarga(portal, datos, d))
-            p = ctx.pages[0] if ctx.pages else ctx.new_page()
-            p.goto(datos.login, wait_until="load", timeout=90000)
             pedido = datetime.now()
-            if datos.completar and p.locator("input[type=password]").count():
+            if datos.completar and _esperar_formulario(p):
                 _completar_ingreso(p, cred)
                 if datos.codigo_remitente and _pide_codigo(p):
                     p.fill("input[name=code]", esperar_codigo(datos.codigo_remitente, datos.codigo_patron, pedido))
                     p.locator("button[type=submit], #btnConfirm").first.click()
+                if datos.inicio:
+                    _rechazar_aviso(p, datos.inicio)
             limite = time.monotonic() + DURACION_MAXIMA
             while ctx.pages and time.monotonic() < limite:
                 ctx.pages[0].wait_for_timeout(2000)
@@ -148,27 +162,99 @@ def _sesion(portal: dict, usuario: str | None) -> None:
     except Exception:
         log.warning("Bóveda, ingreso asistido portal %s", id_portal, exc_info=True)
     finally:
+        if proceso and proceso.poll() is None:
+            proceso.terminate()
         _abiertos.discard(id_portal)
         repository.auditar("ingreso_asistido", usuario, id_portal=id_portal, detalle="cierre")
 
 
-def _pide_codigo(p, espera_segundos: int = 30) -> bool:
+def _chrome_comun(pw, perfil: Path, url: str):
+    """Abre Chrome como un programa común (sin modo automatizado) y se conecta a él."""
+    import socket
+    import subprocess
+
+    with socket.socket() as s:
+        s.bind(("127.0.0.1", 0))
+        puerto = s.getsockname()[1]
+    chrome = next((r for r in (
+        Path(os.environ.get("PROGRAMFILES", "")) / "Google/Chrome/Application/chrome.exe",
+        Path(os.environ.get("PROGRAMFILES(X86)", "")) / "Google/Chrome/Application/chrome.exe",
+        Path(os.environ.get("LOCALAPPDATA", "")) / "Google/Chrome/Application/chrome.exe",
+    ) if r.is_file()), None)
+    if not chrome:
+        raise FileNotFoundError("Chrome no está instalado")
+    proceso = subprocess.Popen([str(chrome), f"--user-data-dir={perfil}", f"--remote-debugging-port={puerto}",
+                                "--remote-debugging-address=127.0.0.1", "--no-first-run",
+                                "--no-default-browser-check", url])
+    for _ in range(30):
+        try:
+            navegador = pw.chromium.connect_over_cdp(f"http://127.0.0.1:{puerto}")
+            break
+        except Exception:
+            time.sleep(1)
+    else:
+        raise TimeoutError("No se pudo conectar con Chrome")
+    ctx = navegador.contexts[0]
+    for _ in range(30):
+        if ctx.pages:
+            break
+        time.sleep(1)
+    return proceso, ctx
+
+
+def _verificando(p) -> bool:
+    """Verificación anti-robots (Cloudflare) en pantalla: la pasa Sergio, el sistema solo espera."""
+    try:
+        return "challenges.cloudflare.com" in p.content() or "just a moment" in p.title().lower()
+    except Exception:
+        return True  # página cambiando
+
+
+def _esperar_formulario(p, espera_segundos: int = 300) -> bool:
+    """Espera el formulario de ingreso, dando tiempo a que Sergio pase la verificación si aparece."""
+    for _ in range(espera_segundos):
+        if p.locator("input[type=password]").count() and not _verificando(p):
+            return True
+        p.wait_for_timeout(1000)
+    return False
+
+
+def _pide_codigo(p, espera_segundos: int = 300) -> bool:
     """Después del ingreso, el portal pide el código o entra directo (dispositivo ya conocido)."""
     for _ in range(espera_segundos):
         if p.locator("input[name=code]").count():
             return True
+        if _verificando(p):
+            p.wait_for_timeout(1000)
+            continue
         if "/login" not in p.url and "/2fa" not in p.url:
             return False
         p.wait_for_timeout(1000)
     return False
 
 
+def _rechazar_aviso(p, inicio: str, espera_segundos: int = 300) -> None:
+    """Al llegar a la página de clientes, cierra el aviso de marketing con "Cancelar" (nunca acepta)."""
+    try:
+        p.wait_for_url(lambda u: "auth.allianz" not in u, timeout=espera_segundos * 1000)
+        if inicio not in p.url:  # quedó en otro lugar del portal
+            p.goto(f"https://www.{inicio}", wait_until="load", timeout=90000)
+        cancelar = p.get_by_role("button", name="Cancelar", exact=True)
+        cancelar.wait_for(timeout=15000)
+        cancelar.click()
+    except Exception:
+        pass  # sin aviso: Sergio sigue normalmente
+
+
 def _completar_ingreso(p, cred) -> None:
     usuario = p.locator("input[name=username]").first
     usuario.wait_for(timeout=60000)
     # Se tipea como una persona: algunos portales (Movistar) validan los campos al escribir.
+    # Antes se vacía: el perfil persistente puede traer los campos ya completos y se escribiría dos veces.
+    usuario.clear()
     usuario.press_sequentially(cred.usuario or "", delay=50)
     clave = p.locator("input[type=password]").first
+    clave.clear()
     clave.press_sequentially(cred.clave.valor() if cred.clave else "", delay=50)
     boton = p.locator("#btn-enviar")
     if boton.count():
