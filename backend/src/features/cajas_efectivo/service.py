@@ -35,7 +35,7 @@ def _caja_particular(socio):
 
 
 def piernas(op):
-    positive = op.tipo in ("cobro", "aporte", "extraccion_banco", "retorno_sueldo_opcion_a", "ingreso_dolares")
+    positive = op.tipo in ("cobro", "aporte", "canje_socio", "extraccion_banco", "retorno_sueldo_opcion_a", "ingreso_dolares")
     result = {op.caja: op.importe if positive else -op.importe}
     target = op.cajaDestino or op.cajaContraparte
     if target:
@@ -266,7 +266,7 @@ def _references(op):
             raise ConflictoCaja(
                 "El banco tiene aplicaciones/conciliaciones ajenas; resolverlas antes del traspaso."
             )
-        if state == "ya_reconocido" and not op.evidencia:
+        if state == "ya_reconocido" and not op.evidencia and op.tipo != "canje_socio":
             raise ValueError(
                 "El banco está en una cuenta de contacto: indicar evidencia del traspaso."
             )
@@ -283,6 +283,28 @@ def _references(op):
             ),
         )
         context["banco"] = bank
+        if op.tipo == "canje_socio":
+            from src.features.cuentas_socios.contactos import SOCIO_CONTACTO
+
+            bank_date = bank["fecha"]
+            bank_date = bank_date.date() if isinstance(bank_date, datetime) else date.fromisoformat(str(bank_date)[:10])
+            if bank_date != op.fecha:
+                raise ValueError("La transferencia y la entrega de efectivo deben tener la misma fecha.")
+            expected_contact = SOCIO_CONTACTO.get(op.idSocio)
+            if expected_contact is None or any(
+                r["IdContacto"] is not None and r["IdContacto"] != expected_contact
+                for r in bank["cuentasExcluidas"]
+            ):
+                raise ValueError("La transferencia está asignada a otra persona. Elegí la transferencia del socio.")
+            withdrawals = db.read(
+                "SELECT IdMovimiento FROM dbo.MovimientosCuentaSocio "
+                "WHERE IdSocio=? AND CAST(Fecha AS date)=? AND Importe=? "
+                "AND Tipo IN ('AsignacionGasto','Devolucion') AND Anulada=0",
+                (op.idSocio, op.fecha, op.importe),
+            )
+            if withdrawals:
+                raise ConflictoCaja("El socio ya tiene un movimiento registrado por ese importe y fecha. Revisalo antes de registrar el canje para no duplicar el efectivo o el retiro.")
+            context["canjeSocio"] = {"idSocio": op.idSocio, "saldoSocioSinCambios": True}
     if op.tipo == "retorno_sueldo_opcion_a":
         from src.features.remuneraciones.repository import _IMPORTE_SQL
 
@@ -542,6 +564,13 @@ def _bloquear(op):
             "SELECT IdAplicacion FROM dbo.AplicacionesPago WITH (UPDLOCK,HOLDLOCK) "
             "WHERE OrigenMovimiento=? AND IdMovimientoOrigen=?",
             (op.banco.medio, op.banco.idMovimiento),
+        )
+    if op.tipo == "canje_socio":
+        db.read(
+            "SELECT IdMovimiento FROM dbo.MovimientosCuentaSocio WITH (UPDLOCK,HOLDLOCK) "
+            "WHERE IdSocio=? AND CAST(Fecha AS date)=? AND Importe=? "
+            "AND Tipo IN ('AsignacionGasto','Devolucion') AND Anulada=0",
+            (op.idSocio, op.fecha, op.importe),
         )
 
 

@@ -1,5 +1,13 @@
 # Feature Specification: Gestión de cajas de efectivo
 
+## Ampliación solicitada por Sergio — 28/10/2026
+
+**FR-018 / US7 — Efectivo contra transferencia al socio.** Una sola carga registra el efectivo que entrega un socio y la transferencia del banco de Giamigli al mismo socio por idéntico importe. Elegir socio, fecha, importe y transferencia existente; mostrar ambas piernas y saldo del socio sin cambio. No cargar un aporte y un retiro por separado. Es un canje de disponibilidades: caja +X, banco −X, sin gasto, ganancia ni deuda/crédito económico nuevo del socio. Conservar la identidad del socio en operación y filtros, sin dos asientos de valuación sin sustancia económica.
+
+Tipo `canje_socio`, caja Giamigli en pesos o caja chica. Exige socio y débito bancario íntegro del mismo importe/fecha. Si el débito identifica un contacto, debe ser el contacto bancario de ese socio (Sergio socio5670, nunca empleado375); sin contacto, la elección del socio identifica el destinatario. Rechazar aporte o retiro previo del socio del mismo importe/fecha, vínculos/aplicaciones ajenos, moneda distinta, otro contacto o crédito bancario. No ejecuta transferencias ni genera otro débito: vincula el extracto cargado. Si falta, informar el dato faltante y conservar borrador. Confirmación/anulación atómicas e idempotentes; conservar banco original.
+
+Aceptación: carga500000 deja caja+500000, banco−500000 y socio sin cambio; reintento no duplica; anulación restaura vínculos/caja; fallo intermedio no deja efectos. Cubrir destinatario equivocado, banco usado, retiro previo, importes/fechas distintos y estado vacío/error con datos simulados.
+
 **Feature Branch**: `038-gestion-cajas-efectivo`
 
 **Created**: 2026-10-22

@@ -23,6 +23,8 @@ class CajaSimulada:
         self.arqueos = []
         self.salary_date = datetime(2026, 10, 22)
         self.salary_total = Decimal("100")
+        self.bank_contacts = []
+        self.socio_withdrawals = []
         lock = RLock()
 
         def forbidden(*args, **kwargs):
@@ -233,6 +235,10 @@ class CajaSimulada:
         return 1
 
     def read(self, sql, params=()):
+        if "FROM dbo.vw_MovimientosCuenta_Base" in sql:
+            return self.bank_contacts
+        if "FROM dbo.MovimientosCuentaSocio" in sql and "Tipo IN ('AsignacionGasto','Devolucion')" in sql:
+            return self.socio_withdrawals
         if "FROM dbo.ReasignacionesContacto" in sql or "FROM dbo.PagosSocioProveedor" in sql:
             return []
         if "vw_PagosEfectivoVigentes" in sql:

@@ -1,5 +1,9 @@
 # Contrato API propuesto — 038
 
+## Ampliación28/10 — canje_socio
+
+POST previsualizar/crear acepta tipo `canje_socio`, caja giamigli-sa/campo-chica, idSocio y banco obligatorios, fecha e importe comunes a las dos piernas. Sin aplicaciones, cajaContraparte ni idContacto. Preview conserva contrato y añade contexto.canjeSocio con idSocio y saldoSocioSinCambios=true. Validar débito íntegro y misma fecha, contacto bancario compatible y ausencia de aporte o retiro previo. Errores semánticos422 y conflictos de uso409; idempotencia y anulación existentes. Banco sin contacto admite destinatario elegido; contacto distinto se rechaza. Sin extracto no se registra parcialmente. No crea transferencias, gastos ni movimientos de socio.
+
 Base /api/cajas-efectivo. Conservar slugs giamigli-sa, campo-chica, condominio-lsc. Autenticación existente; escrituras solo rol habilitado, usuario obtenido de sesión. GET existentes conservan saldo e importe numéricos y su significado. Operaciones nuevas usan cadenas decimales monetarias de dos decimales; cotizaciones/valuaciones conservan precisión de data-model.md. Nuevos campos: saldoDecimal, saldoAnteriorDecimal, saldoCorridoDecimal y subtotalFiltradoDecimal, sin cambiar tipos existentes. Fechas YYYY-MM-DD y auditoría UTC.
 
 | Método y ruta | Resultado |

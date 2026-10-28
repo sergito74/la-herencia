@@ -55,6 +55,7 @@ export const monedaCaja = (caja: string): "Pesos" | "Dolares" => caja === "giami
 export const TIPOS_CAJA = {
   ingreso_dolares: "Entrada de dólares", egreso_dolares: "Salida de dólares",
   pago: "Pago a proveedor", cobro: "Cobro", aporte: "Aporte de socio",
+  canje_socio: "Efectivo contra transferencia al socio",
   retiro_a_cuenta: "Retiro a cuenta / devolución de aporte", retiro_ganancias: "Retiro de ganancias",
   traspaso_cajas: "Traspaso entre cajas", extraccion_banco: "Extracción bancaria",
   deposito_banco: "Depósito bancario", gasto_sin_comprobante: "Gasto sin comprobante",

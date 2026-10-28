@@ -1,5 +1,9 @@
 # Plan de implementación: Gestión de cajas de efectivo
 
+### Ampliación28/10 — canje socio
+
+Reutilizar coordinador, BancoOperacionCaja, puente sin contacto, vínculo de tesorería y reversión. Nuevo tipo `canje_socio`, sin DDL ni pruebas reales; IdSocio queda en cabecera/Solicitud. Controlar fecha, importe, contacto bancario y aporte/retiro previo antes de preview y dentro del guardado bajo bloqueos comunes. Interfaz de una carga con efecto caja/banco y socio sin cambio. Contrato simulado antes de UI; TypeScript, lint focalizado y recorrido UI con API interceptada. Preservar cambios ajenos.
+
 **Estado actual**: implementación completada; ver cierre y evidencias en quickstart.md y tareas en tasks.md.
 
 Fecha: 22/10/2026. Spec: [spec.md](spec.md). Rama real: main; contexto Spec Kit: 038-gestion-cajas-efectivo.

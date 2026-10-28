@@ -140,6 +140,13 @@ class DocumentoAplicado(BaseModel):
     via: str = "aplicacion"
 
 
+class DocumentoDetalle(BaseModel):
+    tipoComprobante: str | None = None
+    nroComprobante: str | None = None
+    proveedor: str | None = None
+    detalleConcepto: str | None = None
+
+
 class ParteMovimiento(BaseModel):
     fecha: date
     cuenta: str
@@ -151,6 +158,7 @@ class ParteMovimiento(BaseModel):
     importeArs: float
     importeMovimiento: float
     documentoAplicado: DocumentoAplicado | None = None
+    documentoDetalle: DocumentoDetalle | None = None
     cotizacion: float | None = None
     fechaCotizacion: date | None = None
     importeUsd: float | None = None

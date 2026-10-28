@@ -1,5 +1,20 @@
 # Guía de validación — 038
 
+## Validación del canje socio — 28/10/2026
+
+Implementado por pedido deSergio: menú «Efectivo contra transferencia al socio». Elegir socio, fecha, importe y transferencia; una confirmación aumenta caja, vincula el débito existente y conserva saldo del socio. Detalle y preview muestran ambas piernas sin pedir asientos separados. Selector de operación ampliado para leer el nombre completo; faltante de extracto y error conservan borrador. La transferencia debe ser del mismo día e importe; las de otra persona, usadas o con aporte/retiro previo se rechazan para revisión.
+
+Archivos: backend schemas/service y `tests/test_cajas_contrato_canje_socio_038.py`; frontend cliente, OperacionCajaForm y DetalleOperacionCaja. Sin cambios de esquema, importes históricos ni operaciones reales de prueba. No se modificaron Access, Excel ni datosWC. Se conservaron los cambios ajenos en flujo_caja y los archivos036 encontrados al comenzar.
+
+Comandos/resultados finales:
+- `python -m pytest tests/test_cajas_contrato_base_038.py tests/test_cajas_contrato_pagos_038.py tests/test_cajas_contrato_canje_socio_038.py tests/test_cajas_contrato_traspasos_038.py tests/test_cajas_contrato_socios_038.py tests/test_cajas_contrato_consulta_038.py -q`: **56 passed**, conexionespyodbc prohibidas por simulador. Incluye idempotencia, aporte/retiro previo, destinatario, fecha/importe/signo, banco usado, dependencias, anulación y rollback por fallo intermedio.
+- `npx --no-install tsc --noEmit`: PASS. ESLint de los tres archivos frontend modificados: PASS.
+- `python tests/ui/cajas_038_smoke.py`: **PASS,25 escenarios,195 solicitudesAPI interceptadas, cero erroresJS y cero solicitudes sin fixture**. Canje confirmado en una carga, sin POST de asiento adicional; faltante de extracto bloquea registro y error conserva los datos. Captura revisada visualmente `backups/cajas-038-ui/canje-socio-preview.png`, resultado `backups/cajas-038-ui/resultado.json`.
+
+Recorrido en servidor local3100 con compilación aislada `.next-canje-038-ui`; detenido al finalizar. Restaurado únicamente el cambio automático que Next añadió a tsconfig, verificando que no hubiera cambios ajenos. El lanzador normal recompila/reinicia cuando las fuentes son más nuevas; volver a abrir LaHerencia carga esta versión. No se inició ni ejecutó ninguna transferencia real.
+
+Durante la verificación se corrigió una expectativa de test que esperaba excepción cuando el contrato devuelveHTTP500; se ajustaron selectores de etiquetas del recorrido y fixtures de avisos/controles añadidos anteriormente a la aplicación. Estos fallos fueron del ensayo y no produjeron escrituras reales. No se aplicó FIFO ni conciliación de cuentas en esta tarea.
+
 ## Preparación
 Usar entorno backend/frontend existente, sin instalar dependencias. Consultar contracts/api.md y data-model.md. Pruebas con datos simulados; no ejecutar operaciones de prueba sobre WC. Antes del DDL real: inspección acotada del esquema y respaldo verificado, con ruta y resultado documentados. Preservar Access y Excel. No aplicar escrituras en esta fase de planificación.
 

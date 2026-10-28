@@ -53,6 +53,7 @@ class OperacionCaja(Estricto):
         "pago",
         "cobro",
         "aporte",
+        "canje_socio",
         "retiro_a_cuenta",
         "retiro_ganancias",
         "traspaso_cajas",
@@ -92,8 +93,8 @@ class OperacionCaja(Estricto):
             raise ValueError("No se admiten traspasos 1:1 entre pesos y dólares.")
 
         contacto = self.tipo in ("pago", "cobro")
-        socio = self.tipo in ("aporte", "retiro_a_cuenta", "retiro_ganancias")
-        bancario = self.tipo in ("extraccion_banco", "deposito_banco", "retorno_sueldo_opcion_a")
+        socio = self.tipo in ("aporte", "retiro_a_cuenta", "retiro_ganancias", "canje_socio")
+        bancario = self.tipo in ("extraccion_banco", "deposito_banco", "retorno_sueldo_opcion_a", "canje_socio")
         if contacto != (self.idContacto is not None):
             raise ValueError("Solo pago/cobro requiere contacto.")
         if socio != (self.idSocio is not None):

@@ -1,5 +1,12 @@
 # Tareas: Gestión de cajas de efectivo (038)
 
+## Ampliación28/10 — una carga para canje de socio
+
+- [x] C058 Registrar pedido, efecto económico, contrato y plan del canje efectivo/transferencia.
+- [x] C059 Implementar tipo, validaciones, atomicidad/reversión y pruebas simuladas de contrato.
+- [x] C060 Agregar formulario único, resumen de ambas piernas y estados vacío/error.
+- [x] C061 Verificar contratos, TypeScript/lint, recorrido UI simulado y registrar resultados sin operaciones reales. Evidencia28/10 en quickstart.md.
+
 **Entrada**: spec.md aclarada, plan.md, research.md, data-model.md, contracts/api.md y quickstart.md de este directorio.
 **Fecha**: 22/10/2026. **Estado**: implementación en curso; ver registro en quickstart.md.
 **Formato**: casillas pendientes, identificador secuencial, [USn] por historia y [P] solo para archivos independientes. No autoriza lanzar agentes ni hacer push.

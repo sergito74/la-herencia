@@ -1,5 +1,9 @@
 # Investigación y decisiones — 038
 
+## Canje efectivo/transferencia — 28/10/2026
+
+Sergio rechazó tener que cargar aporte en caja, transferencia en banco y Debe manual del socio para un mismo canje. Se amplía038 con `canje_socio`: una carga, entrada física y vínculo al débito del banco, socio identificado sin nueva deuda ni valuación. Reutiliza el tratamiento de extracción bancaria mediante intermediario ya previsto en US3; no generar pares de aporte/retiro que no cambian el patrimonio del socio. No exige cotizaciones porque no se está financiando aGiamigli. Se comprueban destinatario, fecha, importe y asientos previos para no absorber/duplicar operaciones existentes. El extracto debe estar cargado; no se crean pagos bancarios ficticios. Tipo varchar40 y cabecera con socio ya existen: sinDDL ni migración.
+
 ## Operación atómica
 Decisión: cabecera con clave de idempotencia y efectos tipados. Coordinar validaciones y escrituras con la conexión compartida de src/db/connection.py (atomic_reconciliation/reconciliation_transaction). No encadenar commits independientes. Alternativa descartada: duplicar los libros existentes en caja.
 

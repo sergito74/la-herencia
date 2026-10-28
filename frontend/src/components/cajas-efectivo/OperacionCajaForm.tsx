@@ -58,8 +58,9 @@ export function OperacionCajaForm({ caja, initial, onSaved, onPrepared }: {
   const [mensaje, setMensaje] = useState("");
   const clave = useRef(crypto.randomUUID());
   const esContacto = tipo === "pago" || tipo === "cobro";
-  const esSocio = ["aporte", "retiro_a_cuenta", "retiro_ganancias"].includes(tipo);
-  const esBanco = ["extraccion_banco", "deposito_banco", "retorno_sueldo_opcion_a"].includes(tipo);
+  const esCanje = tipo === "canje_socio";
+  const esSocio = ["aporte", "retiro_a_cuenta", "retiro_ganancias", "canje_socio"].includes(tipo);
+  const esBanco = ["extraccion_banco", "deposito_banco", "retorno_sueldo_opcion_a", "canje_socio"].includes(tipo);
   const docs = useQuery({ queryKey: ["caja-documentos", contacto, tipo], queryFn: () => fetchDocumentosPendientes(contacto!, tipo === "pago" ? "compra" : "venta"), enabled: esContacto && !!contacto });
   const socios = useQuery({ queryKey: ["cuentas-socios"], queryFn: fetchSocios, enabled: esSocio || particular });
   const catalogos = useQuery({ queryKey: ["compras-filtros"], queryFn: fetchFiltrosCompras, enabled: tipo === "gasto_sin_comprobante" });
@@ -74,7 +75,7 @@ export function OperacionCajaForm({ caja, initial, onSaved, onPrepared }: {
     const value = "debitos" in m ? (m.creditos ?? 0) - (m.debitos ?? 0) : m.importe ?? 0;
     const label = "concepto" in m ? m.concepto : m.descripcion;
     return { id, value, label, estado: m.estadoConciliacion };
-  });
+  }).filter(m => !esCanje || (m.value < 0 && (!m.estado || ["sin_conciliar", "ya_reconocido"].includes(m.estado))));
   const op = useMemo<OperacionCajaInput>(() => {
     const aplicaciones = particular ? [{ tipoDocumento: "CompraDeuda", idDocumento: compra, importeAplicado: importe.toFixed(2) }] : Object.entries(seleccion).filter(([, v]) => v > 0).map(([key, value]) => {
       const [tipoDocumento, id] = key.split(":"); return { tipoDocumento, idDocumento: Number(id), importeAplicado: value.toFixed(2) };
@@ -84,18 +85,18 @@ export function OperacionCajaForm({ caja, initial, onSaved, onPrepared }: {
       ...(esSocio ? { idSocio: socio } : {}),
       ...(tipo === "traspaso_cajas" ? { cajaDestino: destino } : {}),
       ...((tipo === "aporte" || tipo === "retiro_a_cuenta") && socio === 3 && contraparte ? { cajaContraparte: "condominio-lsc" as CajaSlug } : {}),
-      ...(caja === "condominio-lsc" || (socio === 3 && contraparte) ? { motivoRelacionGiamigli: motivo } : {}),
+      ...(caja === "condominio-lsc" || (socio === 3 && contraparte && !esCanje) ? { motivoRelacionGiamigli: motivo } : {}),
       ...(esBanco ? { banco: { medio, idMovimiento: banco }, intermediario: intermediario || undefined, evidencia: evidencia || undefined } : {}),
       ...(tipo === "retorno_sueldo_opcion_a" ? { idSalario: salario } : {}),
       ...(tipo === "pago" && particular ? { compraParticular: { idCompra: compra, idSocio: socio, idAsientoParticular: asiento || undefined, confirmarAsientoNuevo: asientoNuevo } } : {}),
       ...(tipo === "gasto_sin_comprobante" ? { repartos: repartos.map(r => ({ ...r, idDestino: r.idDestino || undefined, idCampania: r.idCampania || undefined, importePesos: r.importePesos.toFixed(2) })) } : {}),
     };
-  }, [tipo, caja, fecha, importe, concepto, cuenta, esContacto, contacto, seleccion, esSocio, socio, destino, contraparte, motivo, esBanco, medio, banco, intermediario, evidencia, salario, particular, compra, asiento, asientoNuevo, repartos]);
+  }, [tipo, caja, fecha, importe, concepto, cuenta, esContacto, contacto, seleccion, esSocio, esCanje, socio, destino, contraparte, motivo, esBanco, medio, banco, intermediario, evidencia, salario, particular, compra, asiento, asientoNuevo, repartos]);
   const serializado = JSON.stringify(op);
   useEffect(() => { setPreview(null); setAceptadas([]); clave.current = crypto.randomUUID(); }, [serializado]);
   const revisar = useMutation({ mutationFn: () => previsualizarCaja(op), onSuccess: p => { setPreview(p); setMensaje(""); } });
   const guardar = useMutation({ mutationFn: () => crearOperacionCaja({ operacion: op, previewVersion: preview!.previewVersion, advertenciasAceptadas: aceptadas }, clave.current), onSuccess: async result => {
-    setPreview(null); clave.current = crypto.randomUUID(); setMensaje(`Operación ${result.idOperacion} registrada.`);
+    setPreview(null); clave.current = crypto.randomUUID(); setMensaje(esCanje ? "Efectivo y transferencia registrados. El saldo del socio no cambió." : `Operación ${result.idOperacion} registrada.`);
     await queryClient.invalidateQueries({ predicate: q => q.queryKey[0] !== "auth" }); onSaved?.(result.idOperacion);
   } });
   const error = revisar.error ?? guardar.error;
@@ -113,13 +114,13 @@ export function OperacionCajaForm({ caja, initial, onSaved, onPrepared }: {
     {onPrepared && <h3 className="font-semibold">Clasificar fila de planilla — {nombresCaja[caja]}</h3>}
     {usd && <p>Importes y saldo en US$ billete. Los aportes y retiros a cuenta del socio se registran íntegramente en dólares, sin kg INMAG.</p>}
     <div className="grid gap-3 md:grid-cols-3">
-      <label>Operación<select className={input} value={tipo} onChange={e => { setTipo(e.target.value as TipoOperacionCaja); setSeleccion({}); setParticular(false); setCompra(0); }}>
+      <label className="md:col-span-3">Operación<select className={input} value={tipo} onChange={e => { setTipo(e.target.value as TipoOperacionCaja); setSeleccion({}); setParticular(false); setCompra(0); setContraparte(false); if (e.target.value === "canje_socio" && !concepto.trim()) setConcepto("Efectivo contra transferencia al socio"); }}>
         {Object.entries(TIPOS_CAJA).filter(([t]) => caja === "condominio-lsc" ? t === "pago" : usd ? ["ingreso_dolares", "egreso_dolares", "aporte", "retiro_a_cuenta", "retiro_ganancias"].includes(t) : !["ingreso_dolares", "egreso_dolares"].includes(t)).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
       </select></label>
       <label>Fecha<input className={input} type="date" required value={fecha} onChange={e => setFecha(e.target.value)} /></label>
       <label>Cuenta<select className={input} value={cuenta} onChange={e => setCuenta(e.target.value as "A" | "B")}><option>A</option><option>B</option></select></label>
-      <label className="md:col-span-2">Concepto<input className={input} required maxLength={255} value={concepto} onChange={e => setConcepto(e.target.value)} /></label>
       <label>Importe<MoneyInput className={input} moneda={moneda} value={importe} onChange={setImporte} /></label>
+      <label className="md:col-span-3">Concepto<input className={input} required maxLength={255} value={concepto} onChange={e => setConcepto(e.target.value)} /></label>
     </div>
     {esContacto && <><ContactoSelect value={contacto} razonSocial={razonSocial} label={tipo === "pago" ? "Proveedor" : "Cliente / comprador"} onChange={(id, nombre) => { setContacto(id); setRazonSocial(nombre); setSeleccion({}); setCompra(0); }} /><AvisoCuentaContacto idContacto={contacto} />
       {tipo === "pago" && caja !== "condominio-lsc" && <label className="block"><input type="checkbox" checked={particular} onChange={e => { setParticular(e.target.checked); setSeleccion({}); }} /> Compra particular de un socio</label>}
@@ -134,13 +135,15 @@ export function OperacionCajaForm({ caja, initial, onSaved, onPrepared }: {
         <label className="block"><input type="checkbox" checked={asientoNuevo} onChange={e => setAsientoNuevo(e.target.checked)} /> Confirmo que debe crearse un asiento particular nuevo</label></>}
     </>}
     {(esSocio || particular) && <label>Socio<select className={input} value={socio} onChange={e => setSocio(Number(e.target.value))}><option value={0}>Elegir socio</option>{socios.data?.socios.map(s => <option key={s.idSocio} value={s.idSocio}>{s.nombre}</option>)}</select></label>}
-    {esSocio && socio === 3 && !usd && caja !== "condominio-lsc" && tipo !== "retiro_ganancias" && <label className="block"><input type="checkbox" checked={contraparte} onChange={e => setContraparte(e.target.checked)} /> Registrar también la salida / devolución en los movimientos vinculados del Condominio</label>}
-    {(caja === "condominio-lsc" || (socio === 3 && contraparte)) && <label>Relación con Giamigli<input className={input} required maxLength={255} value={motivo} onChange={e => setMotivo(e.target.value)} /></label>}
+    {esCanje && <p>El socio entrega efectivo a Giamigli y recibe el mismo importe por transferencia. Se registra todo junto y su saldo no cambia.</p>}
+    {esSocio && socio === 3 && !usd && caja !== "condominio-lsc" && tipo !== "retiro_ganancias" && !esCanje && <label className="block"><input type="checkbox" checked={contraparte} onChange={e => setContraparte(e.target.checked)} /> Registrar también la salida / devolución en los movimientos vinculados del Condominio</label>}
+    {(caja === "condominio-lsc" || (socio === 3 && contraparte && !esCanje)) && <label>Relación con Giamigli<input className={input} required maxLength={255} value={motivo} onChange={e => setMotivo(e.target.value)} /></label>}
     {tipo === "retiro_ganancias" && <p>Distribución de ganancias: no genera deuda ni crédito del socio.</p>}
     {tipo === "traspaso_cajas" && <label>Caja de destino<select className={input} value={destino} onChange={e => setDestino(e.target.value as CajaSlug)}>{(["giamigli-sa", "campo-chica"] as CajaSlug[]).filter(c => c !== caja).map(c => <option value={c} key={c}>{nombresCaja[c]}</option>)}</select></label>}
     {esBanco && <div className="grid gap-3 md:grid-cols-2"><label>Banco<select className={input} value={medio} onChange={e => { setMedio(e.target.value as typeof medio); setBanco(0); }}><option value="bna">Banco Nación</option><option value="galicia">Galicia</option><option value="mercado-libre">Mercado Pago</option></select></label>
-      <label>Movimiento del extracto (fecha elegida)<select className={input} value={banco} onChange={e => { const id = Number(e.target.value); setBanco(id); const m = bankOptions.find(m => m.id === id); if (m) setImporte(Math.abs(m.value)); }}><option value={0}>Elegir movimiento importado</option>{bankOptions.map(m => <option key={m.id} value={m.id}>{m.label} · {formatMoneda(m.value)} · {m.estado}</option>)}</select></label>
-      <label>Intermediario, si corresponde<input className={input} maxLength={255} value={intermediario} onChange={e => setIntermediario(e.target.value)} /></label><label>Evidencia / referencia<input className={input} maxLength={255} value={evidencia} onChange={e => setEvidencia(e.target.value)} required={tipo === "retorno_sueldo_opcion_a"} /></label>
+      <label>{esCanje ? "Transferencia al socio" : "Movimiento del extracto (fecha elegida)"}<select className={input} value={banco} onChange={e => { const id = Number(e.target.value); setBanco(id); const m = bankOptions.find(m => m.id === id); if (m) setImporte(Math.abs(m.value)); }}><option value={0}>{esCanje ? "Elegir transferencia" : "Elegir movimiento importado"}</option>{bankOptions.map(m => <option key={m.id} value={m.id}>{m.label} · {formatMoneda(esCanje ? Math.abs(m.value) : m.value)}{!esCanje && ` · ${m.estado}`}</option>)}</select></label>
+      {!esCanje && <label>Intermediario, si corresponde<input className={input} maxLength={255} value={intermediario} onChange={e => setIntermediario(e.target.value)} /></label>}<label>{esCanje ? "Referencia de la transferencia (opcional)" : "Evidencia / referencia"}<input className={input} maxLength={255} value={evidencia} onChange={e => setEvidencia(e.target.value)} required={tipo === "retorno_sueldo_opcion_a"} /></label>
+      {esCanje && !movimientos.isFetching && !movimientos.isError && bankOptions.length === 0 && <p>No hay transferencias disponibles para esa fecha. Cargá el extracto bancario o revisá la fecha para poder registrar el canje completo.</p>}
       {!!banco && <a className="underline" href={`/finanzas/tesoreria?medio=${medio}&highlight=${banco}`}>Ver extracto bancario</a>}
     </div>}
     {tipo === "retorno_sueldo_opcion_a" && <label>Liquidación de Sergio empleado<select className={input} value={salario} onChange={e => setSalario(Number(e.target.value))}><option value={0}>Elegir liquidación documentada</option>{salarios.data?.items.filter(s => s.idContacto === 375).map(s => <option key={s.idSalario} value={s.idSalario}>{s.periodoLiquidado} · {formatMoneda(s.importe ?? 0)}</option>)}</select><p>Se registra como no cobrado más traspaso; los pares históricos compensados conservan su tratamiento.</p></label>}
@@ -158,11 +161,12 @@ export function OperacionCajaForm({ caja, initial, onSaved, onPrepared }: {
     {queryError && <p role="alert" className="text-status-danger">No se pudo cargar uno de los listados. <button type="button" className="underline" onClick={() => activas.filter(({ activa, q }) => activa && q.isError).forEach(({ q }) => q.refetch())}>Reintentar conservando el borrador</button></p>}
     {error && <p role="alert" className="text-status-danger">{error.message}</p>}
     {mensaje && <p role="status" className="text-status-success">{mensaje}</p>}
-    <button className={button} disabled={revisar.isPending || guardar.isPending || importe <= 0 || queryError || (particular && docs.isFetching)}>{revisar.isPending ? "Revisando…" : "Revisar efectos antes de guardar"}</button>
+    <button className={button} disabled={revisar.isPending || guardar.isPending || importe <= 0 || queryError || (particular && docs.isFetching) || (esCanje && (!socio || !banco || movimientos.isFetching || !bankOptions.some(m => m.id === banco)))}>{revisar.isPending ? "Revisando…" : "Revisar efectos antes de guardar"}</button>
     {preview && <div className="space-y-3 rounded border border-border p-3"><h4 className="font-semibold">Efectos antes de guardar</h4>{preview.efectosPrevistos.map(p => <p key={p.caja}>{nombresCaja[p.caja]}: {formatMoneda(Number(p.importe), monedaCaja(p.caja))} · saldo resultante {formatMoneda(Number(p.saldoResultante), monedaCaja(p.caja))}</p>)}
       {valuation && <p>Valuación: {formatMoneda(Number(valuation.importeUSD), "Dolares")} y {valuation.importeKgCarne} kg de novillo.</p>}
       {preview.contexto.particular && <p>Parte particular documentada: {formatMoneda(Number(preview.contexto.particular.importe))}. Se refleja el gasto del socio una sola vez; el pago al proveedor puede ser parcial.</p>}
-      {!!preview.contexto.banco?.cuentasExcluidas.length && <p>El movimiento bancario dejará de figurar como pago/cobro del contacto; quedará vinculado a esta caja.</p>}
+      {esCanje && <><p>Transferencia al socio: {formatMoneda(-Number(op.importe))} desde el banco de Giamigli.</p><p>Saldo del socio: sin cambios. La entrega de efectivo y la transferencia se compensan.</p></>}
+      {!esCanje && !!preview.contexto.banco?.cuentasExcluidas.length && <p>El movimiento bancario dejará de figurar como pago/cobro del contacto; quedará vinculado a esta caja.</p>}
       {preview.advertencias.map(w => <label key={w} className="block"><input type="checkbox" checked={aceptadas.includes(w)} onChange={e => setAceptadas(prev => e.target.checked ? [...prev, w] : prev.filter(x => x !== w))} /> {w === "SALDO_NEGATIVO" ? "Confirmo que la caja puede quedar en negativo." : "Confirmo que afecta un período arqueado y que sus arqueos deberán revisarse."}</label>)}
       <button type="button" className={button} disabled={guardar.isPending || preview.advertencias.some(w => !aceptadas.includes(w))} onClick={() => onPrepared ? onPrepared({ operacion: op, previewVersion: preview.previewVersion, advertenciasAceptadas: aceptadas }) : guardar.mutate()}>{guardar.isPending ? "Guardando…" : onPrepared ? "Usar para esta fila" : "Confirmar operación"}</button>
     </div>}

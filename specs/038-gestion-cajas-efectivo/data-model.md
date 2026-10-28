@@ -1,5 +1,9 @@
 # Modelo propuesto — 038
 
+## Ampliación28/10: canje socio
+
+`Tipo=canje_socio` reutiliza esquema y JSON existentes. IdSocio obligatorio como contraparte informativa, sin MovimientoCuentaSocio nuevo. Una entrada física, un puente sin contacto y un vínculo al débito original. Contexto conserva contacto previo y ausencia de aporte o retiro previo del socio por fecha/importe. No absorber ni borrar asientos previos. Anulación mediante efectos propios conserva bancos originales.
+
 Diseño aditivo pendiente de verificar contra WC antes de generar DDL. No modifica saldos iniciales ni vuelve a importar historia.
 
 ## OperacionesCajaEfectivo (nueva)

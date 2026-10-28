@@ -26,6 +26,7 @@ def run():
         "unexpected": [],
         "errorPreview": False,
         "particular": False,
+        "emptyBanks": False,
         "previews": [],
     }
     errors = []
@@ -124,6 +125,10 @@ def run():
             body = {"ok": True}
         elif path == "/api/descarga-peajes/resumen":
             body = {}
+        elif path in ("/api/boveda/resumen", "/api/documentos-nuevos/resumen"):
+            body = {}
+        elif re.fullmatch(r"/api/cuentas-socios/\d+/control-banco",path):
+            body = {"sinAsiento":[],"viaCondominio":[],"conciliados":0,"total":0}
         elif path == "/api/auth/me":
             body = {
                 "idUsuario": 1,
@@ -195,12 +200,12 @@ def run():
                     {
                         "idMovimientoBNA": 7,
                         "fechaHora": "2026-10-22",
-                        "concepto": "Extracción de prueba",
+                        "concepto": "Transferencia al socio de prueba",
                         "importe": -100,
                         "estadoConciliacion": "sin_conciliar",
                     }
-                ],
-                "total": 1,
+                ] if not state["emptyBanks"] else [],
+                "total": 0 if state["emptyBanks"] else 1,
                 "page": 1,
                 "pageSize": 200,
             }
@@ -224,9 +229,9 @@ def run():
                 body = {
                     "previewVersion": "0" * 64,
                     "advertencias": [],
-                    "contexto": {},
+                    "contexto": {"canjeSocio":{"idSocio":data["idSocio"],"saldoSocioSinCambios":True}} if data["tipo"]=="canje_socio" else {},
                     "efectosPrevistos": [
-                        {"caja": data["caja"], "importe": "100.00" if data["tipo"] in ("aporte", "ingreso_dolares", "cobro", "extraccion_banco") else "-100.00", "saldoResultante": "1100.00" if data["tipo"] in ("aporte", "ingreso_dolares", "cobro", "extraccion_banco") else "900.00"}
+                        {"caja": data["caja"], "importe": "100.00" if data["tipo"] in ("aporte", "ingreso_dolares", "cobro", "extraccion_banco", "canje_socio") else "-100.00", "saldoResultante": "1100.00" if data["tipo"] in ("aporte", "ingreso_dolares", "cobro", "extraccion_banco", "canje_socio") else "900.00"}
                     ],
                 }
         elif path == "/api/cajas-efectivo/operaciones":
@@ -476,6 +481,37 @@ def run():
         assert state["previews"][-1]["idSocio"]==2 and state["previews"][-1]["caja"]=="giamigli-dolares"
         page.screenshot(path=str(OUT / "socio-aporte-dolares.png"),full_page=True)
         page.goto(f"{URL}/finanzas/cajas-efectivo/giamigli-sa",wait_until="networkidle")
+        state["emptyBanks"] = True
+        page.reload(wait_until="networkidle")
+        page.get_by_role("button",name="+ Nuevo movimiento",exact=True).click()
+        page.get_by_label(re.compile("^Operación")).select_option("canje_socio")
+        page.locator("form").get_by_label("Fecha",exact=True).fill("2026-10-22")
+        page.locator("form").get_by_label(re.compile("^Socio")).select_option("1")
+        expect(page.get_by_text("No hay transferencias disponibles",exact=False)).to_be_visible()
+        expect(page.get_by_role("button",name="Revisar efectos antes de guardar",exact=True)).to_be_disabled()
+        state["emptyBanks"] = False
+        page.reload(wait_until="networkidle")
+        page.get_by_role("button",name="+ Nuevo movimiento",exact=True).click()
+        page.get_by_label(re.compile("^Operación")).select_option("canje_socio")
+        page.locator("form").get_by_label("Fecha",exact=True).fill("2026-10-22")
+        page.locator("form").get_by_label(re.compile("^Socio")).select_option("1")
+        page.get_by_label(re.compile("^Transferencia al socio")).select_option("7")
+        state["errorPreview"] = True
+        page.get_by_role("button",name="Revisar efectos antes de guardar",exact=True).click()
+        expect(page.get_by_role("alert").filter(has_text="Cambió el contexto")).to_be_visible()
+        expect(page.get_by_label(re.compile("^Transferencia al socio"))).to_have_value("7")
+        expect(page.get_by_label("Concepto",exact=True)).to_have_value("Efectivo contra transferencia al socio")
+        state["errorPreview"] = False
+        page.get_by_role("button",name="Revisar efectos antes de guardar",exact=True).click()
+        expect(page.get_by_text("Saldo del socio: sin cambios.",exact=False)).to_be_visible()
+        canje=state["previews"][-1]
+        assert canje["idSocio"]==1 and canje["banco"]["idMovimiento"]==7 and canje["importe"]=="100.00"
+        assert "aplicaciones" not in canje and "idContacto" not in canje
+        page.screenshot(path=str(OUT/"canje-socio-preview.png"),full_page=True)
+        page.get_by_role("button",name="Confirmar operación",exact=True).click()
+        expect(page.get_by_role("button",name="+ Nuevo movimiento",exact=True)).to_be_visible()
+        assert state["op"]["operacion"]["tipo"]=="canje_socio"
+        assert sum(1 for method,path in state["requests"] if method=="POST" and path=="/api/cuentas-socios/1/asientos")==0
         state["rol"] = "Lectura"
         page.reload(wait_until="networkidle")
         expect(page.get_by_role("button", name="+ Nuevo movimiento", exact=True)).to_have_count(0)
@@ -507,7 +543,7 @@ def run():
             "aporte",
             "ganancias",
             "traspaso",
-            "extraccion_banco",
+            "extraccion_banco", "canje_socio", "canje_sin_extracto", "canje_error_conserva_borrador",
             "cobro",
             "gasto_sin_comprobante",
                 "compra_particular",
