@@ -201,6 +201,7 @@ class CajaSimulada:
             "Estado": "Vigente",
             "Version": 0,
             "Solicitud": db.dumps(op.model_dump(mode="json")),
+            "Contexto": db.dumps(context),
         }
         return id
 
@@ -220,6 +221,10 @@ class CajaSimulada:
 
     def write(self, sql, params=()):
         self.state["writes"].append((sql, params))
+        if sql.startswith("UPDATE dbo.OperacionesCajaEfectivo SET Version=Version+1"):
+            for row in self.state["ops"].values():
+                if row["IdOperacion"] == params[-1]:
+                    row.update(Version=row["Version"]+1, Contexto=params[0])
         if sql.startswith("INSERT INTO dbo.BancoOperacionCaja"):
             self.state["banks"].append(params)
         if sql.startswith("UPDATE dbo.OperacionesCajaEfectivo SET Estado='Anulada'"):
@@ -292,6 +297,8 @@ class CajaSimulada:
             )
         if "FROM dbo.vw_PagosEfectivoVigentes" in sql:
             return None
+        if "FROM dbo.BancoOperacionCaja" in sql and "WHERE IdOperacion=?" in sql:
+            return next(({"medio": b[1], "idMovimiento": b[2]} for b in self.state["banks"] if b[0] == params[0]), None)
         if "FROM dbo.BancoOperacionCaja" in sql:
             return next(
                 (

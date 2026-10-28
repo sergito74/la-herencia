@@ -66,6 +66,7 @@ export interface OperacionCajaInput {
   tipo: TipoOperacionCaja; caja: CajaSlug; fecha: string; importe: string; concepto: string; cuenta: "A" | "B";
   idContacto?: number; idSocio?: number; cajaDestino?: CajaSlug; cajaContraparte?: CajaSlug;
   motivoRelacionGiamigli?: string; banco?: { medio: "bna" | "galicia" | "mercado-libre"; idMovimiento: number };
+  bancoPendiente?: "bna" | "galicia" | "mercado-libre"; numeroTransaccion?: string;
   intermediario?: string; evidencia?: string; idSalario?: number;
   compraParticular?: { idCompra: number; idSocio: number; idAsientoParticular?: number; confirmarAsientoNuevo?: boolean };
   aplicaciones?: { tipoDocumento: string; idDocumento: number; importeAplicado: string }[];
@@ -80,6 +81,7 @@ export interface ConfirmacionCaja { operacion: OperacionCajaInput; previewVersio
 export interface DetalleOperacionCajaResponse {
   idOperacion: number; estado: "Vigente" | "Anulada"; version: number;
   operacion: OperacionCajaInput; usuario: string; fechaCarga: string;
+  bancoConciliado?: OperacionCajaInput["banco"] | null;
   motivoAnulacion: string | null; usuarioAnulacion: string | null; fechaAnulacion: string | null;
   movimientos: { idMovimiento: number; caja: string; importeDecimal: string; anulada: boolean }[];
   efectos: { tipo: string; idRegistro: number; propio: boolean }[];
@@ -124,3 +126,7 @@ export const previewImportacionCaja = (archivo: File, libro: string, fechaCorte:
   return apiPostForm<LoteCaja>("/api/cajas-efectivo/importaciones/previsualizar", form);
 };
 export const confirmarImportacionCaja = (id: number, resoluciones: DecisionImportacionCaja[], aceptarSaldoNegativoLote = false) => apiPost<LoteCaja>(`/api/cajas-efectivo/importaciones/${id}/confirmar`, { resoluciones, aceptarSaldoNegativoLote });
+
+
+export const conciliarBancoCaja = (id: number, banco: NonNullable<OperacionCajaInput["banco"]>, versionEsperada: number) => apiPost<DetalleOperacionCajaResponse>(`/api/cajas-efectivo/operaciones/${id}/conciliar-banco`, { banco, versionEsperada });
+export const transferenciasPendientesCaja = (caja: CajaSlug, page = 1) => apiGet<{ items: { idOperacion: number; fecha: string; socio: string; importe: string; banco: string; numeroTransaccion: string | null }[]; total: number; page: number; pageSize: number }>(`/api/cajas-efectivo/${caja}/transferencias-pendientes`, { page });

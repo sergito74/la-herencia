@@ -72,6 +72,8 @@ class OperacionCaja(Estricto):
     cajaDestino: CajaSlug | None = None
     cajaContraparte: CajaSlug | None = None
     banco: BancoCaja | None = None
+    bancoPendiente: Literal["bna", "galicia", "mercado-libre"] | None = None
+    numeroTransaccion: str | None = Field(default=None, min_length=1, max_length=60)
     intermediario: str | None = Field(default=None, min_length=1, max_length=255)
     evidencia: str | None = Field(default=None, min_length=1, max_length=255)
     motivoRelacionGiamigli: str | None = Field(default=None, min_length=1, max_length=255)
@@ -99,7 +101,9 @@ class OperacionCaja(Estricto):
             raise ValueError("Solo pago/cobro requiere contacto.")
         if socio != (self.idSocio is not None):
             raise ValueError("Aporte/retiro requiere socio; otros tipos no admiten idSocio.")
-        if bancario != (self.banco is not None):
+        if self.bancoPendiente and (self.tipo != "canje_socio" or self.banco):
+            raise ValueError("Elegí transferencia del extracto o banco pendiente de conciliar, no ambos.")
+        if bancario != (self.banco is not None or self.bancoPendiente is not None):
             raise ValueError("Extracción/depósito/retorno requiere movimiento bancario.")
         if (self.tipo == "traspaso_cajas") != (self.cajaDestino is not None):
             raise ValueError("Solo traspaso_cajas requiere cajaDestino.")
@@ -154,6 +158,8 @@ class OperacionCaja(Estricto):
             raise ValueError("Solo retorno de sueldo requiere idSalario.")
         if self.tipo == "retorno_sueldo_opcion_a" and not self.evidencia:
             raise ValueError("El retorno de sueldo requiere evidencia.")
+        if self.numeroTransaccion and self.tipo != "canje_socio":
+            raise ValueError("El número de transacción bancaria solo corresponde al canje de socio.")
         if (self.intermediario or self.evidencia) and not bancario:
             raise ValueError("Intermediario/evidencia solo corresponde a movimientos bancarios.")
         if (
@@ -210,3 +216,8 @@ class MovimientosCajaResponse(BaseModel):
     total: int
     saldoAnteriorDecimal: str | None = None
     subtotalFiltradoDecimal: str | None = None
+
+
+class ConciliarBancoCaja(Estricto):
+    banco: BancoCaja
+    versionEsperada: int = Field(ge=0)

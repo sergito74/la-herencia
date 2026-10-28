@@ -70,6 +70,7 @@ def detail(id_operation):
         "estado": op["Estado"],
         "version": op["Version"],
         "operacion": json.loads(op["Solicitud"]),
+        "bancoConciliado": banco_conciliado(id_operation) if op["Tipo"] == "canje_socio" else None,
         "contexto": json.loads(op["Contexto"]),
         "usuario": op["Usuario"],
         "fechaCarga": str(op["FechaCarga"]),
@@ -131,7 +132,7 @@ def cash(id_operation, op, box, signed_amount, user, payment=None):
             CAJAS[box],
             op.fecha,
             op.concepto,
-            op.motivoRelacionGiamigli,
+            detalle_movimiento(op),
             signed_amount,
             op.cuenta,
             op.idContacto,
@@ -141,6 +142,12 @@ def cash(id_operation, op, box, signed_amount, user, payment=None):
             op.tipo,
         ),
     )
+
+
+def detalle_movimiento(op):
+    # The bank's transaction number travels with the cash entry to find it later in the statement.
+    partes = [op.motivoRelacionGiamigli, op.numeroTransaccion and f"Transacción bancaria N° {op.numeroTransaccion}"]
+    return " · ".join(p for p in partes if p) or None
 
 
 def payment(id_operation, op, signed_credit):
@@ -222,3 +229,20 @@ def effects(id_operation):
         "SELECT * FROM dbo.EfectosOperacionCaja WHERE IdOperacion=? ORDER BY IdEfecto DESC",
         (id_operation,),
     )
+
+
+def banco_conciliado(id_operation):
+    return one("SELECT Medio medio,IdMovimiento idMovimiento FROM dbo.BancoOperacionCaja WHERE IdOperacion=?", (id_operation,))
+
+
+def transferencias_pendientes(caja, page, size):
+    where = ("FROM dbo.OperacionesCajaEfectivo o JOIN dbo.Socios s ON s.IdSocio=o.IdSocio "
+             "WHERE o.Tipo='canje_socio' AND o.Estado='Vigente' "
+             "AND JSON_VALUE(o.Solicitud,'$.caja')=? AND JSON_VALUE(o.Solicitud,'$.bancoPendiente') IS NOT NULL "
+             "AND NOT EXISTS (SELECT 1 FROM dbo.BancoOperacionCaja b WHERE b.IdOperacion=o.IdOperacion) ")
+    total = one("SELECT COUNT(*) total " + where, (caja,))["total"]
+    items = read("SELECT o.IdOperacion idOperacion,o.Fecha fecha,s.Nombre socio,"
+                 "JSON_VALUE(o.Solicitud,'$.importe') importe,JSON_VALUE(o.Solicitud,'$.bancoPendiente') banco,"
+                 "JSON_VALUE(o.Solicitud,'$.numeroTransaccion') numeroTransaccion "
+                 + where + "ORDER BY o.Fecha,o.IdOperacion OFFSET ? ROWS FETCH NEXT ? ROWS ONLY", (caja, (page-1)*size, size))
+    return {"items": items, "total": total, "page": page, "pageSize": size}

@@ -2,7 +2,7 @@
 
 ### Ampliación28/10 — canje socio
 
-Reutilizar coordinador, BancoOperacionCaja, puente sin contacto, vínculo de tesorería y reversión. Nuevo tipo `canje_socio`, sin DDL ni pruebas reales; IdSocio queda en cabecera/Solicitud. Controlar fecha, importe, contacto bancario y aporte/retiro previo antes de preview y dentro del guardado bajo bloqueos comunes. Interfaz de una carga con efecto caja/banco y socio sin cambio. Contrato simulado antes de UI; TypeScript, lint focalizado y recorrido UI con API interceptada. Preservar cambios ajenos.
+Reutilizar coordinador, BancoOperacionCaja, puente sin contacto, vínculo de tesorería y reversión. Nuevo tipo `canje_socio`, sin DDL ni pruebas reales; IdSocio queda en cabecera/Solicitud. Controlar importe, contacto bancario y aporte/retiro previo antes de preview y dentro del guardado bajo bloqueos comunes. Interfaz de una carga con efecto caja/banco y socio sin cambio. Contrato simulado antes de UI; TypeScript, lint focalizado y recorrido UI con API interceptada. Preservar cambios ajenos.
 
 **Estado actual**: implementación completada; ver cierre y evidencias en quickstart.md y tareas en tasks.md.
 
@@ -52,3 +52,8 @@ Autorización de Sergio: corregir los siete hallazgos. Ver precisiones vinculant
 
 ## Corrección de alcance aprobada — 23/10/2026
 Sergio reemplaza la conservación visible de toda la caja del Condominio por un registro exclusivo de relaciones con Giamigli. Ver [criterios, contrato y plan de corrección](limpieza-condominio-20261023.md). Históricos ajenos/sin vínculo documentado permanecen archivados, fuera de saldos, filtros y comparaciones operativas. El neto parcial no representa tenencia física ni deuda; no admite arqueos físicos. Una sola entrada de Condominio con cuenta de socio y movimientos vinculados, sin sumar ni duplicar sus efectos.
+
+
+## Ajuste por disponibilidad mensual del resumen — 28/10
+
+Sergio rechazó depender del extracto para la carga diaria. Registrar canje con bancoPendiente y puente existente, añadir conciliación diferida atómica/versionada y lista paginada de pendientes en caja. Mantener camino con extracto opcional y fechas bancarias independientes. Sin DDL ni escrituras reales para probar. Contrato probado antes de UI.

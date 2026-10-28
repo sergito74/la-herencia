@@ -286,25 +286,22 @@ def _references(op):
         if op.tipo == "canje_socio":
             from src.features.cuentas_socios.contactos import SOCIO_CONTACTO
 
-            bank_date = bank["fecha"]
-            bank_date = bank_date.date() if isinstance(bank_date, datetime) else date.fromisoformat(str(bank_date)[:10])
-            if bank_date != op.fecha:
-                raise ValueError("La transferencia y la entrega de efectivo deben tener la misma fecha.")
             expected_contact = SOCIO_CONTACTO.get(op.idSocio)
             if expected_contact is None or any(
                 r["IdContacto"] is not None and r["IdContacto"] != expected_contact
                 for r in bank["cuentasExcluidas"]
             ):
                 raise ValueError("La transferencia está asignada a otra persona. Elegí la transferencia del socio.")
-            withdrawals = db.read(
-                "SELECT IdMovimiento FROM dbo.MovimientosCuentaSocio "
-                "WHERE IdSocio=? AND CAST(Fecha AS date)=? AND Importe=? "
-                "AND Tipo IN ('AsignacionGasto','Devolucion') AND Anulada=0",
-                (op.idSocio, op.fecha, op.importe),
-            )
-            if withdrawals:
-                raise ConflictoCaja("El socio ya tiene un movimiento registrado por ese importe y fecha. Revisalo antes de registrar el canje para no duplicar el efectivo o el retiro.")
-            context["canjeSocio"] = {"idSocio": op.idSocio, "saldoSocioSinCambios": True}
+    if op.tipo == "canje_socio":
+        withdrawals = db.read(
+            "SELECT IdMovimiento FROM dbo.MovimientosCuentaSocio "
+            "WHERE IdSocio=? AND CAST(Fecha AS date)=? AND Importe=? "
+            "AND Tipo IN ('AsignacionGasto','Devolucion') AND Anulada=0",
+            (op.idSocio, op.fecha, op.importe),
+        )
+        if withdrawals:
+            raise ConflictoCaja("El socio ya tiene un movimiento registrado por ese importe y fecha. Revisalo antes de registrar el canje para no duplicar el efectivo o el retiro.")
+        context["canjeSocio"] = {"idSocio": op.idSocio, "saldoSocioSinCambios": True}
     if op.tipo == "retorno_sueldo_opcion_a":
         from src.features.remuneraciones.repository import _IMPORTE_SQL
 
@@ -507,21 +504,10 @@ def _aplicar(id_op, op, user, context):
                     rep.importePesos,
                 ),
             )
-    if op.banco:
-        # Explicit bridge in the existing treasury book, not another cash-box entry.
-        bridge = db.payment(id_op, op, -next(iter(piernas(op).values())))
-        payment = bridge
-        db.write(
-            "INSERT INTO dbo.BancoOperacionCaja (IdOperacion,Medio,IdMovimiento) VALUES (?,?,?)",
-            (id_op, op.banco.medio, op.banco.idMovimiento),
-        )
-        event = db.insert(
-            "INSERT INTO dbo.TraspasosInternosTesoreria "
-            "(MedioA,IdMovimientoA,MedioB,IdMovimientoB,Accion,Usuario) "
-            "OUTPUT INSERTED.IdEvento VALUES (?,?,'efectivo',?,'Vincular',?)",
-            (op.banco.medio, op.banco.idMovimiento, bridge, user),
-        )
-        db.effect(id_op, "TraspasoTesoreria", event)
+    if op.banco or op.bancoPendiente:
+        payment = db.payment(id_op, op, -next(iter(piernas(op).values())))
+        if op.banco:
+            _vincular_banco(id_op, op.banco, payment, user)
     if op.tipo == "retorno_sueldo_opcion_a":
         salary = context["salario"]
         adjustment = db.insert(
@@ -539,6 +525,53 @@ def _aplicar(id_op, op, user, context):
     for box, amount in piernas(op).items():
         db.cash(id_op, op, box, amount, user, payment if box == op.caja else None)
     db.stale_arqueos(piernas(op), op.fecha, user)
+
+
+def _vincular_banco(id_op, banco, bridge, user):
+    db.write(
+        "INSERT INTO dbo.BancoOperacionCaja (IdOperacion,Medio,IdMovimiento) VALUES (?,?,?)",
+        (id_op, banco.medio, banco.idMovimiento),
+    )
+    event = db.insert(
+        "INSERT INTO dbo.TraspasosInternosTesoreria "
+        "(MedioA,IdMovimientoA,MedioB,IdMovimientoB,Accion,Usuario) "
+        "OUTPUT INSERTED.IdEvento VALUES (?,?,'efectivo',?,'Vincular',?)",
+        (banco.medio, banco.idMovimiento, bridge, user),
+    )
+    db.effect(id_op, "TraspasoTesoreria", event)
+
+
+@atomic_reconciliation
+def conciliar_banco(id_op, body, user):
+    row = db.get_operation(id_op)
+    if not row:
+        raise NoExisteCaja("Operación inexistente.")
+    op = OperacionCaja.model_validate_json(row["Solicitud"])
+    if row["Estado"] != "Vigente" or op.tipo != "canje_socio" or not op.bancoPendiente:
+        raise ConflictoCaja("Esta operación no tiene una transferencia pendiente de conciliar.")
+    linked = db.banco_conciliado(id_op)
+    if linked:
+        if linked == body.banco.model_dump():
+            return db.detail(id_op)
+        raise ConflictoCaja("La operación ya está conciliada con otra transferencia.")
+    if row["Version"] != body.versionEsperada:
+        raise ConflictoCaja("La operación cambió. Actualizá antes de conciliar.")
+    if body.banco.medio != op.bancoPendiente:
+        raise ValueError("La transferencia debe corresponder al banco registrado en el canje.")
+    linked_op = OperacionCaja.model_validate({**op.model_dump(), "bancoPendiente": None, "banco": body.banco})
+    _bloquear(linked_op)
+    context = _references(linked_op)
+    effects = db.read("SELECT * FROM dbo.EfectosOperacionCaja WHERE IdOperacion=?", (id_op,))
+    bridges = [e["IdRegistro"] for e in effects if e["TipoEfecto"] == "PagoEfectivo" and e["EsCreadoPorOperacion"]]
+    if len(bridges) != 1:
+        raise ConflictoCaja("No se pudo identificar el movimiento de efectivo del canje. Revisá la operación.")
+    _vincular_banco(id_op, body.banco, bridges[0], user)
+    # Preserve the original request and idempotency fingerprint; treasury records who linked it.
+    original_context = json.loads(row["Contexto"])
+    original_context["conciliacionBanco"] = context["banco"]
+    db.write("UPDATE dbo.OperacionesCajaEfectivo SET Version=Version+1,Contexto=? WHERE IdOperacion=?",
+             (db.dumps(original_context), id_op))
+    return db.detail(id_op)
 
 
 def _bloquear(op):

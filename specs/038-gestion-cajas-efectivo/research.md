@@ -2,7 +2,7 @@
 
 ## Canje efectivo/transferencia — 28/10/2026
 
-Sergio rechazó tener que cargar aporte en caja, transferencia en banco y Debe manual del socio para un mismo canje. Se amplía038 con `canje_socio`: una carga, entrada física y vínculo al débito del banco, socio identificado sin nueva deuda ni valuación. Reutiliza el tratamiento de extracción bancaria mediante intermediario ya previsto en US3; no generar pares de aporte/retiro que no cambian el patrimonio del socio. No exige cotizaciones porque no se está financiando aGiamigli. Se comprueban destinatario, fecha, importe y asientos previos para no absorber/duplicar operaciones existentes. El extracto debe estar cargado; no se crean pagos bancarios ficticios. Tipo varchar40 y cabecera con socio ya existen: sinDDL ni migración.
+Sergio rechazó tener que cargar aporte en caja, transferencia en banco y Debe manual del socio para un mismo canje. Se amplía038 con `canje_socio`: una carga, entrada física y vínculo al débito del banco, socio identificado sin nueva deuda ni valuación. Reutiliza el tratamiento de extracción bancaria mediante intermediario ya previsto en US3; no generar pares de aporte/retiro que no cambian el patrimonio del socio. No exige cotizaciones porque no se está financiando aGiamigli. Se comprueban destinatario, importe y asientos previos para no absorber/duplicar operaciones existentes. Corrección posterior de Sergio: el resumen solo llega a fin de mes. El extracto es opcional al registrar; guardar banco previsto en Solicitud y conciliar después, sin crear débitos importados ficticios. Tipo varchar40 y cabecera con socio ya existen: sinDDL ni migración.
 
 ## Operación atómica
 Decisión: cabecera con clave de idempotencia y efectos tipados. Coordinar validaciones y escrituras con la conexión compartida de src/db/connection.py (atomic_reconciliation/reconciliation_transaction). No encadenar commits independientes. Alternativa descartada: duplicar los libros existentes en caja.
@@ -36,3 +36,8 @@ Las precisiones de spec/modelo/contrato sustituyen las generalizaciones anterior
 
 ## Resolución aplicada
 Implementación 038 completada. Alquileres se aplica por cuota real IdCobroAlquiler y el CHECK de AplicacionesPago fue ampliado con respaldo verificado. Particular parcial conserva asignación completa del gasto personal documentado a fecha de compra (021), evita recrear nota/asignación y protege pagos dependientes. Anulación tiene previsualización propia para negativos/períodos arqueados. El estado unificado de tesorería ignora el contacto histórico solo mientras existe vínculo 038 vigente; no se borra ese contacto. El cierre y evidencias vigentes están en quickstart.md y schema-verification.md; las alternativas y pendientes anteriores corresponden a la fase de investigación.
+
+
+## Aclaración posterior de Sergio — 28/10
+
+El resumen se recibe a fin de mes y no puede impedir el asiento diario. Se reemplaza expresamente la obligación anterior de cargar el extracto: registrar banco e importe, conservar transferencia pendiente y vincularla después al mismo asiento. No se usa el resumen como requisito de registro ni se inventa un débito importado. La coincidencia de fecha tampoco es obligatoria: se preservan ambas fechas.

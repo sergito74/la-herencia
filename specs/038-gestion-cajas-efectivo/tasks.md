@@ -157,3 +157,12 @@ Registro de implementación: fundamentos y contratos backend completados según 
 - [X] T062 Unificar Condominio LSC en navegación con Cuenta con Giamigli y Movimientos vinculados; aclarar neto parcial y quitar arqueos físicos.
 - [X] T063 Validar pruebas, TypeScript/lint, navegador y lecturas WC sin datos de prueba.
 - [X] T064 Actualizar evidencia compartida, commit y push para continuidad Claude/Codex.
+
+
+## Corrección 28/10 — canje sin extracto mensual
+
+- [x] C062 Actualizar decisión, contrato y modelo: registro sin extracto con banco indicado, sin pares artificiales de socio.
+- [x] C063 Verificar contrato simulado antes de UI: registro pendiente, conciliación posterior, idempotencia, importes/destinatario/banco, versión, anulación y rollback.
+- [x] C064 Formulario sin extracto por defecto, lista visible de pendientes y conciliación desde detalle con fecha bancaria independiente; verificar UI y compilación.
+- [x] C065 Registrar evidencia final y revisar diff, sin operaciones reales ni DDL.
+- [x] C066 Número de transacción bancaria (pedido de Sergio 28/10): campo opcional en el canje, guardado en el Detalle del asiento de caja, visible en detalle y pendientes, y preselección de la transferencia al conciliar. Pruebas: 162 backend cajas/038, tsc/eslint sin errores, recorrido UI PASS (27 escenarios, API interceptada, sin WC). Sin DDL ni operaciones reales.

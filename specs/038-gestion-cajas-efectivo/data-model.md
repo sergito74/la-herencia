@@ -68,3 +68,8 @@ La previsualización de anulación calcula el saldo corrido real excluyendo los 
 
 ## Corrección de alcance aprobada — 23/10/2026
 Sergio reemplaza la conservación visible de toda la caja del Condominio por un registro exclusivo de relaciones con Giamigli. Ver [criterios, contrato y plan de corrección](limpieza-condominio-20261023.md). Históricos ajenos/sin vínculo documentado permanecen archivados, fuera de saldos, filtros y comparaciones operativas. El neto parcial no representa tenencia física ni deuda; no admite arqueos físicos. Una sola entrada de Condominio con cuenta de socio y movimientos vinculados, sin sumar ni duplicar sus efectos.
+
+
+## Registro sin resumen — corrección 28/10
+
+Sin DDL: bancoPendiente en Solicitud es el banco indicado al registrar. Se crea una entrada física y un puente sin contacto; BancoOperacionCaja y TraspasosInternosTesoreria se crean recién al vincular el extracto. El vínculo posterior usa ese mismo puente; no duplica caja, pagos ni socios. Contexto.conciliacionBanco conserva la referencia revisada, el evento de tesorería audita usuario/fecha y Version aumenta; Solicitud/HuellaSolicitud permanecen inmutables para reintentos. Pendiente se deriva de estado vigente y ausencia de BancoOperacionCaja. Las fechas físicas y bancarias pueden diferir. El número de transacción bancaria (opcional) vive en Solicitud.numeroTransaccion y se copia al Detalle del asiento de caja (nvarchar 255, junto al motivo Condominio si lo hubiera); sin DDL.

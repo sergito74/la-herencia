@@ -9,6 +9,7 @@ import { Tabs } from "@/components/ui/Tabs";
 import {
   fetchMovimientosCaja,
   fetchSaldoCaja,
+  transferenciasPendientesCaja,
   type CajaSlug,
   type MovimientoCajaEfectivo,
 } from "@/services/cajasEfectivoApi";
@@ -70,6 +71,8 @@ export function CajaEfectivo({ caja }: { caja: CajaSlug }) {
   const [nombreContacto, setNombreContacto] = useState<string | null>(null);
   const [socio, setSocio] = useState(0);
   const [anulados, setAnulados] = useState(false);
+  const [paginaPendientes, setPaginaPendientes] = useState(1);
+  const pendientes = useQuery({ queryKey: ["caja-transferencias-pendientes", caja, paginaPendientes], queryFn: () => transferenciasPendientesCaja(caja, paginaPendientes), enabled: caja === "giamigli-sa" || caja === "campo-chica" });
   const pageSize = 50;
   const ultimo = useQuery({ queryKey: ["caja-arqueos", caja, 1], queryFn: () => listarArqueosCaja(caja), enabled: !esCondominio });
   const socios = useQuery({ queryKey: ["cuentas-socios"], queryFn: fetchSocios });
@@ -115,6 +118,11 @@ export function CajaEfectivo({ caja }: { caja: CajaSlug }) {
       <Tabs idBase="caja" activa={vista} onChange={setVista} tabs={esCondominio ? [{ id: "movimientos", label: "Movimientos vinculados" }, { id: "importar", label: "Comparar vínculos con la planilla" }] : [{ id: "movimientos", label: "Movimientos" }, { id: "arqueos", label: "Arqueos" }, { id: "importar", label: "Comparar con la planilla" }]}>
       {!esCondominio && vista === "arqueos" && <ArqueoCajaPanel key={caja} caja={caja} onOperation={setDetalle} />}
       {vista === "importar" && <SoloLectura><ImportacionCajaPanel /></SoloLectura>}
+      {pendientes.isError && <p role="alert">No se pudieron cargar las transferencias pendientes. <button onClick={() => pendientes.refetch()}>Reintentar</button></p>}
+      {!!pendientes.data?.total && <section className="space-y-2 rounded border border-border p-3" aria-label="Transferencias pendientes de conciliar"><h3 className="font-semibold">Transferencias pendientes de conciliar ({pendientes.data.total})</h3>
+        {pendientes.data.items.map(p => <div className="flex flex-wrap items-center justify-between gap-2" key={p.idOperacion}><span>{formatFecha(p.fecha)} · {p.socio} · {formatMoneda(Number(p.importe))} · {p.banco === "bna" ? "Banco Nación" : p.banco === "galicia" ? "Galicia" : "Mercado Pago"}{p.numeroTransaccion && ` · N° ${p.numeroTransaccion}`}</span><button className="underline" onClick={() => setDetalle(p.idOperacion)}>Ver canje y conciliar</button></div>)}
+        <div className="flex gap-3"><button disabled={paginaPendientes <= 1} onClick={() => setPaginaPendientes(p => p-1)}>Anterior</button><span>Página {paginaPendientes}</span><button disabled={paginaPendientes * pendientes.data.pageSize >= pendientes.data.total} onClick={() => setPaginaPendientes(p => p+1)}>Siguiente</button></div>
+      </section>}
       {vista === "movimientos" && <><div className="grid gap-3 rounded border border-border p-3 md:grid-cols-3">
         <label>Desde<input className="block rounded border border-border p-2" type="date" value={desde} onChange={e => { setDesde(e.target.value); setPage(1); }} /></label>
         <label>Hasta<input className="block rounded border border-border p-2" type="date" value={hasta} onChange={e => { setHasta(e.target.value); setPage(1); }} /></label>

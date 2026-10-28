@@ -192,6 +192,8 @@ def run():
                 }
             ]
 
+        elif path == "/api/sesion/cierre":
+            body = {}
         elif path == "/api/remuneraciones":
             body = {"items": [], "total": 0, "page": 1, "pageSize": 200}
         elif path.startswith("/api/tesoreria/") and path.endswith("/movimientos"):
@@ -200,7 +202,7 @@ def run():
                     {
                         "idMovimientoBNA": 7,
                         "fechaHora": "2026-10-22",
-                        "concepto": "Transferencia al socio de prueba",
+                        "concepto": "Transferencia al socio de prueba 000123456",
                         "importe": -100,
                         "estadoConciliacion": "sin_conciliar",
                     }
@@ -210,6 +212,13 @@ def run():
                 "pageSize": 200,
             }
 
+        elif path.endswith("/transferencias-pendientes"):
+            op = state["op"]
+            pending = bool(op and op["estado"] == "Vigente" and op["operacion"].get("bancoPendiente") and not op.get("bancoConciliado"))
+            body = {"items": [{"idOperacion":1,"fecha":"2026-10-22","socio":"Sergio","importe":"100.00","banco":"bna"}] if pending else [],"total":1 if pending else 0,"page":1,"pageSize":20}
+        elif path.endswith("/operaciones/1/conciliar-banco"):
+            state["op"].update(bancoConciliado=data["banco"], version=1)
+            body = state["op"]
         elif path.endswith("/saldo"):
             body = {"caja": "giamigli-sa", "saldo": 900, "saldoDecimal": "900.00"}
         elif path.endswith("/movimientos"):
@@ -432,7 +441,7 @@ def run():
         expect(page.get_by_role("navigation",name="Cajas y cuentas de socios").get_by_role("link",name="Condominio LSC",exact=True)).to_have_count(1)
         page.screenshot(path=str(OUT / "resumen-cajas-socios.png"),full_page=True)
         page.goto(f"{URL}/finanzas/cajas-efectivo/condominio-lsc",wait_until="networkidle")
-        expect(page.get_by_role("heading",name="Condominio LSC — Movimientos vinculados",exact=True)).to_be_visible()
+        expect(page.get_by_role("heading",name=re.compile("^Condominio LSC . Movimientos vinculados$"))).to_be_visible()
         expect(page.get_by_role("tab",name="Arqueos",exact=True)).to_have_count(0)
         expect(page.get_by_text(re.compile("^Último arqueo:"))).to_have_count(0)
         expect(page.get_by_role("navigation",name="Secciones del Condominio LSC").get_by_role("link",name="Cuenta con Giamigli",exact=True)).to_be_visible()
@@ -487,31 +496,41 @@ def run():
         page.get_by_label(re.compile("^Operación")).select_option("canje_socio")
         page.locator("form").get_by_label("Fecha",exact=True).fill("2026-10-22")
         page.locator("form").get_by_label(re.compile("^Socio")).select_option("1")
-        expect(page.get_by_text("No hay transferencias disponibles",exact=False)).to_be_visible()
-        expect(page.get_by_role("button",name="Revisar efectos antes de guardar",exact=True)).to_be_disabled()
-        state["emptyBanks"] = False
-        page.reload(wait_until="networkidle")
-        page.get_by_role("button",name="+ Nuevo movimiento",exact=True).click()
-        page.get_by_label(re.compile("^Operación")).select_option("canje_socio")
-        page.locator("form").get_by_label("Fecha",exact=True).fill("2026-10-22")
-        page.locator("form").get_by_label(re.compile("^Socio")).select_option("1")
-        page.get_by_label(re.compile("^Transferencia al socio")).select_option("7")
+        page.get_by_label("Importe",exact=True).fill("100")
+        page.get_by_label("Importe",exact=True).press("Tab")
+        expect(page.get_by_text("Podés guardar sin el resumen bancario.",exact=False)).to_be_visible()
+        page.get_by_label("Número de transacción del banco (opcional)",exact=False).fill("000123456")
+        expect(page.get_by_role("button",name="Revisar efectos antes de guardar",exact=True)).to_be_enabled()
         state["errorPreview"] = True
         page.get_by_role("button",name="Revisar efectos antes de guardar",exact=True).click()
         expect(page.get_by_role("alert").filter(has_text="Cambió el contexto")).to_be_visible()
-        expect(page.get_by_label(re.compile("^Transferencia al socio"))).to_have_value("7")
+        expect(page.get_by_label("Importe",exact=True)).to_have_value(re.compile("100"))
         expect(page.get_by_label("Concepto",exact=True)).to_have_value("Efectivo contra transferencia al socio")
         state["errorPreview"] = False
         page.get_by_role("button",name="Revisar efectos antes de guardar",exact=True).click()
         expect(page.get_by_text("Saldo del socio: sin cambios.",exact=False)).to_be_visible()
         canje=state["previews"][-1]
-        assert canje["idSocio"]==1 and canje["banco"]["idMovimiento"]==7 and canje["importe"]=="100.00"
+        assert canje["idSocio"]==1 and canje["bancoPendiente"]=="bna" and "banco" not in canje and canje["importe"]=="100.00" and canje["numeroTransaccion"]=="000123456"
+        expect(page.get_by_text("Transacción bancaria N° 000123456.",exact=True)).to_be_visible()
         assert "aplicaciones" not in canje and "idContacto" not in canje
         page.screenshot(path=str(OUT/"canje-socio-preview.png"),full_page=True)
         page.get_by_role("button",name="Confirmar operación",exact=True).click()
         expect(page.get_by_role("button",name="+ Nuevo movimiento",exact=True)).to_be_visible()
         assert state["op"]["operacion"]["tipo"]=="canje_socio"
         assert sum(1 for method,path in state["requests"] if method=="POST" and path=="/api/cuentas-socios/1/asientos")==0
+        expect(page.get_by_text("Transferencia pendiente de conciliar · Banco Nación.",exact=True)).to_be_visible()
+        page.get_by_role("button", name="Cerrar detalle",exact=True).click()
+        page.get_by_role("button", name="Ver canje y conciliar",exact=True).click()
+        page.get_by_role("button", name="Conciliar con el resumen bancario",exact=True).click()
+        expect(page.get_by_text("No hay transferencias disponibles por este importe",exact=False)).to_be_visible()
+        state["emptyBanks"] = False
+        page.get_by_label("Fecha de la transferencia en el resumen",exact=False).fill("2026-10-23")
+        expect(page.get_by_role("combobox",name=re.compile("^Transferencia al socio"))).to_have_value("7")  # preselected by transaction number
+        page.get_by_role("button",name="Confirmar conciliación",exact=True).click()
+        expect(page.get_by_text("Transferencia conciliada con el resumen bancario.",exact=True)).to_be_visible()
+        expect(page.get_by_role("region",name="Transferencias pendientes de conciliar",exact=True)).to_have_count(0)
+        assert state["op"]["bancoConciliado"]["idMovimiento"]==7
+        page.screenshot(path=str(OUT/"canje-socio-conciliado.png"),full_page=True)
         state["rol"] = "Lectura"
         page.reload(wait_until="networkidle")
         expect(page.get_by_role("button", name="+ Nuevo movimiento", exact=True)).to_have_count(0)
@@ -543,7 +562,7 @@ def run():
             "aporte",
             "ganancias",
             "traspaso",
-            "extraccion_banco", "canje_socio", "canje_sin_extracto", "canje_error_conserva_borrador",
+            "extraccion_banco", "canje_socio", "canje_sin_extracto", "canje_conciliacion_posterior", "canje_pendientes_visibles", "canje_error_conserva_borrador",
             "cobro",
             "gasto_sin_comprobante",
                 "compra_particular",

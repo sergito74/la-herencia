@@ -24,7 +24,7 @@ from src.features.cajas_efectivo.schemas import (
     MovimientosCajaResponse,
     SaldoCaja,
 )
-from src.features.cajas_efectivo.schemas import OperacionCaja, ConfirmarOperacion, AnularOperacion
+from src.features.cajas_efectivo.schemas import OperacionCaja, ConfirmarOperacion, AnularOperacion, ConciliarBancoCaja
 from src.features.cajas_efectivo import operaciones, service
 from src.features.cajas_efectivo import arqueos
 from src.features.cajas_efectivo import importacion
@@ -70,6 +70,7 @@ async def _ejecutar(fn, *args):
         if fn in (
             service.crear,
             service.anular,
+            service.conciliar_banco,
             arqueos.guardar,
             arqueos.confirmar,
             importacion.confirmar,
@@ -271,3 +272,15 @@ async def movimientos_caja(
         pageSize=norm_page_size,
         total=total,
     )
+
+
+@router.post("/operaciones/{id_operacion}/conciliar-banco")
+async def conciliar_banco(id_operacion: int, body: ConciliarBancoCaja, request: Request):
+    user = await run_in_threadpool(_usuario, request)
+    return await _ejecutar(service.conciliar_banco, id_operacion, body, user)
+
+
+@router.get("/{caja}/transferencias-pendientes")
+async def transferencias_pendientes(caja: str, page: int = Query(1, ge=1), pageSize: int = Query(20, ge=1, le=200)):
+    _resolver_caja(caja)
+    return await _ejecutar(operaciones.transferencias_pendientes, caja, page, pageSize)
