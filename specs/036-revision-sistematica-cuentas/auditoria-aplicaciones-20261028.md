@@ -380,3 +380,29 @@ Respaldos: `WC_antes-arca-allianz-ypf-calderon_20261028_155428_098922.bak` y `WC
 - No están en los mails ni en la carpeta. Hace falta el PDF de ambas, pedido a Syngenta o a SUNANCO.
 
 **Syngenta: CERRADO por decisión de Sergio (28/10). Se deja como está; no cargar la ND 303-21626 ni la NC 303-9275 ni tocar el ajuste interno NDI303-230419.**
+
+## 12. Decisión (29/10/2026): principio APROBADO con las condiciones del especialista 07
+
+Sergio lo aprobó con una condición: que lo avalara el especialista financiero (07). El 07 lo avaló **con condiciones**, y estas pasan a formar parte de la regla:
+
+- **Hueco:** el FIFO se corta en dos casos. (1) Un pago que no cubre ninguna factura abierta anterior o de hasta 1 ciclo después: queda como anticipo. (2) Una factura que sigue impaga cuando ya hay pagos de un período más nuevo aplicados: queda como impaga o como factura faltante. En los proveedores recurrentes, también es hueco el período esperado sin comprobante que marca el detector 044. En cada corte el FIFO arranca de nuevo, sin arrastrar.
+- **Empates en importe idéntico:** gana la menor distancia de fecha. Después, la factura anterior al pago. Después, el número de comprobante más bajo. Si el mismo importe se repite 3 veces o más en ±1 ciclo, se aplica FIFO dentro del grupo. Todo empate va marcado "a revisar".
+- **Combinaciones:** solo entre facturas abiertas, a menos de 1 año del pago, con tope de cantidad. Si hay más de una combinación exacta, va a revisión.
+- **US$:** se concilia en la moneda del documento; si hay cruce entre $ y US$, al TC del comprobante. En este saneamiento no se crean ND ni NC: las diferencias van a revisión. El saldo se controla en las dos monedas.
+- **No se tocan** las aplicaciones manuales ni el tramo de Estudio Criado 2026. Solo se rehacen las de 020 y FIFO-032.
+- **Piloto:** primero Estudio Criado (115) y Jáuregui (48), comparados a mano. Si el saldo con `refrescar=True` difiere, la tanda se bloquea. La cuenta 97 no se toca hasta saber qué cuenta es. En cada tanda se registra el antes y el después, y se muestra si cambia el rubro o el centro de costo en el Cash Flow.
+
+Cargill (258) no usa el algoritmo: se copia del portal (Sergio 29/10).
+
+## 13. Cargill (258) aplicado el 29/10/2026
+
+Script: `backend/scripts/aplicacion_cargill_avisos_036.py`. Fuente: los 97 avisos de pago del portal, bajados en solo lectura a `backups/cargill-aplicaciones-20261029/` y parseados con `cargill_avisos_parsear_036.py`.
+
+- Se anularon las 198 aplicaciones de la 020 y se grabaron **286 aplicaciones (`manual`), por $78,5 M**:
+  - **Desde 2021:** 148, copiadas aviso por aviso. Cada aviso dice qué cancela cada LPG, NC, recibo o cobro con tarjeta.
+  - **Antes de 2021, sin avisos:** 138 (11 por importe idéntico y 127 por FIFO de hasta un ciclo). Ningún comprobante queda cancelado antes de una fecha en que Cargill lo informó pendiente en sus 36 estados de cuenta.
+- **Saldo antes = después:** $ −83.816.747,07 y US$ −60.000. Respaldo `WC_aplicacion-cargill-avisos-036_20261029_092136_360424.bak`.
+- **Sin cubrir:**
+  - ND 7050-76972 y 7050-77233: impagas, es correcto.
+  - 7 redondeos de $0,02 a $113: Cargill los cancela con su ajuste de redondeo y en el sistema no hay un documento equivalente.
+  - Para mirar: 7028-62758 ($14.426,73), 7028-73987 ($4.706,41), 5850-10872 ($100.757,26) y 5850-00000146 ($2.008.244,26). Esta última parece el anticipo financiero de sep-2024, y Cargill la da por $2.008.818.
