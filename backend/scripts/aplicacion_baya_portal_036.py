@@ -162,10 +162,6 @@ if __name__ == "__main__":
     hoy = date.today()
     tc = cambio.funcion_tc(hoy)
     e = entrada.armar([C])[C]
-    # La vista trae el importe de los documentos en us$ ya pesificado al TC del comprobante; el motor lo espera en us$.
-    for i in e["items"]:
-        if i["moneda"] == "USD" and i.get("tcDoc"):
-            i["importe"] = round(float(i["importe"]) / i["tcDoc"], 2)
     m = mapa(e["items"])
     fijos, sin = [], []
     for nombre, fecha, creditos, debitos in grupos():

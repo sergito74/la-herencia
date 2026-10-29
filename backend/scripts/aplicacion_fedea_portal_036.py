@@ -45,13 +45,11 @@ if __name__ == "__main__":
     hoy = date.today()
     tc = cambio.funcion_tc(hoy)
     e = entrada.armar([C])[C]
-    if "--usd" in sys.argv:
-        for i in e["items"]:  # la vista trae los documentos en us$ pesificados; el motor los espera en us$
-            if i["moneda"] == "USD" and i.get("tcDoc"):
-                i["importe"] = round(float(i["importe"]) / i["tcDoc"], 2)
-    else:  # cierre del 08/10 hecho en pesos de referencia: todo en pesos
+    if "--usd" not in sys.argv:  # cierre del 08/10 hecho en pesos de referencia: todo en pesos
         for i in e["items"]:
-            i["moneda"] = "ARS"
+            if i["moneda"] == "USD":
+                i["importe"] = float(i["importe"]) * i["tcDoc"]
+                i["moneda"] = "ARS"
     por_nro = {i["nro"]: tuple(i["clave"])[:2] for i in e["items"] if i["clave"][0] == "Compras"}
     fijos = [{"credito": cr, "debito": por_nro[n], "importe": 1e12, "regla": "manual"} for cr, ns in PARES.items() for n in ns]
     fijos += COMPENSACIONES_0810 + e["fijos"]  # compensaciones manuales del cierre del 08/10 (NC 5019 reconocimiento, diferencias de cambio)

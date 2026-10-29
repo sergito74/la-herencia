@@ -152,9 +152,12 @@ def armar(id_contactos: list[int]) -> dict[int, dict]:
                 "ajustaTc": False, "documento": f["documento"]}
         if origen == "Compras":
             c = compras.get(f["idOrigen"], {})
-            if c.get("moneda") == "Dolares":
+            if c.get("moneda") == "Dolares" and (c.get("tc") or 0) > 1:
+                # La vista trae el documento en us$ ya pesificado al TC del comprobante; el motor lo lleva en us$
+                # (29/10/2026: antes quedaba en pesos rotulado us$ y se volvía a multiplicar por el TC).
                 base["moneda"] = "USD"
-                base["tcDoc"] = float(c["tc"]) if (c.get("tc") or 0) > 1 else None
+                base["tcDoc"] = float(c["tc"])
+                importe = importe / base["tcDoc"]
             base["suspendido"] = bool(c.get("suspendida"))
             base["ajustaTc"] = bool(c.get("ajusta"))
             vencs = sorted(v for v in cuotas.get(f["idOrigen"], []) if v)
