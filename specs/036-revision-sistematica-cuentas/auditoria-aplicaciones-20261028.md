@@ -408,3 +408,14 @@ Script: `backend/scripts/aplicacion_cargill_avisos_036.py`. Fuente: los 97 aviso
   - Para mirar: 7028-62758 ($14.426,73), 7028-73987 ($4.706,41), 5850-10872 ($100.757,26) y 5850-00000146 ($2.008.244,26). Esta última parece el anticipo financiero de sep-2024, y Cargill la da por $2.008.818.
 
 **Corrección (misma fecha, 2ª corrida):** ahora cada documento recibe del aviso exactamente el importe que Cargill cancela, y primero se aparean los importes idénticos (líneas de tarjeta). Los débitos neteados en un desembolso de anticipo (V4) se cancelan cuando Cargill cancela ese anticipo (AH): la ND 5850-146 en dic-2024 y la factura 5850-10872 en may-2026. Resultado: **287 aplicaciones**, saldo sin cambios. Solo quedan sin cubrir los redondeos ($0,01 a $113,05) y las ND 7050-76972/77233, que están impagas. Respaldo `WC_aplicacion-cargill-avisos-036_20261029_093004_691927.bak`.
+
+## 14. Piloto de la regla aprobada (29/10/2026, solo simulación)
+
+`motor.recalcular(..., regla_029=True)`: importe idéntico, combinación única y FIFO cortado a un ciclo de 60 días. Script `backend/scripts/piloto_regla_029_036.py`. No se grabó nada.
+
+| Cuenta | Pago ignorado con factura de importe idéntico | Anticipos de más de 90 días |
+|---|---|---|
+| 48 Jáuregui y Morales | 56 → 9 | 283 → 12 |
+| 115 Estudio Criado | 83 → 1 | 227 → 3 |
+
+En Jáuregui hay 83 pares de importe idéntico y 41 combinaciones; en Criado, 117 y 4. Los huecos quedan visibles como factura impaga o anticipo, sin arrastrarse. Falta conectar el flag a la simulación y aplicación de la pantalla (ejecuciones) antes de grabar.

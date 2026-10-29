@@ -13,7 +13,11 @@ Un renglón del lado D se cancela con uno del lado C. El orden es este:
    Una fija que pide más de lo disponible se recorta. Si es una elección,
    el contacto queda marcado 'manual-ajustado' (FR-024) y el exceso vuelve
    al reparto.
-2. Reparto cronológico único (ver `reparto`), en orden de (vencimiento,
+2. Con `regla_029` (regla aprobada el 29/10/2026, sección 12 de la auditoría
+   de aplicaciones): pares de importe idéntico y combinaciones únicas de 2 o
+   3 documentos (ver `emparejar`), y el reparto no deja que un pago adelantado
+   salte más de un ciclo (`CICLO`): ese hueco queda a la vista como anticipo.
+3. Reparto cronológico único (ver `reparto`), en orden de (vencimiento,
    nro de comprobante, origen, id). Las facturas suspendidas no entran.
 
 La regla de cada par se deduce de las clases. Documento contra documento
@@ -37,6 +41,10 @@ from typing import Callable
 TOLERANCIA_CENTAVOS = 0.005
 DIAS_ANTICIPO = 60
 TOLERANCIA_CIERRE = 0.005
+CICLO = 60             # regla_029: un pago no cubre documentos de más de un ciclo después
+REPETIDOS = 3          # regla_029: importe que se repite tantas veces en ±1 ciclo (cuotas, abonos) → FIFO
+COMBINACION_DIAS = 365
+COMBINACION_CANDIDATOS = 20
 
 TcFn = Callable[[date], "float | None"]
 
@@ -51,13 +59,14 @@ def _orden(item: dict) -> tuple:
 
 
 class _Libro:
-    def __init__(self, items: list[dict], tc: TcFn):
+    def __init__(self, items: list[dict], tc: TcFn, regla_029: bool = False):
         self.items = sorted((dict(i) for i in items), key=_orden)
         for i in self.items:
             i["rem"] = float(i["importe"])
         self.tc = tc
         self.aplicaciones: list[dict] = []
         self.marcas: set[str] = set()
+        self.regla_029 = regla_029
 
     # --- conversión -----------------------------------------------------
     def _tc_par(self, a: dict, b: dict) -> float:
@@ -143,6 +152,41 @@ class _Libro:
                 if pedido > total_doc + max(1.0, total_doc * TOLERANCIA_CIERRE):
                     self.marcas.add("manual-ajustado")
 
+    def emparejar(self) -> None:
+        """regla_029, antes del reparto. Para cada renglón entero, por fecha:
+        1) un documento del otro lado, entero y de importe idéntico: el más
+           cercano en fecha, después el anterior y después el de número más bajo;
+           si el importe se repite `REPETIDOS` veces en ±1 ciclo, lo decide el FIFO;
+        2) si no, una única combinación de 2 o 3 documentos abiertos del otro
+           lado (a menos de un año) que sume exacto; si hay más de una, nada."""
+        from itertools import combinations
+        enteros = lambda i: not i.get("suspendido") and i["rem"] > 0 and abs(i["rem"] - float(i["importe"])) <= TOLERANCIA_CENTAVOS
+        for x in sorted(self.items, key=lambda i: (i["fecha"], _orden(i))):
+            if not enteros(x):
+                continue
+            otros = [y for y in self.items if y["lado"] != x["lado"] and y["clase"] == "doc" and y is not x
+                     and y["moneda"] == x["moneda"] and not y.get("suspendido") and y["rem"] > 0]
+            if x["clase"] == "doc":
+                otros = [y for y in otros if y["lado"] == "D"] if x["lado"] == "C" else []
+            iguales = [y for y in otros if enteros(y) and abs(y["rem"] - x["rem"]) <= 0.01]
+            cerca = [y for y in iguales if abs((y["fecha"] - x["fecha"]).days) <= CICLO]
+            if iguales and len(cerca) < REPETIDOS:
+                orden = sorted(iguales, key=lambda y: (abs((y["fecha"] - x["fecha"]).days), y["fecha"] > x["fecha"], str(y.get("nro") or "")))
+                if len(orden) > 1 and abs((orden[0]["fecha"] - x["fecha"]).days) == abs((orden[1]["fecha"] - x["fecha"]).days):
+                    self.marcas.add("empate-a-revisar")
+                d, c = (orden[0], x) if x["lado"] == "C" else (x, orden[0])
+                self._aplicar(d, c, None, "importe-identico")
+                continue
+            cand = sorted([y for y in otros if abs((y["fecha"] - x["fecha"]).days) <= COMBINACION_DIAS and y["rem"] < x["rem"]],
+                          key=lambda y: abs((y["fecha"] - x["fecha"]).days))[:COMBINACION_CANDIDATOS]
+            combos = [g for n in (2, 3) for g in combinations(cand, n) if abs(sum(y["rem"] for y in g) - x["rem"]) <= 0.01]
+            if len(combos) == 1:
+                for y in combos[0]:
+                    d, c = (y, x) if x["lado"] == "C" else (x, y)
+                    self._aplicar(d, c, None, "combinacion")
+            elif len(combos) > 1:
+                self.marcas.add("combinacion-ambigua")
+
     def reparto(self) -> None:
         """Un solo recorrido cronológico (FR-001, FR-007). Cada renglón llega
         en su vencimiento (documentos) o en su fecha (dinero) y se cruza con
@@ -179,6 +223,10 @@ class _Libro:
                 return
             if y["rem"] <= 0:
                 continue
+            if (self.regla_029 and x["clase"] == "doc" and y["clase"] == "dinero"
+                    and (x["vencimiento"] - y["fecha"]).days > CICLO):
+                self.marcas.add("hueco")   # pago adelantado más de un ciclo: queda como anticipo, no arrastra
+                continue
             d, c = (x, y) if x["lado"] == "D" else (y, x)
             self._aplicar(d, c, None, None)
 
@@ -194,10 +242,12 @@ def huella(aplicaciones: list[dict]) -> str:
     return hashlib.sha256("\n".join(partes).encode()).hexdigest()
 
 
-def recalcular(items: list[dict], fijos: list[dict], tc: TcFn, hoy: date) -> dict:
+def recalcular(items: list[dict], fijos: list[dict], tc: TcFn, hoy: date, regla_029: bool = False) -> dict:
     """Devuelve aplicaciones, pendientes y marcas de un contacto."""
-    libro = _Libro(items, tc)
+    libro = _Libro(items, tc, regla_029)
     libro.fijos(fijos)
+    if regla_029:
+        libro.emparejar()
     libro.reparto()
     pend_d = sum(_ars(i, tc) for i in libro.items if i["lado"] == "D" and i["clase"] == "doc" and i["rem"] > 0)
     pend_c = sum(_ars(i, tc) for i in libro.items if i["lado"] == "C" and i["clase"] == "doc" and i["rem"] > 0)
