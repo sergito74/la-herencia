@@ -7,7 +7,10 @@ oro, ver memory.md).
 
 from __future__ import annotations
 
-from src.db.connection import execute_insert_returning_id, execute_write, fetch_all, fetch_one
+import re
+import unicodedata
+
+from src.db.connection import atomic_reconciliation, execute_insert_returning_id, execute_write, fetch_all, fetch_one
 from src.db.pagination import offset_for
 
 
@@ -67,6 +70,27 @@ def get_contacto(id_contacto: int) -> dict | None:
     return fetch_one(sql, (id_contacto,))
 
 
+def normalizar_nombre(nombre: str) -> str:
+    texto = unicodedata.normalize("NFKD", nombre).encode("ascii", "ignore").decode().upper()
+    clave = re.sub(r"[^A-Z0-9]", "", texto)
+    return "RUTASSURATLANTICOSA" if clave == "CORRESUR" else clave
+
+
+def _exigir_identidad_unica(nombre: str, cuit: str | None, excluir: int | None = None) -> None:
+    clave = normalizar_nombre(nombre)
+    fiscal = re.sub(r"\D", "", cuit or "")
+    filas = fetch_all("SELECT TOP (10000) IdContacto AS id, [Razon Social] AS nombre, [CUIT/CUIL] AS cuit FROM dbo.Contactos ORDER BY IdContacto")
+    if len(filas) >= 10000:
+        raise ValueError("No se pudo verificar si el contacto ya existe. Revisá el padrón antes de continuar.")
+    for fila in filas:
+        if fila["id"] == excluir:
+            continue
+        mismo_cuit = fiscal and fiscal == re.sub(r"\D", "", fila["cuit"] or "")
+        if mismo_cuit or (clave and clave == normalizar_nombre(fila["nombre"] or "")):
+            raise ValueError(f"Ya existe el contacto {fila['nombre']}. Usá ese contacto para evitar duplicarlo.")
+
+
+@atomic_reconciliation
 def create_contacto(
     razon_social: str,
     tipo_contacto: str,
@@ -74,6 +98,9 @@ def create_contacto(
     es_contratista_labores: bool,
 ) -> int:
     """Inserta un contacto nuevo en `WC` y devuelve el `IdContacto` generado."""
+    if normalizar_nombre(razon_social) == "RUTASSURATLANTICOSA":
+        razon_social = "Rutas Sur Atlantico S.A."
+    _exigir_identidad_unica(razon_social, cuit)
     return execute_insert_returning_id(
         """
         INSERT INTO dbo.Contactos ([Razon Social], [Tipo Contacto], [CUIT/CUIL], EsContratistaLabores)
@@ -84,6 +111,7 @@ def create_contacto(
     )
 
 
+@atomic_reconciliation
 def update_contacto(
     id_contacto: int,
     razon_social: str,
@@ -91,6 +119,9 @@ def update_contacto(
     cuit: str | None,
     es_contratista_labores: bool,
 ) -> bool:
+    if normalizar_nombre(razon_social) == "RUTASSURATLANTICOSA":
+        razon_social = "Rutas Sur Atlantico S.A."
+    _exigir_identidad_unica(razon_social, cuit, id_contacto)
     rows_affected = execute_write(
         """
         UPDATE dbo.Contactos

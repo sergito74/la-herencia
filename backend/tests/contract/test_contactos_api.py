@@ -174,3 +174,18 @@ async def test_contactos_rejects_delete(client):
         response = await ac.delete("/api/contactos/461")
 
     assert response.status_code in (404, 405)
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize("metodo,ruta,funcion", [
+    ("POST", "/api/contactos", "create_contacto"),
+    ("PATCH", "/api/contactos/461", "update_contacto"),
+])
+async def test_contacto_duplicado_devuelve_conflicto(client, monkeypatch, metodo, ruta, funcion):
+    def duplicado(*args):
+        raise ValueError("Ya existe el contacto Rutas Sur Atlantico S.A.")
+    monkeypatch.setattr(repository, funcion, duplicado)
+    async with httpx.AsyncClient(transport=client, base_url="http://test") as ac:
+        response = await ac.request(metodo, ruta, json={"razonSocial": "Corresur", "tipoContacto": "Proveedor"})
+    assert response.status_code == 409
+    assert "Ya existe" in response.json()["detail"]

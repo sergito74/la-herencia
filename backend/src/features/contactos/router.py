@@ -56,27 +56,33 @@ async def get_contacto(id_contacto: int) -> Contacto:
 
 @router.post("", response_model=Contacto, status_code=201)
 async def create_contacto(body: ContactoCreateRequest) -> Contacto:
-    new_id = await run_in_threadpool(
-        repository.create_contacto,
-        body.razonSocial,
-        body.tipoContacto,
-        body.cuit,
-        body.esContratistaLabores,
-    )
+    try:
+        new_id = await run_in_threadpool(
+            repository.create_contacto,
+            body.razonSocial,
+            body.tipoContacto,
+            body.cuit,
+            body.esContratistaLabores,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
     row = await run_in_threadpool(repository.get_contacto, new_id)
     return Contacto(**row)
 
 
 @router.patch("/{id_contacto}", response_model=Contacto)
 async def update_contacto(id_contacto: int, body: ContactoUpdateRequest) -> Contacto:
-    updated = await run_in_threadpool(
-        repository.update_contacto,
-        id_contacto,
-        body.razonSocial,
-        body.tipoContacto,
-        body.cuit,
-        body.esContratistaLabores,
-    )
+    try:
+        updated = await run_in_threadpool(
+            repository.update_contacto,
+            id_contacto,
+            body.razonSocial,
+            body.tipoContacto,
+            body.cuit,
+            body.esContratistaLabores,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
     if not updated:
         raise HTTPException(status_code=404, detail="Contacto no encontrado")
     row = await run_in_threadpool(repository.get_contacto, id_contacto)
