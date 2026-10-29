@@ -71,3 +71,16 @@ Son 92 cuentas pagadas solo con tarjeta y 847 facturas. Las 92 cierran con el FI
   - Nación Seguros: descuento del 5% y 3 facturas en US$ compensadas en la cuenta.
   - Cuentas en $0 cuyo resto se compensa con otro comprobante de la cuenta, que el FIFO ya imputa.
 - **Queda:** de $0,01 a $0,08 de líneas de tarjeta sin imputar en Autopistas del Sol, Grupo Concesionario del Oeste y Carrefour.
+
+## Grupo 3 — CERRADO (29/10/2026)
+
+Son 250 cuentas chicas, de 1 a 5 facturas, con algún pago que no es tarjeta. Las 248 que cierran se aplicaron con el FIFO (ejecución 131, más la 132 para 3 cuentas que se redondearon después). Ninguna empeora.
+
+- **Redondeos automáticos:** 23 facturas de 18 cuentas se redondearon a lo pagado, todas por debajo de 0,10% (`grupo3_redondeo_036`). Las 18 cuentas quedaron en $0.
+- **Redondeos verificados a mano:** 8 facturas de PC Electro Tigre, Reynoso y Sabattini se llevaron a la suma exacta de su transferencia más su retención (`grupo3_redondeo_manual_036`).
+- **No se tocan:**
+  - Los asientos de centavos de 2011 ("La Herencia" $0,08, "NC" $0,02). Ya son ajustes de redondeo.
+  - Las facturas en US$ (Criadero Don Pedro, Tierras de Henderson). Siguen la regla del TC del comprobante.
+- **Excepciones:**
+  - Gentos y Galicia Seguros, con pagos de más. Galicia Seguros ya espera respuesta de Sergio.
+  - Electricidad Lavalle, con saldo real de $9.931,72, en la lista de pendientes.
