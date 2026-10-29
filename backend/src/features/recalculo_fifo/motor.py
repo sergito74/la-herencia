@@ -53,6 +53,15 @@ def _r(x: float) -> float:
     return round(x + 0.0, 2)
 
 
+def _dias(a: dict, b: dict) -> int:
+    """Días entre dos renglones tomando cada uno como el intervalo [emisión, vencimiento]: 0 si se superponen."""
+    if a["vencimiento"] < b["fecha"]:
+        return (b["fecha"] - a["vencimiento"]).days
+    if b["vencimiento"] < a["fecha"]:
+        return (a["fecha"] - b["vencimiento"]).days
+    return 0
+
+
 def _orden(item: dict) -> tuple:
     origen, ident, cuota = item["clave"]
     return (item["vencimiento"] or date.min, str(item.get("nro") or ""), origen, ident, cuota or 0)
@@ -153,7 +162,9 @@ class _Libro:
                     self.marcas.add("manual-ajustado")
 
     def emparejar(self) -> None:
-        """regla_029, antes del reparto. Para cada renglón entero, por fecha:
+        """regla_029, antes del reparto. Distancia entre un pago y un documento: 0 si el
+        pago cae entre la emisión y el vencimiento; si no, los días hasta el más cercano
+        de los dos (`_dias`). Para cada renglón entero, por vencimiento:
         1) un documento del otro lado, entero y de importe idéntico: el más
            cercano en fecha, después el anterior y después el de número más bajo;
            si el importe se repite `REPETIDOS` veces en ±1 ciclo, lo decide el FIFO, salvo que haya
@@ -163,7 +174,7 @@ class _Libro:
            Una factura entera busca también la combinación de 2 o 3 pagos enteros."""
         from itertools import combinations
         enteros = lambda i: not i.get("suspendido") and i["rem"] > 0 and abs(i["rem"] - float(i["importe"])) <= TOLERANCIA_CENTAVOS
-        for x in sorted(self.items, key=lambda i: (i["fecha"], _orden(i))):
+        for x in sorted(self.items, key=lambda i: (i["vencimiento"], _orden(i))):
             if not enteros(x):
                 continue
             otros = [y for y in self.items if y["lado"] != x["lado"] and y["clase"] == "doc" and y is not x
@@ -175,19 +186,19 @@ class _Libro:
                          and enteros(y)]
             iguales = [] if x["clase"] == "doc" and x["lado"] == "D" else [
                 y for y in otros if enteros(y) and abs(y["rem"] - x["rem"]) <= 0.01]
-            cerca = [y for y in iguales if abs((y["fecha"] - x["fecha"]).days) <= CICLO]
-            mismo_dia = [y for y in iguales if y["fecha"] == x["fecha"]]
-            if len(mismo_dia) == 1:   # compra pagada en el acto: no importa que el importe se repita
+            cerca = [y for y in iguales if _dias(x, y) <= CICLO]
+            mismo_dia = [y for y in iguales if _dias(x, y) == 0]
+            if len(mismo_dia) == 1:   # único pago entre emisión y vencimiento: no importa que el importe se repita
                 iguales = mismo_dia
             if iguales and (len(cerca) < REPETIDOS or len(mismo_dia) == 1):
-                orden = sorted(iguales, key=lambda y: (abs((y["fecha"] - x["fecha"]).days), y["fecha"] > x["fecha"], str(y.get("nro") or "")))
-                if len(orden) > 1 and abs((orden[0]["fecha"] - x["fecha"]).days) == abs((orden[1]["fecha"] - x["fecha"]).days):
+                orden = sorted(iguales, key=lambda y: (_dias(x, y), y["vencimiento"] > x["vencimiento"], str(y.get("nro") or "")))
+                if len(orden) > 1 and _dias(x, orden[0]) == _dias(x, orden[1]):
                     self.marcas.add("empate-a-revisar")
                 d, c = (orden[0], x) if x["lado"] == "C" else (x, orden[0])
                 self._aplicar(d, c, None, "importe-identico")
                 continue
-            cand = sorted([y for y in otros if abs((y["fecha"] - x["fecha"]).days) <= COMBINACION_DIAS and y["rem"] < x["rem"]],
-                          key=lambda y: abs((y["fecha"] - x["fecha"]).days))[:COMBINACION_CANDIDATOS]
+            cand = sorted([y for y in otros if _dias(x, y) <= COMBINACION_DIAS and y["rem"] < x["rem"]],
+                          key=lambda y: _dias(x, y))[:COMBINACION_CANDIDATOS]
             combos = [g for n in (2, 3) for g in combinations(cand, n) if abs(sum(y["rem"] for y in g) - x["rem"]) <= 0.01]
             if len(combos) == 1:
                 for y in combos[0]:
@@ -233,7 +244,7 @@ class _Libro:
             if y["rem"] <= 0:
                 continue
             if (self.regla_029 and x["clase"] == "doc" and y["clase"] == "dinero"
-                    and (x["vencimiento"] - y["fecha"]).days > CICLO):
+                    and (x["fecha"] - y["fecha"]).days > CICLO):   # contra la emisión: pagar antes de vencer es normal
                 self.marcas.add("hueco")   # pago adelantado más de un ciclo: queda como anticipo, no arrastra
                 continue
             d, c = (x, y) if x["lado"] == "D" else (y, x)
