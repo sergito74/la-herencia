@@ -3,7 +3,7 @@
 Par = factura y pago de casi el mismo importe (diferencia ≤0,10%), del mismo proveedor, pagado entre 5 días antes y
 120 días después, sin otro pago exacto. Se empareja por la menor diferencia de importe. No se toca (salvo diferencia ≤0,01%) una factura de
 pesos enteros pagada con un importe que no lo es (la diferencia no es redondeo). Método `grupo3_redondeo_036`:
-escalar renglones o ajustar Gastos Varios. Idempotente. Uso (desde backend/): python -m scripts.jym_redondeo_pares_036 [--aplicar]
+escalar renglones o ajustar Gastos Varios. Idempotente. Uso (desde backend/): python -m scripts.jym_redondeo_pares_036 [idContacto] [--aplicar]
 """
 
 from __future__ import annotations
@@ -15,7 +15,7 @@ from src.db.connection import _assert_target_is_wc, execute_write_transaction, f
 from src.features.recalculo_fifo import entrada
 from src.features.vinculos.backup import backup_verificado
 
-C = 48
+C = next((int(a) for a in sys.argv[1:] if a.isdigit()), 48)
 
 
 def pares() -> list[tuple]:
@@ -52,7 +52,7 @@ if __name__ == "__main__":
         raise SystemExit("Simulación: usar --aplicar para grabar.")
     tot = {r["i"]: r for r in fetch_all(
         f"SELECT IdDeuda AS i, GranTotal AS g, TotalDetalleCompra AS d FROM dbo.vw_Cns_Total_Compra WHERE IdDeuda IN ({','.join(str(x[0]) for x in filas)})", ())}
-    respaldo = backup_verificado("jym-redondeo-pares-036")
+    respaldo = backup_verificado(f"redondeo-pares-{C}-036")
     stmts = []
     for i, _, total, nuevo in filas:
         g, d = float(tot[i]["g"]), float(tot[i]["d"] or 0)
@@ -62,6 +62,6 @@ if __name__ == "__main__":
     stmts.append(("INSERT INTO dbo.AuditoriaCorrecciones (Regla,Estado,Parametros,Usuario,Fecha,UsuarioAplicacion,FechaAplicacion,Respaldo,Resumen) "
                   "VALUES ('jym-redondeo-pares-036','aplicada',?,'Claude036',SYSDATETIME(),'Claude036',SYSDATETIME(),?,?)",
                   (json.dumps({str(x[0]): [x[2], x[3]] for x in filas}), respaldo,
-                   f"Jáuregui y Morales: {len(filas)} facturas redondeadas a su pago 1 a 1 (≤0,10%, regla 29/10/2026).")))
+                   f"Cuenta {C}: {len(filas)} facturas redondeadas a su pago 1 a 1 (≤0,10%, regla 29/10/2026).")))
     execute_write_transaction(stmts)
     print("Aplicado. Respaldo:", respaldo, " quedan:", len(pares()))

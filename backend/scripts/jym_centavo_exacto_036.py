@@ -1,9 +1,9 @@
-"""036 — Jáuregui y Morales (48): lleva cada factura a su total redondeado al centavo.
+"""036 — lleva cada factura de una cuenta a su total redondeado al centavo (Jáuregui y Morales 48 por defecto).
 
 La vista calcula el total como cantidad × precio × (1 + IVA) sin redondear (p. ej. $180,0049), y los medios
 centavos de cada factura se arrastran a la siguiente en el FIFO. Un comprobante siempre cierra al centavo.
 Método `grupo3_redondeo_036`: escalar renglones o ajustar Gastos Varios. Idempotente.
-Uso (desde backend/): python -m scripts.jym_centavo_exacto_036 [--aplicar]
+Uso (desde backend/): python -m scripts.jym_centavo_exacto_036 [idContacto] [--aplicar]
 """
 
 from __future__ import annotations
@@ -14,7 +14,7 @@ import sys
 from src.db.connection import _assert_target_is_wc, execute_write_transaction, fetch_all
 from src.features.vinculos.backup import backup_verificado
 
-C = 48
+C = next((int(a) for a in sys.argv[1:] if a.isdigit()), 48)
 
 
 def casos() -> list[dict]:
@@ -32,7 +32,7 @@ if __name__ == "__main__":
     print(len(filas), "facturas con fracción de centavo; ajuste", round(sum(f["nuevo"] - f["total"] for f in filas), 4))
     if "--aplicar" not in sys.argv or not filas:
         raise SystemExit("Simulación: usar --aplicar para grabar.")
-    respaldo = backup_verificado("jym-centavo-exacto-036")
+    respaldo = backup_verificado(f"centavo-exacto-{C}-036")
     stmts = []
     for f in filas:
         g, d = float(f["g"]), float(f["d"] or 0)
@@ -42,6 +42,6 @@ if __name__ == "__main__":
     stmts.append(("INSERT INTO dbo.AuditoriaCorrecciones (Regla,Estado,Parametros,Usuario,Fecha,UsuarioAplicacion,FechaAplicacion,Respaldo,Resumen) "
                   "VALUES ('jym-centavo-exacto-036','aplicada',?,'Claude036',SYSDATETIME(),'Claude036',SYSDATETIME(),?,?)",
                   (json.dumps({str(f["i"]): [f["total"], f["nuevo"]] for f in filas}), respaldo,
-                   f"Jáuregui y Morales: {len(filas)} facturas llevadas a su total al centavo.")))
+                   f"Cuenta {C}: {len(filas)} facturas llevadas a su total al centavo.")))
     execute_write_transaction(stmts)
     print("Aplicado. Respaldo:", respaldo, " quedan:", len(casos()))
