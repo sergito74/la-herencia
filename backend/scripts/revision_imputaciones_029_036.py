@@ -1,7 +1,7 @@
-"""036 — planilla para que Sergio revise el recálculo con la regla aprobada el 29/10/2026 (solo lectura).
+"""036 — planilla para que Sergio revise el recálculo FIFO (por vencimiento; `--regla029` para la regla apagada) (solo lectura).
 
 Una hoja por cuenta, solo con las facturas cuyo pago cambia: cómo está hoy y cómo quedaría.
-Uso (desde backend/): python -m scripts.revision_imputaciones_029_036 <salida.xlsx> 115 48 97
+Uso (desde backend/): python -m scripts.revision_imputaciones_029_036 <salida.xlsx> 115 48 97 [--regla029]
 """
 
 from __future__ import annotations
@@ -34,14 +34,14 @@ def _pago(origen: str, item: dict | None, importe: float) -> str:
 
 
 if __name__ == "__main__":
-    salida, ids = sys.argv[1], [int(x) for x in sys.argv[2:]]
+    salida, ids = sys.argv[1], [int(x) for x in sys.argv[2:] if x.isdigit()]
     hoy = date.today()
     tc = cambio.funcion_tc(hoy)
     libro = Workbook()
     libro.remove(libro.active)
     for id_contacto, e in entrada.armar(ids).items():
         items = {(i["clave"][0], i["clave"][1]): i for i in e["items"]}
-        nuevo = motor.recalcular(e["items"], e["fijos"], tc, hoy, regla_029=True)["aplicaciones"]
+        nuevo = motor.recalcular(e["items"], e["fijos"], tc, hoy, regla_029="--regla029" in sys.argv)["aplicaciones"]
         ahora = defaultdict(list)
         for a in nuevo:
             d, c = tuple(a["debito"])[:2], tuple(a["credito"])[:2]

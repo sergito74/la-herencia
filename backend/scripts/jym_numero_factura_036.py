@@ -1,5 +1,8 @@
 """036 — Jáuregui y Morales (48), 29/10/2026: la factura del 07/03/2023 ($11.200) estaba cargada con el número de la
-del 11/01/2023 (00008-00001462). Según el PDF (20230307_JaureguiYMorales 002.pdf) es la 00009-00017433. No cambia saldos.
+del 11/01/2023 (00008-00001462). El encabezado del ticket (20230307_JaureguiYMorales 002.pdf) está mal impreso
+(dice 00009-0017433, que es el ticket de $4.001,80 de 3 minutos antes en otra caja); el código al pie dice 0008 00001731,
+que cae entre la 00008-00001462 (11/01) y la 00008-00001887 (29/03) de esa caja: es la 00008-00001731. No cambia saldos.
+1ª corrida (misma fecha) grabó por error 00009-00017433; esta la reemplaza.
 Uso (desde backend/): python -m scripts.jym_numero_factura_036 [--aplicar]
 """
 
@@ -10,7 +13,7 @@ import sys
 from src.db.connection import _assert_target_is_wc, execute_write_transaction, fetch_all
 from src.features.vinculos.backup import backup_verificado
 
-ID_DEUDA, ANTES, DESPUES = 2143514048, "00008-00001462", "00009-00017433"
+ID_DEUDA, ANTES, DESPUES = 2143514048, "00009-00017433", "00008-00001731"
 
 if __name__ == "__main__":
     _assert_target_is_wc()
@@ -25,6 +28,6 @@ if __name__ == "__main__":
         ("INSERT INTO dbo.AuditoriaCorrecciones (Regla,Estado,Parametros,Usuario,Fecha,UsuarioAplicacion,FechaAplicacion,Respaldo,Resumen) "
          "VALUES ('jym-numero-factura-036','aplicada',?,'Claude036',SYSDATETIME(),'Claude036',SYSDATETIME(),?,?)",
          (f'{{"IdDeuda": {ID_DEUDA}, "antes": "{ANTES}", "despues": "{DESPUES}"}}', respaldo,
-          "Factura J y M 07/03/2023: número corregido según el PDF (aprobado por Sergio 29/10/2026).")),
+          "Factura J y M 07/03/2023 ($11.200): número 00008-00001731 según el código al pie del ticket (corrige la 1ª corrida).")),
     ])
     print("Aplicado. Respaldo:", respaldo)
