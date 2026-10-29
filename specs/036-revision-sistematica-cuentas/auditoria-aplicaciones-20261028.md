@@ -406,3 +406,5 @@ Script: `backend/scripts/aplicacion_cargill_avisos_036.py`. Fuente: los 97 aviso
   - ND 7050-76972 y 7050-77233: impagas, es correcto.
   - 7 redondeos de $0,02 a $113: Cargill los cancela con su ajuste de redondeo y en el sistema no hay un documento equivalente.
   - Para mirar: 7028-62758 ($14.426,73), 7028-73987 ($4.706,41), 5850-10872 ($100.757,26) y 5850-00000146 ($2.008.244,26). Esta última parece el anticipo financiero de sep-2024, y Cargill la da por $2.008.818.
+
+**Corrección (misma fecha, 2ª corrida):** ahora cada documento recibe del aviso exactamente el importe que Cargill cancela, y primero se aparean los importes idénticos (líneas de tarjeta). Los débitos neteados en un desembolso de anticipo (V4) se cancelan cuando Cargill cancela ese anticipo (AH): la ND 5850-146 en dic-2024 y la factura 5850-10872 en may-2026. Resultado: **287 aplicaciones**, saldo sin cambios. Solo quedan sin cubrir los redondeos ($0,01 a $113,05) y las ND 7050-76972/77233, que están impagas. Respaldo `WC_aplicacion-cargill-avisos-036_20261029_093004_691927.bak`.

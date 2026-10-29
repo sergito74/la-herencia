@@ -176,8 +176,9 @@ if __name__ == "__main__":
     usados: set = set()
     asignaciones: list[tuple] = []           # (aviso, origen crédito, id crédito, id doc, pesos)
     sin_match, sobrantes, faltantes = [], [], []
+    anticipos: list[dict] = []   # V4: anticipo financiero que Cargill desembolsó neteando débitos del mismo aviso
     for a in avisos:
-        debitos, creditos = [], []
+        debitos, creditos, v4, ah = [], [], [], []
         for d in a["documentos"]:
             k = _clave_aviso(d)
             cand = por_clave.get(k, []) if k else []
@@ -189,25 +190,50 @@ if __name__ == "__main__":
             if not cand and d["tp"] in POR_IMPORTE:   # sin número en el aviso: importe exacto, fecha más cercana
                 cand = _por_importe(filas, abs(d["importe"]), datetime.strptime(a["fecha"], "%d/%m/%Y").date(), usados)
             if not cand:
+                if d["tp"] == "V4":
+                    v4.append(d["importe"])
+                elif d["tp"] == "AH":
+                    ah.append(d["importe"])
                 if d["tp"] not in ("$I", "$B"):   # las retenciones están dentro de la LPG
                     sin_match.append((a["voucher"], a["fecha"], d["tp"], d["numero"], d["importe"]))
                 continue
             for f in cand:
                 usados.add((f["origenTipo"], f["idOrigen"]))
                 clave = (f["origenTipo"], f["idOrigen"])
-                if clave in cap and clave not in debitos:
-                    debitos.append(clave)
+                if clave in cap and clave not in [c for c, _ in debitos]:
+                    debitos.append([clave, abs(d["importe"])])   # tope: lo que Cargill cancela de ese documento
                 elif clave in resto and clave not in [c for c, _ in creditos]:
                     creditos.append((clave, None))
-        for cr, tope in creditos:
+        # AH: Cargill cancela un anticipo V4 anterior; los débitos neteados en ese desembolso se cancelan ahora
+        for importe in ah:
+            for ant in anticipos:
+                if ant["monto"] >= importe - 0.01:
+                    ant["monto"] = round(ant["monto"] - importe, 2)
+                    debitos += [db for db in ant["debitos"] if db[1] >= 0.01 and db not in debitos]
+                    break
+        creditos = [[cr, tope] for cr, tope in creditos]
+
+        def asignar(cr, db):
+            x = round(min(resto[cr[0]], cap[db[0]], db[1], cr[1] if cr[1] is not None else resto[cr[0]]), 2)
+            if x >= 0.01:
+                asignaciones.append((a["voucher"], cr[0][0], cr[0][1], db[0][1], x))
+                resto[cr[0]] = round(resto[cr[0]] - x, 2)
+                cap[db[0]] = round(cap[db[0]] - x, 2)
+                db[1] = round(db[1] - x, 2)
+                if cr[1] is not None:
+                    cr[1] = round(cr[1] - x, 2)
+
+        for cr in creditos:                   # primero los pares de importe idéntico (línea de tarjeta ↔ factura)
             for db in debitos:
-                x = round(min(resto[cr], cap[db], tope if tope is not None else resto[cr]), 2)
-                if x >= 0.01:
-                    asignaciones.append((a["voucher"], cr[0], cr[1], db[1], x))
-                    resto[cr] = round(resto[cr] - x, 2)
-                    tope = None if tope is None else round(tope - x, 2)
-                    cap[db] = round(cap[db] - x, 2)
-        faltantes += [(a["voucher"], db[1], cap[db]) for db in debitos if cap[db] >= 0.01]
+                if db[1] >= 0.01 and abs(min(resto[cr[0]], cr[1] if cr[1] is not None else resto[cr[0]]) - db[1]) <= 0.01:
+                    asignar(cr, db)
+                    break
+        for cr in creditos:
+            for db in debitos:
+                asignar(cr, db)
+        if v4:
+            anticipos.append({"monto": round(sum(v4), 2), "debitos": [db for db in debitos if db[1] >= 0.01]})
+        faltantes += [(a["voucher"], db[0][1], cap[db[0]]) for db in debitos if db[1] >= 0.01]
 
     asignaciones += tramo_previo(filas, cap, resto)
 
