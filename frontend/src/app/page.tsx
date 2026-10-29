@@ -7,6 +7,7 @@ import { KpiCard } from "@/components/ui/KpiCard";
 import { fetchArrendamientos } from "@/services/arrendamientosApi";
 import { DeudaTotalKpi } from "@/components/inicio/DeudaTotalKpi";
 import { TarjetasPendientesKpi } from "@/components/inicio/TarjetasPendientesKpi";
+import { AvisoFacturasAtrasadas } from "@/components/facturas-faltantes/AvisoFacturasAtrasadas";
 import { ResultadoCampaniaKpi } from "@/components/inicio/ResultadoCampaniaKpi";
 
 interface ProcessCardLink {
@@ -150,6 +151,7 @@ export default function Home() {
       <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <DeudaTotalKpi />
         <TarjetasPendientesKpi />
+        <AvisoFacturasAtrasadas />
         <CuotasArrendamientoKpis />
       </div>
 

@@ -13,12 +13,16 @@ const ESTADO: Record<string, string> = {
 };
 
 /** Rutina diaria de documentos nuevos (043, FR-013): corre sola a las 7:00 y a las 14:00, sin botón. */
+import { AvisoFacturasAtrasadas } from "@/components/facturas-faltantes/AvisoFacturasAtrasadas";
+
 export function RutinaPanel() {
   const q = useQuery({ queryKey: ["documentos-nuevos", "rutina"], queryFn: getEstadoRutina, refetchInterval: 60 * 1000 });
   if (!q.data) return null;
   const u = q.data.ultima;
 
   return (
+    <>
+    <AvisoFacturasAtrasadas />
     <section className="rounded-md border border-border bg-surface px-3 py-2 text-sm">
       <h2 className="font-semibold">Rutina diaria (7:00 y 14:00)</h2>
       <p className="text-ink-secondary">
@@ -36,5 +40,6 @@ export function RutinaPanel() {
         <p className="mt-1 text-ink-muted">Todavía no corrió.</p>
       )}
     </section>
+    </>
   );
 }

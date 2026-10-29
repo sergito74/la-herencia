@@ -117,6 +117,7 @@ const NAV_ITEMS: NavItem[] = [
       { href: "/finanzas/flujo-caja-real", label: "Flujo de caja real" },
       { href: "/finanzas/flujo-caja-rubro", label: "Flujo de caja por rubro" },
       { href: "/finanzas/recalculo-fifo", label: "Recálculo FIFO de cuentas" },
+      { href: "/finanzas/facturas-esperadas", label: "Facturas esperadas" },
       { href: "/finanzas/cuentas-corrientes", label: "Cuentas corrientes", nuevos: "cuentasCorrientes" },
       { href: "/finanzas/auditoria-cuentas", label: "Auditoría de cuentas" },
       { href: "/finanzas/revision-cuentas", label: "Revisión de cuentas" },
