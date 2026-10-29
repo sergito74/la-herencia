@@ -84,3 +84,30 @@ Son 250 cuentas chicas, de 1 a 5 facturas, con algún pago que no es tarjeta. La
 - **Excepciones:**
   - Gentos y Galicia Seguros, con pagos de más. Galicia Seguros ya espera respuesta de Sergio.
   - Electricidad Lavalle, con saldo real de $9.931,72, en la lista de pendientes.
+
+## Grupo 1 — CERRADO (29/10/2026)
+
+Son 19 proveedores con resumen de cuenta (carpeta "Resumenes de Cuenta"). Todos quedaron imputados y ningún saldo cambió, salvo los redondeos que se detallan abajo.
+
+- **Con portal: se copia la imputación del proveedor.**
+  - **Bayá Casal:** recibos y aplicaciones de su extranet (`aplicacion_baya_portal_036`).
+  - **FEDEA:** emulación de su cuenta unificada (`aplicacion_fedea_portal_036`). Cerrada definitivamente en $0 / US$0 con el par de ajustes 161/162; no se opera más.
+  - **Cargill y Lartirigoyen:** ya estaban.
+- **Con resúmenes en papel o PDF: pares 1 a 1 y FIFO estricto, controlados contra el resumen.** En la Cooperativa Agropecuaria, los 29 resúmenes mensuales coinciden con el saldo del sistema a cada fecha, con diferencias de centavos.
+- **Centavos:**
+  - **Fracciones de centavo:** las facturas se llevan a su total al centavo, porque la vista calcula cantidad × precio × IVA sin redondear (`jym_centavo_exacto_036 <cuenta>`).
+  - **Pares 1 a 1 con diferencia ≤0,10%:** la factura se redondea a lo pagado (`jym_redondeo_pares_036 <cuenta>`).
+  - **Origen de los arrastres:**
+    - Jáuregui: FC 0011-00010603 llevada a su ticket, $1.582.000.
+    - Cooperativa Eléctrica: ajuste 19 (saldo inicial 2011) llevado a $268, lo pagado.
+    - Cooperativa Agropecuaria: FC 00039-11092 redondeada a lo pagado.
+    - Agrovet: FC 0003-67661 redondeada a lo pagado.
+    - Cuatro Vientos: FC 0002-23 redondeada a lo pagado.
+- **Motor FIFO:**
+  1. Los documentos en US$ entran al motor en dólares. Antes la vista los pasaba pesificados y el motor los volvía a multiplicar por el TC. Con este cambio se re-imputaron 17 cuentas con documentos en US$.
+  2. Desempate entre facturas del mismo vencimiento: va primero la de importe idéntico al pago.
+- **Enlaces a PDF de Jáuregui:** 14 corregidos (`.crdownload` completos copiados a `.pdf`, archivos de la fecha).
+- **Quedan fuera de mi alcance:**
+  - **Esperan a Sergio:** Ferias del Centro ($143,12 de banco), Madelan ($11.190,33 de banco), Gentos y Galicia Seguros (pagos de más).
+  - **Espera el extracto de octubre:** la Cooperativa Eléctrica. El portal no muestra impaga la boleta 233471 y muestra $125.553,71 a favor.
+  - **Comprobantes que no están ni en disco ni en el mail:** 7 facturas de Jáuregui de 2023-24 (0008-3711, 0009-39283, 0011-33, 0011-3, 0011-325, 0009-48496, 0008-7875), la 0009-52613 y la 0005-51851 de 2016.
