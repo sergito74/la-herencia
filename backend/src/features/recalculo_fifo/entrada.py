@@ -143,7 +143,11 @@ def armar(id_contactos: list[int]) -> dict[int, dict]:
         lado, importe = ("D", deuda) if abs(deuda) >= abs(credito) else ("C", credito)
         if importe < 0:  # importe negativo en un lado equivale al otro lado
             lado, importe = ("C" if lado == "D" else "D"), -importe
-        base = {"lado": lado, "clase": "doc" if origen in DOCUMENTOS else "dinero", "fecha": fecha,
+        # Asiento negativo de Pagos efectivo ("Particular L/S", o "La Herencia" en 2017-2018; regla 07/10/2026): la parte
+        # personal que pagó la empresa es un cargo, no dinero; se cruza en su fecha con el consumo de tarjeta que la
+        # pagó (Sergio 29/10/2026, Carrefour).
+        es_particular = origen == "Pagos efectivo" and lado == "D"
+        base = {"lado": lado, "clase": "doc" if origen in DOCUMENTOS or es_particular else "dinero", "fecha": fecha,
                 "nro": str(f["nro"] or ""), "moneda": "ARS", "tcDoc": None, "suspendido": False,
                 "ajustaTc": False, "documento": f["documento"]}
         if origen == "Compras":

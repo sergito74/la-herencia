@@ -35,12 +35,20 @@ if __name__ == "__main__":
         f"JOIN dbo.Contactos k ON k.IdContacto = c.IdContacto WHERE c.IdContacto IN ({lista})", ())
     sueltas = fetch_all(f"SELECT IdContacto AS ct, Fecha AS f, Credito AS x, Origen AS o FROM dbo.vw_MovimientosCuenta_Base "
                         f"WHERE IdContacto IN ({lista}) AND Origen IN ('Tarjetas','Tarjeta sin imputar') AND Credito > 0", ())
+    # compras particulares (regla 07/10/2026): la factura descuenta la parte personal y un asiento "Particular L/S" del
+    # mismo día compensa lo que la tarjeta pagó de más
+    particular = defaultdict(float)
+    for r in fetch_all(f"SELECT IdContacto AS ct, Fecha AS f, Credito AS x FROM dbo.vw_MovimientosCuenta_Base WHERE IdContacto IN ({lista}) "
+                       "AND Origen = 'Pagos efectivo' AND Credito < 0", ()):
+        particular[(r["ct"], r["f"].date())] += -float(r["x"])
     filas, pct_por_cuenta = [], defaultdict(list)
     for d in docs:
         t = float(d["v"] or 0)
         if (d["td"] and "Cr" in d["td"]) or t <= 0:
             continue
         x = round(vinc.get(d["i"], 0.0), 2)
+        if x > t and particular.get((d["ct"], d["f"].date())):
+            x = round(x - particular[(d["ct"], d["f"].date())], 2)   # parte particular compensada con su asiento
         if x and abs(t - x) / t <= 0.001:
             continue
         pct = (t - x) / t * 100 if x else None
