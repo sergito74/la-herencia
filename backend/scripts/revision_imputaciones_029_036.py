@@ -63,11 +63,11 @@ if __name__ == "__main__":
             if origen != "Compras" or d["lado"] != "D" or d["clase"] != "doc":
                 continue
             a, n = sorted(antes.get(ident, [])), sorted(ahora.get(ident, []))
-            if a == n:
+            if a == n and "--todas" not in sys.argv:
                 continue
-            cambios += 1
+            cambios += a != n
             hoja.append([d["nro"] or d["documento"], d["fecha"], d["vencimiento"], _pesos(float(d["importe"])),
-                         "\n".join(a) or "(sin pagar)", "\n".join(n) or "(sin pagar)"])
+                         "\n".join(a) or "(sin pagar)", "\n".join(n) or "(sin pagar)", "Sí" if a != n else ""])
         for col, ancho in zip("ABCDEFG", (18, 12, 12, 16, 42, 42, 9)):
             hoja.column_dimensions[col].width = ancho
         for fila in hoja.iter_rows(min_row=2):
