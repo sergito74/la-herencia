@@ -139,3 +139,31 @@ async def adjuntar_recibo(id_salario: int, archivo: UploadFile) -> AdjuntarRecib
         raise HTTPException(status_code=400, detail=str(e)) from e
 
     return AdjuntarReciboResponse(idSalario=id_salario, recibo=ruta)
+
+
+# Cálculo acordado del adicional de Marcelo, 045.
+from fastapi import Request
+from src.features.remuneraciones import adicional
+
+
+@router.get("/{id_salario}/adicional")
+async def consultar_adicional(id_salario: int):
+    try:
+        dato=await run_in_threadpool(adicional.obtener,id_salario)
+    except ValueError as exc:
+        raise HTTPException(400,str(exc)) from exc
+    if dato is None:
+        raise HTTPException(404,"Liquidación no encontrada")
+    return dato
+
+
+@router.post("/{id_salario}/adicional")
+async def guardar_adicional(id_salario: int, request: Request):
+    try:
+        usuario=str(getattr(request.state,"usuario",{}).get("idUsuario","sistema"))
+        dato=await run_in_threadpool(adicional.guardar,id_salario,usuario)
+    except ValueError as exc:
+        raise HTTPException(409,str(exc)) from exc
+    if dato is None:
+        raise HTTPException(404,"Liquidación no encontrada")
+    return dato

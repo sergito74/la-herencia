@@ -99,3 +99,18 @@ En la misma pantalla de alta, quien carga la liquidación puede adjuntar el PDF 
 - Editar o eliminar una liquidación ya cargada (por esta vía o heredada de Access) queda fuera de esta feature — si hace falta corregir un error de carga, es un pedido aparte.
 - El nombre de archivo que genera el sistema para un PDF nuevo sigue un único formato consistente (a diferencia de los años del archivo histórico, que tienen formatos muy variados) — esto no cambia los nombres ya existentes en disco, solo estandariza los que esta feature genera de acá en adelante.
 - "Período liquidado" sigue siendo un campo de texto libre (no un selector estricto de mes/año) — el histórico real incluye valores legítimos que no son un mes calendario (ej. "Jornal 26/09", "Agosto 2023 - Bono", "Diciembre 2021 (Extra)"), así que restringirlo a un picker de mes/año dejaría afuera casos reales. El sistema sugiere por defecto "Mes Año" a partir de la fecha de pago elegida, pero permite editarlo libremente. La verificación de duplicados (FR-004) compara el texto del período tal cual (sin normalizar mes/año), consistente con cómo ya está cargado el histórico.
+
+
+## Corrección de recibos de sueldo recibidos por mail — 29/10/2026
+
+Sergio pidió revisar el barrido porque los sueldos de octubre no estaban cargados y confirmó avanzar. El mail del estudio del 28/10/2026 21:12 contiene un resumen y un PDF con un recibo por página; el barrido del 29/10 había adelantado su marca, pero no reconocía estos formatos como comprobantes. No había avisos ni liquidaciones de octubre.
+
+Extensión acotada: reconocer recibos mensuales con CUIT de Giamigli, resolver cada empleado por CUIL único de contacto Empleado, leer todos los conceptos y controlar el neto al centavo. Código 0123 es Día Gremio. Concepto desconocido, signo inesperado, empresa distinta, identidad ambigua o diferencia contra una liquidación existente no autoriza una carga. Errores pasan al aviso pendiente existente del barrido, nunca se omiten en silencio. No crear contactos ni pagos.
+
+El PDF completo y el resumen se conservan en Personal/Recibos/año; se separa una página por empleado bajo el nombre estándar de 028. No se reemplaza un PDF distinto. La deduplicación automática compara empleado y período normalizado (Mes Año o fecha heredada) y neto, sin alterar la política del alta manual de 028. Comprobación, inserciones y aviso de barrido comparten transacción/bloqueo central.
+
+Sin fecha de pago impresa, se usa cierre del período como fecha de devengamiento en la columna heredada Fecha de pago, siguiendo el importador histórico `cargar_recibos_sueldo.py`; no es evidencia de transferencia ni se genera un pago. En este lote: 31/10/2026. Se informa expresamente a Sergio.
+
+Aviso único por paquete en Finanzas/Tesorería, tipo Recibos de sueldo, con enlace a Personal/Remuneraciones; el resumen se guarda como referencia sin duplicar deuda ni generar otro aviso de carga. No se agrega esquema ni persistencia paralela. Recuperación acotada del mail con `scripts/reprocesar_sueldos_mail.py`: simula por defecto y toma respaldo verificado antes de --aplicar; no retrocede marcas ni rebarre otros correos.
+
+Validación y aplicación: [validacion-sueldos-20261029.md](../043-rutina-documentos-nuevos/validacion-sueldos-20261029.md).

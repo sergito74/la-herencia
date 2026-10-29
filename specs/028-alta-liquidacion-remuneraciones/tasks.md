@@ -124,3 +124,11 @@ description: "Task list for Alta de liquidación de remuneraciones (028)"
 1. Setup + Foundational → fórmula de neto corregida en producción (ya mejora el listado existente, incluso antes de tener alta).
 2. + User Story 1 → alta de liquidaciones sin recibo, ya usable.
 3. + User Story 2 → alta completa con PDF adjunto, feature cerrada.
+
+
+### Recibos mensuales por mail — 29/10/2026
+- [x] Diagnosticar mensaje recibido, barrido y liquidaciones existentes.
+- [x] Leer paquete mensual y Día Gremio con controles al centavo, CUIL y duplicados.
+- [x] Integrar al barrido, separar hojas, conservar paquete/resumen y enlazar aviso a Remuneraciones.
+- [x] Verificar con pruebas sin escrituras en WC (56 pasan).
+- [x] Reprocesar octubre con respaldo verificado, revisar archivos individuales y verificar liquidaciones únicas; dejar lector integrado para la próxima apertura (aplicación cerrada al finalizar).

@@ -21,7 +21,7 @@ export default function RemuneracionesPage() {
       <BackLink href="/">Volver al inicio</BackLink>
       <h1 className="mt-2 text-2xl font-semibold">Remuneraciones</h1>
       <p className="mt-1 text-ink-secondary">
-        Liquidaciones de remuneraciones y pagos efectivos (solo lectura).
+        Liquidaciones de remuneraciones y pagos del personal.
       </p>
 
       <div className="mt-6 flex gap-2">

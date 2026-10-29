@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+import { AdicionalSierra } from "@/components/remuneraciones/AdicionalSierra";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 
@@ -69,6 +71,8 @@ function AdjuntarReciboAccion({ idSalario, onSubido }: { idSalario: number; onSu
 
 function buildColumns(onReciboSubido: () => Promise<void> | void): DataTableColumn<Remuneracion>[] {
   return [
+    { key: "adicional", header: "Adicional fuera de recibo", render: (r) => r.idContacto === 374 && !r.periodoLiquidado?.toLowerCase().startsWith("adicional fuera de recibo") ? <AdicionalSierra idSalario={r.idSalario} /> : "—" },
+    { key: "trabajos", header: "Trabajos", render: (r) => <Link className="text-finance underline" href={`/personal/trabajos-eventuales?idContacto=${r.idContacto ?? ""}&empleado=${encodeURIComponent(r.empleado ?? "")}&idSalario=${r.idSalario}`}>Ver / vincular</Link> },
     {
       key: "fechaPago",
       header: "Fecha de pago",
