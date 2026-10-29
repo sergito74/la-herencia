@@ -127,3 +127,11 @@
 2. **Sincronización**: US2 → carga automática; validar con PDFs reales antes de habilitarla en la tarea semanal.
 3. US3 + US4 → historial, estado y contador.
 4. Polish → tests, validación manual, revisión de especialista; recién entonces Sergio corre el instalador actualizado.
+
+
+### Corrección Rutas Sur — 29/10/2026
+- [x] Incorporar lectura de formato nuevo con validación al centavo y conservar formato anterior.
+- [x] Registrar lectura por sincronización general y usar nombre oficial en descargas.
+- [x] Impedir contactos duplicados por CUIT, nombre normalizado y alias Corresur, con protección ante concurrencia.
+- [x] Preparar script idempotente de reparación con simulación predeterminada, respaldo verificado y transacción.
+- [x] Aplicar reparación y verificar compras únicas, avisos y nombre oficial en WC.

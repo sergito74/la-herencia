@@ -99,3 +99,14 @@ frontend/src/
 ## Complexity Tracking
 
 Sin violaciones.
+
+
+## Corrección Rutas Sur / Corresur — 29/10/2026
+
+Pedido de Sergio: leer los dos PDF `20261028_Corresur*.pdf` por descarga de peajes y sincronización general, impedir contactos equivalentes y quitar Corresur como proveedor separado. El nombre oficial es **Rutas Sur Atlantico S.A.**, CUIT 30-71945419-0.
+
+Criterios: reconocer el formato nuevo conservando el anterior; validar CUIT, fecha de emisión real, detalle, IVA y total al centavo; registrar el lector general para el contacto 2657; usar el nombre oficial en nuevas descargas y documentos existentes. Rechazar altas/ediciones que repitan CUIT normalizado o razón social sin diferencias de puntuación/acentos, considerando Corresur un alias de Rutas Sur. Las altas/ediciones se serializan para evitar dos altas concurrentes. No inventar coincidencias entre otros nombres comerciales sin CUIT.
+
+Hallazgo: en WC existe un solo contacto (2657), con nombre oficial y CUIT correcto. No hay contacto Corresur para eliminar. La diferencia de nombres estaba en las descargas. Las dos compras ya existían (2143525172 y 2143525173), pero sus avisos seguían para carga manual y los documentos no tenían número/importe. No duplicar ni eliminar estas compras; completar metadatos y dejar avisos para revisión.
+
+Implementación y aplicación: ver [validacion-rutas-sur-20261029.md](../043-rutina-documentos-nuevos/validacion-rutas-sur-20261029.md).

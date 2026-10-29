@@ -192,6 +192,33 @@ def leer_rutas_rs(texto: str) -> Leido:
     return Leido(nro, fecha, renglones, total)
 
 
+def leer_rutas_sur(texto: str) -> Leido:
+    """Factura A vigente de Rutas Sur; conserva también el formato anterior."""
+    if "Subtotal IVA Contenido Otros Impuestos" not in texto:
+        return leer_rutas_rs(texto)
+    if not re.search(r"CUIT:\s*30-?71945419-?0\b", texto):
+        raise NoReconocido("El CUIT no corresponde a Rutas Sur Atlantico S.A.")
+    nro = _buscar(r"^(\d{4}-\d{8})$", texto, "el número de factura").group(1)
+    fecha = _fecha(_buscar(r"\bFecha\s+(\d{2}/\d{2}/\d{4})", texto, "la fecha").group(1))
+    cab = _buscar(r"^Subtotal IVA Contenido Otros Impuestos Percepción IIBB PCIA Percepción IIBB CABA TOTAL$",
+                  texto, "los títulos de impuestos")
+    fila = _buscar(r"^\s*\$\s*(" + IMPORTE + r")(?:\s+\$\s*" + IMPORTE + r"){5}\s*$",
+                   texto[cab.end():], "los seis totales")
+    neto, iva, otros, provincia, caba, total = _fila_numeros(fila.group(0))
+    bloque = _entre(texto[:cab.start()], "Cantidad Descripción Importe", "ARCA")
+    renglones = _renglones_cant_desc_importe(bloque, "PEAJE")
+    from decimal import Decimal, ROUND_HALF_UP
+    centavo = Decimal("0.01")
+    suma = sum((Decimal(str(r["cantidad"])) * Decimal(str(r["precioUnitario"]))).quantize(centavo, ROUND_HALF_UP)
+               for r in renglones)
+    if suma != Decimal(str(neto)) or (Decimal(str(neto)) * Decimal("0.21")).quantize(centavo, ROUND_HALF_UP) != Decimal(str(iva)):
+        raise NoReconocido("El detalle o el IVA no coincide con los importes impresos")
+    if sum(Decimal(str(v)) for v in (neto, iva, otros, provincia, caba)) != Decimal(str(total)):
+        raise NoReconocido("Los impuestos y el neto no coinciden con el total impreso")
+    return Leido(nro, fecha, renglones, total, ingresos_brutos=round(provincia + caba, 2),
+                 conceptos_no_gravados=otros)
+
+
 def leer_telepeaje(texto: str) -> Leido:
     nro = _buscar(r"Nº:\s*(\d{4}-\d{9})", texto, "el número de resumen").group(1)
     fecha = _fecha(_buscar(r"Cierre:\s*(\d{2}/\d{2}/\d{4})", texto, "la fecha de cierre").group(1))
@@ -236,7 +263,9 @@ def leer(proveedor: str, texto: str) -> Leido:
         return leer_ausol_ceamse(texto, "PEAJE", ceamse=True)
     if proveedor == "AUSA":
         return leer_ausa(texto)
-    if proveedor in ("Corresur", "CV5"):
+    if proveedor in ("Corresur", "Rutas Sur Atlantico S.A."):
+        return leer_rutas_sur(texto)
+    if proveedor == "CV5":
         return leer_rutas_rs(texto)
     if proveedor == "CorredoresViales":
         return leer_rutas_rs(texto) if re.search(r"^Código: 1$", texto, re.M) else leer_gco_cvsa_aubasa(texto, "PASADA")

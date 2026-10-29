@@ -28,7 +28,7 @@ TIMEOUT_MS = 60000
 
 # Nombre estándar de archivo → proveedor en Compras (data-model.md).
 CONTACTOS = {
-    "Telepeaje": 328, "CorredoresViales": 436, "Corresur": 2657, "CV5": 2658, "AutopistasDelSol": 276,
+    "Telepeaje": 328, "CorredoresViales": 436, "Rutas Sur Atlantico S.A.": 2657, "CV5": 2658, "AutopistasDelSol": 276,
     "GrupoConcesionarioDelOeste": 306, "AUSA": 380, "Ceamse": 314, "AUBASA": 316,
 }
 # Las 7 concesionarias del filtro de TelePASE (todas se bajan, pedido de Sergio 2026-10-16).
@@ -39,7 +39,7 @@ NOMBRES_TS = {
     "AU. BS AS - LA PLATA": "AUBASA", "AU. ROSARIO - SANTA FE": "AutopistaRosarioSantaFe",
     "AU. DEL MERCOSUR": "AutopistaDelMercosur",
 }
-NOMBRES_TP = [("CVSA", "CorredoresViales"), ("CORRESUR", "Corresur"), ("PENTAVIA", "CV5")]
+NOMBRES_TP = [("CVSA", "CorredoresViales"), ("CORRESUR", "Rutas Sur Atlantico S.A."), ("PENTAVIA", "CV5")]
 
 
 class ErrorPortal(Exception):
