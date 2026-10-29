@@ -1,0 +1,5 @@
+# Adicional de Marcelo Sierra
+
+GET /api/remuneraciones/{idSalario}/adicional: solo contacto 374 + CUIL 20132391670. Devuelve netoRecibo (importe de liquidación menos bonificación actual), adicional 30%, feriados 8.5%, redondeo, totalAdicional, totalACobrar, registrado, periodo, tieneCalculo. Los porcentajes se aplican al neto fiscal, cada componente redondeado a múltiplo de 5 con mitad hacia arriba. Después se redondea automáticamente hacia arriba a la centena, según respuesta de Sergio. La consulta muestra el adicional registrado separado del cálculo propuesto; consultar no modifica históricos.
+
+POST mismo endpoint, body vacío; no admite alterar los porcentajes ni el ajuste desde el navegador. Recalcula contra valores vigentes bajo bloqueo, valida capacidad de vínculos, actualiza solamente Bonificacion adicional en registro existente; persiste desglose y auditoría. No crea pago. Lectura 403 para escritura. Inexistente 404; otro trabajador 400 en lectura/409 en escritura. Ningún dato financiero cambia al abrir/calcular.

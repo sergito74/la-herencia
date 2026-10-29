@@ -132,7 +132,7 @@ const NAV_ITEMS: NavItem[] = [
     href: "/personal",
     label: "Personal",
     icon: ICONS.personal,
-    submenu: [{ href: "/personal/remuneraciones", label: "Remuneraciones" }],
+    submenu: [{ href: "/personal/remuneraciones", label: "Remuneraciones" }, { href: "/personal/trabajos-eventuales", label: "Trabajos eventuales" }],
   },
   {
     href: "/produccion",

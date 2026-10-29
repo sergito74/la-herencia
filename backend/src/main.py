@@ -195,6 +195,9 @@ app.include_router(planificacion_router)
 app.include_router(reasignacion_contacto_router)
 app.include_router(resultado_cultivo_router)
 app.include_router(stock_router)
+from src.features.trabajos_eventuales.router import router as trabajos_eventuales_router
+
+app.include_router(trabajos_eventuales_router)
 app.include_router(remuneraciones_router)
 app.include_router(sesion_router)
 app.include_router(tarjetas_router)
