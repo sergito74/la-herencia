@@ -8,6 +8,8 @@ chequeo de rol propio acá.
 from __future__ import annotations
 
 import mimetypes
+from datetime import date
+from pydantic import BaseModel
 
 from fastapi import APIRouter, HTTPException, Query, UploadFile
 from fastapi.responses import FileResponse
@@ -166,4 +168,45 @@ async def guardar_adicional(id_salario: int, request: Request):
         raise HTTPException(409,str(exc)) from exc
     if dato is None:
         raise HTTPException(404,"Liquidación no encontrada")
+    return dato
+
+
+
+@router.get("/{id_salario}")
+async def get_liquidacion(id_salario: int):
+    dato = await run_in_threadpool(repository.get_liquidacion_detalle, id_salario)
+    if dato is None:
+        raise HTTPException(404, "Liquidación no encontrada")
+    return dato
+
+
+@router.put("/{id_salario}", response_model=NuevaLiquidacionResponse)
+async def actualizar_liquidacion(id_salario: int, body: NuevaLiquidacionRequest):
+    existente = await run_in_threadpool(repository.get_liquidacion_detalle, id_salario)
+    if existente is None:
+        raise HTTPException(404, "Liquidación no encontrada")
+    if not await run_in_threadpool(repository.existe_contacto_empleado, body.idContacto):
+        raise HTTPException(400, "El contacto elegido no es un Empleado válido.")
+    resultado = await run_in_threadpool(repository.actualizar_liquidacion, id_salario, body)
+    return NuevaLiquidacionResponse(**resultado)
+
+
+class PagoCajaAdicionalRequest(BaseModel):
+    fecha: date
+    cuenta: str = "B"
+
+
+@router.post("/{id_salario}/adicional/pago-caja")
+async def pagar_adicional_caja(id_salario: int, body: PagoCajaAdicionalRequest, request: Request):
+    try:
+        usuario = str(getattr(request.state, "usuario", {}).get("idUsuario", "sistema"))
+        dato = await run_in_threadpool(
+            adicional.registrar_pago_caja_giamigli,
+            id_salario,
+            body.fecha,
+            body.cuenta,
+            usuario,
+        )
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from exc
     return dato

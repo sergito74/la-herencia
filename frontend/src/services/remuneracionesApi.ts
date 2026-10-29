@@ -8,7 +8,7 @@
  * into `Contactos` (confirmed against real data — see research.md).
  */
 
-import { API_BASE_URL, apiGet, apiPost, ApiError } from "@/services/apiClient";
+import { API_BASE_URL, apiGet, apiPost, apiPut, ApiError } from "@/services/apiClient";
 
 export interface Remuneracion {
   idSalario: number;
@@ -136,4 +136,50 @@ export async function subirRecibo(idSalario: number, archivo: File): Promise<Adj
     throw new ApiError(response.status, detalle || response.statusText);
   }
   return (await response.json()) as AdjuntarReciboResponse;
+}
+
+
+export interface LiquidacionDetalle {
+  idSalario: number;
+  idContacto: number;
+  empleado: string;
+  fechaPago: string;
+  periodoLiquidado: string;
+  recibo: string | null;
+  sueldoBasico: number;
+  antiguedad: number;
+  adicFuturosAumentos: number;
+  diaGremio: number;
+  aguinaldo: number;
+  vacaciones: number;
+  ajuste: number;
+  ajusteNoRemunerativo: number;
+  redondeo: number;
+  bonificacionAdicional: number;
+  jubilacion: number;
+  ley19032: number;
+  obraSocial: number;
+  obraSocialAcuerdos: number;
+  aporteSindical: number;
+  servicioDeSepelio: number;
+  importeTotal: number;
+  netoRecibo: number;
+}
+
+export function fetchLiquidacion(idSalario: number): Promise<LiquidacionDetalle> {
+  return apiGet<LiquidacionDetalle>(`/api/remuneraciones/${idSalario}`);
+}
+
+export function actualizarLiquidacion(
+  idSalario: number,
+  request: NuevaLiquidacionRequest
+): Promise<NuevaLiquidacionResponse> {
+  return apiPut<NuevaLiquidacionResponse>(`/api/remuneraciones/${idSalario}`, request);
+}
+
+export function registrarPagoAdicionalCaja(
+  idSalario: number,
+  data: { fecha: string; cuenta: string }
+): Promise<any> {
+  return apiPost(`/api/remuneraciones/${idSalario}/adicional/pago-caja`, data);
 }

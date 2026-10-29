@@ -1,19 +1,23 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 
-import { crearLiquidacion, subirRecibo, type NuevaLiquidacionRequest } from "@/services/remuneracionesApi";
+import {
+  crearLiquidacion,
+  actualizarLiquidacion,
+  fetchLiquidacion,
+  subirRecibo,
+  type NuevaLiquidacionRequest,
+} from "@/services/remuneracionesApi";
 import { ApiError } from "@/services/apiClient";
 import { ContactoSelect } from "@/components/ui/ContactoSelect";
 import { filterInputClass } from "@/components/ui/FilterBar";
 import { MoneyInput } from "@/components/ui/MoneyInput";
 import { useToast } from "@/components/ui/Toast";
 import { formatMoneda } from "@/lib/format";
+import { AdicionalSierra } from "@/components/remuneraciones/AdicionalSierra";
 
-/** Conceptos "haber" (suman al neto) y "descuento" (restan) — misma
- * clasificación que `repository.py::_CONCEPTOS_HABERES/_DESCUENTOS`
- * (028, FR-014). Todos se cargan siempre en positivo, tal como figuran
- * en el recibo real. */
 const HABERES: { campo: keyof NuevaLiquidacionRequest; label: string }[] = [
   { campo: "sueldoBasico", label: "Sueldo básico" },
   { campo: "antiguedad", label: "Antigüedad" },
@@ -60,13 +64,15 @@ function calcularNeto(conceptos: Conceptos): number {
   return haberes - descuentos;
 }
 
-/**
- * Alta de liquidación de remuneraciones (028 US1/US2). Elegir empleado,
- * cargar los conceptos (siempre en positivo) y opcionalmente adjuntar el
- * PDF del recibo — datos numéricos y PDF son pasos independientes
- * (Assumptions de spec.md), ninguno bloquea al otro.
- */
-export function NuevaLiquidacionForm({ onCreada }: { onCreada: () => Promise<void> | void }) {
+export function LiquidacionForm({
+  idSalario,
+  onGuardada,
+  onCancelar,
+}: {
+  idSalario?: number | null;
+  onGuardada: () => Promise<void> | void;
+  onCancelar?: () => void;
+}) {
   const { showToast } = useToast();
   const [empleado, setEmpleado] = useState<{ id: number | null; nombre: string | null }>({
     id: null,
@@ -81,24 +87,36 @@ export function NuevaLiquidacionForm({ onCreada }: { onCreada: () => Promise<voi
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Cargar datos si estamos en modo edición
+  const { data: detalle, isLoading: cargandoDetalle } = useQuery({
+    queryKey: ["liquidacion-detalle", idSalario],
+    queryFn: () => fetchLiquidacion(idSalario!),
+    enabled: !!idSalario,
+  });
+
+  useEffect(() => {
+    if (detalle) {
+      setEmpleado({ id: detalle.idContacto, nombre: detalle.empleado });
+      setFechaPago(detalle.fechaPago || "");
+      setPeriodoLiquidado(detalle.periodoLiquidado || "");
+      setPeriodoEditadoAMano(true);
+      const nuevosConceptos: Conceptos = {};
+      [...HABERES, ...DESCUENTOS].forEach((c) => {
+        nuevosConceptos[c.campo] = (detalle as any)[c.campo] ?? 0;
+      });
+      setConceptos(nuevosConceptos);
+    }
+  }, [detalle]);
+
   function actualizarFecha(valor: string) {
     setFechaPago(valor);
-    if (!periodoEditadoAMano) setPeriodoLiquidado(periodoSugerido(valor));
+    if (!periodoEditadoAMano && !idSalario) {
+      setPeriodoLiquidado(periodoSugerido(valor));
+    }
   }
 
   function actualizarConcepto(campo: string, valor: number) {
     setConceptos((prev) => ({ ...prev, [campo]: valor }));
-  }
-
-  function limpiar() {
-    setEmpleado({ id: null, nombre: null });
-    setFechaPago("");
-    setPeriodoLiquidado("");
-    setPeriodoEditadoAMano(false);
-    setConceptos(CONCEPTOS_VACIOS);
-    setArchivo(null);
-    setDuplicadoAviso(null);
-    setError(null);
   }
 
   async function guardar(confirmarDuplicado: boolean) {
@@ -125,12 +143,23 @@ export function NuevaLiquidacionForm({ onCreada }: { onCreada: () => Promise<voi
         confirmarDuplicado,
         ...conceptos,
       };
-      const resultado = await crearLiquidacion(request);
+
+      let idFinal = idSalario;
+      if (idSalario) {
+        await actualizarLiquidacion(idSalario, request);
+        showToast("Liquidación actualizada con éxito.", "success");
+      } else {
+        const resultado = await crearLiquidacion(request);
+        idFinal = resultado.idSalario;
+        showToast("Liquidación guardada.", "success");
+      }
+
       setDuplicadoAviso(null);
 
-      if (archivo) {
+      if (archivo && idFinal) {
         try {
-          await subirRecibo(resultado.idSalario, archivo);
+          await subirRecibo(idFinal, archivo);
+          showToast("Recibo subido.", "success");
         } catch (e) {
           showToast(
             e instanceof ApiError
@@ -141,9 +170,7 @@ export function NuevaLiquidacionForm({ onCreada }: { onCreada: () => Promise<voi
         }
       }
 
-      showToast("Liquidación guardada.", "success");
-      limpiar();
-      await onCreada();
+      await onGuardada();
     } catch (e) {
       if (e instanceof ApiError && e.status === 409) {
         setDuplicadoAviso(e.message);
@@ -156,19 +183,54 @@ export function NuevaLiquidacionForm({ onCreada }: { onCreada: () => Promise<voi
   }
 
   const neto = calcularNeto(conceptos);
+  const esSierra = empleado.id === 374;
+
+  if (idSalario && cargandoDetalle) {
+    return (
+      <div className="rounded-md border border-border bg-surface-sunken p-6 text-center text-sm">
+        Cargando datos de la liquidación…
+      </div>
+    );
+  }
 
   return (
-    <div className="space-y-4 rounded-md border border-border bg-surface-sunken p-4">
+    <div className="space-y-4 rounded-md border border-border bg-surface-sunken p-5 shadow-sm">
+      <div className="flex items-center justify-between border-b border-border pb-3">
+        <h2 className="text-base font-semibold text-ink">
+          {idSalario ? `Edición de liquidación · ${periodoLiquidado || ""}` : "Nueva liquidación"}
+        </h2>
+        {onCancelar && (
+          <button
+            type="button"
+            onClick={onCancelar}
+            className="text-xs text-ink-secondary hover:text-ink underline"
+          >
+            Cerrar formulario
+          </button>
+        )}
+      </div>
+
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <div>
-          <ContactoSelect
-            label="Empleado"
-            tipoContacto="Empleado"
-            value={empleado.id}
-            razonSocial={empleado.nombre}
-            onChange={(id, nombre) => setEmpleado({ id, nombre })}
-            placeholder="Buscar empleado…"
-          />
+          {idSalario ? (
+            <label className="text-sm">
+              Empleado
+              <input
+                className={filterInputClass}
+                disabled
+                value={empleado.nombre ?? ""}
+              />
+            </label>
+          ) : (
+            <ContactoSelect
+              label="Empleado"
+              tipoContacto="Empleado"
+              value={empleado.id}
+              razonSocial={empleado.nombre}
+              onChange={(id, nombre) => setEmpleado({ id, nombre })}
+              placeholder="Buscar empleado…"
+            />
+          )}
         </div>
         <label className="text-sm">
           Fecha de pago
@@ -188,10 +250,29 @@ export function NuevaLiquidacionForm({ onCreada }: { onCreada: () => Promise<voi
               setPeriodoEditadoAMano(true);
               setPeriodoLiquidado(e.target.value);
             }}
-            placeholder="Ej: Septiembre 2026"
+            placeholder="Ej: Octubre 2026"
           />
         </label>
       </div>
+
+      {/* Recuadro especial para Adicional de Marcelo Sierra y Asiento de Caja */}
+      {idSalario && esSierra && (
+        <div className="rounded border border-finance/30 bg-blue-50/50 p-4">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <h3 className="text-sm font-semibold text-finance">
+                Adicional fuera de recibo (Marcelo Sierra)
+              </h3>
+              <p className="text-xs text-ink-secondary mt-0.5">
+                Cálculo del 30% + feriados 8,5% y asiento de egreso en efectivo de la Caja Giamigli SA.
+              </p>
+            </div>
+            <div>
+              <AdicionalSierra idSalario={idSalario} fechaSugerida={fechaPago} />
+            </div>
+          </div>
+        </div>
+      )}
 
       <div>
         <h3 className="text-sm font-medium text-ink-secondary">
@@ -232,7 +313,7 @@ export function NuevaLiquidacionForm({ onCreada }: { onCreada: () => Promise<voi
       </div>
 
       <label className="block text-sm">
-        Adjuntar recibo (PDF) — opcional, se puede subir después
+        Adjuntar / Reemplazar recibo (PDF)
         <input
           type="file"
           accept="application/pdf"
@@ -241,9 +322,9 @@ export function NuevaLiquidacionForm({ onCreada }: { onCreada: () => Promise<voi
         />
       </label>
 
-      <div className="flex items-center justify-between rounded-md border border-border bg-surface px-4 py-2">
-        <span className="text-sm text-ink-secondary">Importe neto</span>
-        <span className="text-lg font-semibold">{formatMoneda(neto)}</span>
+      <div className="flex items-center justify-between rounded-md border border-border bg-surface px-4 py-3">
+        <span className="text-sm font-medium text-ink-secondary">Neto total liquidado</span>
+        <span className="text-xl font-bold text-ink">{formatMoneda(neto)}</span>
       </div>
 
       {error && <p className="text-sm text-status-danger">{error}</p>}
@@ -262,16 +343,29 @@ export function NuevaLiquidacionForm({ onCreada }: { onCreada: () => Promise<voi
         </div>
       )}
 
-      <div className="flex justify-end">
+      <div className="flex justify-end gap-3 pt-2">
+        {onCancelar && (
+          <button
+            type="button"
+            disabled={guardando}
+            onClick={onCancelar}
+            className="rounded border border-border px-4 py-2 text-sm text-ink hover:bg-surface"
+          >
+            Cancelar
+          </button>
+        )}
         <button
           type="button"
           disabled={guardando}
           onClick={() => guardar(false)}
-          className="rounded bg-finance px-4 py-2 text-sm text-white disabled:opacity-50"
+          className="rounded bg-finance px-5 py-2 text-sm font-medium text-white hover:bg-finance/90 disabled:opacity-50"
         >
-          {guardando ? "Guardando…" : "Guardar liquidación"}
+          {guardando ? "Guardando…" : idSalario ? "Guardar cambios" : "Guardar liquidación"}
         </button>
       </div>
     </div>
   );
 }
+
+// Mantener compatibilidad retroactiva con imports de NuevaLiquidacionForm
+export const NuevaLiquidacionForm = LiquidacionForm;

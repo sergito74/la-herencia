@@ -289,3 +289,62 @@ def search_pagos_remuneracion(page: int, page_size: int) -> tuple[list[dict], in
     """
     rows = fetch_all(sql, (offset, page_size))
     return rows, total
+
+
+
+def get_liquidacion_detalle(id_salario: int) -> dict | None:
+    sql = f"""
+        SELECT
+            r.IdSalario AS idSalario,
+            r.IdContacto AS idContacto,
+            c.[Razon Social] AS empleado,
+            r.[Fecha de pago] AS fechaPago,
+            r.[Periodo liquidado] AS periodoLiquidado,
+            r.Recibo AS recibo,
+            ISNULL(r.[Sueldo basico], 0) AS sueldoBasico,
+            ISNULL(r.[Antiguedad], 0) AS antiguedad,
+            ISNULL(r.[Adic futuros aumentos], 0) AS adicFuturosAumentos,
+            ISNULL(r.[Dia Gremio], 0) AS diaGremio,
+            ISNULL(r.[Aguinaldo], 0) AS aguinaldo,
+            ISNULL(r.[Vacaciones], 0) AS vacaciones,
+            ISNULL(r.[Ajuste], 0) AS ajuste,
+            ISNULL(r.[Ajuste No Remunerativo], 0) AS ajusteNoRemunerativo,
+            ISNULL(r.[Redondeo], 0) AS redondeo,
+            ISNULL(r.[Bonificacion adicional], 0) AS bonificacionAdicional,
+            ISNULL(r.[Jubilacion], 0) AS jubilacion,
+            ISNULL(r.[Ley 19032], 0) AS ley19032,
+            ISNULL(r.[Obra Social], 0) AS obraSocial,
+            ISNULL(r.[Obra Social Acuerdos], 0) AS obraSocialAcuerdos,
+            ISNULL(r.[Aporte Sindical], 0) AS aporteSindical,
+            ISNULL(r.[Servicio de Sepelio], 0) AS servicioDeSepelio,
+            ({_IMPORTE_SQL}) AS importeTotal,
+            (({_IMPORTE_SQL}) - ISNULL(r.[Bonificacion adicional], 0)) AS netoRecibo
+        FROM dbo.Remuneraciones r
+        LEFT JOIN dbo.Contactos c ON c.IdContacto = r.IdContacto
+        WHERE r.IdSalario = ?
+    """
+    row = fetch_one(sql, (id_salario,))
+    if not row:
+        return None
+    d = dict(row)
+    if d.get("fechaPago"):
+        d["fechaPago"] = str(d["fechaPago"])[:10]
+    return d
+
+
+def actualizar_liquidacion(id_salario: int, request: NuevaLiquidacionRequest) -> dict:
+    columnas_concepto = list(_REQUEST_A_COLUMNA.values())
+    valores_concepto = [getattr(request, campo) for campo in _REQUEST_A_COLUMNA]
+
+    set_clauses = ["IdContacto = ?", "[Fecha de pago] = ?", "[Periodo liquidado] = ?"]
+    for col in columnas_concepto:
+        set_clauses.append(f"{col} = ?")
+    
+    sql = f"UPDATE dbo.Remuneraciones SET {', '.join(set_clauses)} WHERE IdSalario = ?"
+    params = (request.idContacto, request.fechaPago, request.periodoLiquidado, *valores_concepto, id_salario)
+    execute_write(sql, params)
+
+    conceptos = dict(zip(columnas_concepto, valores_concepto, strict=True))
+    from src.features.auditoria_cuentas.bimonetaria import invalidar
+    invalidar()
+    return {"idSalario": id_salario, "importeNeto": calcular_importe_neto(conceptos)}

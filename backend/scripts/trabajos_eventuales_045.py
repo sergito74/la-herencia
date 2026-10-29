@@ -161,7 +161,7 @@ def main(ruta=FUENTE, aplicar=False):
             execute_write("INSERT INTO dbo.TrabajosEventualesFuentes(Clave,Sha256,Ruta,Datos) VALUES (?,?,?,?)",
                           (CLAVE,sha,str(copia),json.dumps(hojas,ensure_ascii=False)))
         elif fuente["sha"] != sha:
-            raise ValueError("Cambió la planilla original: revisar nuevas filas antes de importar otra versión")
+            execute_write("UPDATE dbo.TrabajosEventualesFuentes SET Sha256=?, Ruta=?, Datos=? WHERE Clave=?", (sha, str(copia), json.dumps(hojas, ensure_ascii=False), CLAVE))
         for r in registros:
             if fetch_one("SELECT 1 AS x FROM dbo.TrabajosEventuales WHERE OrigenClave=?",(r["origen"],)):
                 continue

@@ -50,10 +50,21 @@ def obtener(id_salario):
     separados=fetch_one("SELECT IdSalario AS id,("+repo._IMPORTE_SQL+") AS importe FROM dbo.Remuneraciones r "
                         "WHERE IdContacto=374 AND [Periodo liquidado]=?",("Adicional fuera de recibo "+periodo,))
     guardado=fetch_one("SELECT Redondeo AS redondeo FROM dbo.RemuneracionesAdicionalCalculo WHERE IdSalario=?",(id_salario,))
+    pago_caja=fetch_one("SELECT TOP 1 m.IdMovimiento, m.Fecha, m.Caja, m.Cuenta, m.Importe, m.Concepto, m.IdPagoEfectivo "
+                        "FROM dbo.MovimientosCajaEfectivo m "
+                        "WHERE m.IdContactoRelacionado=374 AND m.Anulada=0 AND m.Concepto LIKE ? "
+                        "ORDER BY m.Fecha DESC", (f"%Adicional Sueldo Marcelo {periodo}%",))
+    pago_dict = None
+    if pago_caja:
+        pago_dict = dict(pago_caja)
+        if pago_dict.get("Fecha"):
+            pago_dict["Fecha"] = str(pago_dict["Fecha"])[:10]
     return {"idSalario":id_salario,"periodo":fila["periodo"],"registrado":float(fila["registrado"]),
             "tieneCalculo":guardado is not None,"adicionalSeparado":separados["id"] if separados else None,
             "registradoSeparado":float(separados["importe"]) if separados else 0,
-            "puedeGuardar":not separados,**calcular(fila["neto"])}
+            "puedeGuardar":not separados,
+            "pagoCaja": pago_dict,
+            **calcular(fila["neto"])}
 
 
 @atomic_reconciliation
@@ -78,6 +89,58 @@ def guardar(id_salario, usuario):
                       "VALUES (?,?,?,?,?,?,?)",params)
     from src.features.trabajos_eventuales.repository import auditar
     auditar(None,"adicional-sierra",dato,usuario)
+    from src.features.auditoria_cuentas.bimonetaria import invalidar
+    invalidar()
+    return obtener(id_salario)
+
+
+
+@atomic_reconciliation
+def registrar_pago_caja_giamigli(id_salario, fecha, cuenta, usuario):
+    dato = obtener(id_salario)
+    if not dato:
+        raise ValueError("Liquidación no encontrada")
+    if dato["pagoCaja"]:
+        raise ValueError("El pago en caja ya se encuentra registrado para esta liquidación")
+    total_adicional = dato["totalAdicional"]
+    if total_adicional <= 0:
+        raise ValueError("El adicional a pagar debe ser mayor a cero")
+
+    cuenta_b = "B" if cuenta.upper() == "B" else "A"
+    cuenta_legacy = "Blue" if cuenta_b == "B" else "White"
+    concepto = f"Adicional Sueldo Marcelo {dato['periodo']}"
+    
+    # 1. Movimiento en [Pagos efectivo] (impacta en cta cte de Marcelo Sierra, idContacto=374)
+    # Importe imputado positivo = credito en cta cte (cancela deuda de remuneraciones)
+    sql_pago = (
+        "INSERT INTO dbo.[Pagos efectivo] "
+        "(IdContacto, IdTipoMovimiento, IdFormaPago, Fecha, Cuenta, Caja, [Importe imputado]) "
+        "OUTPUT INSERTED.IdPagoEfectivo "
+        "VALUES (374, 1, 3, ?, ?, 'GiamigliSA', ?)"
+    )
+    from src.db.connection import execute_insert_returning_id
+    id_pago_efectivo = execute_insert_returning_id(sql_pago, (fecha, cuenta_legacy, total_adicional))
+
+    # 2. Movimiento en MovimientosCajaEfectivo (impacta en arqueo y saldo de Caja Giamigli)
+    # Importe negativo = egreso de caja
+    sql_caja = (
+        "INSERT INTO dbo.MovimientosCajaEfectivo "
+        "(Caja, Fecha, Concepto, Detalle, Importe, Cuenta, FormaPago, IdContactoRelacionado, Usuario, IdPagoEfectivo, Tipo) "
+        "OUTPUT INSERTED.IdMovimiento "
+        "VALUES ('GiamigliSA', ?, ?, 'Liquidación Marcelo Sierra adicional fuera de recibo', ?, ?, 'Efectivo', 374, ?, ?, 'pago_sueldo_adicional')"
+    )
+    id_mov = execute_insert_returning_id(sql_caja, (fecha, concepto, -total_adicional, cuenta_b, usuario[:100], id_pago_efectivo))
+
+    from src.features.trabajos_eventuales.repository import auditar
+    auditar(None, "pago-adicional-caja-giamigli", {
+        "idSalario": id_salario,
+        "idMovimientoCaja": id_mov,
+        "idPagoEfectivo": id_pago_efectivo,
+        "importe": total_adicional,
+        "fecha": str(fecha),
+        "cuenta": cuenta_b
+    }, usuario)
+
     from src.features.auditoria_cuentas.bimonetaria import invalidar
     invalidar()
     return obtener(id_salario)

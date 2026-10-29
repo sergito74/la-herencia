@@ -16,20 +16,13 @@ import { FilterBar, FilterSubmitButton } from "@/components/ui/FilterBar";
 import { EmptyState, ErrorState, LoadingState } from "@/components/ui/States";
 import { useToast } from "@/components/ui/Toast";
 import { formatMoneda, formatFecha } from "@/lib/format";
-import { NuevaLiquidacionForm } from "@/components/remuneraciones/NuevaLiquidacionForm";
+import { LiquidacionForm } from "@/components/remuneraciones/NuevaLiquidacionForm";
 import {
   BASE_DOCUMENTOS_RECIBOS,
   esReciboAusente,
   normalizarDocumentoOriginal,
 } from "@/lib/documentoLocal";
 
-/** El recibo se resuelve en dos pasos: primero `dbo.Remuneraciones.Recibo`
- * (columna real, cargada a mano en ~40% de las liquidaciones — mismo
- * patrón roto "ruta#ruta#" que `documentoOriginal` de Compras/Ventas), y
- * si está vacía o es un centinela ("SIN RECIBO"), se cae al matching por
- * nombre de archivo de `GET /api/remuneraciones/{id}/recibo` (backlog
- * post-025, punto 3) — la columna manda cuando existe: es la fuente que
- * cargó una persona a mano, más confiable que adivinar por nombre.*/
 function urlDelRecibo(r: Remuneracion): string {
   if (!esReciboAusente(r.recibo)) {
     return urlDocumentoLocal(normalizarDocumentoOriginal(r.recibo as string, BASE_DOCUMENTOS_RECIBOS));
@@ -37,10 +30,6 @@ function urlDelRecibo(r: Remuneracion): string {
   return urlRecibo(r.idSalario);
 }
 
-/** Acción inline "Adjuntar"/"Reemplazar" (028 US2, T020) — un input de
- * archivo oculto por fila, sin abrir ningún modal. Reemplaza también
- * queda disponible para filas que ya tienen recibo (por si hay que
- * corregir uno mal escaneado). */
 function AdjuntarReciboAccion({ idSalario, onSubido }: { idSalario: number; onSubido: () => Promise<void> | void }) {
   const { showToast } = useToast();
   const [subiendo, setSubiendo] = useState(false);
@@ -69,10 +58,46 @@ function AdjuntarReciboAccion({ idSalario, onSubido }: { idSalario: number; onSu
   );
 }
 
-function buildColumns(onReciboSubido: () => Promise<void> | void): DataTableColumn<Remuneracion>[] {
+function buildColumns(
+  onReciboSubido: () => Promise<void> | void,
+  onEditar: (idSalario: number) => void
+): DataTableColumn<Remuneracion>[] {
   return [
-    { key: "adicional", header: "Adicional fuera de recibo", render: (r) => r.idContacto === 374 && !r.periodoLiquidado?.toLowerCase().startsWith("adicional fuera de recibo") ? <AdicionalSierra idSalario={r.idSalario} /> : "—" },
-    { key: "trabajos", header: "Trabajos", render: (r) => <Link className="text-finance underline" href={`/personal/trabajos-eventuales?idContacto=${r.idContacto ?? ""}&empleado=${encodeURIComponent(r.empleado ?? "")}&idSalario=${r.idSalario}`}>Ver / vincular</Link> },
+    {
+      key: "acciones",
+      header: "Acción",
+      render: (r) => (
+        <button
+          type="button"
+          onClick={() => onEditar(r.idSalario)}
+          className="rounded border border-border bg-surface px-2.5 py-1 text-xs font-medium text-finance hover:bg-surface-sunken"
+        >
+          Ver / Editar
+        </button>
+      ),
+    },
+    {
+      key: "adicional",
+      header: "Adicional fuera de recibo",
+      render: (r) =>
+        r.idContacto === 374 && !r.periodoLiquidado?.toLowerCase().startsWith("adicional fuera de recibo") ? (
+          <AdicionalSierra idSalario={r.idSalario} fechaSugerida={r.fechaPago ?? undefined} />
+        ) : (
+          "—"
+        ),
+    },
+    {
+      key: "trabajos",
+      header: "Trabajos",
+      render: (r) => (
+        <Link
+          className="text-finance underline"
+          href={`/personal/trabajos-eventuales?idContacto=${r.idContacto ?? ""}&empleado=${encodeURIComponent(r.empleado ?? "")}&idSalario=${r.idSalario}`}
+        >
+          Ver / vincular
+        </Link>
+      ),
+    },
     {
       key: "fechaPago",
       header: "Fecha de pago",
@@ -117,11 +142,6 @@ function buildColumns(onReciboSubido: () => Promise<void> | void): DataTableColu
   ];
 }
 
-/**
- * Listado de liquidaciones de remuneraciones (005 US2: FR-002). Read-only.
- * "Importe (calculado)": suma de ~15 conceptos monetarios en SQL, no un
- * campo directo — Principio IV, ver data-model.md.
- */
 export function RemuneracionesListado({
   highlightKey,
   empleadoInicial,
@@ -136,6 +156,7 @@ export function RemuneracionesListado({
   const [appliedEmpleado, setAppliedEmpleado] = useState(empleadoInicial ?? "");
   const [page, setPage] = useState(1);
   const [mostrarAlta, setMostrarAlta] = useState(false);
+  const [editandoId, setEditandoId] = useState<number | null>(null);
   const pageSize = 50;
 
   const { data, isLoading, isError, refetch } = useQuery({
@@ -164,22 +185,39 @@ export function RemuneracionesListado({
         <FilterSubmitButton />
       </FilterBar>
 
-      <SoloLectura>
-        <button
-          type="button"
-          onClick={() => setMostrarAlta((v) => !v)}
-          className="rounded border border-border px-3 py-1.5 text-sm hover:bg-surface-sunken"
-        >
-          {mostrarAlta ? "Cancelar" : "Nueva liquidación…"}
-        </button>
-      </SoloLectura>
+      <div className="flex items-center gap-3">
+        <SoloLectura>
+          <button
+            type="button"
+            onClick={() => {
+              setEditandoId(null);
+              setMostrarAlta((v) => !v);
+            }}
+            className="rounded border border-border px-3 py-1.5 text-sm font-medium hover:bg-surface-sunken"
+          >
+            {mostrarAlta ? "Cancelar alta" : "Nueva liquidación…"}
+          </button>
+        </SoloLectura>
+      </div>
 
       {mostrarAlta && (
-        <NuevaLiquidacionForm
-          onCreada={async () => {
+        <LiquidacionForm
+          onGuardada={async () => {
             setMostrarAlta(false);
             if (appliedEmpleado !== "") await refetch();
           }}
+          onCancelar={() => setMostrarAlta(false)}
+        />
+      )}
+
+      {editandoId && (
+        <LiquidacionForm
+          idSalario={editandoId}
+          onGuardada={async () => {
+            setEditandoId(null);
+            await refetch();
+          }}
+          onCancelar={() => setEditandoId(null)}
         />
       )}
 
@@ -193,9 +231,16 @@ export function RemuneracionesListado({
 
       {appliedEmpleado !== "" && data && (
         <DataTable
-          columns={buildColumns(async () => {
-            await refetch();
-          })}
+          columns={buildColumns(
+            async () => {
+              await refetch();
+            },
+            (id) => {
+              setMostrarAlta(false);
+              setEditandoId(id);
+              window.scrollTo({ top: 0, behavior: "smooth" });
+            }
+          )}
           rows={data.items}
           keyField={(r) => r.idSalario}
           emptyMessage="Sin resultados para esta búsqueda."
