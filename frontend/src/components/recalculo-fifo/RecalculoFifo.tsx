@@ -47,7 +47,9 @@ const REGLA: Record<string, string> = {
   "nota-origen": "NC a su factura",
   "ajuste-tc": "Ajuste de tipo de cambio",
   compensacion: "Compensación",
-  fifo: "FIFO",
+  "importe-identico": "Importe idéntico",
+  combinacion: "Combinación exacta",
+  fifo: "Por fecha",
   anticipo: "Anticipo",
   reintegro: "Reintegro",
 };

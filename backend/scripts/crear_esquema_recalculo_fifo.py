@@ -75,7 +75,8 @@ CREATE TABLE dbo.RecalculoFifoAplicacion (
     TipoCambio         decimal(18,6)  NULL,
     DiferenciaCambio   decimal(18,2)  NOT NULL DEFAULT 0,
     Regla              varchar(20)    NOT NULL CONSTRAINT CK_RFA_Regla CHECK (Regla IN
-        ('cadena','eleccion','nota-origen','ajuste-tc','compensacion','fifo','anticipo','diferencia-cambio','reintegro')),
+        ('cadena','eleccion','nota-origen','ajuste-tc','compensacion','fifo','anticipo','diferencia-cambio','reintegro',
+         'importe-identico','combinacion')),
     FechaCredito       date           NULL,
     FechaVencimiento   date           NULL,
     CONSTRAINT FK_RFA_Ejecucion FOREIGN KEY (IdEjecucion) REFERENCES dbo.RecalculoFifoEjecucion (IdEjecucion)
@@ -150,6 +151,16 @@ BEGIN
         'bna', 'galicia', 'efectivo', 'valores-recibidos', 'valores-propios', 'tarjetas',
         'retenciones', 'ret-iva-granos', 'ret-ventas-hacienda',
         'comp-compra', 'comp-venta-granos', 'comp-venta-hacienda'));
+END
+""",
+    # Regla aprobada el 29/10/2026 (036): pares de importe idéntico y combinaciones exactas.
+    """
+IF EXISTS (SELECT 1 FROM sys.check_constraints WHERE name = 'CK_RFA_Regla' AND definition NOT LIKE '%importe-identico%')
+BEGIN
+    ALTER TABLE dbo.RecalculoFifoAplicacion DROP CONSTRAINT CK_RFA_Regla;
+    ALTER TABLE dbo.RecalculoFifoAplicacion ADD CONSTRAINT CK_RFA_Regla CHECK (Regla IN
+        ('cadena','eleccion','nota-origen','ajuste-tc','compensacion','fifo','anticipo','diferencia-cambio','reintegro',
+         'importe-identico','combinacion'));
 END
 """,
 ]

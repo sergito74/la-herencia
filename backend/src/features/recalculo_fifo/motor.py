@@ -156,9 +156,11 @@ class _Libro:
         """regla_029, antes del reparto. Para cada renglón entero, por fecha:
         1) un documento del otro lado, entero y de importe idéntico: el más
            cercano en fecha, después el anterior y después el de número más bajo;
-           si el importe se repite `REPETIDOS` veces en ±1 ciclo, lo decide el FIFO;
+           si el importe se repite `REPETIDOS` veces en ±1 ciclo, lo decide el FIFO, salvo que haya
+           uno solo del mismo día (compra pagada en el acto);
         2) si no, una única combinación de 2 o 3 documentos abiertos del otro
-           lado (a menos de un año) que sume exacto; si hay más de una, nada."""
+           lado (a menos de un año) que sume exacto; si hay más de una, nada.
+           Una factura entera busca también la combinación de 2 o 3 pagos enteros."""
         from itertools import combinations
         enteros = lambda i: not i.get("suspendido") and i["rem"] > 0 and abs(i["rem"] - float(i["importe"])) <= TOLERANCIA_CENTAVOS
         for x in sorted(self.items, key=lambda i: (i["fecha"], _orden(i))):
@@ -168,9 +170,16 @@ class _Libro:
                      and y["moneda"] == x["moneda"] and not y.get("suspendido") and y["rem"] > 0]
             if x["clase"] == "doc":
                 otros = [y for y in otros if y["lado"] == "D"] if x["lado"] == "C" else []
-            iguales = [y for y in otros if enteros(y) and abs(y["rem"] - x["rem"]) <= 0.01]
+            if x["clase"] == "doc" and x["lado"] == "D":   # factura pagada con 2 o 3 pagos que suman exacto
+                otros = [y for y in self.items if y["lado"] == "C" and y["clase"] == "dinero" and y["moneda"] == x["moneda"]
+                         and enteros(y)]
+            iguales = [] if x["clase"] == "doc" and x["lado"] == "D" else [
+                y for y in otros if enteros(y) and abs(y["rem"] - x["rem"]) <= 0.01]
             cerca = [y for y in iguales if abs((y["fecha"] - x["fecha"]).days) <= CICLO]
-            if iguales and len(cerca) < REPETIDOS:
+            mismo_dia = [y for y in iguales if y["fecha"] == x["fecha"]]
+            if len(mismo_dia) == 1:   # compra pagada en el acto: no importa que el importe se repita
+                iguales = mismo_dia
+            if iguales and (len(cerca) < REPETIDOS or len(mismo_dia) == 1):
                 orden = sorted(iguales, key=lambda y: (abs((y["fecha"] - x["fecha"]).days), y["fecha"] > x["fecha"], str(y.get("nro") or "")))
                 if len(orden) > 1 and abs((orden[0]["fecha"] - x["fecha"]).days) == abs((orden[1]["fecha"] - x["fecha"]).days):
                     self.marcas.add("empate-a-revisar")
