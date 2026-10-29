@@ -95,3 +95,29 @@ frontend/src/
 ## Complexity Tracking
 
 Sin violaciones de la Constitución.
+
+
+## Corrección Rutas Sur / Corresur — 29/10/2026
+
+Pedido de Sergio: leer los dos PDF `20261028_Corresur*.pdf` por descarga de peajes y sincronización general, impedir contactos equivalentes y quitar Corresur como proveedor separado. El nombre oficial es **Rutas Sur Atlantico S.A.**, CUIT 30-71945419-0.
+
+Criterios: reconocer el formato nuevo conservando el anterior; validar CUIT, fecha de emisión real, detalle, IVA y total al centavo; registrar el lector general para el contacto 2657; usar el nombre oficial en nuevas descargas y documentos existentes. Rechazar altas/ediciones que repitan CUIT normalizado o razón social sin diferencias de puntuación/acentos, considerando Corresur un alias de Rutas Sur. Las altas/ediciones se serializan para evitar dos altas concurrentes. No inventar coincidencias entre otros nombres comerciales sin CUIT.
+
+Hallazgo: en WC existe un solo contacto (2657), con nombre oficial y CUIT correcto. No hay contacto Corresur para eliminar. La diferencia de nombres estaba en las descargas. Las dos compras ya existían (2143525172 y 2143525173), pero sus avisos seguían para carga manual y los documentos no tenían número/importe. No duplicar ni eliminar estas compras; completar metadatos y dejar avisos para revisión.
+
+Implementación y aplicación: ver [validacion-rutas-sur-20261029.md](../043-rutina-documentos-nuevos/validacion-rutas-sur-20261029.md).
+
+
+## Corrección de recibos de sueldo recibidos por mail — 29/10/2026
+
+Sergio pidió revisar el barrido porque los sueldos de octubre no estaban cargados y confirmó avanzar. El mail del estudio del 28/10/2026 21:12 contiene un resumen y un PDF con un recibo por página; el barrido del 29/10 había adelantado su marca, pero no reconocía estos formatos como comprobantes. No había avisos ni liquidaciones de octubre.
+
+Extensión acotada: reconocer recibos mensuales con CUIT de Giamigli, resolver cada empleado por CUIL único de contacto Empleado, leer todos los conceptos y controlar el neto al centavo. Código 0123 es Día Gremio. Concepto desconocido, signo inesperado, empresa distinta, identidad ambigua o diferencia contra una liquidación existente no autoriza una carga. Errores pasan al aviso pendiente existente del barrido, nunca se omiten en silencio. No crear contactos ni pagos.
+
+El PDF completo y el resumen se conservan en Personal/Recibos/año; se separa una página por empleado bajo el nombre estándar de 028. No se reemplaza un PDF distinto. La deduplicación automática compara empleado y período normalizado (Mes Año o fecha heredada) y neto, sin alterar la política del alta manual de 028. Comprobación, inserciones y aviso de barrido comparten transacción/bloqueo central.
+
+Sin fecha de pago impresa, se usa cierre del período como fecha de devengamiento en la columna heredada Fecha de pago, siguiendo el importador histórico `cargar_recibos_sueldo.py`; no es evidencia de transferencia ni se genera un pago. En este lote: 31/10/2026. Se informa expresamente a Sergio.
+
+Aviso único por paquete en Finanzas/Tesorería, tipo Recibos de sueldo, con enlace a Personal/Remuneraciones; el resumen se guarda como referencia sin duplicar deuda ni generar otro aviso de carga. No se agrega esquema ni persistencia paralela. Recuperación acotada del mail con `scripts/reprocesar_sueldos_mail.py`: simula por defecto y toma respaldo verificado antes de --aplicar; no retrocede marcas ni rebarre otros correos.
+
+Validación y aplicación: [validacion-sueldos-20261029.md](../043-rutina-documentos-nuevos/validacion-sueldos-20261029.md).

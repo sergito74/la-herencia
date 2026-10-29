@@ -17,6 +17,7 @@ from src.features.documentos_nuevos.schemas import CambioModulo, EstadoRutina, I
 router = APIRouter(prefix="/api/documentos-nuevos", tags=["documentos-nuevos"])
 
 TIPOS = {
+    "recibos_sueldo": "Recibos de sueldo", "resumen_sueldos": "Resumen de sueldos",
     "factura": "Factura", "nota_credito": "Nota de crédito", "nota_debito": "Nota de débito", "boleta": "Boleta",
     "retencion": "Certificado de retención", "liquidacion": "Liquidación", "recibo": "Recibo",
     "resumen_banco": "Resumen de banco", "resumen_tarjeta": "Resumen de tarjeta",
@@ -30,6 +31,8 @@ def _fecha_hora(valor) -> str:
 
 
 def _enlace(d: dict) -> str | None:
+    if d["tipo"] in ("recibos_sueldo", "resumen_sueldos"):
+        return "/personal/remuneraciones"
     if d["modulo"] == "compras" and d["idRegistro"]:
         return f"/compras/{d['idRegistro']}/editar"
     if d["modulo"] == "impuestos" and d["idRegistro"]:
@@ -51,7 +54,7 @@ def _item(d: dict, renglones: list[dict]) -> dict:
     item = {
         "idDocumentoNuevo": d["idDocumentoNuevo"], "origen": origen, "origenDetalle": detalle,
         "tipo": TIPOS.get(d["tipo"], d["tipo"].replace("_", " ").capitalize()), "modulo": d["modulo"],
-        "estado": d["estado"], "motivo": d["motivo"], "contacto": d["contacto"], "idContacto": d["idContacto"],
+        "estado": d["estado"], "motivo": d["motivo"], "contacto": ("Sueldos de Giamigli" if d["tipo"] in ("recibos_sueldo", "resumen_sueldos") else d["contacto"]), "idContacto": d["idContacto"],
         "fecha": (iso(d["fecha"]) or "")[:10] or None, "numero": d["numero"],
         "total": float(d["total"]) if d["total"] is not None else None,
         "archivo": Path(d["ruta"]).name, "ruta": d["ruta"], "idRegistro": d["idRegistro"], "enlace": _enlace(d),

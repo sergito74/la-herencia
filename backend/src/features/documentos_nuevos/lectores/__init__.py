@@ -20,6 +20,7 @@ from src.features.boveda.conectores import DocumentoPortal, cargar_conectores
 # (tipo, IdContacto del emisor) → código del conector de la bóveda cuyo lector se usa.
 LECTORES: dict[tuple[str, int], str] = {
     ("factura", 71): "movistar",
+    ("factura", 2657): "telepeajeplus",
 }
 
 
@@ -38,6 +39,8 @@ def cargar(tipo: str, id_contacto: int, proveedor: str, numero: str | None, fech
     conector = lector_para(tipo, id_contacto)
     if conector is None:
         return None
+    if id_contacto == 2657:
+        proveedor = "Rutas Sur Atlantico S.A."
     doc = DocumentoPortal(clave=f"mail:{ruta}", fecha=fecha, tipo=tipo, proveedor=proveedor, bajar=lambda: pdf,
                           numero=numero, id_contacto=id_contacto)
     return carga.cargar(conector, doc, pdf, ruta)

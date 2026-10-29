@@ -105,6 +105,10 @@ def procesar_adjunto(id_corrida: int | None, mail: mails.Mail, adj: mails.Adjunt
         texto = clasificador.texto_pdf(adj.contenido)
     else:
         texto = adj.contenido.decode("utf-8", errors="ignore")
+    from src.features.documentos_nuevos.lectores import sueldos
+
+    if adj.nombre.lower().endswith(".pdf") and sueldos.reconoce(texto):
+        return sueldos.procesar(mail, adj, texto, sha, id_corrida)
     c = clasificador.clasificar(texto, clasificador.buscar_contacto_por_cuit)
     if not c.comprobante or not c.para_giamigli:
         return None  # no es comprobante, o es de otra sociedad: no se guarda ni avisa

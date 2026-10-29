@@ -1,0 +1,7 @@
+# Corrección Rutas Sur — contrato complementario (29/10/2026)
+
+- Proveedor oficial: Rutas Sur Atlantico S.A., CUIT 30719454190, contacto existente 2657. Corresur solo es alias compatible para lectura histórica.
+- Descarga de peajes: el listado de TelepeajePlus devuelve el nombre oficial, sin cambiar claves documentales. La lectura conserva el formato anterior e incorpora los seis totales del nuevo: neto, IVA contenido, otros impuestos, percepciones IIBB provincia/CABA y total. Detalle, IVA y total deben cerrar al centavo; CUIT distinto o importes inconsistentes dejan pendiente sin carga.
+- Sincronización general: factura + contacto 2657 usa el mismo lector de peajes. No se crea contacto desde el clasificador.
+- `POST /api/contactos` y `PATCH /api/contactos/{id}`: responden **409** con `detail` legible si CUIT normalizado o nombre normalizado/alias coincide con otro contacto. La edición propia conserva identidad; Corresur se guarda con nombre oficial. Altas y ediciones usan la transacción y bloqueo central para serializar la comprobación y escritura. No se agrega restricción SQL global sobre duplicados históricos ni se fusionan otros contactos automáticamente.
+- Reparación local: `python -m scripts.reprocesar_rutas_sur` solo lee; `--aplicar` toma respaldo verificado y actualiza los documentos/avisos en una transacción. Conserva los originales. No borra contactos inexistentes; se detiene si detecta más de una identidad de Rutas Sur. Compras existentes se reutilizan por contacto y número después de verificar total al centavo.

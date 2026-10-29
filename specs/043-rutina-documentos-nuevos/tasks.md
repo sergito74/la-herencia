@@ -153,3 +153,19 @@ T021 mails.py || T022 clasificador.py
 2. US2: rutina + mails + clasificador → validar con corrida de prueba → commit.
 3. US3: De Campo a Campo (solo Giamigli) → commit.
 4. Lectores adicionales, uno por commit, cada uno contra cargas reales.
+
+
+### Corrección Rutas Sur — 29/10/2026
+- [x] Incorporar lectura de formato nuevo con validación al centavo y conservar formato anterior.
+- [x] Registrar lectura por sincronización general y usar nombre oficial en descargas.
+- [x] Impedir contactos duplicados por CUIT, nombre normalizado y alias Corresur, con protección ante concurrencia.
+- [x] Preparar script idempotente de reparación con simulación predeterminada, respaldo verificado y transacción.
+- [x] Aplicar reparación y verificar compras únicas, avisos y nombre oficial en WC.
+
+
+### Recibos mensuales por mail — 29/10/2026
+- [x] Diagnosticar mensaje recibido, barrido y liquidaciones existentes.
+- [x] Leer paquete mensual y Día Gremio con controles al centavo, CUIL y duplicados.
+- [x] Integrar al barrido, separar hojas, conservar paquete/resumen y enlazar aviso a Remuneraciones.
+- [x] Verificar con pruebas sin escrituras en WC (56 pasan).
+- [x] Reprocesar octubre con respaldo verificado, revisar archivos individuales y verificar liquidaciones únicas; dejar lector integrado para la próxima apertura (aplicación cerrada al finalizar).
