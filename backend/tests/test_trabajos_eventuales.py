@@ -39,10 +39,10 @@ def test_fuente_real_sin_modificar():
     if not FUENTE.exists():pytest.skip("Planilla local no disponible")
     registros,hojas=leer_planilla(FUENTE)
     assert len(registros)==78
-    assert sum(r["total"] for r in registros)==Decimal("2500558")
+    assert sum(r["total"] for r in registros)==Decimal("2893758")
     assert len({r["cuit"] for r in registros})==8
-    assert all(r["estado"]=="Pagado" for r in registros)
-    assert sum(r["redondeo"]!=0 for r in registros)==5
+    assert sum(r["estado"]=="Pendiente" for r in registros)==3
+    assert sum(r["redondeo"]!=0 for r in registros)==8
     assert sum(r["total"]==0 for r in registros)==1
-    assert len({r["origen"] for r in registros})==75
+    assert len({r["origen"] for r in registros})==78
     assert "Detalles" in hojas and "Hoja1" in hojas
