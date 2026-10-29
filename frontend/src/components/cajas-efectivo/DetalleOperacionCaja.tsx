@@ -28,6 +28,7 @@ export function DetalleOperacionCaja({ id, onClose }: { id: number; onClose: () 
     {detalle.isLoading && <p>Cargando detalle…</p>}
     {detalle.isError && <p role="alert">{detalle.error.message} <button onClick={() => detalle.refetch()}>Reintentar</button></p>}
     {d && <><p>{d.estado} · {d.operacion.concepto} · {formatFecha(d.operacion.fecha)} · {formatMoneda(Number(d.operacion.importe), monedaCaja(d.operacion.caja))}</p><p>Registró {d.usuario} · {d.fechaCarga}</p>
+      {d.operacion.tipo !== "canje_socio" && d.operacion.numeroTransaccion && <p>Transacción bancaria N° {d.operacion.numeroTransaccion}</p>}
       {d.operacion.idContacto && <a className="underline" href={`/finanzas/cuentas-corrientes?idContacto=${d.operacion.idContacto}`}>Ver cuenta del contacto</a>}
       {banco && <a className="block underline" href={`/finanzas/tesoreria?medio=${banco.medio}&highlight=${banco.idMovimiento}`}>Ver movimiento bancario de origen</a>}
       {d.operacion.tipo === "canje_socio" ? <div className="space-y-1"><p>Efectivo recibido: {formatMoneda(Number(d.operacion.importe))}.</p><p>Transferencia al socio: {formatMoneda(Number(d.operacion.importe))}{d.operacion.numeroTransaccion && ` · transacción bancaria N° ${d.operacion.numeroTransaccion}`}.</p><p>Saldo del socio: sin cambios.</p><a className="underline" href={`/finanzas/cuentas-socios/${d.operacion.idSocio}`}>Ver cuenta del socio</a></div>

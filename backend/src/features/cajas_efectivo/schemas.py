@@ -158,8 +158,8 @@ class OperacionCaja(Estricto):
             raise ValueError("Solo retorno de sueldo requiere idSalario.")
         if self.tipo == "retorno_sueldo_opcion_a" and not self.evidencia:
             raise ValueError("El retorno de sueldo requiere evidencia.")
-        if self.numeroTransaccion and self.tipo != "canje_socio":
-            raise ValueError("El número de transacción bancaria solo corresponde al canje de socio.")
+        if self.numeroTransaccion and self.tipo not in ("canje_socio", "extraccion_banco", "deposito_banco"):
+            raise ValueError("El número de transacción bancaria solo corresponde a canje de socio, extracción o depósito.")
         if (self.intermediario or self.evidencia) and not bancario:
             raise ValueError("Intermediario/evidencia solo corresponde a movimientos bancarios.")
         if (

@@ -210,3 +210,10 @@ def test_numero_de_transaccion_queda_en_el_asiento_de_caja(monkeypatch):
     assert json.loads(op['Solicitud'])['numeroTransaccion'] == '000123456'
     for bad in [dict(request('aporte', idSocio=1), numeroTransaccion='1'), dict(pendiente(), numeroTransaccion='x'*61)]:
         assert store.client.post('/api/cajas-efectivo/operaciones/previsualizar', json=bad).status_code == 422
+
+
+def test_numero_de_transaccion_en_extraccion_y_deposito():
+    from src.features.cajas_efectivo.schemas import OperacionCaja
+    for tipo in ('extraccion_banco', 'deposito_banco'):
+        op = OperacionCaja.model_validate(request(tipo, banco={'medio': 'bna', 'idMovimiento': 7}, numeroTransaccion='987'))
+        assert op.numeroTransaccion == '987'

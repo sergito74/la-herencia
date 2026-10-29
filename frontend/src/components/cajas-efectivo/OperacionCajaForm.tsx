@@ -64,6 +64,7 @@ export function OperacionCajaForm({ caja, initial, onSaved, onPrepared }: {
   const esSocio = ["aporte", "retiro_a_cuenta", "retiro_ganancias", "canje_socio"].includes(tipo);
   const esBanco = ["extraccion_banco", "deposito_banco", "retorno_sueldo_opcion_a", "canje_socio"].includes(tipo);
   const usaExtracto = esBanco && (!esCanje || vincularExtracto);
+  const conTransaccion = ["canje_socio", "extraccion_banco", "deposito_banco"].includes(tipo);
   const docs = useQuery({ queryKey: ["caja-documentos", contacto, tipo], queryFn: () => fetchDocumentosPendientes(contacto!, tipo === "pago" ? "compra" : "venta"), enabled: esContacto && !!contacto });
   const socios = useQuery({ queryKey: ["cuentas-socios"], queryFn: fetchSocios, enabled: esSocio || particular });
   const catalogos = useQuery({ queryKey: ["compras-filtros"], queryFn: fetchFiltrosCompras, enabled: tipo === "gasto_sin_comprobante" });
@@ -90,13 +91,13 @@ export function OperacionCajaForm({ caja, initial, onSaved, onPrepared }: {
       ...((tipo === "aporte" || tipo === "retiro_a_cuenta") && socio === 3 && contraparte ? { cajaContraparte: "condominio-lsc" as CajaSlug } : {}),
       ...(caja === "condominio-lsc" || (socio === 3 && contraparte && !esCanje) ? { motivoRelacionGiamigli: motivo } : {}),
       ...(esCanje && !vincularExtracto ? { bancoPendiente: medio, evidencia: evidencia || undefined } : {}),
-      ...(esCanje && transaccion.trim() ? { numeroTransaccion: transaccion.trim() } : {}),
+      ...(conTransaccion && transaccion.trim() ? { numeroTransaccion: transaccion.trim() } : {}),
       ...(usaExtracto ? { banco: { medio, idMovimiento: banco }, intermediario: intermediario || undefined, evidencia: evidencia || undefined } : {}),
       ...(tipo === "retorno_sueldo_opcion_a" ? { idSalario: salario } : {}),
       ...(tipo === "pago" && particular ? { compraParticular: { idCompra: compra, idSocio: socio, idAsientoParticular: asiento || undefined, confirmarAsientoNuevo: asientoNuevo } } : {}),
       ...(tipo === "gasto_sin_comprobante" ? { repartos: repartos.map(r => ({ ...r, idDestino: r.idDestino || undefined, idCampania: r.idCampania || undefined, importePesos: r.importePesos.toFixed(2) })) } : {}),
     };
-  }, [tipo, caja, fecha, importe, concepto, cuenta, esContacto, contacto, seleccion, esSocio, esCanje, socio, destino, contraparte, motivo, usaExtracto, vincularExtracto, medio, banco, transaccion, intermediario, evidencia, salario, particular, compra, asiento, asientoNuevo, repartos]);
+  }, [tipo, caja, fecha, importe, concepto, cuenta, esContacto, contacto, seleccion, esSocio, esCanje, socio, destino, contraparte, motivo, usaExtracto, vincularExtracto, medio, banco, conTransaccion, transaccion, intermediario, evidencia, salario, particular, compra, asiento, asientoNuevo, repartos]);
   const serializado = JSON.stringify(op);
   useEffect(() => { setPreview(null); setAceptadas([]); clave.current = crypto.randomUUID(); }, [serializado]);
   const revisar = useMutation({ mutationFn: () => previsualizarCaja(op), onSuccess: p => { setPreview(p); setMensaje(""); } });
@@ -148,7 +149,7 @@ export function OperacionCajaForm({ caja, initial, onSaved, onPrepared }: {
     {esBanco && <div className="grid gap-3 md:grid-cols-2"><label>Banco<select className={input} value={medio} onChange={e => { setMedio(e.target.value as typeof medio); setBanco(0); }}><option value="bna">Banco Nación</option><option value="galicia">Galicia</option><option value="mercado-libre">Mercado Pago</option></select></label>
       {esCanje && <label className="md:col-span-2"><input type="checkbox" checked={vincularExtracto} onChange={e => { setVincularExtracto(e.target.checked); setBanco(0); }} /> Vincular ahora con una transferencia del extracto</label>}
       {usaExtracto && <label>{esCanje ? "Transferencia al socio" : "Movimiento del extracto (fecha elegida)"}<select className={input} value={banco} onChange={e => { const id = Number(e.target.value); setBanco(id); const m = bankOptions.find(m => m.id === id); if (m) setImporte(Math.abs(m.value)); }}><option value={0}>{esCanje ? "Elegir transferencia" : "Elegir movimiento importado"}</option>{bankOptions.map(m => <option key={m.id} value={m.id}>{m.label} · {formatMoneda(esCanje ? Math.abs(m.value) : m.value)}{!esCanje && ` · ${m.estado}`}</option>)}</select></label>}
-      {esCanje && <label>Número de transacción del banco (opcional)<input className={input} maxLength={60} value={transaccion} onChange={e => setTransaccion(e.target.value)} /><span className="block text-sm">Queda en el asiento de caja para ubicar la transferencia en el resumen.</span></label>}
+      {conTransaccion && <label>Número de transacción del banco (opcional)<input className={input} maxLength={60} value={transaccion} onChange={e => setTransaccion(e.target.value)} /><span className="block text-sm">Queda en el asiento de caja para ubicar el movimiento en el resumen.</span></label>}
       {esCanje && !usaExtracto && <p>Podés guardar sin el resumen bancario. La transferencia quedará pendiente de conciliación.</p>}
       {!esCanje && <label>Intermediario, si corresponde<input className={input} maxLength={255} value={intermediario} onChange={e => setIntermediario(e.target.value)} /></label>}<label>{esCanje ? "Referencia de la transferencia (opcional)" : "Evidencia / referencia"}<input className={input} maxLength={255} value={evidencia} onChange={e => setEvidencia(e.target.value)} required={tipo === "retorno_sueldo_opcion_a"} /></label>
       {esCanje && usaExtracto && !movimientos.isFetching && !movimientos.isError && bankOptions.length === 0 && <p>No hay transferencias disponibles para esa fecha. Podés desmarcar «Vincular ahora» para guardar y conciliar cuando llegue el resumen.</p>}
