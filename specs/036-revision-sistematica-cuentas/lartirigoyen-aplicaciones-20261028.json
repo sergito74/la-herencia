@@ -1,0 +1,1054 @@
+{
+ "fuente": "Extranet Lartirigoyen, aplicaciones AP/APC/APD/APDS/APG/TCC/CODO/RID/RR descargadas el 28/10/2026",
+ "aplicaciones": [
+  {
+   "origen": "bna",
+   "idMovimiento": 15025,
+   "idDeuda": 2143511055,
+   "importe": 2909.04,
+   "segun": "AP-0149-00002581"
+  },
+  {
+   "origen": "bna",
+   "idMovimiento": 15025,
+   "idDeuda": 2143511056,
+   "importe": 1748.21,
+   "segun": "AP-0149-00002581"
+  },
+  {
+   "origen": "bna",
+   "idMovimiento": 15025,
+   "idDeuda": 2143511255,
+   "importe": 41.82,
+   "segun": "AP-0149-00002581"
+  },
+  {
+   "origen": "bna",
+   "idMovimiento": 15025,
+   "idDeuda": 2143511256,
+   "importe": 84.34,
+   "segun": "AP-0149-00002581"
+  },
+  {
+   "origen": "bna",
+   "idMovimiento": 15026,
+   "idDeuda": 2143511316,
+   "importe": 11613.1,
+   "segun": "AP-0149-00002787"
+  },
+  {
+   "origen": "comp-compra",
+   "idMovimiento": 2143511870,
+   "idDeuda": 2143511850,
+   "importe": 1319.64,
+   "segun": "AP-0149-00003110"
+  },
+  {
+   "origen": "bna",
+   "idMovimiento": 15035,
+   "idDeuda": 2143512078,
+   "importe": 9516.41,
+   "segun": "AP-0149-00004420"
+  },
+  {
+   "origen": "bna",
+   "idMovimiento": 15035,
+   "idDeuda": 2143512081,
+   "importe": 30114.59,
+   "segun": "AP-0149-00004420"
+  },
+  {
+   "origen": "bna",
+   "idMovimiento": 15035,
+   "idDeuda": 2143512082,
+   "importe": 18652.49,
+   "segun": "AP-0149-00004420"
+  },
+  {
+   "origen": "bna",
+   "idMovimiento": 15035,
+   "idDeuda": 2143512289,
+   "importe": 363.19,
+   "segun": "AP-0149-00004420"
+  },
+  {
+   "origen": "bna",
+   "idMovimiento": 15035,
+   "idDeuda": 2143512290,
+   "importe": 10599.98,
+   "segun": "AP-0149-00004420"
+  },
+  {
+   "origen": "comp-compra",
+   "idMovimiento": 2143512319,
+   "idDeuda": 2143512318,
+   "importe": 77.79,
+   "segun": "AP-0149-00004493"
+  },
+  {
+   "origen": "bna",
+   "idMovimiento": 15035,
+   "idDeuda": 2143512318,
+   "importe": 1.7,
+   "segun": "AP-0149-00004493"
+  },
+  {
+   "origen": "comp-venta-granos",
+   "idMovimiento": 96,
+   "idDeuda": 2143512318,
+   "importe": 3986.1,
+   "segun": "AP-0149-00004493"
+  },
+  {
+   "origen": "comp-compra",
+   "idMovimiento": 2143512327,
+   "idDeuda": 2143512318,
+   "importe": 44.83,
+   "segun": "AP-0149-00004501"
+  },
+  {
+   "origen": "bna",
+   "idMovimiento": 15036,
+   "idDeuda": 2143512318,
+   "importe": 2298.23,
+   "segun": "AP-0149-00004501"
+  },
+  {
+   "origen": "bna",
+   "idMovimiento": 15036,
+   "idDeuda": 2143512628,
+   "importe": 0.77,
+   "segun": "AP-0149-00005367"
+  },
+  {
+   "origen": "bna",
+   "idMovimiento": 15037,
+   "idDeuda": 2143512628,
+   "importe": 9373.63,
+   "segun": "AP-0149-00005367"
+  },
+  {
+   "origen": "bna",
+   "idMovimiento": 15042,
+   "idDeuda": 2143512770,
+   "importe": 18317.22,
+   "segun": "AP-0149-00005670"
+  },
+  {
+   "origen": "bna",
+   "idMovimiento": 15042,
+   "idDeuda": 2143512793,
+   "importe": 647.42,
+   "segun": "AP-0149-00005670"
+  },
+  {
+   "origen": "bna",
+   "idMovimiento": 15043,
+   "idDeuda": 2143512840,
+   "importe": 16529.81,
+   "segun": "AP-0149-00005781"
+  },
+  {
+   "origen": "bna",
+   "idMovimiento": 15043,
+   "idDeuda": 2143512867,
+   "importe": 467.34,
+   "segun": "AP-0149-00005781"
+  },
+  {
+   "origen": "bna",
+   "idMovimiento": 15044,
+   "idDeuda": 2143512985,
+   "importe": 22953.07,
+   "segun": "AP-0149-00006158"
+  },
+  {
+   "origen": "bna",
+   "idMovimiento": 15044,
+   "idDeuda": 2143525166,
+   "importe": 895.24,
+   "segun": "AP-0149-00006158"
+  },
+  {
+   "origen": "bna",
+   "idMovimiento": 15037,
+   "idDeuda": 2143512938,
+   "importe": 0.77,
+   "segun": "AP-0149-00006207"
+  },
+  {
+   "origen": "bna",
+   "idMovimiento": 15045,
+   "idDeuda": 2143512938,
+   "importe": 21465.06,
+   "segun": "AP-0149-00006207"
+  },
+  {
+   "origen": "bna",
+   "idMovimiento": 15045,
+   "idDeuda": 2143513032,
+   "importe": 1796.84,
+   "segun": "AP-0149-00006207"
+  },
+  {
+   "origen": "bna",
+   "idMovimiento": 15045,
+   "idDeuda": 2143512868,
+   "importe": 0.64,
+   "segun": "AP-0149-00006208"
+  },
+  {
+   "origen": "bna",
+   "idMovimiento": 15045,
+   "idDeuda": 2143513031,
+   "importe": 0.13,
+   "segun": "AP-0149-00006208"
+  },
+  {
+   "origen": "galicia",
+   "idMovimiento": 3,
+   "idDeuda": 2143512868,
+   "importe": 99777.9,
+   "segun": "AP-0149-00006546"
+  },
+  {
+   "origen": "galicia",
+   "idMovimiento": 3,
+   "idDeuda": 2143512989,
+   "importe": 22297.64,
+   "segun": "AP-0149-00006546"
+  },
+  {
+   "origen": "galicia",
+   "idMovimiento": 3,
+   "idDeuda": 2143512990,
+   "importe": 46950.83,
+   "segun": "AP-0149-00006546"
+  },
+  {
+   "origen": "galicia",
+   "idMovimiento": 3,
+   "idDeuda": 2143513043,
+   "importe": 2286.63,
+   "segun": "AP-0149-00006546"
+  },
+  {
+   "origen": "galicia",
+   "idMovimiento": 3,
+   "idDeuda": 2143513042,
+   "importe": 11046.79,
+   "segun": "AP-0149-00006546"
+  },
+  {
+   "origen": "galicia",
+   "idMovimiento": 3,
+   "idDeuda": 2143513210,
+   "importe": 323.98,
+   "segun": "AP-0149-00006546"
+  },
+  {
+   "origen": "galicia",
+   "idMovimiento": 3,
+   "idDeuda": 2143513211,
+   "importe": 48688.06,
+   "segun": "AP-0149-00006546"
+  },
+  {
+   "origen": "retenciones",
+   "idMovimiento": 11,
+   "idDeuda": 2143513209,
+   "importe": 1540.16,
+   "segun": "AP-0149-00006567"
+  },
+  {
+   "origen": "galicia",
+   "idMovimiento": 458,
+   "idDeuda": 2143513209,
+   "importe": 362679.64,
+   "segun": "AP-0149-00006567"
+  },
+  {
+   "origen": "galicia",
+   "idMovimiento": 873,
+   "idDeuda": 2143513761,
+   "importe": 709611.44,
+   "segun": "AP-0149-00007267"
+  },
+  {
+   "origen": "galicia",
+   "idMovimiento": 873,
+   "idDeuda": 2143513918,
+   "importe": 4683.23,
+   "segun": "AP-0149-00007267"
+  },
+  {
+   "origen": "galicia",
+   "idMovimiento": 879,
+   "idDeuda": 2143513917,
+   "importe": 75211.72,
+   "segun": "AP-0149-00007275"
+  },
+  {
+   "origen": "galicia",
+   "idMovimiento": 880,
+   "idDeuda": 2143513761,
+   "importe": 10872.74,
+   "segun": "AP-0149-00007276"
+  },
+  {
+   "origen": "galicia",
+   "idMovimiento": 880,
+   "idDeuda": 2143525167,
+   "importe": 1231.6,
+   "segun": "AP-0149-00007276"
+  },
+  {
+   "origen": "retenciones",
+   "idMovimiento": 71,
+   "idDeuda": 2143513761,
+   "importe": 1260.67,
+   "segun": "AP-0149-00007311"
+  },
+  {
+   "origen": "retenciones",
+   "idMovimiento": 71,
+   "idDeuda": 2143523733,
+   "importe": 212.61,
+   "segun": "AP-0149-00007311"
+  },
+  {
+   "origen": "galicia",
+   "idMovimiento": 1191,
+   "idDeuda": 2143514040,
+   "importe": 5768.98,
+   "segun": "AP-0149-00007782"
+  },
+  {
+   "origen": "galicia",
+   "idMovimiento": 1191,
+   "idDeuda": 2143514042,
+   "importe": 5801.46,
+   "segun": "AP-0149-00007782"
+  },
+  {
+   "origen": "galicia",
+   "idMovimiento": 1201,
+   "idDeuda": 2143514128,
+   "importe": 217.74,
+   "segun": "AP-0149-00007850"
+  },
+  {
+   "origen": "galicia",
+   "idMovimiento": 1201,
+   "idDeuda": 2143514127,
+   "importe": 1940.82,
+   "segun": "AP-0149-00007850"
+  },
+  {
+   "origen": "retenciones",
+   "idMovimiento": 71,
+   "idDeuda": 2143514126,
+   "importe": 34.84,
+   "segun": "AP-0149-00007851"
+  },
+  {
+   "origen": "retenciones",
+   "idMovimiento": 104,
+   "idDeuda": 2143514186,
+   "importe": 18670.76,
+   "segun": "AP-0149-00007885"
+  },
+  {
+   "origen": "retenciones",
+   "idMovimiento": 32,
+   "idDeuda": 2143514187,
+   "importe": 28.39,
+   "segun": "AP-0149-00007888"
+  },
+  {
+   "origen": "retenciones",
+   "idMovimiento": 71,
+   "idDeuda": 2143514187,
+   "importe": 5941.54,
+   "segun": "AP-0149-00007888"
+  },
+  {
+   "origen": "comp-compra",
+   "idMovimiento": 2143525170,
+   "idDeuda": 2143514187,
+   "importe": 50.0,
+   "segun": "AP-0149-00007888"
+  },
+  {
+   "origen": "retenciones",
+   "idMovimiento": 104,
+   "idDeuda": 2143514187,
+   "importe": 0.12,
+   "segun": "AP-0149-00007888"
+  },
+  {
+   "origen": "galicia",
+   "idMovimiento": 1802,
+   "idDeuda": 2143514409,
+   "importe": 284795.28,
+   "segun": "AP-0149-00008039"
+  },
+  {
+   "origen": "galicia",
+   "idMovimiento": 1802,
+   "idDeuda": 2143514568,
+   "importe": 8362.94,
+   "segun": "AP-0149-00008039"
+  },
+  {
+   "origen": "retenciones",
+   "idMovimiento": 105,
+   "idDeuda": 2143514570,
+   "importe": 19251.58,
+   "segun": "AP-0149-00008221"
+  },
+  {
+   "origen": "retenciones",
+   "idMovimiento": 152,
+   "idDeuda": 2143514570,
+   "importe": 41827.49,
+   "segun": "AP-0149-00008221"
+  },
+  {
+   "origen": "galicia",
+   "idMovimiento": 1969,
+   "idDeuda": 2143514570,
+   "importe": 2740412.35,
+   "segun": "AP-0149-00008221"
+  },
+  {
+   "origen": "galicia",
+   "idMovimiento": 1969,
+   "idDeuda": 2143514775,
+   "importe": 127339.96,
+   "segun": "AP-0149-00008221"
+  },
+  {
+   "origen": "comp-compra",
+   "idMovimiento": 2143514369,
+   "idDeuda": 2143514212,
+   "importe": 12829457.58,
+   "segun": "APC-0118-00331795"
+  },
+  {
+   "origen": "comp-compra",
+   "idMovimiento": 2143511882,
+   "idDeuda": 2143511780,
+   "importe": 62.75,
+   "segun": "APD-0129-00022330"
+  },
+  {
+   "origen": "comp-compra",
+   "idMovimiento": 2143511885,
+   "idDeuda": 2143511780,
+   "importe": 492.46,
+   "segun": "APD-0129-00022330"
+  },
+  {
+   "origen": "comp-compra",
+   "idMovimiento": 2143511885,
+   "idDeuda": 2143511874,
+   "importe": 62.75,
+   "segun": "APD-0129-00022330"
+  },
+  {
+   "origen": "comp-compra",
+   "idMovimiento": 2143511877,
+   "idDeuda": 2143511782,
+   "importe": 24938.11,
+   "segun": "APD-0149-00003093"
+  },
+  {
+   "origen": "comp-compra",
+   "idMovimiento": 2143511872,
+   "idDeuda": 2143511875,
+   "importe": 70.2,
+   "segun": "APD-0149-00003111"
+  },
+  {
+   "origen": "bna",
+   "idMovimiento": 15030,
+   "idDeuda": 2143511781,
+   "importe": 345.01,
+   "segun": "APD-0149-00003136"
+  },
+  {
+   "origen": "comp-compra",
+   "idMovimiento": 2143511895,
+   "idDeuda": 2143511883,
+   "importe": 8233.37,
+   "segun": "APD-0149-00003184"
+  },
+  {
+   "origen": "bna",
+   "idMovimiento": 15032,
+   "idDeuda": 2143511964,
+   "importe": 10850.0,
+   "segun": "APD-0149-00003527"
+  },
+  {
+   "origen": "comp-compra",
+   "idMovimiento": 2143512077,
+   "idDeuda": 2143512031,
+   "importe": 54.52,
+   "segun": "APD-0149-00003673"
+  },
+  {
+   "origen": "bna",
+   "idMovimiento": 15033,
+   "idDeuda": 2143512031,
+   "importe": 2225.77,
+   "segun": "APD-0149-00003673"
+  },
+  {
+   "origen": "bna",
+   "idMovimiento": 15033,
+   "idDeuda": 2143511905,
+   "importe": 104.33,
+   "segun": "APD-0149-00004365"
+  },
+  {
+   "origen": "comp-venta-granos",
+   "idMovimiento": 91,
+   "idDeuda": 2143511905,
+   "importe": 4846.43,
+   "segun": "APD-0149-00004365"
+  },
+  {
+   "origen": "comp-venta-granos",
+   "idMovimiento": 91,
+   "idDeuda": 2143512280,
+   "importe": 805.68,
+   "segun": "APD-0149-00004365"
+  },
+  {
+   "origen": "comp-venta-granos",
+   "idMovimiento": 91,
+   "idDeuda": 2143512281,
+   "importe": 3444.18,
+   "segun": "APD-0149-00004365"
+  },
+  {
+   "origen": "comp-venta-granos",
+   "idMovimiento": 90,
+   "idDeuda": 2143512281,
+   "importe": 104.02,
+   "segun": "APD-0149-00004365"
+  },
+  {
+   "origen": "bna",
+   "idMovimiento": 15034,
+   "idDeuda": 2143512286,
+   "importe": 30860.44,
+   "segun": "APD-0149-00004419"
+  },
+  {
+   "origen": "comp-compra",
+   "idMovimiento": 2143511873,
+   "idDeuda": 2143511779,
+   "importe": 29526.64,
+   "segun": "APDS-0129-00022231"
+  },
+  {
+   "origen": "bna",
+   "idMovimiento": 15027,
+   "idDeuda": 2143511318,
+   "importe": 101813.78,
+   "segun": "APDS-0129-00022233"
+  },
+  {
+   "origen": "bna",
+   "idMovimiento": 15029,
+   "idDeuda": 2143511557,
+   "importe": 45380.83,
+   "segun": "APDS-0129-00022333"
+  },
+  {
+   "origen": "retenciones",
+   "idMovimiento": 1,
+   "idDeuda": 2143511318,
+   "importe": 435.94,
+   "segun": "APDS-0129-00022336"
+  },
+  {
+   "origen": "bna",
+   "idMovimiento": 15027,
+   "idDeuda": 2143511318,
+   "importe": 45123.07,
+   "segun": "APDS-0129-00022336"
+  },
+  {
+   "origen": "comp-compra",
+   "idMovimiento": 2143511887,
+   "idDeuda": 2143511881,
+   "importe": 11071.15,
+   "segun": "APDS-0129-00022337"
+  },
+  {
+   "origen": "bna",
+   "idMovimiento": 15028,
+   "idDeuda": 2143511422,
+   "importe": 27973.66,
+   "segun": "APDS-0129-00022339"
+  },
+  {
+   "origen": "bna",
+   "idMovimiento": 15028,
+   "idDeuda": 2143511423,
+   "importe": 10889.03,
+   "segun": "APDS-0129-00022339"
+  },
+  {
+   "origen": "bna",
+   "idMovimiento": 15028,
+   "idDeuda": 2143511424,
+   "importe": 15206.13,
+   "segun": "APDS-0129-00022339"
+  },
+  {
+   "origen": "comp-compra",
+   "idMovimiento": 2143511884,
+   "idDeuda": 2143511255,
+   "importe": 178.18,
+   "segun": "APDS-0129-00022340"
+  },
+  {
+   "origen": "comp-compra",
+   "idMovimiento": 2143511884,
+   "idDeuda": 2143511781,
+   "importe": 5.7,
+   "segun": "APDS-0129-00022340"
+  },
+  {
+   "origen": "bna",
+   "idMovimiento": 15030,
+   "idDeuda": 2143511421,
+   "importe": 3523.97,
+   "segun": "APDS-0129-00022341"
+  },
+  {
+   "origen": "bna",
+   "idMovimiento": 15030,
+   "idDeuda": 2143511605,
+   "importe": 6813.27,
+   "segun": "APDS-0129-00022341"
+  },
+  {
+   "origen": "bna",
+   "idMovimiento": 15030,
+   "idDeuda": 2143511621,
+   "importe": 8109.13,
+   "segun": "APDS-0129-00022341"
+  },
+  {
+   "origen": "bna",
+   "idMovimiento": 15030,
+   "idDeuda": 2143511875,
+   "importe": 10591.17,
+   "segun": "APDS-0129-00022341"
+  },
+  {
+   "origen": "comp-compra",
+   "idMovimiento": 2143511884,
+   "idDeuda": 2143511875,
+   "importe": 166.83,
+   "segun": "APDS-0129-00022341"
+  },
+  {
+   "origen": "comp-compra",
+   "idMovimiento": 2143511906,
+   "idDeuda": 2143511783,
+   "importe": 8536.4,
+   "segun": "APDS-0129-00022571"
+  },
+  {
+   "origen": "comp-compra",
+   "idMovimiento": 2143511896,
+   "idDeuda": 2143511783,
+   "importe": 442.62,
+   "segun": "APDS-0129-00022571"
+  },
+  {
+   "origen": "bna",
+   "idMovimiento": 15030,
+   "idDeuda": 2143511783,
+   "importe": 11971.45,
+   "segun": "APDS-0129-00022571"
+  },
+  {
+   "origen": "comp-compra",
+   "idMovimiento": 2143511895,
+   "idDeuda": 2143511783,
+   "importe": 3081.32,
+   "segun": "APDS-0129-00022571"
+  },
+  {
+   "origen": "bna",
+   "idMovimiento": 15031,
+   "idDeuda": 2143511985,
+   "importe": 10832.28,
+   "segun": "APDS-0129-00023609"
+  },
+  {
+   "origen": "galicia",
+   "idMovimiento": 3,
+   "idDeuda": 2143513352,
+   "importe": 28.17,
+   "segun": "APDS-0129-00037219"
+  },
+  {
+   "origen": "galicia",
+   "idMovimiento": 225,
+   "idDeuda": 2143513352,
+   "importe": 376571.6,
+   "segun": "APDS-0129-00037219"
+  },
+  {
+   "origen": "comp-compra",
+   "idMovimiento": 2143525169,
+   "idDeuda": 2143513762,
+   "importe": 1525.74,
+   "segun": "APDS-0129-00037296"
+  },
+  {
+   "origen": "comp-compra",
+   "idMovimiento": 2143525169,
+   "idDeuda": 2143513352,
+   "importe": 0.26,
+   "segun": "APDS-0129-00037296"
+  },
+  {
+   "origen": "retenciones",
+   "idMovimiento": 32,
+   "idDeuda": 2143513352,
+   "importe": 1745.24,
+   "segun": "APDS-0129-00037296"
+  },
+  {
+   "origen": "comp-compra",
+   "idMovimiento": 2143525168,
+   "idDeuda": 2143514041,
+   "importe": 5801.46,
+   "segun": "APG-0147-00024288"
+  },
+  {
+   "origen": "comp-compra",
+   "idMovimiento": 2143514566,
+   "idDeuda": 2143514413,
+   "importe": 1262725.75,
+   "segun": "CODO-0118-00346093"
+  },
+  {
+   "origen": "comp-compra",
+   "idMovimiento": 2143514569,
+   "idDeuda": 2143514567,
+   "importe": 2699268.0,
+   "segun": "CODO-0118-00350035"
+  },
+  {
+   "origen": "comp-venta-granos",
+   "idMovimiento": 88,
+   "idDeuda": 2143511905,
+   "importe": 17672.48,
+   "segun": "TCC-0013-00034987"
+  },
+  {
+   "origen": "comp-venta-granos",
+   "idMovimiento": 88,
+   "idDeuda": 2143511783,
+   "importe": 52749.99,
+   "segun": "TCC-0013-00034987"
+  },
+  {
+   "origen": "comp-venta-granos",
+   "idMovimiento": 88,
+   "idDeuda": 2143511784,
+   "importe": 3340.05,
+   "segun": "TCC-0013-00034987"
+  },
+  {
+   "origen": "comp-venta-granos",
+   "idMovimiento": 88,
+   "idDeuda": 2143512196,
+   "importe": 6667.58,
+   "segun": "TCC-0013-00034987"
+  },
+  {
+   "origen": "comp-venta-granos",
+   "idMovimiento": 88,
+   "idDeuda": 2143512250,
+   "importe": 560.0,
+   "segun": "TCC-0013-00034987"
+  },
+  {
+   "origen": "comp-venta-granos",
+   "idMovimiento": 88,
+   "idDeuda": 2143511785,
+   "importe": 104292.93,
+   "segun": "TCC-0013-00034987"
+  },
+  {
+   "origen": "comp-venta-granos",
+   "idMovimiento": 88,
+   "idDeuda": 2143511786,
+   "importe": 11266.96,
+   "segun": "TCC-0013-00034987"
+  },
+  {
+   "origen": "comp-venta-granos",
+   "idMovimiento": 88,
+   "idDeuda": 2143512253,
+   "importe": 183342.93,
+   "segun": "TCC-0013-00034987"
+  },
+  {
+   "origen": "comp-venta-granos",
+   "idMovimiento": 88,
+   "idDeuda": 2143512254,
+   "importe": 5025.71,
+   "segun": "TCC-0013-00034987"
+  },
+  {
+   "origen": "comp-venta-granos",
+   "idMovimiento": 89,
+   "idDeuda": 2143511905,
+   "importe": 2528.49,
+   "segun": "TCC-0013-00034988"
+  },
+  {
+   "origen": "comp-venta-granos",
+   "idMovimiento": 89,
+   "idDeuda": 2143512251,
+   "importe": 1815.45,
+   "segun": "TCC-0013-00034988"
+  },
+  {
+   "origen": "comp-venta-granos",
+   "idMovimiento": 89,
+   "idDeuda": 2143512252,
+   "importe": 57.47,
+   "segun": "TCC-0013-00034988"
+  },
+  {
+   "origen": "comp-venta-granos",
+   "idMovimiento": 94,
+   "idDeuda": 2143511905,
+   "importe": 115769.91,
+   "segun": "TCC-0013-00036138"
+  },
+  {
+   "origen": "comp-venta-granos",
+   "idMovimiento": 94,
+   "idDeuda": 2143512283,
+   "importe": 83819.73,
+   "segun": "TCC-0013-00036138"
+  },
+  {
+   "origen": "comp-venta-granos",
+   "idMovimiento": 94,
+   "idDeuda": 2143512282,
+   "importe": 2578.68,
+   "segun": "TCC-0013-00036138"
+  },
+  {
+   "origen": "comp-venta-granos",
+   "idMovimiento": 95,
+   "idDeuda": 2143512078,
+   "importe": 1000.36,
+   "segun": "TCC-0013-00036140"
+  },
+  {
+   "origen": "comp-venta-granos",
+   "idMovimiento": 95,
+   "idDeuda": 2143511905,
+   "importe": 96330.16,
+   "segun": "TCC-0013-00036140"
+  },
+  {
+   "origen": "comp-venta-granos",
+   "idMovimiento": 95,
+   "idDeuda": 2143512285,
+   "importe": 69143.27,
+   "segun": "TCC-0013-00036140"
+  },
+  {
+   "origen": "comp-venta-granos",
+   "idMovimiento": 95,
+   "idDeuda": 2143512284,
+   "importe": 2202.33,
+   "segun": "TCC-0013-00036140"
+  },
+  {
+   "origen": "comp-compra",
+   "idMovimiento": 2143512739,
+   "idDeuda": 2143512738,
+   "importe": 980.61,
+   "segun": "TCC-0013-00054515"
+  },
+  {
+   "origen": "comp-venta-granos",
+   "idMovimiento": 111,
+   "idDeuda": 2143512738,
+   "importe": 40491.08,
+   "segun": "TCC-0013-00054515"
+  },
+  {
+   "origen": "comp-venta-granos",
+   "idMovimiento": 111,
+   "idDeuda": 2143512469,
+   "importe": 208472.48,
+   "segun": "TCC-0013-00054515"
+  },
+  {
+   "origen": "comp-venta-granos",
+   "idMovimiento": 111,
+   "idDeuda": 2143512741,
+   "importe": 32055.02,
+   "segun": "TCC-0013-00054515"
+  },
+  {
+   "origen": "comp-venta-granos",
+   "idMovimiento": 111,
+   "idDeuda": 2143512740,
+   "importe": 3717.67,
+   "segun": "TCC-0013-00054515"
+  }
+ ],
+ "vinculosTarjeta": [
+  {
+   "idLineaConsumo": 5873,
+   "idCompra": 2143511184,
+   "importe": 30438.7
+  },
+  {
+   "idLineaConsumo": 5874,
+   "idCompra": 2143511184,
+   "importe": 0.84
+  },
+  {
+   "idLineaConsumo": 5874,
+   "idCompra": 2143511185,
+   "importe": 46044.37
+  },
+  {
+   "idLineaConsumo": 5889,
+   "idCompra": 2143511421,
+   "importe": -555.21
+  },
+  {
+   "idLineaConsumo": 5890,
+   "idCompra": 2143511421,
+   "importe": -4820.83
+  },
+  {
+   "idLineaConsumo": 5881,
+   "idCompra": 2143511850,
+   "importe": 2188.27
+  },
+  {
+   "idLineaConsumo": 5881,
+   "idCompra": 2143511871,
+   "importe": 16403.53
+  },
+  {
+   "idLineaConsumo": 5881,
+   "idCompra": 2143511420,
+   "importe": 442.62
+  },
+  {
+   "idLineaConsumo": 5881,
+   "idCompra": 2143511421,
+   "importe": 6820.63
+  },
+  {
+   "idLineaConsumo": 5884,
+   "idCompra": 2143511421,
+   "importe": 914.76
+  },
+  {
+   "idLineaConsumo": 5887,
+   "idCompra": 2143511421,
+   "importe": 555.21
+  },
+  {
+   "idLineaConsumo": 5888,
+   "idCompra": 2143511421,
+   "importe": 1818.86
+  },
+  {
+   "idLineaConsumo": 5895,
+   "idCompra": 2143511421,
+   "importe": 3507.94
+  },
+  {
+   "idLineaConsumo": 5896,
+   "idCompra": 2143511421,
+   "importe": 14089.8
+  },
+  {
+   "idLineaConsumo": 5896,
+   "idCompra": 2143511604,
+   "importe": 994.06
+  },
+  {
+   "idLineaConsumo": 5896,
+   "idCompra": 2143511875,
+   "importe": 1319.64
+  },
+  {
+   "idLineaConsumo": 5914,
+   "idCompra": 2143512737,
+   "importe": 397639.02
+  },
+  {
+   "idLineaConsumo": 5861,
+   "idCompra": 2143514213,
+   "importe": 47613.5
+  },
+  {
+   "idLineaConsumo": 5861,
+   "idCompra": 2143514186,
+   "importe": 1381957.48
+  },
+  {
+   "idLineaConsumo": 5861,
+   "idCompra": 2143514188,
+   "importe": 126.47
+  },
+  {
+   "idLineaConsumo": 5861,
+   "idCompra": 2143514189,
+   "importe": 9360.9
+  },
+  {
+   "idLineaConsumo": 5861,
+   "idCompra": 2143514187,
+   "importe": 13927.57
+  },
+  {
+   "idLineaConsumo": 5862,
+   "idCompra": 2143514194,
+   "importe": 48349.18
+  },
+  {
+   "idLineaConsumo": 5862,
+   "idCompra": 2143514187,
+   "importe": 1415812.54
+  },
+  {
+   "idLineaConsumo": 5862,
+   "idCompra": 2143514196,
+   "importe": 14663.97
+  },
+  {
+   "idLineaConsumo": 5862,
+   "idCompra": 2143514570,
+   "importe": 115.36
+  }
+ ]
+}
