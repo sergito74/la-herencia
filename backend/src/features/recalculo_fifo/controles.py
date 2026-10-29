@@ -29,7 +29,6 @@ DESCRIPCION = {
     "datos": "Hay renglones sin fecha en la cuenta.",
     "anticipo-largo": "Hay anticipos de más de 60 días (se aplicaron, quedan para revisar).",
     "hueco": "Hay pagos sin factura cercana: quedan como pago a cuenta para revisar (no se corrieron a facturas posteriores).",
-    "empate-a-revisar": "Algún pago tenía dos facturas del mismo importe a igual distancia: revisar cuál corresponde.",
     "combinacion-ambigua": "Algún pago se puede armar con distintas combinaciones de facturas: se aplicó por fecha, revisar.",
     "manual-ajustado": "Una elección manual sobreaplicaba y el exceso se reasignó por FIFO.",
     "tc-implicito": "Falta cotización BNA para alguna fecha: se usó el tipo de cambio de la factura.",
