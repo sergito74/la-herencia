@@ -55,3 +55,19 @@ Aprobada por Sergio el 29/10/2026. Reemplaza los intentos de resolver todas las 
 - Antes de mostrar un resultado, se verifica contra el comprobante. Las alarmas se presentan como "a verificar".
 - Las planillas de revisión llevan todas las filas y una columna "¿Cambia?".
 - Antes de cada grabación se toma un respaldo y se controla el saldo por cuenta con `refrescar=True`. Cada corrección queda registrada en `AuditoriaCorrecciones`.
+
+## Grupo 2 — CERRADO (29/10/2026)
+
+Son 92 cuentas pagadas solo con tarjeta y 847 facturas. Las 92 cierran con el FIFO (ejecución 130) y **ningún saldo cambió**.
+
+- **Redondeos:** 254 facturas con diferencia ≤0,10% contra la tarjeta se redondearon a lo cobrado (`grupo2_redondeo_tarjeta_036`).
+- **Vínculos:** 4 consumos de tarjeta estaban vinculados a la factura anterior y se pasaron a la propia: Corredores Viales, Grupo Concesionario del Oeste y 2 de Autopistas del Sol (`grupo2_revincular_tarjeta_036`).
+- **RDD duplicados:** se quitaron las ND internas de redondeo RDD276 y RDD306 del 30/09. Duplicaban los centavos ya redondeados en las facturas (`grupo2_quitar_rdd_036`).
+- **Asientos particulares:** los asientos negativos de Pagos efectivo ("Particular L/S", "La Herencia") cuentan como cargo en el FIFO y se cruzan en su fecha con el consumo de tarjeta que los pagó (`recalculo_fifo/entrada.py`). Sin este cambio Carrefour no cerraba.
+- **Excepciones explicadas (no son errores):**
+  - 9 facturas de octubre de 2026 que esperan el resumen de tarjeta.
+  - Carrefour: la parte particular está en la factura y en su asiento.
+  - Margenes Agropecuarios: 6 de 12 cuotas sin vencer ($144.000).
+  - Nación Seguros: descuento del 5% y 3 facturas en US$ compensadas en la cuenta.
+  - Cuentas en $0 cuyo resto se compensa con otro comprobante de la cuenta, que el FIFO ya imputa.
+- **Queda:** de $0,01 a $0,08 de líneas de tarjeta sin imputar en Autopistas del Sol, Grupo Concesionario del Oeste y Carrefour.
