@@ -38,7 +38,7 @@ def _calcular(id_contactos: list[int], hoy: date) -> list[dict]:
     for id_contacto, e in entrada.armar(id_contactos).items():
         if not e["items"]:
             continue
-        res = motor.recalcular(e["items"], e["fijos"], tc, hoy, regla_029=True)  # regla aprobada 29/10/2026
+        res = motor.recalcular(e["items"], e["fijos"], tc, hoy)  # FIFO puro por vencimiento (Sergio 29/10/2026: primero integridad de compras y pagos)
         ev = controles.evaluar(e, res, tc)
         resultados.append({"idContacto": id_contacto, "nombre": e["nombre"], "res": res, "ev": ev})
     return resultados

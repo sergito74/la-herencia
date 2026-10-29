@@ -165,8 +165,9 @@ class _Libro:
         """regla_029, antes del reparto. Distancia entre un pago y un documento: 0 si el
         pago cae entre la emisión y el vencimiento; si no, los días hasta el más cercano
         de los dos (`_dias`). Para cada renglón entero, por vencimiento:
-        1) un documento del otro lado, entero y de importe idéntico: el de
-           vencimiento más viejo (primero las vencidas), después el de número más bajo;
+        1) un documento del otro lado, entero, de importe idéntico y a no más de un
+           ciclo del pago: el de vencimiento más viejo (primero las vencidas), después
+           el de número más bajo;
            si el importe se repite `REPETIDOS` veces en ±1 ciclo, lo decide el FIFO, salvo que haya
            uno solo del mismo día (compra pagada en el acto);
         2) si no, una única combinación de 2 o 3 documentos abiertos del otro
@@ -190,6 +191,8 @@ class _Libro:
             mismo_dia = [y for y in iguales if _dias(x, y) == 0]
             if len(mismo_dia) == 1:   # único pago entre emisión y vencimiento: no importa que el importe se repita
                 iguales = mismo_dia
+            iguales = [y for y in iguales if _dias(x, y) <= CICLO]   # solo facturas cercanas al pago (no una de 7 años antes)
+            iguales = [y for y in iguales if _dias(x, y) <= CICLO]   # solo facturas cercanas al pago (no una de 7 años antes)
             if iguales and (len(cerca) < REPETIDOS or len(mismo_dia) == 1):
                 # Sergio 29/10/2026: el pago va primero a la factura vencida más vieja; si ninguna venció, a la próxima a vencer
                 orden = sorted(iguales, key=lambda y: (y["vencimiento"], str(y.get("nro") or "")))
