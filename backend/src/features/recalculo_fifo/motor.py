@@ -240,6 +240,14 @@ class _Libro:
             self.marcas.add("reintegro")
 
     def _contra(self, x: dict, cola: list[dict]) -> None:
+        # Desempate del FIFO (29/10/2026): entre los pendientes del mismo vencimiento, primero el de importe idéntico
+        # (dos facturas del mismo día pagadas cada una por separado, p. ej. dos medidores de la Coop. Eléctrica).
+        abiertos = [y for y in cola if y["rem"] > 0]
+        if abiertos:
+            mismo = [y for y in abiertos if y["vencimiento"] == abiertos[0]["vencimiento"]]
+            igual = next((y for y in mismo if abs(y["rem"] - x["rem"]) < 0.005), None)
+            if igual is not None and igual is not abiertos[0]:
+                cola = [igual] + [y for y in cola if y is not igual]
         for y in cola:
             if x["rem"] <= 0:
                 return
