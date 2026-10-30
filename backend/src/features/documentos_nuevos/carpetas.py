@@ -87,7 +87,8 @@ def procesar_archivo_carpeta(id_corrida: int | None, path: Path, conocidos: set[
         texto = contenido.decode("utf-8", errors="ignore")
 
     c = clasificador.clasificar(texto, clasificador.buscar_contacto_por_cuit)
-    if not c.comprobante or not c.para_giamigli:
+    # Recibos no van a Compras: son constancias de pago que corresponderán al futuro módulo de pagos
+    if not c.comprobante or not c.para_giamigli or c.tipo == "recibo":
         return None
 
     # Verificar si es duplicado de número y emisor
