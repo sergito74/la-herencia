@@ -127,11 +127,11 @@ def procesar_archivo_carpeta(id_corrida: int | None, path: Path, conocidos: set[
 
     repository.registrar_documento({
         "idRutinaCorrida": id_corrida,
-        "origen": "carpeta",
+        "origen": "mail",
         "mailEntryId": None,
-        "mailRemitente": None,
-        "mailAsunto": None,
-        "mailRecibido": None,
+        "mailRemitente": "Carpeta local (Dropbox)",
+        "mailAsunto": path.name,
+        "mailRecibido": datetime.fromtimestamp(path.stat().st_mtime),
         "sha256": sha,
         "ruta": ruta_str,
         "tipo": c.tipo or "otro",
