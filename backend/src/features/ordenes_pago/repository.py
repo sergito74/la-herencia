@@ -245,8 +245,16 @@ def vincular(id_documento, body: VincularInput, usuario):
         por_mov[(a.origenMovimiento,a.idMovimiento)].append(a)
     if orden:
         expected = {f['idCompra']: dinero(f['importe']) for f in orden['facturas']}
-        if orden['estado'] != 'Emitida' or orden['idContacto'] != body.idContacto or expected != dict(por_factura):
-            raise ValueError('El recibo debe cancelar las facturas e importes de una orden emitida del proveedor')
+        retencion_op = dinero(orden.get('retencionGanancias'))
+        if orden['estado'] != 'Emitida' or orden['idContacto'] != body.idContacto:
+            raise ValueError('El recibo debe corresponder a una orden emitida del proveedor')
+        if body.retencion != retencion_op:
+            raise ValueError('La retención del recibo no coincide con la de la orden de pago')
+        # Con retención los pagos reales cubren el neto; la retención cancela el resto por el circuito de Retenciones.
+        if set(por_factura) - set(expected) or any(v > expected[k] for k, v in por_factura.items())                 or sum(por_factura.values(), Decimal(0)) != sum(expected.values(), Decimal(0)) - retencion_op:
+            raise ValueError('El recibo debe cancelar las facturas de la orden: pagos por el neto y la retención de la orden')
+    elif body.retencion and not body.certificadoRetencion:
+        raise ValueError('Sin orden de pago, indicá el número de certificado de la retención')
     rows = {f['idCompra']: f for f in facturas(body.idContacto, body.idOrdenPago, incluir_saldadas=True)}
     links = _vinculos()
     crear, confirmar = [], []
@@ -275,9 +283,10 @@ def vincular(id_documento, body: VincularInput, usuario):
         if fetch_one('SELECT IdRecibo id FROM dbo.RecibosProveedores_Aplicaciones WHERE IdAplicacion=?',(id_app,)):
             raise ValueError('Una aplicación ya tiene otro recibo asociado')
     id_recibo = execute_insert_returning_id('INSERT INTO dbo.RecibosProveedores '
-        '(IdDocumentoNuevo,IdContacto,Numero,Fecha,Total,RutaPdf,Sha256,IdOrdenPago,Usuario) '
-        'OUTPUT INSERTED.IdRecibo VALUES (?,?,?,?,?,?,?,?,?)',
-        (id_documento,body.idContacto,body.numero,body.fecha,body.total,doc['ruta'],doc['sha256'],body.idOrdenPago,usuario))
+        '(IdDocumentoNuevo,IdContacto,Numero,Fecha,Total,RutaPdf,Sha256,IdOrdenPago,Usuario,Retencion,Anticipo,CertificadoRetencion) '
+        'OUTPUT INSERTED.IdRecibo VALUES (?,?,?,?,?,?,?,?,?,?,?,?)',
+        (id_documento,body.idContacto,body.numero,body.fecha,body.total,doc['ruta'],doc['sha256'],body.idOrdenPago,usuario,
+         body.retencion,body.anticipo,body.certificadoRetencion))
     # 019 performs the shared validation/insertion; this outer transaction adds exact centavo limits.
     for a in crear:
         confirmar.extend(aplicaciones.insertar_aplicaciones(a.origenMovimiento,a.idMovimiento,

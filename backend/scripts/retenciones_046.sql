@@ -25,3 +25,6 @@ CREATE TABLE dbo.OrdenesPago_Retenciones (
 );
 IF COL_LENGTH('dbo.OrdenesPago','RetencionGanancias') IS NULL
 ALTER TABLE dbo.OrdenesPago ADD RetencionGanancias decimal(18,2) NOT NULL CONSTRAINT DF_OrdenesPago_Retencion DEFAULT 0;
+IF COL_LENGTH('dbo.RecibosProveedores','Retencion') IS NULL
+ALTER TABLE dbo.RecibosProveedores ADD Retencion decimal(18,2) NOT NULL CONSTRAINT DF_Recibos_Retencion DEFAULT 0,
+ Anticipo decimal(18,2) NOT NULL CONSTRAINT DF_Recibos_Anticipo DEFAULT 0, CertificadoRetencion nvarchar(30) NULL;

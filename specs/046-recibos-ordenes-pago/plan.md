@@ -50,3 +50,18 @@
 1. Implementación de las páginas y componentes en Next.js.
 2. Pruebas de integración E2E / smoke test interactivo.
 
+
+### Fase 5: Retenciones de Ganancias (Historia 4, agregada 30/10/2026)
+- Tablas `RetencionesGanancias_Padron`, `_Conceptos` (rubro → régimen, con estado), `_Exclusiones`, `OrdenesPago_Retenciones` y la columna `OrdenesPago.RetencionGanancias`, con respaldo verificado (`scripts/retenciones_046.py`).
+- `backend/src/features/retenciones_ganancias/`:
+  - `simulador.py`: endpoints JSON públicos de calc-rg830, con GET previo por la cookie.
+  - `padron.py`: zip público de condición tributaria, filtrado a los CUIT propios.
+  - `repository.py`: condición del proveedor, base por régimen y acumulación mensual.
+  - `mail.py`: borrador .eml para el estudio.
+- CUIT faltantes completados desde los PDF de las facturas (`scripts/cuit_desde_facturas_046.py`).
+- Calibración contra `Detalle de Pagos.xlsx` 2025-2026.
+
+### Fase 6: Recibos con retención y anticipos (Historia 5)
+- Columnas `RecibosProveedores.Retencion`, `Anticipo` y `CertificadoRetencion` (respaldo verificado antes).
+- `vincular`: total = aplicaciones + retención + anticipo. Con OP, los pagos suman el neto y la retención es la de la OP.
+- La pantalla de vinculación agrega retención (precargada desde la OP), número de certificado y anticipo.

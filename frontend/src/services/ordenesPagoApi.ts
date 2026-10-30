@@ -6,7 +6,7 @@ export interface OrdenOP extends OrdenInput { idOrdenPago: number; proveedor: st
 export interface ReciboOP { idDocumentoNuevo: number; idContacto: number | null; proveedor: string | null; numero: string | null; fecha: string | null; total: number | null; revisado: string | null; idRecibo: number | null; idOrdenPago: number | null }
 export interface MovimientoOP { origenMovimiento: 'galicia'|'bna'|'efectivo'; idMovimiento: number; fecha: string | null; importe: number; disponible: number }
 export interface AplicacionOP { origenMovimiento: MovimientoOP['origenMovimiento']; idMovimiento: number; idCompra: number; importe: number }
-export interface VincularOP { idContacto: number; numero: string; fecha: string; total: number; moneda: 'ARS'; idOrdenPago: number | null; aplicaciones: AplicacionOP[] }
+export interface VincularOP { idContacto: number; numero: string; fecha: string; total: number; moneda: 'ARS'; idOrdenPago: number | null; aplicaciones: AplicacionOP[]; retencion: number; certificadoRetencion: string | null; anticipo: number }
 const base='/api/ordenes-pago';
 export const listarOP=(params: {idContacto?:number;estado?:string;page?:number})=>apiGet<{items:OrdenOP[];total:number}>(base,params);
 export const obtenerOP=(id:number)=>apiGet<OrdenOP>(`${base}/${id}`);

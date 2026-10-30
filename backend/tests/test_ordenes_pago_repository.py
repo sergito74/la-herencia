@@ -112,3 +112,29 @@ def test_pdf_modificado_rechazado(monkeypatch,tmp_path):
     path=tmp_path/'a.pdf';path.write_bytes(b'%PDF-test')
     monkeypatch.setattr(r,'documento_recibo',lambda *a:dict(ruta=str(path),sha256='a'*64))
     with pytest.raises(ValueError,match='cambió'):r.pdf_recibo(1)
+
+
+def test_orden_con_retencion_pagos_por_el_neto(monkeypatch):
+    calls=preparar(monkeypatch)
+    orden=lambda *a:dict(estado='Emitida',idContacto=7,retencionGanancias=Decimal('20'),facturas=[dict(idCompra=1,importe=Decimal('120'))])
+    monkeypatch.setattr(r,'obtener',orden)
+    pago=[dict(origenMovimiento='galicia',idMovimiento=5,idCompra=1,importe=100)]
+    assert r.vincular(3,recibo(idOrdenPago=2,total=120,retencion=20,aplicaciones=pago),'test')['idRecibo']==10
+    assert any('Pagada' in c[0] for c in calls if isinstance(c[0],str))
+    with pytest.raises(ValueError,match='retención'):
+        r.vincular(3,recibo(idOrdenPago=2,total=100,aplicaciones=pago),'test')
+
+
+def test_retencion_sin_orden_pide_certificado(monkeypatch):
+    preparar(monkeypatch)
+    pago=[dict(origenMovimiento='galicia',idMovimiento=5,idCompra=1,importe=100)]
+    with pytest.raises(ValueError,match='certificado'):r.vincular(3,recibo(total=120,retencion=20,aplicaciones=pago),'test')
+    assert r.vincular(3,recibo(total=120,retencion=20,certificadoRetencion='0000-2026-000050',aplicaciones=pago),'test')['idRecibo']==10
+
+
+def test_anticipo_sin_factura(monkeypatch):
+    calls=preparar(monkeypatch)
+    assert r.vincular(3,recibo(total=500,anticipo=500,aplicaciones=[]),'test')=={'idRecibo':10,'aplicaciones':[]}
+    assert all(c[0]!='aplicar' for c in calls)
+    with pytest.raises(ValidationError):recibo(total=500,aplicaciones=[])
+    with pytest.raises(ValidationError):recibo(total=500,anticipo=400,aplicaciones=[])

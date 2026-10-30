@@ -9,10 +9,14 @@ from src.db.connection import _assert_target_is_wc, execute_write_transaction, f
 from src.features.vinculos.backup import backup_verificado
 
 NOMBRE_COINCIDE = {402, 214, 158}  # Electro Zafiro, DER, 2JM: una sola aparición pero el padrón tiene la misma razón social
+# T020: sin CUIT legible en los PDF, nombre único en el padrón (YPF Debenedetti: OPESSA, 2 de 5 facturas).
+EXTRA = {287: ('33714360049', 'PC ELECTRO TIGRE SRL'), 176: ('30708610506', 'EDECAN SOCIEDAD ANONIMA'),
+         282: ('30678774495', 'OPERADORA DE ESTACIONES DE SERVICIO')}
 
 if __name__ == '__main__':
     _assert_target_is_wc()
     filas = [r for r in json.load(open(sys.argv[1], encoding='utf-8')) if r['seguro'] or r['id'] in NOMBRE_COINCIDE]
+    filas += [{'id': i, 'rs': '', 'cuit': c, 'padron': (n,)} for i, (c, n) in EXTRA.items()]
     filas = [r for r in filas if not fetch_all("SELECT 1 x FROM dbo.Contactos WHERE IdContacto=? AND LEN([CUIT/CUIL])=11", (r['id'],))]
     for r in filas:
         print(r['id'], r['rs'], r['cuit'], r['padron'][0])

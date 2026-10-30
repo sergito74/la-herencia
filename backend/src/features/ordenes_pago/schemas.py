@@ -88,15 +88,20 @@ class VincularInput(Estricto):
     total: Dinero
     moneda: Literal['ARS'] = 'ARS'
     idOrdenPago: int | None = Field(default=None, gt=0)
-    aplicaciones: list[AplicacionInput] = Field(min_length=1, max_length=100)
+    aplicaciones: list[AplicacionInput] = Field(default_factory=list, max_length=100)
+    retencion: Decimal = Field(default=Decimal(0), ge=0, max_digits=18, decimal_places=2)
+    certificadoRetencion: str | None = Field(default=None, max_length=30)
+    anticipo: Decimal = Field(default=Decimal(0), ge=0, max_digits=18, decimal_places=2)
 
     @model_validator(mode='after')
     def totales(self):
         claves = [(a.origenMovimiento, a.idMovimiento, a.idCompra) for a in self.aplicaciones]
         if len(set(claves)) != len(claves):
             raise ValueError('No repitas el mismo pago y factura')
-        if sum(a.importe for a in self.aplicaciones) != self.total:
-            raise ValueError('Las aplicaciones deben sumar el total del recibo')
+        if not self.aplicaciones and not self.anticipo:
+            raise ValueError('Indicá qué pagos y facturas respalda el recibo, o el anticipo')
+        if sum((a.importe for a in self.aplicaciones), Decimal(0)) + self.retencion + self.anticipo != self.total:
+            raise ValueError('Pagos aplicados, retención y anticipo deben sumar el total del recibo')
         return self
 
 

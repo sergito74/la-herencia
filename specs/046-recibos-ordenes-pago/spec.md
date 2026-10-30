@@ -56,6 +56,28 @@ Como usuario, quiero vincular un recibo oficial contra una Orden de Pago o contr
 
 ---
 
+### Historia 4 (P1): Retención de Ganancias RG 830 en la Orden de Pago (agregada 30/10/2026)
+Como usuario financiero, quiero que la OP proponga la retención de Ganancias que corresponde y prepare el pedido al estudio contable, para no depender de calcularla a mano.
+
+#### Criterios de Aceptación (decisiones de Sergio del 30/10/2026; detalle en [retenciones-rg830.md](retenciones-rg830.md)):
+1. El sistema **solo calcula**. El certificado lo emite el Estudio Criado, y el sistema arma el borrador del mail a administracion@estudiocriado.com, con copia a rcriado@, con el formato de siempre y las facturas adjuntas. No envía nada.
+2. Se aplica el criterio de AFIP: la base es neta de IVA, se suman los pagos del mes del pago al mismo proveedor y del mismo régimen, y el no sujeto se descuenta una sola vez por mes. Alícuotas, no sujeto y mínimo se toman del simulador público de ARCA.
+3. La inscripción del proveedor sale del padrón público de ARCA: monotributista y exento (EX) no retienen; "no corresponde" (NC) se calcula como inscripto y se avisa.
+4. El concepto sale del rubro de cada renglón de la factura. La tabla rubro → régimen es un borrador del sistema, que valida el contador y ratifica el estudio.
+5. Granos, hacienda y consignatarios quedan excluidos. Los certificados de exclusión se cargan a mano, con su vigencia. Para US$ se usa el TC del comprobante.
+6. Rige de acá en adelante: los pagos ya hechos con tarjeta o débito quedan como están.
+7. La retención es una propuesta que confirma el usuario. Los medios de pago suman el neto (facturas menos retención).
+
+### Historia 5 (P2): Recibos con retención o anticipo (agregada 30/10/2026)
+Como usuario, quiero vincular recibos que incluyen retenciones o anticipos sin factura, sin forzar una cancelación que no corresponde.
+
+#### Criterios de Aceptación:
+1. Total del recibo = pagos aplicados + retención + anticipo.
+2. Si el recibo corresponde a una OP con retención, los pagos reales cubren el neto y la retención tiene que ser la de la OP. El número de certificado es opcional (puede llegar después) y la factura se termina de cancelar con la retención cargada en Retenciones (circuito existente).
+3. Un anticipo sin factura queda registrado en el recibo, sin aplicaciones. El FIFO de cuentas corrientes lo imputa después.
+
+---
+
 ## 3. Modelo de Datos Tentativo
 
 * `dbo.OrdenesPago`: Cabecera de OP (IdOrdenPago, Numero, IdContacto, Fecha, ImporteTotal, Estado, Observaciones, Creado, CreadoPor).
