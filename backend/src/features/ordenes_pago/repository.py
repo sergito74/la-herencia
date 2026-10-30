@@ -19,7 +19,7 @@ def dinero(value):
 
 COLS = """o.IdOrdenPago idOrdenPago,o.IdContacto idContacto,c.[Razon Social] proveedor,
 o.Fecha fecha,o.FechaPago fechaPago,o.ImporteTotal importeTotal,o.Moneda moneda,o.Estado estado,
-o.Observaciones observaciones,o.Version version"""
+o.Observaciones observaciones,o.Version version,o.RetencionGanancias retencionGanancias"""
 BASE = ' FROM dbo.OrdenesPago o JOIN dbo.Contactos c ON c.IdContacto=o.IdContacto '
 
 
@@ -47,6 +47,9 @@ def obtener(id_):
                                'WHERE d.IdOrdenPago=? ORDER BY d.IdDetalle', (id_,))
     row['medios'] = fetch_all('SELECT Medio medio,Cuenta cuenta,Importe importe FROM dbo.OrdenesPago_Medios '
                              'WHERE IdOrdenPago=? ORDER BY IdMedio', (id_,))
+    row['retenciones'] = fetch_all('SELECT CodRegimen codRegimen,Concepto concepto,BasePago basePago,PagosAnteriores pagosAnteriores,'
+                                   'RetencionesAnteriores retencionesAnteriores,Alicuota alicuota,NoSujeto noSujeto,Retencion retencion '
+                                   'FROM dbo.OrdenesPago_Retenciones WHERE IdOrdenPago=? ORDER BY CodRegimen', (id_,))
     return row
 
 
@@ -101,6 +104,7 @@ def guardar(body: OrdenInput, usuario, id_=None):
                       (body.idContacto, body.fecha, body.fechaPago, total, body.observaciones, id_))
         execute_write('DELETE FROM dbo.OrdenesPago_Detalle WHERE IdOrdenPago=?', (id_,))
         execute_write('DELETE FROM dbo.OrdenesPago_Medios WHERE IdOrdenPago=?', (id_,))
+        execute_write('DELETE FROM dbo.OrdenesPago_Retenciones WHERE IdOrdenPago=?', (id_,))
     else:
         id_ = execute_insert_returning_id('INSERT INTO dbo.OrdenesPago '
             '(IdContacto,Fecha,FechaPago,ImporteTotal,Observaciones,CreadoPor) OUTPUT INSERTED.IdOrdenPago VALUES (?,?,?,?,?,?)',
@@ -110,6 +114,13 @@ def guardar(body: OrdenInput, usuario, id_=None):
     for m in body.medios:
         execute_write('INSERT INTO dbo.OrdenesPago_Medios (IdOrdenPago,Medio,Cuenta,Importe) VALUES (?,?,?,?)',
                       (id_, m.medio, m.cuenta, m.importe))
+    for r in body.retenciones:
+        execute_write('INSERT INTO dbo.OrdenesPago_Retenciones (IdOrdenPago,CodRegimen,Concepto,BasePago,PagosAnteriores,'
+                      'RetencionesAnteriores,Alicuota,NoSujeto,Retencion,Simulador) VALUES (?,?,?,?,?,?,?,?,?,?)',
+                      (id_, r.codRegimen, r.concepto, r.basePago, r.pagosAnteriores, r.retencionesAnteriores, r.alicuota,
+                       r.noSujeto, r.retencion, r.simulador))
+    execute_write('UPDATE dbo.OrdenesPago SET RetencionGanancias=? WHERE IdOrdenPago=?',
+                  (sum((r.retencion for r in body.retenciones), Decimal(0)), id_))
     auditar('Editar' if previo else 'Crear', {'antes': previo, 'despues': body.model_dump()}, usuario, id_)
     return obtener(id_)
 
@@ -121,6 +132,7 @@ def cambiar_estado(id_, estado, usuario):
         if orden['estado'] != 'Borrador':
             raise ValueError('Solo se emiten órdenes en borrador')
         body = OrdenInput(**{k: orden[k] for k in ('idContacto','fecha','fechaPago','observaciones','medios','version')},
+                          retenciones=[{**r, 'simulador': '{}'} for r in orden['retenciones']],
                           facturas=[{'idCompra': f['idCompra'], 'importe': f['importe']} for f in orden['facturas']])
         validar_facturas(body, id_)
     elif estado != 'Anulada' or orden['estado'] not in ('Borrador', 'Emitida'):

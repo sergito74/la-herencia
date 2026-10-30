@@ -23,6 +23,18 @@ class MedioInput(Estricto):
     importe: Dinero
 
 
+class RetencionInput(Estricto):
+    codRegimen: int
+    concepto: str = Field(max_length=200)
+    basePago: Decimal = Field(ge=0, max_digits=18, decimal_places=2)
+    pagosAnteriores: Decimal = Field(ge=0, max_digits=18, decimal_places=2)
+    retencionesAnteriores: Decimal = Field(ge=0, max_digits=18, decimal_places=2)
+    alicuota: Decimal
+    noSujeto: Decimal = Field(ge=0)
+    retencion: Decimal = Field(ge=0, max_digits=18, decimal_places=2)
+    simulador: str
+
+
 class OrdenInput(Estricto):
     idContacto: int = Field(gt=0)
     fecha: date
@@ -31,15 +43,37 @@ class OrdenInput(Estricto):
     observaciones: str = Field(default='', max_length=1000)
     facturas: list[FacturaInput] = Field(min_length=1, max_length=100)
     medios: list[MedioInput] = Field(min_length=1, max_length=30)
+    retenciones: list[RetencionInput] = Field(default_factory=list, max_length=10)
     version: int | None = Field(default=None, gt=0)
 
     @model_validator(mode='after')
     def totales(self):
         if len({f.idCompra for f in self.facturas}) != len(self.facturas):
             raise ValueError('Una factura no puede repetirse')
-        if sum(f.importe for f in self.facturas) != sum(m.importe for m in self.medios):
-            raise ValueError('Los medios previstos deben sumar el importe de las facturas')
+        retencion = sum((r.retencion for r in self.retenciones), Decimal(0))
+        if sum(f.importe for f in self.facturas) - retencion != sum(m.importe for m in self.medios):
+            raise ValueError('Los medios previstos deben sumar el importe de las facturas menos la retención')
         return self
+
+
+class PropuestaInput(Estricto):
+    idContacto: int = Field(gt=0)
+    fechaPago: date
+    facturas: list[FacturaInput] = Field(min_length=1, max_length=100)
+    excluirOrden: int | None = Field(default=None, gt=0)
+
+
+class RubroInput(Estricto):
+    codRegimen: int | None = None
+    estado: Literal['Borrador', 'Validado contador', 'Ratificado estudio']
+    observaciones: str | None = Field(default=None, max_length=300)
+
+
+class ExclusionInput(Estricto):
+    idContacto: int = Field(gt=0)
+    desde: date
+    hasta: date
+    observaciones: str | None = Field(default=None, max_length=300)
 
 
 class AplicacionInput(FacturaInput):
@@ -91,9 +125,22 @@ class MedioDetalle(BaseModel):
     importe: float
 
 
+class RetencionDetalle(BaseModel):
+    codRegimen: int
+    concepto: str
+    basePago: float
+    pagosAnteriores: float
+    retencionesAnteriores: float
+    alicuota: float
+    noSujeto: float
+    retencion: float
+
+
 class Orden(OrdenResumen):
+    retencionGanancias: float = 0
     facturas: list[FacturaDetalle]
     medios: list[MedioDetalle]
+    retenciones: list[RetencionDetalle] = []
 
 
 class ListaOrdenes(BaseModel):

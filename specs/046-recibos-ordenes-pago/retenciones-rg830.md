@@ -37,6 +37,6 @@ Agente de dirección financiera, con fuentes públicas. Las tablas (alícuotas, 
 6. **Certificados de exclusión:** se cargan a mano, con su vigencia.
 
 ## Hallazgo sobre la base (Detalle de Pagos)
-La base es el importe sin IVA. Ejemplo, Lartirigoyen 0149-11970, julio de 2023: $1.400.628,24 / 1,21 = $1.157.544, menos $224.000 = $933.544, por 2% = **$18.670,88**, igual al certificado. En el mismo mes, la 0149-11992 también descontó el no sujeto (no se acumuló con la anterior), y el resultado es $19.251,58. Antes de definir la acumulación mensual, revisar ese criterio con el estudio.
+La base es el importe sin IVA. Ejemplo, Lartirigoyen 0149-11970, julio de 2023: $1.400.628,24 / 1,21 = $1.157.544, menos $224.000 = $933.544, por 2% = **$18.670,88**, igual al certificado. En el mismo mes, la 0149-11992 también descontó el no sujeto (no se acumuló con la anterior), y el resultado es $19.251,58. Sergio 30/10: se aplica el criterio de AFIP (acumulación mensual por proveedor y concepto, no sujeto una vez por mes); lo de Lartirigoyen fue un error del estudio.
 
 Fuentes: RG 5423 (consejosalta.org.ar), CPCECABA 01/2026, consejo.org.ar 06/2025, iProfesional 2026, blogdelcontador.com.ar (RG 4525).
