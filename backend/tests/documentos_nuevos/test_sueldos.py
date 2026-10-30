@@ -65,3 +65,36 @@ def test_carga_paquete_real_y_reintento_sin_duplicar(tmp_path, monkeypatch):
     filas[0]["neto"] += 1
     with pytest.raises(ValueError, match="distinta"):
         sueldos.cargar(pdf, str(ruta))
+
+
+def test_lee_sueldo_casas_particulares_irma_miranda():
+    texto_miranda = """RECIBO DE REMUNERACIONES RECIBO DE REMUNERACIONES
+IGLINA ALBINA LUCILA IGLINA ALBINA LUCILA
+HALE - PARCELA 280AD - (6550) BOLIVAR HALE - PARCELA 280AD - (6550) BOLIVAR
+C.U.I.T.: 27-04862094-4 C.U.I.T.: 27-04862094-4
+Período: Mensual 05/2026 Período: Mensual 05/2026
+Legajo Apellido y Nombres C.U.I.L. Fecha Ing. Sector Sueldo/Jrnal
+00001 MIRANDA IRMA DELIA 27-14401702-7 01/12/2011 $3.348,33
+ULTIMO DEPOSITO LIQUIDACION
+Fecha Período Banco Categoría Función
+/ / CAT-5 EMP.DOM.CATEG.5
+Cod CONCEPTO Unidades Hab.C/Desc. Hab.S/Desc. Deducciones Cod CONCEPTO
+0017 HORAS TRABAJADAS 60,00 200.899,80 0017 HORAS TRABAJADAS 60,00 200.899,80
+0154 ANTIG. EMPL.CAS.PART 4,00 8.035,99 0154 ANTIG. EMPL.CAS.PART 4,00 8.035,99
+0401 SUMA NO REMUN. CASAS PART 11.500,00 0401 SUMA NO REMUN. CASAS PART 11.500,00
+0800 DIFERENCIA REDONDEO 0,21 0800 DIFERENCIA REDONDEO 0,21
+TOTALES 208.935,79 11.500,21 TOTALES 208.935,79 11.500,21
+NETO 220.436,00 NETO 220.436,00
+Lugar y Fecha de Pago: BOLIVAR, 31/05/2026
+"""
+    assert sueldos.reconoce(texto_miranda)
+    r = sueldos.leer_pagina(texto_miranda)
+    assert r["cuil"] == "27144017027"
+    assert r["nombre"] == "MIRANDA IRMA DELIA"
+    assert r["periodo"] == "Mayo 2026"
+    assert r["fecha"] == datetime(2026, 5, 31)
+    assert r["valores"]["Sueldo basico"] == Decimal("200899.80")
+    assert r["valores"]["Antiguedad"] == Decimal("8035.99")
+    assert r["valores"]["Ajuste No Remunerativo"] == Decimal("11500.00")
+    assert r["valores"]["Redondeo"] == Decimal("0.21")
+    assert r["neto"] == Decimal("220436.00")

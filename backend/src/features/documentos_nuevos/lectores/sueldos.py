@@ -13,15 +13,18 @@ import pdfplumber
 from src.db.connection import fetch_all, execute_insert_returning_id, reconciliation_transaction
 from src.features.remuneraciones import repository as remuneraciones
 
-CUIT_EMPRESA = "30712114602"
+CUIT_GIAMIGLI = "30712114602"
+CUIT_LUCY = "27048620944"
+CUITS_EMPLEADOR = {CUIT_GIAMIGLI, CUIT_LUCY}
 MESES = ("Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre")
 COLUMNAS = {
-    "0010": "Sueldo basico", "0123": "Dia Gremio", "0200": "Antiguedad",
-    "0166": "Ajuste No Remunerativo", "0800": "Redondeo", "0300": "Jubilacion",
-    "0302": "Ley 19032", "0310": "Obra Social", "0315": "Obra Social Acuerdos",
-    "0322": "Aporte Sindical", "0324": "Servicio de Sepelio",
+    "0010": "Sueldo basico", "0015": "Sueldo basico", "0017": "Sueldo basico",
+    "0071": "Vacaciones", "0123": "Dia Gremio", "0154": "Antiguedad", "0200": "Antiguedad",
+    "0166": "Ajuste No Remunerativo", "0401": "Ajuste No Remunerativo", "0800": "Redondeo",
+    "0300": "Jubilacion", "0302": "Ley 19032", "0310": "Obra Social", "0315": "Obra Social Acuerdos",
+    "0322": "Aporte Sindical", "0324": "Servicio de Sepelio", "0335": "Obra Social",
 }
-DEDUCCIONES = {"0300", "0302", "0310", "0315", "0322", "0324"}
+DEDUCCIONES = {"0300", "0302", "0310", "0315", "0322", "0324", "0335"}
 MONTO = r"-?\d[\d.]*,\d{2}"
 
 
@@ -30,13 +33,25 @@ def numero(s):
 
 
 def reconoce(texto: str) -> bool:
-    propio = CUIT_EMPRESA in texto.replace("-", "").replace(" ", "")
-    return propio and (("C.U.I.T. EMPRESA:" in texto and "SUELDO NETO" in texto) or "Resumen de Sueldos" in texto)
+    limpio = texto.replace("-", "").replace(" ", "")
+    propio = any(c in limpio for c in CUITS_EMPLEADOR)
+    if not propio:
+        return False
+    if "Resumen de Sueldos" in texto:
+        return True
+    if CUIT_GIAMIGLI in limpio and "C.U.I.T. EMPRESA:" in texto and "SUELDO NETO" in texto:
+        return True
+    if CUIT_LUCY in limpio and "RECIBO DE REMUNERACIONES" in texto and "NETO" in texto:
+        return True
+    return False
 
 
 def leer_pagina(texto: str) -> dict:
+    limpio = texto.replace("-", "").replace(" ", "")
+    if CUIT_LUCY in limpio and "RECIBO DE REMUNERACIONES" in texto:
+        return _leer_pagina_casas_particulares(texto)
     empresa = re.search(r"C\.U\.I\.T\. EMPRESA:\s*([\d-]+)", texto)
-    if not empresa or empresa[1].replace("-", "") != CUIT_EMPRESA:
+    if not empresa or empresa[1].replace("-", "") != CUIT_GIAMIGLI:
         raise ValueError("El recibo no corresponde a Giamigli")
     cab = re.search(r"^Mensual (\d{2}) (\d{4}) (.+?) (\d{8}) \$", texto, re.M)
     cuil = re.search(r"(\d{2}-\d{8}-\d)\s*/", texto)
@@ -61,7 +76,37 @@ def leer_pagina(texto: str) -> dict:
         raise ValueError("Los conceptos del recibo no cierran al centavo contra el neto")
     return {"cuil": cuil[1].replace("-", ""), "nombre": cab[3], "mes": mes, "anio": anio,
             "periodo": f"{MESES[mes-1]} {anio}", "neto": suma, "valores": valores,
-            # Fecha de devengamiento, convención del importador histórico; no acredita un pago.
+            "fecha": datetime(anio, mes, monthrange(anio, mes)[1])}
+
+
+def _leer_pagina_casas_particulares(texto: str) -> dict:
+    periodo = re.search(r"Per.odo:\s*Mensual\s*(\d{2})/(\d{4})", texto)
+    empleado = re.search(r"\d{5}\s+([A-Z\s]+?)\s+(\d{2}-\d{8}-\d)", texto)
+    neto = re.search(r"NETO\s+([\d.]+,\d{2})", texto)
+    if not periodo or not empleado or not neto:
+        raise ValueError("No se reconoce período, empleado o neto del recibo de casas particulares")
+    mes, anio = int(periodo[1]), int(periodo[2])
+    if not 1 <= mes <= 12:
+        raise ValueError("Mes inválido")
+    valores, suma = {}, Decimal("0")
+    for linea in texto.split("\n"):
+        izq = linea[:len(linea)//2].strip()
+        m = re.match(r"^(\d{4})\s+(.+)$", izq)
+        if m:
+            codigo, resto = m[1], m[2]
+            montos = re.findall(MONTO, resto)
+            if codigo not in COLUMNAS or not montos:
+                raise ValueError(f"Concepto de sueldo sin reconocer: {codigo}")
+            valor = numero(montos[-1])
+            if codigo in DEDUCCIONES:
+                valor = -abs(valor)
+            columna = COLUMNAS[codigo]
+            valores[columna] = valores.get(columna, Decimal("0")) + abs(valor)
+            suma += valor
+    if not valores or suma != numero(neto[1]):
+        raise ValueError("Los conceptos del recibo no cierran al centavo contra el neto")
+    return {"cuil": empleado[2].replace("-", ""), "nombre": empleado[1].strip(), "mes": mes, "anio": anio,
+            "periodo": f"{MESES[mes-1]} {anio}", "neto": suma, "valores": valores,
             "fecha": datetime(anio, mes, monthrange(anio, mes)[1])}
 
 
@@ -69,7 +114,10 @@ def leer(pdf: bytes) -> list[dict]:
     with pdfplumber.open(io.BytesIO(pdf)) as doc:
         if not 1 <= len(doc.pages) <= 50:
             raise ValueError("Cantidad de páginas de recibos fuera de lo esperado")
-        recibos = [dict(leer_pagina(p.extract_text() or ""), pagina=i) for i, p in enumerate(doc.pages)]
+        paginas_recibo = [(i, p.extract_text() or "") for i, p in enumerate(doc.pages) if len(p.extract_text() or "") > 20]
+        if not paginas_recibo:
+            raise ValueError("El documento no contiene páginas con texto de recibos")
+        recibos = [dict(leer_pagina(texto), pagina=i) for i, texto in paginas_recibo]
         if len({r["periodo"] for r in recibos}) != 1:
             raise ValueError("El paquete contiene períodos distintos")
         return recibos
