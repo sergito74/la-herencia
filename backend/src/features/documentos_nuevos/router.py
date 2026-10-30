@@ -31,6 +31,8 @@ def _fecha_hora(valor) -> str:
 
 
 def _enlace(d: dict) -> str | None:
+    if d["modulo"] == "pagos":
+        return f"/finanzas/ordenes-pago?recibo={d['idDocumentoNuevo']}"
     if d["tipo"] in ("recibos_sueldo", "resumen_sueldos"):
         return "/personal/remuneraciones"
     if d["modulo"] == "compras" and d["idRegistro"]:
@@ -75,7 +77,7 @@ def _item(d: dict, renglones: list[dict]) -> dict:
 @router.get("/resumen", response_model=Resumen)
 def resumen() -> dict:
     n = repository.resumen_pendientes()
-    datos = {"compras": n.get("compras", 0), "impuestos": n.get("impuestos", 0), "ventas": n.get("ventas", 0),
+    datos = {"pagos": n.get("pagos", 0), "compras": n.get("compras", 0), "impuestos": n.get("impuestos", 0), "ventas": n.get("ventas", 0),
              "tesoreria": n.get("tesoreria", 0), "cuentasCorrientes": n.get("cuentas_corrientes", 0),
              "sinClasificar": n.get("sin_clasificar", 0)}
     datos["total"] = sum(datos.values())

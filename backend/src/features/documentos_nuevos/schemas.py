@@ -6,10 +6,11 @@ from typing import Literal
 
 from pydantic import BaseModel
 
-Modulo = Literal["compras", "impuestos", "ventas", "tesoreria", "cuentas_corrientes", "sin_clasificar"]
+Modulo = Literal["compras", "impuestos", "ventas", "tesoreria", "cuentas_corrientes", "sin_clasificar", "pagos"]
 
 
 class Resumen(BaseModel):
+    pagos: int = 0
     compras: int = 0
     impuestos: int = 0
     ventas: int = 0

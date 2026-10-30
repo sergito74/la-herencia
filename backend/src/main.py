@@ -219,3 +219,6 @@ app.include_router(cotizaciones_router)
 @app.get("/health")
 async def health() -> dict:
     return {"status": "ok"}
+
+from src.features.ordenes_pago.router import router as ordenes_pago_router
+app.include_router(ordenes_pago_router)

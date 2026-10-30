@@ -49,3 +49,4 @@
 ### Fase 4: Frontend y Flujo de Usuario
 1. Implementación de las páginas y componentes en Next.js.
 2. Pruebas de integración E2E / smoke test interactivo.
+

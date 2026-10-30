@@ -22,7 +22,7 @@ interface NavLeaf {
 }
 
 /** Clave del resumen de documentos nuevos; Compras suma lo "sin clasificar" (se revisa desde Compras). */
-type AvisoNuevos = "compras" | "ventas" | "tesoreria" | "cuentasCorrientes" | "impuestos";
+type AvisoNuevos = "compras" | "ventas" | "tesoreria" | "cuentasCorrientes" | "impuestos" | "pagos";
 
 function cantidadNuevos(r: ResumenNuevos | undefined, aviso: AvisoNuevos | undefined): number {
   if (!r || !aviso) return 0;
@@ -112,6 +112,7 @@ const NAV_ITEMS: NavItem[] = [
     label: "Finanzas",
     icon: ICONS.finanzas,
     submenu: [
+      { href: "/finanzas/ordenes-pago", label: "Órdenes de pago y recibos", nuevos: "pagos" },
       { href: "/finanzas/tesoreria", label: "Tesorería", nuevos: "tesoreria" },
       { href: "/finanzas/cajas", label: "Cajas y socios" },
       { href: "/finanzas/flujo-caja-real", label: "Flujo de caja real" },

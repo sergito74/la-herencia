@@ -49,7 +49,7 @@ def archivos_en_base() -> set[str]:
 
 def listar_archivos_carpetas(ejercicios: list[str]) -> Iterator[Path]:
     """Itera archivos .pdf y .xml de las carpetas de ejercicios seleccionadas y raíces."""
-    for raiz in (COMPRAS, IMPUESTOS):
+    for raiz in (COMPRAS, IMPUESTOS, clasificador.PAGOS):
         if not raiz.exists():
             continue
         # Archivos sueltos en la raíz
@@ -87,8 +87,7 @@ def procesar_archivo_carpeta(id_corrida: int | None, path: Path, conocidos: set[
         texto = contenido.decode("utf-8", errors="ignore")
 
     c = clasificador.clasificar(texto, clasificador.buscar_contacto_por_cuit)
-    # Recibos no van a Compras: son constancias de pago que corresponderán al futuro módulo de pagos
-    if not c.comprobante or not c.para_giamigli or c.tipo == "recibo":
+    if not c.comprobante or not c.para_giamigli:
         return None
 
     # Verificar si es duplicado de número y emisor
@@ -109,7 +108,7 @@ def procesar_archivo_carpeta(id_corrida: int | None, path: Path, conocidos: set[
         r = lectores.cargar_resumen(texto, contenido, ruta_str)
         if r is None:
             motivo = "Importar el resumen desde Tesorería"
-    elif estado == "para_cargar" and c.id_contacto:
+    elif estado == "para_cargar" and c.id_contacto and c.tipo != "recibo":
         r = lectores.cargar(c.tipo, c.id_contacto, c.contacto or "", c.numero, c.fecha, contenido, ruta_str)
 
     if r is not None:
@@ -122,7 +121,8 @@ def procesar_archivo_carpeta(id_corrida: int | None, path: Path, conocidos: set[
             motivo = r["motivo"]
 
     if estado == "para_cargar" and not motivo:
-        motivo = ("Importar el resumen desde Tesorería" if c.modulo == "tesoreria"
+        motivo = ("Vincular el recibo con los pagos y facturas" if c.tipo == "recibo"
+                  else "Importar el resumen desde Tesorería" if c.modulo == "tesoreria"
                   else "Revisar el documento guardado" if c.tipo in ("contrato", "resumen_proveedor")
                   else "El sistema todavía no sabe leer este comprobante: cargar a mano")
 

@@ -69,3 +69,4 @@ Como usuario, quiero vincular un recibo oficial contra una Orden de Pago o contr
 * Creación y edición de una Orden de Pago con múltiples facturas de compra.
 * Detección automática de un PDF de recibo real (ej. Baya Casal o Sancor) y verificación de que **no** ingresa a Compras.
 * Vinculación completa y comprobación de que el saldo de las facturas en cuenta corriente queda saldado.
+
