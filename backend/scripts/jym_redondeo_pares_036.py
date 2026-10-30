@@ -20,7 +20,8 @@ C = next((int(a) for a in sys.argv[1:] if a.isdigit()), 48)
 
 def pares() -> list[tuple]:
     e = entrada.armar([C])[C]
-    facs = [i for i in e["items"] if i["clave"][0] == "Compras" and i["lado"] == "D" and i["importe"] > 0 and i["moneda"] == "ARS"]
+    facs = [i for i in e["items"] if i["clave"][0] == "Compras" and i["lado"] == "D" and i["importe"] > 0 and i["moneda"] == "ARS"
+            and i["clave"][2] is None]  # en cuotas el item es una cuota, no el total de la factura (error del 30/10/2026)
     pagos = [i for i in e["items"] if i["lado"] == "C" and i["clase"] == "dinero"]
     cand = []
     for f in facs:

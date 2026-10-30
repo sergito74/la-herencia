@@ -222,8 +222,8 @@ def _agregar_fijos(resultado: dict[int, dict], unif: dict[int, int]) -> None:
     for c, r in resultado.items():
         lados = {i["clave"][:2]: i["lado"] for i in r["items"]}
         importes = defaultdict(float)
-        for i in r["items"]:
-            importes[i["clave"][:2]] += i["importe"]
+        for i in r["items"]:  # los fijos van en pesos: los documentos en US$ vuelven al TC del comprobante
+            importes[i["clave"][:2]] += i["importe"] * (i["tcDoc"] if i.get("moneda") == "USD" else 1)
         r["_lados"], r["_importes"] = lados, importes
     for f in fetch_all("SELECT IdCompra AS a, IdCompraRelacionada AS b FROM dbo.CompraDocumentosRelacionados"):
         for c, r in resultado.items():
