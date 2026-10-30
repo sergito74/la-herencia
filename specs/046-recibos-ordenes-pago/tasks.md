@@ -33,5 +33,5 @@
 
 
 ### Pendiente (fuera de esta entrega)
-- [ ] **T018**: Cálculo de retenciones al preparar la OP. Sergio (30/10/2026): ARCA tiene un módulo que simula las retenciones de un pago. Usarlo requiere autorización explícita (regla de oro de cuentas externas); mientras tanto la pantalla muestra "Próximamente" y las retenciones previstas van en observaciones.
+- [ ] **T018**: Cálculo de retenciones de Ganancias al preparar la OP con el simulador público RG 830 de ARCA (https://servicioscf.afip.gob.ar/calc-rg830/, sin login; Sergio 30/10/2026). Endpoints JSON `default.aspx/conceptosalcliente` y `default.aspx/CalcularRetencion` (sesión con GET previo). Base: pagos del mes al proveedor + pago actual, neto de IVA, menos retenciones ya practicadas en el mes; falta guardar por proveedor el concepto (bienes 78 / servicios 94) y si está inscripto.
 - [ ] **T019**: Recibos con anticipos sin factura y con retenciones (vistos en Bayá Casal): hoy quedan pendientes en la bandeja; definir su aplicación.
