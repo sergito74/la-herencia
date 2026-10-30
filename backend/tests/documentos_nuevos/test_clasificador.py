@@ -36,6 +36,11 @@ def test_no_comprobante_se_ignora(texto):
     assert not c.clasificar(texto, _contacto).comprobante
 
 
+def test_oscar_giamberardini_es_giamigli():
+    texto = FACTURA.replace("GIAMIGLI DE BOLIVAR SA  CUIT 30-71211460-2", "GIAMBERARDINI OSCAR VICENTE CUIT: 20-04602264-6")
+    assert c.clasificar(texto, _contacto).para_giamigli
+
+
 def test_sucesion_es_giamigli():
     texto = FACTURA.replace("GIAMIGLI DE BOLIVAR SA  CUIT 30-71211460-2", "SUCESION GIAMBERARDINI CUIT 20-12345678-3")
     assert c.clasificar(texto, _contacto).para_giamigli
