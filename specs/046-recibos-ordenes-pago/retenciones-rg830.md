@@ -24,12 +24,19 @@ Agente de dirección financiera, con fuentes públicas. Las tablas (alícuotas, 
 - Al anular y volver a emitir una OP, no retener dos veces.
 - El agente de retención responde solidariamente: el cálculo es siempre una propuesta que alguien confirma.
 
-## Decisiones de Sergio (pendientes)
-1. ¿El sistema solo calcula, o también emite el certificado? ¿Quién presenta SIRE: el estudio contable?
-2. ¿Qué se hace con los pagos con tarjeta o débito que deberían haber tenido retención?
-3. La tabla de mapeo de rubros a códigos de régimen, a validar con el contador (arrendamiento rural, fletes, veterinarios).
-4. ¿Se excluyen las compras de granos, hacienda y consignatarios?
-5. ¿TC para los pagos en US$?
-6. ¿Cómo se cargan los certificados de exclusión?
+## Decisiones de Sergio (30/10/2026)
+1. **El sistema solo calcula la retención.** El certificado lo emite el Estudio Criado. El sistema prepara el mail a administracion@estudiocriado.com, con copia a rcriado@estudiocriado.com, y adjunta las facturas del pago. Formato tomado de los mails enviados entre 2021 y 2026:
+   - **Asunto:** "Giamigli de Bolivar S.A. - Retencion" (o "Retenciones").
+   - **Texto:** "Hola Karen, buen día. Te mando adjunta(s) factura(s) para hacer el cálculo de la retención de acuerdo al siguiente detalle:"
+   - **Tabla:** Fecha | Vencimiento | Fecha pago | Proveedor | Tipo Documento | Nro. Documento | Moneda | Forma de pago | Importe, y para US$ también Tipo Cambio | Importe pesos.
+   - **Cierre:** "Gracias! Saludos, Sergio".
+2. **Pagos ya hechos con tarjeta o débito:** quedan como están. La regla rige de acá en adelante.
+3. **Mapeo de rubros a códigos:** el sistema arma un borrador, lo valida el contador y lo ratifica el estudio.
+4. **Granos, hacienda y consignatarios:** se excluyen.
+5. **TC en US$:** el que usa el estudio. Contra "Detalle de Pagos.xlsx" (53 pagos en US$ de 2021 a 2026), 48 usan el **TC de la factura**, que suele ser el BNA vendedor divisa del día anterior a la factura. Otros 3 son facturas que no están en Compras, con TC impreso propio. En 2 se usó el BNA del pago. Regla: TC del comprobante, la misma que [[feedback-regla-usd-tc-comprobante]]; si la factura no tiene TC, BNA vendedor divisa del día hábil anterior al pago.
+6. **Certificados de exclusión:** se cargan a mano, con su vigencia.
+
+## Hallazgo sobre la base (Detalle de Pagos)
+La base es el importe sin IVA. Ejemplo, Lartirigoyen 0149-11970, julio de 2023: $1.400.628,24 / 1,21 = $1.157.544, menos $224.000 = $933.544, por 2% = **$18.670,88**, igual al certificado. En el mismo mes, la 0149-11992 también descontó el no sujeto (no se acumuló con la anterior), y el resultado es $19.251,58. Antes de definir la acumulación mensual, revisar ese criterio con el estudio.
 
 Fuentes: RG 5423 (consejosalta.org.ar), CPCECABA 01/2026, consejo.org.ar 06/2025, iProfesional 2026, blogdelcontador.com.ar (RG 4525).
