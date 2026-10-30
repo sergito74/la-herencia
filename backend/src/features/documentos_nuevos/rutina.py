@@ -201,6 +201,28 @@ def _mails(id_corrida: int, r: dict, problemas: list[str], ahora: datetime) -> N
 
 # --- Corrida -----------------------------------------------------------------
 
+
+
+def _carpetas(id_corrida: int, r: dict, problemas: list[str]) -> None:
+    """Verifica comprobantes e impuestos guardados en carpetas locales de Compras e Impuestos."""
+    from src.features.documentos_nuevos import carpetas
+    try:
+        ejercicios = carpetas.ejercicios_a_revisar()
+        conocidos = carpetas.archivos_en_base()
+        for p in carpetas.listar_archivos_carpetas(ejercicios):
+            try:
+                estado = carpetas.procesar_archivo_carpeta(id_corrida, p, conocidos)
+                if estado in ("cargado_solo", "para_cargar"):
+                    r["documentosNuevos"] += 1
+                    r["cargadosSolos"] += estado == "cargado_solo"
+                    r["paraCargarAMano"] += estado == "para_cargar"
+            except Exception:
+                log.exception("Rutina: fallo al procesar archivo local %s", p.name)
+    except Exception:
+        log.exception("Rutina: no se pudieron verificar las carpetas locales")
+        problemas.append("Carpetas locales: error al verificar archivos nuevos")
+
+
 def correr(origen: str = "programada") -> int | None:
     """Una corrida completa. `None` si ya había otra en curso."""
     id_corrida = repository.abrir_corrida(origen)
@@ -214,6 +236,7 @@ def correr(origen: str = "programada") -> int | None:
         _cuentas(r, problemas)
         _contar_portal(id_corrida, r)
         _mails(id_corrida, r, problemas, datetime.now())
+        _carpetas(id_corrida, r, problemas)
     except Exception:
         log.exception("Rutina: falló la corrida %s", id_corrida)
         problemas.append("La corrida no pudo terminar; se reintenta en la próxima")

@@ -48,6 +48,9 @@ def _item(d: dict, renglones: list[dict]) -> dict:
     if d["origen"] == "mail":
         origen = f"Mail de {d['mailRemitente'] or 'remitente desconocido'}"
         detalle = " · ".join(x for x in (d["mailAsunto"], f"Llegó el {_fecha_hora(d['mailRecibido'])}") if x)
+    elif d["origen"] == "carpeta":
+        origen = "Carpeta local"
+        detalle = f"Detectado el {_fecha_hora(d['creado'])}"
     else:
         origen = f"Portal {d['portal']}" if d["portal"] else "Portal"
         detalle = f"Llegó el {_fecha_hora(d['creado'])}"

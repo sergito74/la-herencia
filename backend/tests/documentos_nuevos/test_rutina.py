@@ -13,6 +13,8 @@ from src.features.documentos_nuevos import mails, rutina
 def sin_cuentas(monkeypatch):
     monkeypatch.setattr(rutina, "_cuentas", lambda r, p: None)
     monkeypatch.setattr(rutina, "_contar_portal", lambda i, r: None)
+    monkeypatch.setattr(rutina, "_carpetas", lambda i, r, p: None)
+    monkeypatch.setattr(rutina, "_carpetas", lambda i, r, p: None)
 
 
 def _almacen(nombre, n_mails, ultimo):
@@ -35,6 +37,7 @@ def test_marca_avanza_aunque_una_cuenta_falle(repo_sim, monkeypatch):
     monkeypatch.setattr(rutina, "_cuentas", lambda r, p: (p.append("Cargill: revisar en la bóveda"),
                                                           r.__setitem__("cuentasConProblemas", 1)))
     monkeypatch.setattr(rutina, "_contar_portal", lambda i, r: None)
+    monkeypatch.setattr(rutina, "_carpetas", lambda i, r, p: None)
     ultimo = datetime(2026, 10, 28, 12)
     monkeypatch.setattr(mails, "nuevos", lambda marca_de, ahora: iter([_almacen("Outlook", 1, ultimo)]))
     monkeypatch.setattr(rutina, "procesar_adjunto", lambda i, m, a: "para_cargar")
