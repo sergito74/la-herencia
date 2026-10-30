@@ -126,3 +126,24 @@ Correcciones al informe del grupo 1:
 - **Gentos:** está en $0 y sin pagos de más.
 - **Galicia Seguros:** está en US$ 0. El débito de $2.154.648 y su devolución del 30/06/2025 no rompen el saldo.
 - **Nidera:** la factura 0303-7648 ya estaba partida, de antes, en $41.705,68 más la ND interna de $198.598,77.
+
+## Grupo 4 — IMPUTADO (30/10/2026)
+
+Son 88 cuentas corrientes con más de 5 facturas, sin las del grupo 1 (`grupo4_diagnostico_036`, `grupo4_cierre_036`). Se pasaron centavos a 1.692 facturas, se redondearon los pares de hasta 0,10% y se aplicó el FIFO estricto. Antes y después se controló el saldo de cada cuenta y la comparación contra el respaldo. Lo único que se movió más de $0,50 es EESS Saladillo: −$4,00 de pares, que acercan el saldo a cero.
+
+**Errores encontrados y corregidos en el camino:**
+- **Pares en facturas en cuotas:** el script llevaba el total de la factura al importe de una cuota. Afectó 18 facturas (17 de Pérez, 1 de Zurra). Se restauraron desde el respaldo `grupo4-redondeos` y ahora el script omite las cuotas.
+- **Notas de crédito en US$ vinculadas a su factura:** desde el cambio del 29/10, el importe fijo se dividía dos veces por el TC (en Guazzaroni, US$ 2,52 en vez de 3.442,53). Se corrigió y se re-imputaron Guazzaroni, Folgado y Sunanco.
+- **TC del comprobante siempre:** el motor convertía el pago en pesos de un documento en US$ al BNA del día. Ahora usa siempre el TC del comprobante (regla del 21/10). Se re-imputaron las 22 cuentas con documentos en US$, salvo las de portal, sin que cambie ningún saldo.
+- **Devoluciones a la tarjeta:**
+  - Un reintegro atado a su nota de crédito ahora la cancela, en lugar de quedar con los lados cruzados.
+  - Un reintegro atado a su factura (se cobró de más y se devolvió la diferencia) lo cancela el sobrante del cargo de esa compra.
+  - Así se cerraron los restos viejos de Coto.
+- **Regla de importe idéntico:** había 518 aplicaciones "manuales" automáticas del 18/10 ("Barrida 036: mismo importe…") en Movistar y EESS Saladillo. Se anularon y se reemplazaron por FIFO. Por esas aplicaciones, en Movistar las notas de crédito de mayo de 2024 habían quedado imputadas a la factura de junio.
+
+**Saldos abiertos reales, verificados:**
+- **Banco Nación $137.500:** es la última cuota de capital del préstamo 19136529 ($1.100.000 en 8 cuotas de $137.500, 7 pagadas). Los préstamos 14464193 y 22021399 están cancelados.
+- **Guazzaroni US$ 13.605,79:** facturas 3310, 3313 y 4338, de canje directo. La NC 13569 anula las facturas 3231 y 3233 ("cambia cond. de pago").
+- **Documentos posteriores al corte o casos conocidos:** Fideicomiso La Esperanza, Estudio Criado, Pérez, Ricardo Criado (recibo 4511), Basterrechea (factura 545), Movistar (septiembre y octubre de 2026), EESS Saladillo, Gomería Manghi, Buira, Sancor, Martín Silva Rossi y Coto (factura de octubre).
+
+**Caso menor:** en Coto, el ingreso Galicia 706 ($851,10 del 08/08/2022) es el sobrante devuelto del pago Galicia 701. El motor no cruza dinero contra dinero sin vínculo, así que el FIFO lo deja abierto. No cambia el saldo.

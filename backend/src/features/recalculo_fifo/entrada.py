@@ -157,6 +157,7 @@ def armar(id_contactos: list[int]) -> dict[int, dict]:
                 # (29/10/2026: antes quedaba en pesos rotulado us$ y se volvía a multiplicar por el TC).
                 base["moneda"] = "USD"
                 base["tcDoc"] = float(c["tc"])
+                base["usarTcDoc"] = True  # regla usd-tc-comprobante (Sergio 21/10/2026): nunca el BNA del día del pago
                 importe = importe / base["tcDoc"]
             base["suspendido"] = bool(c.get("suspendida"))
             base["ajustaTc"] = bool(c.get("ajusta"))
@@ -187,19 +188,32 @@ def armar(id_contactos: list[int]) -> dict[int, dict]:
 
 
 def _agregar_fijos(resultado: dict[int, dict], unif: dict[int, int]) -> None:
-    claves_por_contacto = {c: {i["clave"][:2] for i in r["items"]} for c, r in resultado.items()}
+    claves_por_contacto = {c: {i["clave"][:2]: i["lado"] for i in r["items"]} for c, r in resultado.items()}
 
     def agregar(credito: tuple, debito: tuple, importe: float, regla: str) -> None:
         for c, claves in claves_por_contacto.items():
             if credito in claves and debito in claves:
+                if claves[credito] == "D" and claves[debito] == "C":  # devolución: el vínculo viene al revés
+                    credito, debito = debito, credito
+                if claves[credito] != "C" or claves[debito] != "D":  # p. ej. reintegro atado a su factura: va por FIFO
+                    return
                 resultado[c]["fijos"].append({"credito": credito, "debito": debito, "importe": abs(float(importe)),
                                               "regla": regla})
                 return
 
     # Cadena tarjeta → factura: el renglón 'Tarjetas' de la vista es el IdVinculo.
+    por_compra: dict[int, list] = defaultdict(list)
     for f in fetch_all("SELECT IdVinculo AS id, IdCompra AS compra, ImporteImputado AS imp "
                        "FROM dbo.Tarjetas_Resumenes_Lineas_Compras WHERE IdCompra IS NOT NULL"):
         agregar(("Tarjetas", f["id"]), ("Compras", f["compra"]), f["imp"] or 0, "cadena")
+        por_compra[f["compra"]].append((f["id"], float(f["imp"] or 0)))
+    # Reintegro atado a su factura (se cobró de más y se devolvió la diferencia): lo cancela el sobrante del cargo.
+    for lineas in por_compra.values():
+        cargos = [(v, imp) for v, imp in lineas if imp > 0]
+        for v, imp in lineas:
+            if imp < 0 and cargos:  # primero el cargo del mismo importe que el reintegro
+                cargo = next((c for c, i in cargos if abs(i + imp) < 0.005), cargos[0][0])
+                agregar(("Tarjetas", cargo), ("Tarjetas", v), imp, "cadena")
 
     # Conciliación de tesorería con documento: el renglón es el IdConciliacion.
     for f in fetch_all("SELECT IdConciliacion AS id, Medio AS medio, TipoOrigenDocumento AS tipo, "
