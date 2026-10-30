@@ -127,7 +127,7 @@ def procesar_adjunto(id_corrida: int | None, mail: mails.Mail, adj: mails.Adjunt
         r = lectores.cargar_resumen(texto, adj.contenido, ruta)
         if r is None:
             motivo = "Importar el resumen desde Tesorería"
-    elif estado == "para_cargar" and c.id_contacto:
+    elif estado == "para_cargar" and c.id_contacto and c.tipo != "recibo":
         r = lectores.cargar(c.tipo, c.id_contacto, c.contacto or "", c.numero, c.fecha, adj.contenido, ruta)
     if r is not None:
         registro = r.get("idRegistro") or r.get("idCompra")
@@ -138,7 +138,8 @@ def procesar_adjunto(id_corrida: int | None, mail: mails.Mail, adj: mails.Adjunt
         else:
             motivo = r["motivo"]
     if estado == "para_cargar" and not motivo:
-        motivo = ("Importar el resumen desde Tesorería" if c.modulo == "tesoreria"
+        motivo = ("Vincular el recibo con los pagos y facturas" if c.tipo == "recibo"
+                  else "Importar el resumen desde Tesorería" if c.modulo == "tesoreria"
                   else "Revisar el documento guardado" if c.tipo in ("contrato", "resumen_proveedor")
                   else "El sistema todavía no sabe leer este comprobante: cargar a mano")
     repository.registrar_documento({

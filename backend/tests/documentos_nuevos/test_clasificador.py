@@ -119,3 +119,13 @@ def test_visa_personal_no_es_de_la_empresa():
 
     assert not v.es_visa_galicia("Banco Galicia Resumen Nº VI0000001 Titular PEREZ JUAN")
     assert v.es_visa_galicia("Banco Galicia Resumen Nº VI0000001 GIAMIGLI DE BOLIVAR SA")
+
+
+def test_recibo_con_facturas_en_detalle_y_numero_espaciado():
+    from src.features.documentos_nuevos import clasificador as c
+    texto = "Recibo de Ingreso Casa Central\nNúmero: 0006 00074242\nFecha: 15/04/2026\nCUIT: 30-60741325-4\nGIAMIGLI CUIT 30-71211460-2\nFactura cancelada\nTotal Pesos Recibidos: 15.833.029,55\nTotal : 15.833.029,55"
+    r=c.clasificar(texto,lambda _: (7,'Proveedor'))
+    assert r.tipo=='recibo' and r.modulo=='pagos'
+    assert r.numero=='0006-00074242' and str(r.total)=='15833029.55'
+    carpeta,_=c.carpeta_y_nombre(r,'recibo.pdf')
+    assert c.PAGOS in carpeta.parents

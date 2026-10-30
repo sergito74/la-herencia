@@ -27,7 +27,7 @@ def test_resumen_por_modulo(client, repo_sim):
     _doc(repo_sim, sha256="c" * 64, estado="ya_estaba")
     iniciar_sesion(client, "Lectura")
     r = client.get("/api/documentos-nuevos/resumen").json()
-    assert r == {"compras": 1, "impuestos": 0, "ventas": 0, "tesoreria": 0, "cuentasCorrientes": 0,
+    assert r == {"compras": 1, "impuestos": 0, "ventas": 0, "tesoreria": 0, "cuentasCorrientes": 0, "pagos": 0,
                  "sinClasificar": 1, "total": 2}
 
 

@@ -20,6 +20,7 @@ _local = threading.local()
 
 # Tipo de documento de portal → (tipo de DocumentosNuevos, módulo del aviso).
 DESTINO_PORTAL = {
+    "recibo": ("recibo", "pagos"),
     "factura": ("factura", "compras"), "nota_credito": ("nota_credito", "compras"),
     "nota_debito": ("nota_debito", "compras"), "liquidacion": ("liquidacion", "ventas"),
     "certificado": ("retencion", "impuestos"),

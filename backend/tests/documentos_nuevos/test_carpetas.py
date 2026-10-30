@@ -29,3 +29,18 @@ def test_archivo_sin_ser_comprobante_se_ignora(tmp_path, monkeypatch):
     monkeypatch.setattr(carpetas.repository, "existente", lambda sha: None)
     monkeypatch.setattr(carpetas.clasificador, "texto_pdf", lambda contenido: "Lista de Precios 2026")
     assert carpetas.procesar_archivo_carpeta(1, f, set()) is None
+
+
+def test_recibo_se_registra_en_pagos_sin_cargar_compra(tmp_path,monkeypatch):
+    from src.features.documentos_nuevos.clasificador import Clasificacion
+    f=tmp_path/'recibo.pdf';f.write_bytes(b'%PDF-test')
+    monkeypatch.setattr(carpetas.repository,'existente',lambda *a:None)
+    monkeypatch.setattr(carpetas.repository,'mismo_comprobante',lambda *a:False)
+    monkeypatch.setattr(carpetas.clasificador,'texto_pdf',lambda *a:'RECIBO')
+    monkeypatch.setattr(carpetas.clasificador,'clasificar',lambda *a:Clasificacion(True,tipo='recibo',modulo='pagos',id_contacto=7,numero='0001-00000001'))
+    monkeypatch.setattr(carpetas.lectores,'cargar',lambda *a:pytest.fail('No cargar un recibo como compra'))
+    docs=[]
+    monkeypatch.setattr(carpetas.repository,'registrar_documento',lambda d:docs.append(d))
+    assert carpetas.procesar_archivo_carpeta(None,f,set())=='para_cargar'
+    assert docs[0]['modulo']=='pagos' and docs[0]['idRegistro'] is None
+

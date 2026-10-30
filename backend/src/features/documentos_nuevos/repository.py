@@ -13,7 +13,7 @@ import pyodbc
 from src.db.connection import execute_insert_returning_id, execute_write, fetch_all, fetch_one
 
 LIMITE_MAXIMO = 100
-MODULOS = ("compras", "impuestos", "ventas", "tesoreria", "cuentas_corrientes", "sin_clasificar")
+MODULOS = ("compras", "impuestos", "ventas", "tesoreria", "cuentas_corrientes", "sin_clasificar", "pagos")
 PENDIENTE = "d.Estado IN ('cargado_solo', 'para_cargar') AND d.Revisado IS NULL"
 
 

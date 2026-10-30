@@ -27,6 +27,7 @@ DROPBOX = COMPRAS.parent
 BANCOS = DROPBOX / "Bancos"
 IMPUESTOS = DROPBOX / "Impuestos"
 VENTAS = DROPBOX / "Ventas"
+PAGOS = DROPBOX / "Pagos"
 DOCUMENTOS = Path.home() / "Documents" / "La Herencia"
 RESUMENES_PROVEEDORES = DOCUMENTOS / "Administracion y gestion" / "Resumenes de Cuenta"
 CONTRATOS = DOCUMENTOS / "Agricultura" / "Contratos"
@@ -76,6 +77,9 @@ def _importe(s: str) -> Decimal:
 def tipo_de(texto: str) -> str | None:
     """Tipo de comprobante, o `None` si no es un comprobante (presupuesto, catálogo, informe, publicidad…)."""
     t = texto.upper()
+    # El detalle de un recibo nombra facturas/NC canceladas: no cambia su encabezado.
+    if re.search(r"^\s*(?:ORIGINAL\s+)?RECIBO(?:\s+DE\s+(?:INGRESO|PAGO|COBRANZA)|\s+(?:N[ÚU]MERO|N[°º]))", t, re.M):
+        return "recibo"
     if re.search(r"\bPRESUPUESTO\b|\bCOTIZACI[OÓ]N\b|\bCAT[AÁ]LOGO\b|\bLISTA DE PRECIOS\b", t) and \
             not re.search(r"\bFACTURA\b|\bCAE\b", t):
         return None
@@ -122,7 +126,7 @@ def tipo_de(texto: str) -> str | None:
 
 
 MODULO = {
-    "factura": "compras", "nota_credito": "compras", "nota_debito": "compras", "recibo": "compras",
+    "factura": "compras", "nota_credito": "compras", "nota_debito": "compras", "recibo": "pagos",
     "boleta": "impuestos", "retencion": "impuestos", "liquidacion": "ventas", "contrato": "ventas",
     "resumen_banco": "tesoreria", "resumen_tarjeta": "tesoreria", "resumen_proveedor": "cuentas_corrientes",
     "otro": "sin_clasificar",
@@ -230,6 +234,14 @@ def clasificar(texto: str, buscar_contacto=None) -> Clasificacion:
     cuit = emisores[0] if emisores else None
     c = Clasificacion(comprobante=True, tipo=tipo, modulo=MODULO[tipo], cuit_emisor=cuit, fecha=fecha_de(texto),
                       numero=numero_de(texto), total=total_de(texto))
+    if tipo == 'recibo':
+        n = re.search(r'(?:N[ÚU]MERO|RECIBO\s*N[°ºO.]*)\s*:?\s*(\d{4,5})[ -]+(\d{6,8})', texto, re.I)
+        if n:
+            c.numero = f'{n.group(1)}-{n.group(2)}'
+        # Total cancelado puede incluir retenciones; no confundirlo con fondos recibidos.
+        totales = re.findall(r'^\s*TOTAL\s*:\s*'+_MONTO, texto, re.I | re.M)
+        if totales:
+            c.total = _importe(totales[-1])
     destinatario = receptor(texto, cuit)
     c.para_giamigli = destinatario != "otra"
     if destinatario == "persona":
@@ -280,6 +292,8 @@ def carpeta_y_nombre(c: Clasificacion, nombre_original: str) -> tuple[Path, str]
             return CONTRATOS, f"Fijacion cto. {c.numero}.pdf"
         return CONTRATOS, f"Contrato {contacto}{' ' + c.numero if c.numero else ''}.pdf"
     ejercicio = carpeta_ejercicio(fecha).name
+    if c.modulo == "pagos":
+        return PAGOS / ejercicio, f"{fecha:%Y%m%d}_{contacto}_Recibo_{_seguro(c.numero or Path(nombre_original).stem)}.pdf"
     if c.modulo == "impuestos":
         return IMPUESTOS / ejercicio, f"{fecha:%Y%m%d}_{contacto}.pdf"
     if c.modulo == "ventas":
