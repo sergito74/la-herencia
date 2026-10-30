@@ -50,6 +50,7 @@ def obtener(id_):
     row['retenciones'] = fetch_all('SELECT CodRegimen codRegimen,Concepto concepto,BasePago basePago,PagosAnteriores pagosAnteriores,'
                                    'RetencionesAnteriores retencionesAnteriores,Alicuota alicuota,NoSujeto noSujeto,Retencion retencion '
                                    'FROM dbo.OrdenesPago_Retenciones WHERE IdOrdenPago=? ORDER BY CodRegimen', (id_,))
+    row['repartoNeto'] = reparto_neto(row)
     return row
 
 
@@ -246,8 +247,10 @@ def vincular(id_documento, body: VincularInput, usuario):
     if orden:
         expected = {f['idCompra']: dinero(f['importe']) for f in orden['facturas']}
         retencion_op = dinero(orden.get('retencionGanancias'))
-        if orden['estado'] != 'Emitida' or orden['idContacto'] != body.idContacto:
-            raise ValueError('El recibo debe corresponder a una orden emitida del proveedor')
+        if orden['estado'] not in ('Emitida', 'Pagada') or orden['idContacto'] != body.idContacto:
+            raise ValueError('El recibo debe corresponder a una orden emitida o pagada del proveedor')
+        if orden['estado'] == 'Pagada' and fetch_one('SELECT IdRecibo id FROM dbo.RecibosProveedores WHERE IdOrdenPago=?', (body.idOrdenPago,)):
+            raise ValueError('La orden ya tiene un recibo vinculado')
         if body.retencion != retencion_op:
             raise ValueError('La retención del recibo no coincide con la de la orden de pago')
         # Con retención los pagos reales cubren el neto; la retención cancela el resto por el circuito de Retenciones.
@@ -299,3 +302,55 @@ def vincular(id_documento, body: VincularInput, usuario):
         execute_write("UPDATE dbo.OrdenesPago SET Estado='Pagada',Version=Version+1,Modificado=SYSUTCDATETIME() WHERE IdOrdenPago=?",(body.idOrdenPago,))
     auditar('Vincular recibo',body.model_dump(),usuario,body.idOrdenPago,id_recibo)
     return {'idRecibo':id_recibo, 'aplicaciones':confirmar}
+
+
+def reparto_neto(orden):
+    """Pagos reales por factura (T024/T025): el neto cubre las facturas en orden de carga; la retención descuenta de la última."""
+    restante = sum((dinero(f['importe']) for f in orden['facturas']), Decimal(0)) - dinero(orden.get('retencionGanancias'))
+    out = []
+    for f in orden['facturas']:
+        parte = min(dinero(f['importe']), restante)
+        if parte > 0:
+            out.append({'idCompra': f['idCompra'], 'numero': f.get('numero'), 'importe': parte})
+        restante -= parte
+    return out
+
+
+def _dia(v):
+    return v.date() if hasattr(v, 'date') else v
+
+
+def _debito_de_la_orden(orden, links):
+    """Único egreso real del proveedor, posterior a la OP, libre y por el neto exacto; None si no hay o es ambiguo."""
+    neto = sum((p['importe'] for p in reparto_neto(orden)), Decimal(0))
+    candidatos = [m for m in movimientos(orden['idContacto'])
+                  if dinero(m['importe']) == neto and dinero(m['disponible']) == neto
+                  and (m['fecha'] is None or _dia(m['fecha']) >= _dia(orden['fecha']))]
+    usados = {(a['origenMovimiento'], a['idMovimiento']) for a in links if a.get('enMovimiento')}
+    candidatos = [m for m in candidatos if (m['origenMovimiento'], m['idMovimiento']) not in usados]
+    return candidatos[0] if len(candidatos) == 1 else (None if not candidatos else 'ambiguo')
+
+
+@atomic_reconciliation
+def conciliar_emitidas(usuario, id_contacto=None):
+    """T024: las OP emitidas cuyo débito real ya está en Tesorería pasan a Pagada con sus aplicaciones (spec 019)."""
+    sql = "SELECT IdOrdenPago id FROM dbo.OrdenesPago WHERE Estado='Emitida'" + (' AND IdContacto=?' if id_contacto else '')
+    links = _vinculos()
+    pagadas, ambiguas = [], []
+    for r in fetch_all(sql + ' ORDER BY IdOrdenPago', (id_contacto,) if id_contacto else ()):
+        orden = obtener(r['id'])
+        mov = _debito_de_la_orden(orden, links)
+        if mov == 'ambiguo':
+            ambiguas.append(orden['idOrdenPago'])
+            continue
+        if not mov:
+            continue
+        reparto = [{'tipoDocumento': 'CompraDeuda', 'idDocumento': p['idCompra'], 'importeAplicado': float(p['importe'])}
+                   for p in reparto_neto(orden)]
+        ids = aplicaciones.insertar_aplicaciones(mov['origenMovimiento'], mov['idMovimiento'], reparto, usuario)
+        execute_write("UPDATE dbo.OrdenesPago SET Estado='Pagada',Version=Version+1,Modificado=SYSUTCDATETIME() WHERE IdOrdenPago=?",
+                      (orden['idOrdenPago'],))
+        auditar('Pagada por débito', {'movimiento': mov, 'aplicaciones': ids}, usuario, orden['idOrdenPago'])
+        links.append({'origenMovimiento': mov['origenMovimiento'], 'idMovimiento': mov['idMovimiento'], 'enMovimiento': True})
+        pagadas.append(orden['idOrdenPago'])
+    return {'pagadas': pagadas, 'ambiguas': ambiguas}

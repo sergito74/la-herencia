@@ -100,6 +100,11 @@ def actualizar_padron():
     return llamar(padron.actualizar)
 
 
+@router.post('/conciliar-emitidas', dependencies=[Depends(exigir_admin)])
+def conciliar_emitidas(request: Request, idContacto: int | None = Query(None, gt=0)):
+    return llamar(repo.conciliar_emitidas, usuario_actual(request), idContacto)
+
+
 @router.get('/{id_}/mail-estudio')
 def mail_estudio(id_: int):
     orden = llamar(repo.obtener, id_)

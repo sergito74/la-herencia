@@ -146,6 +146,7 @@ class Orden(OrdenResumen):
     facturas: list[FacturaDetalle]
     medios: list[MedioDetalle]
     retenciones: list[RetencionDetalle] = []
+    repartoNeto: list[FacturaDetalle] = []
 
 
 class ListaOrdenes(BaseModel):

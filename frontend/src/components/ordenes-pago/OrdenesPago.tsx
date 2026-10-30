@@ -5,7 +5,7 @@ import { useQuery,useMutation,useQueryClient } from '@tanstack/react-query';
 import { SoloLectura } from '@/components/auth/SoloLectura';
 import { ContactoSelect } from '@/components/ui/ContactoSelect';
 import { formatFecha,formatMoneda } from '@/lib/format';
-import { listarOP,obtenerOP,recibosOP,estadoOP,pdfOP,mailEstudioOP,type OrdenOP,type ReciboOP } from '@/services/ordenesPagoApi';
+import { listarOP,obtenerOP,recibosOP,estadoOP,pdfOP,mailEstudioOP,conciliarEmitidas,type OrdenOP,type ReciboOP } from '@/services/ordenesPagoApi';
 import { FormularioOrdenPago,campo,boton } from './FormularioOrdenPago';
 import { VincularReciboModal } from './VincularReciboModal';
 import { RetencionesConfig } from './RetencionesConfig';
@@ -23,6 +23,7 @@ export function OrdenesPago() {
  const detalle=useQuery({queryKey:['op',id],queryFn:()=>obtenerOP(id!),enabled:!!id});
  function refrescar(){for(const key of ['ordenes-pago','recibos-pago','op','op-facturas','op-facturas-recibo','op-emitidas','op-movimientos','documentos-nuevos'])qc.invalidateQueries({queryKey:[key]});}
  const cambio=useMutation({mutationFn:({id,accion}:{id:number;accion:'emitir'|'anular'})=>estadoOP(id,accion),onSuccess:o=>{refrescar();setMensaje(`Orden ${String(o.idOrdenPago).padStart(6,'0')}: ${o.estado.toLowerCase()}.`);}});
+ const conciliar=useMutation({mutationFn:conciliarEmitidas,onSuccess:r=>{refrescar();setMensaje(r.pagadas.length?`${r.pagadas.length} órdenes pasaron a pagadas con su débito real.`:'No hay débitos nuevos que coincidan con órdenes emitidas.'+(r.ambiguas.length?` ${r.ambiguas.length} con más de un débito posible: vinculalas desde su recibo.`:''));}});
  const total=tab==='ordenes'?ordenes.data?.total:recibos.data?.total;
  return <main className="mx-auto max-w-[1600px] space-y-5 p-6">
   <header><h1 className="text-2xl font-semibold">Órdenes de pago y recibos</h1><p className="text-slate-600">Prepará pagos a proveedores y vinculá sus recibos con las facturas canceladas.</p></header>
@@ -31,7 +32,7 @@ export function OrdenesPago() {
   {mensaje&&<p role="status" className="rounded bg-emerald-50 p-3">{mensaje}</p>}
   {tab!=='retenciones'&&<>
   <div className="rounded border bg-white p-4 flex flex-wrap items-end gap-4"><div className="min-w-72"><ContactoSelect value={contacto} razonSocial={nombre} label="Filtrar por proveedor" onChange={(id,n)=>{setContacto(id);setNombre(n);setPage(1);}}/></div>
-   {tab==='ordenes'?<><select aria-label="Estado de las órdenes" className={campo} value={estado} onChange={e=>{setEstado(e.target.value);setPage(1);}}><option value="">Todos los estados</option>{['Borrador','Emitida','Pagada','Anulada'].map(x=><option key={x}>{x}</option>)}</select><SoloLectura><button className={boton} onClick={()=>{setForm(true);setRecibo(null);setId(null);}}>Nueva orden</button></SoloLectura></>:<label><input type="checkbox" checked={revisados} onChange={e=>{setRevisados(e.target.checked);setPage(1);}}/> Incluir recibos revisados</label>}
+   {tab==='ordenes'?<><select aria-label="Estado de las órdenes" className={campo} value={estado} onChange={e=>{setEstado(e.target.value);setPage(1);}}><option value="">Todos los estados</option>{['Borrador','Emitida','Pagada','Anulada'].map(x=><option key={x}>{x}</option>)}</select><SoloLectura><button className={boton} onClick={()=>{setForm(true);setRecibo(null);setId(null);}}>Nueva orden</button><button className={campo} disabled={conciliar.isPending} onClick={()=>conciliar.mutate()}>{conciliar.isPending?'Buscando…':'Buscar pagos realizados'}</button></SoloLectura></>:<label><input type="checkbox" checked={revisados} onChange={e=>{setRevisados(e.target.checked);setPage(1);}}/> Incluir recibos revisados</label>}
   </div>
   <p className="text-sm text-slate-600">Órdenes en pesos. Compras en dólares: revisar su aplicación documentada en Cuentas corrientes.</p></>}
   {form&&<SoloLectura><FormularioOrdenPago key={form===true?'nuevo':form.idOrdenPago} orden={form===true?undefined:form} cerrar={()=>setForm(null)} guardado={()=>{setForm(null);refrescar();setMensaje('Borrador guardado. Podés revisarlo y emitirlo desde el detalle.');}}/></SoloLectura>}
@@ -44,7 +45,7 @@ export function OrdenesPago() {
    <p><a className="text-emerald-700 underline" href={mailEstudioOP(detalle.data.idOrdenPago)}>Preparar mail al estudio para el certificado de retención</a> <span className="text-sm text-slate-600">(se abre en Outlook como borrador, con las facturas adjuntas)</span></p><p>{detalle.data.observaciones}</p>
    <SoloLectura><div className="flex gap-3">{detalle.data.estado==='Borrador'&&<><button className={campo} onClick={()=>{setForm(detalle.data!);setId(null);}}>Editar</button><button className={boton} disabled={cambio.isPending} onClick={()=>cambio.mutate({id:detalle.data!.idOrdenPago,accion:'emitir'})}>Emitir orden</button></>}{['Borrador','Emitida'].includes(detalle.data.estado)&&<button className={campo} disabled={cambio.isPending} onClick={()=>cambio.mutate({id:detalle.data!.idOrdenPago,accion:'anular'})}>Anular orden</button>}</div></SoloLectura>
   </section>}
-  {[ordenes.error,recibos.error,detalle.error,cambio.error].filter(Boolean).map((e,i)=><p key={i} role="alert" className="text-red-700">{e?.message}</p>)}
+  {[ordenes.error,recibos.error,detalle.error,cambio.error,conciliar.error].filter(Boolean).map((e,i)=><p key={i} role="alert" className="text-red-700">{e?.message}</p>)}
   {tab!=='retenciones'&&<>
   {(tab==='ordenes'?ordenes.isFetching:recibos.isFetching)&&<p>Cargando…</p>}
   <section className="overflow-auto rounded border bg-white"><table className="w-full text-sm"><thead className="bg-slate-50"><tr><th className="p-3 text-left">{tab==='ordenes'?'Orden':'Recibo'}</th><th>Proveedor</th><th>Fecha</th><th>Importe ARS</th><th>Estado</th><th>Acciones</th></tr></thead><tbody>

@@ -1,7 +1,7 @@
 import { apiGet, apiPost, apiPatch, apiPut, apiDelete, API_BASE_URL } from './apiClient';
 export interface FacturaOP { idCompra: number; numero: string | null; fecha: string | null; total: number; pagado: number; saldo: number; reservado: number; disponible: number }
 export interface MedioOP { medio: 'Transferencia' | 'Efectivo' | 'Cheque'; cuenta: string; importe: number }
-export interface OrdenInput { idContacto: number; fecha: string; fechaPago: string; moneda: 'ARS'; observaciones: string; facturas: { idCompra: number; importe: number }[]; medios: MedioOP[]; retenciones?: RetencionOP[]; version?: number }
+export interface OrdenInput { idContacto: number; fecha: string; fechaPago: string; moneda: 'ARS'; observaciones: string; facturas: { idCompra: number; importe: number }[]; medios: MedioOP[]; retenciones?: RetencionOP[]; repartoNeto?: { idCompra: number; importe: number; numero: string | null }[]; version?: number }
 export interface OrdenOP extends OrdenInput { idOrdenPago: number; proveedor: string; importeTotal: number; retencionGanancias: number; retenciones?: RetencionOP[]; estado: 'Borrador'|'Emitida'|'Pagada'|'Anulada'; facturas: { idCompra: number; importe: number; numero: string | null }[] }
 export interface ReciboOP { idDocumentoNuevo: number; idContacto: number | null; proveedor: string | null; numero: string | null; fecha: string | null; total: number | null; revisado: string | null; idRecibo: number | null; idOrdenPago: number | null }
 export interface MovimientoOP { origenMovimiento: 'galicia'|'bna'|'efectivo'; idMovimiento: number; fecha: string | null; importe: number; disponible: number }
@@ -31,3 +31,4 @@ export const agregarExclusion=(body:{idContacto:number;desde:string;hasta:string
 export const borrarExclusion=(id:number)=>apiDelete(`${base}/retenciones/exclusiones/${id}`);
 export const actualizarPadron=()=>apiPost<{contactosConCuit:number;encontrados:number;actualizado:string}>(`${base}/retenciones/padron`,{});
 export const mailEstudioOP=(id:number)=>`${API_BASE_URL}${base}/${id}/mail-estudio`;
+export const conciliarEmitidas=()=>apiPost<{pagadas:number[];ambiguas:number[]}>(`${base}/conciliar-emitidas`,{});

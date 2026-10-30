@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useEffect,useState } from 'react';
 import { useMutation,useQuery } from '@tanstack/react-query';
 import { ContactoSelect } from '@/components/ui/ContactoSelect';
 import { formatFecha,formatMoneda } from '@/lib/format';
@@ -18,8 +18,22 @@ export function VincularReciboModal({recibo,cerrar,guardado}:{recibo:ReciboOP;ce
  const [mov,setMov]=useState(''); const [factura,setFactura]=useState('');const [importe,setImporte]=useState(0);
  const fs=useQuery({queryKey:['op-facturas-recibo',contacto,op],queryFn:()=>facturasOP(contacto!,op??undefined,true),enabled:!!contacto});
  const ms=useQuery({queryKey:['op-movimientos',contacto],queryFn:()=>movimientosOP(contacto!),enabled:!!contacto});
- const os=useQuery({queryKey:['op-emitidas',contacto],queryFn:()=>listarOP({idContacto:contacto!,estado:'Emitida'}),enabled:!!contacto});
+ const os=useQuery({queryKey:['op-emitidas',contacto],enabled:!!contacto,queryFn:async()=>{
+  const [e,p]=await Promise.all([listarOP({idContacto:contacto!,estado:'Emitida'}),listarOP({idContacto:contacto!,estado:'Pagada'})]);
+  return {items:[...e.items,...p.items],total:e.total+p.total};}});
  const detalle=useQuery({queryKey:['op',op],queryFn:()=>obtenerOP(op!),enabled:!!op});
+ const cent=(n:number)=>Math.round(n*100);
+ // T025: preselecciona la única OP cuyo total o neto coincide con el recibo.
+ const [auto,setAuto]=useState(false);
+ useEffect(()=>{if(auto||op||!os.data||!total)return;
+  const c=os.data.items.filter(o=>cent(o.importeTotal)===cent(total)||cent(o.importeTotal-o.retencionGanancias)===cent(total));
+  setAuto(true);if(c.length===1){setOP(c[0].idOrdenPago);setRetencion(c[0].retencionGanancias);}},[os.data,total,op,auto]);
+ // y precarga el reparto neto con el único pago real por ese neto.
+ useEffect(()=>{if(!detalle.data?.repartoNeto||!ms.data||items.length)return;
+  const neto=detalle.data.repartoNeto.reduce((a,b)=>a+b.importe,0);
+  const m=ms.data.filter(x=>cent(x.importe)===cent(neto));
+  if(m.length===1)setItems(detalle.data.repartoNeto.map(p=>({origenMovimiento:m[0].origenMovimiento,idMovimiento:m[0].idMovimiento,idCompra:p.idCompra,importe:p.importe})));
+ },[detalle.data,ms.data,items.length]);
  const suma=items.reduce((a,b)=>a+b.importe,0);
  const pendiente=Math.round((total-suma-retencion-anticipo)*100)/100;
  const guardar=useMutation({mutationFn:()=>vincularOP(recibo.idDocumentoNuevo,{idContacto:contacto!,numero,fecha,total,moneda:'ARS',idOrdenPago:op,aplicaciones:items,retencion,certificadoRetencion:certificado||null,anticipo}),onSuccess:guardado});
@@ -31,7 +45,7 @@ export function VincularReciboModal({recibo,cerrar,guardado}:{recibo:ReciboOP;ce
    <form className="space-y-4" onSubmit={e=>{e.preventDefault();guardar.mutate();}}>
     <ContactoSelect value={contacto} razonSocial={nombre} label="Proveedor del recibo" onChange={(id,n)=>{setContacto(id);setNombre(n);setItems([]);setOP(null);setMov('');setFactura('');}}/>
     <div className="flex flex-wrap gap-2"><label>Número <input required maxLength={50} className={campo} value={numero} onChange={e=>setNumero(e.target.value)}/></label><label>Fecha <input required type="date" className={campo} value={fecha} onChange={e=>setFecha(e.target.value)}/></label><label>Total del recibo <ImporteInput required className={campo} value={total} onChange={setTotal}/></label></div>
-    <label className="block">Orden de pago <select className={`${campo} w-full`} value={op??''} onChange={e=>{const id=Number(e.target.value)||null;setOP(id);setItems([]);setRetencion(os.data?.items.find(o=>o.idOrdenPago===id)?.retencionGanancias??0);}}><option value="">Sin orden previa</option>{os.data?.items.map(o=><option value={o.idOrdenPago} key={o.idOrdenPago}>OP {String(o.idOrdenPago).padStart(6,'0')} · {formatMoneda(o.importeTotal)}{Math.round(o.importeTotal*100)===Math.round(total*100)?' · Coincide con el total':''}</option>)}</select></label>
+    <label className="block">Orden de pago <select className={`${campo} w-full`} value={op??''} onChange={e=>{const id=Number(e.target.value)||null;setOP(id);setItems([]);setRetencion(os.data?.items.find(o=>o.idOrdenPago===id)?.retencionGanancias??0);}}><option value="">Sin orden previa</option>{os.data?.items.map(o=><option value={o.idOrdenPago} key={o.idOrdenPago}>OP {String(o.idOrdenPago).padStart(6,'0')} · {formatMoneda(o.importeTotal)}{o.estado==='Pagada'?' · Pagada':''}{cent(o.importeTotal)===cent(total)||cent(o.importeTotal-o.retencionGanancias)===cent(total)?' · Coincide con el recibo':''}</option>)}</select></label>
     {detalle.data&&<div className="rounded bg-emerald-50 p-3 text-sm">Facturas de la orden: {detalle.data.facturas.map(f=>`${f.numero}: ${formatMoneda(f.importe)}`).join(' · ')}</div>}
     <h3 className="font-semibold">Distribuir pagos reales entre facturas</h3>
     <select aria-label="Pago real" className={`${campo} w-full`} value={mov} onChange={e=>setMov(e.target.value)}><option value="">Elegir pago de Tesorería</option>{ms.data?.map(m=><option key={`${m.origenMovimiento}:${m.idMovimiento}`} value={`${m.origenMovimiento}:${m.idMovimiento}`}>{m.origenMovimiento==='bna'?'Banco Nación':m.origenMovimiento==='galicia'?'Galicia':'Efectivo'} · {formatFecha(m.fecha)} · {formatMoneda(m.importe)} · Disponible {formatMoneda(m.disponible)}</option>)}</select>

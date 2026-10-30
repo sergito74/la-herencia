@@ -104,7 +104,7 @@ def test_reintento_no_duplica(monkeypatch):
 def test_orden_otro_proveedor_o_importes(monkeypatch):
     calls=preparar(monkeypatch)
     monkeypatch.setattr(r,'obtener',lambda *a:dict(estado='Emitida',idContacto=8,facturas=[dict(idCompra=1,importe=100)]))
-    with pytest.raises(ValueError,match='orden emitida'):r.vincular(3,recibo(idOrdenPago=2),'test')
+    with pytest.raises(ValueError,match='orden emitida o pagada'):r.vincular(3,recibo(idOrdenPago=2),'test')
     assert calls==[]
 
 
@@ -138,3 +138,44 @@ def test_anticipo_sin_factura(monkeypatch):
     assert all(c[0]!='aplicar' for c in calls)
     with pytest.raises(ValidationError):recibo(total=500,aplicaciones=[])
     with pytest.raises(ValidationError):recibo(total=500,anticipo=400,aplicaciones=[])
+
+
+def orden_op(**k):
+    return dict(idOrdenPago=2,idContacto=7,fecha=__import__('datetime').date(2026,10,1),estado='Emitida',
+                retencionGanancias=Decimal('20'),facturas=[dict(idCompra=1,importe=Decimal('70')),dict(idCompra=2,importe=Decimal('50'))])|k
+
+
+def test_reparto_neto_descuenta_retencion_de_la_ultima():
+    assert [(p['idCompra'],p['importe']) for p in r.reparto_neto(orden_op())]==[(1,Decimal('70')),(2,Decimal('30'))]
+
+
+def conciliar(monkeypatch,movs):
+    calls=[]
+    monkeypatch.setattr(r,'fetch_all',lambda *a:[{'id':2}])
+    monkeypatch.setattr(r,'obtener',lambda *a:orden_op())
+    monkeypatch.setattr(r,'_vinculos',lambda:[])
+    monkeypatch.setattr(r,'movimientos',lambda *a:movs)
+    monkeypatch.setattr(r.aplicaciones,'insertar_aplicaciones',lambda *a:calls.append(('aplicar',a)) or [30,31])
+    monkeypatch.setattr(r,'execute_write',lambda *a:calls.append(a))
+    monkeypatch.setattr(r,'auditar',lambda *a:calls.append(('auditar',a)))
+    return calls
+
+
+def mov(i,importe=100,disp=100,fecha=(2026,10,5)):
+    return dict(origenMovimiento='galicia',idMovimiento=i,importe=Decimal(str(importe)),disponible=Decimal(str(disp)),
+                fecha=__import__('datetime').date(*fecha))
+
+
+def test_op_pagada_por_debito_unico(monkeypatch):
+    calls=conciliar(monkeypatch,[mov(5),mov(6,importe=120,disp=120),mov(7,fecha=(2026,9,30))])
+    assert r.conciliar_emitidas('test')=={'pagadas':[2],'ambiguas':[]}
+    aplicar=[c for c in calls if c[0]=='aplicar'][0][1]
+    assert aplicar[:2]==('galicia',5) and [a['importeAplicado'] for a in aplicar[2]]==[70.0,30.0]
+    assert any("Estado='Pagada'" in c[0] for c in calls if isinstance(c[0],str))
+
+
+@pytest.mark.parametrize('movs,ambiguas',[([mov(5),mov(6)],[2]),([mov(5,disp=50)],[]),([],[])])
+def test_op_sin_debito_claro_no_cambia(monkeypatch,movs,ambiguas):
+    calls=conciliar(monkeypatch,movs)
+    assert r.conciliar_emitidas('test')=={'pagadas':[],'ambiguas':ambiguas}
+    assert calls==[]
