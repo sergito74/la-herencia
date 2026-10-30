@@ -40,3 +40,9 @@
 - [X] **T021**: DDL de las columnas de recibo con retención/anticipo, con respaldo verificado.
 - [X] **T022**: `VincularInput` y `vincular` con retención y anticipo, más sus tests.
 - [X] **T023**: Pantalla de vinculación: retención precargada desde la OP, certificado y anticipo; build.
+
+## Phase 7: Convergence
+
+- [ ] T024 Pasar la OP emitida a `Pagada` cuando los débitos reales que la cubren llegan a Tesorería (Galicia, BNA o efectivo, mismo proveedor, neto de la OP), sin esperar el recibo. Sin duplicar aplicaciones si después se vincula el recibo, por plan: Fase 3.1 (partial)
+- [ ] T025 Preseleccionar en `VincularReciboModal.tsx` la OP emitida del proveedor cuyo neto o total coincide con el recibo, y precargar sus facturas e importes para confirmar con un click, por US3/AC1 (partial)
+- [ ] T026 Prueba de punta a punta con un recibo real (Bayá Casal o Sancor): ingesta a Pagos sin entrar a Compras, vinculación con la OP o el débito, y factura saldada en Cuentas Corrientes al centavo, por spec §4 / T017 (missing)
