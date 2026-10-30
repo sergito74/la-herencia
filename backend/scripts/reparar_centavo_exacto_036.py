@@ -5,7 +5,7 @@ ese número; donde las dos vistas difieren, cambió el total real de la factura 
 - Madelan (444): PDF $567.845,69 y $2.271.382,75 (70.000 por cabeza). Con eso la cuenta vuelve a cero.
 - Ferias del Centro (39): PDF escaneado; vuelve al precio original de LaHerencia (15.200 y 18.000), el del cierre del 09/10.
 - Catalpa (400): se llevó al PDF ($2.647.372,61) y se revirtió el mismo día a $2.647.371,85, el total con que se cerró
-  la ficha el 17/10 (excepción $21.955,35); la diferencia de $0,76 con el PDF queda consultada a Sergio.
+  la ficha el 17/10 (excepción $21.955,35); Sergio 30/10: la cuenta cierra en cero con el ajuste 163 de la retención 0000-2024-000005.
 Uso (desde backend/): python -m scripts.reparar_centavo_exacto_036 [--aplicar]
 """
 

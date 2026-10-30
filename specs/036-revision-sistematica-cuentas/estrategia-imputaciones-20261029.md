@@ -118,7 +118,7 @@ El script del 29/10 tomaba como objetivo `vw_Compras_ImporteDocumento` y escalab
 
 - **Madelan (444):** había pasado de −$0,04 a +$11.190,33. Las 2 facturas volvieron al PDF ($567.845,69 y $2.271.382,75, a $70.000 por cabeza). Cuenta en **$0**.
 - **Ferias del Centro (39):** había pasado de −$1,81 a +$143,12. Las 2 facturas volvieron al precio original ($15.200 y $18.000). Cuenta en **$0**.
-- **Catalpa (400):** sin cambio neto. Sigue en $2.647.371,85, como en el cierre del 17/10 (excepción $21.955,35). El PDF dice $2.647.372,61; los $0,76 de diferencia quedan consultados a Sergio.
+- **Catalpa (400):** sin cambio neto. Sigue en $2.647.371,85, como en el cierre del 17/10 (excepción $21.955,35). Después, por decisión de Sergio, se cerró en **$0 y US$ 0** con el ajuste interno 163 (Deuda $21.955,35 al 08/02/2024): la retención 0000-2024-000005 se había practicado pero no se descontó de la transferencia del 14/02/2024. FIFO aplicado; ficha cerrada sin excepción.
 
 Las 3 cuentas se volvieron a imputar con el FIFO (ejecución 141 y la siguiente de Catalpa), con respaldo. El script quedó corregido: ahora redondea `GranTotal`. Revisé las 1.015 facturas que tocaron los dos scripts de redondeo, y el resto de las diferencias con LaHerencia son redondeos aprobados o correcciones al PDF (Cooperativa 2025, EDP). También revisé el saldo al corte de todas las fichas cerradas, y fuera de esto no hay otras cuentas rotas.
 
