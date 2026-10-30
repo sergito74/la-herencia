@@ -115,7 +115,14 @@ def consultar_movimientos(
         else {"saldo": 0}
     )
     return {
-        "items": [{**row, "importe": float(row["importe"])} for row in rows],
+        "items": [
+            {
+                **row,
+                "fecha": str(row["fecha"])[:10],
+                "importe": float(row["importe"]),
+            }
+            for row in rows
+        ],
         "page": page,
         "pageSize": page_size,
         "total": totals["total"],
