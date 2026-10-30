@@ -171,6 +171,9 @@ if __name__ == "__main__":
         for _, kc in cr:
             for _, kd in db:
                 fijos.append({"credito": kc, "debito": kd, "importe": TODO, "regla": "manual", "grupo": nombre})
+    # Notas de crédito con su factura de origen vinculada (Documentos relacionados, 20/10/2026): van después de los
+    # grupos del portal (30/10/2026: la NC 136689 de la FC 465204 terminaba en una entrega PENDIENTE).
+    fijos += [f for f in e["fijos"] if f["regla"] == "nota-origen"]
     res = motor.recalcular(e["items"], fijos, tc, hoy)
     por_grupo = defaultdict(float)
     print("Grupos:", len(grupos()), " pares:", len(fijos))

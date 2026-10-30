@@ -147,3 +147,25 @@ Son 88 cuentas corrientes con más de 5 facturas, sin las del grupo 1 (`grupo4_d
 - **Documentos posteriores al corte o casos conocidos:** Fideicomiso La Esperanza, Estudio Criado, Pérez, Ricardo Criado (recibo 4511), Basterrechea (factura 545), Movistar (septiembre y octubre de 2026), EESS Saladillo, Gomería Manghi, Buira, Sancor, Martín Silva Rossi y Coto (factura de octubre).
 
 **Caso menor:** en Coto, el ingreso Galicia 706 ($851,10 del 08/08/2022) es el sobrante devuelto del pago Galicia 701. El motor no cruza dinero contra dinero sin vínculo, así que el FIFO lo deja abierto. No cambia el saldo.
+
+## Grupo 5 — CERRADO (30/10/2026)
+
+Revisé una por una las 26 cuentas con documentos en US$ (`grupo5_diagnostico_036`). Todas tienen ficha cerrada, el TC del comprobante cargado y el PDF, salvo los documentos de Bayá que todavía están sin facturar ("PENDIENTE").
+
+- **En $0 y US$ 0:** 20 cuentas. Lo único que queda son sobrantes de pago de $0,01 a $4,99, en cuentas que se llevan en dólares. No se imputan centavos.
+- **Diferencia de cambio entre pares en US$ con distinto TC** (verificada al centavo):
+  - ASP $1.624,70 (DIFTC).
+  - Nidera $48.512,88.
+  - FEDEA $35.526,79.
+  - Lartirigoyen $188,93.
+
+  En ellas, lo que el FIFO deja abierto es exactamente la diferencia en pesos entre una NC y una factura en US$ con distinto TC, documentada con su ND o NC. Ambas monedas dan cero.
+- **Saldos reales:**
+  - Bayá Casal US$ 31.471,72: es la FC 465204 (vence el 30/06/2027) más 4 entregas que todavía no facturó (56078, 68476, 68485 y 59111). La excepción de la ficha no cambia.
+  - Cargill US$ −60.000: anticipo recibido; excepción ya registrada.
+  - Guazzaroni US$ 13.605,79: canje.
+  - San Cristóbal US$ 380: póliza de granizo con pagaré que vence el 30/01/2027.
+- **Correcciones:**
+  - El script de Bayá ahora respeta los vínculos NC→factura. La NC 136689 se aplicaba a una entrega PENDIENTE y ahora va a la FC 465204. Re-imputado sin cambio de saldo.
+  - Se creó la ficha de Nidera, que no existía; quedó cerrada en $0 / US$ 0.
+  - El PDF de la NC Cargill 7050-00183399 (US$ 0,51) se copió desde la descarga del portal y quedó enlazado.
