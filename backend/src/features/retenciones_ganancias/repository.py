@@ -23,7 +23,7 @@ BORRADOR = {
                 'Mantenimiento Instalaciones', 'Analisis laboratorio', 'Aranceles Vacunacion', 'Tacto/Ecografia',
                 'Confeccion Silo', 'Embolsado Grano', 'Disqueado', 'Extraccion Grano', 'Secado', 'Zarandeo',
                 'Servicio Logistica', 'Seguimiento cultivos', 'Control Cosecha', 'Analisis suelo', 'Analisis PG',
-                'Gastos de Administracion', 'Gastos Comercializacion', 'Pastaje',
+                'Gastos de Administracion', 'Pastaje',
                 # Honorarios: el estudio los retiene como servicios (Detalle de Pagos 2025-2026, al centavo).
                 'Honorarios Administracion', 'Honorarios Contables', 'Honorarios Profesionales', 'Honorarios Laboratorio'),
     TRANSPORTE: ('Flete insumos', 'Flete maquinaria', 'Flete hacienda', 'Flete granos'),
@@ -34,6 +34,14 @@ def dinero(v):
     return Decimal(str(v or 0)).quantize(Decimal('.01'), rounding=ROUND_HALF_UP)
 
 
+# Sin régimen con observación propia (analyze 30/10): gastos de venta de granos excluidos; fletes de granos a revisar.
+OBSERVACIONES = {
+    'Gastos Comercializacion': 'Gastos de venta de granos (Cargill, Lartirigoyen, FEDEA, Agro Hueso): excluido por decisión '
+                               'del 30/10. Si aparece un servicio comercial no granario, reclasificar (contador)',
+    'Flete granos': 'Revisar: los fletes de granos podrían quedar excluidos junto con los granos',
+}
+
+
 def sembrar_borrador(usuario: str) -> int:
     regimen = {r: cod for cod, rubros in BORRADOR.items() for r in rubros}
     n = 0
@@ -41,7 +49,8 @@ def sembrar_borrador(usuario: str) -> int:
         if fetch_one('SELECT 1 x FROM dbo.RetencionesGanancias_Conceptos WHERE IdRubro=?', (r['id'],)):
             continue
         execute_write('INSERT INTO dbo.RetencionesGanancias_Conceptos (IdRubro,CodRegimen,Observaciones,Usuario) VALUES (?,?,?,?)',
-                      (r['id'], regimen.get(r['r']), None if r['r'] in regimen else 'Sin retención RG 830 (borrador)', usuario))
+                      (r['id'], regimen.get(r['r']), OBSERVACIONES.get(r['r']) or (None if r['r'] in regimen else 'Sin retención RG 830 (borrador)'),
+                       usuario))
         n += 1
     return n
 
