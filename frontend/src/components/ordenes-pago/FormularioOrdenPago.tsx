@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import { useMutation,useQuery } from '@tanstack/react-query';
 import { ContactoSelect } from '@/components/ui/ContactoSelect';
-import { formatFecha,formatMoneda,numeroAEdicionLocal,normalizarNumeroPegado,parseNumeroLocal } from '@/lib/format';
+import { formatFecha,formatMoneda,formatNumero,numeroAEdicionLocal,normalizarNumeroPegado,parseNumeroLocal } from '@/lib/format';
 import { facturasOP,guardarOP,proponerRetencion,type OrdenOP,type MedioOP,type PropuestaRetencion } from '@/services/ordenesPagoApi';
 
 export const campo='rounded border border-slate-300 px-3 py-2 text-sm';
@@ -36,7 +36,7 @@ export function FormularioOrdenPago({orden,cerrar,guardado}:{orden?:OrdenOP;cerr
    facturas:facturasBody(),medios,retenciones:propuesta?.lineas??[],version:orden?.version},orden?.idOrdenPago),onSuccess:guardado});
  return <section className="rounded-xl border bg-white p-5 space-y-4" aria-label="Confeccionar orden de pago">
   <h2 className="text-xl font-semibold">{orden?'Editar borrador':'Nueva orden de pago'}</h2>
-  <p className="text-sm text-slate-600">Importes en pesos. La orden prepara el pago; no envía dinero ni cancela facturas.</p>
+  <p className="text-sm text-slate-600">Importes en pesos; las facturas en dólares se pasan a pesos al tipo de cambio de la factura. La orden prepara el pago; no envía dinero ni cancela facturas.</p>
   <form className="space-y-4" onSubmit={e=>{e.preventDefault();guardar.mutate();}}>
    <ContactoSelect value={contacto} razonSocial={nombre} label="Proveedor" onChange={(id,n)=>{setContacto(id);setNombre(n);cambiarSeleccion({});}}/>
    <div className="flex flex-wrap gap-4"><label>Fecha <input required aria-label="Fecha de orden" className={campo} type="date" value={fecha} onChange={e=>setFecha(e.target.value)}/></label>
@@ -44,7 +44,7 @@ export function FormularioOrdenPago({orden,cerrar,guardado}:{orden?:OrdenOP;cerr
    {q.isFetching&&<p>Cargando facturas…</p>}{q.isError&&<p role="alert">{q.error.message}</p>}
    {contacto&&q.data?.length===0&&<p>No hay facturas en pesos con saldo pendiente para este proveedor.</p>}
    <div className="overflow-auto max-h-80"><table className="w-full text-sm"><thead><tr><th>Factura</th><th>Fecha</th><th>Saldo</th><th>En otras órdenes</th><th>A pagar</th></tr></thead><tbody>
-    {q.data?.map(f=><tr key={f.idCompra} className="border-b"><td className="p-2"><label><input type="checkbox" aria-label={`Seleccionar ${f.numero}`} disabled={f.disponible<=0} checked={f.idCompra in seleccion} onChange={e=>cambiarSeleccion(v=>{const n={...v};if(e.target.checked)n[f.idCompra]=f.disponible;else delete n[f.idCompra];return n;})}/> {f.numero||'Sin número'}</label></td><td>{formatFecha(f.fecha)}</td><td>{formatMoneda(f.saldo)}</td><td>{formatMoneda(f.reservado)}</td><td><ImporteInput aria-label={`Importe ${f.numero}`} disabled={!(f.idCompra in seleccion)} value={seleccion[f.idCompra]} onChange={n=>cambiarSeleccion(v=>({...v,[f.idCompra]:n}))}/></td></tr>)}
+    {q.data?.map(f=><tr key={f.idCompra} className="border-b"><td className="p-2"><label><input type="checkbox" aria-label={`Seleccionar ${f.numero}`} disabled={f.disponible<=0} checked={f.idCompra in seleccion} onChange={e=>cambiarSeleccion(v=>{const n={...v};if(e.target.checked)n[f.idCompra]=f.disponible;else delete n[f.idCompra];return n;})}/> {f.numero||'Sin número'}</label>{f.moneda==='Dolares'&&!!f.tc&&<span className="block text-xs text-slate-600">Factura en US$ · {formatMoneda(f.total/f.tc,'Dolares')} al TC {formatNumero(f.tc)}</span>}</td><td>{formatFecha(f.fecha)}</td><td>{formatMoneda(f.saldo)}</td><td>{formatMoneda(f.reservado)}</td><td><ImporteInput aria-label={`Importe ${f.numero}`} disabled={!(f.idCompra in seleccion)} value={seleccion[f.idCompra]} onChange={n=>cambiarSeleccion(v=>({...v,[f.idCompra]:n}))}/></td></tr>)}
    </tbody></table></div>
    <section className="rounded border border-slate-200 p-3 space-y-2" aria-label="Retención de Ganancias">
     <div className="flex flex-wrap items-center gap-3"><h3 className="font-semibold">Retención de Ganancias</h3>

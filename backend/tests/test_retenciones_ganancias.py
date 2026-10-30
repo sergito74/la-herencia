@@ -116,3 +116,15 @@ def test_mail_al_estudio(monkeypatch, tmp_path):
     assert '06/10/2026 | 10/10/2026 | 08/10/2026 | Fideicomiso La Esperanza | Factura | 00002-00000065 | Pesos | ' \
            'Transferencia bancaria | $ 1.722.568,10' in texto
     assert [a.get_filename() for a in m.iter_attachments()] == ['factura.pdf']
+
+
+def test_mail_con_factura_en_dolares(monkeypatch):
+    monkeypatch.setattr(mail, 'fetch_all', lambda *a: [{'i': 1, 'f': date(2023, 7, 20), 'v': date(2023, 8, 18), 't': 'Factura',
+                                                        'n': '0149 - 00011970', 'd': None, 'm': 'Dolares', 'tc': 267.95}])
+    orden = {'proveedor': 'Lartirigoyen', 'fechaPago': date(2023, 7, 21),
+             'facturas': [{'idCompra': 1, 'importe': 1400628.24}], 'medios': [{'medio': 'Transferencia'}]}
+    eml, avisos = mail.armar(orden)
+    texto = message_from_bytes(eml, policy=policy.default).get_body(('plain',)).get_content()
+    assert '| Tipo Cambio | Importe pesos' in texto
+    assert 'Dolares | Transferencia bancaria | US$ 5.227,20 | $ 267,95/u$s | $ 1.400.628,24' in texto
+    assert avisos == ['La factura 0149 - 00011970 no tiene archivo para adjuntar']

@@ -4,7 +4,7 @@ Ruta canónica `/finanzas/ordenes-pago`; `/finanzas/recibos-pagos` redirige all�
 API `/api/ordenes-pago`, sesión requerida; escrituras solo Administrador.
 
 - GET `/`: filtros proveedor/estado, paginación 50 (máximo 100).
-- GET `/facturas?idContacto=`: compras en pesos, no suspendidas, saldo unificado al centavo; incluye reservas de otras OP emitidas. No aplica conversiones nuevas a documentos en dólares.
+- GET `/facturas?idContacto=`: compras en pesos y en US$ con TC (estas en pesos al TC del comprobante; devuelve `moneda` y `tc`), no suspendidas, saldo unificado al centavo; incluye reservas de otras OP emitidas. 
 - POST `/`, PATCH `/{id}`: proveedor, fecha, fechaPago, observaciones, facturas (idCompra/importe), medios previstos (medio/cuenta/importe). Solo se edita Borrador. Facturas únicas, mismo proveedor; sumas de medios y facturas iguales. Moneda ARS explícita.
 - POST `/{id}/emitir`, `/{id}/anular`: revalidación transaccional. Emitida reserva importe; Anulada libera reserva. No genera movimiento ni deuda. Pagada no se anula desde aquí.
 - GET `/{id}`: cabecera, detalle y medios.
@@ -28,6 +28,6 @@ API `/api/ordenes-pago`, sesión requerida; escrituras solo Administrador.
 - POST `/retenciones/padron`: descarga el padrón público de ARCA y actualiza los CUIT de los contactos. Solo Administrador.
 - GET `/{id}/mail-estudio`: `.eml` con `X-Unsent: 1`, para administracion@estudiocriado.com con copia a rcriado@, y las facturas adjuntas. El sistema no envía nada.
 
-No se ejecutan transferencias ni se emiten cheques. La retención de Ganancias RG 830 es una propuesta calculada con el simulador público de ARCA que confirma el usuario; el certificado lo emite el estudio contable. Las OP admiten solo facturas en pesos; los documentos en otra moneda se concilian desde Cuentas Corrientes y nunca se pesifican silenciosamente.
+No se ejecutan transferencias ni se emiten cheques. La retención de Ganancias RG 830 es una propuesta calculada con el simulador público de ARCA que confirma el usuario; el certificado lo emite el estudio contable. Las facturas en US$ entran en pesos al TC del comprobante (regla usd-tc-comprobante, igual que la fuente unificada de vínculos); la pantalla muestra moneda y TC.
 
 Errores 404 inexistente, 409 conflicto de estado/saldos, 422 solicitud inválida, 503 simulador o padrón de ARCA sin respuesta. Sin pruebas que escriban producción.

@@ -1,5 +1,5 @@
 import { apiGet, apiPost, apiPatch, apiPut, apiDelete, API_BASE_URL } from './apiClient';
-export interface FacturaOP { idCompra: number; numero: string | null; fecha: string | null; total: number; pagado: number; saldo: number; reservado: number; disponible: number }
+export interface FacturaOP { idCompra: number; numero: string | null; fecha: string | null; moneda?: string | null; tc?: number | null; total: number; pagado: number; saldo: number; reservado: number; disponible: number }
 export interface MedioOP { medio: 'Transferencia' | 'Efectivo' | 'Cheque'; cuenta: string; importe: number }
 export interface OrdenInput { idContacto: number; fecha: string; fechaPago: string; moneda: 'ARS'; observaciones: string; facturas: { idCompra: number; importe: number }[]; medios: MedioOP[]; retenciones?: RetencionOP[]; repartoNeto?: { idCompra: number; importe: number; numero: string | null }[]; version?: number }
 export interface OrdenOP extends OrdenInput { idOrdenPago: number; proveedor: string; importeTotal: number; retencionGanancias: number; retenciones?: RetencionOP[]; estado: 'Borrador'|'Emitida'|'Pagada'|'Anulada'; facturas: { idCompra: number; importe: number; numero: string | null }[] }

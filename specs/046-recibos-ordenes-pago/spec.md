@@ -64,7 +64,7 @@ Como usuario financiero, quiero que la OP proponga la retención de Ganancias qu
 2. Se aplica el criterio de AFIP: la base es neta de IVA, se suman los pagos del mes del pago al mismo proveedor y del mismo régimen, y el no sujeto se descuenta una sola vez por mes. Alícuotas, no sujeto y mínimo se toman del simulador público de ARCA. Salvedad: solo se suman los pagos del mes hechos por OP; la pantalla avisa que los pagos hechos por fuera no se incluyen.
 3. La inscripción del proveedor sale del padrón público de ARCA: monotributista y exento (EX) no retienen; "no corresponde" (NC) se calcula como inscripto y se avisa.
 4. El concepto sale del rubro de cada renglón de la factura. La tabla rubro → régimen es un borrador del sistema, que valida el contador y ratifica el estudio.
-5. Granos, hacienda y consignatarios quedan excluidos. Los certificados de exclusión se cargan a mano, con su vigencia. Para US$ se usa el TC del comprobante (aplicará cuando la OP admita documentos en dólares; hoy solo admite pesos). Gastos de comercialización de granos, excluidos; fletes de granos, a revisión del contador.
+5. Granos, hacienda y consignatarios quedan excluidos. Los certificados de exclusión se cargan a mano, con su vigencia. Para US$ se usa el TC del comprobante: las facturas en dólares entran a la OP y al recibo en pesos a ese TC (T027). Gastos de comercialización de granos, excluidos; fletes de granos, a revisión del contador.
 6. Rige de acá en adelante: los pagos ya hechos con tarjeta o débito quedan como están.
 7. La retención es una propuesta que confirma el usuario. Los medios de pago suman el neto (facturas menos retención).
 

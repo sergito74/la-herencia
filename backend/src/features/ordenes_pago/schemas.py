@@ -158,6 +158,8 @@ class FacturaPendiente(BaseModel):
     idCompra: int
     numero: str | None
     fecha: date | None
+    moneda: str | None = None
+    tc: float | None = None
     total: float
     pagado: float
     saldo: float

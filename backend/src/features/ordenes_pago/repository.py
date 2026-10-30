@@ -55,13 +55,17 @@ def obtener(id_):
 
 
 def facturas(id_contacto, excluir_op=None, incluir_saldadas=False):
-    rows = fetch_all("SELECT TOP (2000) c.IdDeuda idCompra,c.[Nro Documento] numero,c.Fecha fecha,"
-                     "t.GranTotal-ISNULL(pa.cp,0) total FROM dbo.Compras c "
+    # 046 T027: documentos en US$ en pesos al TC del comprobante (regla usd-tc-comprobante), como la fuente unificada.
+    rows = fetch_all("SELECT TOP (2000) c.IdDeuda idCompra,c.[Nro Documento] numero,c.Fecha fecha,c.Moneda moneda,"
+                     "CASE WHEN c.Moneda='Dolares' THEN c.[Tipo de Cambio] END tc,"
+                     "(t.GranTotal-ISNULL(pa.cp,0))*CASE WHEN c.Moneda='Dolares' THEN c.[Tipo de Cambio] ELSE 1 END total "
+                     "FROM dbo.Compras c "
                      "JOIN dbo.vw_Cns_Total_Compra t ON t.IdDeuda=c.IdDeuda "
                      "OUTER APPLY (SELECT SUM(d.Cantidad*d.[Precio Unitario]*(1+ISNULL(d.IVA,0)/100.0)) cp "
                      "FROM dbo.Det_Compras d WHERE d.IdCompra=c.IdDeuda AND d.Cantidad*d.[Precio Unitario]<0 "
                      "AND d.[Producto/Servicio] LIKE '%particular%') pa "
-                     "WHERE c.IdContacto=? AND ISNULL(c.Suspendida,0)=0 AND c.Moneda IN ('Pesos','ARS','$') "
+                     "WHERE c.IdContacto=? AND ISNULL(c.Suspendida,0)=0 AND (c.Moneda IN ('Pesos','ARS','$') "
+                     "OR (c.Moneda='Dolares' AND c.[Tipo de Cambio]>1)) "
                      "ORDER BY c.Fecha DESC,c.IdDeuda DESC", (id_contacto,))
     paid = fuente.pagado_de_documentos([('CompraDeuda', f['idCompra']) for f in rows])
     reserved = {f['idCompra']: dinero(f['importe']) for f in fetch_all(
