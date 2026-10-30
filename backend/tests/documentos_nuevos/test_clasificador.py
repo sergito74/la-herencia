@@ -145,3 +145,9 @@ def test_comprobante_de_tesoreria_es_recibo():
 
 def test_cupon_con_leyenda_factura_no_es_comprobante():
     assert c.tipo_de("VIDA COLECTIVO CUPÓN PARA EL INTERMEDIARIO I.V.A. RESPONSABLE INSCRIPTO FACTURA\nRECIBO 1") is None
+
+
+def test_numero_con_ceros_distintos_es_la_misma_compra():
+    from src.features.boveda.repository import _clave_numero
+    assert _clave_numero("2-02554911") == _clave_numero("00002-02554911") == (2, 2554911)
+    assert _clave_numero("0020- 00136689") == (20, 136689) and _clave_numero("PENDIENTE 59111") is None

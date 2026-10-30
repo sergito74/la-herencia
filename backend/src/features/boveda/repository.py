@@ -491,7 +491,24 @@ def compra_existente(id_contacto: int | None, numero: str | None, ruta: str | No
     # Números cargados a mano con espacios ("0020- 00136689").
     fila = fetch_one("SELECT TOP 1 IdDeuda AS id FROM dbo.Compras WHERE IdContacto = ? "
                      "AND REPLACE([Nro Documento], ' ', '') = ?", (id_contacto, numero.replace(" ", "")))
-    return fila["id"] if fila else None
+    if fila:
+        return fila["id"]
+    # Ceros a la izquierda distintos ("2-02554911" = "00002-02554911", Starlink 30/10/2026): punto de venta y número.
+    clave = _clave_numero(numero)
+    if not clave:
+        return None
+    for f in fetch_all("SELECT IdDeuda AS id, [Nro Documento] AS n FROM dbo.Compras WHERE IdContacto = ? "
+                       "AND [Nro Documento] LIKE ?", (id_contacto, f"%{clave[1]}")):
+        if _clave_numero(f["n"]) == clave:
+            return f["id"]
+    return None
+
+
+def _clave_numero(numero: str | None) -> tuple[int, int] | None:
+    import re
+
+    m = re.fullmatch(r"\s*[A-Za-z]?\s*(\d{1,5})\s*-\s*(\d{1,8})\s*", numero or "")
+    return (int(m.group(1)), int(m.group(2))) if m else None
 
 
 def venta_hacienda_existente(numero: str | None, fecha=None) -> dict | None:
