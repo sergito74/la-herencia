@@ -3,6 +3,8 @@
 La vista calcula el total como cantidad × precio × (1 + IVA) sin redondear (p. ej. $180,0049), y los medios
 centavos de cada factura se arrastran a la siguiente en el FIFO. Un comprobante siempre cierra al centavo.
 Método `grupo3_redondeo_036`: escalar renglones o ajustar Gastos Varios. Idempotente.
+Redondea GranTotal (el total que se escala); hasta el 30/10/2026 usaba vw_Compras_ImporteDocumento y cambió
+totales reales donde las vistas difieren (reparado por `reparar_centavo_exacto_036`).
 Uso (desde backend/): python -m scripts.jym_centavo_exacto_036 [idContacto] [--aplicar]
 """
 
@@ -19,8 +21,8 @@ C = next((int(a) for a in sys.argv[1:] if a.isdigit()), 48)
 
 def casos() -> list[dict]:
     filas = fetch_all(
-        "SELECT v.IdDeuda AS i, v.ImporteDocumento AS v, t.GranTotal AS g, t.TotalDetalleCompra AS d FROM dbo.Compras c "
-        "JOIN dbo.vw_Compras_ImporteDocumento v ON v.IdDeuda = c.IdDeuda JOIN dbo.vw_Cns_Total_Compra t ON t.IdDeuda = c.IdDeuda "
+        "SELECT t.IdDeuda AS i, t.GranTotal AS v, t.GranTotal AS g, t.TotalDetalleCompra AS d FROM dbo.Compras c "
+        "JOIN dbo.vw_Cns_Total_Compra t ON t.IdDeuda = c.IdDeuda "
         "WHERE c.IdContacto = ? AND c.Moneda = 'Pesos'", (C,))
     return [{**f, "total": float(f["v"]), "nuevo": round(float(f["v"]), 2)} for f in filas
             if f["v"] and abs(float(f["v"]) - round(float(f["v"]), 2)) > 0.00005]

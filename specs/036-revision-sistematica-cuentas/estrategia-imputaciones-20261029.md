@@ -111,3 +111,18 @@ Son 19 proveedores con resumen de cuenta (carpeta "Resumenes de Cuenta"). Todos 
   - **Esperan a Sergio:** Ferias del Centro ($143,12 de banco), Madelan ($11.190,33 de banco), Gentos y Galicia Seguros (pagos de más).
   - **Espera el extracto de octubre:** la Cooperativa Eléctrica. El portal no muestra impaga la boleta 233471 y muestra $125.553,71 a favor.
   - **Comprobantes que no están ni en disco ni en el mail:** 7 facturas de Jáuregui de 2023-24 (0008-3711, 0009-39283, 0011-33, 0011-3, 0011-325, 0009-48496, 0008-7875), la 0009-52613 y la 0005-51851 de 2016.
+
+## Reparación del 30/10/2026 — `jym_centavo_exacto_036`
+
+El script del 29/10 tomaba como objetivo `vw_Compras_ImporteDocumento` y escalaba los renglones para que `GranTotal` diera ese número. Donde las dos vistas difieren, cambió el total real de la factura y rompió cuentas cerradas:
+
+- **Madelan (444):** había pasado de −$0,04 a +$11.190,33. Las 2 facturas volvieron al PDF ($567.845,69 y $2.271.382,75, a $70.000 por cabeza). Cuenta en **$0**.
+- **Ferias del Centro (39):** había pasado de −$1,81 a +$143,12. Las 2 facturas volvieron al precio original ($15.200 y $18.000). Cuenta en **$0**.
+- **Catalpa (400):** sin cambio neto. Sigue en $2.647.371,85, como en el cierre del 17/10 (excepción $21.955,35). El PDF dice $2.647.372,61; los $0,76 de diferencia quedan consultados a Sergio.
+
+Las 3 cuentas se volvieron a imputar con el FIFO (ejecución 141 y la siguiente de Catalpa), con respaldo. El script quedó corregido: ahora redondea `GranTotal`. Revisé las 1.015 facturas que tocaron los dos scripts de redondeo, y el resto de las diferencias con LaHerencia son redondeos aprobados o correcciones al PDF (Cooperativa 2025, EDP). También revisé el saldo al corte de todas las fichas cerradas, y fuera de esto no hay otras cuentas rotas.
+
+Correcciones al informe del grupo 1:
+- **Gentos:** está en $0 y sin pagos de más.
+- **Galicia Seguros:** está en US$ 0. El débito de $2.154.648 y su devolución del 30/06/2025 no rompen el saldo.
+- **Nidera:** la factura 0303-7648 ya estaba partida, de antes, en $41.705,68 más la ND interna de $198.598,77.
