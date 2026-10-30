@@ -135,3 +135,13 @@ def test_cupon_de_pago_no_es_recibo():
     texto = ("I.V.A. RESPONSABLE INSCRIPTO CASA CENTRAL CUPÓN DE PAGO\nC.U.I.T. 30-50004946-0\nACCIDENTES PERSONALES\n"
              "TOTAL $ 52.075,92\nRECIBO 608099084\nTOMADOR\nMIRANDA IRMA DELIA")
     assert c.tipo_de(texto) is None
+
+
+def test_comprobante_de_tesoreria_es_recibo():
+    texto = ("Comprobante Tesoreria Casa C\nNúmero: 0006 00147232\nENRIQUE M. BAYA CASAL S.A. Tranferencia E/ Cuentas Ctes\n"
+             "NC 0020 00135455 Nota de Crédito s/Fc. 451182 25/06/26 26/06/26 6.832.052,00")
+    assert c.tipo_de(texto) == "recibo"
+
+
+def test_cupon_con_leyenda_factura_no_es_comprobante():
+    assert c.tipo_de("VIDA COLECTIVO CUPÓN PARA EL INTERMEDIARIO I.V.A. RESPONSABLE INSCRIPTO FACTURA\nRECIBO 1") is None

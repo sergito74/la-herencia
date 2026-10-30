@@ -77,6 +77,11 @@ def _importe(s: str) -> Decimal:
 def tipo_de(texto: str) -> str | None:
     """Tipo de comprobante, o `None` si no es un comprobante (presupuesto, catálogo, informe, publicidad…)."""
     t = texto.upper()
+    # Comprobante de tesorería del proveedor (Bayá Casal): aplica pagos, retenciones y NC en su cuenta corriente.
+    # Nombra facturas y NC en el detalle pero no es deuda: va a Pagos como recibo (046, 30/10).
+    if re.search(r"COMPROBANTE TESORER[IÍ]A", t) and \
+            re.search(r"APLICACI[OÓ]N CUENTA CORRIENTE|TRANS?FERENCIA E/ ?CUENTAS", t):
+        return "recibo"
     # El detalle de un recibo nombra facturas/NC canceladas: no cambia su encabezado.
     if re.search(r"^\s*(?:ORIGINAL\s+)?RECIBO(?:\s+DE\s+(?:INGRESO|PAGO|COBRANZA)|\s+(?:N[ÚU]MERO|N[°º]))", t, re.M):
         return "recibo"
@@ -114,7 +119,7 @@ def tipo_de(texto: str) -> str | None:
              and re.search(r"A PAGAR", t)):
         return "boleta"
     # Cupón de pago (Sancor): aviso de vencimiento, no comprobante; la deuda llega en las facturas mensuales (046, 30/10).
-    if re.search(r"CUP[OÓ]N (DE PAGO|PARA EL)", t) and not re.search(r"\bFACTURA\b|\bCAE\b", t):
+    if re.search(r"CUP[OÓ]N (DE PAGO|PARA EL)", t) and not re.search(r"\bCAE\b|C\.A\.E\.", t):
         return None
     if re.search(r"\bRECIBO\b", t) and not re.search(r"\bFACTURA\b", t):
         return "recibo"
