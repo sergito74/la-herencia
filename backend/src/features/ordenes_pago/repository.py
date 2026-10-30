@@ -258,6 +258,13 @@ def vincular(id_documento, body: VincularInput, usuario):
             raise ValueError('El recibo debe cancelar las facturas de la orden: pagos por el neto y la retención de la orden')
     elif body.retencion and not body.certificadoRetencion:
         raise ValueError('Sin orden de pago, indicá el número de certificado de la retención')
+    if body.certificadoRetencion:
+        cert = fetch_one("SELECT SUM(Importe) i FROM dbo.Retenciones WHERE IdContacto=? AND RTRIM([Numero Certificado]) IN (?,?)",
+                         (body.idContacto, body.certificadoRetencion, body.certificadoRetencion + ' B'))
+        if not cert or cert['i'] is None:
+            raise ValueError('El certificado de retención no está cargado en Retenciones para este proveedor')
+        if dinero(cert['i']) != body.retencion:
+            raise ValueError('El importe del certificado no coincide con la retención del recibo')
     rows = {f['idCompra']: f for f in facturas(body.idContacto, body.idOrdenPago, incluir_saldadas=True)}
     links = _vinculos()
     crear, confirmar = [], []

@@ -113,6 +113,9 @@ def tipo_de(texto: str) -> str | None:
             (re.search(r"\bIMPUESTO\b|\bTASA\b|\bPATENTE\b", t) and re.search(r"\bVENCIMIENTO\b", t)
              and re.search(r"A PAGAR", t)):
         return "boleta"
+    # Cupón de pago (Sancor): aviso de vencimiento, no comprobante; la deuda llega en las facturas mensuales (046, 30/10).
+    if re.search(r"CUP[OÓ]N (DE PAGO|PARA EL)", t) and not re.search(r"\bFACTURA\b|\bCAE\b", t):
+        return None
     if re.search(r"\bRECIBO\b", t) and not re.search(r"\bFACTURA\b", t):
         return "recibo"
     # Liquidación mensual del banco (comisiones) y tickets de estaciones de servicio se cargan como facturas.

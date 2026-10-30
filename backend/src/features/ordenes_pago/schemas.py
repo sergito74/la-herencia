@@ -98,8 +98,8 @@ class VincularInput(Estricto):
         claves = [(a.origenMovimiento, a.idMovimiento, a.idCompra) for a in self.aplicaciones]
         if len(set(claves)) != len(claves):
             raise ValueError('No repitas el mismo pago y factura')
-        if not self.aplicaciones and not self.anticipo:
-            raise ValueError('Indicá qué pagos y facturas respalda el recibo, o el anticipo')
+        if not self.aplicaciones and not self.anticipo and not self.retencion:
+            raise ValueError('Indicá qué pagos y facturas respalda el recibo, la retención o el anticipo')
         if sum((a.importe for a in self.aplicaciones), Decimal(0)) + self.retencion + self.anticipo != self.total:
             raise ValueError('Pagos aplicados, retención y anticipo deben sumar el total del recibo')
         return self

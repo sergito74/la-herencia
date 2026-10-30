@@ -129,7 +129,18 @@ def test_retencion_sin_orden_pide_certificado(monkeypatch):
     preparar(monkeypatch)
     pago=[dict(origenMovimiento='galicia',idMovimiento=5,idCompra=1,importe=100)]
     with pytest.raises(ValueError,match='certificado'):r.vincular(3,recibo(total=120,retencion=20,aplicaciones=pago),'test')
+    monkeypatch.setattr(r,'fetch_one',lambda sql,*a:{'i':Decimal('20')} if 'Retenciones' in sql else None)
     assert r.vincular(3,recibo(total=120,retencion=20,certificadoRetencion='0000-2026-000050',aplicaciones=pago),'test')['idRecibo']==10
+    monkeypatch.setattr(r,'fetch_one',lambda sql,*a:{'i':Decimal('19')} if 'Retenciones' in sql else None)
+    with pytest.raises(ValueError,match='no coincide'):
+        r.vincular(3,recibo(total=120,retencion=20,certificadoRetencion='0000-2026-000050',aplicaciones=pago),'test')
+
+
+def test_recibo_solo_retencion(monkeypatch):
+    calls=preparar(monkeypatch)
+    monkeypatch.setattr(r,'fetch_one',lambda sql,*a:{'i':Decimal('348743.53')} if 'Retenciones' in sql else None)
+    res=r.vincular(95,recibo(total=348743.53,retencion=348743.53,certificadoRetencion='0000-2026-000013',aplicaciones=[]),'test')
+    assert res=={'idRecibo':10,'aplicaciones':[]} and all(c[0]!='aplicar' for c in calls)
 
 
 def test_anticipo_sin_factura(monkeypatch):
