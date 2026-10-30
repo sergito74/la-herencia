@@ -21,8 +21,6 @@ from src.features.descarga_peajes.portales import COMPRAS, carpeta_ejercicio
 GIAMIGLI = "30712114602"
 # Comprobantes a nombre de Sergio que son gastos de Giamigli (ej. Starlink mensual): se cargan normalmente (27/10/2026).
 SERGIO = "23238598109"
-# Comprobantes a nombre de Oscar Giamberardini (ej. boletas ARBA partida inmobiliaria): se procesan para Giamigli.
-OSCAR = "20046022646"
 # Ganadera San Justo: no se registra ni se guarda nada suyo (Sergio, 27/10/2026), aunque nombre a Giamigli.
 SAN_JUSTO = "30715943278"
 DROPBOX = COMPRAS.parent
@@ -143,7 +141,7 @@ def receptor(texto: str, cuit_emisor: str | None) -> str:
     if es_de_san_justo(texto):
         return "otra"
     otros = [c for c in cuits(texto) if c != cuit_emisor]
-    if GIAMIGLI in otros or SERGIO in otros or OSCAR in otros or "GIAMIGLI" in t or "SUCESI" in t or "OSCAR GIAMBERARDINI" in t or not otros:
+    if GIAMIGLI in otros or SERGIO in otros or "GIAMIGLI" in t or "SUCESI" in t or not otros:
         return "giamigli"
     return "persona" if any(c[:2] in ("20", "23", "24", "27") for c in otros) else "otra"
 
