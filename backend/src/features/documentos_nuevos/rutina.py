@@ -228,6 +228,15 @@ def _carpetas(id_corrida: int, r: dict, problemas: list[str]) -> None:
         problemas.append("Carpetas locales: error al verificar archivos nuevos")
 
 
+def _reevaluar(problemas: list[str]) -> None:
+    from src.features.documentos_nuevos import carpetas
+    try:
+        carpetas.reevaluar_pendientes()
+    except Exception:
+        log.exception("Rutina: no se pudieron reevaluar los pendientes sin contacto")
+        problemas.append("No se pudieron reevaluar los pendientes sin emisor")
+
+
 def correr(origen: str = "programada") -> int | None:
     """Una corrida completa. `None` si ya había otra en curso."""
     id_corrida = repository.abrir_corrida(origen)
@@ -242,6 +251,7 @@ def correr(origen: str = "programada") -> int | None:
         _contar_portal(id_corrida, r)
         _mails(id_corrida, r, problemas, datetime.now())
         _carpetas(id_corrida, r, problemas)
+        _reevaluar(problemas)
     except Exception:
         log.exception("Rutina: falló la corrida %s", id_corrida)
         problemas.append("La corrida no pudo terminar; se reintenta en la próxima")

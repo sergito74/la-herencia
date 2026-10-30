@@ -35,6 +35,16 @@ _FILA1 = re.compile(r"Impuestos y Tasas\s*\n\s*([\d.,]+) ([\d.,]+) ([\d.,]+) ([\
 _FILA2 = re.compile(r"Aum\. de Capital\s*\n\s*([\d.,]+) ([\d.,]+) ([\d.,]+) ([\d.,]+) ([\d.,]+) ([\d.,]+)")
 _TOTAL = re.compile(r"Total \$\s*([\d.,]+)")
 _NUMERO = re.compile(r"FACTURA N\S*\s*:\s*(\d{5})\s*-\s*(\d{8})")
+# Un PDF de mail o Dropbox trae una factura por póliza (Sergio carga una compra por cada una, 15/09/2026).
+_INICIO = re.compile(r"(?=ORIGINAL\s*\n\s*[ABC] FACTURA N)")
+_POLIZA = re.compile(r"Vigencia\s*\n\s*(\d+)/\d+\s+(\d+)")
+RAMOS = {"600": "Acc. personales", "2500": "Salud", "1730": "Vida colectivo"}
+
+
+def facturas_del_pdf(texto: str) -> list[str]:
+    """Texto de cada factura de un PDF (una por póliza); el PDF del portal trae una sola."""
+    partes = [p for p in _INICIO.split(texto) if _FACTURA.search(p)]
+    return partes or [texto]
 
 
 @dataclass
@@ -194,14 +204,19 @@ class ConectorSancor:
         Si hay conceptos gravados van en un renglón con IVA 21%."""
         from src.features.boveda.conectores.chrome_comun import _cabecera, _texto
 
-        t = _texto(pdf)
+        partes = facturas_del_pdf(_texto(pdf))
+        indice = int(documento.clave.rsplit("#", 1)[1]) if "#" in (documento.clave or "") else 0
+        if indice >= len(partes):
+            return None
+        t = partes[indice]
         m, f, f1, f2, total = (r.search(t) for r in (_FACTURA, _FECHA_FACTURA, _FILA1, _FILA2, _TOTAL))
         if not (m and f and f1 and f2 and total):
             return None
         a = lambda x: Decimal(x.replace(".", "").replace(",", "."))
         gravados, no_gravados, exentos, iva, iva_no_cat, tasas = (a(f1.group(i)) for i in range(1, 7))
         perc_iva, perc_iibb, sellado, perc_tasa, _premio, aum_capital = (a(f2.group(i)) for i in range(1, 7))
-        if iva_no_cat or (gravados and (gravados * Decimal("0.21")).quantize(Decimal("0.01")) != iva):
+        # Sancor redondea el IVA por su cuenta: hasta un centavo de diferencia (35.780,26 → 7.513,86, 16/10/2026).
+        if iva_no_cat or (gravados and abs(gravados * Decimal("0.21") - iva) > Decimal("0.01")):
             return None
         numero = f"{m.group(2)}-{m.group(3)}"
 
@@ -210,11 +225,20 @@ class ConectorSancor:
                     "unidad": "UNIDAD", "idCentroCosto": CENTRO_COSTO, "idDestino": 1, "idRubro": RUBRO,
                     "campaña": "No Aplica", "ajusteFinanciero": False}
 
-        lineas = [linea("Prima", exentos + no_gravados, 0.0)] if exentos + no_gravados else []
-        if gravados:
-            lineas.append(linea("Prima", gravados, 21.0))
-        if aum_capital:
-            lineas.append(linea("Aumento Capital", aum_capital, 0.0))
+        if m.group(1) == "B":
+            # Factura B (consumidor final): como las carga Sergio (00038-00157793), prima con el IVA incluido, IVA 0.
+            pol = _POLIZA.search(t)
+            desc = (f"{RAMOS.get(pol.group(1), 'Seguro ramo ' + pol.group(1))} pol. {pol.group(2)} - B IVA incluido"
+                    if pol else "Prima - B IVA incluido")
+            lineas = [linea(desc[:50], gravados + iva + exentos + no_gravados, 0.0)]
+            if aum_capital:
+                lineas.append(linea("Aumento de capital", aum_capital, 0.0))
+        else:
+            lineas = [linea("Prima", exentos + no_gravados, 0.0)] if exentos + no_gravados else []
+            if gravados:
+                lineas.append(linea("Prima", gravados, 21.0))
+            if aum_capital:
+                lineas.append(linea("Aumento Capital", aum_capital, 0.0))
         fecha = date(int(f.group(3)), int(f.group(2)), int(f.group(1)))
         cabecera = _cabecera(ID_CONTACTO, fecha, numero, conceptosNoGravados=tasas + perc_tasa,
                              percepcionIva=perc_iva, ingresosBrutos=perc_iibb, leyDeSellos=sellado)

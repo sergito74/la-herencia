@@ -36,6 +36,10 @@ def lector_para(tipo: str | None, id_contacto: int | None):
 def cargar(tipo: str, id_contacto: int, proveedor: str, numero: str | None, fecha, pdf: bytes, ruta: str) -> dict | None:
     """Intenta la carga con el lector registrado. `None` si no hay lector; si no, el resultado de
     `boveda.carga.cargar` (`estadoCarga`, `motivo`, `idCompra`, ...)."""
+    from src.features.boveda.conectores.sancor import ID_CONTACTO as SANCOR
+
+    if tipo == "factura" and id_contacto == SANCOR:
+        return cargar_sancor(pdf, ruta)
     conector = lector_para(tipo, id_contacto)
     if conector is None:
         return None
@@ -53,3 +57,34 @@ def cargar_resumen(texto: str, pdf: bytes, ruta: str) -> dict | None:
     if visa_galicia.es_visa_galicia(texto):
         return visa_galicia.cargar(pdf, ruta)
     return None
+
+
+def cargar_sancor(pdf: bytes, ruta: str, *, simular: bool = False) -> dict:
+    """Sancor por mail o Dropbox (30/10/2026): un PDF con una factura por póliza y una compra por cada una. Mismas
+    validaciones que la bóveda (cierre al centavo, sin duplicar por número); el archivo queda como documento original
+    de todas, como en las cargas a mano."""
+    from src.features.boveda import repository as boveda
+    from src.features.boveda.conectores.chrome_comun import _texto
+    from src.features.boveda.conectores.sancor import ID_CONTACTO, facturas_del_pdf
+    from src.features.compras import repository as compras
+
+    conector = cargar_conectores()["sancor"]
+    resultados = []
+    for i in range(len(facturas_del_pdf(_texto(pdf)))):
+        doc = DocumentoPortal(clave=f"mail:{ruta}#{i}", fecha=None, tipo="factura", proveedor="Sancor Seguros",
+                              bajar=lambda: pdf, id_contacto=ID_CONTACTO)
+        r = carga.cargar(conector, doc, pdf, ruta, simular=True)  # valida sin mirar el archivo compartido
+        if r["estadoCarga"] == "cargado_auto" and not simular:
+            leido = conector.leer_comprobante(doc, pdf)
+            r = {**r, "motivo": None, "idCompra": compras.create_compra(
+                {**leido.cabecera, "idContacto": ID_CONTACTO, "documentoOriginal": ruta}, leido.lineas, [])}
+        elif r["estadoCarga"] == "ya_cargado" and not r.get("idCompra"):
+            r["idCompra"] = boveda.compra_existente(ID_CONTACTO, r["numeroDocumento"], None)
+        resultados.append(r)
+    pendientes = [r for r in resultados if r["estadoCarga"] == "pendiente"]
+    if pendientes:  # alguna no se pudo: el aviso queda para cargar a mano con el motivo
+        return {**pendientes[0],
+                "motivo": f"{len(pendientes)} de {len(resultados)} facturas sin cargar: {pendientes[0]['motivo']}"}
+    cargadas = [r for r in resultados if r["estadoCarga"] == "cargado_auto"]
+    return {**(cargadas or resultados)[0], "estadoCarga": "cargado_auto" if cargadas else "ya_cargado",
+            "detalle": resultados}

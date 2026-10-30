@@ -150,3 +150,37 @@ def procesar_archivo_carpeta(id_corrida: int | None, path: Path, conocidos: set[
         "idRegistro": id_registro,
     })
     return estado
+
+
+def reevaluar_pendientes() -> int:
+    """Pendientes que quedaron sin contacto (ej. Sancor antes de cargarle el CUIT, 30/10/2026): se vuelve a buscar el
+    emisor y, si ya estaba cargado, se marca. No carga nada nuevo. Devuelve cuántos cambiaron."""
+    from src.db.connection import execute_write
+    from src.features.boveda import repository as boveda
+
+    cambiados = 0
+    for d in fetch_all("SELECT IdDocumentoNuevo AS id, Ruta AS ruta FROM dbo.DocumentosNuevos WHERE Estado = 'para_cargar' "
+                       "AND Revisado IS NULL AND IdContacto IS NULL AND Ruta LIKE '%.pdf'"):
+        path = Path(d["ruta"] or "")
+        if not path.is_file():
+            continue
+        try:
+            c = clasificador.clasificar(clasificador.texto_pdf(path.read_bytes()), clasificador.buscar_contacto_por_cuit)
+        except Exception:
+            log.exception("Reevaluación: no se pudo leer %s", path.name)
+            continue
+        if not c.comprobante or not c.id_contacto:
+            continue
+        registro = None
+        if c.modulo == "compras" and c.numero:
+            registro = boveda.compra_existente(c.id_contacto, c.numero, str(path))
+        elif c.modulo == "impuestos" and c.tipo == "boleta":
+            registro = repository.impuesto_existente(c.id_contacto, c.total, c.fecha)
+        if registro:
+            execute_write("UPDATE dbo.DocumentosNuevos SET IdContacto = ?, Estado = 'ya_estaba', IdRegistro = ?, Motivo = NULL "
+                          "WHERE IdDocumentoNuevo = ?", (c.id_contacto, registro, d["id"]))
+        else:
+            execute_write("UPDATE dbo.DocumentosNuevos SET IdContacto = ?, Motivo = ? WHERE IdDocumentoNuevo = ?",
+                          (c.id_contacto, "El sistema todavía no sabe leer este comprobante: cargar a mano", d["id"]))
+        cambiados += 1
+    return cambiados
