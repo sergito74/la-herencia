@@ -21,6 +21,7 @@ from src.features.boveda.conectores import DocumentoPortal, cargar_conectores
 LECTORES: dict[tuple[str, int], str] = {
     ("factura", 71): "movistar",
     ("factura", 2657): "telepeajeplus",
+    ("factura", 328): "telepeajeplus",  # Telepeaje S.A.: mismo lector de 037 (proveedor "Telepeaje")
 }
 
 

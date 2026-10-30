@@ -159,3 +159,9 @@ def test_boleta_de_arba_sin_cuit_se_asigna_a_arba():
     inmobiliario = "Impuesto Inmobiliario Vencimiento 18/12/2025 Cuota 4 de 2025 A pagar Partida N° 011-007957-5 $1.437.586,60"
     assert c.clasificar(patente, buscar).id_contacto == 12
     assert c.clasificar(inmobiliario, buscar).id_contacto == 12
+
+
+def test_resumen_de_telepeaje_es_factura_de_compras():
+    texto = ("Telepeaje S.A RESUMEN DE CUENTA: Nº: 0002-371053593 Sucursal: 001 Florida Grupo: Red de Rutas Nacionales "
+             "Saldo anterior $ 0,00 Saldo a Pagar: $ 0.00 Banco")
+    assert c.tipo_de(texto) == "factura" and c.MODULO["factura"] == "compras"

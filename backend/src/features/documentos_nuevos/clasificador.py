@@ -82,6 +82,9 @@ def tipo_de(texto: str) -> str | None:
     if re.search(r"COMPROBANTE TESORER[IÍ]A", t) and \
             re.search(r"APLICACI[OÓ]N CUENTA CORRIENTE|TRANS?FERENCIA E/ ?CUENTAS", t):
         return "recibo"
+    # Resumen de cuenta de Telepeaje S.A.: es su factura (se carga en Compras), no un resumen de banco (30/10/2026).
+    if re.search(r"TELEPEAJE S\.?A", t) and re.search(r"RESUMEN DE CUENTA", t):
+        return "factura"
     # El detalle de un recibo nombra facturas/NC canceladas: no cambia su encabezado.
     if re.search(r"^\s*(?:ORIGINAL\s+)?RECIBO(?:\s+DE\s+(?:INGRESO|PAGO|COBRANZA)|\s+(?:N[ÚU]MERO|N[°º]))", t, re.M):
         return "recibo"
