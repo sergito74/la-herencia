@@ -102,6 +102,10 @@ def procesar_archivo_carpeta(id_corrida: int | None, path: Path, conocidos: set[
         id_registro = boveda.compra_existente(c.id_contacto, c.numero, ruta_str)
         if id_registro:
             estado, motivo = "ya_estaba", None
+    if c.modulo == "impuestos" and c.tipo == "boleta" and c.id_contacto:
+        id_registro = repository.impuesto_existente(c.id_contacto, c.total, c.fecha)
+        if id_registro:
+            estado, motivo = "ya_estaba", None
 
     r = None
     if estado == "para_cargar" and c.tipo in ("resumen_banco", "resumen_tarjeta"):

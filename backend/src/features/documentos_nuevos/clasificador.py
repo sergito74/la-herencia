@@ -233,6 +233,9 @@ def total_de(texto: str) -> Decimal | None:
     return _importe(ultimos[-1]) if ultimos else None
 
 
+ARBA = "30710404611"
+
+
 def clasificar(texto: str, buscar_contacto=None) -> Clasificacion:
     """`buscar_contacto(cuit) -> (idContacto, razón social) | None` (inyectable para las pruebas)."""
     tipo = tipo_de(texto)
@@ -270,6 +273,11 @@ def clasificar(texto: str, buscar_contacto=None) -> Clasificacion:
     por_nombre = getattr(buscar_contacto, "por_nombre", None)
     if not c.id_contacto and por_nombre:  # contactos sin CUIT cargado
         encontrado = por_nombre(texto)
+        if encontrado:
+            c.id_contacto, c.contacto = encontrado
+    # Boletas de ARBA (patentes, inmobiliario): el PDF no trae el CUIT de ARBA y "ARBA" es corto para buscar por nombre.
+    if not c.id_contacto and buscar_contacto and tipo == "boleta" and re.search(r"\bARBA\b|IMPUESTO A LOS AUTOMOTORES|IMPUESTO INMOBILIARIO", texto, re.I):
+        encontrado = buscar_contacto(ARBA)
         if encontrado:
             c.id_contacto, c.contacto = encontrado
     if tipo == "otro":

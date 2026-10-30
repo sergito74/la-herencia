@@ -151,3 +151,11 @@ def test_numero_con_ceros_distintos_es_la_misma_compra():
     from src.features.boveda.repository import _clave_numero
     assert _clave_numero("2-02554911") == _clave_numero("00002-02554911") == (2, 2554911)
     assert _clave_numero("0020- 00136689") == (20, 136689) and _clave_numero("PENDIENTE 59111") is None
+
+
+def test_boleta_de_arba_sin_cuit_se_asigna_a_arba():
+    buscar = lambda cuit: (12, "ARBA") if cuit == c.ARBA else None
+    patente = "Impuesto a los Automotores Arba Vencimiento: 15/07/2025 CUOTA 3/2025 Patente N° AG964SV A pagar: $ 540.413,20"
+    inmobiliario = "Impuesto Inmobiliario Vencimiento 18/12/2025 Cuota 4 de 2025 A pagar Partida N° 011-007957-5 $1.437.586,60"
+    assert c.clasificar(patente, buscar).id_contacto == 12
+    assert c.clasificar(inmobiliario, buscar).id_contacto == 12

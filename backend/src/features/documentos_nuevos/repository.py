@@ -34,6 +34,17 @@ def mismo_comprobante(id_contacto: int, numero: str, modulo: str) -> bool:
                      (id_contacto, numero[:50], modulo)) is not None
 
 
+def impuesto_existente(id_organismo: int | None, total, fecha) -> int | None:
+    """Impuesto ya cargado a mano sin la boleta adjunta (patentes ARBA, 30/10/2026): mismo organismo e importe al centavo,
+    pagado dentro de los 60 días del vencimiento de la boleta. Si hay más de uno, gana el de fecha más cercana."""
+    if not (id_organismo and total and fecha):
+        return None
+    fila = fetch_one("SELECT TOP 1 IdImpuesto AS id FROM dbo.Impuestos WHERE IdOrganismo = ? AND ABS(Importe - ?) < 0.005 "
+                     "AND ABS(DATEDIFF(day, Fecha, ?)) <= 60 ORDER BY ABS(DATEDIFF(day, Fecha, ?))",
+                     (id_organismo, float(total), fecha, fecha))
+    return fila["id"] if fila else None
+
+
 def adjunto_procesado(entry_id: str, sha: str) -> bool:
     return fetch_one("SELECT TOP 1 1 AS x FROM dbo.DocumentosNuevos WHERE MailEntryId = ? AND Sha256 = ?",
                      (entry_id[:200], sha)) is not None
