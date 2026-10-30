@@ -7,7 +7,10 @@ official database during development.
 
 from __future__ import annotations
 
+import logging
 import os
+from logging.handlers import RotatingFileHandler
+from pathlib import Path
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -59,6 +62,16 @@ from src.features.facturas_faltantes.router import router as facturas_faltantes_
 from src.features.cotizaciones.router import router as cotizaciones_router
 from src.features.boveda.router import router as boveda_router
 from src.features.documentos_nuevos.router import router as documentos_nuevos_router
+
+# Avisos y errores de la app (bóveda, rutina, conciliaciones) en un archivo que no se pisa al reabrir el sistema:
+# la salida del lanzador sí se pisa y se perdía el detalle de las fallas de sincronización (30/10/2026).
+_LOGS = Path(__file__).resolve().parents[1] / "logs"
+_LOGS.mkdir(exist_ok=True)
+_registro = RotatingFileHandler(_LOGS / "backend.log", maxBytes=5_000_000, backupCount=5, encoding="utf-8")
+_registro.setLevel(logging.WARNING)
+_registro.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(name)s: %(message)s"))
+if not any(isinstance(h, RotatingFileHandler) for h in logging.getLogger("src").handlers):
+    logging.getLogger("src").addHandler(_registro)
 
 app = FastAPI(
     title="La Herencia API",
