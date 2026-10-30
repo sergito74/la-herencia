@@ -216,6 +216,10 @@ def _procesar(portal: dict, conector, cred: Credencial, id_corrida: int) -> dict
                 if venta:  # liquidación ya cargada a mano en Ventas: se vincula, sin aviso (043)
                     r = {"estadoCarga": "ya_cargado", "motivo": None, "idCompra": None, "idRegistro": venta["idVenta"],
                          "numeroDocumento": doc.numero, "totalImpreso": doc.total}
+                elif conector.codigo.startswith("sancor") and doc.tipo == "factura":
+                    # Un PDF de Sancor puede traer una factura por póliza: se cargan todas (30/10/2026).
+                    from src.features.documentos_nuevos.lectores import cargar_sancor
+                    r = cargar_sancor(contenido, ruta)
                 else:
                     r = carga.cargar(conector, doc, contenido, ruta)
                 fila = {

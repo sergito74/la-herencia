@@ -125,7 +125,7 @@ class ConectorSancor:
         return data.get("certificateMovements") or []
 
     def listar_documentos(self, sesion: _Sesion) -> list[DocumentoPortal]:
-        """Una factura por fecha de emisión: el PDF trae juntas las facturas de todas las pólizas del mes."""
+        """Una factura por fecha de emisión y póliza (el PDF puede traer juntas las de varias pólizas: se leen todas)."""
         desde = _inicio_ejercicio(date.today())
         docs: dict[str, DocumentoPortal] = {}
         sesion.movimientos = {}
@@ -138,16 +138,19 @@ class ConectorSancor:
             for m in movs:
                 impreso = m.get("printDate")
                 fecha = _fecha(impreso)
-                if not fecha or fecha < desde or impreso[:10] in docs:
+                # Una factura por fecha y póliza: dos pólizas impresas el mismo día traen PDFs distintos (Vida Obligatorio
+                # 2741328 de Giamigli quedaba afuera por compartir fecha con Vida Colectivo, 30/10/2026).
+                clave = f"{impreso[:10]}:{ref}"
+                if not fecha or fecha < desde or clave in docs:
                     continue
                 cuerpo = {"did_gss": "INVOICE", "core_id": pol.get("coreId") or 1,
                           "policy": {"numberRef": ref, "numberOf": oficial, "branchNumber": int(pol.get("branchCode") or 0),
                                      "date": impreso, "receipt": 0, "certificateNumber": str(pol.get("certificateNumber") or 0)}}
-                doc = DocumentoPortal(clave=f"sancor:{impreso[:10]}", fecha=fecha, tipo="factura", proveedor="SancorSeguros",
+                doc = DocumentoPortal(clave=f"sancor:{clave}", fecha=fecha, tipo="factura", proveedor="SancorSeguros",
                                       bajar=lambda: b"", moneda="ARS", detalle=f"Facturas de pólizas {fecha:%m/%Y}",
                                       id_contacto=ID_CONTACTO)
                 doc.bajar = self._bajador(sesion, cuerpo, doc)
-                docs[impreso[:10]] = doc
+                docs[clave] = doc
         disponibles = []
         for doc in docs.values():
             # Las facturas viejas figuran en los movimientos pero el portal no tiene su PDF: se descartan
