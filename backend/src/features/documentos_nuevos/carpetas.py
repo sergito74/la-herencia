@@ -158,7 +158,14 @@ def reevaluar_pendientes() -> int:
     from src.db.connection import execute_write
     from src.features.boveda import repository as boveda
 
+    # Archivo de carpeta local borrado por el usuario (01/11/2026): no era una compra a cargar, sale de la lista.
     cambiados = 0
+    for d in fetch_all("SELECT IdDocumentoNuevo AS id, Ruta AS ruta FROM dbo.DocumentosNuevos d WHERE " + repository.PENDIENTE
+                       + " AND d.MailRemitente LIKE 'Carpeta local%'"):
+        if not Path(d["ruta"] or "").is_file():
+            execute_write("UPDATE dbo.DocumentosNuevos SET Revisado = SYSDATETIME(), RevisadoPor = 'sistema (archivo eliminado)', "
+                          "Motivo = 'Archivo eliminado de la carpeta: no se carga' WHERE IdDocumentoNuevo = ?", (d["id"],))
+            cambiados += 1
     for d in fetch_all("SELECT IdDocumentoNuevo AS id, Ruta AS ruta FROM dbo.DocumentosNuevos WHERE Estado = 'para_cargar' "
                        "AND Revisado IS NULL AND IdContacto IS NULL AND Ruta LIKE '%.pdf'"):
         path = Path(d["ruta"] or "")
