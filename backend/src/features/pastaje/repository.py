@@ -213,7 +213,7 @@ def guardar_borrador(id_contrato: int, liq, usuario: str, tipo: str = "mensual",
                      existente: dict | None = None, importes: tuple | None = None) -> int:
     """Crea o reemplaza (si es borrador) la liquidación. `importes` permite fijar neto/iva/total (ajuste)."""
     neto, iva, total = importes or (liq.neto, liq.iva, liq.total)
-    valores = (str(liq.precio) if liq.precio is not None else None, str(round(liq.kg, 4)), str(neto), str(iva), str(total), liq.moneda)
+    valores = (str(round(liq.precio, 6)) if liq.precio is not None else None, str(round(liq.kg, 4)), str(neto), str(iva), str(total), liq.moneda)
     if existente:
         if existente["estado"] != "borrador":
             raise Conflicto("La liquidación ya está confirmada: los cambios se resuelven con un ajuste.")

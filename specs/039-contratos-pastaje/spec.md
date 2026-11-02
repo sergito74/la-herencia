@@ -155,7 +155,7 @@ El INMAG pasa a ser el único índice de novillo del sistema, incluida la valuac
 - Varias categorías con tarifas distintas en el mismo contrato.
 - Recuento con más cabezas que las registradas.
 - Factura leída con datos ilegibles o de otro emisor/cliente: no se guarda sin confirmación manual.
-- Redondeo: solo al importe final (neto e IVA a centavos); kg y precio promedio con su precisión, mostrados a 2 decimales.
+- Redondeo: solo al importe final (neto e IVA a centavos). Aclaración de Sergio (02/11/2026): desde octubre 2026 el precio es el INMAG publicado por el mercado para los días de servicio (fila "Totales" de haciinfo000011 consultada por ese rango: importe ÷ kilos), reemplaza a FR-008; el índice se muestra con 3 decimales; septiembre 2026 queda como se liquidó. La estimación del mes en curso sigue con promedio simple.
 
 ## Requirements *(mandatory)*
 

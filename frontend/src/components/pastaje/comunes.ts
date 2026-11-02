@@ -9,7 +9,7 @@ export const MESES = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "ju
 export const pesos = (v: string | number | null | undefined, moneda: "ARS" | "USD" | string = "ARS") =>
   v === null || v === undefined || v === "" ? "—" : formatMoneda(Number(v), moneda === "USD" ? "Dolares" : "Pesos");
 export const kg = (v: string | number | null | undefined) => (v === null || v === undefined ? "—" : `${formatNumero(Number(v), { min: 0, max: 2 })} kg`);
-export const indice = (v: string | number | null | undefined) => (v === null || v === undefined ? "—" : formatMoneda(Number(v), "Pesos"));
+export const indice = (v: string | number | null | undefined) => (v === null || v === undefined ? "—" : `$ ${formatNumero(Number(v), { min: 3, max: 3 })}`);
 
 export function mesTexto(periodo: string): string {
   const [a, m] = periodo.split("-");

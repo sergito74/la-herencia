@@ -10,11 +10,17 @@ intermedio en kg; neto e IVA a centavos.
 from __future__ import annotations
 
 import calendar
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import date, timedelta
 from decimal import ROUND_HALF_UP, Decimal
 
 CENT = Decimal("0.01")
+
+
+# Decisión de Sergio (02/11/2026): desde octubre 2026 el precio es el INMAG publicado por el mercado para
+# el período de servicio; septiembre queda con el promedio simple a 2 decimales ya liquidado.
+PROMEDIO_OFICIAL_DESDE = date(2026, 10, 1)
 
 
 class SinIndice(ValueError):
@@ -119,8 +125,10 @@ def liquidar(
     indices: dict[date, Decimal],
     alicuota: Decimal = Decimal("21"),
     hasta: date | None = None,
+    promedio_oficial: Callable[[date, date], Decimal | None] | None = None,
 ) -> Liquidacion:
-    """Liquida el mes de `periodo`. `hasta` limita el cálculo (estimado del mes en curso)."""
+    """Liquida el mes de `periodo`. `hasta` limita el cálculo (estimado del mes en curso, promedio simple).
+    `promedio_oficial(desde, hasta)` da el INMAG publicado para los días de servicio de un mes cerrado."""
     ini = periodo.replace(day=1)
     dias_mes = calendar.monthrange(ini.year, ini.month)[1]
     fin = ini.replace(day=dias_mes)
@@ -156,7 +164,15 @@ def liquidar(
         liq.indices = [(x, indices[x]) for x in dias_con_hacienda if indices.get(x) is not None]
         if not liq.indices:
             raise SinIndice(f"No hay índice INMAG publicado en los días con hacienda de {ini:%m/%Y}.")
-        liq.precio = _r(sum(v for _, v in liq.indices) / len(liq.indices))
+        promedio = sum(v for _, v in liq.indices) / len(liq.indices)
+        if ini < PROMEDIO_OFICIAL_DESDE:
+            liq.precio = _r(promedio)
+        elif promedio_oficial is None:
+            liq.precio = promedio
+        else:
+            liq.precio = promedio_oficial(dias_con_hacienda[0], dias_con_hacienda[-1])
+            if liq.precio is None:
+                raise SinIndice(f"No se pudo obtener el INMAG publicado para {ini:%m/%Y}. Volvé a intentar más tarde.")
     bruto = Decimal(0)
     for tr in liq.tramos:
         prop = Decimal(tr.cabezas * tr.dias) / dias_mes

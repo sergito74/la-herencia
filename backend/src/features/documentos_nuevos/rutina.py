@@ -109,6 +109,8 @@ def procesar_adjunto(id_corrida: int | None, mail: mails.Mail, adj: mails.Adjunt
 
     if adj.nombre.lower().endswith(".pdf") and sueldos.reconoce(texto):
         return sueldos.procesar(mail, adj, texto, sha, id_corrida)
+    if not clasificador.dirigido_a_la_empresa(texto):
+        return None  # mail personal: no se guarda ni avisa
     c = clasificador.clasificar(texto, clasificador.buscar_contacto_por_cuit)
     if not c.comprobante or not c.para_giamigli:
         return None  # no es comprobante, o es de otra sociedad: no se guarda ni avisa

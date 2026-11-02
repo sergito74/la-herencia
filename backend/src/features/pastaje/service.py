@@ -50,7 +50,7 @@ def calcular(id_contrato: int, periodo: date, hasta: date | None = None) -> calc
     c = repo.contrato(id_contrato)
     ini = _mes(periodo)
     return calculo.liquidar(ini, _movs(id_contrato), _tarifas(id_contrato), inmag.indices(ini, _fin_mes(ini)),
-                            _d(c["alicuotaIva"]), hasta)
+                            _d(c["alicuotaIva"]), hasta, None if hasta else inmag.promedio_periodo)
 
 
 def _serializar(liq: calculo.Liquidacion, nombres: dict[int, str]) -> dict:

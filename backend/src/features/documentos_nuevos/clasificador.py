@@ -161,6 +161,13 @@ def receptor(texto: str, cuit_emisor: str | None) -> str:
     return "persona" if any(c[:2] in ("20", "23", "24", "27") for c in otros) else "otra"
 
 
+def dirigido_a_la_empresa(texto: str) -> bool:
+    """Filtro de mails: el documento debe identificar a Giamigli, a la Sucesión o el CUIT de Sergio (sus gastos de
+    Giamigli). Un mail personal sin esa identificación no entra, aunque parezca comprobante (Sergio, 02/11/2026)."""
+    t = texto.upper()
+    return "GIAMIGLI" in t or "SUCESI" in t or bool({GIAMIGLI, SERGIO} & set(cuits(texto)))
+
+
 def banco_y_producto(texto: str) -> tuple[str | None, str | None]:
     t = texto.upper()
     banco = "Galicia" if "GALICIA" in t else "BNA" if re.search(r"BANCO DE LA NACI[OÓ]N|\bBNA\b|AGRONACI", t) \

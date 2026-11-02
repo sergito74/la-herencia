@@ -58,7 +58,7 @@ export function IndicePanel({ periodoInicial }: { periodoInicial?: string }) {
       {act.data && <p role="status" className="text-sm">Se agregaron {act.data.agregados} días.</p>}
       {act.error && <p role="alert" className="text-sm text-status-danger">{(act.error as Error).message}</p>}
       <p className="text-sm text-ink-secondary">
-        Fuente: Mercado Agroganadero de Cañuelas (I.N.M.A.G.). Se carga solo todos los días a las 19 h. Promedio simple del mes: <span className="font-data">{promedio ? indice(promedio.toFixed(2)) : "—"}</span> (la liquidación usa solo los días con hacienda en el campo).
+        Fuente: Mercado Agroganadero de Cañuelas (I.N.M.A.G.). Se carga solo todos los días a las 19 h. Promedio simple del mes: <span className="font-data">{promedio ? indice(promedio.toFixed(3)) : "—"}</span> (la liquidación usa solo los días con hacienda en el campo).
       </p>
       {q.isLoading && <LoadingState />}
       {q.isError && <ErrorState message={(q.error as Error).message} onRetry={() => q.refetch()} />}
