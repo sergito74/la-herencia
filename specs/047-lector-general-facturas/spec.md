@@ -2,7 +2,7 @@
 
 **Feature Branch**: `047-lector-general-facturas`
 **Created**: 2026-11-02
-**Status**: Draft
+**Status**: Cancelada por Sergio (02/11/2026): se sigue con carga manual salvo los lectores ya armados. Simulación: 29 de 347 cargables, 28 coincidentes. Queda sin uso la columna Rutina_Programacion.LectorGeneralActivo.
 **Input**: Pedido de Sergio: que las facturas nuevas se carguen solas sin un lector por proveedor, y que todo documento nuevo quede marcado para revisión.
 
 ## User Scenarios & Testing *(mandatory)*
