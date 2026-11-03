@@ -32,6 +32,10 @@ DOCUMENTOS = Path.home() / "Documents" / "La Herencia"
 RESUMENES_PROVEEDORES = DOCUMENTOS / "Administracion y gestion" / "Resumenes de Cuenta"
 CONTRATOS = DOCUMENTOS / "Agricultura" / "Contratos"
 
+CAE_RE = r"\bCAEA?\b|C\.A\.E\.(?:A\.?)?"
+_NC = r"NOTA\s+(?:DE\s+)?CR[EÉ]DITO|\bNC\s+(?:[ABC]\b|AUTOM[AÁ]TICA|ELECTR[OÓ]NICA)"
+_ND = r"NOTA\s+(?:DE\s+)?D[EÉ]BITO|\bND\s+[ABC]\b"
+_SUCESION = re.compile(r"\bSUCESI[OÓ]N\b")
 _CUIT = re.compile(r"\b(\d{2})[- .]?(\d{8})[- .]?(\d)\b")
 _FECHA = re.compile(r"\b(\d{2})/(\d{2})/(\d{4})\b")
 
@@ -71,6 +75,11 @@ def cuits(texto: str) -> list[str]:
 
 
 def _importe(s: str) -> Decimal:
+    """Acepta 1.234,56 y 1,234.56 (Cooperativa Eléctrica): el separador decimal es el último de los dos."""
+    if "," in s and "." in s and s.rfind(".") > s.rfind(","):
+        return Decimal(s.replace(",", ""))
+    if "," not in s and re.search(r"\.\d{2}$", s):
+        return Decimal(s)
     return Decimal(s.replace(".", "").replace(",", "."))
 
 
@@ -85,11 +94,21 @@ def tipo_de(texto: str) -> str | None:
     # Resumen de cuenta de Telepeaje S.A.: es su factura (se carga en Compras), no un resumen de banco (30/10/2026).
     if re.search(r"TELEPEAJE S\.?A", t) and re.search(r"RESUMEN DE CUENTA", t):
         return "factura"
+    # Cupón de pago (Sancor): aviso de vencimiento, no comprobante (046). Va antes que "otro" y que el receptor.
+    if re.search(r"CUP[OÓ]N (DE PAGO|PARA EL)", t) and not re.search(CAE_RE, t):
+        return None
+    # Expensas de consorcio: nunca boleta de impuesto (03/11/2026, docs 109/110); se avisa sin clasificar.
+    if re.search(r"\bEXPENSAS\b|\bCONSORCIO\b", t) and not re.search(CAE_RE, t):
+        return "otro"
+    # Tasa municipal: "Comprobante de pago" o "TASA … VENCIMIENTO" (Municipalidad de Bolívar).
+    if re.search(r"MUNICIPALIDAD DE", t) and re.search(r"\bTASA\b", t) and \
+            re.search(r"COMPROBANTE DE PAGO|VENCIMIENTO", t) and not re.search(CAE_RE, t):
+        return "boleta"
     # El detalle de un recibo nombra facturas/NC canceladas: no cambia su encabezado.
     if re.search(r"^\s*(?:ORIGINAL\s+)?RECIBO(?:\s+DE\s+(?:INGRESO|PAGO|COBRANZA)|\s+(?:N[ÚU]MERO|N[°º]))", t, re.M):
         return "recibo"
     if re.search(r"\bPRESUPUESTO\b|\bCOTIZACI[OÓ]N\b|\bCAT[AÁ]LOGO\b|\bLISTA DE PRECIOS\b", t) and \
-            not re.search(r"\bFACTURA\b|\bCAE\b", t):
+            not re.search(r"\bFACTURA|\bCAEA?\b|C\.A\.E\.", t):
         return None
     if re.search(r"CONTRATO DE (COMPRA ?VENTA|COMPRAVENTA)|CARTA DE FIJACI[OÓ]N|\bFIJACI[OÓ]N\b.*\bCONTRATO\b", t):
         return "contrato"
@@ -101,15 +120,15 @@ def tipo_de(texto: str) -> str | None:
     # Ficha / resumen de cuenta corriente de un proveedor (ej. extranet de Lartirigoyen): su detalle nombra NC, ND,
     # facturas y recibos ajenos, pero no es un comprobante a cargar en Compras (03/11/2026).
     if re.search(r"FICHA DE CUENTA CORRIENTE", t) or (
-            re.search(r"SALDO FINAL|SALDO VENCIDO|SALDO A VENCER", t) and not re.search(r"\bCAE\b|C\.A\.E\.", t)):
+            re.search(r"SALDO FINAL|SALDO VENCIDO|SALDO A VENCER", t) and not re.search(CAE_RE, t)):
         return "resumen_proveedor"
     # Una factura numerada con CAE es factura aunque traiga "saldo anterior" o "estado de cuenta" (Movistar, AUSOL).
-    numerada = re.search(r"\bCAE\b|C\.A\.E\.", t) and numero_de(texto)
-    if numerada and re.search(r"NOTA DE CR[EÉ]DITO", t):
+    numerada = re.search(CAE_RE, t) and numero_de(texto)
+    if numerada and re.search(_NC, t):
         return "nota_credito"
-    if numerada and re.search(r"NOTA DE D[EÉ]BITO", t):
+    if numerada and re.search(_ND, t):
         return "nota_debito"
-    if numerada and re.search(r"\bFACTURA\b", t):
+    if numerada and re.search(r"\bFACTURA", t):
         return "factura"
     if re.search(r"RESUMEN DE (CUENTA )?TARJETA|RESUMEN (VISA|MASTERCARD|AMERICAN EXPRESS)|\bAGRONACI[OÓ]N\b.*RESUMEN", t):
         return "resumen_tarjeta"
@@ -120,14 +139,14 @@ def tipo_de(texto: str) -> str | None:
         return "resumen_proveedor"
     # NC/ND sin CAE: la leyenda suele venir del detalle de otro documento (fichas, resúmenes); no se carga sola en
     # Compras, queda "sin clasificar" para revisar a mano (03/11/2026).
-    if re.search(r"NOTA DE (CR[EÉ]DITO|D[EÉ]BITO)", t):
+    if re.search(_NC + "|" + _ND, t):
         return "otro"
     if re.search(r"\bBOLETA\b|VOLANTE ELECTR[OÓ]NICO DE PAGO|\bVEP\b|FORMULARIO DE PAGO", t) or \
             (re.search(r"\bIMPUESTO\b|\bTASA\b|\bPATENTE\b", t) and re.search(r"\bVENCIMIENTO\b", t)
              and re.search(r"A PAGAR", t)):
         return "boleta"
     # Cupón de pago (Sancor): aviso de vencimiento, no comprobante; la deuda llega en las facturas mensuales (046, 30/10).
-    if re.search(r"CUP[OÓ]N (DE PAGO|PARA EL)", t) and not re.search(r"\bCAE\b|C\.A\.E\.", t):
+    if re.search(r"CUP[OÓ]N (DE PAGO|PARA EL)", t) and not re.search(CAE_RE, t):
         return None
     if re.search(r"\bRECIBO\b", t) and not re.search(r"\bFACTURA\b", t):
         return "recibo"
@@ -150,7 +169,7 @@ MODULO = {
 
 
 def es_de_san_justo(texto: str) -> bool:
-    return SAN_JUSTO in cuits(texto) or "SAN JUSTO" in texto.upper()
+    return SAN_JUSTO in cuits(texto) or "GANADERA SAN JUSTO" in texto.upper()
 
 
 def receptor(texto: str, cuit_emisor: str | None) -> str:
@@ -161,7 +180,7 @@ def receptor(texto: str, cuit_emisor: str | None) -> str:
     if es_de_san_justo(texto):
         return "otra"
     otros = [c for c in cuits(texto) if c != cuit_emisor]
-    if GIAMIGLI in otros or SERGIO in otros or "GIAMIGLI" in t or "SUCESI" in t or not otros:
+    if GIAMIGLI in otros or SERGIO in otros or "GIAMIGLI" in t or _SUCESION.search(t) or not otros:
         return "giamigli"
     return "persona" if any(c[:2] in ("20", "23", "24", "27") for c in otros) else "otra"
 
@@ -170,7 +189,7 @@ def dirigido_a_la_empresa(texto: str) -> bool:
     """Filtro de mails: el documento debe identificar a Giamigli, a la Sucesión o el CUIT de Sergio (sus gastos de
     Giamigli). Un mail personal sin esa identificación no entra, aunque parezca comprobante (Sergio, 02/11/2026)."""
     t = texto.upper()
-    return "GIAMIGLI" in t or "SUCESI" in t or bool({GIAMIGLI, SERGIO} & set(cuits(texto)))
+    return "GIAMIGLI" in t or bool(_SUCESION.search(t)) or bool({GIAMIGLI, SERGIO} & set(cuits(texto)))
 
 
 def banco_y_producto(texto: str) -> tuple[str | None, str | None]:
@@ -195,6 +214,16 @@ def banco_y_producto(texto: str) -> tuple[str | None, str | None]:
 
 
 def fecha_de(texto: str) -> date | None:
+    """Fecha de emisión rotulada si está (no el vencimiento, 03/11/2026); si no, la primera fecha del texto."""
+    r = re.search(r"Fecha(?: de)?(?: Emisi[oó]n)?\s*:?\s*(\d{1,2})/(\d{1,2})/(\d{4}|\d{2})\b", texto, re.I)
+    if r:
+        anio = int(r.group(3)) + (2000 if len(r.group(3)) == 2 else 0)
+        try:
+            f = date(anio, int(r.group(2)), int(r.group(1)))
+            if 2000 <= f.year <= date.today().year + 1:
+                return f
+        except ValueError:
+            pass
     for d, m, a in _FECHA.findall(texto):
         try:
             f = date(int(a), int(m), int(d))
@@ -227,20 +256,26 @@ _MESES = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", 
 
 
 def numero_de(texto: str) -> str | None:
-    m = re.search(r"\b(\d{4,5})\s*-\s*(\d{8})\b", texto)
+    """Primero el número rotulado del encabezado (el detalle cita comprobantes ajenos, 03/11/2026); acepta 8 o 9
+    dígitos (Telepeaje 0002-381237292)."""
+    m = re.search(r"(?:Comprobante|N[°º]|N[uú]mero|Nro\.?)\s*:?\s*(?:[A-C]\s*-?\s*)?(\d{4,5})\s*-\s*(\d{8,9})\b",
+                  texto, re.I)
+    if m:
+        return f"{m.group(1)}-{m.group(2)}"
+    m = re.search(r"(?:\b|(?<=[ABCM]))(\d{4,5})\s*-\s*(\d{8,9})\b", texto)
     if m:
         return f"{m.group(1)}-{m.group(2)}"
     m = re.search(r"Punto de Venta:?\s*(\d{1,5}).{0,20}?(?:Comp\.?|Comprobante)\s*N[rº°o]*\.?:?\s*(\d{8})", texto, re.I)
     return f"{int(m.group(1)):05d}-{m.group(2)}" if m else None
 
 
-_MONTO = r"\$?\s*(\d[\d.]*,\d{2})(?!\s*%)"
+_MONTO = r"\$?\s*(\d{1,3}(?:\.\d{3})+,\d{2}|\d{1,3}(?:,\d{3})+\.\d{2}|\d+,\d{2})(?![\d%])(?!\s*%)"
 
 
 def total_de(texto: str) -> Decimal | None:
     """Total impreso: primero las leyendas explícitas; si no, el último renglón que empieza con TOTAL
     (nunca SUBTOTAL ni una alícuota)."""
-    for patron in (r"TOTAL A PAGAR", r"IMPORTE TOTAL", r"TOTAL FACTURA(?: ACTUAL)?"):
+    for patron in (r"TOTAL A PAGAR", r"IMPORTE TOTAL", r"TOTAL FACTURA(?: ACTUAL)?", r"\bPREMIO\b\s*\.*"):
         m = re.search(patron + r":?\s*(?:\(\$\))?\s*" + _MONTO, texto, re.I)
         if m:
             return _importe(m.group(1))
@@ -256,7 +291,7 @@ def clasificar(texto: str, buscar_contacto=None) -> Clasificacion:
     tipo = tipo_de(texto)
     if tipo is None:
         return Clasificacion(comprobante=False)
-    emisores = [c for c in cuits(texto) if c != GIAMIGLI]
+    emisores = [c for c in cuits(texto) if c not in (GIAMIGLI, SERGIO)]
     cuit = emisores[0] if emisores else None
     c = Clasificacion(comprobante=True, tipo=tipo, modulo=MODULO[tipo], cuit_emisor=cuit, fecha=fecha_de(texto),
                       numero=numero_de(texto), total=total_de(texto))
@@ -287,7 +322,9 @@ def clasificar(texto: str, buscar_contacto=None) -> Clasificacion:
             c.id_contacto, c.contacto = encontrado
     por_nombre = getattr(buscar_contacto, "por_nombre", None)
     if not c.id_contacto and por_nombre:  # contactos sin CUIT cargado
-        encontrado = por_nombre(texto)
+        # En resúmenes y documentos sin clasificar el detalle nombra a terceros (ficha de Lartirigoyen → "Tarjeta
+        # Agronacion", 03/11/2026): el nombre se busca solo en el encabezado.
+        encontrado = por_nombre(texto if tipo not in ("resumen_proveedor", "otro") else "\n".join(texto.splitlines()[:8]))
         if encontrado:
             c.id_contacto, c.contacto = encontrado
     # Boletas de ARBA (patentes, inmobiliario): el PDF no trae el CUIT de ARBA y "ARBA" es corto para buscar por nombre.

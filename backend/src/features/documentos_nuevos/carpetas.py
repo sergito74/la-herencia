@@ -89,6 +89,8 @@ def procesar_archivo_carpeta(id_corrida: int | None, path: Path, conocidos: set[
     c = clasificador.clasificar(texto, clasificador.buscar_contacto_por_cuit)
     if not c.comprobante or not c.para_giamigli:
         return None
+    if c.tipo == "resumen_proveedor":
+        c.numero = None  # mismo criterio que los mails: el número es de un renglón del detalle
 
     # Verificar si es duplicado de número y emisor
     if c.id_contacto and c.numero and repository.mismo_comprobante(c.id_contacto, c.numero, c.modulo):
@@ -176,7 +178,10 @@ def reevaluar_pendientes() -> int:
         except Exception:
             log.exception("Reevaluación: no se pudo leer %s", path.name)
             continue
-        if not c.comprobante or not c.id_contacto:
+        # Mismos filtros que la rutina (03/11/2026): nada de otra sociedad, y en resúmenes/recibos/"otro" no se
+        # asigna emisor por un nombre del detalle.
+        if not c.comprobante or not c.id_contacto or not c.para_giamigli or \
+                c.tipo in ("resumen_proveedor", "otro", "recibo"):
             continue
         registro = None
         if c.modulo == "compras" and c.numero:
@@ -187,7 +192,8 @@ def reevaluar_pendientes() -> int:
             execute_write("UPDATE dbo.DocumentosNuevos SET IdContacto = ?, Estado = 'ya_estaba', IdRegistro = ?, Motivo = NULL "
                           "WHERE IdDocumentoNuevo = ?", (c.id_contacto, registro, d["id"]))
         else:
-            execute_write("UPDATE dbo.DocumentosNuevos SET IdContacto = ?, Motivo = ? WHERE IdDocumentoNuevo = ?",
+            execute_write("UPDATE dbo.DocumentosNuevos SET IdContacto = ?, Motivo = CASE WHEN Motivo LIKE 'Emisor nuevo%' "
+                          "OR Motivo IS NULL THEN ? ELSE Motivo END WHERE IdDocumentoNuevo = ?",
                           (c.id_contacto, "El sistema todavía no sabe leer este comprobante: cargar a mano", d["id"]))
         cambiados += 1
     return cambiados
