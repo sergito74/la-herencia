@@ -20,6 +20,7 @@ from src.features.boveda.conectores import (
     Credencial, CredencialesRechazadas, DocumentoPortal, EstadoCuentaPortal, MovimientoCuenta, PortalCambio,
     registrar,
 )
+from src.features.boveda.conectores.espera import cargada, ir
 
 BASE = "https://extranet.ebayacasal.com.ar/"
 ID_CONTACTO = 226
@@ -71,11 +72,11 @@ class ConectorBayaCasal:
         browser = pw.chromium.launch(channel="chrome", headless=True)
         try:
             pagina = browser.new_context().new_page()
-            pagina.goto(BASE, wait_until="networkidle", timeout=90000)
+            ir(pagina, BASE, timeout=90000)
             pagina.fill("[name=usuario]", credencial.usuario or "")
             pagina.fill("[name=password]", credencial.clave.valor() if credencial.clave else "")
             pagina.click("button[type=submit]")
-            pagina.wait_for_load_state("networkidle", timeout=90000)
+            cargada(pagina, timeout=90000)
             if "/home" not in pagina.url:
                 if pagina.locator("[name=password]").count():
                     raise CredencialesRechazadas("Bayá Casal rechazó usuario o contraseña")
@@ -87,11 +88,11 @@ class ConectorBayaCasal:
 
     def _cuenta(self, sesion: _Sesion, desde: date, aplicaciones: bool) -> list[list[str]]:
         p = sesion.pagina
-        p.goto(BASE + "ctacteA/", wait_until="networkidle", timeout=90000)
+        ir(p, BASE + "ctacteA/", timeout=90000)
         if not p.locator("form[name=form1]").count():
             raise PortalCambio("La cuenta corriente de Bayá Casal no tiene el filtro esperado")
         # Solo completa el filtro de consulta (fecha de emisión, con aplicaciones) y lo aplica.
-        with p.expect_navigation(wait_until="networkidle", timeout=90000):
+        with p.expect_navigation(wait_until="load", timeout=90000):
             p.evaluate("""([desde, apl]) => { const f = document.form1; f.desde.value = desde;
                 f.tipofecha.value = 'FC'; f.aplicaciones.value = apl; f.submit(); }""",
                        [desde.isoformat(), "SI" if aplicaciones else "NO"])

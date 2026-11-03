@@ -22,6 +22,7 @@ from src.features.boveda.conectores import (
     RequiereIntervencion, registrar,
 )
 from src.features.descarga_peajes import lectores
+from src.features.boveda.conectores.espera import cargada, ir
 
 INGRESO = "https://www.sancorseguros.com.ar/autogestion/ingresar"
 APP = "https://autogestion.sancorseguros.com.ar"
@@ -77,10 +78,10 @@ class ConectorSancor:
         browser = pw.chromium.launch(channel="chrome", headless=True)
         try:
             p = browser.new_context().new_page()
-            p.goto(INGRESO, wait_until="networkidle", timeout=90000)
+            ir(p, INGRESO, timeout=90000)
             p.fill("input[name=username]", credencial.usuario or "")
             p.locator("button[type=submit][name=action]").first.click()
-            p.wait_for_load_state("networkidle", timeout=90000)
+            cargada(p, timeout=90000)
             if p.locator("input[name=code], iframe[src*=captcha]").count():
                 raise RequiereIntervencion("Sancor pidió una verificación adicional")
             p.fill("input[name=password]", credencial.clave.valor() if credencial.clave else "")

@@ -20,6 +20,7 @@ from src.features.boveda.conectores import (
     Credencial, CredencialesRechazadas, DocumentoPortal, EstadoCuentaPortal, MovimientoCuenta, PortalCambio,
     RequiereIntervencion, registrar,
 )
+from src.features.boveda.conectores.espera import cargada, ir
 
 LOGIN = ("https://sso.arba.gov.ar/Login/login?service="
          "https%3A//www.arba.gov.ar/Gestionar/PanelAutogestion.asp")
@@ -58,17 +59,17 @@ class ConectorArba:
         try:
             pagina = browser.new_context().new_page()
             cuit = (credencial.usuario or "").replace("-", "").strip()
-            pagina.goto(LOGIN, wait_until="networkidle", timeout=90000)
+            ir(pagina, LOGIN, timeout=90000)
             pagina.fill("#CUIT", cuit)
             pagina.fill("#clave_Cuit", credencial.clave.valor() if credencial.clave else "")
             pagina.locator("#clave_Cuit").press("Enter")
-            pagina.wait_for_load_state("networkidle", timeout=90000)
+            cargada(pagina, timeout=90000)
             if "PanelAutogestion" not in pagina.url:
                 texto = pagina.inner_text("body").lower()
                 if "captcha" in texto:
                     raise RequiereIntervencion("ARBA pidió una verificación adicional")
                 raise CredencialesRechazadas("ARBA rechazó CUIT o clave")
-            pagina.goto(GESTIONAR, wait_until="networkidle", timeout=90000)
+            ir(pagina, GESTIONAR, timeout=90000)
             return _Sesion(browser=browser, pagina=pagina, cuit=cuit)
         except Exception:
             browser.close()

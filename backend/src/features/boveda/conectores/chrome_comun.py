@@ -93,9 +93,24 @@ def _esperar(p, condicion, segundos: int, motivo: str) -> None:
         if condicion():
             return
         p.wait_for_timeout(1000)
+    from src.features.boveda.servicio import hay_internet
+
+    if not hay_internet():  # 03/11/2026: un corte de internet se informaba como "el portal cambió"
+        raise ConnectionError("net::ERR_INTERNET_DISCONNECTED")
     if _verificando(p):
         raise RequiereIntervencion("verificación anti-robots")
     raise PortalCambio(motivo)
+
+
+def _fetch_json(p, url: str, intentos: int = 3):
+    """`fetch` dentro de la página con reintentos: Allianz corta pedidos sueltos ("Failed to fetch")."""
+    for i in range(intentos):
+        try:
+            return p.evaluate("u => fetch(u).then(r => r.json())", url)
+        except Exception as e:
+            if "Failed to fetch" not in str(e) or i == intentos - 1:
+                raise
+            p.wait_for_timeout(5000)
 
 
 def _completar_ingreso(p, cred: Credencial) -> None:
@@ -245,11 +260,10 @@ class ConectorAllianz(_ChromeComun):
 
     def listar_documentos(self, sesion: _Sesion) -> list[DocumentoPortal]:
         p = sesion.pagina
-        usuario = p.evaluate("fetch('/private/user').then(r => r.json())")
+        usuario = _fetch_json(p, "/private/user")
         docu = usuario["result"]["user"]["details"]["identityDocuments"][0]
         nro_doc = docu["documentType"]["documentTypeCode"] + docu["documentNumber"]
-        res = p.evaluate("u => fetch(u).then(r => r.json())",
-                         f"/api/mi-allianz/private/policies?docNumber={nro_doc}&validity=S&pageLines=50&currentPage=1")
+        res = _fetch_json(p, f"/api/mi-allianz/private/policies?docNumber={nro_doc}&validity=S&pageLines=50&currentPage=1")
         desde = date.today() - timedelta(days=DIAS_ATRAS)
         docs = []
         for bloque in res.get("PolizaAseguradoOut") or []:

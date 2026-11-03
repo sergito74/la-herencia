@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Literal
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 Modulo = Literal["compras", "impuestos", "ventas", "tesoreria", "cuentas_corrientes", "sin_clasificar", "pagos"]
 
@@ -51,6 +51,10 @@ class Item(BaseModel):
 class Lista(BaseModel):
     items: list[Item]
     total: int
+
+
+class Descarte(BaseModel):
+    motivo: str = Field(min_length=3, max_length=200)
 
 
 class CambioModulo(BaseModel):

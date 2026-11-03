@@ -122,6 +122,15 @@ def marcar_revisado(id_documento: int, usuario: str | None) -> int:
         f"WHERE d.IdDocumentoNuevo = ? AND {PENDIENTE}", ((usuario or "")[:60] or None, id_documento))
 
 
+def descartar(id_documento: int, motivo: str, usuario: str | None) -> int:
+    """No es un comprobante a cargar (ej. ficha de cta cte tomada por NC, 03/11/2026): sale de la lista con el motivo
+    escrito por el usuario. Solo si no tiene registro cargado."""
+    return execute_write(
+        "UPDATE d SET Revisado = SYSDATETIME(), RevisadoPor = ?, Motivo = ? FROM dbo.DocumentosNuevos d "
+        f"WHERE d.IdDocumentoNuevo = ? AND d.IdRegistro IS NULL AND {PENDIENTE}",
+        ((usuario or "")[:60] or None, ("Descartado: " + motivo.strip())[:250], id_documento))
+
+
 def cambiar_modulo(id_documento: int, modulo: str, usuario: str | None) -> int:
     """Mueve el aviso a otro módulo dejando constancia del anterior, quién y cuándo. No mueve si ese archivo
     ya tiene aviso en el módulo destino."""

@@ -19,6 +19,7 @@ from src.features.boveda.conectores import (
     Credencial, CredencialesRechazadas, DocumentoPortal, EstadoCuentaPortal, MovimientoCuenta, PortalCambio,
     RequiereIntervencion, registrar,
 )
+from src.features.boveda.conectores.espera import cargada, ir
 
 LOGIN = "https://www.mycargill.com/cascsa/v2/login"
 API = "https://api.cglcloud.com/api/dxo/gps/v1"
@@ -90,7 +91,7 @@ class ConectorCargill:
                     sesion.token = req.headers["authorization"]
 
             pagina.on("request", capturar)
-            pagina.goto(LOGIN, wait_until="networkidle", timeout=90000)
+            ir(pagina, LOGIN, timeout=90000)
             pagina.fill('input[name="username"], #okta-signin-username', credencial.usuario or "")
             pagina.fill('input[type="password"]', credencial.clave.valor() if credencial.clave else "")
             pagina.click('#okta-signin-submit, input[type="submit"]')

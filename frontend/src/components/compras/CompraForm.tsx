@@ -103,6 +103,8 @@ export function CompraForm({
     numeroDocumento?: string;
     detalle?: string;
     importe?: number;
+    /** Tipo leído del comprobante (043): evita que una NC arranque como Factura. */
+    tipoDocumento?: TipoDocumentoCompra;
     /** Ruta del PDF ya bajado (ej. desde la descarga de peajes, 037). */
     documentoOriginal?: string;
   };
@@ -124,7 +126,7 @@ export function CompraForm({
   const [fecha, setFecha] = useState(initial?.fecha ?? prefill?.fecha ?? "");
   const [tipo, setTipo] = useState<TipoComprobante>(initial?.tipo ?? "A");
   const [tipoDocumento, setTipoDocumento] = useState<TipoDocumentoCompra>(
-    initial?.tipoDocumento ?? ((prefill?.importe ?? 0) < 0 ? "Nota de Crédito" : "Factura")
+    initial?.tipoDocumento ?? prefill?.tipoDocumento ?? ((prefill?.importe ?? 0) < 0 ? "Nota de Crédito" : "Factura")
   );
   const [numeroDocumento, setNumeroDocumento] = useState(initial?.numeroDocumento ?? prefill?.numeroDocumento ?? "");
   const [moneda, setMonedaState] = useState<MonedaCompra>(initial?.moneda ?? "Pesos");

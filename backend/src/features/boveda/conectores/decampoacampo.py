@@ -20,6 +20,7 @@ from decimal import Decimal, InvalidOperation
 from src.features.boveda.conectores import (
     Credencial, CredencialesRechazadas, DocumentoPortal, PortalCambio, registrar,
 )
+from src.features.boveda.conectores.espera import cargada, ir
 
 INGRESO = "https://www.decampoacampo.com/__dcac/login"
 RETENCIONES = "https://www.decampoacampo.com/__dcac/perfil/MiHistorialRetenciones"
@@ -170,13 +171,13 @@ class ConectorDeCampoACampo:
         try:
             inicio = s.enlaces["Ventas" if lado == "venta" else "Compras"]
             p = s.pagina
-            p.goto(inicio, wait_until="networkidle", timeout=90000)
+            ir(p, inicio, timeout=90000)
             base = re.sub(r"\?.*$", "", p.url)
             base = base.rsplit(f"/{lado}", 1)[0] + f"/{lado}"
             for sub in SUBRUTAS[lado]:
                 try:
                     with p.expect_response(lambda r: _API_OPERACIONES.search(r.url) is not None, timeout=30000):
-                        p.goto(f"{base}/{sub}", wait_until="networkidle", timeout=90000)
+                        ir(p, f"{base}/{sub}", timeout=90000)
                 except Exception:  # pestaña sin operaciones: la app no siempre consulta
                     pass
                 p.wait_for_timeout(1500)
@@ -202,7 +203,7 @@ class ConectorDeCampoACampo:
 
     def _retenciones(self, s: _Sesion) -> list[DocumentoPortal]:
         p = s.pagina
-        p.goto(RETENCIONES, wait_until="networkidle", timeout=90000)
+        ir(p, RETENCIONES, timeout=90000)
         selector = p.query_selector("select")
         if selector is None:
             raise PortalCambio("No se encontró el selector de sociedad en Mi Historial de Retenciones")
@@ -213,7 +214,7 @@ class ConectorDeCampoACampo:
             if not valor:
                 raise PortalCambio("La cuenta no muestra la sociedad Giamigli en retenciones")
             p.select_option("select", valor)
-            p.wait_for_load_state("networkidle", timeout=60000)
+            cargada(p, timeout=60000)
             p.wait_for_timeout(2000)
             elegida = p.eval_on_selector("select", "e => e.options[e.selectedIndex].text")
             if "GIAMIGLI" not in (elegida or "").upper():

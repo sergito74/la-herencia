@@ -79,6 +79,8 @@ export const getResumenNuevos = () => apiGet<ResumenNuevos>(`${BASE}/resumen`);
 export const getNuevos = (modulo: ModuloAviso, limite = 50, desde = 0) =>
   apiGet<{ items: DocumentoNuevo[]; total: number }>(`${BASE}/`, { modulo, limite, desde });
 export const marcarNuevoRevisado = (id: number) => apiPost<{ ok: boolean }>(`${BASE}/${id}/revisado`, {});
+export const descartarNuevo = (id: number, motivo: string) =>
+  apiPost<{ ok: boolean }>(`${BASE}/${id}/descartar`, { motivo });
 export const moverNuevo = (id: number, modulo: ModuloAviso) =>
   apiPost<DocumentoNuevo>(`${BASE}/${id}/modulo`, { modulo });
 export const getEstadoRutina = () => apiGet<EstadoRutina>(`${BASE}/rutina`);

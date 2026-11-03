@@ -19,6 +19,7 @@ from src.features.boveda.conectores import (
     Credencial, CredencialesRechazadas, DatosCompra, DocumentoPortal, EstadoCuentaPortal, MovimientoCuenta, PortalCambio,
     registrar,
 )
+from src.features.boveda.conectores.espera import cargada, ir
 
 OFV = "https://ofv2.cebol.com.ar"
 ID_CONTACTO = 23
@@ -77,7 +78,7 @@ class ConectorCebol:
         browser = pw.chromium.launch(channel="chrome", headless=True)
         try:
             p = browser.new_context().new_page()
-            p.goto(OFV, wait_until="networkidle", timeout=90000)
+            ir(p, OFV, timeout=90000)
             p.fill("#login-username", credencial.usuario or "")
             p.fill("#login-password", credencial.clave.valor() if credencial.clave else "")
             with p.expect_response(lambda r: r.url.endswith("/api/auth/login"), timeout=60000) as resp:

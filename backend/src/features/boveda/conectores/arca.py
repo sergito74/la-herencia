@@ -20,6 +20,7 @@ from src.features.boveda.conectores import (
     Credencial, CredencialesRechazadas, DocumentoPortal, EstadoCuentaPortal, MovimientoCuenta, PortalCambio,
     RequiereIntervencion, registrar,
 )
+from src.features.boveda.conectores.espera import cargada, ir
 
 LOGIN = "https://auth.afip.gob.ar/contribuyente_/login.xhtml"
 MIS_SERVICIOS = "https://portalcf.cloud.afip.gob.ar/portal/app/mis-servicios"
@@ -57,15 +58,15 @@ class ConectorArca:
         browser = pw.chromium.launch(channel="chrome", headless=True)
         try:
             p = browser.new_context().new_page()
-            p.goto(LOGIN, wait_until="networkidle", timeout=90000)
+            ir(p, LOGIN, timeout=90000)
             p.fill("input[id$=username]", (credencial.usuario or "").replace("-", ""))
             p.click("input[id$=btnSiguiente]")
-            p.wait_for_load_state("networkidle", timeout=90000)
+            cargada(p, timeout=90000)
             if p.locator("img[id*=captcha], div.g-recaptcha, iframe[src*=captcha]").count():
                 raise RequiereIntervencion("ARCA pidió un captcha")
             p.fill("input[type=password]", credencial.clave.valor() if credencial.clave else "")
             p.click("input[id$=btnIngresar]")
-            p.wait_for_load_state("networkidle", timeout=90000)
+            cargada(p, timeout=90000)
             if "portalcf" not in p.url:
                 raise CredencialesRechazadas("ARCA rechazó la clave fiscal")
             sct, opciones = self._abrir_cuentas_tributarias(p)
@@ -73,7 +74,7 @@ class ConectorArca:
             valor = next((v for v, texto in opciones if texto == cuit), None)
             if valor is None:
                 raise PortalCambio("La clave fiscal no tiene acceso al contribuyente en Cuentas Tributarias")
-            with sct.expect_navigation(wait_until="networkidle", timeout=90000):
+            with sct.expect_navigation(wait_until="load", timeout=90000):
                 sct.eval_on_selector("select", f"""e => {{ e.value = "{valor}";
                     e.dispatchEvent(new Event("change", {{bubbles: true}})); }}""")
             sct.wait_for_selector("a", state="attached", timeout=90000)
@@ -86,7 +87,7 @@ class ConectorArca:
         """A veces la ventana queda trabada en el ingreso único de ARCA (pasó 2 de 8 veces el 27/10/2026): se cierra
         y se vuelve a abrir desde Mis servicios, hasta 3 veces."""
         for intento in range(3):
-            p.goto(MIS_SERVICIOS, wait_until="networkidle", timeout=90000)
+            ir(p, MIS_SERVICIOS, timeout=90000)
             with p.expect_popup(timeout=90000) as popup:
                 p.get_by_text("SISTEMA DE CUENTAS TRIBUTARIAS", exact=False).first.click()
             sct = popup.value
@@ -104,7 +105,7 @@ class ConectorArca:
 
         for _ in range(intentos):
             try:
-                sct.wait_for_load_state("networkidle", timeout=90000)
+                cargada(sct, timeout=90000)
                 sct.wait_for_selector("select", state="attached", timeout=30000)
                 return sct.eval_on_selector_all("select:first-of-type option",
                                                 "e => e.map(x => [x.value, x.innerText.trim()])")
@@ -121,9 +122,9 @@ class ConectorArca:
             || {}).href || null""")
         if not enlace:
             raise PortalCambio("No se encontró Estado de Cumplimiento en Cuentas Tributarias")
-        q.goto(enlace, wait_until="networkidle", timeout=90000)
+        ir(q, enlace, timeout=90000)
         q.locator("[name=functor]").first.click()  # "Siguiente": ejecuta la consulta con los filtros por defecto
-        q.wait_for_load_state("networkidle", timeout=90000)
+        cargada(q, timeout=90000)
         for _ in range(90):
             if "CARGANDO" not in q.inner_text("body"):
                 break

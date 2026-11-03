@@ -119,6 +119,13 @@ def marcar_revisado(id_documento: int, request: Request) -> dict:
     return {"ok": True}
 
 
+@router.post("/{id_documento}/descartar", dependencies=[Depends(exigir_admin)])
+def descartar(id_documento: int, body: Descarte, request: Request) -> dict:
+    if not repository.descartar(id_documento, body.motivo, usuario_actual(request)):
+        raise HTTPException(status_code=409, detail="No se puede descartar: ya está cargado o ya no está pendiente")
+    return {"ok": True}
+
+
 @router.post("/{id_documento}/modulo", response_model=Item, dependencies=[Depends(exigir_admin)])
 def cambiar_modulo(id_documento: int, body: CambioModulo, request: Request) -> dict:
     if not repository.cambiar_modulo(id_documento, body.modulo, usuario_actual(request)):
