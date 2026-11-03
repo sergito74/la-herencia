@@ -363,3 +363,24 @@ def _por_nombre(texto: str) -> tuple[int, str] | None:
 
 
 buscar_contacto_por_cuit.por_nombre = _por_nombre
+
+_SOCIETARIO = {"SA", "SRL", "SAS", "SACI", "SAIC", "SACIF", "SCA", "SH", "SC", "LTDA", "COOP"}
+
+
+def _sin_societario(s: str) -> str:
+    return " ".join(p for p in _normalizar(s).split() if p not in _SOCIETARIO)
+
+
+def contacto_por_remitente(remitente: str | None, contactos: list[dict] | None = None) -> tuple[int, str] | None:
+    """Emisor por el nombre del remitente del mail, cuando el PDF no lo identifica (ej. resumen de Agrovet Integral
+    que solo dice "Cliente 1135 GIAMIGLI", 03/11/2026). Solo si coincide con UN contacto (sin forma societaria);
+    direcciones de mail y nombres cortos no se usan."""
+    nombre = _sin_societario(remitente or "")
+    if not nombre or "@" in (remitente or "") or len(nombre) < 5 or "GIAMIGLI" in nombre:
+        return None
+    if contactos is None:
+        from src.db.connection import fetch_all
+
+        contactos = fetch_all("SELECT IdContacto AS id, [Razon Social] AS nombre FROM dbo.Contactos")
+    hallados = [(f["id"], f["nombre"]) for f in contactos if _sin_societario(f["nombre"] or "") == nombre]
+    return hallados[0] if len(hallados) == 1 else None

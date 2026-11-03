@@ -186,3 +186,16 @@ def test_ficha_de_cuenta_corriente_no_es_nota_de_credito():
 def test_nota_de_credito_sin_cae_no_va_sola_a_compras():
     r = c.clasificar("NOTA DE CREDITO\nCUIT 30-50000000-4\nN° 0001-00001234\nTOTAL 1.000,00\nCliente GIAMIGLI")
     assert r.modulo != "compras"
+
+
+CONTACTOS = [{"id": 5, "nombre": "Agrovet Integral SRL"}, {"id": 434, "nombre": "Agroveterinaria Central"},
+             {"id": 9, "nombre": "Giamigli de Bolivar SA"}]
+
+
+def test_contacto_por_remitente_del_mail():
+    """03/11/2026: resumen de Agrovet sin CUIT ni nombre en el PDF; el remitente lo identifica."""
+    assert c.contacto_por_remitente("Agrovet Integral", CONTACTOS) == (5, "Agrovet Integral SRL")
+    assert c.contacto_por_remitente("AGROVET INTEGRAL", CONTACTOS) == (5, "Agrovet Integral SRL")
+    assert c.contacto_por_remitente("Agrovet", CONTACTOS) is None
+    assert c.contacto_por_remitente("extranet@lartirigoyen.com", CONTACTOS) is None
+    assert c.contacto_por_remitente("Giamigli de Bolivar", CONTACTOS) is None

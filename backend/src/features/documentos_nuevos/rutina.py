@@ -118,6 +118,14 @@ def procesar_adjunto(id_corrida: int | None, mail: mails.Mail, adj: mails.Adjunt
     c = clasificador.clasificar(texto, clasificador.buscar_contacto_por_cuit)
     if not c.comprobante or not c.para_giamigli:
         return None  # no es comprobante, o es de otra sociedad: no se guarda ni avisa
+    if not c.id_contacto and c.tipo not in ("resumen_banco", "resumen_tarjeta"):
+        por_mail = clasificador.contacto_por_remitente(mail.remitente)
+        if por_mail:
+            c.id_contacto, c.contacto = por_mail
+            if c.motivo and c.motivo.startswith("Emisor nuevo"):
+                c.motivo = None
+    if c.tipo == "resumen_proveedor":
+        c.numero = None  # el número que aparece es de un renglón del detalle, no del resumen
     if c.id_contacto and c.numero and repository.mismo_comprobante(c.id_contacto, c.numero, c.modulo):
         return None  # otra copia del mismo comprobante (original y duplicado en el mismo mail)
     carpeta, nombre = clasificador.carpeta_y_nombre(c, adj.nombre)
