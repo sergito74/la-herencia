@@ -97,6 +97,12 @@ def _esperar(p, condicion, segundos: int, motivo: str) -> None:
 
     if not hay_internet():  # 03/11/2026: un corte de internet se informaba como "el portal cambió"
         raise ConnectionError("net::ERR_INTERNET_DISCONNECTED")
+    try:  # captura para diagnosticar (03/11/2026): sin ella solo quedaba "no respondió"
+        carpeta = Path(__file__).resolve().parents[4] / "logs" / "capturas"
+        carpeta.mkdir(parents=True, exist_ok=True)
+        p.screenshot(path=str(carpeta / f"{time.strftime('%Y%m%d-%H%M%S')}-{re.sub(r'[^a-z]', '', motivo.lower())[:30]}.png"))
+    except Exception:
+        pass
     if _verificando(p):
         raise RequiereIntervencion("verificación anti-robots")
     raise PortalCambio(motivo)
@@ -221,6 +227,13 @@ def _cancelar_aviso(p) -> bool:
         return False
 
 
+def _en_allianz_privado(url: str) -> bool:
+    from urllib.parse import urlparse
+
+    u = urlparse(url)
+    return u.hostname in ("www.miallianz.com.ar", "miallianz.com.ar") and u.path.startswith("/priv")
+
+
 class ConectorAllianz(_ChromeComun):
     codigo = "allianz"
     nombre = "Allianz"
@@ -233,7 +246,9 @@ class ConectorAllianz(_ChromeComun):
         try:
             p = s.pagina
             pedido = datetime.now()
-            adentro = lambda: "miallianz.com.ar/priv" in p.url and not _verificando(p)
+            # Se mira el dominio real: la URL del login trae "miallianz.com.ar/priv" en redirect_uri y se tomaba
+            # como ingreso hecho (03/11/2026, "Failed to fetch" en auth.allianz.com.ar).
+            adentro = lambda: _en_allianz_privado(p.url) and not _verificando(p)
             formulario = lambda: p.locator("input[type=password]").count() > 0 and not _verificando(p)
             _esperar(p, lambda: adentro() or formulario(), 120, "No apareció el ingreso de Allianz")
             if not adentro():
@@ -247,7 +262,7 @@ class ConectorAllianz(_ChromeComun):
                 _esperar(p, lambda: "auth.allianz" not in p.url, 120, "Allianz no completó el ingreso")
                 if "/login" in p.url or p.locator("input[type=password]").count():
                     raise CredencialesRechazadas("Allianz rechazó usuario o contraseña")
-                if "miallianz.com.ar/priv" not in p.url:
+                if not _en_allianz_privado(p.url):
                     p.goto(ALLIANZ, wait_until="load", timeout=90000)
             for _ in range(20):  # el aviso aparece varios segundos después de cargar la página
                 if _cancelar_aviso(p):
@@ -260,6 +275,17 @@ class ConectorAllianz(_ChromeComun):
 
     def listar_documentos(self, sesion: _Sesion) -> list[DocumentoPortal]:
         p = sesion.pagina
+        # Mi Allianz a veces vuelve un instante a auth.allianz.com.ar para renovar la sesión: se espera a que la
+        # página quede estable en el dominio privado antes de consultar (03/11/2026).
+        estable = 0
+        for _ in range(60):
+            estable = estable + 1 if _en_allianz_privado(p.url) else 0
+            if estable >= 3:
+                break
+            if estable == 0 and "auth.allianz" not in p.url:
+                p.goto(ALLIANZ, wait_until="load", timeout=90000)
+            p.wait_for_timeout(1000)
+        p.wait_for_load_state("load", timeout=90000)
         usuario = _fetch_json(p, "/private/user")
         docu = usuario["result"]["user"]["details"]["identityDocuments"][0]
         nro_doc = docu["documentType"]["documentTypeCode"] + docu["documentNumber"]
