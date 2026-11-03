@@ -12,12 +12,16 @@ from __future__ import annotations
 
 import hashlib
 import logging
+import threading
 from datetime import datetime, time, timedelta
 from pathlib import Path
 
 from src.features.documentos_nuevos import avisos, clasificador, lectores, mails, repository
 
 log = logging.getLogger(__name__)
+
+# Pedido desde la pantalla: lo atiende el hilo del planificador, para no abrir dos navegadores a la vez.
+PEDIDO = threading.Event()
 
 PROBLEMAS = {"error", "sin_credenciales", "sin_autorizacion", "credenciales_rechazadas", "requiere_intervencion",
              "portal_cambio"}
@@ -266,6 +270,10 @@ def correr(origen: str = "programada") -> int | None:
 def tick(ahora: datetime | None = None) -> bool:
     """Llamado por el planificador cada minuto. Corre si venció la próxima corrida (una sola vez aunque se hayan
     perdido varios horarios) y recalcula la siguiente desde ahora. Devuelve si corrió."""
+    if PEDIDO.is_set():
+        PEDIDO.clear()
+        correr("programada")
+        return True
     prog = repository.programacion()
     if not prog or not prog["activa"]:
         return False

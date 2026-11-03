@@ -82,3 +82,4 @@ export const marcarNuevoRevisado = (id: number) => apiPost<{ ok: boolean }>(`${B
 export const moverNuevo = (id: number, modulo: ModuloAviso) =>
   apiPost<DocumentoNuevo>(`${BASE}/${id}/modulo`, { modulo });
 export const getEstadoRutina = () => apiGet<EstadoRutina>(`${BASE}/rutina`);
+export const ejecutarRutina = () => apiPost<{ ok: boolean }>(`${BASE}/rutina/ejecutar`, {});

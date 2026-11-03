@@ -93,6 +93,16 @@ def estado_rutina() -> dict:
     return {"proxima": iso(prog.get("proxima")), "activa": bool(prog.get("activa", True)), "ultima": ultima}
 
 
+@router.post("/rutina/ejecutar", dependencies=[Depends(exigir_admin)])
+def ejecutar_rutina() -> dict:
+    from src.features.documentos_nuevos import rutina
+
+    if (repository.ultima_corrida() or {}).get("estado") == "en_curso":
+        raise HTTPException(status_code=409, detail="La rutina ya está corriendo")
+    rutina.PEDIDO.set()
+    return {"ok": True}
+
+
 @router.get("/", response_model=Lista)
 def listar(modulo: str = Query(...), limite: int = Query(50, ge=1, le=100), desde: int = Query(0, ge=0)) -> dict:
     if modulo not in repository.MODULOS:
