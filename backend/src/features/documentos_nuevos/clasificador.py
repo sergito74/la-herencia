@@ -96,8 +96,13 @@ def tipo_de(texto: str) -> str | None:
     if re.search(r"CERTIFICADO DE RETENCI[OÓ]N|CONSTANCIA DE RETENCI[OÓ]N", t):
         return "retencion"
     if re.search(r"LIQUIDACI[OÓ]N PRIMARIA DE GRANOS|LIQUIDACI[OÓ]N (DE )?HACIENDA|LIQUIDACI[OÓ]N DE VENTA|"
-                 r"CUENTA DE VENTA Y L[IÍ]QUIDO PRODUCTO|\bLPG\b", t):
+                 r"CUENTA DE VENTA\b|SOBRE LIQ(UIDACI[OÓ]N)?\.? DE VENTA|\bLPG\b", t):
         return "liquidacion"
+    # Ficha / resumen de cuenta corriente de un proveedor (ej. extranet de Lartirigoyen): su detalle nombra NC, ND,
+    # facturas y recibos ajenos, pero no es un comprobante a cargar en Compras (03/11/2026).
+    if re.search(r"FICHA DE CUENTA CORRIENTE", t) or (
+            re.search(r"SALDO FINAL|SALDO VENCIDO|SALDO A VENCER", t) and not re.search(r"\bCAE\b|C\.A\.E\.", t)):
+        return "resumen_proveedor"
     # Una factura numerada con CAE es factura aunque traiga "saldo anterior" o "estado de cuenta" (Movistar, AUSOL).
     numerada = re.search(r"\bCAE\b|C\.A\.E\.", t) and numero_de(texto)
     if numerada and re.search(r"NOTA DE CR[EÉ]DITO", t):
@@ -113,10 +118,10 @@ def tipo_de(texto: str) -> str | None:
         return "resumen_banco"
     if re.search(r"RESUMEN DE CUENTA|ESTADO DE CUENTA|COMPOSICI[OÓ]N DE SALDO", t):
         return "resumen_proveedor"
-    if re.search(r"NOTA DE CR[EÉ]DITO", t):
-        return "nota_credito"
-    if re.search(r"NOTA DE D[EÉ]BITO", t):
-        return "nota_debito"
+    # NC/ND sin CAE: la leyenda suele venir del detalle de otro documento (fichas, resúmenes); no se carga sola en
+    # Compras, queda "sin clasificar" para revisar a mano (03/11/2026).
+    if re.search(r"NOTA DE (CR[EÉ]DITO|D[EÉ]BITO)", t):
+        return "otro"
     if re.search(r"\bBOLETA\b|VOLANTE ELECTR[OÓ]NICO DE PAGO|\bVEP\b|FORMULARIO DE PAGO", t) or \
             (re.search(r"\bIMPUESTO\b|\bTASA\b|\bPATENTE\b", t) and re.search(r"\bVENCIMIENTO\b", t)
              and re.search(r"A PAGAR", t)):
@@ -127,7 +132,7 @@ def tipo_de(texto: str) -> str | None:
     if re.search(r"\bRECIBO\b", t) and not re.search(r"\bFACTURA\b", t):
         return "recibo"
     # Liquidación mensual del banco (comisiones) y tickets de estaciones de servicio se cargan como facturas.
-    if re.search(r"\bFACTURA\b|LIQUIDACI[OÓ]N ELECTR[OÓ]NICA|\bTICKET\b", t):
+    if re.search(r"\bFACTURA\b|LIQUIDACI[OÓ]N ELECTR[OÓ]NICA|LIQUIDACI[OÓ]N DE SERVICIOS P[UÚ]BLICOS|\bTICKET\b", t):
         return "factura"
     # Numerado y con un CUIT de emisor, pero sin leyenda reconocible (ej. factura manual escaneada): se guarda
     # "sin clasificar" para que no se pierda.

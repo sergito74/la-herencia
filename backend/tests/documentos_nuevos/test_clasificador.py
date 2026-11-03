@@ -165,3 +165,24 @@ def test_resumen_de_telepeaje_es_factura_de_compras():
     texto = ("Telepeaje S.A RESUMEN DE CUENTA: Nº: 0002-371053593 Sucursal: 001 Florida Grupo: Red de Rutas Nacionales "
              "Saldo anterior $ 0,00 Saldo a Pagar: $ 0.00 Banco")
     assert c.tipo_de(texto) == "factura" and c.MODULO["factura"] == "compras"
+
+
+FICHA_LARTIRIGOYEN = """Ficha de Cuenta Corriente
+Cuenta: GIAMIGLI DE BOLIVAR S.A
+CUIT: 30-71211460-2
+17/05/2024 17/05/2024 NC 0149 00001971 Nota de Crédito por Dev. de Mercadería- En Dolares - 858,0000 3.146,00
+RD 0007-00003763 S-Tarjeta Agronacion 25/7/2023 115,36
+Saldo Final $: 0,00 Saldo Vencido $: 0,00 Saldo A Vencer $: 0,00
+"""
+
+
+def test_ficha_de_cuenta_corriente_no_es_nota_de_credito():
+    """03/11/2026: una ficha de cta cte de la extranet de Lartirigoyen quedó como NC de AgroNacion en Compras."""
+    r = c.clasificar(FICHA_LARTIRIGOYEN)
+    assert r.tipo == "resumen_proveedor"
+    assert r.modulo != "compras"
+
+
+def test_nota_de_credito_sin_cae_no_va_sola_a_compras():
+    r = c.clasificar("NOTA DE CREDITO\nCUIT 30-50000000-4\nN° 0001-00001234\nTOTAL 1.000,00\nCliente GIAMIGLI")
+    assert r.modulo != "compras"
