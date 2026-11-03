@@ -17,6 +17,7 @@ from __future__ import annotations
 import hashlib
 import logging
 import threading
+import time
 import traceback
 from datetime import date
 from pathlib import Path
@@ -46,6 +47,42 @@ def en_cola() -> list[int]:
 
 class SinAutorizacion(Exception):
     pass
+
+
+_SIN_INTERNET = ("ERR_INTERNET_DISCONNECTED", "ERR_NAME_NOT_RESOLVED", "ERR_NETWORK_CHANGED", "ERR_ADDRESS_UNREACHABLE")
+_RED = _SIN_INTERNET + ("ERR_CONNECTION", "ERR_TIMED_OUT", "Failed to fetch", "net::ERR_")
+
+
+def sin_internet(e: BaseException) -> bool:
+    return any(s in str(e) for s in _SIN_INTERNET)
+
+
+def es_falla_de_red(e: BaseException) -> bool:
+    """Timeout de Playwright o error de red del navegador: no es una falla del conector."""
+    return type(e).__name__ == "TimeoutError" or any(s in str(e) for s in _RED)
+
+
+def hay_internet() -> bool:
+    import socket
+
+    for host in (("1.1.1.1", 443), ("8.8.8.8", 443)):
+        try:
+            socket.create_connection(host, timeout=5).close()
+            return True
+        except OSError:
+            continue
+    return False
+
+
+def esperar_internet(segundos: int) -> bool:
+    """Espera a que vuelva la conexión hasta `segundos`; True si hay internet."""
+    fin = time.monotonic() + segundos
+    while True:
+        if hay_internet():
+            return True
+        if time.monotonic() >= fin:
+            return False
+        time.sleep(15)
 
 
 # --- Lock -------------------------------------------------------------------------
@@ -269,7 +306,18 @@ def ejecutar(id_portal: int, origen: str, usuario: str | None, lock, id_corrida:
         if not COMPRAS.exists():
             estado, mensaje = "error", f"No está disponible la carpeta de Compras ({COMPRAS})"
             return estado
-        res = _procesar(portal, conector, cred, id_corrida)
+        # Corte de internet o portal que no responde (03/11/2026: timeouts y ERR_INTERNET_DISCONNECTED): se reintenta
+        # una vez tras una pausa; si sigue, se informa como problema de conexión y no como falla del sistema.
+        for intento in (1, 2):
+            try:
+                res = _procesar(portal, conector, cred, id_corrida)
+                break
+            except Exception as e:
+                if not es_falla_de_red(e) or intento == 2:
+                    raise
+                log.info("Bóveda, portal %s: falla de red (%s), se reintenta", id_portal, type(e).__name__)
+                repository.avance(id_corrida, "El portal no respondió; se reintenta en un momento…")
+                time.sleep(30)
         errores = res.pop("errores")
         estado = "error" if errores else "ok"
         mensaje = " · ".join(errores) or None
@@ -288,6 +336,12 @@ def ejecutar(id_portal: int, origen: str, usuario: str | None, lock, id_corrida:
         estado, mensaje = "error", str(e)
     except Exception as e:
         log.warning("Bóveda, portal %s: %s", id_portal, _enmascarar(traceback.format_exc(), cred))
+        if es_falla_de_red(e):
+            estado = "error"
+            mensaje = ("Sin conexión a internet: se vuelve a intentar en la próxima" if sin_internet(e)
+                       else "El portal no respondió (conexión lenta o portal caído): se vuelve a intentar en la próxima")
+            return estado
+        # El detalle técnico queda en el log; la pantalla solo informa en palabras simples.
         # El detalle técnico queda en el log; la pantalla solo informa en palabras simples.
         estado, mensaje = "error", "No se pudo completar la sincronización; se vuelve a intentar en la próxima"
     finally:

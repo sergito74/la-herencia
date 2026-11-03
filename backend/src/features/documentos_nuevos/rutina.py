@@ -48,7 +48,14 @@ def proxima(texto: str | None, desde: datetime) -> datetime:
 def _cuentas(r: dict, problemas: list[str]) -> None:
     from src.features.boveda import repository as boveda, servicio
 
+    sin_red = False
     for p in repository.portales_sincronizables():
+        # Sin internet no se intenta el portal (03/11/2026: un corte dejó 4 cuentas "con error"); se espera hasta 2'.
+        if sin_red or not servicio.esperar_internet(120):
+            sin_red = True
+            problemas.append(f"{p['nombre']}: sin conexión a internet, se salteó")
+            r["cuentasConProblemas"] += 1
+            continue
         if boveda.corrida_en_curso(p["idPortal"]) is not None:
             problemas.append(f"{p['nombre']}: estaba sincronizando, se salteó")
             r["cuentasConProblemas"] += 1
