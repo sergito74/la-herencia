@@ -55,9 +55,10 @@ def obtener(id_):
     return row
 
 
-def facturas(id_contacto, excluir_op=None, incluir_saldadas=False):
+def facturas(id_contacto, excluir_op=None, incluir_saldadas=False, incluir_suspendidas=False):
     # 046 T027: documentos en US$ en pesos al TC del comprobante (regla usd-tc-comprobante), como la fuente unificada.
     rows = fetch_all("SELECT TOP (2000) c.IdDeuda idCompra,c.[Nro Documento] numero,c.Fecha fecha,c.Moneda moneda,"
+                     "CAST(ISNULL(c.Suspendida,0) AS bit) suspendida,"
                      "CASE WHEN c.Moneda='Dolares' THEN c.[Tipo de Cambio] END tc,"
                      "(t.GranTotal-ISNULL(pa.cp,0))*CASE WHEN c.Moneda='Dolares' THEN c.[Tipo de Cambio] ELSE 1 END total "
                      "FROM dbo.Compras c "
@@ -65,9 +66,9 @@ def facturas(id_contacto, excluir_op=None, incluir_saldadas=False):
                      "OUTER APPLY (SELECT SUM(d.Cantidad*d.[Precio Unitario]*(1+ISNULL(d.IVA,0)/100.0)) cp "
                      "FROM dbo.Det_Compras d WHERE d.IdCompra=c.IdDeuda AND d.Cantidad*d.[Precio Unitario]<0 "
                      "AND d.[Producto/Servicio] LIKE '%particular%') pa "
-                     "WHERE c.IdContacto=? AND ISNULL(c.Suspendida,0)=0 AND (c.Moneda IN ('Pesos','ARS','$') "
+                     "WHERE c.IdContacto=? AND (?=1 OR ISNULL(c.Suspendida,0)=0) AND (c.Moneda IN ('Pesos','ARS','$') "
                      "OR (c.Moneda='Dolares' AND c.[Tipo de Cambio]>1)) "
-                     "ORDER BY c.Fecha DESC,c.IdDeuda DESC", (id_contacto,))
+                     "ORDER BY c.Fecha DESC,c.IdDeuda DESC", (id_contacto, 1 if incluir_suspendidas else 0))
     paid = fuente.pagado_de_documentos([('CompraDeuda', f['idCompra']) for f in rows])
     # Condición de pago (03/11/2026): "A Plazo" guarda sus fechas en [Vencimiento Compras] (una o varias cuotas);
     # "Contado" no tiene fechas y vence en la fecha de la factura. La columna [Fecha Vto] de Compras es heredada.
@@ -118,13 +119,34 @@ def pendientes(refrescar: bool = False):
     return datos
 
 
-def _pendientes():
-    """Facturas a pagar de todos los proveedores, para la sección "Facturas a pagar" (03/11/2026).
+def medio_habitual(id_contacto) -> str | None:
+    """Cómo se le pagaron las últimas facturas al proveedor ('tarjetas', 'galicia', 'efectivo'...): el medio de la
+    mayoría de los vínculos de sus 12 facturas anteriores al último mes. Sirve para saber si una factura nueva se paga
+    sola con la tarjeta (queda saldada al cargar el resumen) o hay que pagarla."""
+    from collections import Counter
 
-    El saldo por factura sale de los vínculos de pago, que no siempre están completos (ej. Wagen: facturas "abiertas"
-    con la cuenta en cero). Para no mostrar deudas que no existen, por proveedor se muestran solo las facturas que
-    explican el saldo real de su cuenta corriente: de la más nueva a la más vieja (lo viejo es lo primero que se pagó)
-    hasta cubrir la deuda; las que quedan fuera se dan por pagadas y el proveedor se marca `ajustado`.
+    from src.features.vinculos import fuente
+
+    ids = [r['id'] for r in fetch_all(
+        "SELECT TOP 12 IdDeuda id FROM dbo.Compras WHERE IdContacto=? AND Fecha<DATEADD(day,-30,GETDATE()) "
+        "ORDER BY Fecha DESC", (id_contacto,))]
+    medios = Counter(v.get('origenMovimiento') for v in fuente.vinculos_de_documentos([('CompraDeuda', i) for i in ids])
+                     if v.get('origenMovimiento') and not str(v['origenMovimiento']).startswith('comp-'))
+    if not medios:
+        return None
+    medio, n = medios.most_common(1)[0]
+    return medio if n * 10 >= sum(medios.values()) * 6 else None  # 60% o más: es su medio habitual
+
+
+def _pendientes():
+    """Facturas a pagar de todos los proveedores (rehecho 04/11/2026: el cálculo anterior adivinaba).
+
+    - Saldo de cada factura: lo pagado según sus vínculos, sin repartos supuestos.
+    - Se incluyen las facturas suspendidas (la cuenta corriente las cuenta como deuda; ej. Basterrechea 545).
+    - `estado`: 'a pagar'; 'tarjeta' si el proveedor se paga con tarjeta (se salda al cargar el resumen, no hay que
+      pagarla); 'diferencia' si es un resto chico de una factura vieja (redondeo o tipo de cambio, no es deuda a pagar).
+    - `difCuenta` (por proveedor): cuenta corriente − suma de saldos de sus facturas. Negativo = pagos que están en la
+      cuenta pero sin imputar a ninguna factura; positivo = deuda sin factura. Se muestra, no se reparte.
     Vencimiento: el de la condición de pago de la compra ([Vencimiento Compras] si es A Plazo; la fecha si es Contado)."""
     from src.features.cuentas_corrientes import repository as cuentas
 
@@ -134,27 +156,27 @@ def _pendientes():
         deuda = dinero(-(s.get('saldoParcial') or 0))
         if deuda < 1:
             continue  # cuenta en cero o a favor: nada que pagar
-        facturas_ = sorted(facturas(s['idContacto']), key=lambda f: (f['fecha'] or date.min, f['idCompra']), reverse=True)
-        if not facturas_:
+        filas = [f for f in facturas(s['idContacto'], incluir_suspendidas=True) if dinero(f['saldo']) >= 1]
+        if not filas:
             continue
-        resto, ajustado, filas = deuda, False, []
-        for f in facturas_:
-            if resto <= 0:
-                ajustado = True
-                break
-            saldo = min(dinero(f['saldo']), resto)
-            ajustado = ajustado or saldo < dinero(f['saldo'])
-            resto -= saldo
+        medio = medio_habitual(s['idContacto'])
+        dif = deuda - sum(dinero(f['saldo']) for f in filas)
+        for f in filas:
             vto = f.get('fechaVto') or f['fecha']  # cuota pendiente (A Plazo) o fecha de la factura (Contado)
             vto = vto.date() if hasattr(vto, 'date') else vto
-            if saldo < 1:
-                continue  # residuos de centavos (redondeos), no son deuda a pagar
-            filas.append({**f, 'idContacto': s['idContacto'], 'proveedor': s.get('razonSocial'), 'saldo': saldo,
-                          'disponible': max(Decimal(0), min(dinero(f['disponible']), saldo)),
-                          'vencimiento': vto, 'diasVencida': (hoy - vto).days if vto and vto < hoy else 0})
-        for fila in filas:
-            fila['ajustado'] = ajustado
-        resultado.extend(filas)
+            fecha = f['fecha'].date() if hasattr(f['fecha'], 'date') else f['fecha']
+            saldo = dinero(f['saldo'])
+            if saldo < 1000 and saldo * 100 < dinero(f['total']) and fecha and (hoy - fecha).days > 90:
+                estado = 'diferencia'
+            elif medio == 'tarjetas':
+                estado = 'tarjeta'
+            else:
+                estado = 'a pagar'
+            resultado.append({**f, 'idContacto': s['idContacto'], 'proveedor': s.get('razonSocial'), 'saldo': saldo,
+                              'vencimiento': vto, 'diasVencida': (hoy - vto).days if vto and vto < hoy else 0,
+                              'estado': estado, 'medioHabitual': medio, 'suspendida': bool(f.get('suspendida')),
+                              'difCuenta': dif if abs(dif) >= 1 else Decimal(0), 'saldoCuenta': deuda,
+                              'ajustado': abs(dif) >= 1})
     return sorted(resultado, key=lambda f: (f['vencimiento'] or date.max, f['proveedor'] or ''))
 
 

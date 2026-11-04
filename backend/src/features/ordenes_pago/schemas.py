@@ -175,6 +175,11 @@ class FacturaAPagar(FacturaPendiente):
     vencimiento: date | None
     diasVencida: int
     ajustado: bool
+    estado: str = 'a pagar'  # 'a pagar' | 'tarjeta' | 'diferencia'
+    medioHabitual: str | None = None
+    suspendida: bool = False
+    difCuenta: float = 0  # cuenta corriente − suma de facturas del proveedor (<0: pagos sin imputar)
+    saldoCuenta: float = 0
 
 
 class Movimiento(BaseModel):
