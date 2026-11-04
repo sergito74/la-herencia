@@ -352,7 +352,64 @@ def _analizar(nombre: str, contenido: bytes) -> tuple[str, list[dict], int]:
         raise ValueError(["No se reconoce el extracto: por ahora se leen los resúmenes PDF de Galicia y del BNA."])
     if not todos:
         raise ValueError(["No se encontraron movimientos en el extracto."])
+    _marcar_canjes(banco, nuevos)
     return banco, nuevos, len(todos) - len(nuevos)
+
+
+# --- Canjes de socio pendientes (04/11/2026) ------------------------------------
+# Un socio deja efectivo en la caja y la empresa le transfiere lo mismo: el canje se registra en la caja con la
+# transferencia "pendiente" hasta que llega el resumen. Al cargarlo, la transferencia que coincide en banco, fecha e
+# importe va al contacto de socio (no al CUIT, que puede ser el contacto de empleado) y se vincula sola al canje.
+
+def canjes_pendientes(banco: str) -> list[dict]:
+    from src.features.cuentas_socios.contactos import SOCIO_CONTACTO
+
+    filas = fetch_all(
+        "SELECT o.IdOperacion AS id, o.Fecha AS fecha, o.IdSocio AS socio, o.Version AS version, "
+        "JSON_VALUE(o.Solicitud,'$.importe') AS importe FROM dbo.OperacionesCajaEfectivo o "
+        "WHERE o.Estado = 'Vigente' AND o.Tipo = 'canje_socio' AND JSON_VALUE(o.Solicitud,'$.bancoPendiente') = ? "
+        "AND NOT EXISTS (SELECT 1 FROM dbo.BancoOperacionCaja b WHERE b.IdOperacion = o.IdOperacion)", (banco,))
+    return [{**f, "importe": round(float(f["importe"]), 2), "fecha": f["fecha"] if isinstance(f["fecha"], date)
+             else date.fromisoformat(str(f["fecha"])[:10]), "contacto": SOCIO_CONTACTO.get(f["socio"])} for f in filas]
+
+
+def _salida_de(banco: str, m: dict) -> float:
+    return round(-m["importe"] if banco == "bna" else (m.get("debitos") or 0), 2)
+
+
+def _marcar_canjes(banco: str, nuevos: list[dict]) -> None:
+    for c in canjes_pendientes(banco):
+        candidatos = [m for m in nuevos if m["fecha"] == c["fecha"] and _salida_de(banco, m) == c["importe"]
+                      and not m.get("canje")]
+        if len(candidatos) == 1 and c["contacto"]:
+            m = candidatos[0]
+            m["idContacto"], m["regla"], m["canje"] = c["contacto"], f"canje de socio (operación {c['id']})", c
+        # 0 o varios candidatos: queda para vincular a mano desde la caja.
+
+
+def _vincular_canjes(banco: str, nuevos: list[dict]) -> int:
+    from src.features.cajas_efectivo import service
+    from src.features.cajas_efectivo.schemas import ConciliarBancoCaja
+
+    hechos = 0
+    for m in (x for x in nuevos if x.get("canje")):
+        if banco == "galicia":
+            fila = fetch_all("SELECT TOP 1 IdMovimiento AS id FROM dbo.[Movimientos Galicia] WHERE Fecha = ? AND [Débitos] = ? "
+                             "AND Saldo = ? ORDER BY IdMovimiento DESC", (m["fecha"], m["debitos"], m["saldo"]))
+        else:
+            fila = fetch_all("SELECT TOP 1 IdMovimientoBNA AS id FROM dbo.[Movimientos BNA] WHERE [Fecha / Hora Mov#] = ? "
+                             "AND Importe = ? AND IdCuentaBancaria = ? ORDER BY IdMovimientoBNA DESC",
+                             (m["fecha"], m["importe"], ID_CUENTA_BNA))
+        if not fila:
+            continue
+        try:
+            service.conciliar_banco(m["canje"]["id"], ConciliarBancoCaja.model_validate(
+                {"banco": {"medio": banco, "idMovimiento": fila[0]["id"]}, "versionEsperada": m["canje"]["version"]}),
+                "carga de extracto")
+            hechos += 1
+        except Exception:  # se puede vincular a mano desde la caja; la carga no se frena por esto
+            pass
+    return hechos
 
 
 def _salida(banco: str, nuevos: list[dict], ya: int) -> dict:
@@ -387,8 +444,9 @@ def confirmar(nombre: str, contenido: bytes) -> dict:
         grabar([], nuevos, "extracto-pdf-galicia")
     else:
         grabar(nuevos, [], "extracto-pdf-bna")
+    vinculados = _vincular_canjes(banco, nuevos)
     _guardar_copia(banco, nombre, contenido)
-    return {**_salida(banco, nuevos, ya), "grabados": len(nuevos)}
+    return {**_salida(banco, nuevos, ya), "grabados": len(nuevos), "canjesVinculados": vinculados}
 
 
 def _guardar_copia(banco: str, nombre: str, contenido: bytes) -> None:

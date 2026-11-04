@@ -35,3 +35,15 @@ def test_saldo_que_no_cierra_frena_todo(monkeypatch):
     monkeypatch.setattr(x, "_lineas", lambda _pdf: malas)
     with pytest.raises(RuntimeError):
         x.leer_galicia_pdf(b"%PDF", "prueba.pdf")
+
+
+def test_transferencia_de_canje_va_al_contacto_del_socio(monkeypatch):
+    from datetime import date
+
+    monkeypatch.setattr(x, "canjes_pendientes", lambda _b: [
+        {"id": 3, "fecha": date(2026, 10, 28), "socio": 2, "version": 0, "importe": 810000.0, "contacto": 390}])
+    nuevos = [{"fecha": date(2026, 10, 28), "debitos": 810000.0, "creditos": None, "idContacto": None},
+              {"fecha": date(2026, 10, 28), "debitos": 830000.0, "creditos": None, "idContacto": 375}]
+    x._marcar_canjes("galicia", nuevos)
+    assert nuevos[0]["idContacto"] == 390 and nuevos[0]["canje"]["id"] == 3
+    assert nuevos[1]["idContacto"] == 375 and "canje" not in nuevos[1]
