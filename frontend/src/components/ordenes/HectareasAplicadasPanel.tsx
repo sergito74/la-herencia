@@ -25,6 +25,8 @@ export function HectareasAplicadasPanel({ orden, onGuardada }: { orden: OrdenDet
   }, [orden]);
 
   const [editando, setEditando] = useState(false);
+  const [porLote, setPorLote] = useState(false);
+  const [totales, setTotales] = useState<Record<string, number | null>>({});
   const [valores, setValores] = useState<Record<number, number | null>>({});
   const [guardando, setGuardando] = useState(false);
 
@@ -36,7 +38,50 @@ export function HectareasAplicadasPanel({ orden, onGuardada }: { orden: OrdenDet
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lotes, valores]);
 
+  // Sin el detalle por lote (lo habitual): el total real de cada cultivo se reparte entre sus lotes en proporción a
+  // la superficie que tenía cargada cada uno.
+  const teoricoCultivo = useMemo(() => {
+    const t = new Map<string, number>();
+    for (const l of lotes) t.set(l.cultivo ?? "—", (t.get(l.cultivo ?? "—") ?? 0) + l.superficie);
+    return t;
+  }, [lotes]);
+  const desdeTotales = () => {
+    const filas = lotes.map((l) => {
+      const c = l.cultivo ?? "—";
+      const total = (c in totales ? totales[c] : teoricoCultivo.get(c)) ?? 0;
+      const teo = teoricoCultivo.get(c) ?? 0;
+      return { c, total, base: l.superficie, idLote: l.idLote, superficie: teo > 0 ? Math.round((total * l.superficie / teo) * 100) / 100 : 0 };
+    });
+    // El centésimo del redondeo va al lote más grande de cada cultivo: el cultivo suma exacto lo cargado.
+    for (const c of new Set(filas.map((f) => f.c))) {
+      const del = filas.filter((f) => f.c === c);
+      const mayor = del.reduce((a, b) => (b.base > a.base ? b : a));
+      mayor.superficie = Math.round((mayor.superficie + del[0].total - del.reduce((s, f) => s + f.superficie, 0)) * 100) / 100;
+    }
+    return filas.map(({ idLote, superficie }) => ({ idLote, superficie }));
+  };
+
   async function guardar() {
+    if (!porLote) {
+      if (Object.values(totales).some((v) => v == null)) {
+        showToast("Completá las hectáreas de todos los cultivos.", "danger");
+        return;
+      }
+      setGuardando(true);
+      try {
+        await corregirHectareas(orden.idOrden, desdeTotales());
+        showToast("Hectáreas guardadas: el reparto de insumos entre cultivos se actualizó.", "success");
+        setEditando(false);
+        setTotales({});
+        qc.invalidateQueries({ queryKey: ["orden-reparto", orden.idOrden] });
+        onGuardada();
+      } catch (e) {
+        showToast(e instanceof ApiError ? e.message : "No se pudieron guardar las hectáreas.", "danger");
+      } finally {
+        setGuardando(false);
+      }
+      return;
+    }
     if (lotes.some((l) => valor(l.idLote, l.superficie) == null)) {
       showToast("Completá las hectáreas de todos los lotes.", "danger");
       return;
@@ -70,10 +115,40 @@ export function HectareasAplicadasPanel({ orden, onGuardada }: { orden: OrdenDet
         )}
       </div>
       <p className="text-sm text-ink-secondary">
-        Si en algún lote se aplicó menos (o más) superficie, cargá lo real: el insumo usado se reparte de nuevo entre los
-        cultivos. Las cantidades retiradas y el stock no cambian.
+        Si se aplicó menos (o más) superficie, cargá el total real de cada cultivo: se reparte entre sus lotes en
+        proporción a lo que tenía cada uno, y el insumo usado se reparte de nuevo entre los cultivos. Las cantidades
+        retiradas y el stock no cambian.
       </p>
 
+      {editando && (
+        <label className="mt-2 flex items-center gap-2 text-sm">
+          <input type="checkbox" checked={porLote} onChange={(e) => setPorLote(e.target.checked)} />
+          Tengo el detalle por lote
+        </label>
+      )}
+      {editando && !porLote ? (
+        <table className="mt-2 text-sm">
+          <thead>
+            <tr className="text-left text-ink-secondary">
+              <th className="pr-6 font-normal">Cultivo</th>
+              <th className="pr-6 text-right font-normal">Cargadas</th>
+              <th className="pr-2 text-right font-normal">Aplicadas</th>
+            </tr>
+          </thead>
+          <tbody>
+            {[...teoricoCultivo.entries()].map(([c, teo]) => (
+              <tr key={c}>
+                <td className="pr-6">{c}</td>
+                <td className="pr-6 text-right">{formatCantidad(teo)}</td>
+                <td className="py-0.5 text-right">
+                  <NumberInput className="w-24 rounded border border-border px-2 py-0.5 text-right" maxDecimales={2}
+                    value={c in totales ? totales[c] : teo} onChange={(v) => setTotales((s) => ({ ...s, [c]: v }))} />
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      ) : (
       <table className="mt-2 text-sm">
         <thead>
           <tr className="text-left text-ink-secondary">
@@ -108,12 +183,13 @@ export function HectareasAplicadasPanel({ orden, onGuardada }: { orden: OrdenDet
           ))}
         </tfoot>
       </table>
+      )}
       {editando && (
         <div className="mt-2 flex gap-2">
           <button type="button" onClick={guardar} disabled={guardando} className="rounded bg-finance px-3 py-1 text-sm text-white disabled:opacity-50">
             Guardar
           </button>
-          <button type="button" onClick={() => { setEditando(false); setValores({}); }} className="rounded border border-border px-3 py-1 text-sm">
+          <button type="button" onClick={() => { setEditando(false); setValores({}); setTotales({}); }} className="rounded border border-border px-3 py-1 text-sm">
             Cancelar
           </button>
         </div>
