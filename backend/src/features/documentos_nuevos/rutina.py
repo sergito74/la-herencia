@@ -45,6 +45,31 @@ def proxima(texto: str | None, desde: datetime) -> datetime:
 
 # --- Cuentas -----------------------------------------------------------------
 
+# 04/11/2026: un portal colgado (ARCA Sergio, Movistar) frenaba la corrida entera y los mails nunca se leían.
+LIMITE_PORTAL = 10 * 60
+
+
+def _correr_con_limite(servicio, p: dict) -> str:
+    """Corre el portal en un hilo aparte; si no termina a tiempo se sigue (el hilo queda con su lock y su corrida
+    'en curso', así la próxima lo saltea en vez de abrir otro navegador)."""
+    salida: dict = {}
+
+    def trabajo():
+        try:
+            salida["estado"] = servicio.correr_portal(p["idPortal"], "programada", "sistema")[1]
+        except Exception:
+            log.exception("Rutina: falló la cuenta %s", p["idPortal"])
+            salida["estado"] = "error"
+
+    hilo = threading.Thread(target=trabajo, daemon=True, name=f"rutina-portal-{p['idPortal']}")
+    hilo.start()
+    hilo.join(LIMITE_PORTAL)
+    if hilo.is_alive():
+        log.warning("Rutina: la cuenta %s no terminó en %s s; se sigue", p["idPortal"], LIMITE_PORTAL)
+        return "colgada"
+    return salida.get("estado", "error")
+
+
 def _cuentas(r: dict, problemas: list[str]) -> None:
     from src.features.boveda import repository as boveda, servicio
 
@@ -60,11 +85,12 @@ def _cuentas(r: dict, problemas: list[str]) -> None:
             problemas.append(f"{p['nombre']}: estaba sincronizando, se salteó")
             r["cuentasConProblemas"] += 1
             continue
-        try:
-            _, estado = servicio.correr_portal(p["idPortal"], "programada", "sistema")
-        except Exception:
-            log.exception("Rutina: falló la cuenta %s", p["idPortal"])
-            estado = "error"
+        estado = _correr_con_limite(servicio, p)
+        if estado == "colgada":
+            problemas.append(f"{p['nombre']}: no terminó en {LIMITE_PORTAL // 60} minutos, se siguió con las demás")
+            r["cuentasCorridas"] += 1
+            r["cuentasConProblemas"] += 1
+            continue
         r["cuentasCorridas"] += 1
         if estado == "salteada":
             problemas.append(f"{p['nombre']}: estaba sincronizando, se salteó")
@@ -240,9 +266,9 @@ def correr(origen: str = "programada") -> int | None:
     problemas: list[str] = []
     avisos.fijar_corrida(id_corrida)
     try:
+        _mails(id_corrida, r, problemas, datetime.now())  # primero: es rápido y no depende de ningún portal
         _cuentas(r, problemas)
         _contar_portal(id_corrida, r)
-        _mails(id_corrida, r, problemas, datetime.now())
         _carpetas(id_corrida, r, problemas)
         _reevaluar(problemas)
     except Exception:
