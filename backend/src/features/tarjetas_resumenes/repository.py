@@ -494,9 +494,9 @@ def get_documentos_candidatos(id_linea_consumo: int, id_contacto: int, fecha_lin
 
 
 def get_documentos_por_fecha_importe(id_linea_consumo: int, importe: float, fecha_linea,
-                                     dias: int = 10, margen: float = 0.10, limite: int = 15) -> list[dict]:
+                                     dias: int = 10, dias_despues: int = 30, margen: float = 0.10, limite: int = 15) -> list[dict]:
     """Sugerencia automática (04/11/2026): comprobantes de CUALQUIER proveedor con fecha cercana a la del consumo
-    (±10 días) e importe parecido (±10%), el más parecido primero. Son candidatos para que el usuario elija; no se
+    (10 días antes a 30 después: la factura suele salir después del pago) e importe parecido (±10%), el más parecido primero. Son candidatos para que el usuario elija; no se
     vincula nada solo. Sirve cuando la línea no tiene contacto o el contacto no es el correcto (ej. MERPAGO*...)."""
     if not importe or not fecha_linea:
         return []
@@ -520,7 +520,7 @@ def get_documentos_por_fecha_importe(id_linea_consumo: int, importe: float, fech
         ORDER BY ABS(ABS({_IMPORTE_BRUTO}) - ?) ASC, ABS(DATEDIFF(day, w.Fecha, ?)) ASC
     """
     f = as_sql_datetime(fecha_linea)
-    rows = fetch_all(sql, (limite, id_linea_consumo, dias, f, dias, f, imp * (1 - margen), imp * (1 + margen),
+    rows = fetch_all(sql, (limite, id_linea_consumo, dias, f, dias_despues, f, imp * (1 - margen), imp * (1 + margen),
                            id_linea_consumo, imp, f))
     return [d for d in _documentos_dict(rows) if abs(d['saldoPendiente']) >= .005]
 
