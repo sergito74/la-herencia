@@ -90,8 +90,17 @@ class ConectorSancor:
             for _ in range(30):
                 if p.url.startswith(APP):
                     # La pantalla de documentación deja lista la sesión de pólizas que usa la API.
-                    with p.expect_response(lambda r: "PostCardsList" in r.url, timeout=90000):
-                        p.goto(APP + "/DocumentationDownload", wait_until="load", timeout=90000)
+                    # 03/11/2026: a veces PostCardsList no llega (o llega antes de escuchar): se reintenta una vez
+                    # y, si igual no llega, se sigue; si la sesión no quedó lista, falla al pedir las pólizas.
+                    for intento in (1, 2):
+                        try:
+                            with p.expect_response(lambda r: "PostCardsList" in r.url, timeout=60000):
+                                p.goto(APP + "/DocumentationDownload", wait_until="load", timeout=90000)
+                            break
+                        except Exception as e:
+                            if type(e).__name__ != "TimeoutError":
+                                raise
+                            p.wait_for_timeout(3000)
                     return _Sesion(browser=browser, pagina=p)
                 if p.locator("input[name=password]").count() and "incorrect" in p.inner_text("body").lower():
                     raise CredencialesRechazadas("Sancor rechazó usuario o contraseña")
