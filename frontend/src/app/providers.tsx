@@ -6,6 +6,7 @@ import { useState } from "react";
 import { createQueryClient } from "@/services/apiClient";
 import { AuthGuard } from "@/components/auth/AuthGuard";
 import { AuthProvider } from "@/components/auth/AuthContext";
+import { ActualizacionAutomatica } from "@/components/layout/ActualizacionAutomatica";
 import { SesionHeartbeat } from "@/components/layout/SesionHeartbeat";
 import { ToastProvider } from "@/components/ui/Toast";
 
@@ -18,6 +19,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
         <AuthProvider>
           <AuthGuard>
             <SesionHeartbeat />
+            <ActualizacionAutomatica />
             {children}
           </AuthGuard>
         </AuthProvider>

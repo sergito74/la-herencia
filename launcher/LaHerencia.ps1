@@ -1,4 +1,4 @@
-param([switch]$Stop, [switch]$Watch, [switch]$NoBrowser, [switch]$Dev)
+param([switch]$Stop, [switch]$Watch, [switch]$NoBrowser, [switch]$Dev, [switch]$Reiniciar)
 
 $ErrorActionPreference = 'Stop'
 $Root      = Split-Path -Parent $PSScriptRoot
@@ -61,6 +61,26 @@ function Stop-Port($port) {
         ForEach-Object { Stop-Tree $_.OwningProcess }
 }
 
+# 04/11/2026: cerrar por puerto no alcanzaba. Windows a veces informa el dueño del puerto como PID 0, y justo despues
+# de cerrar el servidor el puerto sigue figurando ocupado unos segundos: el lanzador creia que el backend seguia
+# arriba y no lo arrancaba, o el frontend nuevo chocaba con el viejo (EADDRINUSE) y se salteaba la recompilacion.
+# Ahora se cierra tambien por linea de comando y se espera a que el puerto quede libre.
+$PatronServidor = @{
+    $ApiPort = { $_.Name -eq 'python.exe' -and $_.CommandLine -like '*uvicorn src.main:app*' }
+    $WebPort = { ($_.Name -eq 'node.exe' -and $_.CommandLine -like '*LaHerenciarontend*next*') -or
+                 ($_.Name -eq 'cmd.exe' -and $_.CommandLine -like '*npm run * --port*') }
+}
+
+function Stop-Servidor($port) {
+    Stop-Port $port
+    $filtro = $PatronServidor[$port]
+    Get-CimInstance Win32_Process -ErrorAction SilentlyContinue | Where-Object $filtro |
+        ForEach-Object { Stop-Tree $_.ProcessId }
+    if (-not (Wait-Until { -not (Test-PortBusy $port) } 30)) {
+        Write-Output "El puerto $port sigue ocupado despues de cerrar el servidor."
+    }
+}
+
 function Wait-Until($test, $seconds) {
     $limit = (Get-Date).AddSeconds($seconds)
     while ((Get-Date) -lt $limit) {
@@ -79,9 +99,9 @@ function Stop-All {
         if ($p.watcher -ne $PID) { Stop-Tree $p.watcher }
         Remove-Item $PidFile -Force
     }
-    # Hijos que puedan haber sobrevivido (workers de next dev).
-    Stop-Port $ApiPort
-    Stop-Port $WebPort
+    # Hijos que puedan haber sobrevivido (workers de next dev, servidores sin PID visible).
+    Stop-Servidor $ApiPort
+    Stop-Servidor $WebPort
 }
 
 if ($Stop) { Stop-All; exit 0 }
@@ -158,12 +178,19 @@ function Get-NewestWrite($dir, $exts) {
 }
 
 $reinicioServidores = $false
+if ($Reiniciar) {
+    # Reinicio pedido a mano (o por Claude) con la pantalla abierta: todo de cero, recompilando si hace falta.
+    Write-Output "Reinicio completo pedido."
+    Stop-Servidor $ApiPort
+    Stop-Servidor $WebPort
+    $reinicioServidores = $true
+}
 $apiDesde = Get-ListenerStart $ApiPort
 if ($apiDesde) {
     $codigoApi = Get-NewestWrite (Join-Path $Backend 'src') @('.py')
     if ($codigoApi -and $codigoApi -gt $apiDesde) {
         Write-Output "Backend desactualizado (codigo $codigoApi, servidor desde $apiDesde): se reinicia."
-        Stop-Port $ApiPort
+        Stop-Servidor $ApiPort
         $reinicioServidores = $true
     }
 }
@@ -184,8 +211,8 @@ if ($webDesde -and -not $Dev) {
     if (Test-Path $idCompilacion) { $compilado = (Get-Item $idCompilacion).LastWriteTime }
     if (($compilado -and $compilado -gt $webDesde) -or ($codigoWeb -and (-not $compilado -or $codigoWeb -gt $compilado))) {
         Write-Output "Frontend desactualizado: se reinicia (se recompila si hace falta)."
-        Stop-Port $WebPort
         if ($webViejo) { Stop-Tree $webViejo.ProcessId }
+        Stop-Servidor $WebPort
         $reinicioServidores = $true
     }
 }
@@ -251,6 +278,8 @@ if (-not $cotHoy) {
 }
 
 # --- Backend ---
+# Puerto ocupado pero sin responder (servidor trabado o a medio cerrar): se cierra y se arranca uno nuevo.
+if ((Test-PortBusy $ApiPort) -and -not (Test-Url $ApiHealth)) { Stop-Servidor $ApiPort }
 if (-not (Test-PortBusy $ApiPort)) {
     $p = Start-Process -FilePath $Python `
         -ArgumentList '-m', 'uvicorn', 'src.main:app', '--host', '127.0.0.1', '--port', $ApiPort `
@@ -261,6 +290,7 @@ if (-not (Test-PortBusy $ApiPort)) {
 }
 
 # --- Frontend ---
+if ((Test-PortBusy $WebPort) -and -not (Test-Url $WebProbe)) { Stop-Servidor $WebPort }
 if (-not (Test-PortBusy $WebPort)) {
     $p = Start-Process -FilePath 'cmd.exe' `
         -ArgumentList '/c', "npm run $WebMode -- --port", $WebPort `

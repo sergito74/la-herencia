@@ -107,3 +107,51 @@ async def inicio() -> None:
 @router.get("/estado")
 async def estado() -> dict:
     return _estado.estado()
+
+
+# --- Actualización automática de la pantalla (04/11/2026) -------------------------
+# La pantalla consulta esto cada 10 s: si cambiaron datos (de cualquier origen: otra pestaña, una carga de extracto,
+# la rutina, un script) vuelve a pedir lo que está mostrando; si hay una compilación nueva de la pantalla, se recarga.
+# No expone datos de WC: solo marcas de tiempo.
+_INICIO_BACKEND = time.strftime("%Y-%m-%dT%H:%M:%S")
+_cache_escritura: dict = {"t": 0.0, "valor": None}
+
+
+def _ultima_escritura() -> str | None:
+    if time.monotonic() - _cache_escritura["t"] < 3:
+        return _cache_escritura["valor"]
+    valor = None
+    try:
+        import pyodbc
+
+        from src.db.connection import CONNECTION_STRING
+
+        conn = pyodbc.connect(CONNECTION_STRING, autocommit=True, timeout=5)
+        try:
+            cur = conn.cursor()
+            # Estadística del motor (solo lectura): última escritura en cualquier tabla de la base.
+            cur.execute("SELECT MAX(last_user_update) FROM sys.dm_db_index_usage_stats WHERE database_id = DB_ID()")
+            fila = cur.fetchone()
+            valor = fila[0].isoformat() if fila and fila[0] else None
+        finally:
+            conn.close()
+    except Exception:
+        valor = _cache_escritura["valor"]
+    _cache_escritura.update(t=time.monotonic(), valor=valor)
+    return valor
+
+
+def _build_pantalla() -> str | None:
+    from pathlib import Path
+
+    try:
+        return (Path(__file__).resolve().parents[4] / "frontend" / ".next" / "BUILD_ID").read_text().strip()
+    except OSError:
+        return None
+
+
+@router.get("/version")
+async def version() -> dict:
+    from starlette.concurrency import run_in_threadpool
+
+    return {"inicio": _INICIO_BACKEND, "build": _build_pantalla(), "ultimaEscritura": await run_in_threadpool(_ultima_escritura)}
