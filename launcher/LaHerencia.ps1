@@ -168,6 +168,15 @@ if ($apiDesde) {
     }
 }
 $webDesde = Get-ListenerStart $WebPort
+# 03/11/2026: netstat mostraba el puerto 3000 con PID 0 (un "next start" del dia anterior) y el frontend nuevo no
+# podia arrancar (EADDRINUSE) mientras se seguia viendo la version vieja. Si no se ve el dueño del puerto, se busca el
+# proceso de La Herencia por su linea de comando.
+$webViejo = $null
+if (-not $webDesde -and (Test-PortBusy $WebPort)) {
+    $webViejo = Get-CimInstance Win32_Process -Filter "name='node.exe'" -ErrorAction SilentlyContinue |
+        Where-Object { $_.CommandLine -like '*LaHerencia\frontend*next*' } | Select-Object -First 1
+    if ($webViejo) { $webDesde = $webViejo.CreationDate }
+}
 if ($webDesde -and -not $Dev) {
     $idCompilacion = Join-Path $Frontend '.next/BUILD_ID'
     $codigoWeb = Get-NewestWrite (Join-Path $Frontend 'src') @('.ts', '.tsx', '.css', '.js')
@@ -176,6 +185,7 @@ if ($webDesde -and -not $Dev) {
     if (($compilado -and $compilado -gt $webDesde) -or ($codigoWeb -and (-not $compilado -or $codigoWeb -gt $compilado))) {
         Write-Output "Frontend desactualizado: se reinicia (se recompila si hace falta)."
         Stop-Port $WebPort
+        if ($webViejo) { Stop-Tree $webViejo.ProcessId }
         $reinicioServidores = $true
     }
 }
