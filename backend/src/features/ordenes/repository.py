@@ -449,6 +449,53 @@ def corregir_fecha_ejecucion(id_orden: int, fecha_ejecucion) -> None:
     ])
 
 
+def corregir_hectareas(id_orden: int, superficies: dict[int, float]) -> dict:
+    """Hectáreas realmente aplicadas por lote (04/11/2026, orden 162: agua en los lotes). Solo cambia la superficie
+    de cada lote y vuelve a repartir la cantidad de cada insumo entre los lotes (dosis × superficie, FR-003). No toca
+    cantidades retiradas, stock, devoluciones ni ajustes de recuento: cambia a qué cultivo va el costo."""
+    orden = obtener_orden(id_orden)
+    if orden is None:
+        raise ValueError([f"La orden {id_orden} no existe."])
+    if orden["estado"] == "Anulada":
+        raise ValueError(["La orden está anulada."])
+    lotes = {d["idLote"] for r in orden["insumos"] for d in r["distribuciones"]}
+    ajenos = set(superficies) - lotes
+    if ajenos:
+        raise ValueError([f"Hay lotes que no son de esta orden ({', '.join(map(str, sorted(ajenos)))})."])
+    if any(v < 0 for v in superficies.values()):
+        raise ValueError(["Las hectáreas no pueden ser negativas."])
+
+    sentencias = []
+    for r in orden["insumos"]:
+        distrib = [{**d, "superficie": superficies.get(d["idLote"], d["superficie"])} for d in r["distribuciones"]]
+        if r["cantidadTotal"] and not any(d["aplicar"] and d["dosisHa"] * d["superficie"] > 0 for d in distrib):
+            raise ValueError([f"«{r['producto']}» quedaría sin ningún lote donde repartirse."])
+        for d in distribucion.repartir_total(r["cantidadTotal"], distrib):
+            sentencias.append((
+                "UPDATE dbo.Ordenes_Trabajo_Distrib SET Superficie = ?, CantidadAsignada = ? WHERE IdDistrib = ?",
+                (d["superficie"], d["cantidadAsignada"], d["idDistrib"]),
+            ))
+    execute_write_transaction([lambda _r, s=s: s for s in sentencias])
+    _recalcular_imputacion_por_productos({r["idProducto"] for r in orden["insumos"]})
+    return reparto_por_cultivo(id_orden)
+
+
+def reparto_por_cultivo(id_orden: int) -> list[dict]:
+    """Hectáreas y cantidad efectiva (retirado + ajuste de recuento) de cada insumo por cultivo."""
+    orden = obtener_orden(id_orden) or {"insumos": []}
+    filas: dict[tuple, dict] = {}
+    for r in orden["insumos"]:
+        efectivo = r["cantidadTotal"] + r["ajusteRecuento"]
+        for d in r["distribuciones"]:
+            if not d["aplicar"]:
+                continue
+            k = (d["cultivo"], r["producto"])
+            f = filas.setdefault(k, {"cultivo": d["cultivo"], "producto": r["producto"], "unidad": r["unidad"], "cantidad": 0.0})
+            parte = d["cantidadAsignada"] / r["cantidadTotal"] if r["cantidadTotal"] else 0.0
+            f["cantidad"] = round(f["cantidad"] + efectivo * parte, 4)
+    return sorted(filas.values(), key=lambda f: (f["cultivo"] or "", f["producto"] or ""))
+
+
 def anular_orden(id_orden: int, motivo: str) -> None:
     if not (motivo or "").strip():
         raise ValueError(["Indicá el motivo de la anulación."])

@@ -10,6 +10,7 @@ from starlette.concurrency import run_in_threadpool
 from src.features.ordenes import exportacion, repository, resultado, retiro_pdf
 from src.features.ordenes.repository import RequiereConfirmacion
 from src.features.ordenes.schemas import (
+    HectareasIn,
     AnularIn,
     DevolucionIn,
     EjecutarIn,
@@ -141,6 +142,18 @@ async def ejecutar_orden(id_orden: int, body: EjecutarIn) -> None:
 @router.patch("/{id_orden}/fecha-ejecucion", status_code=204)
 async def corregir_fecha_ejecucion(id_orden: int, body: EjecutarIn) -> None:
     await _ejecutar(repository.corregir_fecha_ejecucion, id_orden, body.fechaEjecucion)
+
+
+@router.patch("/{id_orden}/hectareas")
+async def corregir_hectareas(id_orden: int, body: HectareasIn) -> dict:
+    """Hectáreas realmente aplicadas por lote: rearma el reparto de insumos entre cultivos."""
+    reparto = await _ejecutar(repository.corregir_hectareas, id_orden, {l.idLote: l.superficie for l in body.lotes})
+    return {"repartoPorCultivo": reparto}
+
+
+@router.get("/{id_orden}/reparto-cultivos")
+async def reparto_cultivos(id_orden: int) -> dict:
+    return {"repartoPorCultivo": await run_in_threadpool(repository.reparto_por_cultivo, id_orden)}
 
 
 @router.post("/{id_orden}/anular", status_code=204)

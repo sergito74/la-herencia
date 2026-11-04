@@ -267,3 +267,18 @@ export const urlExportarResultadoCultivo = (f: { idCultivo?: number | null; idCa
 export const fetchTiposLabor = () => apiGet<TipoLabor[]>("/api/ordenes/tipos-labor");
 
 export const crearTipoLabor = (nombre: string) => apiPost<{ idTipoLabor: number }>("/api/ordenes/tipos-labor", { nombre });
+
+// ------------------------------------------------------------------ hectáreas aplicadas (04/11/2026)
+
+export interface RepartoCultivo {
+  cultivo: string | null;
+  producto: string | null;
+  unidad: string | null;
+  cantidad: number;
+}
+
+export const corregirHectareas = (idOrden: number, lotes: { idLote: number; superficie: number }[]) =>
+  apiPatch<{ repartoPorCultivo: RepartoCultivo[] }>(`/api/ordenes/${idOrden}/hectareas`, { lotes });
+
+export const fetchRepartoCultivos = (idOrden: number) =>
+  apiGet<{ repartoPorCultivo: RepartoCultivo[] }>(`/api/ordenes/${idOrden}/reparto-cultivos`);

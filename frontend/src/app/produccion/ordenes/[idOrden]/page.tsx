@@ -21,6 +21,7 @@ import { NumberInput } from "@/components/ui/NumberInput";
 import { useToast } from "@/components/ui/Toast";
 import { BadgeEstadoOrden } from "@/components/ordenes/EstadosOrden";
 import { DevolucionPanel } from "@/components/ordenes/DevolucionPanel";
+import { HectareasAplicadasPanel } from "@/components/ordenes/HectareasAplicadasPanel";
 import { FormularioRetiroView } from "@/components/ordenes/FormularioRetiroView";
 import { BackLink } from "@/components/ui/BackLink";
 
@@ -281,6 +282,8 @@ export default function DetalleOrdenPage() {
           </div>
         ))}
       </div>
+
+      {orden.estado === "Ejecutada" && <HectareasAplicadasPanel orden={orden} onGuardada={refrescar} />}
 
       <div className="mt-6">
         <h2 className="text-lg font-medium">Maquinaria propia</h2>

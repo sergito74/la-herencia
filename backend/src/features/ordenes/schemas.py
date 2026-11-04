@@ -35,6 +35,15 @@ class OrdenIn(BaseModel):
     confirmar: bool = False
 
 
+class HectareaLoteIn(BaseModel):
+    idLote: int
+    superficie: float
+
+
+class HectareasIn(BaseModel):
+    lotes: list[HectareaLoteIn]
+
+
 class EjecutarIn(BaseModel):
     fechaEjecucion: date
 
