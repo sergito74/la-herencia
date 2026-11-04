@@ -17,6 +17,7 @@ from datetime import date, datetime, time, timedelta
 log = logging.getLogger(__name__)
 INTERVALO = 60
 _arrancado = threading.Event()
+DESPERTAR = threading.Event()
 
 
 def proxima_corrida(frecuencia: str, dia_semana: int | None, dia_mes: int | None, hora: time,
@@ -84,6 +85,25 @@ def tick(ahora: datetime | None = None) -> list[int]:
     return corridos
 
 
+def saltear_vencidas(ahora: datetime | None = None) -> None:
+    """04/11/2026 (Sergio: "basta de correr rutinas cada vez que se inicia el sistema"): al arrancar no se recupera
+    nada. La rutina y las sincronizaciones que vencieron con el sistema cerrado pasan a su próximo horario sin correr;
+    para correrlas antes está el botón "Buscar ahora"."""
+    from src.features.boveda import repository
+    from src.features.documentos_nuevos import repository as rutina_repo, rutina
+
+    ahora = ahora or datetime.now()
+    prog = rutina_repo.programacion()
+    if prog and prog["activa"] and prog["proxima"] is not None:
+        vence = prog["proxima"]
+        if isinstance(vence, str):
+            vence = datetime.fromisoformat(vence.replace(" ", "T").split(".")[0])
+        if vence <= ahora:
+            rutina_repo.fijar_proxima(rutina.proxima(prog["horarios"], ahora))
+    for p in repository.portales_vencidos(ahora):
+        reprogramar(p["idPortal"], ahora)
+
+
 def _bucle() -> None:
     from src.features.documentos_nuevos import repository as rutina_repo, rutina
 
@@ -97,7 +117,10 @@ def _bucle() -> None:
         boveda_repo.cerrar_huerfanas()
     except Exception:
         log.exception("Bóveda: no se pudieron cerrar las corridas huérfanas")
-    pausa = threading.Event()
+    try:
+        saltear_vencidas()
+    except Exception:
+        log.exception("Planificador: no se pudieron pasar al próximo horario las corridas vencidas")
     while True:
         try:
             # La rutina diaria (043, 7:00 y 14:00) corre en este mismo hilo: nunca se abren dos navegadores a la vez.
@@ -108,7 +131,9 @@ def _bucle() -> None:
             tick()
         except Exception:
             log.exception("Bóveda: falló la revisión de corridas programadas")
-        pausa.wait(INTERVALO)
+        # "Buscar ahora" despierta el hilo en el momento (sin esperar al próximo minuto).
+        if DESPERTAR.wait(INTERVALO):
+            DESPERTAR.clear()
 
 
 def arrancar() -> None:

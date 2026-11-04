@@ -100,6 +100,9 @@ def ejecutar_rutina() -> dict:
     if (repository.ultima_corrida() or {}).get("estado") == "en_curso":
         raise HTTPException(status_code=409, detail="La rutina ya está corriendo")
     rutina.PEDIDO.set()
+    from src.features.boveda import planificador
+
+    planificador.DESPERTAR.set()  # arranca ya, no en el próximo minuto
     return {"ok": True}
 
 
