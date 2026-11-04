@@ -82,9 +82,9 @@ function Detalle({ d, admin }: { d: DocumentoNuevo; admin: boolean }) {
       )}
 
       <div className="flex flex-wrap items-center gap-3 text-sm">
-        <a href={urlDocumentoLocal(d.ruta)} target="_blank" rel="noreferrer" className="text-finance hover:underline">
+        {d.ruta && <a href={urlDocumentoLocal(d.ruta)} target="_blank" rel="noreferrer" className="text-finance hover:underline">
           Ver archivo ({d.archivo})
-        </a>
+        </a>}
         {d.enlace && (
           <Link href={d.enlace} className="text-finance hover:underline">
             {d.estado === "cargado_solo" ? "Ver y corregir" : "Abrir"}

@@ -76,9 +76,9 @@ export function RevisionComprasEnFormulario() {
           <strong>{d.contacto ?? "Emisor sin identificar"}</strong> {TIPO_TEXTO[d.tipo ?? ""] ?? "Documento"} {d.numero ?? ""}
           {d.total != null && ` · ${formatMoneda(d.total, "Pesos")}`}
         </span>
-        <a href={urlDocumentoLocal(d.ruta)} target="_blank" rel="noreferrer" className="text-finance hover:underline">
+        {d.ruta && <a href={urlDocumentoLocal(d.ruta)} target="_blank" rel="noreferrer" className="text-finance hover:underline">
           Ver archivo
-        </a>
+        </a>}
         {d.motivo && <span className="text-xs text-amber-900">{d.motivo}</span>}
         {admin && d.idRegistro != null && (
           <button type="button" disabled={revisar.isPending} onClick={() => revisar.mutate(d.idDocumentoNuevo)}
