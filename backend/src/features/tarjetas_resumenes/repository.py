@@ -115,7 +115,8 @@ def validar_resumen(id_tarjeta: int, cabecera: dict | None = None, lineas: list[
 
     hoy = date.today()
     if cabecera is not None:
-        for campo, etiqueta in (("fechaCierre", "de cierre"), ("fechaVencimiento", "de vencimiento")):
+        # Solo el cierre: el vencimiento cae después del cierre y suele ser futuro al cargar el resumen (04/11/2026).
+        for campo, etiqueta in (("fechaCierre", "de cierre"),):
             valor = cabecera.get(campo)
             if valor and valor > hoy:
                 errores.append(f"La fecha {etiqueta} del resumen ({valor}) es una fecha futura.")
