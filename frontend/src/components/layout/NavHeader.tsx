@@ -112,6 +112,7 @@ const NAV_ITEMS: NavItem[] = [
     label: "Finanzas",
     icon: ICONS.finanzas,
     submenu: [
+      { href: "/finanzas/ordenes-pago?tab=pendientes", label: "Facturas a pagar" },
       { href: "/finanzas/ordenes-pago", label: "Órdenes de pago y recibos", nuevos: "pagos" },
       { href: "/finanzas/tesoreria", label: "Tesorería", nuevos: "tesoreria" },
       { href: "/finanzas/cajas", label: "Cajas y socios" },

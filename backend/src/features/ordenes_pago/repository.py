@@ -2,6 +2,7 @@
 import hashlib
 import json
 from collections import defaultdict
+from datetime import date
 from decimal import Decimal, ROUND_HALF_UP
 from pathlib import Path
 
@@ -56,7 +57,7 @@ def obtener(id_):
 
 def facturas(id_contacto, excluir_op=None, incluir_saldadas=False):
     # 046 T027: documentos en US$ en pesos al TC del comprobante (regla usd-tc-comprobante), como la fuente unificada.
-    rows = fetch_all("SELECT TOP (2000) c.IdDeuda idCompra,c.[Nro Documento] numero,c.Fecha fecha,c.Moneda moneda,"
+    rows = fetch_all("SELECT TOP (2000) c.IdDeuda idCompra,c.[Nro Documento] numero,c.Fecha fecha,c.[Fecha Vto] fechaVto,c.Moneda moneda,"
                      "CASE WHEN c.Moneda='Dolares' THEN c.[Tipo de Cambio] END tc,"
                      "(t.GranTotal-ISNULL(pa.cp,0))*CASE WHEN c.Moneda='Dolares' THEN c.[Tipo de Cambio] ELSE 1 END total "
                      "FROM dbo.Compras c "
@@ -81,6 +82,60 @@ def facturas(id_contacto, excluir_op=None, incluir_saldadas=False):
             result.append({**row, 'pagado': p, 'saldo': saldo, 'reservado': reserva,
                            'disponible': max(Decimal(0), saldo-reserva)})
     return result
+
+
+_CACHE_PENDIENTES: dict = {}
+
+
+def pendientes(refrescar: bool = False):
+    """Recorre todas las cuentas (unos 25 s): se guarda 2 minutos; `refrescar` lo recalcula."""
+    import time
+
+    if not refrescar and _CACHE_PENDIENTES.get('t', 0) > time.time() - 120:
+        return _CACHE_PENDIENTES['datos']
+    datos = _pendientes()
+    _CACHE_PENDIENTES.update(t=time.time(), datos=datos)
+    return datos
+
+
+def _pendientes():
+    """Facturas a pagar de todos los proveedores, para la sección "Facturas a pagar" (03/11/2026).
+
+    El saldo por factura sale de los vínculos de pago, que no siempre están completos (ej. Wagen: facturas "abiertas"
+    con la cuenta en cero). Para no mostrar deudas que no existen, por proveedor se muestran solo las facturas que
+    explican el saldo real de su cuenta corriente: de la más nueva a la más vieja (lo viejo es lo primero que se pagó)
+    hasta cubrir la deuda; las que quedan fuera se dan por pagadas y el proveedor se marca `ajustado`.
+    Vencimiento: la fecha de vencimiento de la compra, o la fecha de la factura si no tiene."""
+    from src.features.cuentas_corrientes import repository as cuentas
+
+    hoy = date.today()
+    resultado = []
+    for s in cuentas.get_saldos_todos():
+        deuda = dinero(-(s.get('saldoParcial') or 0))
+        if deuda < 1:
+            continue  # cuenta en cero o a favor: nada que pagar
+        facturas_ = sorted(facturas(s['idContacto']), key=lambda f: (f['fecha'] or date.min, f['idCompra']), reverse=True)
+        if not facturas_:
+            continue
+        resto, ajustado, filas = deuda, False, []
+        for f in facturas_:
+            if resto <= 0:
+                ajustado = True
+                break
+            saldo = min(dinero(f['saldo']), resto)
+            ajustado = ajustado or saldo < dinero(f['saldo'])
+            resto -= saldo
+            vto = f.get('fechaVto') or f['fecha']
+            vto = vto.date() if hasattr(vto, 'date') else vto
+            if saldo < 1:
+                continue  # residuos de centavos (redondeos), no son deuda a pagar
+            filas.append({**f, 'idContacto': s['idContacto'], 'proveedor': s.get('razonSocial'), 'saldo': saldo,
+                          'disponible': max(Decimal(0), min(dinero(f['disponible']), saldo)),
+                          'vencimiento': vto, 'diasVencida': (hoy - vto).days if vto and vto < hoy else 0})
+        for fila in filas:
+            fila['ajustado'] = ajustado
+        resultado.extend(filas)
+    return sorted(resultado, key=lambda f: (f['vencimiento'] or date.max, f['proveedor'] or ''))
 
 
 def validar_facturas(body, excluir_op=None):

@@ -158,6 +158,7 @@ class FacturaPendiente(BaseModel):
     idCompra: int
     numero: str | None
     fecha: date | None
+    fechaVto: date | None = None
     moneda: str | None = None
     tc: float | None = None
     total: float
@@ -165,6 +166,14 @@ class FacturaPendiente(BaseModel):
     saldo: float
     reservado: float
     disponible: float
+
+
+class FacturaAPagar(FacturaPendiente):
+    idContacto: int
+    proveedor: str | None
+    vencimiento: date | None
+    diasVencida: int
+    ajustado: bool
 
 
 class Movimiento(BaseModel):

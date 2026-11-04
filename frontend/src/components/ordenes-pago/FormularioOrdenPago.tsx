@@ -16,13 +16,14 @@ export function ImporteInput({value,onChange,className=`${campo} w-36`,...rest}:
 }
 export const hoy=()=>new Date().toLocaleDateString('en-CA');
 
-export function FormularioOrdenPago({orden,cerrar,guardado}:{orden?:OrdenOP;cerrar:()=>void;guardado:()=>void}) {
- const [contacto,setContacto]=useState<number|null>(orden?.idContacto??null);
- const [nombre,setNombre]=useState<string|null>(orden?.proveedor??null);
+/** `inicial`: orden nueva que arranca desde "Facturas a pagar" con el proveedor y las facturas ya elegidas. */
+export function FormularioOrdenPago({orden,inicial,cerrar,guardado}:{orden?:OrdenOP;inicial?:{idContacto:number;proveedor:string|null;facturas:Record<number,number>};cerrar:()=>void;guardado:()=>void}) {
+ const [contacto,setContacto]=useState<number|null>(orden?.idContacto??inicial?.idContacto??null);
+ const [nombre,setNombre]=useState<string|null>(orden?.proveedor??inicial?.proveedor??null);
  const [fecha,setFecha]=useState(orden?.fecha??hoy());
  const [pago,setPago]=useState(orden?.fechaPago??hoy());
  const [nota,setNota]=useState(orden?.observaciones??'');
- const [seleccion,setSeleccion]=useState<Record<number,number>>(Object.fromEntries(orden?.facturas.map(f=>[f.idCompra,f.importe])??[]));
+ const [seleccion,setSeleccion]=useState<Record<number,number>>(orden?Object.fromEntries(orden.facturas.map(f=>[f.idCompra,f.importe])):inicial?.facturas??{});
  const [medios,setMedios]=useState<MedioOP[]>(orden?.medios??[{medio:'Transferencia',cuenta:'',importe:0}]);
  const [propuesta,setPropuesta]=useState<PropuestaRetencion|null>(orden?.retenciones?.length?{condicion:{retiene:true},lineas:orden.retenciones,total:orden.retencionGanancias,avisos:[]}:null);
  const facturasBody=()=>Object.entries(seleccion).map(([idCompra,importe])=>({idCompra:Number(idCompra),importe}));
@@ -43,8 +44,8 @@ export function FormularioOrdenPago({orden,cerrar,guardado}:{orden?:OrdenOP;cerr
    <label>Pago previsto <input required aria-label="Fecha de pago prevista" className={campo} type="date" value={pago} onChange={e=>{setPago(e.target.value);setPropuesta(null);}}/></label></div>
    {q.isFetching&&<p>Cargando facturas…</p>}{q.isError&&<p role="alert">{q.error.message}</p>}
    {contacto&&q.data?.length===0&&<p>No hay facturas en pesos con saldo pendiente para este proveedor.</p>}
-   <div className="overflow-auto max-h-80"><table className="w-full text-sm"><thead><tr><th>Factura</th><th>Fecha</th><th>Saldo</th><th>En otras órdenes</th><th>A pagar</th></tr></thead><tbody>
-    {q.data?.map(f=><tr key={f.idCompra} className="border-b"><td className="p-2"><label><input type="checkbox" aria-label={`Seleccionar ${f.numero}`} disabled={f.disponible<=0} checked={f.idCompra in seleccion} onChange={e=>cambiarSeleccion(v=>{const n={...v};if(e.target.checked)n[f.idCompra]=f.disponible;else delete n[f.idCompra];return n;})}/> {f.numero||'Sin número'}</label>{f.moneda==='Dolares'&&!!f.tc&&<span className="block text-xs text-slate-600">Factura en US$ · {formatMoneda(f.total/f.tc,'Dolares')} al TC {formatNumero(f.tc)}</span>}</td><td>{formatFecha(f.fecha)}</td><td>{formatMoneda(f.saldo)}</td><td>{formatMoneda(f.reservado)}</td><td><ImporteInput aria-label={`Importe ${f.numero}`} disabled={!(f.idCompra in seleccion)} value={seleccion[f.idCompra]} onChange={n=>cambiarSeleccion(v=>({...v,[f.idCompra]:n}))}/></td></tr>)}
+   <div className="overflow-auto max-h-80"><table className="w-full text-sm"><thead><tr><th>Factura</th><th>Fecha</th><th>Vencimiento</th><th>Saldo</th><th>En otras órdenes</th><th>A pagar</th></tr></thead><tbody>
+    {q.data?.map(f=><tr key={f.idCompra} className="border-b"><td className="p-2"><label><input type="checkbox" aria-label={`Seleccionar ${f.numero}`} disabled={f.disponible<=0} checked={f.idCompra in seleccion} onChange={e=>cambiarSeleccion(v=>{const n={...v};if(e.target.checked)n[f.idCompra]=f.disponible;else delete n[f.idCompra];return n;})}/> {f.numero||'Sin número'}</label>{f.moneda==='Dolares'&&!!f.tc&&<span className="block text-xs text-slate-600">Factura en US$ · {formatMoneda(f.total/f.tc,'Dolares')} al TC {formatNumero(f.tc)}</span>}</td><td>{formatFecha(f.fecha)}</td><td>{formatFecha(f.fechaVto??f.fecha)}</td><td>{formatMoneda(f.saldo)}</td><td>{formatMoneda(f.reservado)}</td><td><ImporteInput aria-label={`Importe ${f.numero}`} disabled={!(f.idCompra in seleccion)} value={seleccion[f.idCompra]} onChange={n=>cambiarSeleccion(v=>({...v,[f.idCompra]:n}))}/></td></tr>)}
    </tbody></table></div>
    <section className="rounded border border-slate-200 p-3 space-y-2" aria-label="Retención de Ganancias">
     <div className="flex flex-wrap items-center gap-3"><h3 className="font-semibold">Retención de Ganancias</h3>
