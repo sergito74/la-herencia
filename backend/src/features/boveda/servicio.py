@@ -362,7 +362,84 @@ def correr_portal(id_portal: int, origen: str, usuario: str | None) -> tuple[int
     except Exception:
         _soltar_lock(lock, id_portal)
         raise
-    return id_corrida, ejecutar(id_portal, origen, usuario, lock, id_corrida)
+    try:
+        return id_corrida, ejecutar_vigilado(id_portal, origen, usuario, id_corrida)
+    finally:
+        _soltar_lock(lock, id_portal)
+
+
+# --- Proceso vigilado (04/11/2026) ---------------------------------------------
+# Los portales se colgaban sin fin (Playwright esperando a una página o a Chrome que no responde) y trababan la
+# rutina entera. Ahora cada corrida es un proceso aparte: si no avanza en SIN_AVANCE segundos o pasa de LIMITE_TOTAL,
+# se mata con su navegador y la corrida queda cerrada con un aviso en palabras simples.
+SIN_AVANCE = 2 * 60
+# Esperas largas pero normales, avisadas por el conector con su paso: hasta este tiempo sin cortar.
+ESPERAS_LARGAS = {"Esperando el código": 210}
+LIMITE_TOTAL = 20 * 60
+_LOG_TRABAJADOR = Path(__file__).resolve().parents[3] / "logs" / "boveda-trabajador.log"
+
+
+def _matar_arbol(pid: int) -> None:
+    import subprocess
+
+    subprocess.run(["taskkill", "/PID", str(pid), "/T", "/F"], capture_output=True)
+    # Chrome común (Allianz/Movistar) puede quedar suelto de su padre: se cierra por su perfil propio.
+    subprocess.run(["powershell", "-NoProfile", "-Command",
+                    "Get-CimInstance Win32_Process -Filter \"Name='chrome.exe'\" | "
+                    "Where-Object { $_.CommandLine -like '*boveda-perfiles*' } | "
+                    "ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }"],
+                   capture_output=True)
+
+
+def ejecutar_vigilado(id_portal: int, origen: str, usuario: str | None, id_corrida: int) -> str:
+    """Corre `trabajador` en un proceso aparte y lo vigila. Devuelve el estado final de la corrida."""
+    import subprocess
+    import sys
+
+    _LOG_TRABAJADOR.parent.mkdir(parents=True, exist_ok=True)
+    backend = Path(__file__).resolve().parents[3]
+    with open(_LOG_TRABAJADOR, "ab") as salida:
+        proc = subprocess.Popen(
+            [sys.executable, "-m", "src.features.boveda.trabajador", str(id_portal), str(id_corrida), origen,
+             usuario or ""],
+            cwd=str(backend), stdout=salida, stderr=salida,
+            creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+        )
+        inicio = ultimo_cambio = time.monotonic()
+        huella = None
+        motivo = None
+        while proc.poll() is None:
+            time.sleep(5)
+            ahora = time.monotonic()
+            try:
+                c = repository.obtener_corrida(id_corrida) or {}
+                nueva = (c.get("paso"), c.get("avanceHecho"), c.get("nuevos"), c.get("existentes"))
+            except Exception:
+                nueva = huella
+            if nueva != huella:
+                huella, ultimo_cambio = nueva, ahora
+            tolerancia = next((seg for pre, seg in ESPERAS_LARGAS.items() if str(huella[0] if huella else "").startswith(pre)),
+                              SIN_AVANCE)
+            if ahora - ultimo_cambio > tolerancia:
+                motivo = f"El portal dejó de responder ({huella[0] or 'sin avance'}): se cortó y se reintenta en la próxima"
+            elif ahora - inicio > LIMITE_TOTAL:
+                motivo = f"La sincronización pasó de {LIMITE_TOTAL // 60} minutos: se cortó y se reintenta en la próxima"
+            if motivo:
+                log.warning("Bóveda, portal %s: corrida %s cortada: %s", id_portal, id_corrida, motivo)
+                _matar_arbol(proc.pid)
+                try:
+                    proc.wait(30)
+                except Exception:
+                    pass
+                break
+    c = repository.obtener_corrida(id_corrida) or {}
+    if c.get("estado") == "en_curso":  # cortada, o el proceso murió sin cerrarla
+        repository.cerrar_corrida(id_corrida, "error", mensaje=motivo or "La sincronización se interrumpió: se reintenta en la próxima",
+                                  nuevos=c.get("nuevos") or 0, existentes=c.get("existentes") or 0,
+                                  cargados=c.get("cargados") or 0, pendientes=c.get("pendientes") or 0)
+        repository.auditar("corrida", usuario, id_portal=id_portal, detalle=f"{origen} #{id_corrida}: cortada")
+        return "error"
+    return c.get("estado") or "error"
 
 
 def correr_varios_en_segundo_plano(ids: list[int], usuario: str | None) -> list[int]:

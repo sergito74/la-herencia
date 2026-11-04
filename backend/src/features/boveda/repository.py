@@ -378,6 +378,14 @@ def marcar_incompletas(id_portal: int) -> int:
     )
 
 
+def cerrar_huerfanas() -> int:
+    """Al arrancar el backend ningún proceso de sincronización está vivo: lo que quedó 'en curso' se cerró a medias.
+    Sin esto, una corrida huérfana hacía saltear el portal en cada rutina (04/11/2026)."""
+    return execute_write(
+        "UPDATE dbo.Portales_Corridas SET Estado = 'incompleta', Fin = SYSDATETIME(), Paso = NULL, "
+        "Mensaje = COALESCE(Mensaje, N'Se interrumpió al cerrarse el sistema') WHERE Estado = 'en_curso'", ())
+
+
 def corrida_en_curso(id_portal: int) -> dict | None:
     return fetch_one(
         f"SELECT TOP 1 {_COLS_CORRIDA} FROM dbo.Portales_Corridas c JOIN dbo.Portales p ON p.IdPortal = c.IdPortal "

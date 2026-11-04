@@ -256,8 +256,11 @@ class ConectorAllianz(_ChromeComun):
                 codigo = lambda: p.locator("input[name=code]").count() > 0
                 _esperar(p, lambda: codigo() or "auth.allianz" not in p.url, 120, "Allianz no respondió al ingreso")
                 if codigo():
+                    from src.features.boveda import conectores as _c
+                    _c.paso("Esperando el código de Allianz por mail…")
                     p.fill("input[name=code]", esperar_codigo("noreply@allianz.com.ar", r"Tu código es (\d{6})",
                                                               pedido))
+                    _c.paso("Código recibido, ingresando…")
                     p.locator("button[type=submit], #btnConfirm").first.click()
                 _esperar(p, lambda: "auth.allianz" not in p.url, 120, "Allianz no completó el ingreso")
                 if "/login" in p.url or p.locator("input[type=password]").count():

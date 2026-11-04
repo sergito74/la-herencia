@@ -91,6 +91,12 @@ def _bucle() -> None:
         rutina_repo.marcar_incompletas()  # una corrida de la rutina que quedó a medias al cerrarse el sistema
     except Exception:
         log.exception("Rutina: no se pudieron cerrar las corridas incompletas")
+    try:
+        from src.features.boveda import repository as boveda_repo
+
+        boveda_repo.cerrar_huerfanas()
+    except Exception:
+        log.exception("Bóveda: no se pudieron cerrar las corridas huérfanas")
     pausa = threading.Event()
     while True:
         try:

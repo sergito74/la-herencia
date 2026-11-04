@@ -114,6 +114,18 @@ class Conector(Protocol):
 CONECTORES: dict[str, Conector] = {}
 
 
+# Paso visible de la corrida, para que el vigilante sepa que el conector sigue vivo en esperas largas (04/11/2026).
+_informar = None
+
+
+def paso(texto: str) -> None:
+    if _informar is not None:
+        try:
+            _informar(texto)
+        except Exception:
+            pass
+
+
 def registrar(conector: Conector) -> Conector:
     CONECTORES[conector.codigo] = conector
     return conector
