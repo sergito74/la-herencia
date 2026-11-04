@@ -57,7 +57,7 @@ def obtener(id_):
 
 def facturas(id_contacto, excluir_op=None, incluir_saldadas=False):
     # 046 T027: documentos en US$ en pesos al TC del comprobante (regla usd-tc-comprobante), como la fuente unificada.
-    rows = fetch_all("SELECT TOP (2000) c.IdDeuda idCompra,c.[Nro Documento] numero,c.Fecha fecha,c.[Fecha Vto] fechaVto,c.Moneda moneda,"
+    rows = fetch_all("SELECT TOP (2000) c.IdDeuda idCompra,c.[Nro Documento] numero,c.Fecha fecha,c.Moneda moneda,"
                      "CASE WHEN c.Moneda='Dolares' THEN c.[Tipo de Cambio] END tc,"
                      "(t.GranTotal-ISNULL(pa.cp,0))*CASE WHEN c.Moneda='Dolares' THEN c.[Tipo de Cambio] ELSE 1 END total "
                      "FROM dbo.Compras c "
@@ -69,6 +69,16 @@ def facturas(id_contacto, excluir_op=None, incluir_saldadas=False):
                      "OR (c.Moneda='Dolares' AND c.[Tipo de Cambio]>1)) "
                      "ORDER BY c.Fecha DESC,c.IdDeuda DESC", (id_contacto,))
     paid = fuente.pagado_de_documentos([('CompraDeuda', f['idCompra']) for f in rows])
+    # Condición de pago (03/11/2026): "A Plazo" guarda sus fechas en [Vencimiento Compras] (una o varias cuotas);
+    # "Contado" no tiene fechas y vence en la fecha de la factura. La columna [Fecha Vto] de Compras es heredada.
+    cuotas = defaultdict(list)
+    ids = [f['idCompra'] for f in rows]
+    for i in range(0, len(ids), 900):
+        parte = ids[i:i + 900]
+        for v in fetch_all("SELECT IdCompra id,[Fecha de vencimiento] f FROM dbo.[Vencimiento Compras] WHERE IdCompra IN ("
+                           + ",".join("?" * len(parte)) + ") ORDER BY [Fecha de vencimiento]", tuple(parte)):
+            if v['f']:
+                cuotas[v['id']].append(v['f'])
     reserved = {f['idCompra']: dinero(f['importe']) for f in fetch_all(
         "SELECT d.IdCompra idCompra,SUM(d.Importe) importe FROM dbo.OrdenesPago_Detalle d "
         "JOIN dbo.OrdenesPago o ON o.IdOrdenPago=d.IdOrdenPago WHERE o.Estado='Emitida' "
@@ -78,6 +88,16 @@ def facturas(id_contacto, excluir_op=None, incluir_saldadas=False):
         p = dinero(paid[('CompraDeuda', row['idCompra'])])
         saldo = dinero(row['total'])-p
         reserva = reserved.get(row['idCompra'], Decimal(0))
+        fechas = cuotas.get(row['idCompra'])
+        if fechas:
+            # Varias cuotas sin importe propio: se reparten en partes iguales y vence la primera no cubierta por lo pagado.
+            total = dinero(row['total'])
+            n = int(p * len(fechas) / total) if total > 0 else 0
+            row['fechaVto'] = fechas[min(n, len(fechas) - 1)]
+            row['condicion'] = 'A Plazo'
+        else:
+            row['fechaVto'] = row['fecha']
+            row['condicion'] = 'Contado'
         if saldo > 0 or incluir_saldadas:
             result.append({**row, 'pagado': p, 'saldo': saldo, 'reservado': reserva,
                            'disponible': max(Decimal(0), saldo-reserva)})
@@ -105,7 +125,7 @@ def _pendientes():
     con la cuenta en cero). Para no mostrar deudas que no existen, por proveedor se muestran solo las facturas que
     explican el saldo real de su cuenta corriente: de la más nueva a la más vieja (lo viejo es lo primero que se pagó)
     hasta cubrir la deuda; las que quedan fuera se dan por pagadas y el proveedor se marca `ajustado`.
-    Vencimiento: la fecha de vencimiento de la compra, o la fecha de la factura si no tiene."""
+    Vencimiento: el de la condición de pago de la compra ([Vencimiento Compras] si es A Plazo; la fecha si es Contado)."""
     from src.features.cuentas_corrientes import repository as cuentas
 
     hoy = date.today()
@@ -125,7 +145,7 @@ def _pendientes():
             saldo = min(dinero(f['saldo']), resto)
             ajustado = ajustado or saldo < dinero(f['saldo'])
             resto -= saldo
-            vto = f.get('fechaVto') or f['fecha']
+            vto = f.get('fechaVto') or f['fecha']  # cuota pendiente (A Plazo) o fecha de la factura (Contado)
             vto = vto.date() if hasattr(vto, 'date') else vto
             if saldo < 1:
                 continue  # residuos de centavos (redondeos), no son deuda a pagar

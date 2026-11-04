@@ -159,6 +159,7 @@ class FacturaPendiente(BaseModel):
     numero: str | None
     fecha: date | None
     fechaVto: date | None = None
+    condicion: str | None = None
     moneda: str | None = None
     tc: float | None = None
     total: float

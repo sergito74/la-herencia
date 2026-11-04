@@ -62,7 +62,7 @@ export function FacturasAPagar({ idContacto, crearOrden }: { idContacto: number 
             const tildada = sel?.idContacto === f.idContacto && f.idCompra in sel.facturas;
             return <tr key={f.idCompra} className={`border-t ${tildada ? 'bg-emerald-50' : ''}`}>
               <td className="p-2"><input type="checkbox" aria-label={`Seleccionar ${f.numero ?? 'factura'} de ${f.proveedor ?? ''}`} disabled={f.disponible <= 0} checked={!!tildada} onChange={e => tildar(f, e.target.checked)} /></td>
-              <td className={`p-2 ${f.diasVencida > 0 ? 'text-red-700 font-medium' : ''}`}>{formatFecha(f.vencimiento)}{f.diasVencida > 0 && <span className="block text-xs">vencida hace {f.diasVencida} días</span>}</td>
+              <td className={`p-2 ${f.diasVencida > 0 ? 'text-red-700 font-medium' : ''}`}>{formatFecha(f.vencimiento)}<span className="block text-xs text-slate-600">{f.condicion === 'Contado' ? 'Contado' : 'A plazo'}</span>{f.diasVencida > 0 && <span className="block text-xs">vencida hace {f.diasVencida} días</span>}</td>
               <td>{f.proveedor}{f.ajustado && <span className="block text-xs text-amber-800" title="Hay facturas con pagos sin vincular: se muestran solo las que explican el saldo de la cuenta">ajustado al saldo de la cuenta</span>}</td>
               <td><a className="underline" href={`/compras/${f.idCompra}/editar`}>{f.numero || 'Sin número'}</a></td>
               <td>{formatFecha(f.fecha)}</td>
@@ -75,6 +75,6 @@ export function FacturasAPagar({ idContacto, crearOrden }: { idContacto: number 
       </table>
       {!q.isLoading && filas.length === 0 && <p className="p-6 text-slate-600">No hay facturas a pagar con estos filtros.</p>}
     </section>
-    <p className="text-xs text-slate-600">Importes en pesos (las facturas en dólares al tipo de cambio de la factura). El saldo de cada proveedor coincide con su cuenta corriente; si una factura no tiene vencimiento cargado se toma su fecha.</p>
+    <p className="text-xs text-slate-600">Importes en pesos (las facturas en dólares al tipo de cambio de la factura). El saldo de cada proveedor coincide con su cuenta corriente; el vencimiento es el de la condición de pago (A plazo: su fecha de vencimiento; Contado: la fecha de la factura).</p>
   </section>;
 }
