@@ -175,7 +175,9 @@ class FacturaAPagar(FacturaPendiente):
     vencimiento: date | None
     diasVencida: int
     ajustado: bool
-    estado: str = 'a pagar'  # 'a pagar' | 'tarjeta' | 'diferencia'
+    estado: str = 'a pagar'  # 'a pagar' | 'tarjeta'
+    saldoUsd: float | None = None
+    origen: str = 'Compras'  # o Impuestos / Remuneraciones / Ajuste Interno
     medioHabitual: str | None = None
     suspendida: bool = False
     difCuenta: float = 0  # cuenta corriente − suma de facturas del proveedor (<0: pagos sin imputar)
