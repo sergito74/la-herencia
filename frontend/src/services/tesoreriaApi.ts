@@ -7,7 +7,7 @@
  * `apiClient`'s GET-only helper instead of weakening that invariant.
  */
 
-import { API_BASE_URL, apiGet, ApiError } from "@/services/apiClient";
+import { API_BASE_URL, apiGet, ApiError, apiPostForm } from "@/services/apiClient";
 
 /** 023-conciliacion-tesoreria + 024-traspasos-internos-tesoreria: estado
  * unificado de un movimiento (nunca se guarda, se recalcula siempre —
@@ -268,3 +268,34 @@ export function urlExportarValoresPropios(params: MovimientosParams = {}): strin
   if (params.fechaHasta) url.searchParams.set("fechaHasta", params.fechaHasta);
   return url.toString();
 }
+
+// ------------------------------------------------------------------ extractos en PDF (04/11/2026)
+
+export interface ExtractoPdfMovimiento {
+  fecha: string;
+  descripcion: string;
+  importe: number;
+  saldo: number | null;
+  contacto: string | null;
+  sinContacto: boolean;
+  detalle: string | null;
+}
+
+export interface ExtractoPdfResultado {
+  banco: string;
+  nuevos: ExtractoPdfMovimiento[];
+  yaCargados: number;
+  grabados?: number;
+}
+
+function formExtracto(archivo: File): FormData {
+  const f = new FormData();
+  f.append("archivo", archivo);
+  return f;
+}
+
+export const previsualizarExtractoPdf = (archivo: File) =>
+  apiPostForm<ExtractoPdfResultado>("/api/tesoreria/extractos-pdf/previsualizar", formExtracto(archivo));
+
+export const confirmarExtractoPdf = (archivo: File) =>
+  apiPostForm<ExtractoPdfResultado>("/api/tesoreria/extractos-pdf/confirmar", formExtracto(archivo));

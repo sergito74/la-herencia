@@ -13,7 +13,7 @@ from starlette.concurrency import run_in_threadpool
 
 from src.db.pagination import normalize_pagination
 from src.features.conciliacion_tesoreria import repository as conciliacion_repository
-from src.features.tesoreria import confirmacion_carga, estado_resolucion, excel_import, exportacion, matching, repository
+from src.features.tesoreria import confirmacion_carga, estado_resolucion, extractos_pdf, excel_import, exportacion, matching, repository
 from src.features.tesoreria.schemas import (
     MEDIOS,
     CargasResponse,
@@ -151,6 +151,27 @@ async def confirmar_excel(archivo: UploadFile) -> ExcelConfirmacionResponse:
     if not resultado["valido"]:
         raise HTTPException(status_code=422, detail=resultado["errores"])
     return ExcelConfirmacionResponse(**resultado)
+
+
+async def _extracto_pdf(fn, archivo: UploadFile) -> dict:
+    contenido = await archivo.read()
+    if not contenido.startswith(b"%PDF"):
+        raise HTTPException(status_code=422, detail=["El archivo no es un PDF."])
+    try:
+        return await run_in_threadpool(fn, archivo.filename or "extracto.pdf", contenido)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=exc.args[0]) from exc
+
+
+@router.post("/extractos-pdf/previsualizar")
+async def previsualizar_extracto_pdf(archivo: UploadFile) -> dict:
+    """Resumen PDF de Galicia o del BNA: movimientos nuevos con su contacto propuesto (no escribe)."""
+    return await _extracto_pdf(extractos_pdf.previsualizar, archivo)
+
+
+@router.post("/extractos-pdf/confirmar")
+async def confirmar_extracto_pdf(archivo: UploadFile) -> dict:
+    return await _extracto_pdf(extractos_pdf.confirmar, archivo)
 
 
 @router.get("/valores-propios/exportar")

@@ -5,6 +5,7 @@ import { Suspense, useState } from "react";
 
 import { MEDIO_LABELS, MovimientosPorMedio } from "@/components/tesoreria/MovimientosPorMedio";
 import { CargaExcel } from "@/components/tesoreria/CargaExcel";
+import { CargaExtractoPdf } from "@/components/tesoreria/CargaExtractoPdf";
 import { NuevosParaRevisar } from "@/components/documentos-nuevos/NuevosParaRevisar";
 import { BackLink } from "@/components/ui/BackLink";
 import type { Medio } from "@/services/tesoreriaApi";
@@ -61,6 +62,10 @@ export default function TesoreriaPage() {
       </div>
 
       <div className="mt-8">
+        <CargaExtractoPdf />
+      </div>
+
+      <div className="mt-4">
         <CargaExcel />
       </div>
     </main>
