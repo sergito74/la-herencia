@@ -24,7 +24,8 @@ export const vincularTrabajo = (id: number, idSalario: number, importe: number) 
 export const desvincularTrabajo = (id: number, idSalario: number) => apiDelete(`${base}/${id}/vinculos/${idSalario}`);
 
 // Pagos (04/11/2026): efectivo desde una caja (gasto sin comprobante) o transferencia ya cargada del banco.
-export interface PagoTrabajoItem { idPago: number; medio: "caja" | "galicia" | "bna"; caja: string | null; fecha: string; importe: number }
+export interface PagoTrabajoItem { idPago: number; medio: "caja" | "galicia" | "bna" | "socio"; caja: string | null; fecha: string; importe: number; socio?: string | null; banco?: string | null }
+export interface PagoSocioInput { idSocio: number; fecha: string; importe: number; medio: "Banco Galicia" | "Banco Nación" | "Otro banco" | "Efectivo del socio" }
 export interface PagoCajaInput {
   caja: "giamigli-sa" | "campo-chica" | "condominio-lsc"; fecha: string; importe: number; cuenta: "A" | "B";
   idRubro: number; idCentroCostos: number; idCampania: number | null; previewVersion?: string; advertenciasAceptadas?: string[];
@@ -36,3 +37,4 @@ export const pagarTrabajoCaja = (id: number, d: PagoCajaInput) => apiPost<Trabaj
 export const transferenciasTrabajo = (id: number) => apiGet<TransferenciaTrabajo[]>(`${base}/${id}/pagos/transferencias`);
 export const pagarTrabajoTransferencia = (id: number, medio: string, idMovimiento: number) => apiPost<Trabajo>(`${base}/${id}/pagos/transferencia`, { medio, idMovimiento });
 export const quitarPagoTrabajo = (id: number, idPago: number) => apiDelete(`${base}/${id}/pagos/${idPago}`);
+export const pagarTrabajoSocio = (id: number, d: PagoSocioInput) => apiPost<Trabajo>(`${base}/${id}/pagos/socio`, d);

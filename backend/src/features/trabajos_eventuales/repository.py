@@ -26,8 +26,10 @@ def total_trabajo(dias, jornal, viaticos=0, redondeo=0):
 
 BASE = """FROM dbo.TrabajosEventuales t JOIN dbo.Contactos c ON c.IdContacto=t.IdContacto
 OUTER APPLY (SELECT SUM(v.Importe) AS Vinculado FROM dbo.TrabajosEventualesVinculos v WHERE v.IdTrabajo=t.IdTrabajo) s
-OUTER APPLY (SELECT COUNT(*) AS Hay, SUM(CASE WHEN p.Medio<>'caja' OR o.Estado<>'Anulada' THEN p.Importe END) AS Pagado
+OUTER APPLY (SELECT COUNT(*) AS Hay, SUM(CASE WHEN (p.Medio<>'caja' OR o.Estado<>'Anulada')
+                    AND (p.Medio<>'socio' OR ms.Anulada=0) THEN p.Importe END) AS Pagado
              FROM dbo.TrabajosEventualesPagos p LEFT JOIN dbo.OperacionesCajaEfectivo o ON o.IdOperacion=p.IdOperacion
+             LEFT JOIN dbo.MovimientosCuentaSocio ms ON ms.IdMovimiento=p.IdMovimientoSocio
              WHERE p.IdTrabajo=t.IdTrabajo) pg"""
 COLS = """t.IdTrabajo AS idTrabajo,t.IdContacto AS idContacto,c.[Razon Social] AS trabajador,t.Fecha AS fecha,
 t.Descripcion AS descripcion,t.Dias AS dias,t.Jornal AS jornal,t.Viaticos AS viaticos,t.Redondeo AS redondeo,
@@ -172,12 +174,14 @@ def _dia(v):
 
 PAGOS_VIGENTES = """FROM dbo.TrabajosEventualesPagos p
 LEFT JOIN dbo.OperacionesCajaEfectivo o ON o.IdOperacion=p.IdOperacion
-WHERE p.IdTrabajo=? AND (p.Medio<>'caja' OR o.Estado<>'Anulada')"""
+LEFT JOIN dbo.MovimientosCuentaSocio ms ON ms.IdMovimiento=p.IdMovimientoSocio
+LEFT JOIN dbo.Socios so ON so.IdSocio=ms.IdSocio
+WHERE p.IdTrabajo=? AND (p.Medio<>'caja' OR o.Estado<>'Anulada') AND (p.Medio<>'socio' OR ms.Anulada=0)"""
 
 
 def pagos(id_trabajo) -> list[dict]:
     return fetch_all("SELECT p.IdPagoTrabajo AS idPago,p.Medio AS medio,p.Caja AS caja,p.Fecha AS fecha,p.Importe AS importe,"
-                     "p.IdOperacion AS idOperacion,p.IdMovimientoBanco AS idMovimientoBanco " + PAGOS_VIGENTES +
+                     "p.IdOperacion AS idOperacion,p.IdMovimientoBanco AS idMovimientoBanco,so.Nombre AS socio,ms.Medio AS banco " + PAGOS_VIGENTES +
                      " ORDER BY p.Fecha,p.IdPagoTrabajo", (id_trabajo,))
 
 
@@ -272,7 +276,37 @@ def quitar_pago(id_trabajo, id_pago, usuario):
         return None
     if p['Medio'] == 'caja':
         raise ValueError("El pago en efectivo se anula desde la caja, para que se reponga el saldo")
+    if p['Medio'] == 'socio':
+        raise ValueError("El pago del socio se anula desde la cuenta del socio")
     execute_write("DELETE FROM dbo.TrabajosEventualesPagos WHERE IdPagoTrabajo=?", (id_pago,))
     _actualizar_estado(id_trabajo)
     auditar(id_trabajo, "quitar-pago", {"idPago": id_pago}, usuario)
+    return obtener(id_trabajo)
+
+
+def pagar_por_socio(id_trabajo, datos, usuario):
+    """Transferencia desde la cuenta personal de un socio (04/11/2026): a favor del socio en su cuenta (Haber, valuado
+    en US$ y kg como los demás asientos) y vinculado al trabajador en PagosSocioProveedor, como el sueldo de Irma
+    pagado por Lucy. La cuenta de Giamigli no se toca."""
+    from src.db.connection import execute_write_transaction
+    from src.features.cuentas_socios.repository import _insert_asiento
+
+    t = obtener(id_trabajo)
+    if not t:
+        return None
+    if dinero(datos.importe) > dinero(t['total']) - dinero(t['pagado']):
+        raise ValueError("El importe supera lo que falta pagar del trabajo")
+    f = _dia(t['fecha'])
+    motivo = f"{t['trabajador']} · Trabajo eventual {f:%d/%m/%Y}: {t['descripcion']}"[:250]
+    res = execute_write_transaction([
+        _insert_asiento(datos.idSocio, "haber", float(datos.importe), datos.fecha, datos.medio, motivo, usuario),
+        lambda r: ("INSERT INTO dbo.AuditoriaReflejoSocio (Accion, IdMovimiento, IdSocio, Usuario, Detalle) VALUES (?, ?, ?, ?, ?)",
+                   ("Devolucion", r[0], datos.idSocio, usuario, f"Pago de trabajo eventual #{id_trabajo}")),
+        lambda r: ("INSERT INTO dbo.PagosSocioProveedor (IdMovimientoSocio, IdContacto, Criterio) VALUES (?, ?, ?)",
+                   (r[0], t['idContacto'], "trabajo-eventual")),
+        lambda r: ("INSERT INTO dbo.TrabajosEventualesPagos (IdTrabajo,Medio,IdMovimientoSocio,Fecha,Importe,Usuario) "
+                   "VALUES (?,?,?,?,?,?)", (id_trabajo, "socio", r[0], datos.fecha, datos.importe, usuario[:100])),
+    ])
+    _actualizar_estado(id_trabajo)
+    auditar(id_trabajo, "pago-socio", {"idMovimientoSocio": res[0], **datos.model_dump(mode="json")}, usuario)
     return obtener(id_trabajo)

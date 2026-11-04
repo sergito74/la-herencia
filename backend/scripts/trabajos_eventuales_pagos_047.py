@@ -17,8 +17,22 @@ SQL = """IF OBJECT_ID('dbo.TrabajosEventualesPagos','U') IS NULL CREATE TABLE db
     CONSTRAINT CK_TrabajosEventualesPagos_Medio CHECK (
         (Medio='caja' AND IdOperacion IS NOT NULL) OR (Medio IN ('galicia','bna') AND IdMovimientoBanco IS NOT NULL)))"""
 
+# 04/11/2026: las transferencias las hacen los socios desde sus cuentas, no Giamigli -> medio 'socio'.
+SQL_SOCIO = [
+    "IF COL_LENGTH('dbo.TrabajosEventualesPagos','IdMovimientoSocio') IS NULL "
+    "ALTER TABLE dbo.TrabajosEventualesPagos ADD IdMovimientoSocio int NULL",
+    "IF OBJECT_ID('dbo.CK_TrabajosEventualesPagos_Medio','C') IS NOT NULL "
+    "ALTER TABLE dbo.TrabajosEventualesPagos DROP CONSTRAINT CK_TrabajosEventualesPagos_Medio",
+    "ALTER TABLE dbo.TrabajosEventualesPagos ADD CONSTRAINT CK_TrabajosEventualesPagos_Medio CHECK ("
+    "(Medio='caja' AND IdOperacion IS NOT NULL) OR (Medio IN ('galicia','bna') AND IdMovimientoBanco IS NOT NULL) "
+    "OR (Medio='socio' AND IdMovimientoSocio IS NOT NULL))",
+]
+
 if __name__ == "__main__":
     with get_connection() as conn:
         conn.cursor().execute(SQL)
         conn.commit()
+        for sql in SQL_SOCIO:
+            conn.cursor().execute(sql)
+            conn.commit()
     print("ok")

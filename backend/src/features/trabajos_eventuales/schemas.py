@@ -90,6 +90,8 @@ class PagoTrabajo(BaseModel):
     importe: float
     idOperacion: int | None = None
     idMovimientoBanco: int | None = None
+    socio: str | None = None
+    banco: str | None = None
 
 
 class PagoCajaInput(BaseModel):
@@ -116,6 +118,14 @@ class Transferencia(BaseModel):
     fecha: date
     importe: float
     detalle: str | None = None
+
+
+
+class PagoSocioInput(BaseModel):
+    idSocio: int = Field(gt=0)
+    fecha: date
+    importe: Decimal = Field(gt=0, max_digits=19, decimal_places=2)
+    medio: Literal["Banco Galicia", "Banco Nación", "Otro banco", "Efectivo del socio"]
 
 
 Trabajo.model_rebuild()

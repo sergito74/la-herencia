@@ -4,9 +4,10 @@ import { useQuery } from "@tanstack/react-query";
 import { MoneyInput } from "@/components/ui/MoneyInput";
 import { SoloLectura } from "@/components/auth/SoloLectura";
 import { fetchFiltrosCompras } from "@/services/comprasApi";
+import { fetchSocios } from "@/services/cuentasSociosApi";
 import { formatFecha, formatMoneda } from "@/lib/format";
-import { pagarTrabajoCaja, pagarTrabajoTransferencia, previsualizarPagoTrabajo, quitarPagoTrabajo,
-  transferenciasTrabajo, type PagoCajaInput, type PreviewPagoTrabajo, type Trabajo } from "@/services/trabajosEventualesApi";
+import { pagarTrabajoCaja, pagarTrabajoSocio, previsualizarPagoTrabajo, quitarPagoTrabajo,
+  type PagoCajaInput, type PagoSocioInput, type PreviewPagoTrabajo, type Trabajo } from "@/services/trabajosEventualesApi";
 
 const input = "rounded border border-border bg-white px-2 py-1.5 text-sm";
 const boton = "rounded border border-border px-3 py-1.5 text-sm hover:bg-surface-sunken disabled:opacity-50";
@@ -16,16 +17,17 @@ const BANCO: Record<string, string> = { galicia: "Galicia", bna: "Banco Nación"
 const hoy = () => new Date().toISOString().slice(0, 10);
 
 /** Pago de un trabajo eventual (04/11/2026): en efectivo sale de una caja como gasto sin comprobante (descuenta su
- * saldo); por transferencia se vincula al movimiento del banco ya cargado. El recibo no es obligatorio. */
+ * saldo); si lo pagó un socio desde su cuenta, queda a favor del socio en su cuenta. El recibo no es obligatorio. */
 export function PagoTrabajo({ t, onCambio }: { t: Trabajo; onCambio: () => Promise<void> }) {
   const falta = Math.max(0, Math.round((t.total - (t.pagado ?? 0)) * 100) / 100);
-  const [modo, setModo] = useState<"" | "efectivo" | "transferencia">("");
+  const [modo, setModo] = useState<"" | "efectivo" | "socio">("");
+  const [socio, setSocio] = useState<PagoSocioInput>({ idSocio: 0, fecha: hoy(), importe: falta, medio: "Banco Galicia" });
   const [datos, setDatos] = useState<PagoCajaInput>({ caja: "giamigli-sa", fecha: hoy(), importe: falta, cuenta: "B", idRubro: 0, idCentroCostos: 0, idCampania: null });
   const [vista, setVista] = useState<PreviewPagoTrabajo | null>(null);
   const [error, setError] = useState("");
   const [ocupado, setOcupado] = useState(false);
   const catalogos = useQuery({ queryKey: ["compras-filtros"], queryFn: fetchFiltrosCompras, enabled: modo === "efectivo" });
-  const transfer = useQuery({ queryKey: ["trabajo-transferencias", t.idTrabajo], queryFn: () => transferenciasTrabajo(t.idTrabajo), enabled: modo === "transferencia" });
+  const socios = useQuery({ queryKey: ["cuentas-socios"], queryFn: fetchSocios, enabled: modo === "socio" });
   const poner = (c: Partial<PagoCajaInput>) => { setDatos(d => ({ ...d, ...c })); setVista(null); };
 
   async function correr(fn: () => Promise<unknown>, cerrar = true) {
@@ -45,15 +47,15 @@ export function PagoTrabajo({ t, onCambio }: { t: Trabajo; onCambio: () => Promi
   return <div className="space-y-2">
     <h3 className="font-medium">Pagos</h3>
     {t.pagos?.length ? t.pagos.map(p => <div key={p.idPago} className="flex flex-wrap items-center gap-3 text-sm">
-      <span>{formatFecha(p.fecha)} · {p.medio === "caja" ? `Efectivo, caja ${NOMBRE_CAJA[p.caja ?? ""] ?? p.caja}` : `Transferencia ${BANCO[p.medio] ?? p.medio}`}</span>
+      <span>{formatFecha(p.fecha)} · {p.medio === "caja" ? `Efectivo, caja ${NOMBRE_CAJA[p.caja ?? ""] ?? p.caja}` : p.medio === "socio" ? `Pagado por ${p.socio ?? "un socio"}${p.banco ? ` (${p.banco})` : ""}` : `Transferencia ${BANCO[p.medio] ?? p.medio}`}</span>
       <strong>{formatMoneda(p.importe)}</strong>
-      {p.medio !== "caja" && <SoloLectura><button disabled={ocupado} className={boton} onClick={() => correr(() => quitarPagoTrabajo(t.idTrabajo, p.idPago), false)}>Quitar</button></SoloLectura>}
+      {(p.medio === "galicia" || p.medio === "bna") && <SoloLectura><button disabled={ocupado} className={boton} onClick={() => correr(() => quitarPagoTrabajo(t.idTrabajo, p.idPago), false)}>Quitar</button></SoloLectura>}
     </div>) : <p className="text-sm text-ink-secondary">Sin pagos registrados.</p>}
-    {t.pagos?.some(p => p.medio === "caja") && <p className="text-xs text-ink-secondary">Un pago en efectivo se anula desde la caja, así se repone el saldo.</p>}
+    {t.pagos?.some(p => p.medio === "caja" || p.medio === "socio") && <p className="text-xs text-ink-secondary">Un pago en efectivo se anula desde la caja; el de un socio, desde la cuenta del socio.</p>}
 
     {falta > 0 && <SoloLectura><div className="flex flex-wrap gap-2">
       <button className={boton} onClick={() => setModo(modo === "efectivo" ? "" : "efectivo")}>Pagar en efectivo</button>
-      <button className={boton} onClick={() => setModo(modo === "transferencia" ? "" : "transferencia")}>Pagado por transferencia</button>
+      <button className={boton} onClick={() => setModo(modo === "socio" ? "" : "socio")}>Pagado por un socio</button>
       <span className="self-center text-sm">Falta pagar {formatMoneda(falta)}</span>
     </div></SoloLectura>}
 
@@ -75,13 +77,15 @@ export function PagoTrabajo({ t, onCambio }: { t: Trabajo; onCambio: () => Promi
       </div>}
     </div>}
 
-    {modo === "transferencia" && <div className="space-y-2 rounded border border-border p-3 text-sm">
-      {transfer.isLoading && <p>Buscando transferencias…</p>}
-      {transfer.data && !transfer.data.length && <p>No hay transferencias del banco a nombre de {t.trabajador} desde 15 días antes del trabajo. Si se pagó por transferencia y todavía no está, aparece al cargar el extracto.</p>}
-      {transfer.data?.map(m => <div key={`${m.medio}-${m.id}`} className="flex flex-wrap items-center gap-3">
-        <span>{formatFecha(m.fecha)} · {BANCO[m.medio] ?? m.medio} · {m.detalle}</span><strong>{formatMoneda(m.importe)}</strong>
-        <button className={boton} disabled={ocupado} onClick={() => correr(() => pagarTrabajoTransferencia(t.idTrabajo, m.medio, m.id))}>Es este pago</button>
-      </div>)}
+    {modo === "socio" && <div className="space-y-2 rounded border border-border p-3 text-sm">
+      <p className="text-ink-secondary">Para cuando un socio le pagó al trabajador desde su cuenta personal: queda a favor del socio en su cuenta.</p>
+      <div className="grid gap-2 md:grid-cols-4">
+        <label>Socio<select className={`${input} block w-full`} value={socio.idSocio} onChange={e => setSocio(s => ({ ...s, idSocio: Number(e.target.value) }))}><option value={0}>Elegir</option>{socios.data?.socios.map(x => <option key={x.idSocio} value={x.idSocio}>{x.nombre}</option>)}</select></label>
+        <label>Fecha<input type="date" className={`${input} block w-full`} value={socio.fecha} onChange={e => setSocio(s => ({ ...s, fecha: e.target.value }))} /></label>
+        <label>Importe<MoneyInput className={`${input} block w-full`} moneda="Pesos" value={socio.importe} onChange={v => setSocio(s => ({ ...s, importe: v }))} /></label>
+        <label>Desde<select className={`${input} block w-full`} value={socio.medio} onChange={e => setSocio(s => ({ ...s, medio: e.target.value as PagoSocioInput["medio"] }))}>{["Banco Galicia", "Banco Nación", "Otro banco", "Efectivo del socio"].map(m => <option key={m}>{m}</option>)}</select></label>
+      </div>
+      <button className={boton} disabled={ocupado || !socio.idSocio || !(socio.importe > 0)} onClick={() => correr(() => pagarTrabajoSocio(t.idTrabajo, socio))}>Registrar pago del socio</button>
     </div>}
     {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
   </div>;

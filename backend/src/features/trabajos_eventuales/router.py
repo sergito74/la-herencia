@@ -5,7 +5,7 @@ from fastapi import APIRouter, HTTPException, Query, Request
 from starlette.concurrency import run_in_threadpool
 
 from src.features.trabajos_eventuales import repository as repo
-from src.features.trabajos_eventuales.schemas import (Liquidacion, Lista, PagoCajaInput, PagoTransferenciaInput, Trabajo,
+from src.features.trabajos_eventuales.schemas import (Liquidacion, Lista, PagoCajaInput, PagoSocioInput, PagoTransferenciaInput, Trabajo,
                                                      TrabajoInput, Transferencia, VinculoInput)
 
 router = APIRouter(prefix="/api/trabajos-eventuales", tags=["trabajos-eventuales"])
@@ -101,3 +101,8 @@ async def pagar_con_transferencia(id_trabajo: int, body: PagoTransferenciaInput,
 @router.delete("/{id_trabajo}/pagos/{id_pago}", response_model=Trabajo)
 async def quitar_pago(id_trabajo: int, id_pago: int, request: Request):
     return await ejecutar(repo.quitar_pago, id_trabajo, id_pago, usuario(request))
+
+
+@router.post("/{id_trabajo}/pagos/socio", status_code=201, response_model=Trabajo)
+async def pagar_por_socio(id_trabajo: int, body: PagoSocioInput, request: Request):
+    return await ejecutar(repo.pagar_por_socio, id_trabajo, body, usuario(request))
