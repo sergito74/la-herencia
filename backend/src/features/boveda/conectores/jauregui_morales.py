@@ -7,13 +7,14 @@ Relevamiento: specs/042-boveda-portales/relevamientos/jauregui-morales.md.
 
 Documentos comerciales (03/11/2026): el portal no tiene PDF, pero cada comprobante del resumen abre su detalle
 (`resumen_cuenta/x_get_detalle`: JSON con artículos, neto, IVA, impuestos internos, percepción y total). Con ese
-detalle se arma el PDF del comprobante (lo mismo que imprime el botón "Imprimir" del portal) y la compra se carga
+detalle se pide el PDF que imprime el propio portal (botón "Imprimir", `x_imprimir_datos`) y la compra se carga
 sola: combustibles al rubro de combustibles, el resto (lubricantes, insumos) al de lubricantes, como se venía
 cargando a mano.
 """
 
 from __future__ import annotations
 
+import json
 import re
 from dataclasses import dataclass, field
 from datetime import date, datetime
@@ -139,24 +140,21 @@ class ConectorJaureguiMorales:
                                   proveedor="JaureguiYMorales", bajar=lambda: b"", numero=numero,
                                   total=_importe(pie.get("latot")), moneda="ARS",
                                   detalle=f"{_TIPO_DOC[tco][1]} {letra} {numero}", id_contacto=ID_CONTACTO)
-            doc.bajar = self._pdf(sesion, datos.get("html") or "")
+            doc.bajar = self._pdf(sesion, datos.get("data") or {"detalle": det})
             docs.append(doc)
         return docs
 
     @staticmethod
-    def _pdf(sesion: _Sesion, html: str):
-        html = re.sub(r"<(a|button|input)\b[^>]*>(.*?</\1>)?", "", html, flags=re.S | re.I)  # sin Imprimir/Cerrar
-
+    def _pdf(sesion: _Sesion, comprobante: dict):
+        """PDF del propio portal (botón "Imprimir" → `resumen_cuenta/x_imprimir_datos`). El portal antepone un salto
+        de línea al encabezado %PDF: se quita para que el archivo sea un PDF válido."""
         def bajar() -> bytes:
-            q = sesion.pagina.context.new_page()
-            try:
-                q.set_content("<html><head><meta charset='utf-8'><style>body{font-family:Arial;font-size:12px}"
-                              "ul{padding:0} li{list-style:none} span,div{display:inline-block;min-width:90px;"
-                              "margin-right:8px}</style></head><body>"
-                              "<h3>Jáuregui y Morales — comprobante (portal de clientes)</h3>" + html + "</body></html>")
-                return q.pdf(format="A4")
-            finally:
-                q.close()
+            r = sesion.pagina.request.post(INGRESO + "resumen_cuenta/x_imprimir_datos", timeout=90000,
+                                           form={"factura": json.dumps(comprobante)})
+            cuerpo = r.body().lstrip()
+            if not cuerpo.startswith(b"%PDF"):
+                raise PortalCambio("Jáuregui y Morales no devolvió el PDF del comprobante")
+            return cuerpo
         return bajar
 
     def leer_comprobante(self, documento: DocumentoPortal, pdf: bytes) -> DatosCompra | None:
