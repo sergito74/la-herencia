@@ -374,8 +374,8 @@ def correr_portal(id_portal: int, origen: str, usuario: str | None) -> tuple[int
 # se mata con su navegador y la corrida queda cerrada con un aviso en palabras simples.
 SIN_AVANCE = 2 * 60
 # Esperas largas pero normales, avisadas por el conector con su paso: hasta este tiempo sin cortar.
-ESPERAS_LARGAS = {"Esperando el código": 210}
-LIMITE_TOTAL = 20 * 60
+ESPERAS_LARGAS: dict[str, int] = {}
+LIMITE_TOTAL = 8 * 60  # la corrida buena más larga (Sancor) fue 6'49" en 2 semanas
 _LOG_TRABAJADOR = Path(__file__).resolve().parents[3] / "logs" / "boveda-trabajador.log"
 
 

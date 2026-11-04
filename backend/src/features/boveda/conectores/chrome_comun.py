@@ -258,8 +258,15 @@ class ConectorAllianz(_ChromeComun):
                 if codigo():
                     from src.features.boveda import conectores as _c
                     _c.paso("Esperando el código de Allianz por mail…")
-                    p.fill("input[name=code]", esperar_codigo("noreply@allianz.com.ar", r"Tu código es (\d{6})",
-                                                              pedido))
+                    try:  # 04/11/2026: el código no llega por mail; no se espera más de 1 minuto
+                        valor = esperar_codigo("noreply@allianz.com.ar", r"Tu código es (\d{6})", pedido,
+                                               espera_segundos=60)
+                        if not valor:
+                            raise TimeoutError("sin código")
+                    except Exception as e:
+                        raise RequiereIntervencion("Allianz pidió un código por mail que no llegó; "
+                                                   "ingresar una vez a mano desde esta computadora") from e
+                    p.fill("input[name=code]", valor)
                     _c.paso("Código recibido, ingresando…")
                     p.locator("button[type=submit], #btnConfirm").first.click()
                 _esperar(p, lambda: "auth.allianz" not in p.url, 120, "Allianz no completó el ingreso")

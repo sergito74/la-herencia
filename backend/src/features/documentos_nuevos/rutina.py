@@ -46,7 +46,7 @@ def proxima(texto: str | None, desde: datetime) -> datetime:
 # --- Cuentas -----------------------------------------------------------------
 
 # 04/11/2026: un portal colgado (ARCA Sergio, Movistar) frenaba la corrida entera y los mails nunca se leían.
-LIMITE_PORTAL = 25 * 60  # red de seguridad: el vigilante de la bóveda corta antes (2' sin avance, 20' total)
+LIMITE_PORTAL = 10 * 60  # red de seguridad: el vigilante de la bóveda corta antes (2' sin avance, 8' total)
 
 
 def _correr_con_limite(servicio, p: dict) -> str:
