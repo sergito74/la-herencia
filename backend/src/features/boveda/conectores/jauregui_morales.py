@@ -71,6 +71,16 @@ class ConectorJaureguiMorales:
 
     def estado_cuenta(self, sesion: _Sesion) -> list[EstadoCuentaPortal]:
         p = sesion.pagina
+        # La página principal a veces llega incompleta o lenta (03/11/2026, "#txtDatosDesde" no encontrado): se
+        # espera el formulario y, si no aparece, se recarga una vez.
+        for intento in (1, 2):
+            try:
+                p.wait_for_selector("#txtDatosDesde", state="attached", timeout=60000)
+                break
+            except Exception:
+                if intento == 2:
+                    raise PortalCambio("Jáuregui y Morales no mostró el formulario del resumen")
+                p.reload(wait_until="load", timeout=90000)
         p.eval_on_selector("#txtDatosDesde", f"e => e.value = '{_inicio_ejercicio(date.today()):%d-%m-%Y}'")
         p.check("input[name=tipoana][value=resumen]")
         p.get_by_role("button", name="Enviar datos").click()
