@@ -13,3 +13,4 @@ reportlab>=4.2
 playwright>=1.47
 pywin32>=306; sys_platform == "win32"
 keyring>=25
+requests>=2.31
