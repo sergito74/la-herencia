@@ -42,6 +42,8 @@ def archivos_en_base() -> set[str]:
                 for parte in (f["doc"] or "").split("#"):
                     if parte:
                         nombres.add(Path(parte).name.lower())
+                        # Mismo nombre con otra extensión (FUNDEBO: compra con el .jpg y copia en .pdf, 03/11/2026).
+                        nombres.add("stem:" + Path(parte).stem.lower())
         except Exception:
             log.exception("Error al consultar %s para auditoría de archivos", tabla)
     return nombres
@@ -68,90 +70,38 @@ def listar_archivos_carpetas(ejercicios: list[str]) -> Iterator[Path]:
 
 
 def procesar_archivo_carpeta(id_corrida: int | None, path: Path, conocidos: set[str]) -> str | None:
-    """Procesa un archivo encontrado en carpeta local. Devuelve estado ('cargado_solo', 'para_cargar', 'ya_estaba') o None."""
-    if path.name.lower() in conocidos:
-        return None
+    """Procesa un archivo encontrado en carpeta local con el mismo `proceso` que los mails. Devuelve el estado
+    ('cargado_solo', 'para_cargar', 'ya_estaba') o None si se ignoró."""
+    from src.features.documentos_nuevos import proceso
 
+    if path.name.lower() in conocidos or "stem:" + path.stem.lower() in conocidos:
+        return None
     try:
         contenido = path.read_bytes()
     except OSError:
         return None
-
     sha = hashlib.sha256(contenido).hexdigest()
     if repository.existente(sha):
         return None
-
-    if path.suffix.lower() == ".pdf":
-        texto = clasificador.texto_pdf(contenido)
-    else:
-        texto = contenido.decode("utf-8", errors="ignore")
-
-    c = clasificador.clasificar(texto, clasificador.buscar_contacto_por_cuit)
-    if not c.comprobante or not c.para_giamigli:
-        return None
-    if c.tipo == "resumen_proveedor":
-        c.numero = None  # mismo criterio que los mails: el número es de un renglón del detalle
-
-    # Verificar si es duplicado de número y emisor
-    if c.id_contacto and c.numero and repository.mismo_comprobante(c.id_contacto, c.numero, c.modulo):
-        return None
-
-    from src.features.boveda import repository as boveda
-    ruta_str = str(path)
-    estado, motivo, id_registro = "para_cargar", c.motivo, None
-
-    if c.modulo == "compras" and c.id_contacto and c.numero:
-        id_registro = boveda.compra_existente(c.id_contacto, c.numero, ruta_str)
-        if id_registro:
-            estado, motivo = "ya_estaba", None
-    if c.modulo == "impuestos" and c.tipo == "boleta" and c.id_contacto:
-        id_registro = repository.impuesto_existente(c.id_contacto, c.total, c.fecha)
-        if id_registro:
-            estado, motivo = "ya_estaba", None
-
-    r = None
-    if estado == "para_cargar" and c.tipo in ("resumen_banco", "resumen_tarjeta"):
-        r = lectores.cargar_resumen(texto, contenido, ruta_str)
-        if r is None:
-            motivo = "Importar el resumen desde Tesorería"
-    elif estado == "para_cargar" and c.id_contacto and c.tipo != "recibo":
-        r = lectores.cargar(c.tipo, c.id_contacto, c.contacto or "", c.numero, c.fecha, contenido, ruta_str)
-
-    if r is not None:
-        registro = r.get("idRegistro") or r.get("idCompra")
-        if r["estadoCarga"] == "cargado_auto":
-            estado, motivo, id_registro = "cargado_solo", None, registro
-        elif r["estadoCarga"] == "ya_cargado":
-            estado, motivo, id_registro = "ya_estaba", None, registro
-        else:
-            motivo = r["motivo"]
-
-    if estado == "para_cargar" and not motivo:
-        motivo = ("Vincular el recibo con los pagos y facturas" if c.tipo == "recibo"
-                  else "Importar el resumen desde Tesorería" if c.modulo == "tesoreria"
-                  else "Revisar el documento guardado" if c.tipo in ("contrato", "resumen_proveedor")
-                  else "El sistema todavía no sabe leer este comprobante: cargar a mano")
-
-    repository.registrar_documento({
-        "idRutinaCorrida": id_corrida,
-        "origen": "mail",
-        "mailEntryId": None,
-        "mailRemitente": "Carpeta local (Dropbox)",
-        "mailAsunto": path.name,
-        "mailRecibido": datetime.fromtimestamp(path.stat().st_mtime),
-        "sha256": sha,
-        "ruta": ruta_str,
-        "tipo": c.tipo or "otro",
-        "modulo": c.modulo,
-        "idContacto": c.id_contacto,
-        "fecha": c.fecha,
-        "numero": c.numero,
-        "total": c.total,
-        "estado": estado,
-        "motivo": motivo,
-        "idRegistro": id_registro,
-    })
-    return estado
+    ruta = str(path)
+    origen = {"idRutinaCorrida": id_corrida, "mailEntryId": None, "mailRemitente": "Carpeta local (Dropbox)",
+              "mailAsunto": path.name, "mailRecibido": datetime.fromtimestamp(path.stat().st_mtime)}
+    bloques = proceso.textos_de(path.name, contenido)
+    if path.suffix.lower() == ".pdf" and not bloques[0].texto.strip():
+        # Escaneo sin texto guardado en la carpeta (tickets, manuscritos): se avisa una vez, no se ignora.
+        c = proceso.escaneo(None, None)
+        return proceso.registrar(origen, c, sha, ruta, "para_cargar", c.motivo, None)
+    estado_final = None
+    for b in bloques:
+        c = proceso.clasificar(b.texto, None)
+        if not c.comprobante or not c.para_giamigli:
+            continue
+        if c.id_contacto and c.numero and repository.mismo_comprobante(c.id_contacto, c.numero, c.modulo):
+            continue
+        estado, motivo, id_registro = proceso.resolver(c, b.texto, contenido, ruta)
+        e = proceso.registrar(origen, c, b.sha, ruta, estado, motivo, id_registro)
+        estado_final = estado_final or e
+    return estado_final
 
 
 def reevaluar_pendientes() -> int:

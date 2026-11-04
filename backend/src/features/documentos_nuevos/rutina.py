@@ -106,74 +106,46 @@ def _guardar(carpeta: Path, nombre: str, contenido: bytes, sha: str) -> str:
 
 
 def procesar_adjunto(id_corrida: int | None, mail: mails.Mail, adj: mails.Adjunto) -> str | None:
-    """Devuelve el estado registrado (`cargado_solo`, `para_cargar`, `ya_estaba`) o `None` si se ignoró."""
-    from src.features.boveda import repository as boveda
+    """Devuelve el estado registrado (`cargado_solo`, `para_cargar`, `ya_estaba`) o `None` si se ignoró.
+    La decisión vive en `proceso` (común con las carpetas locales)."""
+    from src.features.documentos_nuevos import proceso
 
     sha = hashlib.sha256(adj.contenido).hexdigest()
     if repository.adjunto_procesado(mail.entry_id, sha) or repository.existente(sha):
         return None  # ya procesado, o el mismo archivo llegó por portal: un solo aviso
-    if adj.nombre.lower().endswith(".pdf"):
-        texto = clasificador.texto_pdf(adj.contenido)
-    else:
-        texto = adj.contenido.decode("utf-8", errors="ignore")
+    bloques = proceso.textos_de(adj.nombre, adj.contenido)
+    texto = bloques[0].texto
     from src.features.documentos_nuevos.lectores import sueldos
 
     if adj.nombre.lower().endswith(".pdf") and sueldos.reconoce(texto):
         return sueldos.procesar(mail, adj, texto, sha, id_corrida)
+    origen = {"idRutinaCorrida": id_corrida, "mailEntryId": mail.entry_id, "mailRemitente": mail.remitente,
+              "mailAsunto": mail.asunto, "mailRecibido": mail.recibido}
+    if adj.nombre.lower().endswith(".pdf") and not texto.strip():
+        # Escaneo sin texto: solo si el remitente es un proveedor conocido (un mail personal no entra).
+        emisor = clasificador.contacto_por_remitente(mail.remitente)
+        if not emisor:
+            return None
+        c = proceso.escaneo(*emisor)
+        carpeta, nombre = clasificador.carpeta_y_nombre(c, adj.nombre)
+        ruta = _guardar(carpeta, nombre, adj.contenido, sha)
+        return proceso.registrar(origen, c, sha, ruta, "para_cargar", c.motivo, None)
     if not clasificador.dirigido_a_la_empresa(texto):
         return None  # mail personal: no se guarda ni avisa
-    c = clasificador.clasificar(texto, clasificador.buscar_contacto_por_cuit)
-    if not c.comprobante or not c.para_giamigli:
-        return None  # no es comprobante, o es de otra sociedad: no se guarda ni avisa
-    if not c.id_contacto and c.tipo not in ("resumen_banco", "resumen_tarjeta"):
-        por_mail = clasificador.contacto_por_remitente(mail.remitente)
-        if por_mail:
-            c.id_contacto, c.contacto = por_mail
-            if c.motivo and c.motivo.startswith("Emisor nuevo"):
-                c.motivo = None
-    if c.tipo == "resumen_proveedor":
-        c.numero = None  # el número que aparece es de un renglón del detalle, no del resumen
-    if c.id_contacto and c.numero and repository.mismo_comprobante(c.id_contacto, c.numero, c.modulo):
-        return None  # otra copia del mismo comprobante (original y duplicado en el mismo mail)
-    carpeta, nombre = clasificador.carpeta_y_nombre(c, adj.nombre)
-    ruta = _guardar(carpeta, nombre, adj.contenido, sha)
-
-    estado, motivo, id_registro = "para_cargar", c.motivo, None
-    if c.modulo == "compras" and c.id_contacto and c.numero:
-        id_registro = boveda.compra_existente(c.id_contacto, c.numero, ruta)
-        if id_registro:
-            estado, motivo = "ya_estaba", None
-    if c.modulo == "impuestos" and c.tipo == "boleta" and c.id_contacto:
-        id_registro = repository.impuesto_existente(c.id_contacto, c.total, c.fecha)
-        if id_registro:
-            estado, motivo = "ya_estaba", None
-    r = None
-    if estado == "para_cargar" and c.tipo in ("resumen_banco", "resumen_tarjeta"):
-        r = lectores.cargar_resumen(texto, adj.contenido, ruta)
-        if r is None:
-            motivo = "Importar el resumen desde Tesorería"
-    elif estado == "para_cargar" and c.id_contacto and c.tipo != "recibo":
-        r = lectores.cargar(c.tipo, c.id_contacto, c.contacto or "", c.numero, c.fecha, adj.contenido, ruta)
-    if r is not None:
-        registro = r.get("idRegistro") or r.get("idCompra")
-        if r["estadoCarga"] == "cargado_auto":
-            estado, motivo, id_registro = "cargado_solo", None, registro
-        elif r["estadoCarga"] == "ya_cargado":
-            estado, motivo, id_registro = "ya_estaba", None, registro
-        else:
-            motivo = r["motivo"]
-    if estado == "para_cargar" and not motivo:
-        motivo = ("Vincular el recibo con los pagos y facturas" if c.tipo == "recibo"
-                  else "Importar el resumen desde Tesorería" if c.modulo == "tesoreria"
-                  else "Revisar el documento guardado" if c.tipo in ("contrato", "resumen_proveedor")
-                  else "El sistema todavía no sabe leer este comprobante: cargar a mano")
-    repository.registrar_documento({
-        "idRutinaCorrida": id_corrida, "origen": "mail", "mailEntryId": mail.entry_id, "mailRemitente": mail.remitente,
-        "mailAsunto": mail.asunto, "mailRecibido": mail.recibido, "sha256": sha, "ruta": ruta, "tipo": c.tipo,
-        "modulo": c.modulo, "idContacto": c.id_contacto, "fecha": c.fecha, "numero": c.numero, "total": c.total,
-        "estado": estado, "motivo": motivo, "idRegistro": id_registro,
-    })
-    return estado
+    estado_final, ruta = None, None
+    for b in bloques:
+        c = proceso.clasificar(b.texto, mail.remitente)
+        if not c.comprobante or not c.para_giamigli:
+            continue  # no es comprobante, o es de otra sociedad: no se guarda ni avisa
+        if c.id_contacto and c.numero and repository.mismo_comprobante(c.id_contacto, c.numero, c.modulo):
+            continue  # otra copia del mismo comprobante (original y duplicado en el mismo mail)
+        if ruta is None:
+            carpeta, nombre = clasificador.carpeta_y_nombre(c, adj.nombre)
+            ruta = _guardar(carpeta, nombre, adj.contenido, sha)
+        estado, motivo, id_registro = proceso.resolver(c, b.texto, adj.contenido, ruta)
+        e = proceso.registrar(origen, c, b.sha, ruta, estado, motivo, id_registro)
+        estado_final = estado_final or e
+    return estado_final
 
 
 def sin_procesar(id_corrida: int | None, mail: mails.Mail, adj: mails.Adjunto) -> str | None:

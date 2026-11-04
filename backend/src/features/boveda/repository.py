@@ -485,9 +485,23 @@ def documentos_de_corrida(id_corrida: int) -> list[dict]:
 def compra_existente(id_contacto: int | None, numero: str | None, ruta: str | None) -> int | None:
     from src.features.descarga_peajes.repository import compra_existente as de_037
 
-    encontrada = de_037(id_contacto, numero, ruta)
-    if encontrada or not (id_contacto and numero):
+    # Primero por proveedor y número: un mismo PDF puede traer varias facturas (Sancor, 3 pólizas) y la búsqueda por
+    # archivo devolvía la misma compra para todas (03/11/2026). El archivo solo decide si está en UNA sola compra.
+    if not (id_contacto and numero):
+        return de_037(id_contacto, numero, ruta)
+    encontrada = de_037(id_contacto, numero, None)
+    if encontrada:
         return encontrada
+    por_numero = _compra_por_numero(id_contacto, numero)
+    if por_numero or not ruta:
+        return por_numero
+    esc = ruta.replace("[", "[[]").replace("%", "[%]").replace("_", "[_]")
+    filas = fetch_all("SELECT IdDeuda AS id FROM dbo.Compras WHERE [Documento Original] = ? OR [Documento Original] "
+                      "LIKE ? OR [Documento Original] LIKE ?", (ruta, esc + "#%", "%#" + esc + "#%"))
+    return filas[0]["id"] if len(filas) == 1 else None
+
+
+def _compra_por_numero(id_contacto: int, numero: str) -> int | None:
     # Números cargados a mano con espacios ("0020- 00136689").
     fila = fetch_one("SELECT TOP 1 IdDeuda AS id FROM dbo.Compras WHERE IdContacto = ? "
                      "AND REPLACE([Nro Documento], ' ', '') = ?", (id_contacto, numero.replace(" ", "")))
