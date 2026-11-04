@@ -116,6 +116,8 @@ def _contar_portal(id_corrida: int, r: dict) -> None:
 
 def _guardar(carpeta: Path, nombre: str, contenido: bytes, sha: str) -> str:
     """Guarda sin pisar: si ya hay un archivo idéntico en la carpeta se reusa; si el nombre existe, " 001"…"""
+    if contenido.lstrip()[:5] == b"<?xml":  # el nombre lo arma el clasificador siempre como .pdf
+        nombre = str(Path(nombre).with_suffix(".xml"))
     carpeta.mkdir(parents=True, exist_ok=True)
     for f in carpeta.glob(f"*{Path(nombre).suffix}"):
         try:
@@ -136,6 +138,8 @@ def procesar_adjunto(id_corrida: int | None, mail: mails.Mail, adj: mails.Adjunt
     La decisión vive en `proceso` (común con las carpetas locales)."""
     from src.features.documentos_nuevos import proceso
 
+    if adj.nombre.lower().endswith(".xml") and any(a.nombre.lower().endswith(".pdf") for a in mail.adjuntos):
+        return None  # 04/11/2026: XML de autorización de ARCA junto a su PDF (Starlink): es el mismo comprobante
     sha = hashlib.sha256(adj.contenido).hexdigest()
     if repository.adjunto_procesado(mail.entry_id, sha) or repository.existente(sha):
         return None  # ya procesado, o el mismo archivo llegó por portal: un solo aviso

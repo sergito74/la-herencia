@@ -94,3 +94,20 @@ def test_tick_activacion_no_corre_y_recuperacion_unica(repo_sim, monkeypatch, si
     assert rutina.tick(datetime(2026, 10, 29, 16))
     assert not rutina.tick(datetime(2026, 10, 29, 16, 1))
     assert corridas == ["programada"]
+
+
+def test_xml_de_arca_junto_a_su_pdf_se_ignora():
+    from src.features.documentos_nuevos import mails, rutina
+
+    pdf = mails.Adjunto(nombre="factura.pdf", contenido=b"%PDF-1.4")
+    xml = mails.Adjunto(nombre="factura.xml", contenido=b"<?xml version='1.0'?><FEV1Authorize/>")
+    mail = mails.Mail(entry_id="x", remitente="Starlink", asunto="Recibo", recibido=datetime(2026, 11, 4),
+                      adjuntos=[pdf, xml])
+    assert rutina.procesar_adjunto(None, mail, xml) is None
+
+
+def test_xml_se_guarda_con_su_extension(tmp_path):
+    from src.features.documentos_nuevos import rutina
+
+    ruta = rutina._guardar(tmp_path, "20261104_Starlink.pdf", b"<?xml version='1.0'?><a/>", "sha")
+    assert ruta.endswith(".xml")

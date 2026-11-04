@@ -12,7 +12,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request
 
 from src.features.boveda.router import exigir_admin, iso, usuario_actual
 from src.features.documentos_nuevos import repository
-from src.features.documentos_nuevos.schemas import CambioModulo, EstadoRutina, Item, Lista, Resumen
+from src.features.documentos_nuevos.schemas import CambioModulo, Descarte, EstadoRutina, Item, Lista, Resumen
 
 router = APIRouter(prefix="/api/documentos-nuevos", tags=["documentos-nuevos"])
 
