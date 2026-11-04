@@ -6,6 +6,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ContactoSelect } from "@/components/ui/ContactoSelect";
 import { SoloLectura } from "@/components/auth/SoloLectura";
 import { formatMoneda, formatFecha } from "@/lib/format";
+import { PagoTrabajo } from "./PagoTrabajo";
 import { listarTrabajos, obtenerTrabajo, guardarTrabajo, liquidacionesTrabajo, vincularTrabajo, desvincularTrabajo,
   type Trabajo, type TrabajoInput, type Filtros } from "@/services/trabajosEventualesApi";
 
@@ -52,7 +53,8 @@ function Detalle({ id, onEditar, onCambio, salarioInicial }: { id: number; onEdi
     <div className="flex flex-wrap justify-between gap-2"><div><h2 className="text-lg font-semibold">{t.trabajador} · {formatFecha(t.fecha)}</h2><p>{t.descripcion}</p></div><SoloLectura><button className={boton} onClick={()=>onEditar(t)}>Editar trabajo</button></SoloLectura></div>
     <p className="text-sm">{t.dias} días × {formatMoneda(t.jornal)} · Viáticos {formatMoneda(t.viaticos)}{t.redondeo ? ` · Redondeo ${formatMoneda(t.redondeo)}` : ""}</p>
     <div className="flex flex-wrap gap-6 text-sm"><span>Total <strong>{formatMoneda(t.total)}</strong></span><span>Incluido en liquidaciones <strong>{formatMoneda(t.vinculado)}</strong></span><span>Sin vincular <strong>{formatMoneda(t.sinVincular)}</strong></span></div>
-    <p className="text-sm text-ink-secondary">{t.estadoPago}{t.origen ? " según la planilla" : ""}{t.numeroRecibo ? ` · Recibo ${t.numeroRecibo}` : ""}{t.observaciones ? ` · ${t.observaciones}` : ""}</p>
+    <p className="text-sm text-ink-secondary">{t.estadoPago}{t.origen && !t.pagos?.length ? " según la planilla" : ""}{t.numeroRecibo ? ` · Recibo ${t.numeroRecibo}` : ""}{t.observaciones ? ` · ${t.observaciones}` : ""}</p>
+    <PagoTrabajo t={t} onCambio={async()=>{await qc.invalidateQueries({queryKey:["trabajo-eventual",id]});await qc.invalidateQueries({queryKey:["trabajo-transferencias",id]});onCambio();}} />
     <h3 className="font-medium">Liquidaciones relacionadas</h3>
     {t.vinculos?.length ? t.vinculos.map(v=><div key={v.idSalario} className="flex flex-wrap items-center gap-3 text-sm"><Link className="text-finance underline" href={`/personal/remuneraciones?empleado=${encodeURIComponent(t.trabajador)}&highlight=${v.idSalario}`}>{v.periodo} · {formatFecha(v.fecha)}</Link><strong>{formatMoneda(v.importe)}</strong><SoloLectura><button disabled={ocupado} className={boton} onClick={()=>actuar(()=>desvincularTrabajo(id,v.idSalario))}>Quitar vínculo</button></SoloLectura></div>) : <p className="text-sm text-ink-secondary">Todavía no se vinculó a una liquidación.</p>}
     <SoloLectura>{t.sinVincular>0 && <form className="flex flex-wrap items-end gap-2" onSubmit={e=>{e.preventDefault();actuar(()=>vincularTrabajo(id,salario,Number(importe)));}}>

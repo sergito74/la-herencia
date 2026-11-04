@@ -25,17 +25,20 @@ def total_trabajo(dias, jornal, viaticos=0, redondeo=0):
 
 
 BASE = """FROM dbo.TrabajosEventuales t JOIN dbo.Contactos c ON c.IdContacto=t.IdContacto
-OUTER APPLY (SELECT SUM(v.Importe) AS Vinculado FROM dbo.TrabajosEventualesVinculos v WHERE v.IdTrabajo=t.IdTrabajo) s"""
+OUTER APPLY (SELECT SUM(v.Importe) AS Vinculado FROM dbo.TrabajosEventualesVinculos v WHERE v.IdTrabajo=t.IdTrabajo) s
+OUTER APPLY (SELECT COUNT(*) AS Hay, SUM(CASE WHEN p.Medio<>'caja' OR o.Estado<>'Anulada' THEN p.Importe END) AS Pagado
+             FROM dbo.TrabajosEventualesPagos p LEFT JOIN dbo.OperacionesCajaEfectivo o ON o.IdOperacion=p.IdOperacion
+             WHERE p.IdTrabajo=t.IdTrabajo) pg"""
 COLS = """t.IdTrabajo AS idTrabajo,t.IdContacto AS idContacto,c.[Razon Social] AS trabajador,t.Fecha AS fecha,
 t.Descripcion AS descripcion,t.Dias AS dias,t.Jornal AS jornal,t.Viaticos AS viaticos,t.Redondeo AS redondeo,
-t.Total AS total,t.EstadoPago AS estadoPago,t.NumeroRecibo AS numeroRecibo,t.Observaciones AS observaciones,
+t.Total AS total,CASE WHEN pg.Hay=0 THEN t.EstadoPago WHEN ISNULL(pg.Pagado,0)>=t.Total THEN 'Pagado' ELSE 'Pendiente' END AS estadoPago,t.NumeroRecibo AS numeroRecibo,t.Observaciones AS observaciones,
 ISNULL(s.Vinculado,0) AS vinculado,t.Total-ISNULL(s.Vinculado,0) AS sinVincular,t.OrigenClave AS origen"""
 
 
 def listar(id_contacto=None, desde=None, hasta=None, estado=None, vinculacion=None, id_salario=None, page=1, page_size=50):
     where, params = [], []
     for condicion, valor in (("t.IdContacto=?", id_contacto), ("t.Fecha>=?", desde), ("t.Fecha<=?", hasta),
-                              ("t.EstadoPago=?", estado)):
+                              ("(CASE WHEN pg.Hay=0 THEN t.EstadoPago WHEN ISNULL(pg.Pagado,0)>=t.Total THEN 'Pagado' ELSE 'Pendiente' END)=?", estado)):
         if valor is not None:
             where.append(condicion)
             params.append(valor)
@@ -60,6 +63,11 @@ def obtener(id_trabajo):
         t["vinculos"] = fetch_all("SELECT v.IdSalario AS idSalario,v.Importe AS importe,r.[Periodo liquidado] AS periodo,"
                                   "r.[Fecha de pago] AS fecha FROM dbo.TrabajosEventualesVinculos v "
                                   "JOIN dbo.Remuneraciones r ON r.IdSalario=v.IdSalario WHERE v.IdTrabajo=? ORDER BY v.IdSalario", (id_trabajo,))
+        t["pagos"] = pagos(id_trabajo)
+        t["pagado"] = sum(dinero(p['importe']) for p in t["pagos"])
+        # Un pago en efectivo anulado en la caja deja de contar: el estado sale de los pagos vigentes.
+        if t["pagos"] or fetch_one("SELECT 1 AS x FROM dbo.TrabajosEventualesPagos WHERE IdTrabajo=?", (id_trabajo,)):
+            t["estadoPago"] = 'Pagado' if t["pagado"] >= dinero(t["total"]) else 'Pendiente'
     return t
 
 
@@ -146,4 +154,125 @@ def desvincular(id_trabajo, id_salario, usuario):
         return None
     execute_write("DELETE FROM dbo.TrabajosEventualesVinculos WHERE IdTrabajo=? AND IdSalario=?", (id_trabajo, id_salario))
     auditar(id_trabajo, "desvincular", {"idSalario": id_salario, **anterior}, usuario)
+    return obtener(id_trabajo)
+
+
+# --- Pago de trabajos (04/11/2026): en efectivo desde una caja o por transferencia ya cargada del banco ---------
+# Muchos se pagan sin recibo: el recibo no es obligatorio. El pago en efectivo se registra en la caja como gasto sin
+# comprobante (descuenta el saldo de la caja); la transferencia se vincula al movimiento del extracto (ya está
+# en el banco, no se vuelve a registrar). Si la operación de caja se anula, el pago deja de contar.
+
+def _dia(v):
+    from datetime import date, datetime
+
+    if isinstance(v, datetime):
+        return v.date()
+    return v if isinstance(v, date) else date.fromisoformat(str(v)[:10])
+
+
+PAGOS_VIGENTES = """FROM dbo.TrabajosEventualesPagos p
+LEFT JOIN dbo.OperacionesCajaEfectivo o ON o.IdOperacion=p.IdOperacion
+WHERE p.IdTrabajo=? AND (p.Medio<>'caja' OR o.Estado<>'Anulada')"""
+
+
+def pagos(id_trabajo) -> list[dict]:
+    return fetch_all("SELECT p.IdPagoTrabajo AS idPago,p.Medio AS medio,p.Caja AS caja,p.Fecha AS fecha,p.Importe AS importe,"
+                     "p.IdOperacion AS idOperacion,p.IdMovimientoBanco AS idMovimientoBanco " + PAGOS_VIGENTES +
+                     " ORDER BY p.Fecha,p.IdPagoTrabajo", (id_trabajo,))
+
+
+def _actualizar_estado(id_trabajo):
+    t = fetch_one("SELECT Total FROM dbo.TrabajosEventuales WHERE IdTrabajo=?", (id_trabajo,))
+    pagado = sum(dinero(p['importe']) for p in pagos(id_trabajo))
+    estado = 'Pagado' if pagado >= dinero(t['Total']) else 'Pendiente'
+    execute_write("UPDATE dbo.TrabajosEventuales SET EstadoPago=?,Actualizado=SYSDATETIME() WHERE IdTrabajo=?",
+                  (estado, id_trabajo))
+
+
+def _operacion_caja(t, datos):
+    """Efectivo: sale de la caja como gasto sin comprobante (decisión de Sergio 04/11/2026: estos trabajos no tienen
+    factura), repartido al rubro/centro de costos elegido. La liquidación de sueldo sigue siendo solo una referencia."""
+    from src.features.cajas_efectivo.schemas import OperacionCaja, RepartoCaja
+
+    f = _dia(t['fecha'])
+    concepto = f"Trabajo eventual {t['trabajador']} {f:%d/%m/%Y}: {t['descripcion']}"[:255]
+    reparto = RepartoCaja(idRubro=datos.idRubro, idCentroCostos=datos.idCentroCostos, idDestino=datos.idDestino,
+                          idCampania=datos.idCampania, importePesos=datos.importe)
+    return OperacionCaja(tipo="gasto_sin_comprobante", caja=datos.caja, fecha=datos.fecha, importe=datos.importe,
+                         concepto=concepto, cuenta=datos.cuenta, repartos=[reparto])
+
+
+def previsualizar_pago_caja(id_trabajo, datos):
+    from src.features.cajas_efectivo import operaciones, service
+
+    t = obtener(id_trabajo)
+    if not t:
+        return None
+    return json.loads(operaciones.dumps(service.previsualizar(_operacion_caja(t, datos))))
+
+
+def pagar_con_caja(id_trabajo, datos, usuario):
+    from uuid import uuid4
+
+    from src.features.cajas_efectivo import service
+    from src.features.cajas_efectivo.schemas import ConfirmarOperacion
+
+    t = obtener(id_trabajo)
+    if not t:
+        return None
+    op = _operacion_caja(t, datos)
+    hecho, _ = service.crear(ConfirmarOperacion(operacion=op, previewVersion=datos.previewVersion,
+                                                advertenciasAceptadas=datos.advertenciasAceptadas), uuid4(), usuario)
+    execute_write("INSERT INTO dbo.TrabajosEventualesPagos (IdTrabajo,Medio,IdOperacion,Caja,Fecha,Importe,Usuario) "
+                  "VALUES (?,?,?,?,?,?,?)", (id_trabajo, 'caja', hecho['idOperacion'], datos.caja, datos.fecha,
+                                              datos.importe, usuario[:100]))
+    _actualizar_estado(id_trabajo)
+    auditar(id_trabajo, "pago-caja", {"idOperacion": hecho['idOperacion'], **datos.model_dump(mode="json")}, usuario)
+    return obtener(id_trabajo)
+
+
+def transferencias_candidatas(id_trabajo) -> list[dict]:
+    """Débitos del banco ya cargados a nombre del trabajador, no vinculados a otro trabajo, más cercanos primero."""
+    t = obtener(id_trabajo)
+    if not t:
+        return []
+    usados = {(r['m'], r['i']) for r in fetch_all(
+        "SELECT Medio m, IdMovimientoBanco i FROM dbo.TrabajosEventualesPagos WHERE IdMovimientoBanco IS NOT NULL")}
+    filas = fetch_all(
+        "SELECT 'galicia' medio, IdMovimiento id, Fecha fecha, [Débitos] importe, [Descripción] detalle "
+        "FROM dbo.[Movimientos Galicia] WHERE IdContacto=? AND [Débitos]>0 AND Fecha>=DATEADD(day,-15,?) "
+        "UNION ALL SELECT 'bna', IdMovimientoBNA, [Fecha / Hora Mov#], -Importe, Concepto FROM dbo.[Movimientos BNA] "
+        "WHERE IdContacto=? AND Importe<0 AND [Fecha / Hora Mov#]>=DATEADD(day,-15,?)",
+        (t['idContacto'], _dia(t['fecha']), t['idContacto'], _dia(t['fecha'])))
+    filas = [f for f in filas if (f['medio'], f['id']) not in usados]
+
+    return sorted(filas, key=lambda f: abs((_dia(f['fecha']) - _dia(t['fecha'])).days))
+
+
+def pagar_con_transferencia(id_trabajo, medio, id_movimiento, usuario):
+    m = next((f for f in transferencias_candidatas(id_trabajo) if f['medio'] == medio and f['id'] == id_movimiento), None)
+    if not m:
+        raise ValueError("Ese movimiento del banco no es del trabajador o ya está vinculado a otro trabajo")
+    t = obtener(id_trabajo)
+    importe = min(dinero(m['importe']), dinero(t['total']) - dinero(t['pagado']))
+    if importe <= 0:
+        raise ValueError("El trabajo ya está pagado")
+    fecha = _dia(m['fecha'])
+    execute_write("INSERT INTO dbo.TrabajosEventualesPagos (IdTrabajo,Medio,IdMovimientoBanco,Fecha,Importe,Usuario) "
+                  "VALUES (?,?,?,?,?,?)", (id_trabajo, medio, id_movimiento, fecha, importe, usuario[:100]))
+    _actualizar_estado(id_trabajo)
+    auditar(id_trabajo, "pago-transferencia", {"medio": medio, "idMovimiento": id_movimiento, "importe": str(importe)}, usuario)
+    return obtener(id_trabajo)
+
+
+def quitar_pago(id_trabajo, id_pago, usuario):
+    """Solo transferencias: el pago en efectivo se anula desde la caja (así se repone el saldo)."""
+    p = fetch_one("SELECT Medio FROM dbo.TrabajosEventualesPagos WHERE IdPagoTrabajo=? AND IdTrabajo=?", (id_pago, id_trabajo))
+    if not p:
+        return None
+    if p['Medio'] == 'caja':
+        raise ValueError("El pago en efectivo se anula desde la caja, para que se reponga el saldo")
+    execute_write("DELETE FROM dbo.TrabajosEventualesPagos WHERE IdPagoTrabajo=?", (id_pago,))
+    _actualizar_estado(id_trabajo)
+    auditar(id_trabajo, "quitar-pago", {"idPago": id_pago}, usuario)
     return obtener(id_trabajo)

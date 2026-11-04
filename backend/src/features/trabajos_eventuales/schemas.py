@@ -80,3 +80,42 @@ class Liquidacion(BaseModel):
     fecha: date | None = None
     neto: float
     disponible: float
+
+
+class PagoTrabajo(BaseModel):
+    idPago: int
+    medio: str
+    caja: str | None = None
+    fecha: date
+    importe: float
+    idOperacion: int | None = None
+    idMovimientoBanco: int | None = None
+
+
+class PagoCajaInput(BaseModel):
+    caja: Literal["giamigli-sa", "campo-chica", "condominio-lsc", "giamigli-dolares"]
+    fecha: date
+    importe: Decimal = Field(gt=0, max_digits=19, decimal_places=2)
+    cuenta: Literal["A", "B"]
+    idRubro: int = Field(gt=0)
+    idCentroCostos: int = Field(gt=0)
+    idDestino: int | None = Field(default=None, gt=0)
+    idCampania: int | None = Field(default=None, gt=0)
+    previewVersion: str | None = None
+    advertenciasAceptadas: list[Literal["SALDO_NEGATIVO", "PERIODO_ARQUEADO"]] = Field(default_factory=list)
+
+
+class PagoTransferenciaInput(BaseModel):
+    medio: Literal["galicia", "bna"]
+    idMovimiento: int
+
+
+class Transferencia(BaseModel):
+    medio: str
+    id: int
+    fecha: date
+    importe: float
+    detalle: str | None = None
+
+
+Trabajo.model_rebuild()

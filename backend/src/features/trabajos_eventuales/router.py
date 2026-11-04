@@ -5,7 +5,8 @@ from fastapi import APIRouter, HTTPException, Query, Request
 from starlette.concurrency import run_in_threadpool
 
 from src.features.trabajos_eventuales import repository as repo
-from src.features.trabajos_eventuales.schemas import TrabajoInput, VinculoInput, Trabajo, Lista, Liquidacion
+from src.features.trabajos_eventuales.schemas import (Liquidacion, Lista, PagoCajaInput, PagoTransferenciaInput, Trabajo,
+                                                     TrabajoInput, Transferencia, VinculoInput)
 
 router = APIRouter(prefix="/api/trabajos-eventuales", tags=["trabajos-eventuales"])
 
@@ -62,3 +63,41 @@ async def vincular(id_trabajo: int, body: VinculoInput, request: Request):
 @router.delete("/{id_trabajo}/vinculos/{id_salario}", response_model=Trabajo)
 async def desvincular(id_trabajo: int, id_salario: int, request: Request):
     return await ejecutar(repo.desvincular, id_trabajo, id_salario, usuario(request))
+
+
+# --- Pagos (04/11/2026): efectivo desde una caja o transferencia ya cargada; sin recibo obligatorio ---
+
+async def ejecutar_pago(fn, *args):
+    from src.features.cajas_efectivo.service import ConflictoCaja
+
+    try:
+        return await ejecutar(fn, *args)
+    except ConflictoCaja as exc:
+        raise HTTPException(409, str(exc)) from exc
+
+
+@router.post("/{id_trabajo}/pagos/caja/previsualizar")
+async def previsualizar_pago_caja(id_trabajo: int, body: PagoCajaInput):
+    return await ejecutar_pago(repo.previsualizar_pago_caja, id_trabajo, body)
+
+
+@router.post("/{id_trabajo}/pagos/caja", status_code=201, response_model=Trabajo)
+async def pagar_con_caja(id_trabajo: int, body: PagoCajaInput, request: Request):
+    if not body.previewVersion:
+        raise HTTPException(400, "Primero previsualizá el pago")
+    return await ejecutar_pago(repo.pagar_con_caja, id_trabajo, body, usuario(request))
+
+
+@router.get("/{id_trabajo}/pagos/transferencias", response_model=list[Transferencia])
+async def transferencias(id_trabajo: int):
+    return await ejecutar(repo.transferencias_candidatas, id_trabajo)
+
+
+@router.post("/{id_trabajo}/pagos/transferencia", status_code=201, response_model=Trabajo)
+async def pagar_con_transferencia(id_trabajo: int, body: PagoTransferenciaInput, request: Request):
+    return await ejecutar(repo.pagar_con_transferencia, id_trabajo, body.medio, body.idMovimiento, usuario(request))
+
+
+@router.delete("/{id_trabajo}/pagos/{id_pago}", response_model=Trabajo)
+async def quitar_pago(id_trabajo: int, id_pago: int, request: Request):
+    return await ejecutar(repo.quitar_pago, id_trabajo, id_pago, usuario(request))
