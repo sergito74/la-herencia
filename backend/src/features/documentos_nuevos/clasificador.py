@@ -105,9 +105,10 @@ def tipo_de(texto: str) -> str | None:
     # Cupón de pago (Sancor): aviso de vencimiento, no comprobante (046). Va antes que "otro" y que el receptor.
     if re.search(r"CUP[OÓ]N (DE PAGO|PARA EL)", t) and not re.search(CAE_RE, t):
         return None
-    # Expensas de consorcio: nunca boleta de impuesto (03/11/2026, docs 109/110); se avisa sin clasificar.
+    # Expensas de consorcio (Arq. Safarian, unidades de Sergio en CABA): nada que ver con Giamigli, se ignoran sin
+    # guardarse (Sergio, 03/11/2026).
     if re.search(r"\bEXPENSAS\b|\bCONSORCIO\b", t) and not re.search(CAE_RE, t):
-        return "otro"
+        return None
     # Tasa municipal: "Comprobante de pago" o "TASA … VENCIMIENTO" (Municipalidad de Bolívar).
     if re.search(r"MUNICIPALIDAD DE", t) and re.search(r"\bTASA\b", t) and \
             re.search(r"COMPROBANTE DE PAGO|VENCIMIENTO", t) and not re.search(CAE_RE, t):
