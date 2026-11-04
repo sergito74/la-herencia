@@ -493,6 +493,38 @@ def get_documentos_candidatos(id_linea_consumo: int, id_contacto: int, fecha_lin
     return [d for d in _documentos_dict(rows) if abs(d['saldoPendiente']) >= .005]
 
 
+def get_documentos_por_fecha_importe(id_linea_consumo: int, importe: float, fecha_linea,
+                                     dias: int = 10, margen: float = 0.10, limite: int = 15) -> list[dict]:
+    """Sugerencia automática (04/11/2026): comprobantes de CUALQUIER proveedor con fecha cercana a la del consumo
+    (±10 días) e importe parecido (±10%), el más parecido primero. Son candidatos para que el usuario elija; no se
+    vincula nada solo. Sirve cuando la línea no tiene contacto o el contacto no es el correcto (ej. MERPAGO*...)."""
+    if not importe or not fecha_linea:
+        return []
+    imp = abs(float(importe))
+    sql = f"""
+        SELECT TOP (?) w.IdDeuda AS idCompra, w.Fecha AS fecha, w.[Tipo documento] AS tipoDocumento,
+            w.[Nro Documento] AS numeroDocumento, w.Moneda AS moneda, w.[Tipo de Cambio] AS tipoDeCambio,
+            {_IMPORTE_BRUTO} AS importeOriginal, pa.cp AS compraParticular, c.[Razon Social] AS proveedor,
+            cm.[Ajusta Tipo Cambio] AS ajustaTipoCambio,
+            (SELECT COUNT(*) FROM dbo.Tarjetas_Resumenes_Lineas_Compras v
+              WHERE v.IdCompra = w.IdDeuda AND v.IdLineaConsumo <> ?) AS vinculosPrevios
+        FROM dbo.vw_Compras_ImporteDocumento w
+        JOIN dbo.Compras cm ON cm.IdDeuda = w.IdDeuda
+        {_APLICA_PARTICULAR}
+        LEFT JOIN dbo.Contactos c ON c.IdContacto = w.IdContacto
+        WHERE {_CON_IMPORTE}
+          AND w.Fecha BETWEEN DATEADD(day, -?, ?) AND DATEADD(day, ?, ?)
+          AND ABS({_IMPORTE_BRUTO}) BETWEEN ? AND ?
+          AND NOT EXISTS (SELECT 1 FROM dbo.Tarjetas_Resumenes_Lineas_Compras v2
+                          WHERE v2.IdCompra = w.IdDeuda AND v2.IdLineaConsumo = ?)
+        ORDER BY ABS(ABS({_IMPORTE_BRUTO}) - ?) ASC, ABS(DATEDIFF(day, w.Fecha, ?)) ASC
+    """
+    f = as_sql_datetime(fecha_linea)
+    rows = fetch_all(sql, (limite, id_linea_consumo, dias, f, dias, f, imp * (1 - margen), imp * (1 + margen),
+                           id_linea_consumo, imp, f))
+    return [d for d in _documentos_dict(rows) if abs(d['saldoPendiente']) >= .005]
+
+
 # --- 025-conciliacion-tarjetas-impuestos: pagos de Impuestos como documento ---
 
 # Reusada tal cual en `buscar_documentos` (filtro de saldo pendiente > 0) y
@@ -665,9 +697,13 @@ def get_candidatos_linea(id_linea_consumo: int) -> dict | None:
     total_imputado = _total_imputado(id_linea_consumo)
     restante = round(importe - total_imputado, 2)
     id_contacto = contexto.get("idContacto")
-    documentos = (
+    del_contacto = (
         get_documentos_candidatos(id_linea_consumo, id_contacto, contexto["fechaCompra"]) if id_contacto else []
     )
+    # Primero los parecidos por fecha e importe (de cualquier proveedor), después el resto del contacto.
+    sugeridos = get_documentos_por_fecha_importe(id_linea_consumo, restante or importe, contexto["fechaCompra"])
+    vistos = {d["idCompra"] for d in sugeridos}
+    documentos = sugeridos + [d for d in del_contacto if d["idCompra"] not in vistos]
     return {
         "idLineaConsumo": id_linea_consumo,
         "importeLinea": importe,
