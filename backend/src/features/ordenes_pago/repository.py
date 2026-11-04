@@ -138,74 +138,86 @@ def medio_habitual(id_contacto) -> str | None:
     return medio if n * 10 >= sum(medios.values()) * 6 else None  # 60% o más: es su medio habitual
 
 
-def _otros_documentos(id_contacto) -> list[dict]:
-    """Deudas de la cuenta que no son compras (impuestos como la Tasa Vial, sueldos, ajustes internos)."""
-    return [{'idCompra': r['id'], 'origen': r['origen'], 'numero': f"{r['doc']} {r['nro'] or ''}".strip(),
-             'fecha': r['fecha'], 'fechaVto': r['fecha'], 'condicion': None, 'moneda': 'Pesos', 'tc': None,
-             'total': dinero(r['deuda']), 'pagado': Decimal(0), 'saldo': dinero(r['deuda']), 'reservado': Decimal(0),
-             'disponible': Decimal(0), 'suspendida': False}
-            for r in fetch_all("SELECT IdOrigen id, Origen origen, Documento doc, [Nro Documento] nro, Fecha fecha, "
-                               "Deuda deuda FROM dbo.vw_MovimientosCuenta_Base WHERE IdContacto=? AND Deuda>0 "
-                               "AND Origen IN ('Impuestos','Remuneraciones','Ajuste Interno')", (id_contacto,))]
+def _portal_pendientes() -> dict[int, list[dict]]:
+    """Lo impago según el portal de cada proveedor (última foto de la bóveda, Portales_EstadoCuenta). 04/11/2026: el
+    listado sale de lo que dice el proveedor, nunca de criterios propios (Cargill: vencidas pagadas con granos)."""
+    fotos = {(r['IdPortal'], r['Moneda']): r for r in fetch_all(
+        "SELECT IdFoto, IdPortal, IdContacto, Moneda, FechaCorte, SaldoPortal FROM dbo.Portales_EstadoCuenta "
+        "WHERE IdFoto IN (SELECT MAX(IdFoto) FROM dbo.Portales_EstadoCuenta GROUP BY IdPortal, Moneda)")}
+
+    def movs(k):
+        return fetch_all("SELECT Fecha, Comprobante, Detalle, Debe, Haber, Saldo FROM dbo.Portales_EstadoCuentaMovimientos "
+                         "WHERE IdFoto=? ORDER BY IdMovimiento", (fotos[k]['IdFoto'],)) if k in fotos else []
+
+    def fila(numero, fecha, detalle, importe, moneda='Pesos'):
+        f = fecha if isinstance(fecha, date) else (date.fromisoformat(str(fecha)[:10]) if fecha else None)
+        return {'numero': f"{numero or ''} {detalle or ''}".strip()[:120], 'fecha': f, 'importe': dinero(importe or 0),
+                'moneda': moneda}
+
+    res: dict[int, list[dict]] = defaultdict(list)
+    for k in ((10, 'ARS'), (16, 'ARS')):  # Sancor: recibos pendientes
+        for m in movs(k):
+            res[171].append(fila(m['Comprobante'], m['Fecha'], m['Detalle'], m['Haber']))
+    for m in movs((22, 'ARS')):  # Cooperativa Eléctrica: impagas menos dinero a favor
+        res[23].append(fila(m['Comprobante'], m['Fecha'], m['Detalle'], (m['Haber'] or 0) - (m['Debe'] or 0)))
+    ms = movs((12, 'ARS'))  # Jáuregui y Morales: lo posterior al último saldo en cero del libro
+    ceros = [j for j, m in enumerate(ms) if m['Saldo'] is not None and abs(m['Saldo']) < 1]
+    for m in ms[(ceros[-1] + 1) if ceros else 0:]:
+        res[48].append(fila(m['Comprobante'], m['Fecha'], m['Detalle'], (m['Haber'] or 0) - (m['Debe'] or 0)))
+    if (5, 'USD') in fotos and fotos[(5, 'USD')]['SaldoPortal']:  # Bayá Casal: saldo del libro en US$
+        ms = movs((5, 'USD'))
+        res[226].append(fila(ms[-1]['Comprobante'] if ms else None, ms[-1]['Fecha'] if ms else None,
+                             'saldo del portal en US$', fotos[(5, 'USD')]['SaldoPortal'], 'Dolares'))
+    if (5, 'ARS') in fotos and abs(fotos[(5, 'ARS')]['SaldoPortal'] or 0) >= 1:
+        res[226].append(fila(None, fotos[(5, 'ARS')]['FechaCorte'], 'saldo del portal en $', fotos[(5, 'ARS')]['SaldoPortal']))
+    for m in movs((6, 'ARS')):  # Cargill: notas de débito sin cancelar (el resto del libro son anticipos)
+        if 'NOTA DE DEBITO' in (m['Detalle'] or '') and str(m['Fecha'] or '') >= '2026-06-10':
+            res[258].append(fila(m['Comprobante'], m['Fecha'], m['Detalle'], m['Debe']))
+    return res
 
 
 def _pendientes():
-    """Facturas a pagar de todos los proveedores (rehecho 04/11/2026, tercera versión).
-
-    La verdad es el saldo de la cuenta corriente, que es lo que se concilió con cada proveedor. Las imputaciones de
-    pago factura por factura no están completas en muchas cuentas (ej. Sancor: 141 facturas "abiertas" con la cuenta
-    en $50.606), así que NO se usan para decidir qué está impago. Como los pagos se aplican a lo vencido más viejo
-    primero, lo impago son los documentos más nuevos hasta cubrir el saldo de la cuenta.
-    - Documentos: compras (incluidas las suspendidas, que la cuenta cuenta como deuda: ej. Basterrechea 545), impuestos
-      (ej. Tasa Vial), sueldos y ajustes internos. Las compras en US$ en pesos al TC del comprobante.
-    - `estado`: 'a pagar'; 'tarjeta' si al proveedor se le paga con tarjeta (se salda al cargar el resumen); 'debito' si
-      es un banco (gastos que el banco debita solo); 'sueldo' si es un recibo de sueldo.
-    - Cuentas en dólares: se cubre el saldo en US$ con los documentos en US$ (`saldoUsd`); en pesos al TC del comprobante.
-    - `difCuenta` > 0: parte del saldo que ningún documento explica (deuda sin documento); se muestra, no se esconde.
-    Vencimiento: el de la condición de pago de la compra ([Vencimiento Compras] si es A Plazo; la fecha si es Contado)."""
+    """Facturas a pagar (04/11/2026).
+    - Proveedores con portal (Sancor, Cooperativa, Jáuregui, Bayá Casal, Cargill): lo que el portal muestra impago.
+    - Sin portal: facturas con saldo según sus propias imputaciones, solo si la cuenta tiene deuda; si la suma no
+      coincide con la cuenta, la diferencia queda a la vista (`difCuenta`), sin repartir nada.
+    - Bancos: fuera (los gastos los debita el banco). `estado` 'tarjeta' si al proveedor se le paga con tarjeta."""
     from src.features.cuentas_corrientes import repository as cuentas
 
     hoy = date.today()
+    portal = _portal_pendientes()
     resultado = []
+
+    def agregar(f, s, estado, medio, dif):
+        vto = f.get('fechaVto') or f['fecha']
+        vto = vto.date() if hasattr(vto, 'date') else vto
+        resultado.append({'idCompra': 0, 'tc': None, 'condicion': None, 'pagado': Decimal(0), 'reservado': Decimal(0),
+                          'disponible': Decimal(0), 'suspendida': False, 'origen': 'Compras', 'saldoUsd': None, **f,
+                          'idContacto': s['idContacto'], 'proveedor': s.get('razonSocial'), 'vencimiento': vto,
+                          'diasVencida': (hoy - vto).days if vto and vto < hoy else 0, 'estado': estado,
+                          'medioHabitual': medio, 'difCuenta': dif, 'saldoCuenta': dinero(-(s.get('saldoParcial') or 0)),
+                          'ajustado': False})
+
     for s in cuentas.get_saldos_todos():
+        idc = s['idContacto']
+        if idc in portal:
+            for p in portal[idc]:
+                usd = p['moneda'] == 'Dolares'
+                agregar({'numero': p['numero'], 'fecha': p['fecha'], 'moneda': p['moneda'], 'total': p['importe'],
+                         'saldo': Decimal(0) if usd else p['importe'], 'saldoUsd': p['importe'] if usd else None,
+                         'origen': 'Portal'}, s, 'a pagar', None, Decimal(0))
+            continue
         deuda = dinero(-(s.get('saldoParcial') or 0))
-        if deuda < 1:
-            continue  # cuenta en cero o a favor: nada que pagar
-        docs = [{**f, 'origen': 'Compras', 'total': dinero(f['total'])}
-                for f in facturas(s['idContacto'], incluir_saldadas=True, incluir_suspendidas=True)]
-        docs += _otros_documentos(s['idContacto'])
-        docs.sort(key=lambda f: (f['fecha'] or date.min, f['idCompra']), reverse=True)
-        medio = medio_habitual(s['idContacto'])
-        es_banco = (s.get('razonSocial') or '').lower().startswith('banco ')
-        # Cuenta en dólares (ej. Cargill): el saldo que vale es el de US$; se cubre con los documentos en US$.
-        usd = s.get('moneda') == 'Dolares' and s.get('saldoDolares')
-        if usd:
-            docs = [f for f in docs if f.get('moneda') == 'Dolares' and f.get('tc')]
-        resto, filas = (dinero(-s['saldoDolares']) if usd else deuda), []
-        for f in docs:
-            if resto < (Decimal('0.01') if usd else 1):
-                break
-            if f['total'] <= 0:
-                continue  # notas de crédito: ya restan en el saldo
-            total_doc = dinero(f['total'] / Decimal(str(f['tc']))) if usd else f['total']
-            parte = min(total_doc, resto)
-            resto -= parte
-            saldo = dinero(f['total'] * parte / total_doc) if usd else parte
-            vto = f.get('fechaVto') or f['fecha']
-            vto = vto.date() if hasattr(vto, 'date') else vto
-            es_compra = f['origen'] == 'Compras'
-            filas.append({**f, 'idContacto': s['idContacto'], 'proveedor': s.get('razonSocial'), 'saldo': saldo,
-                          'pagado': f['total'] - saldo,
-                          'disponible': max(Decimal(0), saldo - dinero(f.get('reservado') or 0)) if es_compra else Decimal(0),
-                          'vencimiento': vto, 'diasVencida': (hoy - vto).days if vto and vto < hoy else 0,
-                          'estado': ('sueldo' if f['origen'] == 'Remuneraciones' else 'debito' if es_banco
-                                     else 'tarjeta' if medio == 'tarjetas' and es_compra else 'a pagar'),
-                          'saldoUsd': parte if usd else None,
-                          'medioHabitual': medio, 'suspendida': bool(f.get('suspendida')), 'saldoCuenta': deuda,
-                          'ajustado': saldo < f['total']})
-        for fila in filas:
-            fila['difCuenta'] = Decimal(0) if usd or resto < 1 else resto
-        resultado.extend(filas)
+        if deuda < 1 or (s.get('razonSocial') or '').lower().startswith('banco '):
+            continue
+        filas = [f for f in facturas(idc, incluir_suspendidas=True) if dinero(f['saldo']) >= 1]
+        if not filas:
+            continue
+        medio = medio_habitual(idc)
+        dif = deuda - sum(dinero(f['saldo']) for f in filas)
+        for f in filas:
+            agregar({**f, 'saldo': dinero(f['saldo']), 'disponible': dinero(f['disponible'])}, s,
+                    'tarjeta' if medio == 'tarjetas' else 'a pagar', medio, dif if abs(dif) >= 1 else Decimal(0))
     return sorted(resultado, key=lambda f: (f['vencimiento'] or date.max, f['proveedor'] or ''))
 
 

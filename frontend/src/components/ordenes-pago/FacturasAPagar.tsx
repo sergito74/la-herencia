@@ -60,9 +60,9 @@ export function FacturasAPagar({ idContacto, crearOrden }: { idContacto: number 
           <th className="text-left">Fecha</th><th className="text-right">Saldo</th><th className="text-right">En otras órdenes</th><th className="text-right">Disponible</th>
         </tr></thead>
         <tbody>
-          {filas.map(f => {
+          {filas.map((f, i) => {
             const tildada = sel?.idContacto === f.idContacto && f.idCompra in sel.facturas;
-            return <tr key={`${f.origen ?? 'Compras'}-${f.idCompra}`} className={`border-t ${tildada ? 'bg-emerald-50' : ''}`}>
+            return <tr key={`${f.origen ?? "Compras"}-${f.idCompra}-${i}`} className={`border-t ${tildada ? 'bg-emerald-50' : ''}`}>
               <td className="p-2"><input type="checkbox" aria-label={`Seleccionar ${f.numero ?? 'factura'} de ${f.proveedor ?? ''}`} disabled={f.disponible <= 0} checked={!!tildada} onChange={e => tildar(f, e.target.checked)} /></td>
               <td className={`p-2 ${f.diasVencida > 0 ? 'text-red-700 font-medium' : ''}`}>{formatFecha(f.vencimiento)}<span className="block text-xs text-slate-600">{f.condicion === 'Contado' ? 'Contado' : 'A plazo'}</span>{f.diasVencida > 0 && <span className="block text-xs">vencida hace {f.diasVencida} días</span>}</td>
               <td>{f.proveedor}
@@ -70,7 +70,8 @@ export function FacturasAPagar({ idContacto, crearOrden }: { idContacto: number 
                 {f.suspendida && <span className="block text-xs text-amber-800">Factura suspendida</span>}
                 {f.estado === 'debito' && <span className="block text-xs text-slate-600">Lo debita el banco</span>}
                 {f.estado === 'sueldo' && <span className="block text-xs text-slate-600">Sueldo</span>}
-                {f.ajustado && <span className="block text-xs text-slate-600">Pagada en parte</span>}</td>
+                {f.origen === 'Portal' && <span className="block text-xs text-slate-600">Según el portal del proveedor</span>}
+                {f.difCuenta < 0 && <span className="block text-xs text-amber-800">Esta cuenta tiene pagos sin imputar a factura</span>}</td>
               <td>{(f.origen ?? 'Compras') === 'Compras' ? <a className="underline" href={`/compras/${f.idCompra}/editar`}>{f.numero || 'Sin número'}</a> : f.numero}</td>
               <td>{formatFecha(f.fecha)}</td>
               <td className="text-right">{formatMoneda(f.saldo)}{f.saldoUsd ? <span className="block text-xs text-slate-600">{formatMoneda(f.saldoUsd, 'Dolares')}</span> : null}</td>
@@ -82,6 +83,6 @@ export function FacturasAPagar({ idContacto, crearOrden }: { idContacto: number 
       </table>
       {!q.isLoading && filas.length === 0 && <p className="p-6 text-slate-600">No hay facturas a pagar con estos filtros.</p>}
     </section>
-    <p className="text-xs text-slate-600">Importes en pesos (las facturas en dólares al tipo de cambio de la factura). El total de cada proveedor es el saldo de su cuenta corriente; los pagos se aplican a lo más viejo primero, así que lo impago son los documentos más recientes; el vencimiento es el de la condición de pago (A plazo: su fecha de vencimiento; Contado: la fecha de la factura).</p>
+    <p className="text-xs text-slate-600">Importes en pesos (las facturas en dólares al tipo de cambio de la factura). Proveedores con portal (Sancor, Cooperativa, Jáuregui, Bayá Casal, Cargill): lo que el portal muestra impago. El resto: facturas con saldo según sus pagos imputados; el vencimiento es el de la condición de pago (A plazo: su fecha de vencimiento; Contado: la fecha de la factura).</p>
   </section>;
 }
