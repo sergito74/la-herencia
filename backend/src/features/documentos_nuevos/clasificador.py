@@ -62,7 +62,15 @@ def texto_pdf(pdf: bytes, paginas: int = 3) -> str:
     import pdfplumber
 
     with pdfplumber.open(io.BytesIO(pdf)) as doc:
-        return "\n".join((p.extract_text() or "") for p in doc.pages[:paginas])
+        textos = [(p.extract_text() or "") for p in doc.pages]
+    texto = "\n".join(textos[:paginas])
+    # Pólizas (Allianz granizo, San Cristóbal): la factura viene en una hoja interior (la 2, la 9 o la 16) y las
+    # primeras hojas son condiciones. Si el comienzo no es un comprobante, se usa la hoja con la factura (03/11/2026).
+    if len(textos) > 1 and tipo_de(texto) in (None, "otro"):
+        for t in textos:
+            if re.search(r"\bFACTURA", t, re.I) and re.search(CAE_RE, t.upper()) and tipo_de(t) in ("factura", "nota_credito", "nota_debito"):
+                return t
+    return texto
 
 
 def cuits(texto: str) -> list[str]:
@@ -137,6 +145,10 @@ def tipo_de(texto: str) -> str | None:
         return "resumen_banco"
     if re.search(r"RESUMEN DE CUENTA|ESTADO DE CUENTA|COMPOSICI[OÓ]N DE SALDO", t):
         return "resumen_proveedor"
+    # Póliza / endoso de aseguradora (Allianz, San Cristóbal): sin CAE, la factura es el cuadro de Prima/Premio.
+    # Se carga como factura (o NC si el premio es negativo) con número = póliza + endoso (03/11/2026).
+    if re.search(r"P[OÓ]LIZA", t) and re.search(r"\bPREMIO\b", t) and re.search(r"\bPRIMA\b|PREMIO\s+USD", t):
+        return "nota_credito" if re.search(r"PREMIO\s*\.*\s*-\s*\d", t) else "factura"
     # NC/ND sin CAE: la leyenda suele venir del detalle de otro documento (fichas, resúmenes); no se carga sola en
     # Compras, queda "sin clasificar" para revisar a mano (03/11/2026).
     if re.search(_NC + "|" + _ND, t):
@@ -255,6 +267,16 @@ def fecha_mas_reciente(texto: str) -> date | None:
 _MESES = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"]
 
 
+def numero_poliza(texto: str) -> str | None:
+    """Número con que se cargan las pólizas: 'póliza endoso' (endoso 0 se omite); San Cristóbal sin guiones."""
+    m = re.search(r"N[uú]mero de P[oó]liza\s*:?\s*(\d{6,})", texto, re.I)
+    if m:
+        e = re.search(r"(?:Endoso N[uú]mero|N[uú]mero de Endoso)\s*:?\s*(\d+)", texto, re.I)
+        return m.group(1) + (f" {int(e.group(1))}" if e and int(e.group(1)) else "")
+    m = re.search(r"\b(\d{2}-\d{2}-\d{2}-\d{8})\b", texto)  # San Cristóbal: 01-05-14-30002027
+    return m.group(1).replace("-", "") if m else None
+
+
 def numero_de(texto: str) -> str | None:
     """Primero el número rotulado del encabezado (el detalle cita comprobantes ajenos, 03/11/2026); acepta 8 o 9
     dígitos (Telepeaje 0002-381237292)."""
@@ -295,6 +317,8 @@ def clasificar(texto: str, buscar_contacto=None) -> Clasificacion:
     cuit = emisores[0] if emisores else None
     c = Clasificacion(comprobante=True, tipo=tipo, modulo=MODULO[tipo], cuit_emisor=cuit, fecha=fecha_de(texto),
                       numero=numero_de(texto), total=total_de(texto))
+    if not c.numero and re.search(r"P[OÓ]LIZA", texto, re.I) and re.search(r"\bPREMIO\b", texto, re.I):
+        c.numero = numero_poliza(texto)
     if tipo == 'recibo':
         n = re.search(r'(?:N[ÚU]MERO|RECIBO\s*N[°ºO.]*)\s*:?\s*(\d{4,5})[ -]+(\d{6,8})', texto, re.I)
         if n:
