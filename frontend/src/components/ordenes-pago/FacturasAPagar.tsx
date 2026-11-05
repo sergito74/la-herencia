@@ -55,30 +55,31 @@ export function FacturasAPagar({ idContacto, crearOrden }: { idContacto: number 
     {q.isLoading && <p>Calculando las facturas a pagar de todas las cuentas…</p>}
     {q.isError && <p role="alert" className="text-red-700">{q.error.message}</p>}
     <section className="overflow-auto rounded border bg-white">
-      <table className="w-full text-sm">
+      <table className="w-full table-fixed text-xs leading-tight">
+        <colgroup><col className="w-7" /><col className="w-28" /><col className="w-44" /><col /><col className="w-20" /><col className="w-28" /><col className="w-24" /><col className="w-28" /></colgroup>
         <thead className="bg-slate-50"><tr>
-          <th className="p-2"></th><th className="p-2 text-left">Vencimiento</th><th className="text-left">Proveedor</th><th className="text-left">Factura</th>
-          <th className="text-left">Fecha</th><th className="text-right">Saldo</th><th className="text-right">En otras órdenes</th><th className="text-right">Disponible</th>
+          <th className="p-1"></th><th className="p-1 text-left">Vencimiento</th><th className="p-1 text-left">Proveedor</th><th className="p-1 text-left">Documento</th>
+          <th className="p-1 text-left">Fecha</th><th className="p-1 text-right">Saldo</th><th className="p-1 text-right">En otras órdenes</th><th className="p-1 text-right">Disponible</th>
         </tr></thead>
         <tbody>
           {filas.map((f, i) => {
             const tildada = sel?.idContacto === f.idContacto && f.idCompra in sel.facturas;
             return <tr key={`${f.origen ?? "Compras"}-${f.idCompra}-${i}`} className={`border-t ${tildada ? 'bg-emerald-50' : ''}`}>
-              <td className="p-2"><input type="checkbox" aria-label={`Seleccionar ${f.numero ?? 'factura'} de ${f.proveedor ?? ''}`} disabled={(f.origen ?? 'Compras') !== 'Compras' || f.disponible <= 0} checked={!!tildada} onChange={e => tildar(f, e.target.checked)} /></td>
-              <td className={`p-2 ${f.diasVencida > 0 ? 'text-red-700 font-medium' : ''}`}>{formatFecha(f.vencimiento)}<span className="block text-xs text-slate-600">{f.condicion === 'Contado' ? 'Contado' : 'A plazo'}</span>{f.diasVencida > 0 && <span className="block text-xs">vencida hace {f.diasVencida} días</span>}</td>
-              <td>{f.proveedor}
-                {f.estado === 'tarjeta' && <span className="block text-xs text-slate-600">Se paga con tarjeta: queda saldada al cargar el resumen</span>}
-                {f.suspendida && <span className="block text-xs text-amber-800">Factura suspendida</span>}
-                {f.estado === 'debito' && <span className="block text-xs text-slate-600">Lo debita el banco</span>}
-                {f.estado === 'sueldo' && <span className="block text-xs text-slate-600">Sueldo</span>}
-                {f.origen === 'Portal' && <span className="block text-xs text-slate-600">Según el portal del proveedor</span>}
-                {!!f.enCamino && <span className="block text-xs text-slate-600">Ya se le pagaron {formatMoneda(f.enCamino)} que esperan el resumen del banco</span>}
-                {(f.origen ?? 'Compras') !== 'Compras' && f.origen !== 'Portal' && <span className="block text-xs text-slate-600">{f.origen === 'Remuneraciones' ? 'Sueldo' : f.origen === 'Impuestos' ? 'Impuesto o tasa' : f.origen}</span>}</td>
-              <td>{(f.origen ?? 'Compras') === 'Compras' ? <a className="underline" href={`/compras/${f.idCompra}/editar`}>{f.numero || 'Sin número'}</a> : f.numero}</td>
-              <td>{formatFecha(f.fecha)}</td>
-              <td className="text-right">{formatMoneda(f.saldo)}{f.saldoUsd ? <span className="block text-xs text-slate-600">{formatMoneda(f.saldoUsd, 'Dolares')}</span> : null}</td>
-              <td className="text-right">{f.reservado ? formatMoneda(f.reservado) : '—'}</td>
-              <td className="text-right">{(f.origen ?? 'Compras') === 'Compras' ? formatMoneda(f.disponible) : formatMoneda(f.saldo)}</td>
+              <td className="p-1 align-top"><input type="checkbox" aria-label={`Seleccionar ${f.numero ?? 'factura'} de ${f.proveedor ?? ''}`} disabled={(f.origen ?? 'Compras') !== 'Compras' || f.disponible <= 0} checked={!!tildada} onChange={e => tildar(f, e.target.checked)} /></td>
+              <td className={`p-1 align-top ${f.diasVencida > 0 ? 'text-red-700 font-medium' : ''}`}>{formatFecha(f.vencimiento)}<span className="block text-[11px] text-slate-600">{f.condicion === 'Contado' ? 'Contado' : 'A plazo'}</span>{f.diasVencida > 0 && <span className="block text-[11px]">vencida hace {f.diasVencida} días</span>}</td>
+              <td className="p-1 align-top break-words">{f.proveedor}
+                {f.estado === 'tarjeta' && <span className="block text-[11px] text-slate-600">Se paga con tarjeta: queda saldada al cargar el resumen</span>}
+                {f.suspendida && <span className="block text-[11px] text-amber-800">Factura suspendida</span>}
+                {f.estado === 'debito' && <span className="block text-[11px] text-slate-600">Lo debita el banco</span>}
+                {f.estado === 'sueldo' && <span className="block text-[11px] text-slate-600">Sueldo</span>}
+                {f.origen === 'Portal' && <span className="block text-[11px] text-slate-600">Según el portal del proveedor</span>}
+                {!!f.enCamino && <span className="block text-[11px] text-slate-600">Ya se le pagaron {formatMoneda(f.enCamino)} que esperan el resumen del banco</span>}
+                {(f.origen ?? 'Compras') !== 'Compras' && f.origen !== 'Portal' && <span className="block text-[11px] text-slate-600">{f.origen === 'Remuneraciones' ? 'Sueldo' : f.origen === 'Impuestos' ? 'Impuesto o tasa' : f.origen}</span>}</td>
+              <td className="p-1 align-top break-words whitespace-normal">{(f.origen ?? 'Compras') === 'Compras' ? <a className="underline" href={`/compras/${f.idCompra}/editar`}>{f.numero || 'Sin número'}</a> : f.numero}</td>
+              <td className="p-1 align-top">{formatFecha(f.fecha)}</td>
+              <td className="p-1 align-top text-right whitespace-nowrap">{f.saldoUsd ? formatMoneda(f.saldoUsd, 'Dolares') : formatMoneda(f.saldo)}</td>
+              <td className="p-1 align-top text-right whitespace-nowrap">{f.reservado ? formatMoneda(f.reservado) : '—'}</td>
+              <td className="p-1 align-top text-right whitespace-nowrap">{f.saldoUsd ? formatMoneda(f.saldoUsd, 'Dolares') : (f.origen ?? 'Compras') === 'Compras' ? formatMoneda(f.disponible) : formatMoneda(f.saldo)}</td>
             </tr>;
           })}
         </tbody>
@@ -87,7 +88,7 @@ export function FacturasAPagar({ idContacto, crearOrden }: { idContacto: number 
     </section>
     {!!camino.data?.length && <section className="rounded border bg-white" aria-label="Pagos hechos que esperan el banco">
       <h3 className="p-3 font-medium">Pagados, esperando el resumen del banco</h3>
-      <table className="w-full text-sm"><thead className="bg-slate-50"><tr>
+      <table className="w-full text-xs leading-tight"><thead className="bg-slate-50"><tr>
         <th className="p-2 text-left">Proveedor</th><th className="text-left">Pago</th><th className="text-left">Fecha</th><th className="text-left">Débito previsto</th><th className="text-left">Concepto</th><th className="p-2 text-right">Importe</th>
       </tr></thead><tbody>
         {camino.data.map((c, i) => <tr key={i} className="border-t">
