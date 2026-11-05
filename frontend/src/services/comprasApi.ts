@@ -99,6 +99,7 @@ export interface CompraDetalle {
   resGral4169: number | null;
   ajustaTipoCambio: boolean | null;
   documentoOriginal: string | null;
+  canjeGrano?: string | null;
   lineas: LineaCompra[];
   vencimientos: VencimientoCompra[];
 }
@@ -238,6 +239,7 @@ export interface CompraAltaInput {
   resGral4169?: number;
   ajustaTipoCambio?: boolean;
   documentoOriginal?: string | null;
+  canjeGrano?: string | null;
   lineas: LineaInput[];
   vencimientos: VencimientoInput[];
 }

@@ -52,6 +52,7 @@ export function compraDetalleAInput(
     resGral4169: data.resGral4169 ?? 0,
     ajustaTipoCambio: data.ajustaTipoCambio ?? false,
     documentoOriginal: data.documentoOriginal ?? null,
+    canjeGrano: data.canjeGrano ?? null,
     lineas,
     vencimientos: data.vencimientos.map((v) => ({
       idVencimiento: v.idVencimiento,

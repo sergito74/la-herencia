@@ -58,7 +58,7 @@ def obtener(id_):
 def facturas(id_contacto, excluir_op=None, incluir_saldadas=False, incluir_suspendidas=False):
     # 046 T027: documentos en US$ en pesos al TC del comprobante (regla usd-tc-comprobante), como la fuente unificada.
     rows = fetch_all("SELECT TOP (2000) c.IdDeuda idCompra,c.[Nro Documento] numero,c.Fecha fecha,c.Moneda moneda,"
-                     "CAST(ISNULL(c.Suspendida,0) AS bit) suspendida,"
+                     "CAST(ISNULL(c.Suspendida,0) AS bit) suspendida,c.CanjeGrano canjeGrano,"
                      "CASE WHEN c.Moneda='Dolares' THEN c.[Tipo de Cambio] END tc,"
                      "(t.GranTotal-ISNULL(pa.cp,0))*CASE WHEN c.Moneda='Dolares' THEN c.[Tipo de Cambio] ELSE 1 END total "
                      "FROM dbo.Compras c "
@@ -264,8 +264,8 @@ def _pendientes():
         if not docs:
             continue
         medio = medio_habitual(idc)
-        for d in docs:
-            agregar(d, s, 'tarjeta' if medio == 'tarjetas' else 'a pagar', medio)
+        for d in docs:  # canje de granos (Sergio 05/11): se paga con granos, no entra en lo que se paga en plata
+            agregar(d, s, 'canje' if d.get('canjeGrano') else 'tarjeta' if medio == 'tarjetas' else 'a pagar', medio)
     return sorted(resultado, key=lambda f: (f['vencimiento'] or date.max, f['proveedor'] or ''))
 
 

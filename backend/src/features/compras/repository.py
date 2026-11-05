@@ -193,7 +193,8 @@ def get_compra_cabecera(id_compra: int) -> dict | None:
             cmp.[Ley de Sellos] AS leyDeSellos,
             cmp.[Res gral 4169/96] AS resGral4169,
             cmp.[Ajusta Tipo Cambio] AS ajustaTipoCambio,
-            cmp.[Documento Original] AS documentoOriginal
+            cmp.[Documento Original] AS documentoOriginal,
+            cmp.CanjeGrano AS canjeGrano
         FROM dbo.Compras cmp
         LEFT JOIN dbo.Contactos c ON c.IdContacto = cmp.IdContacto
         WHERE cmp.IdDeuda = ?
@@ -217,6 +218,7 @@ def get_compra_cabecera(id_compra: int) -> dict | None:
         "resGral4169",
         "ajustaTipoCambio",
         "documentoOriginal",
+        "canjeGrano",
     ):
         cabecera[campo] = row.get(campo)
     return cabecera
@@ -717,10 +719,10 @@ def _cabecera_insert_statement(cabecera: dict):
                 Fecha, IdContacto, Tipo, [Tipo documento], [Nro Documento], Moneda,
                 [Tipo de Cambio], [Ingresos Brutos], PercepcionIVA, [Conceptos no gravados], Guias,
                 Comision, Financiacion, [Gastos Varios], [Ley de Sellos],
-                [Res gral 4169/96], [Ajusta Tipo Cambio], [Documento Original]
+                [Res gral 4169/96], [Ajusta Tipo Cambio], [Documento Original], CanjeGrano
             )
             OUTPUT INSERTED.IdDeuda
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """
         params = (
             cabecera["fecha"],
@@ -741,6 +743,7 @@ def _cabecera_insert_statement(cabecera: dict):
             cabecera.get("resGral4169") or 0,
             cabecera.get("ajustaTipoCambio") or False,
             cabecera.get("documentoOriginal"),
+            cabecera.get("canjeGrano") or None,
         )
         return sql, params
 
@@ -753,7 +756,7 @@ def _cabecera_update_statement(id_compra: int, cabecera: dict) -> tuple[str, tup
             Fecha = ?, IdContacto = ?, Tipo = ?, [Tipo documento] = ?, [Nro Documento] = ?,
             Moneda = ?, [Tipo de Cambio] = ?, [Ingresos Brutos] = ?, PercepcionIVA = ?, [Conceptos no gravados] = ?,
             Guias = ?, Comision = ?, Financiacion = ?, [Gastos Varios] = ?, [Ley de Sellos] = ?,
-            [Res gral 4169/96] = ?, [Ajusta Tipo Cambio] = ?, [Documento Original] = ?
+            [Res gral 4169/96] = ?, [Ajusta Tipo Cambio] = ?, [Documento Original] = ?, CanjeGrano = ?
         WHERE IdDeuda = ?
     """
     params = (
@@ -775,6 +778,7 @@ def _cabecera_update_statement(id_compra: int, cabecera: dict) -> tuple[str, tup
         cabecera.get("resGral4169") or 0,
         cabecera.get("ajustaTipoCambio") or False,
         cabecera.get("documentoOriginal"),
+        cabecera.get("canjeGrano") or None,
         id_compra,
     )
     return sql, params

@@ -142,6 +142,7 @@ export function CompraForm({
     else if (tipoDeCambio === 1) setTipoDeCambio(null);
   }
   const [ajustaTipoCambio, setAjustaTipoCambio] = useState(initial?.ajustaTipoCambio ?? false);
+  const [canjeGrano, setCanjeGrano] = useState<string>(initial?.canjeGrano ?? "");
   const [documentoOriginalLink, setDocumentoOriginalLink] = useState(initial?.documentoOriginal ?? prefill?.documentoOriginal ?? "");
   const [conceptos, setConceptos] = useState({
     ingresosBrutos: initial?.ingresosBrutos ?? 0,
@@ -371,6 +372,7 @@ export function CompraForm({
       tipoDeCambio: moneda === "Dolares" ? tipoDeCambio : 1,
       ajustaTipoCambio,
       documentoOriginal: documentoOriginalLink ? limpiarRutaCopiada(documentoOriginalLink) : null,
+      canjeGrano: canjeGrano || null,
       ...conceptos,
       lineas,
       vencimientos: vencimientosCompletos,
@@ -621,6 +623,15 @@ export function CompraForm({
           </div>
           {condicionPago === "A Plazo" && (
             <VencimientosEditor vencimientos={vencimientos} onChange={setVencimientos} />
+          )}
+          <label className="flex items-center gap-1 text-ink-secondary">
+            <input type="checkbox" checked={!!canjeGrano} onChange={e => setCanjeGrano(e.target.checked ? "Granos" : "")} />
+            Canje de granos
+          </label>
+          {!!canjeGrano && (
+            <select className="rounded border border-border bg-surface px-1 py-0.5" value={canjeGrano} onChange={e => setCanjeGrano(e.target.value)} aria-label="Grano del canje">
+              {["Granos", "Soja", "Maíz", "Trigo", "Girasol", "Cebada"].map(g => <option key={g} value={g}>{g === "Granos" ? "Sin definir" : g}</option>)}
+            </select>
           )}
         </div>
 

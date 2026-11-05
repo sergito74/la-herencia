@@ -42,7 +42,7 @@ export function FacturasAPagar({ idContacto, crearOrden }: { idContacto: number 
     <div className="rounded border bg-white p-4 flex flex-wrap items-end gap-4">
       <label className="text-sm">Buscar<input className={`${campo} block w-64`} value={buscar} placeholder="Proveedor o número" onChange={e => setBuscar(e.target.value)} /></label>
       <label className="text-sm"><input type="checkbox" checked={soloVencidas} onChange={e => setSoloVencidas(e.target.checked)} /> Solo vencidas</label>
-      <label className="text-sm"><input type="checkbox" checked={verTodas} onChange={e => setVerTodas(e.target.checked)} /> Ver también lo que se paga solo (tarjeta y débitos del banco)</label>
+      <label className="text-sm"><input type="checkbox" checked={verTodas} onChange={e => setVerTodas(e.target.checked)} /> Ver también lo que no se paga en plata (tarjeta, débitos del banco y canjes de granos)</label>
       <button className={campo} disabled={q.isFetching} onClick={recalcular}>{q.isFetching ? 'Calculando…' : 'Recalcular'}</button>
       <p className="ml-auto text-sm"><strong>{filas.length}</strong> facturas · Total {formatMoneda(total)} · <span className="text-red-700">Vencido {formatMoneda(vencido)}</span></p>
     </div>
@@ -69,6 +69,7 @@ export function FacturasAPagar({ idContacto, crearOrden }: { idContacto: number 
               <td className={`p-1 align-top ${f.diasVencida > 0 ? 'text-red-700 font-medium' : ''}`}>{formatFecha(f.vencimiento)}<span className="block text-[11px] text-slate-600">{f.condicion === 'Contado' ? 'Contado' : 'A plazo'}</span>{f.diasVencida > 0 && <span className="block text-[11px]">vencida hace {f.diasVencida} días</span>}</td>
               <td className="p-1 align-top break-words">{f.proveedor}
                 {f.estado === 'tarjeta' && <span className="block text-[11px] text-slate-600">Se paga con tarjeta: queda saldada al cargar el resumen</span>}
+                {f.estado === 'canje' && <span className="block text-[11px] text-emerald-800">Canje de granos{f.canjeGrano && f.canjeGrano !== 'Granos' ? ` (${f.canjeGrano})` : ''}: se paga con granos</span>}
                 {f.suspendida && <span className="block text-[11px] text-amber-800">Factura suspendida</span>}
                 {f.estado === 'debito' && <span className="block text-[11px] text-slate-600">Lo debita el banco</span>}
                 {f.estado === 'sueldo' && <span className="block text-[11px] text-slate-600">Sueldo</span>}
