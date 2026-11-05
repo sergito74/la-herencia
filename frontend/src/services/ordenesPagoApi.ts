@@ -1,6 +1,7 @@
 import { apiGet, apiPost, apiPatch, apiPut, apiDelete, API_BASE_URL } from './apiClient';
 export interface FacturaOP { idCompra: number; numero: string | null; fecha: string | null; fechaVto?: string | null; condicion?: 'Contado' | 'A Plazo' | null; moneda?: string | null; tc?: number | null; total: number; pagado: number; saldo: number; reservado: number; disponible: number }
-export interface FacturaAPagar extends FacturaOP { idContacto: number; proveedor: string | null; vencimiento: string | null; diasVencida: number; ajustado: boolean; estado: 'a pagar' | 'tarjeta' | 'debito' | 'sueldo'; origen?: string; saldoUsd?: number | null; medioHabitual: string | null; suspendida: boolean; difCuenta: number; saldoCuenta: number }
+export interface FacturaAPagar extends FacturaOP { idContacto: number; proveedor: string | null; vencimiento: string | null; diasVencida: number; ajustado: boolean; estado: 'a pagar' | 'tarjeta' | 'debito' | 'sueldo'; origen?: string; saldoUsd?: number | null; medioHabitual: string | null; suspendida: boolean; difCuenta: number; saldoCuenta: number; enCamino?: number }
+export interface PagoEnCamino { tipo: 'transferencia' | 'echeq'; operacion: string | null; cheque: string | null; fecha: string | null; fechaPago: string | null; importe: number; idContacto: number; proveedor: string | null; concepto: string | null }
 export interface MedioOP { medio: 'Transferencia' | 'Efectivo' | 'Cheque'; cuenta: string; importe: number }
 export interface OrdenInput { idContacto: number; fecha: string; fechaPago: string; moneda: 'ARS'; observaciones: string; facturas: { idCompra: number; importe: number }[]; medios: MedioOP[]; retenciones?: RetencionOP[]; repartoNeto?: { idCompra: number; importe: number; numero: string | null }[]; version?: number }
 export interface OrdenOP extends OrdenInput { idOrdenPago: number; proveedor: string; importeTotal: number; retencionGanancias: number; retenciones?: RetencionOP[]; estado: 'Borrador'|'Emitida'|'Pagada'|'Anulada'; facturas: { idCompra: number; importe: number; numero: string | null }[] }
@@ -13,6 +14,7 @@ export const listarOP=(params: {idContacto?:number;estado?:string;page?:number})
 export const obtenerOP=(id:number)=>apiGet<OrdenOP>(`${base}/${id}`);
 export const facturasOP=(idContacto:number,excluirOrden?:number,incluirSaldadas=false)=>apiGet<FacturaOP[]>(`${base}/facturas`,{idContacto,excluirOrden,incluirSaldadas:String(incluirSaldadas)});
 export const facturasAPagar=(refrescar=false)=>apiGet<FacturaAPagar[]>(`${base}/pendientes`,{refrescar:refrescar?'true':undefined});
+export const pagosEnCamino=()=>apiGet<PagoEnCamino[]>(`${base}/en-camino`);
 export const guardarOP=(body:OrdenInput,id?:number)=>id?apiPatch<OrdenOP>(`${base}/${id}`,body):apiPost<OrdenOP>(base,body);
 export const estadoOP=(id:number,accion:'emitir'|'anular')=>apiPost<OrdenOP>(`${base}/${id}/${accion}`,{});
 export const recibosOP=(params:{idContacto?:number;revisados?:boolean;page?:number})=>apiGet<{items:ReciboOP[];total:number}>(`${base}/recibos`,{...params,revisados:params.revisados?"true":undefined});

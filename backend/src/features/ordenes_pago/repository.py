@@ -176,49 +176,107 @@ def _portal_pendientes() -> dict[int, list[dict]]:
     return res
 
 
+# Sergio 27/10: el umbral de $300 solo relativiza cuentas cuyo saldo total es menor a $300 (restos de redondeo).
+UMBRAL_CUENTA = Decimal(300)
+_ORIGENES_A_PAGAR = {'Compras', 'Impuestos', 'Remuneraciones', 'Alquileres', 'Pastaje'}
+
+
+def _cubrir(docs, monto):
+    """Descuenta `monto` de los documentos dados en el orden dado (cada uno con 'saldo'); devuelve lo que queda."""
+    out = []
+    for d in docs:
+        tomado = min(d['saldo'], max(monto, Decimal(0)))
+        monto -= tomado
+        if d['saldo'] - tomado >= 1:
+            out.append({**d, 'saldo': d['saldo'] - tomado})
+    return out
+
+
 def _pendientes():
-    """Facturas a pagar (04/11/2026).
-    - Proveedores con portal (Sancor, Cooperativa, Jáuregui, Bayá Casal, Cargill): lo que el portal muestra impago.
-    - Sin portal: facturas con saldo según sus propias imputaciones, solo si la cuenta tiene deuda; si la suma no
-      coincide con la cuenta, la diferencia queda a la vista (`difCuenta`), sin repartir nada.
+    """Facturas a pagar (04-05/11/2026, Sergio).
+    - Pagos ya hechos que esperan el extracto (comprobantes de transferencias y eCheqs de la carpeta Cuentas a pagar,
+      sin débito confirmado): se descuentan de lo que se debe al proveedor.
+    - Proveedores con portal (Sancor, Cooperativa, Jáuregui, Bayá Casal, Cargill): lo que el portal muestra impago,
+      menos esos pagos en camino (cubren lo más viejo primero).
+    - Sin portal: lo que debe la cuenta, menos los pagos en camino, son los documentos más nuevos (facturas, impuestos,
+      tasas, sueldos) hasta completar ese importe: los pagos cubren primero lo más viejo (regla pago-vencidas-primero,
+      confirmada por Sergio 05/11). Cuenta en cero o a favor: nada a pagar.
     - Bancos: fuera (los gastos los debita el banco). `estado` 'tarjeta' si al proveedor se le paga con tarjeta."""
     from src.features.cuentas_corrientes import repository as cuentas
+    from src.features.ordenes_pago import comprobantes_emitidos
 
     hoy = date.today()
     portal = _portal_pendientes()
+    try:
+        comprobantes_emitidos.sincronizar()
+    except Exception:  # sin la carpeta (otra PC) el listado igual sale, sin pagos en camino nuevos
+        pass
+    en_camino = comprobantes_emitidos.esperando_banco()
     resultado = []
 
-    def agregar(f, s, estado, medio, dif):
+    def agregar(f, s, estado, medio):
         vto = f.get('fechaVto') or f['fecha']
         vto = vto.date() if hasattr(vto, 'date') else vto
         resultado.append({'idCompra': 0, 'tc': None, 'condicion': None, 'pagado': Decimal(0), 'reservado': Decimal(0),
-                          'disponible': Decimal(0), 'suspendida': False, 'origen': 'Compras', 'saldoUsd': None, **f,
+                          'suspendida': False, 'origen': 'Compras', 'saldoUsd': None, **f,
+                          'disponible': f.get('disponible', f['saldo']),
                           'idContacto': s['idContacto'], 'proveedor': s.get('razonSocial'), 'vencimiento': vto,
                           'diasVencida': (hoy - vto).days if vto and vto < hoy else 0, 'estado': estado,
-                          'medioHabitual': medio, 'difCuenta': dif, 'saldoCuenta': dinero(-(s.get('saldoParcial') or 0)),
+                          'medioHabitual': medio, 'difCuenta': Decimal(0), 'saldoCuenta': dinero(-(s.get('saldoParcial') or 0)),
+                          'enCamino': sum((c['importe'] for c in en_camino.get(s['idContacto'], [])), Decimal(0)),
                           'ajustado': False})
 
     for s in cuentas.get_saldos_todos():
         idc = s['idContacto']
+        pagado = sum((c['importe'] for c in en_camino.get(idc, [])), Decimal(0))
         if idc in portal:
-            for p in portal[idc]:
+            pesos = sorted([p for p in portal[idc] if p['moneda'] != 'Dolares' and p['importe'] > 0],
+                           key=lambda p: p['fecha'] or date.min)
+            filas = _cubrir([{**p, 'saldo': p['importe']} for p in pesos], pagado)
+            filas += [{**p, 'saldo': p['importe']} for p in portal[idc] if p['moneda'] == 'Dolares' and p['importe'] > 0]
+            for p in filas:
                 usd = p['moneda'] == 'Dolares'
                 agregar({'numero': p['numero'], 'fecha': p['fecha'], 'moneda': p['moneda'], 'total': p['importe'],
-                         'saldo': Decimal(0) if usd else p['importe'], 'saldoUsd': p['importe'] if usd else None,
-                         'origen': 'Portal'}, s, 'a pagar', None, Decimal(0))
+                         'saldo': Decimal(0) if usd else p['saldo'], 'saldoUsd': p['importe'] if usd else None,
+                         'disponible': Decimal(0), 'origen': 'Portal'}, s, 'a pagar', None)
             continue
-        deuda = dinero(-(s.get('saldoParcial') or 0))
-        if deuda < 1 or (s.get('razonSocial') or '').lower().startswith('banco '):
+        deuda = dinero(-(s.get('saldoParcial') or 0)) - pagado
+        if deuda < UMBRAL_CUENTA or (s.get('razonSocial') or '').lower().startswith('banco '):
             continue
-        filas = [f for f in facturas(idc, incluir_suspendidas=True) if dinero(f['saldo']) >= 1]
-        if not filas:
+        movs, _ = cuentas.get_movimientos(idc, None, None, 1, 100000)
+        abiertas = {f['idCompra']: f for f in facturas(idc, incluir_suspendidas=True)}
+        docs = []
+        for m in sorted((m for m in movs if (m['deuda'] or 0) > 0), key=lambda m: m['fecha'], reverse=True):
+            if deuda < 1:
+                break
+            parte = min(dinero(m['deuda']), deuda)
+            deuda -= parte
+            compra = m['origenTipo'] == 'Compras'
+            f = abiertas.get(m['idOrigen']) if compra else None
+            docs.append({**(f or {}), 'numero': (f or {}).get('numero') or m['numeroDocumento'] or m['documento'],
+                         'fecha': m['fecha'], 'total': dinero(m['deuda']), 'saldo': parte,
+                         'idCompra': m['idOrigen'] if compra else 0, 'origen': 'Compras' if compra else m['origenTipo'],
+                         'reservado': (f or {}).get('reservado', Decimal(0)),
+                         'disponible': max(Decimal(0), parte - (f or {}).get('reservado', Decimal(0))) if compra else Decimal(0)})
+        # Solo se listan documentos que se pagan (facturas, impuestos, tasas, sueldos, alquileres, pastaje); el resto
+        # (cargos de tarjeta, movimientos bancarios, ajustes) igual cuenta para el saldo pero no es algo a pagar.
+        docs = [d for d in docs if d['origen'] in _ORIGENES_A_PAGAR]
+        if not docs:
             continue
         medio = medio_habitual(idc)
-        dif = deuda - sum(dinero(f['saldo']) for f in filas)
-        for f in filas:
-            agregar({**f, 'saldo': dinero(f['saldo']), 'disponible': dinero(f['disponible'])}, s,
-                    'tarjeta' if medio == 'tarjetas' else 'a pagar', medio, dif if abs(dif) >= 1 else Decimal(0))
+        for d in docs:
+            agregar(d, s, 'tarjeta' if medio == 'tarjetas' else 'a pagar', medio)
     return sorted(resultado, key=lambda f: (f['vencimiento'] or date.max, f['proveedor'] or ''))
+
+
+def pagos_en_camino():
+    """Pagos hechos (transferencias y eCheqs de la carpeta) cuyo débito todavía no está en el extracto."""
+    from src.features.cuentas_corrientes import repository as cuentas
+    from src.features.ordenes_pago import comprobantes_emitidos
+
+    nombres = {s['idContacto']: s.get('razonSocial') for s in cuentas.get_saldos_todos()}
+    return [{**c, 'proveedor': nombres.get(c['idContacto']) or c['destinatario']}
+            for v in comprobantes_emitidos.esperando_banco().values() for c in v]
 
 
 def validar_facturas(body, excluir_op=None):

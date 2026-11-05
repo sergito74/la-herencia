@@ -3,7 +3,7 @@ from fastapi.responses import FileResponse, Response
 
 from src.features.boveda.router import exigir_admin, usuario_actual
 from src.features.ordenes_pago import repository as repo
-from src.features.ordenes_pago.schemas import (Estado, ExclusionInput, FacturaAPagar, FacturaPendiente, ListaOrdenes, Movimiento, Orden, OrdenInput,
+from src.features.ordenes_pago.schemas import (Estado, ExclusionInput, FacturaAPagar, FacturaPendiente, PagoEnCamino, ListaOrdenes, Movimiento, Orden, OrdenInput,
                                                PropuestaInput, RubroInput, VincularInput)
 from src.features.retenciones_ganancias import mail, padron, repository as retenciones
 
@@ -30,6 +30,12 @@ def listar(idContacto: int | None = Query(None, gt=0), estado: Estado | None = N
 @router.get('/facturas', response_model=list[FacturaPendiente])
 def facturas(idContacto: int = Query(...,gt=0), excluirOrden: int | None = Query(None,gt=0), incluirSaldadas: bool = False):
     return repo.facturas(idContacto, excluirOrden, incluirSaldadas)
+
+
+@router.get('/en-camino', response_model=list[PagoEnCamino])
+def en_camino():
+    """Transferencias y eCheqs ya hechos (carpeta Cuentas a pagar) que todavía no están en el extracto."""
+    return repo.pagos_en_camino()
 
 
 @router.get('/pendientes', response_model=list[FacturaAPagar])

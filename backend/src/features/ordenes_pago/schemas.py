@@ -182,6 +182,19 @@ class FacturaAPagar(FacturaPendiente):
     suspendida: bool = False
     difCuenta: float = 0  # cuenta corriente − suma de facturas del proveedor (<0: pagos sin imputar)
     saldoCuenta: float = 0
+    enCamino: float = 0  # pagos hechos al proveedor que esperan el extracto del banco
+
+
+class PagoEnCamino(BaseModel):
+    tipo: str
+    operacion: str | None = None
+    cheque: str | None = None
+    fecha: date | None = None
+    fechaPago: date | None = None
+    importe: float
+    idContacto: int
+    proveedor: str | None = None
+    concepto: str | None = None
 
 
 class Movimiento(BaseModel):

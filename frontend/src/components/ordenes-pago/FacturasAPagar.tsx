@@ -3,7 +3,7 @@ import { useMemo, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { SoloLectura } from '@/components/auth/SoloLectura';
 import { formatFecha, formatMoneda } from '@/lib/format';
-import { facturasAPagar, type FacturaAPagar } from '@/services/ordenesPagoApi';
+import { facturasAPagar, pagosEnCamino, type FacturaAPagar } from '@/services/ordenesPagoApi';
 import { boton, campo } from './FormularioOrdenPago';
 
 type Seleccion = { idContacto: number; proveedor: string | null; facturas: Record<number, number> };
@@ -17,6 +17,7 @@ export function FacturasAPagar({ idContacto, crearOrden }: { idContacto: number 
   const [buscar, setBuscar] = useState('');
   const [sel, setSel] = useState<Seleccion | null>(null);
   const q = useQuery({ queryKey: ['facturas-a-pagar'], queryFn: () => facturasAPagar(), staleTime: 60_000 });
+  const camino = useQuery({ queryKey: ['pagos-en-camino', q.dataUpdatedAt], queryFn: pagosEnCamino, enabled: q.isSuccess });
   const filas = useMemo(() => (q.data ?? []).filter(f =>
     (!idContacto || f.idContacto === idContacto) && (!soloVencidas || f.diasVencida > 0) && (verTodas || f.estado === 'a pagar' || f.estado === 'sueldo') &&
     (!buscar || `${f.proveedor ?? ''} ${f.numero ?? ''}`.toLowerCase().includes(buscar.toLowerCase()))), [q.data, idContacto, soloVencidas, verTodas, buscar]);
@@ -63,7 +64,7 @@ export function FacturasAPagar({ idContacto, crearOrden }: { idContacto: number 
           {filas.map((f, i) => {
             const tildada = sel?.idContacto === f.idContacto && f.idCompra in sel.facturas;
             return <tr key={`${f.origen ?? "Compras"}-${f.idCompra}-${i}`} className={`border-t ${tildada ? 'bg-emerald-50' : ''}`}>
-              <td className="p-2"><input type="checkbox" aria-label={`Seleccionar ${f.numero ?? 'factura'} de ${f.proveedor ?? ''}`} disabled={f.disponible <= 0} checked={!!tildada} onChange={e => tildar(f, e.target.checked)} /></td>
+              <td className="p-2"><input type="checkbox" aria-label={`Seleccionar ${f.numero ?? 'factura'} de ${f.proveedor ?? ''}`} disabled={(f.origen ?? 'Compras') !== 'Compras' || f.disponible <= 0} checked={!!tildada} onChange={e => tildar(f, e.target.checked)} /></td>
               <td className={`p-2 ${f.diasVencida > 0 ? 'text-red-700 font-medium' : ''}`}>{formatFecha(f.vencimiento)}<span className="block text-xs text-slate-600">{f.condicion === 'Contado' ? 'Contado' : 'A plazo'}</span>{f.diasVencida > 0 && <span className="block text-xs">vencida hace {f.diasVencida} días</span>}</td>
               <td>{f.proveedor}
                 {f.estado === 'tarjeta' && <span className="block text-xs text-slate-600">Se paga con tarjeta: queda saldada al cargar el resumen</span>}
@@ -71,18 +72,31 @@ export function FacturasAPagar({ idContacto, crearOrden }: { idContacto: number 
                 {f.estado === 'debito' && <span className="block text-xs text-slate-600">Lo debita el banco</span>}
                 {f.estado === 'sueldo' && <span className="block text-xs text-slate-600">Sueldo</span>}
                 {f.origen === 'Portal' && <span className="block text-xs text-slate-600">Según el portal del proveedor</span>}
-                {f.difCuenta < 0 && <span className="block text-xs text-amber-800">Esta cuenta tiene pagos sin imputar a factura</span>}</td>
+                {!!f.enCamino && <span className="block text-xs text-slate-600">Ya se le pagaron {formatMoneda(f.enCamino)} que esperan el resumen del banco</span>}
+                {(f.origen ?? 'Compras') !== 'Compras' && f.origen !== 'Portal' && <span className="block text-xs text-slate-600">{f.origen === 'Remuneraciones' ? 'Sueldo' : f.origen === 'Impuestos' ? 'Impuesto o tasa' : f.origen}</span>}</td>
               <td>{(f.origen ?? 'Compras') === 'Compras' ? <a className="underline" href={`/compras/${f.idCompra}/editar`}>{f.numero || 'Sin número'}</a> : f.numero}</td>
               <td>{formatFecha(f.fecha)}</td>
               <td className="text-right">{formatMoneda(f.saldo)}{f.saldoUsd ? <span className="block text-xs text-slate-600">{formatMoneda(f.saldoUsd, 'Dolares')}</span> : null}</td>
               <td className="text-right">{f.reservado ? formatMoneda(f.reservado) : '—'}</td>
-              <td className="text-right">{formatMoneda(f.disponible)}</td>
+              <td className="text-right">{(f.origen ?? 'Compras') === 'Compras' ? formatMoneda(f.disponible) : formatMoneda(f.saldo)}</td>
             </tr>;
           })}
         </tbody>
       </table>
       {!q.isLoading && filas.length === 0 && <p className="p-6 text-slate-600">No hay facturas a pagar con estos filtros.</p>}
     </section>
-    <p className="text-xs text-slate-600">Importes en pesos (las facturas en dólares al tipo de cambio de la factura). Proveedores con portal (Sancor, Cooperativa, Jáuregui, Bayá Casal, Cargill): lo que el portal muestra impago. El resto: facturas con saldo según sus pagos imputados; el vencimiento es el de la condición de pago (A plazo: su fecha de vencimiento; Contado: la fecha de la factura).</p>
+    {!!camino.data?.length && <section className="rounded border bg-white" aria-label="Pagos hechos que esperan el banco">
+      <h3 className="p-3 font-medium">Pagados, esperando el resumen del banco</h3>
+      <table className="w-full text-sm"><thead className="bg-slate-50"><tr>
+        <th className="p-2 text-left">Proveedor</th><th className="text-left">Pago</th><th className="text-left">Fecha</th><th className="text-left">Débito previsto</th><th className="text-left">Concepto</th><th className="p-2 text-right">Importe</th>
+      </tr></thead><tbody>
+        {camino.data.map((c, i) => <tr key={i} className="border-t">
+          <td className="p-2">{c.proveedor}</td><td>{c.tipo === 'echeq' ? `eCheq ${c.cheque ?? ''}` : 'Transferencia'}</td>
+          <td>{formatFecha(c.fecha)}</td><td>{formatFecha(c.fechaPago)}</td><td>{c.concepto}</td><td className="p-2 text-right">{formatMoneda(c.importe)}</td>
+        </tr>)}
+      </tbody></table>
+      <p className="p-3 text-xs text-slate-600">Salen de los comprobantes guardados en la carpeta Cuentas a pagar. Ya están descontados de lo que se debe; se confirman solos al subir el resumen del banco.</p>
+    </section>}
+    <p className="text-xs text-slate-600">Importes en pesos (las facturas en dólares al tipo de cambio de la factura). Proveedores con portal (Sancor, Cooperativa, Jáuregui, Bayá Casal, Cargill): lo que el portal muestra impago. El resto: lo que debe la cuenta, menos los pagos que esperan el banco, son sus documentos más nuevos (lo pagado cubre primero lo más viejo); se pagan con tarjeta las de proveedores que se pagan así; el vencimiento es el de la condición de pago (A plazo: su fecha de vencimiento; Contado: la fecha de la factura).</p>
   </section>;
 }
