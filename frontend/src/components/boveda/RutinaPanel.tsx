@@ -30,6 +30,15 @@ const TEXTOS: Record<AlcanceRutina, { titulo: string; descripcion: string; boton
   },
 };
 
+/** La fecha-hora (local, sin zona) dos días después, para mostrar cuándo corre sola. */
+function enDosDias(inicio: string): string {
+  const m = inicio.match(/^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})/);
+  if (!m) return "—";
+  const f = new Date(+m[1], +m[2] - 1, +m[3] + 2, +m[4], +m[5]);
+  const p = (n: number) => String(n).padStart(2, "0");
+  return `${p(f.getDate())}/${p(f.getMonth() + 1)}/${f.getFullYear()} ${p(f.getHours())}:${p(f.getMinutes())}`;
+}
+
 function Resumen({ alcance, u }: { alcance: AlcanceRutina; u: CorridaRutina | null }) {
   if (!u) return <p className="mt-1 text-ink-muted">Todavía no corrió.</p>;
   const detalle = alcance === "documentos"
@@ -76,12 +85,17 @@ function Rutina({ alcance, u, enCola, otraCorriendo }: {
       {pedida && enCola && !otraCorriendo && <p className="text-ink-secondary">Pedido recibido: arranca enseguida.</p>}
       {ejecutar.isError && <p className="text-amber-900">No se pudo iniciar: {ejecutar.error.message}</p>}
       <Resumen alcance={alcance} u={u} />
+      {u?.inicio && !enCurso && (
+        <p className="text-xs text-ink-muted">
+          Si no la pedís antes, corre sola el {enDosDias(u.inicio)}.
+        </p>
+      )}
     </div>
   );
 }
 
 /** Búsqueda de documentos nuevos (043), separada en dos (06/11/2026): mails y carpetas por un lado, portales por
- * otro, cada una con su botón. Lo que encuentran queda para revisar en el menú de cada módulo. */
+ * otro, cada una con su botón; a pedido, y sola si pasan 2 días sin correr. Lo que encuentran queda para revisar en el menú de cada módulo. */
 export function RutinaPanel() {
   const q = useQuery({
     queryKey: ["documentos-nuevos", "rutina"], queryFn: getEstadoRutina,
@@ -96,9 +110,7 @@ export function RutinaPanel() {
       <AvisoFacturasAtrasadas />
       <section className="rounded-md border border-border bg-surface px-3 py-2 text-sm">
         <h2 className="font-semibold">Buscar documentos nuevos</h2>
-        {d.activa && d.proxima && (
-          <p className="text-ink-secondary">Próxima búsqueda automática (las dos): <strong>{formatFechaHora(d.proxima)}</strong>.</p>
-        )}
+        <p className="text-ink-secondary">Corren solo cuando las pedís. Si alguna pasa 2 días sin correr, corre sola.</p>
         <div className="mt-2 flex flex-col gap-2 md:flex-row">
           {(["documentos", "portales"] as const).map((a) => (
             <Rutina key={a} alcance={a}

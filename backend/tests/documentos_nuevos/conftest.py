@@ -103,14 +103,16 @@ class RepoSimulado:
     def abrir_corrida(self, origen="programada", alcance="todo"):
         if any(c["estado"] == "en_curso" for c in self.corridas):
             return None
-        self.corridas.append({"estado": "en_curso", "origen": origen})
+        self.corridas.append({"estado": "en_curso", "origen": origen, "alcance": alcance,
+                              "inicio": getattr(self, "ahora", None)})
         return len(self.corridas)
 
     def cerrar_corrida(self, i, estado, r, mensaje):
         self.corridas[i - 1].update(estado=estado, mensaje=mensaje, **r)
 
-    def ultima_corrida(self):
-        return self.corridas[-1] if self.corridas else None
+    def ultima_corrida(self, alcance=None):
+        cs = [c for c in self.corridas if alcance is None or c.get("alcance") in (alcance, "todo")]
+        return cs[-1] if cs else None
 
     def programacion(self):
         return dict(self.prog)

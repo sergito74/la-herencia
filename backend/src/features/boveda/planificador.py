@@ -123,14 +123,11 @@ def _bucle() -> None:
         log.exception("Planificador: no se pudieron pasar al próximo horario las corridas vencidas")
     while True:
         try:
-            # La rutina diaria (043, 7:00 y 14:00) corre en este mismo hilo: nunca se abren dos navegadores a la vez.
+            # Las búsquedas (043) corren en este mismo hilo: nunca se abren dos navegadores a la vez. 06/11/2026: son
+            # a pedido; solo corren solas si pasaron 2 días sin correr. Los horarios por cuenta ya no se usan.
             rutina.tick()
         except Exception:
-            log.exception("Rutina: falló la revisión del horario")
-        try:
-            tick()
-        except Exception:
-            log.exception("Bóveda: falló la revisión de corridas programadas")
+            log.exception("Rutina: falló la revisión de búsquedas")
         # "Buscar ahora" despierta el hilo en el momento (sin esperar al próximo minuto).
         if DESPERTAR.wait(INTERVALO):
             DESPERTAR.clear()

@@ -85,15 +85,18 @@ def test_outlook_caido_no_corta_la_rutina(repo_sim, monkeypatch, sin_cuentas):
     assert c["estado"] == "con_problemas" and "Outlook no respondió" in c["mensaje"]
 
 
-def test_tick_activacion_no_corre_y_recuperacion_unica(repo_sim, monkeypatch, sin_cuentas):
+def test_tick_corre_solo_lo_que_lleva_2_dias_sin_correr(repo_sim, monkeypatch):
+    from datetime import timedelta
+
+    hoy = datetime(2026, 11, 6, 10)
+    repo_sim.corridas = [{"estado": "ok", "alcance": "documentos", "inicio": hoy - timedelta(hours=47)},
+                         {"estado": "ok", "alcance": "portales", "inicio": hoy - timedelta(days=2, minutes=1)}]
     corridas = []
-    monkeypatch.setattr(rutina, "correr", lambda origen="programada": corridas.append(origen))
-    assert not rutina.tick(datetime(2026, 10, 28, 10))
-    assert repo_sim.prog["proxima"] == datetime(2026, 10, 28, 14)
-    # El sistema estuvo apagado dos horarios: corre una sola vez.
-    assert rutina.tick(datetime(2026, 10, 29, 16))
-    assert not rutina.tick(datetime(2026, 10, 29, 16, 1))
-    assert corridas == ["programada"]
+    monkeypatch.setattr(rutina, "correr", lambda origen="programada", alcance="todo": corridas.append(alcance))
+    assert rutina.tick(hoy)
+    assert corridas == ["portales"]
+    repo_sim.corridas.append({"estado": "ok", "alcance": "portales", "inicio": hoy})
+    assert not rutina.tick(hoy + timedelta(minutes=1))  # documentos todavía no cumple 2 días
 
 
 def test_xml_de_arca_junto_a_su_pdf_se_ignora():

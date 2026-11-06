@@ -309,27 +309,30 @@ def correr(origen: str = "programada", alcance: str = "todo") -> int | None:
     return id_corrida
 
 
+# 06/11/2026 (Sergio): las búsquedas son a pedido; si una no corrió en 2 días, corre sola.
+SIN_CORRER_MAXIMO = timedelta(days=2)
+
+
+def _vencida(alcance: str, ahora: datetime) -> bool:
+    u = repository.ultima_corrida(alcance)
+    if not u:
+        return True
+    inicio = u["inicio"]
+    if isinstance(inicio, str):
+        inicio = datetime.fromisoformat(inicio.replace(" ", "T").split(".")[0])
+    return inicio is None or ahora - inicio >= SIN_CORRER_MAXIMO
+
+
 def tick(ahora: datetime | None = None) -> bool:
-    """Llamado por el planificador cada minuto. Corre si venció la próxima corrida (una sola vez aunque se hayan
-    perdido varios horarios) y recalcula la siguiente desde ahora. Devuelve si corrió."""
+    """Llamado por el planificador cada minuto. Atiende primero los pedidos de la pantalla; si no hay, corre sola la
+    búsqueda (mails y carpetas, o portales) que lleva 2 días o más sin correr. Devuelve si corrió."""
     pedido = _tomar_pedido()
     if pedido:
         correr("programada", pedido)
         return True
-    prog = repository.programacion()
-    if not prog or not prog["activa"]:
-        return False
     ahora = ahora or datetime.now()
-    if prog["proxima"] is None:  # activación: arranca en el próximo horario, sin correr ahora
-        repository.fijar_proxima(proxima(prog["horarios"], ahora))
-        return False
-    vence = prog["proxima"]
-    if isinstance(vence, str):
-        vence = datetime.fromisoformat(vence.replace(" ", "T").split(".")[0])
-    if vence > ahora:
-        return False
-    try:
-        correr("programada")
-    finally:
-        repository.fijar_proxima(proxima(prog["horarios"], max(datetime.now(), ahora)))
-    return True
+    for alcance in ("documentos", "portales"):
+        if _vencida(alcance, ahora):
+            correr("programada", alcance)
+            return True
+    return False
