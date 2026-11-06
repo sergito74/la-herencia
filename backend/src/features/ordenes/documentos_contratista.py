@@ -75,6 +75,8 @@ def ordenes_del_contratista(id_compra: int) -> list[dict]:
     for f in filas:
         f["vinculada"], f["tieneOtraFactura"] = bool(f["vinculada"]), bool(f["tieneOtraFactura"])
         f["hectareas"] = float(f["hectareas"] or 0)
+    # Sergio 06/11: una orden que ya tiene otra factura no es candidata (salvo que también esté en esta).
+    filas = [f for f in filas if f["vinculada"] or not f["tieneOtraFactura"]]
     filas.sort(key=lambda f: str(f["fecha"]), reverse=True)
     filas.sort(key=lambda f: f["tieneOtraFactura"] and not f["vinculada"])
     return filas
