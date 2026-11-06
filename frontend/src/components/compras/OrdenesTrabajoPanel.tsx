@@ -111,10 +111,18 @@ export function OrdenesTrabajoPanel({ idCompra }: { idCompra: number }) {
       </span>
     )
   ) : (
-    <span className="min-w-0 truncate" title={vinculadas.map((o) => `Pedido ${formatFecha(o.fechaPedido)} · ${o.labor ?? "Labor"} · ${ha(o.hectareas)}`).join("\n")}>
-      {vinculadas.length === 1
-        ? `Orden del ${formatFecha(vinculadas[0].fechaPedido)} · ${vinculadas[0].labor ?? "Labor"} · ${ha(vinculadas[0].hectareas)}`
-        : `${vinculadas.length} órdenes · ${ha(vinculadas.reduce((s, o) => s + o.hectareas, 0))}`}
+    <span className="flex min-w-0 items-center gap-1 truncate" title={vinculadas.map((o) => `N° ${o.idOrden} · Pedido ${formatFecha(o.fechaPedido)} · ${o.labor ?? "Labor"} · ${ha(o.hectareas)}`).join("\n")}>
+      {vinculadas.map((o, i) => (
+        <span key={o.idOrden} className="shrink-0">
+          {i > 0 && ", "}
+          <LinkOrden idOrden={o.idOrden} />
+        </span>
+      ))}
+      <span className="truncate">
+        {vinculadas.length === 1
+          ? ` · Orden del ${formatFecha(vinculadas[0].fechaPedido)} · ${vinculadas[0].labor ?? "Labor"} · ${ha(vinculadas[0].hectareas)}`
+          : ` · ${vinculadas.length} órdenes · ${ha(vinculadas.reduce((s, o) => s + o.hectareas, 0))}`}
+      </span>
     </span>
   );
 
@@ -181,6 +189,22 @@ export function OrdenesTrabajoPanel({ idCompra }: { idCompra: number }) {
   );
 }
 
+/** N° de orden que abre la orden completa en otra pestaña (no tilda la fila). */
+function LinkOrden({ idOrden, className = "" }: { idOrden: number; className?: string }) {
+  return (
+    <a
+      href={`/produccion/ordenes/${idOrden}`}
+      target="_blank"
+      rel="noopener noreferrer"
+      onClick={(e) => e.stopPropagation()}
+      title="Abrir la orden en otra pestaña"
+      className={`tabular-nums text-finance underline hover:opacity-80 ${className}`}
+    >
+      N° {idOrden}
+    </a>
+  );
+}
+
 /** Franja de una línea: título, resumen (se trunca) y acción a la derecha. */
 function Franja({ titulo, accion, children }: { titulo: string; accion?: React.ReactNode; children?: React.ReactNode }) {
   return (
@@ -213,6 +237,7 @@ function Fila({ o, tildada, onClick, fechaFactura, haFactura }: {
   return (
     <label className={`flex cursor-pointer items-center gap-2 border-b border-border px-2 py-1 last:border-b-0 ${tildada ? "bg-finance-light" : "hover:bg-surface-sunken"}`}>
       <input type="checkbox" checked={tildada} onChange={onClick} />
+      <LinkOrden idOrden={o.idOrden} className="w-14 shrink-0" />
       {/* Pedido = la fecha del listado de órdenes; ejecutada = la que se compara con la factura. */}
       <span className="w-28 shrink-0 tabular-nums">Pedido {formatFecha(o.fechaPedido)}</span>
       <span className="w-48 shrink-0 tabular-nums text-ink-secondary">
