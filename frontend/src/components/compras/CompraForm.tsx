@@ -629,6 +629,7 @@ export function CompraForm({
             onVincular={handleVincularRelacionado}
             onDesvincular={handleDesvincularRelacionado}
             excluirIdCompra={idCompra}
+            fechaReferencia={fecha}
           />
           {mode === "edicion" && idCompra != null && <OrdenesTrabajoPanel idCompra={idCompra} />}
         </div>

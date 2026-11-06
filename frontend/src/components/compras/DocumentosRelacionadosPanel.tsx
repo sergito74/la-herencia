@@ -2,11 +2,10 @@
 
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { fetchCompras, type DocumentoRelacionado, type TipoDocumentoCompra } from "@/services/comprasApi";
-import { filterInputClass } from "@/components/ui/FilterBar";
-import { formatFecha } from "@/lib/format";
+import { formatFecha, formatMoneda } from "@/lib/format";
 
 /** Un documento suele relacionarse con el/los tipo/s "opuesto/s" — una
  *  Nota de Crédito o Débito complementa una Factura, y viceversa. */
@@ -21,16 +20,10 @@ function tiposCandidatos(tipoActual: TipoDocumentoCompra): TipoDocumentoCompra[]
 }
 
 /**
- * Vínculo manual entre documentos del mismo proveedor (ej. una Nota de
- * Crédito/Débito que complementa una Factura, por devolución o ajuste de
- * tipo de cambio). Proveedores con muchos documentos del tipo
- * complementario hacían que listar automáticamente hasta 20 candidatos
- * fuera "engorroso y poco práctico" (pedido explícito del usuario,
- * 2026-09-17) — ahora es una búsqueda explícita por nº de documento (no
- * se pide nada hasta escribir, mismo patrón que `ContactoSelect`), así el
- * usuario encuentra el puntual que quiere relacionar en vez de tildar
- * entre una lista larga. Lo ya vinculado se sigue mostrando siempre,
- * tildable/destildable, sin necesidad de buscar.
+ * Vínculo manual entre documentos del mismo proveedor (ej. una Nota de Crédito/Débito que complementa una Factura).
+ * 06/11/2026 (Sergio): lista tildable filtrada sola por proveedor y tipo complementario — tipear el nº es poco
+ * práctico. Para que no se haga larga: se abre a pedido, ordenada por cercanía a la fecha del documento, 12 a la vista
+ * y "Ver más" para el resto.
  */
 export function DocumentosRelacionadosPanel({
   idContacto,
@@ -39,6 +32,7 @@ export function DocumentosRelacionadosPanel({
   onVincular,
   onDesvincular,
   excluirIdCompra,
+  fechaReferencia,
 }: {
   idContacto: number | null;
   tipoDocumento: TipoDocumentoCompra;
@@ -47,70 +41,88 @@ export function DocumentosRelacionadosPanel({
   onDesvincular: (idCompra: number) => void;
   /** No ofrecer este id como candidato (la propia compra, si ya tiene id). */
   excluirIdCompra?: number;
+  /** Fecha del documento que se edita: los candidatos más cercanos van primero. */
+  fechaReferencia?: string | null;
 }) {
-  const [busqueda, setBusqueda] = useState("");
+  const [abierto, setAbierto] = useState(false);
+  const [verTodos, setVerTodos] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
   const tipos = tiposCandidatos(tipoDocumento);
-  const buscando = busqueda.trim().length >= 2;
+
+  useEffect(() => {
+    if (!abierto) return;
+    const cerrar = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setAbierto(false);
+    };
+    document.addEventListener("mousedown", cerrar);
+    return () => document.removeEventListener("mousedown", cerrar);
+  }, [abierto]);
 
   const { data: resultados, isFetching } = useQuery({
-    queryKey: ["compras-relacionar", idContacto, tipos, busqueda],
-    queryFn: () =>
-      fetchCompras({ idContacto: idContacto!, tipoDocumento: tipos, numeroDocumento: busqueda, pageSize: 10 }),
-    enabled: idContacto != null && tipos.length > 0 && buscando,
+    queryKey: ["compras-relacionar", idContacto, tipos],
+    queryFn: () => fetchCompras({ idContacto: idContacto!, tipoDocumento: tipos, pageSize: 200 }),
+    enabled: abierto && idContacto != null && tipos.length > 0,
   });
 
   const idsRelacionados = new Set(relacionados.map((r) => r.idCompra));
-  const candidatos = (resultados?.items ?? []).filter(
-    (c) => c.idCompra !== excluirIdCompra && !idsRelacionados.has(c.idCompra)
-  );
+  const ref0 = fechaReferencia ? new Date(fechaReferencia).getTime() : Date.now();
+  const candidatos = (resultados?.items ?? [])
+    .filter((c) => c.idCompra !== excluirIdCompra && !idsRelacionados.has(c.idCompra))
+    .sort((a, b) => Math.abs(new Date(a.fecha ?? 0).getTime() - ref0) - Math.abs(new Date(b.fecha ?? 0).getTime() - ref0));
+  const visibles = verTodos ? candidatos : candidatos.slice(0, 12);
 
-  const lista = (docs: DocumentoRelacionado[], vinculados: boolean) =>
-    docs.map((r) => (
-      <label key={r.idCompra} className="flex cursor-pointer items-center gap-1 whitespace-nowrap text-xs">
-        <input
-          type="checkbox"
-          checked={vinculados}
-          onChange={() => (vinculados ? onDesvincular(r.idCompra) : onVincular(r))}
-        />
-        <Link
-          href={`/compras/${r.idCompra}/editar`}
-          onClick={(e) => e.stopPropagation()}
-          className="text-ink-secondary underline decoration-dotted hover:text-finance"
-        >
-          {formatFecha(r.fecha)} · {r.tipoDocumento ?? "—"} {r.numeroDocumento ?? ""}
-        </Link>
-      </label>
-    ));
+  const etiqueta = (r: { fecha: string | null; tipoDocumento: string | null; numeroDocumento: string | null }) =>
+    `${formatFecha(r.fecha)} · ${r.tipoDocumento ?? "—"} ${r.numeroDocumento ?? ""}`;
 
-  // Franja de una línea: lo vinculado (tildado) + buscador; los resultados se abren debajo sin empujar la grilla.
   return (
-    <div className="relative flex h-7 items-center gap-2 rounded border border-border bg-surface px-2 text-xs">
+    <div ref={ref} className="relative flex h-7 items-center gap-2 rounded border border-border bg-surface px-2 text-xs">
       <span className="shrink-0 font-medium text-ink-secondary">Documentos relacionados:</span>
       <div className="flex min-w-0 flex-1 items-center gap-x-3 overflow-x-auto">
-        {relacionados.length > 0 ? lista(relacionados, true) : <span className="text-ink-muted">ninguno</span>}
+        {relacionados.length > 0 ? (
+          relacionados.map((r) => (
+            <label key={r.idCompra} className="flex cursor-pointer items-center gap-1 whitespace-nowrap">
+              <input type="checkbox" checked onChange={() => onDesvincular(r.idCompra)} />
+              <Link href={`/compras/${r.idCompra}/editar`} className="text-ink-secondary underline decoration-dotted hover:text-finance">
+                {etiqueta(r)}
+              </Link>
+            </label>
+          ))
+        ) : (
+          <span className="text-ink-muted">ninguno</span>
+        )}
       </div>
       {idContacto == null && <span className="shrink-0 text-ink-muted">Elegí un proveedor</span>}
-      {idContacto != null && tipos.length === 0 && (
-        <span className="shrink-0 text-ink-muted">No aplica a {tipoDocumento}</span>
-      )}
+      {idContacto != null && tipos.length === 0 && <span className="shrink-0 text-ink-muted">No aplica a {tipoDocumento}</span>}
       {idContacto != null && tipos.length > 0 && (
-        <input
-          className={`${filterInputClass} h-5 w-52 shrink-0 px-1.5 py-0 text-xs`}
-          value={busqueda}
-          onChange={(e) => setBusqueda(e.target.value)}
-          onKeyDown={(e) => e.key === "Escape" && setBusqueda("")}
-          placeholder={`Buscar nº de ${tipos.join("/")}…`}
-          aria-label={`Buscar nº de ${tipos.join("/")} de este proveedor para relacionar`}
-        />
+        <button type="button" onClick={() => setAbierto(!abierto)} className="shrink-0 text-finance hover:underline">
+          {abierto ? "Cerrar" : `Relacionar ${tipos.join("/")}`}
+        </button>
       )}
-      {buscando && (
-        <div className="absolute right-0 top-full z-20 mt-1 w-[28rem] max-w-full rounded border border-border-strong bg-surface p-2 shadow-lg">
-          {isFetching && <p className="text-ink-muted">Buscando…</p>}
-          {!isFetching && candidatos.length > 0 && (
-            <div className="flex max-h-40 flex-col gap-1 overflow-y-auto">{lista(candidatos, false)}</div>
+      {abierto && (
+        <div className="absolute right-0 top-full z-20 mt-1 w-[30rem] max-w-full rounded border border-border-strong bg-surface p-2 shadow-lg">
+          {isFetching && <p className="text-ink-muted">Cargando…</p>}
+          {!isFetching && candidatos.length === 0 && (
+            <p className="text-ink-muted">Este proveedor no tiene otros documentos de tipo {tipos.join("/")}.</p>
           )}
-          {!isFetching && resultados && candidatos.length === 0 && (
-            <p className="text-ink-muted">Sin resultados para &quot;{busqueda}&quot;.</p>
+          {!isFetching && candidatos.length > 0 && (
+            <div className="flex max-h-56 flex-col overflow-y-auto">
+              {visibles.map((c) => (
+                <label key={c.idCompra} className="flex cursor-pointer items-center gap-2 rounded px-1 py-0.5 hover:bg-surface-sunken">
+                  <input
+                    type="checkbox"
+                    checked={false}
+                    onChange={() => onVincular({ idCompra: c.idCompra, fecha: c.fecha, tipoDocumento: c.tipoDocumento, numeroDocumento: c.numeroDocumento })}
+                  />
+                  <span className="flex-1">{etiqueta(c)}</span>
+                  {c.importeDocumento != null && <span className="tabular-nums text-ink-secondary">{formatMoneda(c.importeDocumento)}</span>}
+                </label>
+              ))}
+              {!verTodos && candidatos.length > visibles.length && (
+                <button type="button" onClick={() => setVerTodos(true)} className="mt-1 text-left text-finance hover:underline">
+                  Ver más ({candidatos.length - visibles.length})
+                </button>
+              )}
+            </div>
           )}
         </div>
       )}
