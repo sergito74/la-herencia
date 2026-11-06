@@ -88,6 +88,13 @@ export function OrdenesTrabajoPanel({ idCompra }: { idCompra: number }) {
       </Franja>
     );
   }
+  if (data.anuladaPorNotaCredito) {
+    return (
+      <Franja titulo="Órdenes de trabajo">
+        <span className="truncate text-ink-secondary">Factura anulada por nota de crédito: no lleva orden.</span>
+      </Franja>
+    );
+  }
   if (!data.esDocumentoDeLabor) return null;
 
   const vinculadas = data.ordenes.filter((o) => o.vinculada);

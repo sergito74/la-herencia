@@ -33,6 +33,21 @@ def es_contratista(id_compra: int) -> bool:
         "WHERE o.IdContratistaContacto = c.IdContacto)", (id_compra,)) is not None
 
 
+# Factura anulada: sus notas de crédito relacionadas cubren todo su neto (ej. Santos 00001-00000053, cebada mal
+# facturada, anulada con la NC 00001-00000006 y refacturada como trigo). No lleva orden; queda con imputación manual.
+_ANULADA_SQL = """(
+    (SELECT ABS(SUM(d.Cantidad * d.[Precio Unitario])) FROM dbo.Det_Compras d
+      JOIN dbo.Compras n ON n.IdDeuda = d.IdCompra
+      WHERE n.[Tipo documento] COLLATE Latin1_General_CI_AI = 'Nota de Credito'
+        AND n.IdDeuda IN (SELECT r.IdCompraRelacionada FROM dbo.CompraDocumentosRelacionados r WHERE r.IdCompra = {c}
+                          UNION SELECT r.IdCompra FROM dbo.CompraDocumentosRelacionados r WHERE r.IdCompraRelacionada = {c}))
+    >= (SELECT SUM(d.Cantidad * d.[Precio Unitario]) FROM dbo.Det_Compras d WHERE d.IdCompra = {c}) - 0.01)"""
+
+
+def anulada_por_nc(id_compra: int) -> bool:
+    return fetch_one(f"SELECT CASE WHEN {_ANULADA_SQL.format(c='?')} THEN 1 ELSE 0 END AS si".replace("?", str(int(id_compra))))["si"] == 1
+
+
 def es_documento_de_labor(id_compra: int) -> bool:
     """Tiene al menos un renglón de un rubro de labor (FR-002)."""
     return fetch_one(
@@ -216,6 +231,7 @@ def sin_orden(id_contacto: int | None = None) -> list[dict]:
           AND EXISTS (SELECT 1 FROM dbo.Det_Compras d2 JOIN dbo.Rubros r2 ON r2.IdRubro = d2.IdRubro
                       WHERE d2.IdCompra = c.IdDeuda AND r2.Rubro IN ({_LABOR_SQL}))
           AND NOT EXISTS (SELECT 1 FROM dbo.OrdenesContratistaFacturas f WHERE f.IdCompra = c.IdDeuda)
+          AND NOT {_ANULADA_SQL.format(c="c.IdDeuda")}
           {filtro}
         ORDER BY k.[Razon Social], c.Fecha, c.IdDeuda
         """, (*RUBROS_LABOR, *params))

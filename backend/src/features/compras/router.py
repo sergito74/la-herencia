@@ -237,7 +237,9 @@ def _ordenes_trabajo(id_compra: int) -> dict:
     from src.features.ordenes import documentos_contratista as dc
     nota = dc.es_nota_credito_debito(id_compra)
     labor = not nota and dc.es_documento_de_labor(id_compra)
-    return {"esContratista": dc.es_contratista(id_compra), "esDocumentoDeLabor": labor, "esNotaCreditoDebito": nota,
+    anulada = labor and dc.anulada_por_nc(id_compra)
+    return {"esContratista": dc.es_contratista(id_compra), "esDocumentoDeLabor": labor and not anulada,
+            "anuladaPorNotaCredito": anulada, "esNotaCreditoDebito": nota,
             "factura": dc.datos_factura(id_compra) if labor else None,
             "ordenes": dc.ordenes_del_contratista(id_compra) if labor else [],
             "reparto": dc.reparto(id_compra)}
