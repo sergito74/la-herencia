@@ -1,7 +1,8 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import Link from "next/link";
+import { useEffect, useRef, useState } from "react";
 
 import { SoloLectura } from "@/components/auth/SoloLectura";
 import { AvisoFacturasAtrasadas } from "@/components/facturas-faltantes/AvisoFacturasAtrasadas";
@@ -85,6 +86,9 @@ function Rutina({ alcance, u, enCola, otraCorriendo }: {
       {pedida && enCola && !otraCorriendo && <p className="text-ink-secondary">Pedido recibido: arranca enseguida.</p>}
       {ejecutar.isError && <p className="text-amber-900">No se pudo iniciar: {ejecutar.error.message}</p>}
       <Resumen alcance={alcance} u={u} />
+      {u && !enCurso && u.alcance === alcance && u.paraCargarAMano + u.cargadosSolos > 0 && (
+        <Link href="/compras?nuevos=1" className="text-xs text-finance underline">Ver los documentos para revisar</Link>
+      )}
       {u?.inicio && !enCurso && (
         <p className="text-xs text-ink-muted">
           Si no la pedís antes, corre sola el {enDosDias(u.inicio)}.
@@ -101,9 +105,16 @@ export function RutinaPanel() {
     queryKey: ["documentos-nuevos", "rutina"], queryFn: getEstadoRutina,
     refetchInterval: (s) => (s.state.data?.ultima?.estado === "en_curso" || s.state.data?.pedidos.length ? 3000 : 15000),
   });
+  const qc = useQueryClient();
+  const corriendo = q.data?.ultima?.estado === "en_curso" ? q.data.ultima.alcance : null;
+  // Al terminar una búsqueda, refrescar ya los avisos del menú (si no, esperan hasta 5 minutos).
+  const antes = useRef<string | null>(null);
+  useEffect(() => {
+    if (antes.current && !corriendo) qc.invalidateQueries({ queryKey: ["documentos-nuevos"] });
+    antes.current = corriendo;
+  }, [corriendo, qc]);
   if (!q.data) return null;
   const d = q.data;
-  const corriendo = d.ultima?.estado === "en_curso" ? d.ultima.alcance : null;
 
   return (
     <>
