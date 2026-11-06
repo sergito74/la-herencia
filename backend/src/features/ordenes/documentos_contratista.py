@@ -54,6 +54,7 @@ def ordenes_del_contratista(id_compra: int) -> list[dict]:
     filas = fetch_all(
         """
         SELECT o.IdOrdenTrabajo AS idOrden, CONVERT(date, COALESCE(o.FechaEjecucion, o.FechaPedido)) AS fecha,
+               CONVERT(date, o.FechaPedido) AS fechaPedido,
                tl.Labor AS labor,
                (SELECT STRING_AGG(l.[Numero Lote], ', ') FROM (SELECT DISTINCT d.IdLote FROM dbo.Ordenes_Trabajo_Distrib d
                   JOIN dbo.Ordenes_Trabajo_Insumos i ON i.IdOrdenInsumo = d.IdOrdenInsumo

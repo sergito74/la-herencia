@@ -111,9 +111,9 @@ export function OrdenesTrabajoPanel({ idCompra }: { idCompra: number }) {
       </span>
     )
   ) : (
-    <span className="min-w-0 truncate" title={vinculadas.map((o) => `${formatFecha(o.fecha)} · ${o.labor ?? "Labor"} · ${ha(o.hectareas)}`).join("\n")}>
+    <span className="min-w-0 truncate" title={vinculadas.map((o) => `Pedido ${formatFecha(o.fechaPedido)} · ${o.labor ?? "Labor"} · ${ha(o.hectareas)}`).join("\n")}>
       {vinculadas.length === 1
-        ? `${formatFecha(vinculadas[0].fecha)} · ${vinculadas[0].labor ?? "Labor"} · ${ha(vinculadas[0].hectareas)}`
+        ? `Orden del ${formatFecha(vinculadas[0].fechaPedido)} · ${vinculadas[0].labor ?? "Labor"} · ${ha(vinculadas[0].hectareas)}`
         : `${vinculadas.length} órdenes · ${ha(vinculadas.reduce((s, o) => s + o.hectareas, 0))}`}
     </span>
   );
@@ -213,9 +213,11 @@ function Fila({ o, tildada, onClick, fechaFactura, haFactura }: {
   return (
     <label className={`flex cursor-pointer items-center gap-2 border-b border-border px-2 py-1 last:border-b-0 ${tildada ? "bg-finance-light" : "hover:bg-surface-sunken"}`}>
       <input type="checkbox" checked={tildada} onChange={onClick} />
-      <span className="w-20 shrink-0 tabular-nums">{formatFecha(o.fecha)}</span>
-      <span className="w-24 shrink-0 text-ink-secondary">
-        {dias == null ? "" : dias >= 0 ? `${dias} d antes` : `${-dias} d después`}
+      {/* Pedido = la fecha del listado de órdenes; ejecutada = la que se compara con la factura. */}
+      <span className="w-28 shrink-0 tabular-nums">Pedido {formatFecha(o.fechaPedido)}</span>
+      <span className="w-48 shrink-0 tabular-nums text-ink-secondary">
+        Ejecutada {formatFecha(o.fecha)}
+        {dias == null ? "" : dias >= 0 ? ` (${dias} d antes)` : ` (${-dias} d después)`}
       </span>
       <span className="w-44 shrink-0 truncate">{o.labor ?? "Labor"}</span>
       <span className="min-w-0 flex-1 truncate text-ink-secondary" title={o.lotes ? `Lotes ${o.lotes}` : undefined}>

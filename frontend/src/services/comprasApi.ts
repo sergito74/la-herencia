@@ -383,6 +383,7 @@ export function getContratosCanje(idContacto: number) {
 export interface OrdenTrabajoDeCompra {
   idOrden: number;
   fecha: string;
+  fechaPedido: string;
   labor: string | null;
   lotes: string | null;
   cultivos: string | null;
