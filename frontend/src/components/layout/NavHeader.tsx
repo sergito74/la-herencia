@@ -143,6 +143,7 @@ const NAV_ITEMS: NavItem[] = [
     submenu: [
       { href: "/produccion/planificacion", label: "Planificación agrícola" },
       { href: "/produccion/remitos", label: "Remitos" },
+      { href: "/produccion/contratistas/sin-orden", label: "Facturas de contratistas sin orden" },
       { href: "/produccion/stock", label: "Existencias de insumos" },
       { href: "/produccion/stock/bajas", label: "Bajas de stock" },
       { href: "/produccion/stock/ajustes", label: "Ajustes de inventario" },

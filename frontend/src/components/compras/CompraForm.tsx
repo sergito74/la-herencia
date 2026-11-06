@@ -11,6 +11,8 @@ import {
   crearCompra,
   eliminarCompra,
   fetchDocumentosRelacionados,
+  fetchOrdenesTrabajoCompra,
+  type OrdenesTrabajoDeCompra,
   fetchFiltrosCompras,
   liberarLock,
   quitarDocumentoRelacionado,
@@ -39,6 +41,7 @@ import { filterInputClass } from "@/components/ui/FilterBar";
 import { useToast } from "@/components/ui/Toast";
 import { ComprasGrid, FILA_VACIA, calcularLinea, filasARequestLineas, type GridRow } from "@/components/compras/ComprasGrid";
 import { DocumentosRelacionadosPanel } from "@/components/compras/DocumentosRelacionadosPanel";
+import { OrdenesTrabajoPanel, ordenesTrabajoKey } from "@/components/compras/OrdenesTrabajoPanel";
 import { VencimientosEditor } from "@/components/compras/VencimientosEditor";
 import { NumberInput } from "@/components/ui/NumberInput";
 
@@ -386,10 +389,24 @@ export function CompraForm({
       vencimientos: vencimientosCompletos,
     };
 
+    // 048 (FR-009): factura de labor de un contratista sin órdenes de trabajo — aviso que no bloquea.
+    if (mode === "edicion" && idCompra != null) {
+      const ot = queryClient.getQueryData<OrdenesTrabajoDeCompra>(ordenesTrabajoKey(idCompra));
+      if (ot?.esDocumentoDeLabor && ot.ordenes.length > 0 && !ot.ordenes.some((o) => o.vinculada)) {
+        if (!window.confirm("Factura de contratista sin orden de trabajo. Tildá sus órdenes en el panel para que el costo se impute solo. ¿Guardar igual?")) return;
+      }
+    }
+
     setIsSaving(true);
     try {
       const resultado =
         mode === "alta" ? await crearCompra(input) : await actualizarCompra(idCompra!, input, lockToken);
+      if (mode === "alta") {
+        const ot = await fetchOrdenesTrabajoCompra(resultado.idCompra).catch(() => null);
+        if (ot?.esDocumentoDeLabor && ot.ordenes.length > 0) {
+          showToast("Factura de contratista sin orden de trabajo: editala y tildá sus órdenes para imputar el costo.", "neutral");
+        }
+      }
 
       if (mode === "alta" && relacionadosPendientes.length > 0) {
         await Promise.all(
@@ -592,6 +609,7 @@ export function CompraForm({
           onDesvincular={handleDesvincularRelacionado}
           excluirIdCompra={idCompra}
         />
+        {mode === "edicion" && idCompra != null && <OrdenesTrabajoPanel idCompra={idCompra} />}
       </div>
 
       {/* Cuerpo: única sección que scrollea. */}

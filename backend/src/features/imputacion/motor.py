@@ -196,7 +196,7 @@ def recalcular_si_corresponde(id_detalle_compra: int, origen: str = "Insumo") ->
     agrega una nueva por encima (FR-011/FR-012, Clarifications: reemplazo
     completo al aprobar, no incremental). Si el renglón todavía no tiene
     ninguna corrida, no hace nada (no hay nada que recalcular todavía)."""
-    if repository.corrida_vigente(id_detalle_compra) is None:
+    if repository.corrida_vigente(id_detalle_compra, origen if origen == "Contratista" else None) is None:
         return None
 
     if origen == "Contratista":
@@ -265,10 +265,37 @@ def evaluar_contratista(id_compra: int) -> tuple[list[dict], str | None]:
         total_repartido += importe
         fracciones.append({**f, "importe": importe})
 
+    # 048: la última fracción absorbe el redondeo para cerrar al centavo.
+    if fracciones:
+        fracciones[-1]["importe"] = round(fracciones[-1]["importe"] + round(monto_total, 2) - round(total_repartido, 2), 2)
+        total_repartido = sum(f["importe"] for f in fracciones)
     if evaluar_inconsistencia(monto_total, total_repartido):
         return [], "repartoNoCierra"
 
     return fracciones, None
+
+
+def evaluar_nota_relacionada(id_nc: int) -> list[dict]:
+    """048: NC/ND de contratista — replica las proporciones del reparto vigente de su factura sobre su propio
+    neto repartible, con signo negativo para la NC. Sin factura con reparto: []."""
+    id_factura = repository.factura_de_nota(id_nc)
+    id_corrida = repository.reparto_contratista_vigente(id_factura) if id_factura else None
+    nota = repository.total_neto_compra(id_nc)
+    if not id_corrida or not nota or not nota["neto"]:
+        return []
+    base = [f for f in repository.fracciones_de_corrida(id_corrida) if f["idOrdenTrabajo"] is not None]
+    total_base = sum(float(f["importe"]) for f in base)
+    if abs(total_base) <= EPS:
+        return []
+    neto = float(nota["neto"])
+    tc = float(nota["tipoDeCambio"] or 0)
+    monto = neto * tc if (nota["moneda"] or "Pesos") == "Dolares" and tc else neto
+    if (nota["tipoDocumento"] or "").lower().replace("é", "e").startswith("nota de credito"):
+        monto = -monto
+    fracciones = [{**{k: f[k] for k in ("idOrdenTrabajo", "idLote", "idCultivo", "idCampania", "idCentroCosto")},
+                   "importe": round(monto * float(f["importe"]) / total_base, 2)} for f in base]
+    fracciones[-1]["importe"] = round(fracciones[-1]["importe"] + round(monto, 2) - sum(f["importe"] for f in fracciones), 2)
+    return fracciones
 
 
 def trazabilidad_insumo(id_detalle_compra: int) -> list[dict]:

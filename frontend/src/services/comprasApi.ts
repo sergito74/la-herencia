@@ -377,3 +377,39 @@ export interface ContratoCanje { idContratoCanje: number; numero: string; fecha:
 export function getContratosCanje(idContacto: number) {
   return apiGet<ContratoCanje[]>("/api/compras/contratos-canje", { idContacto });
 }
+
+// --- 048: órdenes de trabajo de una factura de contratista ------------------------------------------------------
+
+export interface OrdenTrabajoDeCompra {
+  idOrden: number;
+  fecha: string;
+  labor: string | null;
+  lotes: string | null;
+  hectareas: number;
+  vinculada: boolean;
+  tieneOtraFactura: boolean;
+}
+
+export interface RepartoContratista {
+  idOrden: number | null;
+  lote: string | null;
+  cultivo: string | null;
+  campania: string | null;
+  importe: number;
+}
+
+export interface OrdenesTrabajoDeCompra {
+  esContratista: boolean;
+  esDocumentoDeLabor: boolean;
+  esNotaCreditoDebito: boolean;
+  ordenes: OrdenTrabajoDeCompra[];
+  reparto: RepartoContratista[];
+}
+
+export function fetchOrdenesTrabajoCompra(idCompra: number): Promise<OrdenesTrabajoDeCompra> {
+  return apiGet<OrdenesTrabajoDeCompra>(`/api/compras/${idCompra}/ordenes-trabajo`);
+}
+
+export function fijarOrdenesTrabajoCompra(idCompra: number, idsOrden: number[]): Promise<{ reparto: RepartoContratista[] }> {
+  return apiPut<{ reparto: RepartoContratista[] }>(`/api/compras/${idCompra}/ordenes-trabajo`, { idsOrden });
+}

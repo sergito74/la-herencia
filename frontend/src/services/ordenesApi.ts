@@ -160,13 +160,24 @@ export interface FormularioRetiro {
   fechaEmision: string;
 }
 
+/** 048: documento del contratista vinculado (solo lectura) y lo imputado a esta orden. */
+export interface DocumentoContratista {
+  idCompra: number;
+  tipoDocumento: string;
+  numeroDocumento: string;
+  fecha: string;
+  moneda: string;
+  tipoDeCambio: number | null;
+  neto: number;
+  reparto: { idOrden: number | null; lote: string | null; cultivo: string | null; campania: string | null; importe: number }[];
+}
+
 export interface OrdenDetalle extends OrdenListItem {
   motivoAnulacion: string | null;
   observaciones: string | null;
   insumos: RenglonInsumoDetalle[];
   maquinaria: { idOrdenMaquinaria: number; descripcion: string; costoPorHectarea: number; tipoCambioBna: number | null }[];
-  facturaContratista: { idCompra: number; tipoDocumento: string; numeroDocumento: string; moneda: string; tipoDeCambio: number | null } | null;
-  facturasContratista: { idCompra: number; tipoDocumento: string; numeroDocumento: string; moneda: string; tipoDeCambio: number | null }[];
+  facturasContratista: (DocumentoContratista & { notasRelacionadas: DocumentoContratista[] })[];
   formularioRetiro: FormularioRetiro | null;
   tieneDevoluciones: boolean;
   editable: boolean;
@@ -209,15 +220,7 @@ export interface MaquinariaIn {
 export const agregarMaquinaria = (idOrden: number, datos: MaquinariaIn) =>
   apiPost<{ idOrdenMaquinaria: number; montoTotal: number; porLote: Record<number, number> }>(`/api/ordenes/${idOrden}/maquinaria`, datos);
 
-// ------------------------------------------------------------------ factura de contratista (Historia 4)
-
-// N a N desde 017-imputacion-automatica-costos: se puede llamar varias veces
-// con distintas facturas para la misma orden.
-export const vincularFacturaContratista = (idOrden: number, idCompra: number) =>
-  apiPost<{ montoPesos: number; montoDolares: number | null; porLote: Record<number, number> }>(`/api/ordenes/${idOrden}/factura-contratista`, { idCompra });
-
-export const desvincularFacturaContratista = (idOrden: number, idCompra: number) =>
-  apiDelete(`/api/ordenes/${idOrden}/factura-contratista/${idCompra}`);
+// 048: la factura del contratista se vincula desde Compras (panel "Órdenes de trabajo").
 
 // ------------------------------------------------------------------ resultado por cultivo/campaña (Historia 6)
 
@@ -282,3 +285,23 @@ export const corregirHectareas = (idOrden: number, lotes: { idLote: number; supe
 
 export const fetchRepartoCultivos = (idOrden: number) =>
   apiGet<{ repartoPorCultivo: RepartoCultivo[] }>(`/api/ordenes/${idOrden}/reparto-cultivos`);
+
+// --- 048: facturas de labor de contratistas sin orden de trabajo ---------------------------------------------
+
+export interface RenglonSinOrden {
+  idCompra: number;
+  contratista: string;
+  fecha: string;
+  numero: string;
+  moneda: string;
+  rubro: string | null;
+  concepto: string | null;
+  cantidad: number | null;
+  unidad: string | null;
+  neto: number;
+  destino: string | null;
+  campania: string | null;
+}
+
+export const fetchFacturasSinOrden = () => apiGet<RenglonSinOrden[]>("/api/ordenes/contratistas/sin-orden");
+export const urlExportarFacturasSinOrden = () => new URL("/api/ordenes/contratistas/sin-orden/exportar", API_BASE_URL).toString();

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import date
 
-from fastapi import APIRouter, HTTPException, Response
+from fastapi import APIRouter, HTTPException, Request, Response
 from starlette.concurrency import run_in_threadpool
 
 from src.features.ordenes import exportacion, repository, resultado, retiro_pdf
@@ -14,7 +14,6 @@ from src.features.ordenes.schemas import (
     AnularIn,
     DevolucionIn,
     EjecutarIn,
-    FacturaContratistaIn,
     MaquinariaIn,
     OrdenIn,
     TipoLaborIn,
@@ -74,6 +73,20 @@ async def exportar_ordenes(
         fechaDesde=fechaDesde, fechaHasta=fechaHasta, estado=estado, insumo=insumo,
     )
     return Response(content=contenido, media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", headers={"Content-Disposition": f'attachment; filename="ordenes-{date.today().isoformat()}.xlsx"'})
+
+
+@router.get("/contratistas/sin-orden")
+async def facturas_sin_orden(idContratista: int | None = None) -> list[dict]:
+    """048 FR-008: facturas de labor de contratistas sin orden vinculada, con sus renglones."""
+    from src.features.ordenes import documentos_contratista as dc
+    return await run_in_threadpool(dc.sin_orden, idContratista)
+
+
+@router.get("/contratistas/sin-orden/exportar")
+async def exportar_facturas_sin_orden(idContratista: int | None = None) -> Response:
+    contenido = await run_in_threadpool(exportacion.sin_orden_xlsx, idContratista)
+    return Response(content=contenido, media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    headers={"Content-Disposition": f'attachment; filename="facturas-sin-orden-{date.today().isoformat()}.xlsx"'})
 
 
 @router.get("/{id_orden}/formulario-retiro/pdf")
@@ -145,9 +158,10 @@ async def corregir_fecha_ejecucion(id_orden: int, body: EjecutarIn) -> None:
 
 
 @router.patch("/{id_orden}/hectareas")
-async def corregir_hectareas(id_orden: int, body: HectareasIn) -> dict:
+async def corregir_hectareas(id_orden: int, body: HectareasIn, request: Request) -> dict:
     """Hectáreas realmente aplicadas por lote: rearma el reparto de insumos entre cultivos."""
-    reparto = await _ejecutar(repository.corregir_hectareas, id_orden, {l.idLote: l.superficie for l in body.lotes})
+    reparto = await _ejecutar(repository.corregir_hectareas, id_orden, {l.idLote: l.superficie for l in body.lotes},
+                              _usuario(request))
     return {"repartoPorCultivo": reparto}
 
 
@@ -157,8 +171,8 @@ async def reparto_cultivos(id_orden: int) -> dict:
 
 
 @router.post("/{id_orden}/anular", status_code=204)
-async def anular_orden(id_orden: int, body: AnularIn) -> None:
-    await _ejecutar(repository.anular_orden, id_orden, body.motivo)
+async def anular_orden(id_orden: int, body: AnularIn, request: Request) -> None:
+    await _ejecutar(repository.anular_orden, id_orden, body.motivo, _usuario(request))
 
 
 @router.post("/{id_orden}/insumos/{id_orden_insumo}/devoluciones", status_code=201)
@@ -172,14 +186,11 @@ async def agregar_maquinaria(id_orden: int, body: MaquinariaIn) -> dict:
     return await _ejecutar(repository.agregar_maquinaria, id_orden, body.model_dump())
 
 
-@router.post("/{id_orden}/factura", status_code=201)
-@router.post("/{id_orden}/factura-contratista", status_code=201)
-async def vincular_factura(id_orden: int, body: FacturaContratistaIn) -> dict:
-    """N a N desde 017-imputacion-automatica-costos: se puede llamar varias
-    veces con distintas facturas, ya no bloquea si la Orden ya tenía una."""
-    return await _ejecutar(repository.vincular_factura_contratista, id_orden, body.idCompra)
+# 048: la factura del contratista se vincula desde Compras (GET/PUT /api/compras/{id}/ordenes-trabajo); la orden
+# solo muestra sus documentos (obtener_orden → facturasContratista).
 
 
-@router.delete("/{id_orden}/factura-contratista/{id_compra}", status_code=204)
-async def desvincular_factura(id_orden: int, id_compra: int) -> None:
-    await _ejecutar(repository.desvincular_factura_contratista, id_orden, id_compra)
+def _usuario(request: Request) -> str:
+    from src.features.imputacion.repository import nombre_usuario
+    payload = getattr(request.state, "usuario", None)
+    return (nombre_usuario(payload["idUsuario"]) if payload else None) or "sistema"

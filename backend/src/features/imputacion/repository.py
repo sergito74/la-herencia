@@ -117,7 +117,10 @@ def aprobar_corrida(id_corrida: str, correcciones: list[dict] | None = None, usu
     id_detalle_compra = detalle_compra_de_corrida(id_corrida)
     if id_detalle_compra is None:
         raise ValueError(f"Corrida {id_corrida} no existe")
-    if corrida_vigente(id_detalle_compra) != id_corrida:
+    # 048: comparar sin distinguir mayúsculas (uuid de Python en minúsculas vs uniqueidentifier de SQL en mayúsculas)
+    # y dentro del mismo origen (IdDetalleCompra de un insumo puede coincidir con el IdCompra de un contratista).
+    vigente = corrida_vigente(id_detalle_compra, origen_de_corrida(id_corrida))
+    if str(vigente or "").upper() != str(id_corrida).upper():
         raise CorridaNoVigente(f"Corrida {id_corrida} ya no es la vigente para el renglón {id_detalle_compra}")
 
     statements: list = []
@@ -184,11 +187,14 @@ def marcar_stock_sin_consumir_aprobada(fracciones: list[dict]) -> list[dict]:
     return resultado
 
 
-def corrida_vigente(id_detalle_compra: int) -> str | None:
+def corrida_vigente(id_detalle_compra: int, origen: str | None = None) -> str | None:
+    """Última corrida del renglón. 048: con `origen`, solo de ese origen; sin él, solo insumos (`Origen <> 'Contratista'`):
+    el IdDetalleCompra de un insumo puede coincidir con el IdCompra de una factura de contratista."""
+    filtro, params = ("AND Origen = ?", (id_detalle_compra, origen)) if origen else ("AND Origen <> 'Contratista'", (id_detalle_compra,))
     fila = fetch_one(
         "SELECT TOP 1 IdCorrida FROM dbo.ImputacionPropuestas "
-        "WHERE IdDetalleCompra = ? ORDER BY FechaCalculo DESC",
-        (id_detalle_compra,),
+        f"WHERE IdDetalleCompra = ? {filtro} ORDER BY FechaCalculo DESC",
+        params,
     )
     return fila["IdCorrida"] if fila else None
 
@@ -278,8 +284,10 @@ def distribucion_de_orden(id_orden_trabajo: int) -> list[dict]:
     renglones de insumo), para prorratear el costo de un contratista/maquinaria
     (mismo criterio que `ordenes.costeo`, spec 011)."""
     return fetch_all(
+        # 048: MAX por lote (no SUM): cada renglón de insumo repite la superficie del lote; sumarla la multiplicaba
+        # por la cantidad de productos de la orden.
         "SELECT d.IdLote AS idLote, d.IdCultivo AS idCultivo, d.IdCampania AS idCampania, "
-        "SUM(d.Superficie) AS superficie "
+        "MAX(d.Superficie) AS superficie "
         "FROM dbo.Ordenes_Trabajo_Distrib d JOIN dbo.Ordenes_Trabajo_Insumos oi ON oi.IdOrdenInsumo = d.IdOrdenInsumo "
         "WHERE oi.IdOrdenTrabajo = ? AND d.Aplicar = 1 "
         "GROUP BY d.IdLote, d.IdCultivo, d.IdCampania",
@@ -287,13 +295,56 @@ def distribucion_de_orden(id_orden_trabajo: int) -> list[dict]:
     )
 
 
+# 048: rubros de labor del contratista, y rubros que NO se reparten por la orden (insumos y otros negocios).
+RUBROS_LABOR = ("Fumigacion", "Siembra", "Cosecha", "Fertilizacion", "Disqueado", "Embolsado Grano")
+RUBROS_FUERA_REPARTO = ("Semillas", "Fertilizantes", "Herbicidas", "Insecticidas", "Fungicidas",
+                        "Hacienda", "Trabajos Maq. Propia", "Gastos Comercializacion")
+
+
 def total_neto_compra(id_compra: int) -> dict | None:
+    """048: neto repartible (sin signo) — todos los renglones salvo `RUBROS_FUERA_REPARTO`."""
+    marcas = ",".join("?" * len(RUBROS_FUERA_REPARTO))
     return fetch_one(
-        "SELECT c.Moneda AS moneda, c.[Tipo de Cambio] AS tipoDeCambio, "
-        "(SELECT SUM(d.Cantidad * d.[Precio Unitario]) FROM dbo.Det_Compras d WHERE d.IdCompra = c.IdDeuda) AS neto "
+        "SELECT c.Moneda AS moneda, c.[Tipo de Cambio] AS tipoDeCambio, c.[Tipo documento] AS tipoDocumento, "
+        "(SELECT SUM(ABS(ISNULL(d.Cantidad, 0) * ISNULL(d.[Precio Unitario], 0))) FROM dbo.Det_Compras d "
+        " LEFT JOIN dbo.Rubros r ON r.IdRubro = d.IdRubro "
+        f" WHERE d.IdCompra = c.IdDeuda AND (r.Rubro IS NULL OR r.Rubro NOT IN ({marcas}))) AS neto "
         "FROM dbo.Compras c WHERE c.IdDeuda = ?",
+        (*RUBROS_FUERA_REPARTO, id_compra),
+    )
+
+
+def reparto_contratista_vigente(id_compra: int) -> str | None:
+    """048: `IdCorrida` de la ÚLTIMA corrida APROBADA de contratista del documento, si tiene reparto (alguna
+    fracción con orden). Una corrida Pendiente posterior (ej. /recalcular) no la reemplaza; una aprobada sin
+    orden es un retiro."""
+    fila = fetch_one(
+        "SELECT TOP 1 IdCorrida, MAX(CASE WHEN IdOrdenTrabajo IS NOT NULL THEN 1 ELSE 0 END) AS conOrden "
+        "FROM dbo.ImputacionPropuestas WHERE IdDetalleCompra = ? AND Origen = 'Contratista' AND Estado = 'Aprobada' "
+        "GROUP BY IdCorrida ORDER BY MAX(FechaCalculo) DESC",
         (id_compra,),
     )
+    return fila["IdCorrida"] if fila and fila["conOrden"] else None
+
+
+def fracciones_de_corrida(id_corrida: str) -> list[dict]:
+    return fetch_all(
+        "SELECT IdOrdenTrabajo AS idOrdenTrabajo, IdLote AS idLote, IdCultivo AS idCultivo, IdCampania AS idCampania, "
+        "IdCentroCosto AS idCentroCosto, Importe AS importe FROM dbo.ImputacionPropuestas WHERE IdCorrida = ? "
+        "ORDER BY IdPropuesta",
+        (id_corrida,),
+    )
+
+
+def factura_de_nota(id_nc: int) -> int | None:
+    """048: factura relacionada con la NC/ND (en cualquier sentido de `CompraDocumentosRelacionados`)."""
+    fila = fetch_one(
+        "SELECT TOP 1 x.id FROM (SELECT IdCompraRelacionada AS id FROM dbo.CompraDocumentosRelacionados WHERE IdCompra = ? "
+        "UNION SELECT IdCompra FROM dbo.CompraDocumentosRelacionados WHERE IdCompraRelacionada = ?) x "
+        "JOIN dbo.Compras c ON c.IdDeuda = x.id WHERE c.[Tipo documento] = 'Factura'",
+        (id_nc, id_nc),
+    )
+    return fila["id"] if fila else None
 
 
 def ordenes_vinculadas_a_compra(id_compra: int) -> list[int]:

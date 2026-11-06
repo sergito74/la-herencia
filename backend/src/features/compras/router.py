@@ -13,7 +13,8 @@ import mimetypes
 from datetime import date
 from pathlib import Path
 
-from fastapi import APIRouter, Header, HTTPException, Query
+from fastapi import APIRouter, Header, HTTPException, Query, Request
+from pydantic import BaseModel
 from fastapi.responses import FileResponse
 from starlette.concurrency import run_in_threadpool
 
@@ -194,20 +195,67 @@ async def get_documentos_relacionados(id_compra: int) -> list[DocumentoRelaciona
 
 
 @router.post("/{id_compra}/relacionados", status_code=204)
-async def agregar_documento_relacionado(id_compra: int, body: DocumentoRelacionadoRequest) -> None:
+async def agregar_documento_relacionado(id_compra: int, body: DocumentoRelacionadoRequest, request: Request) -> None:
     try:
         await run_in_threadpool(
             repository.agregar_documento_relacionado, id_compra, body.idCompraRelacionada
         )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+    await run_in_threadpool(_reimputar_notas, (id_compra, body.idCompraRelacionada), _usuario(request))
 
 
 @router.delete("/{id_compra}/relacionados/{id_compra_relacionada}", status_code=204)
-async def quitar_documento_relacionado(id_compra: int, id_compra_relacionada: int) -> None:
+async def quitar_documento_relacionado(id_compra: int, id_compra_relacionada: int, request: Request) -> None:
     await run_in_threadpool(
         repository.quitar_documento_relacionado, id_compra, id_compra_relacionada
     )
+    await run_in_threadpool(_reimputar_notas, (id_compra, id_compra_relacionada), _usuario(request))
+
+
+# --- 048: órdenes de trabajo de una factura de contratista ------------------------------------------------------
+
+def _usuario(request: Request) -> str:
+    from src.features.imputacion.repository import nombre_usuario
+    payload = getattr(request.state, "usuario", None)
+    return (nombre_usuario(payload["idUsuario"]) if payload else None) or "sistema"
+
+
+def _reimputar_notas(ids: tuple[int, int], usuario: str) -> None:
+    """048: al relacionar/desrelacionar, la NC/ND de contratista toma (o pierde) el reparto de su factura."""
+    from src.features.ordenes import documentos_contratista as dc
+    for id_compra in ids:
+        if dc.es_nota_credito_debito(id_compra):
+            dc.recalcular_nota(id_compra, usuario)
+
+
+class _OrdenesTrabajoBody(BaseModel):
+    idsOrden: list[int]
+
+
+def _ordenes_trabajo(id_compra: int) -> dict:
+    from src.features.ordenes import documentos_contratista as dc
+    nota = dc.es_nota_credito_debito(id_compra)
+    labor = not nota and dc.es_documento_de_labor(id_compra)
+    return {"esContratista": dc.es_contratista(id_compra), "esDocumentoDeLabor": labor, "esNotaCreditoDebito": nota,
+            "ordenes": dc.ordenes_del_contratista(id_compra) if labor else [],
+            "reparto": dc.reparto(id_compra)}
+
+
+@router.get("/{id_compra}/ordenes-trabajo")
+async def get_ordenes_trabajo(id_compra: int) -> dict:
+    return await run_in_threadpool(_ordenes_trabajo, id_compra)
+
+
+@router.put("/{id_compra}/ordenes-trabajo")
+async def put_ordenes_trabajo(id_compra: int, body: _OrdenesTrabajoBody, request: Request) -> dict:
+    from src.features.ordenes import documentos_contratista as dc
+    try:
+        rep = await run_in_threadpool(dc.fijar_vinculos, id_compra, body.idsOrden, _usuario(request))
+    except ValueError as exc:
+        msg = exc.args[0]
+        raise HTTPException(status_code=422, detail=" ".join(msg) if isinstance(msg, list) else str(msg)) from exc
+    return {"reparto": rep}
 
 
 @router.post("/rubros", response_model=RubroCreado, status_code=201)

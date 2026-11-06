@@ -337,18 +337,26 @@ def obtener_orden(id_orden: int) -> dict | None:
     )
     # N a N desde 017-imputacion-automatica-costos: una Orden puede tener varias
     # facturas de contratista vinculadas (generaliza el vínculo 1 a 1 anterior).
-    facturas = fetch_all(
-        "SELECT f.IdCompra AS idCompra, c.[Tipo documento] AS tipoDocumento, c.[Nro Documento] AS numeroDocumento, c.Moneda AS moneda, c.[Tipo de Cambio] AS tipoDeCambio "
-        "FROM dbo.OrdenesContratistaFacturas f JOIN dbo.Compras c ON c.IdDeuda = f.IdCompra WHERE f.IdOrdenTrabajo = ?",
-        (id_orden,),
-    )
+    # 048: solo lectura — se vinculan desde Compras. Cada factura trae sus NC/ND relacionadas y lo imputado a esta orden.
+    from src.features.ordenes import documentos_contratista as dc
+    _doc_sql = ("SELECT c.IdDeuda AS idCompra, c.[Tipo documento] AS tipoDocumento, c.[Nro Documento] AS numeroDocumento, "
+                "CONVERT(date, c.Fecha) AS fecha, c.Moneda AS moneda, c.[Tipo de Cambio] AS tipoDeCambio, "
+                "(SELECT SUM(d.Cantidad * d.[Precio Unitario]) FROM dbo.Det_Compras d WHERE d.IdCompra = c.IdDeuda) AS neto "
+                "FROM dbo.Compras c ")
+    facturas = fetch_all(_doc_sql + "JOIN dbo.OrdenesContratistaFacturas f ON f.IdCompra = c.IdDeuda WHERE f.IdOrdenTrabajo = ? "
+                         "ORDER BY c.Fecha", (id_orden,))
+    for fac in facturas:
+        fac["neto"] = _f(fac["neto"])
+        fac["notasRelacionadas"] = [
+            {**n, "neto": _f(n["neto"]), "reparto": dc.reparto(n["idCompra"], id_orden)}
+            for n in (fetch_one(_doc_sql + "WHERE c.IdDeuda = ?", (i,)) for i in dc.notas_relacionadas(fac["idCompra"])) if n]
+        fac["reparto"] = dc.reparto(fac["idCompra"], id_orden)
     return {
         **cab,
         "fechaPedido": _d(cab["fechaPedido"]),
         "fechaEjecucion": _d(cab["fechaEjecucion"]),
         "insumos": insumos,
         "maquinaria": maquinaria,
-        "facturaContratista": facturas[0] if facturas else None,
         "facturasContratista": facturas,
         "formularioRetiro": formulario_retiro.obtener(id_orden),
         "tieneDevoluciones": any(r["devoluciones"] for r in insumos),
@@ -449,7 +457,7 @@ def corregir_fecha_ejecucion(id_orden: int, fecha_ejecucion) -> None:
     ])
 
 
-def corregir_hectareas(id_orden: int, superficies: dict[int, float]) -> dict:
+def corregir_hectareas(id_orden: int, superficies: dict[int, float], usuario: str = "sistema") -> dict:
     """Hectáreas realmente aplicadas por lote (04/11/2026, orden 162: agua en los lotes). Solo cambia la superficie
     de cada lote y vuelve a repartir la cantidad de cada insumo entre los lotes (dosis × superficie, FR-003). No toca
     cantidades retiradas, stock, devoluciones ni ajustes de recuento: cambia a qué cultivo va el costo."""
@@ -477,6 +485,9 @@ def corregir_hectareas(id_orden: int, superficies: dict[int, float]) -> dict:
             ))
     execute_write_transaction([lambda _r, s=s: s for s in sentencias])
     _recalcular_imputacion_por_productos({r["idProducto"] for r in orden["insumos"]})
+    from src.features.ordenes import documentos_contratista as dc  # 048: el reparto del contratista sigue a la superficie
+    for id_compra in dc.facturas_de_orden(id_orden):
+        dc.recalcular(id_compra, usuario)
     return reparto_por_cultivo(id_orden)
 
 
@@ -496,7 +507,7 @@ def reparto_por_cultivo(id_orden: int) -> list[dict]:
     return sorted(filas.values(), key=lambda f: (f["cultivo"] or "", f["producto"] or ""))
 
 
-def anular_orden(id_orden: int, motivo: str) -> None:
+def anular_orden(id_orden: int, motivo: str, usuario: str = "sistema") -> None:
     if not (motivo or "").strip():
         raise ValueError(["Indicá el motivo de la anulación."])
     actual = obtener_orden(id_orden)
@@ -523,6 +534,8 @@ def anular_orden(id_orden: int, motivo: str) -> None:
     # El consumo de esta orden ya no cuenta (Estado='Anulada'): cualquier
     # propuesta del motor de imputación que dependía de él queda desactualizada.
     _recalcular_imputacion_por_productos({r["idProducto"] for r in actual["insumos"]})
+    from src.features.ordenes import documentos_contratista as dc  # 048: sin la orden anulada, se reimputan sus facturas
+    dc.quitar_orden(id_orden, usuario)
 
 
 # ------------------------------------------------------------------ devoluciones (Historia 2)
@@ -597,33 +610,7 @@ def agregar_maquinaria(id_orden: int, datos: dict) -> dict:
     return {"idOrdenMaquinaria": resultados[0], **resultado_costeo}
 
 
-# ------------------------------------------------------------------ factura de contratista (Historia 4)
-
-def vincular_factura_contratista(id_orden: int, id_compra: int) -> dict:
-    """Vincula una factura de contratista a una Orden — N a N desde
-    017-imputacion-automatica-costos: una misma factura puede cubrir varias
-    Órdenes, y una Orden puede tener más de una factura (ya no bloquea si
-    alguna de las dos ya tenía un vínculo, a diferencia del modelo 1 a 1
-    anterior)."""
-    orden = obtener_orden(id_orden)
-    if orden is None:
-        raise ValueError([f"La orden {id_orden} no existe."])
-    distribuciones = [d for r in orden["insumos"] for d in r["distribuciones"]]
-    resultado_costeo = costeo.costo_contratista(id_compra, distribuciones)
-    execute_write_transaction([
-        ("INSERT INTO dbo.OrdenesContratistaFacturas (IdOrdenTrabajo, IdCompra) VALUES (?, ?)", (id_orden, id_compra)),
-    ])
-    return resultado_costeo
-
-
-def desvincular_factura_contratista(id_orden: int, id_compra: int) -> None:
-    fila = fetch_one(
-        "SELECT IdVinculo AS id FROM dbo.OrdenesContratistaFacturas WHERE IdOrdenTrabajo = ? AND IdCompra = ?",
-        (id_orden, id_compra),
-    )
-    if fila is None:
-        raise ValueError([f"La orden {id_orden} no tiene vinculada la factura {id_compra}."])
-    execute_write_transaction([("DELETE FROM dbo.OrdenesContratistaFacturas WHERE IdVinculo = ?", (fila["id"],))])
+# 048: la factura del contratista se vincula desde Compras (ordenes.documentos_contratista.fijar_vinculos).
 
 
 # ------------------------------------------------------------------ catálogo de labores (Historia 7)

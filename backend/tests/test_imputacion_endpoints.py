@@ -45,7 +45,7 @@ def test_corridas_concurrentes_no_duplican_calculo(monkeypatch):
     from src.features.imputacion import router
 
     guardadas = []
-    monkeypatch.setattr(repository, "corrida_vigente", lambda _: guardadas[0] if guardadas else None)
+    monkeypatch.setattr(repository, "corrida_vigente", lambda _, origen=None: guardadas[0] if guardadas else None)
     monkeypatch.setattr(motor, "evaluar_insumo", lambda _: (time.sleep(0.03) or [{"importe": 1}], None))
     monkeypatch.setattr(repository, "marcar_stock_sin_consumir_aprobada", lambda filas: filas)
     monkeypatch.setattr(repository, "guardar_corrida", lambda *args: guardadas.append("corrida"))
@@ -61,7 +61,8 @@ def test_corridas_concurrentes_no_duplican_calculo(monkeypatch):
 def test_aprobar_sin_cambios(monkeypatch):
     llamadas = []
     monkeypatch.setattr(repository, "detalle_compra_de_corrida", lambda idc: 900)
-    monkeypatch.setattr(repository, "corrida_vigente", lambda idd: "corrida-1")
+    monkeypatch.setattr(repository, "origen_de_corrida", lambda idc: "Insumo")
+    monkeypatch.setattr(repository, "corrida_vigente", lambda idd, origen=None: "corrida-1")
     monkeypatch.setattr(repository, "execute_write_transaction", lambda stmts: llamadas.extend(stmts) or [1] * len(stmts))
 
     repository.aprobar_corrida("corrida-1")
@@ -73,7 +74,8 @@ def test_aprobar_sin_cambios(monkeypatch):
 def test_aprobar_con_correccion_actualiza_referencia(monkeypatch):
     llamadas = []
     monkeypatch.setattr(repository, "detalle_compra_de_corrida", lambda idc: 900)
-    monkeypatch.setattr(repository, "corrida_vigente", lambda idd: "corrida-1")
+    monkeypatch.setattr(repository, "origen_de_corrida", lambda idc: "Insumo")
+    monkeypatch.setattr(repository, "corrida_vigente", lambda idd, origen=None: "corrida-1")
     monkeypatch.setattr(repository, "execute_write_transaction", lambda stmts: llamadas.extend(stmts) or [1] * len(stmts))
     referencias_guardadas = []
     monkeypatch.setattr(
@@ -94,7 +96,8 @@ def test_aprobar_con_correccion_actualiza_referencia(monkeypatch):
 
 def test_aprobar_corrida_no_vigente_lanza_error(monkeypatch):
     monkeypatch.setattr(repository, "detalle_compra_de_corrida", lambda idc: 900)
-    monkeypatch.setattr(repository, "corrida_vigente", lambda idd: "corrida-2")
+    monkeypatch.setattr(repository, "origen_de_corrida", lambda idc: "Insumo")
+    monkeypatch.setattr(repository, "corrida_vigente", lambda idd, origen=None: "corrida-2")
 
     with pytest.raises(CorridaNoVigente):
         repository.aprobar_corrida("corrida-1")
@@ -103,7 +106,7 @@ def test_aprobar_corrida_no_vigente_lanza_error(monkeypatch):
 def test_cambio_fuente_genera_corrida_nueva_sin_pisar_aprobada(monkeypatch):
     guardadas = []
     monkeypatch.setattr(motor, "calcular_propuesta_insumo", lambda idd: [{"importe": 100.0, "idCultivo": 20, "idCampania": 30}])
-    monkeypatch.setattr(repository, "corrida_vigente", lambda idd: "corrida-vieja-aprobada")
+    monkeypatch.setattr(repository, "corrida_vigente", lambda idd, origen=None: "corrida-vieja-aprobada")
     monkeypatch.setattr(
         repository,
         "guardar_corrida",
@@ -123,7 +126,8 @@ def test_cambio_fuente_genera_corrida_nueva_sin_pisar_aprobada(monkeypatch):
 def test_aprobar_corrida_guarda_usuario(monkeypatch):
     llamadas = []
     monkeypatch.setattr(repository, "detalle_compra_de_corrida", lambda idc: 900)
-    monkeypatch.setattr(repository, "corrida_vigente", lambda idd: "corrida-1")
+    monkeypatch.setattr(repository, "origen_de_corrida", lambda idc: "Insumo")
+    monkeypatch.setattr(repository, "corrida_vigente", lambda idd, origen=None: "corrida-1")
     monkeypatch.setattr(repository, "execute_write_transaction", lambda stmts: llamadas.extend(stmts) or [1])
 
     repository.aprobar_corrida("corrida-1", usuario="sergio")

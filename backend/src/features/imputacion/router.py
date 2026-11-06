@@ -51,7 +51,7 @@ async def _asegurar_corrida(id_detalle_compra: int, origen: str | None) -> None:
 def _asegurar_corrida_sync(id_detalle_compra: int, origen: str | None) -> None:
     """Si el renglón todavía no tiene ninguna corrida, la calcula y la guarda
     (dentro de alcance, FR-014 — si está fuera de alcance no genera nada)."""
-    if repository.corrida_vigente(id_detalle_compra) is not None:
+    if repository.corrida_vigente(id_detalle_compra, origen if origen == "Contratista" else None) is not None:
         return
 
     if origen == "Contratista":

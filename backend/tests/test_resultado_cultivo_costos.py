@@ -40,16 +40,7 @@ def test_maquinaria_usa_estimado_manual_y_no_duplica_lote_por_insumo(monkeypatch
     assert lineas[0]["montoDolares"] == 30
 
 
-def test_contratista_consulta_imputacion_y_excluye_facturas_duplicadas(monkeypatch):
-    def fake(sql, params):
-        assert params == (3, 32)
-        assert "m.IdCultivo = ? AND d.IdCampaña = ?" in sql
-        assert "NOT EXISTS" in sql and "b.IdCompra = d.IdCompra" in sql
-        assert "Superficie" not in sql
-        return [dict(concepto="Contratista", montoPesos=1000, montoDolares=10,
-                     idCompra=888, idDetalleCompra=42, idOrdenTrabajo=501)]
-    monkeypatch.setattr(costos, "fetch_all", fake)
-    assert costos.costos_contratista(3, 32)[0]["idDetalleCompra"] == 42
+# 048: reemplazado por tests/test_costos_contratista_048.py (el contratista sale del reparto por superficie de la orden).
 
 
 def test_contratista_sin_insumos_usa_factura(monkeypatch):

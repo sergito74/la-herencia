@@ -157,10 +157,9 @@ def _cultivos_con_datos(id_campania: int) -> list[int]:
                        JOIN dbo.Ordenes_Trabajo_Insumos i ON i.IdOrdenInsumo = d.IdOrdenInsumo
                        JOIN dbo.Ordenes_Trabajo o ON o.IdOrdenTrabajo = i.IdOrdenTrabajo
                        WHERE d.IdCultivo = m.IdCultivo AND d.IdCampania = ? AND d.Aplicar = 1 AND o.Estado <> 'Anulada')
-            OR EXISTS (SELECT 1 FROM dbo.Det_Compras dc
-                       JOIN dbo.Ordenes_Trabajo_Contratista_Factura f ON f.IdCompra = dc.IdCompra
-                       JOIN dbo.Ordenes_Trabajo o ON o.IdOrdenTrabajo = f.IdOrdenTrabajo
-                       WHERE dc.IdDestino = m.IdDestino AND dc.IdCampaña = ? AND o.Estado <> 'Anulada')
+            OR EXISTS (SELECT 1 FROM dbo.ImputacionPropuestas p  -- 048: reparto aprobado de contratista
+                       WHERE p.Origen = 'Contratista' AND p.Estado = 'Aprobada' AND p.IdOrdenTrabajo IS NOT NULL
+                         AND p.IdCultivo = m.IdCultivo AND p.IdCampania = ?)
 
             OR EXISTS (
                 SELECT 1 FROM dbo.vw_ResultadosCultivo_Ventas v
@@ -175,14 +174,20 @@ def _cultivos_con_datos(id_campania: int) -> list[int]:
 
 
 def costo_sin_clasificar(id_campania: int) -> dict | None:
+    from src.features.imputacion.repository import RUBROS_FUERA_REPARTO
+    from src.features.resultado_cultivo.costos import _FUERA, _REPARTO_VIGENTE
     fila = fetch_one(
-        """
+        f"""
         SELECT SUM(ABS(c.Pesos) * c.Signo) AS pesos, SUM(ABS(c.Dolares) * c.Signo) AS dolares
         FROM dbo.vw_ResultadosCultivo_CostosBase c
-        WHERE c.IdCampaña IS NULL OR (c.IdCampaña = ?
-          AND NOT EXISTS (SELECT 1 FROM dbo.Map_CultivoResultado m WHERE m.IdDestino = c.IdDestino))
+        WHERE (c.IdCampaña IS NULL OR (c.IdCampaña = ?
+          AND NOT EXISTS (SELECT 1 FROM dbo.Map_CultivoResultado m WHERE m.IdDestino = c.IdDestino)))
+          AND NOT EXISTS (  -- 048: ya repartido a cultivos por las órdenes de trabajo
+              SELECT 1 FROM dbo.Det_Compras dd LEFT JOIN dbo.Rubros rr ON rr.IdRubro = dd.IdRubro
+              WHERE dd.IdDetalleCompra = c.IdDetalleCompra AND c.IdCompra IN (SELECT rv.idCompra FROM {_REPARTO_VIGENTE} rv)
+                AND (rr.Rubro IS NULL OR rr.Rubro NOT IN ({_FUERA})))
         """,
-        (id_campania,),
+        (id_campania, *RUBROS_FUERA_REPARTO),
     )
     caja = fetch_one(
         "SELECT SUM(d.ImportePesos) pesos,SUM(g.ImporteUSD*d.ImportePesos/g.ImportePesos) dolares,"

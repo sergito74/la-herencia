@@ -10,10 +10,8 @@ import {
   agregarMaquinaria,
   anularOrden,
   corregirFechaEjecucion,
-  desvincularFacturaContratista,
   ejecutarOrden,
   fetchOrden,
-  vincularFacturaContratista,
 } from "@/services/ordenesApi";
 import { formatCantidad, formatMoneda, formatFecha } from "@/lib/format";
 import { ErrorState, LoadingState } from "@/components/ui/States";
@@ -40,7 +38,6 @@ export default function DetalleOrdenPage() {
   const [fechaEjecucionCorregida, setFechaEjecucionCorregida] = useState("");
   const [descMaquinaria, setDescMaquinaria] = useState("");
   const [costoMaquinaria, setCostoMaquinaria] = useState<number | null>(null);
-  const [idCompraFactura, setIdCompraFactura] = useState<number | null>(null);
 
   function refrescar() {
     refetch();
@@ -90,28 +87,6 @@ export default function DetalleOrdenPage() {
       refrescar();
     } catch (e) {
       showToast(e instanceof ApiError ? e.message : "No se pudo agregar la maquinaria.", "danger");
-    }
-  }
-
-  async function guardarFactura() {
-    if (!idCompraFactura) return;
-    try {
-      await vincularFacturaContratista(id, idCompraFactura);
-      showToast("Factura del contratista vinculada.", "success");
-      setIdCompraFactura(null);
-      refrescar();
-    } catch (e) {
-      showToast(e instanceof ApiError ? e.message : "No se pudo vincular la factura.", "danger");
-    }
-  }
-
-  async function quitarFactura(idCompra: number) {
-    try {
-      await desvincularFacturaContratista(id, idCompra);
-      showToast("Factura desvinculada.", "success");
-      refrescar();
-    } catch (e) {
-      showToast(e instanceof ApiError ? e.message : "No se pudo desvincular la factura.", "danger");
     }
   }
 
@@ -311,33 +286,44 @@ export default function DetalleOrdenPage() {
 
       <div className="mt-6">
         <h2 className="text-lg font-medium">Facturas del contratista</h2>
-        {/* N a N desde 017-imputacion-automatica-costos: se pueden vincular varias facturas a la misma orden. */}
-        {orden.facturasContratista.length > 0 && (
-          <ul className="mt-2 space-y-1">
-            {orden.facturasContratista.map((f) => (
-              <li key={f.idCompra} className="flex items-center justify-between rounded border border-border p-3 text-sm">
-                <span>
-                  {f.tipoDocumento} {f.numeroDocumento} ({f.moneda})
-                </span>
-                {orden.estado !== "Anulada" && (
-                  <button type="button" onClick={() => quitarFactura(f.idCompra)} className="text-xs text-ink-secondary hover:text-red-600">
-                    Quitar
-                  </button>
-                )}
-              </li>
-            ))}
-          </ul>
-        )}
-        {orden.estado !== "Anulada" && orden.contratista && (
-          <div className="mt-2 flex items-end gap-2">
-            <label className="text-sm">
-              N° de compra (IdCompra)
-              <NumberInput className="mt-1 block w-32 rounded border border-border px-2 py-1.5 text-right" value={idCompraFactura} onChange={setIdCompraFactura} maxDecimales={0} />
-            </label>
-            <button type="button" onClick={guardarFactura} disabled={!idCompraFactura} className="rounded bg-finance px-3 py-1.5 text-sm text-white disabled:opacity-50">
-              Vincular otra factura
-            </button>
-          </div>
+        {/* 048: solo lectura. Se vinculan desde la factura, en Compras (panel "Órdenes de trabajo"). */}
+        {orden.facturasContratista.length === 0 ? (
+          <p className="mt-2 text-sm text-ink-secondary">
+            Todavía no hay facturas vinculadas a esta orden (se vinculan desde la factura, en Compras).
+          </p>
+        ) : (
+          <table className="mt-2 w-full text-sm">
+            <thead>
+              <tr className="text-left text-ink-secondary">
+                <th className="py-1">Documento</th>
+                <th className="py-1">Fecha</th>
+                <th className="py-1 text-right">Neto</th>
+                <th className="py-1">Imputado a esta orden</th>
+              </tr>
+            </thead>
+            <tbody>
+              {orden.facturasContratista.flatMap((f) => [f, ...f.notasRelacionadas]).map((d) => (
+                <tr key={d.idCompra} className="border-t border-border align-top">
+                  <td className="py-1">
+                    <Link href={`/compras/${d.idCompra}/editar`} className="text-finance hover:underline">
+                      {d.tipoDocumento} {d.numeroDocumento}
+                    </Link>
+                  </td>
+                  <td className="py-1">{formatFecha(d.fecha)}</td>
+                  <td className="py-1 text-right">{formatMoneda(d.neto, d.moneda === "Dolares" ? "Dolares" : "Pesos")}</td>
+                  <td className="py-1">
+                    {d.reparto.length === 0
+                      ? "—"
+                      : d.reparto.map((r, k) => (
+                          <div key={k}>
+                            {r.cultivo ?? "Sin cultivo"} {r.campania ?? ""} {r.lote ? `· Lote ${r.lote}` : ""} · {formatMoneda(r.importe)}
+                          </div>
+                        ))}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         )}
       </div>
 

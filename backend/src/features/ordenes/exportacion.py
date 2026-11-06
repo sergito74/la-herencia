@@ -159,3 +159,21 @@ def resultado_cultivo_xlsx(id_cultivo: int | None = None, id_campania: int | Non
         ws.append([r["cultivo"], r["campania"], r["lote"], r["costoInsumos"], r["costoMaquinaria"], r["costoContratista"], r["costoTotalOrdenes"]])
     _cerrar(ws, {3: _PESOS, 4: _PESOS, 5: _PESOS, 6: _PESOS})
     return _bytes(wb)
+
+
+def sin_orden_xlsx(id_contratista: int | None = None) -> bytes:
+    """048 FR-008: facturas de labor de contratistas sin orden, un renglón por línea de la factura."""
+    from datetime import date as _date
+
+    from src.features.ordenes import documentos_contratista as dc
+
+    wb = Workbook()
+    ws = _hoja(wb, "Facturas sin orden", [("Contratista", 26), ("Fecha", 12), ("Número", 16), ("Moneda", 9), ("Rubro", 16),
+                                          ("Concepto", 32), ("Cantidad", 11), ("Unidad", 10), ("Neto", 15),
+                                          ("Cultivo/destino (a mano)", 26), ("Campaña (a mano)", 14)])
+    for r in dc.sin_orden(id_contratista):
+        ws.append([r["contratista"], _date.fromisoformat(str(r["fecha"])[:10]), r["numero"], r["moneda"], r["rubro"],
+                   r["concepto"], r["cantidad"], r["unidad"], r["neto"], r["destino"] or "(sin imputar)",
+                   r["campania"] or "(sin imputar)"])
+    _cerrar(ws, {1: _FECHA, 6: _CANT, 8: _CANT})
+    return _bytes(wb)

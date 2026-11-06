@@ -8,7 +8,19 @@ from collections import defaultdict
 
 from src.db.connection import fetch_all
 from src.features.remitos.stock_datos import calcular_stock
+from src.features.imputacion.repository import RUBROS_FUERA_REPARTO
 from src.features.resultado_cultivo import mapeo
+
+_FUERA = ",".join("?" * len(RUBROS_FUERA_REPARTO))
+# 048: reparto vigente de cada documento de contratista = su última corrida APROBADA, si tiene alguna fracción con
+# orden (una aprobada sin orden es un retiro; una Pendiente posterior no la reemplaza).
+_REPARTO_VIGENTE = """(
+    SELECT x.IdDetalleCompra AS idCompra, x.IdCorrida AS idCorrida FROM (
+        SELECT IdDetalleCompra, IdCorrida, MAX(CASE WHEN IdOrdenTrabajo IS NOT NULL THEN 1 ELSE 0 END) AS conOrden,
+               ROW_NUMBER() OVER (PARTITION BY IdDetalleCompra ORDER BY MAX(FechaCalculo) DESC) AS rn
+        FROM dbo.ImputacionPropuestas WHERE Origen = 'Contratista' AND Estado = 'Aprobada'
+        GROUP BY IdDetalleCompra, IdCorrida) x
+    WHERE x.rn = 1 AND x.conOrden = 1)"""
 
 _EPS = 1e-6
 
@@ -31,8 +43,12 @@ def costos_heredados(id_cultivo: int, id_campania: int) -> list[dict]:
         FROM dbo.vw_ResultadosCultivo_CostosBase c
         LEFT JOIN dbo.Rubros r ON r.IdRubro = c.IdRubro
         WHERE c.IdDestino = ? AND c.IdCampaña = ?
-        """,
-        (id_destino, id_campania),
+          AND NOT EXISTS (  -- 048: renglón ya repartido por las órdenes de trabajo (reparto de contratista vigente)
+              SELECT 1 FROM dbo.Det_Compras dd LEFT JOIN dbo.Rubros rr ON rr.IdRubro = dd.IdRubro
+              WHERE dd.IdDetalleCompra = c.IdDetalleCompra AND c.IdCompra IN (SELECT rv.idCompra FROM {_REPARTO_VIGENTE} rv)
+                AND (rr.Rubro IS NULL OR rr.Rubro NOT IN ({_FUERA})))
+        """.format(_REPARTO_VIGENTE=_REPARTO_VIGENTE, _FUERA=_FUERA),
+        (id_destino, id_campania, *RUBROS_FUERA_REPARTO),
     )
     seguros = fetch_all(
         """
@@ -120,32 +136,20 @@ def costo_ordenes_trabajo(id_cultivo: int, id_campania: int) -> list[dict]:
 
 
 def costos_contratista(id_cultivo: int, id_campania: int) -> list[dict]:
-    """Renglones de facturas vinculadas, con su destino y campaña registrados."""
+    """048: fracciones del reparto vigente (última corrida APROBADA de contratista con orden) de este cultivo y
+    campaña. Pesos = importe; dólares al TC del comprobante."""
     return fetch_all(
-        """
-        SELECT 'Contratista' AS concepto, r.Rubro AS rubro,
-               CASE WHEN c.Moneda = 'Dolares' THEN v.neto * c.[Tipo de Cambio]
-                    ELSE v.neto END AS montoPesos,
-               CASE WHEN c.Moneda = 'Dolares' THEN v.neto
-                    ELSE v.neto / NULLIF(c.[Tipo de Cambio], 0) END AS montoDolares,
-               'OrdenTrabajo' AS origen, d.IdCompra AS idCompra,
-               d.IdDetalleCompra AS idDetalleCompra,
-               (SELECT MIN(f.IdOrdenTrabajo) FROM dbo.Ordenes_Trabajo_Contratista_Factura f
-                JOIN dbo.Ordenes_Trabajo o ON o.IdOrdenTrabajo = f.IdOrdenTrabajo
-                WHERE f.IdCompra = d.IdCompra AND o.Estado <> 'Anulada') AS idOrdenTrabajo
-        FROM dbo.Det_Compras d
-        JOIN dbo.Compras c ON c.IdDeuda = d.IdCompra
-        JOIN dbo.Map_CultivoResultado m ON m.IdDestino = d.IdDestino
-        LEFT JOIN dbo.Rubros r ON r.IdRubro = d.IdRubro
-        CROSS APPLY (SELECT ABS(ISNULL(d.Cantidad, 0) * ISNULL(d.[Precio Unitario], 0)) *
-            CASE WHEN c.[Tipo documento] COLLATE Latin1_General_CI_AI = 'Nota de Credito'
-                 THEN -1 ELSE 1 END AS neto) v
-        WHERE m.IdCultivo = ? AND d.IdCampaña = ?
-          AND EXISTS (SELECT 1 FROM dbo.Ordenes_Trabajo_Contratista_Factura f
-                      JOIN dbo.Ordenes_Trabajo o ON o.IdOrdenTrabajo = f.IdOrdenTrabajo
-                      WHERE f.IdCompra = d.IdCompra AND o.Estado <> 'Anulada')
-          AND NOT EXISTS (SELECT 1 FROM dbo.vw_ResultadosCultivo_CostosBase b
-                          WHERE b.IdCompra = d.IdCompra)
+        f"""
+        SELECT 'Contratista' AS concepto, r.Rubro AS rubro, p.Importe AS montoPesos,
+               p.Importe / NULLIF(CASE WHEN c.Moneda = 'Dolares' THEN c.[Tipo de Cambio] END, 0) AS montoDolares,
+               'OrdenTrabajo' AS origen, p.IdDetalleCompra AS idCompra, NULL AS idDetalleCompra,
+               p.IdOrdenTrabajo AS idOrdenTrabajo
+        FROM dbo.ImputacionPropuestas p
+        JOIN {_REPARTO_VIGENTE} v ON v.idCorrida = p.IdCorrida
+        JOIN dbo.Compras c ON c.IdDeuda = p.IdDetalleCompra
+        LEFT JOIN dbo.Ordenes_Trabajo o ON o.IdOrdenTrabajo = p.IdOrdenTrabajo
+        LEFT JOIN dbo.Rubros r ON r.IdRubro = o.IdRubro
+        WHERE p.IdCultivo = ? AND p.IdCampania = ? AND p.IdOrdenTrabajo IS NOT NULL
         """, (id_cultivo, id_campania),
     )
 
