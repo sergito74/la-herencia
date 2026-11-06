@@ -296,9 +296,9 @@ def distribucion_de_orden(id_orden_trabajo: int) -> list[dict]:
 
 
 # 048: rubros de labor del contratista, y rubros que NO se reparten por la orden (insumos y otros negocios).
-# Sergio 06/11: Cosecha y Disqueado nunca tienen orden de trabajo (sin insumos propios): no se vinculan, siguen
+# Sergio 06/11: Cosecha, Disqueado y Embolsado de grano nunca tienen orden de trabajo (sin insumos propios): no se vinculan, siguen
 # con su imputación manual.
-RUBROS_LABOR = ("Fumigacion", "Siembra", "Fertilizacion", "Embolsado Grano")
+RUBROS_LABOR = ("Fumigacion", "Siembra", "Fertilizacion")
 RUBROS_FUERA_REPARTO = ("Semillas", "Fertilizantes", "Herbicidas", "Insecticidas", "Fungicidas",
                         "Hacienda", "Trabajos Maq. Propia", "Gastos Comercializacion")
 
