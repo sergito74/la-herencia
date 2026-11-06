@@ -2,7 +2,7 @@
 
 **Feature Branch**: `main` (sin rama propia, como las specs 043-047)
 
-**Created**: 2026-11-06
+**Created**: 2026-11-06 · **Revisada**: 2026-11-06 (simplificación pedida por Sergio)
 
 **Status**: Draft
 
@@ -13,128 +13,105 @@
 - La orden de trabajo pide tipear un número interno de compra para vincular la factura. Es inusable y contradice la premisa "interfaz sin cosas internas".
 - Nunca se vinculó ningún documento: 0 vínculos para 152 órdenes ejecutadas. Access tampoco tenía este vínculo.
 - Vincular no genera la imputación automática por cultivo/campaña: hay 0 imputaciones de contratista.
-- El Resultado por cultivo busca los vínculos en un registro viejo (vacío), distinto del que escribe la orden. Además imputa la factura por el cultivo/campaña cargado a mano en cada renglón, que es justamente lo que se quiere dejar de hacer.
-- Hay 12 contratistas con órdenes desde 2015, con 94 facturas y 6 NC/ND en ese período.
+- El Resultado por cultivo busca los vínculos en un registro viejo (vacío), distinto del que escribe la orden, y toma el cultivo/campaña cargado a mano en cada renglón.
+- Hay 12 contratistas con órdenes desde 2015; 91 facturas de labor y 6 NC (ninguna relacionada con su factura).
 
 ## Decisiones tomadas (Sergio, 06/11/2026)
 
-- **D1 Siempre confirmar**: el sistema propone qué documentos corresponden a qué órdenes; ningún vínculo queda hecho sin el OK del usuario.
+- **D1 El vínculo se hace en Compras**: en el formulario de la factura del contratista se tildan sus órdenes de trabajo. La NC/ND se relaciona con su factura en el panel "Documentos relacionados" que ya existe. La orden de trabajo NO vincula: solo muestra esos vínculos, y el Resultado los usa. (Reemplaza la versión anterior con propuestas, pantalla de revisión y descartes, que Sergio descartó por complicada.)
 - **D2 NC/ND siguen a su factura**: se imputan igual (cultivos, campañas y proporción) que la factura que corrigen.
-- **D3 Alcance histórico completo**: todas las órdenes ejecutadas desde 2015.
-- **D4 Flujo de Caja fuera de alcance**: queda como está; solo importa el Resultado por cultivo.
+- **D3 Alcance histórico**: aplica a cualquier factura, de cualquier fecha, al vincularla.
+- **D4 Flujo de Caja fuera de alcance**: queda como está.
 
 ## Clarifications
 
 ### Session 2026-11-06
 
-- Q: Cuando la factura trae renglones que no son la labor (flete, traslado, gasoil), ¿qué se reparte? → A: El neto completo de la factura se reparte por la superficie de las órdenes vinculadas. Afinado el mismo día: los renglones de insumos y de otros negocios quedan fuera del reparto (ver FR-004); solo se consideran documentos con renglones de labor (FR-002a).
-- Q: ¿Qué pasa con las facturas del contratista sin orden que las explique (23 en el histórico)? → A: Quedan rotuladas "sin orden" y suman al costo de los cultivos según la imputación cargada a mano en sus renglones. Se listan en un detalle propio. En adelante no puede pasar: toda factura nueva de un contratista debe quedar vinculada a una orden.
-- Q: ¿Quién puede confirmar o descartar un vínculo factura–orden? → A: Cualquier usuario con permiso de carga; los de solo lectura solo ven las propuestas.
+- Q: Cuando la factura trae renglones que no son la labor (flete, traslado, gasoil), ¿qué se reparte? → A: El neto de la factura por la superficie de las órdenes, salvo los renglones de insumos y otros negocios (FR-004).
+- Q: ¿Qué pasa con las facturas del contratista sin orden? → A: Suman al costo según su imputación cargada a mano y se ven en un listado propio. En adelante no puede pasar: una factura nueva de labor de un contratista debe tener orden.
+- Q: ¿Quién puede vincular? → A: Cualquier usuario con permiso de carga; los de solo lectura solo miran.
+- Q: ¿Desde dónde se vincula? → A: Desde el formulario de Compras (D1).
 
 ## User Scenarios & Testing *(mandatory)*
 
-### User Story 1 - Vincular desde la orden eligiendo de una lista (Priority: P1)
+### User Story 1 - Vincular la factura con sus órdenes desde Compras (Priority: P1) 🎯
 
-Al abrir una orden de trabajo, el usuario ve los documentos (facturas, NC, ND) del contratista que la ejecutó y no vinculados a otra orden, con fecha, número, hectáreas e importe. Los sugeridos aparecen primero y marcados como sugerencia. Tilda los que corresponden y confirma.
+Al cargar o editar una factura de labor de un contratista, el formulario muestra las órdenes de trabajo ejecutadas de ese contratista (fecha, labor, lotes, hectáreas), de la más nueva a la más vieja, con las que todavía no tienen factura primero. El usuario tilda las que corresponden y guarda la compra.
 
-**Why this priority**: es lo que hoy no funciona y desbloquea todo lo demás.
-
-**Independent Test**: abrir la orden 162 (Pérez, 25/10/2026, 198 ha); la factura 00002-00000735 (05/11/2026, 198 ha) aparece sugerida; al tildarla y confirmar queda vinculada sin tipear ningún número.
+**Independent Test**: editar la factura 00002-00000735 de Pérez (05/11/2026, 198 ha), tildar la orden del 25/10/2026 (198 ha) y guardar: queda vinculada.
 
 **Acceptance Scenarios**:
 
-1. **Given** una orden con contratista, **When** se abre, **Then** la lista muestra solo documentos de ese contratista, sin números internos.
-2. **Given** un documento vinculado, **When** el usuario lo destilda y confirma, **Then** se desvincula y su imputación se retira.
-3. **Given** una orden de maquinaria propia o sin documentos del contratista, **Then** se informa que no hay documentos para vincular.
+1. **Given** una factura de un contratista con órdenes, **When** se abre el formulario, **Then** se ve la lista tildable de sus órdenes, sin números internos.
+2. **Given** una factura de labor nueva sin ninguna orden tildada, **When** se guarda, **Then** el formulario avisa "Factura de contratista sin orden de trabajo" y pide confirmar; queda en el listado de facturas sin orden.
+3. **Given** una NC/ND del contratista, **Then** no muestra órdenes: se relaciona con su factura en "Documentos relacionados".
 
 ---
 
-### User Story 2 - Imputación automática a cultivo y campaña (Priority: P1)
+### User Story 2 - La orden muestra sus documentos y el Resultado los imputa solo (Priority: P1)
 
-Al confirmarse el vínculo, el importe neto del documento se reparte entre los lotes/cultivos/campañas de las órdenes vinculadas en proporción a su superficie, sin que el usuario cargue cultivo ni campaña. El Resultado por cultivo toma ese reparto, una sola vez.
+La orden de trabajo muestra, en solo lectura, las facturas y las NC/ND vinculadas (número, fecha, neto) con enlace a la compra, y el reparto por lote/cultivo/campaña. El Resultado por cultivo toma ese reparto en lugar de la carga manual de esos documentos.
 
-**Why this priority**: es el objetivo del pedido.
-
-**Independent Test**: vincular una factura a una orden con dos cultivos; el Resultado de cada cultivo/campaña muestra la parte proporcional y la suma da el neto de la factura al centavo.
+**Independent Test**: tras US1, abrir la orden del 25/10/2026: muestra la factura 00002-00000735 y su reparto; en el Resultado, el cultivo/campaña muestra el costo desde la orden y la factura no cuenta además por su carga manual.
 
 **Acceptance Scenarios**:
 
 1. **Given** una factura vinculada a varias órdenes, **Then** se reparte por la superficie de todas ellas y la suma cierra al centavo.
-2. **Given** una factura que ya tenía cultivo/campaña cargado a mano en sus renglones, **When** se confirma el vínculo, **Then** el Resultado usa el reparto de la orden y no cuenta el cargado a mano (sin doble conteo).
-3. **Given** una NC/ND relacionada con una factura vinculada, **Then** se imputa en los mismos cultivos/campañas y proporción, con su signo.
-4. **Given** una factura en dólares, **Then** se usa el tipo de cambio del comprobante.
+2. **Given** una NC relacionada con una factura vinculada, **Then** se imputa en los mismos cultivos/campañas y proporción, con su signo, y se ve en la orden.
+3. **Given** una factura en dólares, **Then** se usa el tipo de cambio del comprobante.
+4. **Given** que se destilda la orden en la factura, **Then** la imputación se retira y vuelve a contar la carga manual.
 
 ---
 
-### User Story 3 - Revisar en bloque las propuestas del histórico (Priority: P2)
+### User Story 3 - Listado de facturas de labor sin orden (Priority: P2)
 
-Una pantalla lista, por contratista, cada factura con las órdenes que el sistema le propone (fecha, hectáreas facturadas, hectáreas de las órdenes, diferencia). El usuario confirma, corrige o descarta cada propuesta. Las que no cierran quedan a la vista con el motivo ("hectáreas no coinciden", "sin orden", "factura en otra unidad").
+Un listado (con exportación a Excel) de las facturas de labor de contratistas sin orden vinculada, con sus renglones y el cultivo/campaña cargado a mano, con enlace a la compra para vincularla.
 
-**Why this priority**: cubre el histórico (D3) sin ir orden por orden; depende de US1/US2.
-
-**Independent Test**: abrir la revisión de Pérez; cada factura tiene su propuesta con la diferencia de hectáreas; confirmar una la vincula e imputa como en US1/US2.
-
-**Acceptance Scenarios**:
-
-1. **Given** una factura con hectáreas coincidentes, **Then** figura como propuesta con diferencia menor al 10%, a la espera de confirmación (D1).
-2. **Given** una factura histórica sin orden que la explique, **Then** figura como "sin orden" en su detalle propio y su costo sigue contando por la imputación cargada a mano.
-3. **Given** una factura nueva de un contratista (posterior a la puesta en marcha) sin orden, **Then** queda como pendiente visible hasta vincularla.
-4. **Given** una propuesta descartada, **Then** no vuelve a proponerse igual salvo que cambien los datos.
-
----
+**Independent Test**: el listado muestra las facturas de labor sin vínculo (hoy 91) y no incluye la factura de hacienda de Yanquelen.
 
 ### Edge Cases
 
-- Facturas de un contratista que factura en litros, pesos o "servicio" en vez de hectáreas: se proponen por fecha, con la diferencia marcada como "otra unidad".
 - Una factura que cubre varias órdenes, y una orden con varias facturas (anticipo + saldo).
 - Orden anulada después del vínculo: el vínculo se retira y la imputación se recalcula.
-- Corrección de hectáreas en la orden después del vínculo: el reparto se recalcula.
-- Orden de un rubro sin cultivo (ej. mantenimiento): va al centro de costo de la orden, como ya prevé la imputación 017.
-- Contratista "Giamigli de Bolívar" (maquinaria propia, sin documentos): no se proponen documentos.
+- Corrección de hectáreas en la orden: el reparto se recalcula.
+- Orden de un rubro sin cultivo: va al centro de costo de la orden (imputación 017).
+- Contratista "Giamigli de Bolívar" (maquinaria propia, sin documentos): nada que vincular.
 
 ## Requirements *(mandatory)*
 
 ### Functional Requirements
 
-- **FR-001**: La orden de trabajo MUST mostrar una lista tildable de documentos (Factura, NC, ND) del contratista de la orden, con fecha, número, hectáreas e importe formateados, sin identificadores internos.
-- **FR-002**: El sistema MUST proponer vínculos factura→órdenes con esta regla: mismo contratista, órdenes ejecutadas en o antes de la fecha de la factura y después de la factura anterior del mismo contratista (máximo 90 días), comparando hectáreas facturadas con las de las órdenes.
-- **FR-002a**: Solo son "documentos de labor" (candidatos a vincular) los que tienen al menos un renglón de un rubro de labor: Fumigación, Siembra, Cosecha, Fertilización, Disqueado, Embolsado de grano. Lo que el contratista vende por otro negocio (hacienda, semilla, urea) no se propone. Hallazgo 06/11: el primer listado incluyó una factura de hacienda de Yanquelen ("Vacas preñadas").
-- **FR-003**: Ningún vínculo MUST quedar hecho sin la confirmación explícita del usuario (D1); las propuestas no afectan costos hasta confirmarse.
-- **FR-004**: Al confirmar o retirar un vínculo, el sistema MUST recalcular de inmediato el reparto del documento por cultivo/campaña/lote según la superficie de las órdenes vinculadas. Se reparte el neto completo del documento, incluidos los renglones que acompañan la labor (flete, traslado, viáticos, gasoil), EXCEPTO los renglones de insumos (Semillas, Fertilizantes, Agroquímicos) y de otros negocios (Hacienda, Trabajos Maq. Propia, Gastos de Comercialización), que siguen con su imputación propia para no contarse dos veces.
-- **FR-005**: Las NC/ND relacionadas con una factura vinculada MUST imputarse con el mismo reparto proporcional y su signo (D2), sin vínculo propio a la orden. Las NC/ND sin documento relacionado MUST poder relacionarse con su factura desde la revisión.
-- **FR-006**: El Resultado por cultivo MUST tomar el costo de contratista desde el reparto de los vínculos confirmados, y MUST excluir para esos documentos el cultivo/campaña cargado a mano en sus renglones (sin doble conteo).
-- **FR-007**: Los documentos de contratista no vinculados MUST seguir contando como hoy (por su carga manual), para que el Resultado no pierda costos mientras se revisa el histórico.
-- **FR-008**: La revisión en bloque MUST listar todas las facturas de contratistas desde 2015 con su propuesta, la diferencia de hectáreas y el motivo cuando no cierra.
-- **FR-008a**: Las facturas históricas "sin orden" MUST sumar al costo de los cultivos según la imputación cargada a mano en sus renglones, y MUST verse en un detalle propio (contratista, fecha, número, concepto, hectáreas, importe, cultivo/campaña imputados a mano).
-- **FR-008b**: Desde la puesta en marcha, una factura nueva de un contratista sin orden vinculada MUST quedar como pendiente visible (aviso en la revisión de documentos nuevos y en la revisión del contratista) hasta que se vincule; no puede quedar "sin orden".
-- **FR-009**: Los saldos de cuentas corrientes MUST quedar iguales al centavo: el vínculo no modifica importes, fechas ni imputaciones de pago.
-- **FR-010**: El Flujo de Caja queda como está; esta funcionalidad no lo modifica (D4). El reparto por cultivo/campaña se usa solo en Costos/Resultado por cultivo.
-- **FR-011**: El vínculo MUST registrar quién y cuándo lo confirmó.
-- **FR-012**: Confirmar o descartar vínculos MUST estar permitido a usuarios con permiso de carga; los usuarios de solo lectura ven las propuestas sin los botones de acción.
+- **FR-001**: El formulario de Compras MUST mostrar, para una factura de labor de un contratista, la lista tildable de sus órdenes de trabajo ejecutadas (fecha, labor, lotes, hectáreas; las que no tienen factura primero), sin identificadores internos, y guardar los vínculos tildados junto con la compra.
+- **FR-002**: Son "documentos de labor" los que tienen al menos un renglón de un rubro de labor: Fumigación, Siembra, Cosecha, Fertilización, Disqueado, Embolsado de grano. Solo a ellos se les ofrecen órdenes.
+- **FR-003**: Las NC/ND MUST relacionarse con su factura en el panel "Documentos relacionados" existente; no se vinculan a órdenes.
+- **FR-004**: Al guardar los vínculos, el sistema MUST imputar de inmediato el documento por lote/cultivo/campaña según la superficie de las órdenes vinculadas. Se reparte el neto de los renglones que no son de los rubros Semillas, Fertilizantes, Agroquímicos, Hacienda, Trabajos Maq. Propia ni Gastos de Comercialización (esos siguen con su imputación propia). Cierra al centavo.
+- **FR-005**: Las NC/ND relacionadas con una factura vinculada MUST imputarse con las mismas proporciones y su signo (D2).
+- **FR-006**: La orden de trabajo MUST mostrar en solo lectura sus documentos vinculados (y las NC/ND relacionadas) con enlace a la compra y su reparto; no permite vincular ni desvincular.
+- **FR-007**: El Resultado por cultivo MUST tomar el costo de contratista del reparto, y MUST excluir para esos documentos exactamente los renglones repartidos de la carga manual (sin doble conteo). Los documentos no vinculados siguen contando como hoy.
+- **FR-008**: MUST existir un listado (y exportación a Excel) de facturas de labor de contratistas sin orden, con renglones, cultivo/campaña cargado a mano y enlace a la compra.
+- **FR-009**: Guardar una factura de labor de un contratista sin órdenes MUST mostrar un aviso que hay que confirmar.
+- **FR-010**: Los saldos de cuentas corrientes MUST quedar iguales al centavo.
+- **FR-011**: El vínculo MUST registrar quién y cuándo lo guardó.
+- **FR-012**: Solo los usuarios con permiso de carga pueden vincular (el formulario de Compras ya lo respeta).
 
 ### Key Entities
 
-- **Orden de trabajo**: labor ejecutada por un contratista, con fecha y distribución por lote/cultivo/campaña y superficie.
-- **Documento del contratista**: factura, NC o ND, con renglones (hectáreas, precio), moneda y tipo de cambio.
-- **Vínculo orden–documento**: relación muchos a muchos confirmada por el usuario; tiene un estado: propuesto, confirmado o descartado.
-- **Reparto (imputación)**: porción del neto del documento asignada a cada lote/cultivo/campaña.
+- **Orden de trabajo**: labor ejecutada por un contratista, con distribución por lote/cultivo/campaña y superficie.
+- **Documento del contratista**: factura, NC o ND, con renglones, moneda y tipo de cambio.
+- **Vínculo factura–orden**: muchos a muchos, guardado desde Compras.
+- **Documento relacionado**: NC/ND ↔ factura (existente).
+- **Reparto (imputación)**: porción del neto repartible asignada a cada lote/cultivo/campaña.
 
 ## Success Criteria *(mandatory)*
 
-### Measurable Outcomes
-
-- **SC-001**: Vincular un documento a una orden toma menos de 30 segundos y no requiere conocer ningún número interno.
-- **SC-002**: El 100% de los documentos vinculados queda imputado a cultivo/campaña sin carga manual, y la suma del reparto de cada uno coincide con su neto al centavo.
-- **SC-003**: Tras la revisión del histórico, cada una de las 91 facturas de labor de contratistas desde 2015 está vinculada, descartada con motivo o marcada "sin orden": ninguna queda sin estado.
-- **SC-004**: El costo de contratista de una campaña en el Resultado no cambia por contar dos veces un mismo documento (control: total antes de vincular = total después, salvo diferencias de reparto entre cultivos que se muestran).
-- **SC-005**: Ningún saldo de cuenta corriente cambia (comparación antes/después al centavo).
+- **SC-001**: Vincular una factura con sus órdenes toma menos de 30 segundos desde el formulario de Compras, sin conocer ningún número interno.
+- **SC-002**: El 100% de los documentos vinculados queda imputado sin carga manual, y el reparto suma el neto repartible al centavo.
+- **SC-003**: El costo de contratista de una campaña no cambia por doble conteo (total antes = después, salvo repartos entre cultivos, que se listan).
+- **SC-004**: Ningún saldo de cuenta corriente cambia.
 
 ## Assumptions
 
-- Se reutiliza la imputación automática existente (spec 017) para el reparto por superficie y el centro de costo de órdenes sin cultivo.
-- El registro viejo de vínculos (vacío) se deja de usar; el Resultado pasa a leer el registro único que escribe la orden.
-- "Hectáreas facturadas" = suma de cantidades en renglones con unidad hectárea (o sin unidad); otras unidades se marcan como "otra unidad".
-- La regla de 10% es solo para ordenar y rotular propuestas; nunca confirma sola (D1).
-- La NC/ND se asocia a su factura a través de los documentos relacionados ya cargados; si no tiene, se relaciona con su factura desde la revisión (hoy las 6 NC de contratistas no tienen relación).
-- Números al 06/11 con el filtro por rubro de labor: 91 facturas de labor, 21 sin orden (la aclaración registró 23 antes del filtro).
+- Se reutiliza la imputación 017 para el reparto y el centro de costo.
+- La tabla vieja de vínculos (vacía) se deja de usar.
+- El panel "Documentos relacionados" de Compras ya existe y se reutiliza para NC/ND.
 - Todo se escribe en la base WC.
