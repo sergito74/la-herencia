@@ -207,8 +207,12 @@ def listar_ordenes(
     page: int = 1,
     page_size: int = 25,
     insumo: str | None = None,
+    idTipoLabor: int | None = None,
 ) -> dict:
     where, params = ["1 = 1"], []
+    if idTipoLabor is not None:
+        where.append("o.IdTipoLabor = ?")
+        params.append(idTipoLabor)
     if idContratista is not None:
         where.append("o.IdContratistaContacto = ?")
         params.append(idContratista)

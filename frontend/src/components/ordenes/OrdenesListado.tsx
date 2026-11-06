@@ -8,7 +8,7 @@ import { DataTable, type DataTableColumn } from "@/components/ui/DataTable";
 import { ErrorState, LoadingState } from "@/components/ui/States";
 import { BadgeEstadoOrden } from "@/components/ordenes/EstadosOrden";
 import { formatCantidad, formatFecha } from "@/lib/format";
-import { fetchOrdenes, type FiltrosOrdenes, type OrdenListItem } from "@/services/ordenesApi";
+import { fetchCatalogosOrdenes, fetchOrdenes, type FiltrosOrdenes, type OrdenListItem } from "@/services/ordenesApi";
 
 const ESTADOS = [
   { value: "", label: "Todos" },
@@ -55,6 +55,7 @@ export function OrdenesListado() {
     queryKey: ["ordenes", filtros, page],
     queryFn: () => fetchOrdenes(filtros, page),
   });
+  const { data: catalogos } = useQuery({ queryKey: ["ordenes-catalogos"], queryFn: fetchCatalogosOrdenes, staleTime: 300_000 });
   const aplicarInsumo = () => {
     setPage(1);
     if (insumo.trim() !== (filtros.insumo ?? "")) setFiltros({ ...filtros, insumo: insumo.trim() });
@@ -81,6 +82,24 @@ export function OrdenesListado() {
             value={filtros.fechaHasta}
             onChange={(e) => setFiltros({ ...filtros, fechaHasta: e.target.value })}
           />
+        </label>
+        <label className="text-sm">
+          Labor
+          <select
+            className="mt-1 block rounded border border-border px-2 py-1.5"
+            value={filtros.idTipoLabor ?? ""}
+            onChange={(e) => {
+              setPage(1);
+              setFiltros({ ...filtros, idTipoLabor: e.target.value ? Number(e.target.value) : null });
+            }}
+          >
+            <option value="">Todas</option>
+            {(catalogos?.tiposLabor ?? []).map((t) => (
+              <option key={t.idTipoLabor} value={t.idTipoLabor}>
+                {t.nombre}
+              </option>
+            ))}
+          </select>
         </label>
         <label className="text-sm">
           Estado

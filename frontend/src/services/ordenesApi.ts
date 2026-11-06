@@ -103,6 +103,7 @@ export interface OrdenListItem {
 
 export interface FiltrosOrdenes {
   idContratista?: number | null;
+  idTipoLabor?: number | null;
   idLote?: number | null;
   idCultivo?: number | null;
   idCampania?: number | null;
@@ -116,6 +117,7 @@ export interface FiltrosOrdenes {
 export const fetchOrdenes = (f: FiltrosOrdenes, page: number, pageSize = 25) =>
   apiGet<Paginado<OrdenListItem>>("/api/ordenes", {
     idContratista: f.idContratista ?? undefined,
+    idTipoLabor: f.idTipoLabor ?? undefined,
     idLote: f.idLote ?? undefined,
     idCultivo: f.idCultivo ?? undefined,
     idCampania: f.idCampania ?? undefined,
