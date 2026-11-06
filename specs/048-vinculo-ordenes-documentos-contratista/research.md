@@ -22,7 +22,8 @@
 
 ## R5. Resultado sin doble conteo
 
-- **Decision**: `costos_heredados` excluye, de las compras con corrida de contratista aprobada vigente, los renglones repartidos (todo lo que no está en los rubros excluidos). `costos_contratista` suma las fracciones aprobadas vigentes. `resultado.py` deja de leer `Ordenes_Trabajo_Contratista_Factura`.
+- **Reparto vigente**: la última corrida APROBADA de contratista del documento. `/api/imputacion/recalcular` puede crear una corrida Pendiente encima, y eso no debe sacar el costo del Resultado (análisis 06/11, F1).
+- **Decision**: `costos_heredados` excluye, de las compras con reparto vigente, los renglones repartidos (todo lo que no está en los rubros excluidos). `costos_contratista` suma las fracciones aprobadas vigentes. `resultado.py` deja de leer `Ordenes_Trabajo_Contratista_Factura`.
 
 ## R6. Sin orden
 

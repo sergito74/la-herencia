@@ -89,7 +89,7 @@ Un listado (con exportación a Excel) de las facturas de labor de contratistas s
 - **FR-006**: La orden de trabajo MUST mostrar en solo lectura sus documentos vinculados (y las NC/ND relacionadas) con enlace a la compra y su reparto; no permite vincular ni desvincular.
 - **FR-007**: El Resultado por cultivo MUST tomar el costo de contratista del reparto, y MUST excluir para esos documentos exactamente los renglones repartidos de la carga manual (sin doble conteo). Los documentos no vinculados siguen contando como hoy.
 - **FR-008**: MUST existir un listado (y exportación a Excel) de facturas de labor de contratistas sin orden, con renglones, cultivo/campaña cargado a mano y enlace a la compra.
-- **FR-009**: Guardar una factura de labor de un contratista sin órdenes MUST mostrar un aviso que hay que confirmar.
+- **FR-009**: Guardar una factura de labor de un contratista sin órdenes MUST mostrar un aviso que hay que confirmar. El aviso no bloquea (la deuda se tiene que poder registrar); la factura queda en el listado "sin orden" (FR-008) hasta vincularla. Así se cumple "en adelante no puede pasar" sin impedir la carga.
 - **FR-010**: Los saldos de cuentas corrientes MUST quedar iguales al centavo.
 - **FR-011**: El vínculo MUST registrar quién y cuándo lo guardó.
 - **FR-012**: Solo los usuarios con permiso de carga pueden vincular (el formulario de Compras ya lo respeta).
