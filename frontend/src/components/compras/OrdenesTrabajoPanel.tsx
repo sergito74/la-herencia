@@ -17,6 +17,8 @@ import {
 export const ordenesTrabajoKey = (idCompra: number) => ["compras-ordenes-trabajo", idCompra];
 
 const DIAS_PROBABLE = 120;
+/** Diferencia de superficie que se considera normal entre la orden (teórica) y la factura (trabajada + cabeceras). */
+const TOLERANCIA = 0.15;
 const ha = (v: number) => `${formatNumero(v, { max: 1 })} ha`;
 
 function diasEntre(desde: string, hasta: string) {
@@ -75,7 +77,7 @@ export function OrdenesTrabajoPanel({ idCompra }: { idCompra: number }) {
   const seleccionadas = data.ordenes.filter((o) => tildadas.has(o.idOrden));
   const haSel = seleccionadas.reduce((s, o) => s + o.hectareas, 0);
   const cambio = data.ordenes.some((o) => o.vinculada !== tildadas.has(o.idOrden));
-  const coincide = (h: number) => haFactura != null && haFactura > 0 && Math.abs(h - haFactura) / haFactura <= 0.02;
+  const coincide = (h: number) => haFactura != null && haFactura > 0 && Math.abs(h - haFactura) / haFactura <= TOLERANCIA;
 
   function alternar(id: number) {
     const s = new Set(tildadas);
@@ -161,13 +163,18 @@ function Tarjeta({ titulo, subtitulo, accion, children }: { titulo: string; subt
 }
 
 function Comparacion({ haFactura, fechaFactura, haSel, cantidad }: { haFactura: number | null; fechaFactura: string | null; haSel: number; cantidad: number }) {
+  // Sergio 06/11: la orden lleva la superficie teórica de los lotes y la factura lo trabajado + repasos de cabeceras:
+  // casi nunca coinciden. La diferencia es un dato para orientarse; solo una diferencia grande sugiere revisar.
   let estado: { texto: string; clase: string };
   if (cantidad === 0) estado = { texto: "Todavía no marcaste órdenes", clase: "bg-surface-sunken text-ink-secondary" };
-  else if (haFactura == null) estado = { texto: "La factura no está en hectáreas: comparalo por fecha", clase: "bg-surface-sunken text-ink-secondary" };
+  else if (haFactura == null) estado = { texto: "La factura no está en hectáreas: guiate por la fecha", clase: "bg-surface-sunken text-ink-secondary" };
   else {
     const dif = haSel - haFactura;
-    if (Math.abs(dif) / haFactura <= 0.02) estado = { texto: "Las hectáreas coinciden", clase: "bg-status-success-bg text-status-success" };
-    else estado = { texto: dif < 0 ? `Faltan ${ha(-dif)}` : `Sobran ${ha(dif)}`, clase: "bg-status-warning-bg text-status-warning" };
+    const pct = formatNumero((Math.abs(dif) / haFactura) * 100, { max: 0 });
+    const texto = `Diferencia ${dif >= 0 ? "+" : "−"}${ha(Math.abs(dif))} (${pct}%)`;
+    estado = Math.abs(dif) / haFactura <= TOLERANCIA
+      ? { texto: `${texto}: normal (superficie teórica vs. trabajada)`, clase: "bg-surface-sunken text-ink-secondary" }
+      : { texto: `${texto}: revisá si falta o sobra alguna orden`, clase: "bg-status-warning-bg text-status-warning" };
   }
   return (
     <div className="mt-3 grid gap-2 sm:grid-cols-3">
@@ -222,7 +229,7 @@ function FilaOrden({ o, tildada, onClick, fechaFactura, coincide }: {
           {o.tieneOtraFactura && !o.vinculada ? (
             <span className="rounded-full bg-surface-sunken px-2 py-0.5 text-xs text-ink-secondary">Ya tiene factura</span>
           ) : coincide ? (
-            <span className="rounded-full bg-status-success-bg px-2 py-0.5 text-xs text-status-success">Mismas ha que la factura</span>
+            <span className="rounded-full bg-status-success-bg px-2 py-0.5 text-xs text-status-success">Superficie parecida</span>
           ) : null}
         </span>
       </button>
