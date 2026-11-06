@@ -200,7 +200,11 @@ def procesar_adjunto(id_corrida: int | None, mail: mails.Mail, adj: mails.Adjunt
 
 
 def sin_procesar(id_corrida: int | None, mail: mails.Mail, adj: mails.Adjunto) -> str | None:
-    """Adjunto que no se pudo leer: se guarda en Compras del ejercicio y queda "sin clasificar" con aviso."""
+    """Adjunto que no se pudo leer: se guarda en Compras del ejercicio y queda "sin clasificar" con aviso.
+    06/11/2026: solo si el remitente es un proveedor conocido (como los escaneos); los resúmenes personales de Sergio
+    (ICBC, PDF con clave) entraban a Compras de Giamigli."""
+    if not clasificador.contacto_por_remitente(mail.remitente):
+        return None
     sha = hashlib.sha256(adj.contenido).hexdigest()
     if repository.adjunto_procesado(mail.entry_id, sha) or repository.existente(sha):
         return None

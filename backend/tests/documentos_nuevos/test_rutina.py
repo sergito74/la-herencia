@@ -70,10 +70,23 @@ def test_adjunto_ilegible_queda_pendiente_y_la_marca_avanza(repo_sim, monkeypatc
         raise RuntimeError("PDF dañado")
     monkeypatch.setattr(rutina, "procesar_adjunto", falla)
     monkeypatch.setattr(rutina, "_guardar", lambda carpeta, nombre, contenido, sha: str(carpeta / nombre))
+    from src.features.documentos_nuevos import clasificador
+    monkeypatch.setattr(clasificador, "contacto_por_remitente", lambda r: (5, "Proveedor") if r == "Proveedor" else None)
     rutina.correr()
     assert repo_sim.marcas["Outlook"] == ultimo
     (doc,) = repo_sim.docs.values()
     assert doc["modulo"] == "sin_clasificar" and doc["motivo"].startswith("Documento pendiente de procesamiento")
+
+
+def test_adjunto_ilegible_de_remitente_desconocido_se_ignora(repo_sim, monkeypatch, sin_cuentas):
+    """06/11/2026: resúmenes personales de Sergio (ICBC, PDF con clave) no entran a Compras de Giamigli."""
+    ultimo = datetime(2026, 11, 5, 21)
+    m = mails.Mail("e1", "eresumen@icbc.com.ar", "ICBC E RESUMEN", ultimo, [mails.Adjunto("EXT.pdf", b"%PDF")])
+    monkeypatch.setattr(mails, "nuevos", lambda marca_de, ahora: iter([mails.Almacen("Outlook", ultimo, [m], ultimo)]))
+    monkeypatch.setattr(rutina, "procesar_adjunto", lambda *a: (_ for _ in ()).throw(RuntimeError("con clave")))
+    monkeypatch.setattr(rutina, "_guardar", lambda *a: (_ for _ in ()).throw(AssertionError("no debe guardarse")))
+    rutina.correr()
+    assert repo_sim.docs == {} and repo_sim.marcas["Outlook"] == ultimo
 
 
 def test_outlook_caido_no_corta_la_rutina(repo_sim, monkeypatch, sin_cuentas):
