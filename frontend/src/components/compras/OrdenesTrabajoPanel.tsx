@@ -57,8 +57,14 @@ export function OrdenesTrabajoPanel({ idCompra }: { idCompra: number }) {
     const esProbable = (o: OrdenTrabajoDeCompra) => {
       if (o.vinculada) return true;
       if (!fechaFactura) return false;
-      const d = diasEntre(o.fecha, fechaFactura);
-      return d >= 0 && d <= DIAS_PROBABLE;
+      // Pedido o ejecución dentro de la ventana: una ejecución mal cargada (ej. marcada meses después, orden 150)
+      // no debe esconder la orden.
+      const enVentana = (f: string | null) => {
+        if (!f) return false;
+        const d = diasEntre(f, fechaFactura);
+        return d >= 0 && d <= DIAS_PROBABLE;
+      };
+      return enVentana(o.fecha) || enVentana(o.fechaPedido);
     };
     return { probables: ordenes.filter(esProbable), resto: ordenes.filter((o) => !esProbable(o)) };
   }, [data, fechaFactura]);
@@ -168,14 +174,14 @@ export function OrdenesTrabajoPanel({ idCompra }: { idCompra: number }) {
           </div>
           <div className="max-h-64 overflow-y-auto rounded border border-border">
             {probables.length === 0 && (
-              <div className="px-2 py-1 text-ink-secondary">Sin órdenes sin facturar en los {DIAS_PROBABLE} días previos a la factura.</div>
+              <div className="px-2 py-1 text-ink-secondary">Sin órdenes pedidas o ejecutadas en los {DIAS_PROBABLE} días previos a la factura.</div>
             )}
             {probables.map((o) => (
               <Fila key={o.idOrden} o={o} tildada={tildadas.has(o.idOrden)} onClick={() => alternar(o.idOrden)} fechaFactura={fechaFactura} haFactura={haFactura} />
             ))}
             {resto.length > 0 && !verTodas && (
               <button type="button" onClick={() => setVerTodas(true)} className="w-full px-2 py-1 text-left text-finance hover:underline">
-                Ver órdenes más viejas ({resto.length})
+                Ver otras órdenes del contratista ({resto.length})
               </button>
             )}
             {verTodas &&
