@@ -192,6 +192,50 @@ def _cubrir(docs, monto):
     return out
 
 
+def _docs_a_pagar(idc, deuda, excluir_op=None):
+    """Documentos que forman lo que se le debe a un proveedor sin portal: los más nuevos hasta completar `deuda`
+    (saldo de la cuenta menos pagos en camino). Lo pagado cubre lo más viejo (Sergio 05/11/2026)."""
+    from src.features.cuentas_corrientes import repository as cuentas
+
+    if deuda < UMBRAL_CUENTA:
+        return []
+    movs, _ = cuentas.get_movimientos(idc, None, None, 1, 100000)
+    abiertas = {f['idCompra']: f for f in facturas(idc, excluir_op, incluir_saldadas=True, incluir_suspendidas=True)}
+    docs = []
+    for m in sorted((m for m in movs if (m['deuda'] or 0) > 0), key=lambda m: m['fecha'], reverse=True):
+        if deuda < 1:
+            break
+        parte = min(dinero(m['deuda']), deuda)
+        deuda -= parte
+        compra = m['origenTipo'] == 'Compras'
+        f = abiertas.get(m['idOrigen']) if compra else None
+        docs.append({**(f or {}), 'numero': (f or {}).get('numero') or m['numeroDocumento'] or m['documento'],
+                     'fecha': m['fecha'], 'total': dinero(m['deuda']), 'saldo': parte,
+                     'idCompra': m['idOrigen'] if compra else 0, 'origen': 'Compras' if compra else m['origenTipo'],
+                     'reservado': (f or {}).get('reservado', Decimal(0)),
+                     'disponible': max(Decimal(0), parte - (f or {}).get('reservado', Decimal(0))) if compra else Decimal(0)})
+    # Solo se listan documentos que se pagan (facturas, impuestos, tasas, sueldos, alquileres, pastaje); el resto
+    # (cargos de tarjeta, movimientos bancarios, ajustes) igual cuenta para el saldo pero no es algo a pagar.
+    return [d for d in docs if d['origen'] in _ORIGENES_A_PAGAR]
+
+
+def facturas_a_pagar(id_contacto, excluir_op=None):
+    """Facturas para armar la orden de pago (Sergio 05/11): las mismas que el listado de facturas a pagar. Para los
+    proveedores con portal se sigue usando el saldo de cada factura (lo del portal no se vincula a una factura)."""
+    from src.features.cuentas_corrientes import repository as cuentas
+    from src.features.ordenes_pago import comprobantes_emitidos
+
+    if id_contacto in _portal_pendientes():
+        return facturas(id_contacto, excluir_op)
+    s = next((x for x in cuentas.get_saldos_todos() if x['idContacto'] == id_contacto), None)
+    if not s:
+        return []
+    pagado = sum((c['importe'] for c in comprobantes_emitidos.esperando_banco().get(id_contacto, [])), Decimal(0))
+    docs = [d for d in _docs_a_pagar(id_contacto, dinero(-(s.get('saldoParcial') or 0)) - pagado, excluir_op)
+            if d['origen'] == 'Compras' and not d.get('canjeGrano')]
+    return [{**d, 'pagado': dinero(d['total']) - d['saldo']} for d in docs]
+
+
 def _pendientes():
     """Facturas a pagar (04-05/11/2026, Sergio).
     - Pagos ya hechos que esperan el extracto (comprobantes de transferencias y eCheqs de la carpeta Cuentas a pagar,
@@ -240,27 +284,9 @@ def _pendientes():
                          'saldo': Decimal(0) if usd else p['saldo'], 'saldoUsd': p['importe'] if usd else None,
                          'disponible': Decimal(0), 'origen': 'Portal'}, s, 'a pagar', None)
             continue
-        deuda = dinero(-(s.get('saldoParcial') or 0)) - pagado
-        if deuda < UMBRAL_CUENTA or (s.get('razonSocial') or '').lower().startswith('banco '):
+        if (s.get('razonSocial') or '').lower().startswith('banco '):
             continue
-        movs, _ = cuentas.get_movimientos(idc, None, None, 1, 100000)
-        abiertas = {f['idCompra']: f for f in facturas(idc, incluir_suspendidas=True)}
-        docs = []
-        for m in sorted((m for m in movs if (m['deuda'] or 0) > 0), key=lambda m: m['fecha'], reverse=True):
-            if deuda < 1:
-                break
-            parte = min(dinero(m['deuda']), deuda)
-            deuda -= parte
-            compra = m['origenTipo'] == 'Compras'
-            f = abiertas.get(m['idOrigen']) if compra else None
-            docs.append({**(f or {}), 'numero': (f or {}).get('numero') or m['numeroDocumento'] or m['documento'],
-                         'fecha': m['fecha'], 'total': dinero(m['deuda']), 'saldo': parte,
-                         'idCompra': m['idOrigen'] if compra else 0, 'origen': 'Compras' if compra else m['origenTipo'],
-                         'reservado': (f or {}).get('reservado', Decimal(0)),
-                         'disponible': max(Decimal(0), parte - (f or {}).get('reservado', Decimal(0))) if compra else Decimal(0)})
-        # Solo se listan documentos que se pagan (facturas, impuestos, tasas, sueldos, alquileres, pastaje); el resto
-        # (cargos de tarjeta, movimientos bancarios, ajustes) igual cuenta para el saldo pero no es algo a pagar.
-        docs = [d for d in docs if d['origen'] in _ORIGENES_A_PAGAR]
+        docs = _docs_a_pagar(idc, dinero(-(s.get('saldoParcial') or 0)) - pagado)
         if not docs:
             continue
         medio = medio_habitual(idc)

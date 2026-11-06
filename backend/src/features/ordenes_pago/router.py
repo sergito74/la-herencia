@@ -29,7 +29,9 @@ def listar(idContacto: int | None = Query(None, gt=0), estado: Estado | None = N
 
 @router.get('/facturas', response_model=list[FacturaPendiente])
 def facturas(idContacto: int = Query(...,gt=0), excluirOrden: int | None = Query(None,gt=0), incluirSaldadas: bool = False):
-    return repo.facturas(idContacto, excluirOrden, incluirSaldadas)
+    if incluirSaldadas:
+        return repo.facturas(idContacto, excluirOrden, incluirSaldadas)
+    return repo.facturas_a_pagar(idContacto, excluirOrden)
 
 
 @router.get('/en-camino', response_model=list[PagoEnCamino])

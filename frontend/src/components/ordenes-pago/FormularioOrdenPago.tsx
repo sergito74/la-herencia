@@ -12,7 +12,9 @@ export function ImporteInput({value,onChange,className=`${campo} w-36`,...rest}:
  const [texto,setTexto]=useState(value?numeroAEdicionLocal(value):'');
  const [previo,setPrevio]=useState(value);
  if(value!==previo){setPrevio(value);if(parseNumeroLocal(texto)!==(value??0))setTexto(value?numeroAEdicionLocal(value):'');}
- return <input {...rest} inputMode="decimal" className={className} value={texto} onChange={e=>{const t=normalizarNumeroPegado(e.target.value);setTexto(t);onChange(Math.round(parseNumeroLocal(t)*100)/100);}}/>;
+ const [foco,setFoco]=useState(false);
+ // Sin foco se ve como moneda ($ 775.226,22); al entrar, el número solo para editar.
+ return <input {...rest} inputMode="decimal" className={`${className} text-right`} value={foco?texto:(value?formatMoneda(value):'')} onFocus={()=>setFoco(true)} onBlur={()=>setFoco(false)} onChange={e=>{const t=normalizarNumeroPegado(e.target.value);setTexto(t);onChange(Math.round(parseNumeroLocal(t)*100)/100);}}/>;
 }
 export const hoy=()=>new Date().toLocaleDateString('en-CA');
 
