@@ -95,6 +95,13 @@ export function OrdenesTrabajoPanel({ idCompra }: { idCompra: number }) {
       </Franja>
     );
   }
+  if (data.confirmadaSinOrden) {
+    return (
+      <Franja titulo="Órdenes de trabajo">
+        <span className="truncate text-ink-secondary">Sin orden (confirmado): el costo sale de la imputación manual.</span>
+      </Franja>
+    );
+  }
   if (!data.esDocumentoDeLabor) return null;
 
   const vinculadas = data.ordenes.filter((o) => o.vinculada);

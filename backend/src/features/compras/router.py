@@ -240,6 +240,7 @@ def _ordenes_trabajo(id_compra: int) -> dict:
     anulada = labor and dc.anulada_por_nc(id_compra)
     return {"esContratista": dc.es_contratista(id_compra), "esDocumentoDeLabor": labor and not anulada,
             "anuladaPorNotaCredito": anulada, "esNotaCreditoDebito": nota,
+            "confirmadaSinOrden": labor and not anulada and dc.confirmada_sin_orden(id_compra),
             "factura": dc.datos_factura(id_compra) if labor else None,
             "ordenes": dc.ordenes_del_contratista(id_compra) if labor else [],
             "reparto": dc.reparto(id_compra)}

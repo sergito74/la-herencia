@@ -404,6 +404,7 @@ export interface OrdenesTrabajoDeCompra {
   esContratista: boolean;
   esDocumentoDeLabor: boolean;
   anuladaPorNotaCredito: boolean;
+  confirmadaSinOrden: boolean;
   esNotaCreditoDebito: boolean;
   factura: { fecha: string | null; hectareas: number | null } | null;
   ordenes: OrdenTrabajoDeCompra[];

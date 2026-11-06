@@ -44,6 +44,11 @@ _ANULADA_SQL = """(
     >= (SELECT SUM(d.Cantidad * d.[Precio Unitario]) FROM dbo.Det_Compras d WHERE d.IdCompra = {c}) - 0.01)"""
 
 
+def confirmada_sin_orden(id_compra: int) -> bool:
+    """Factura que no tiene orden para asociar, confirmado por el usuario: el costo sale de su imputación manual."""
+    return fetch_one("SELECT 1 AS si FROM dbo.OrdenesContratistaSinOrden WHERE IdCompra = ?", (id_compra,)) is not None
+
+
 def anulada_por_nc(id_compra: int) -> bool:
     return fetch_one(f"SELECT CASE WHEN {_ANULADA_SQL.format(c='?')} THEN 1 ELSE 0 END AS si".replace("?", str(int(id_compra))))["si"] == 1
 
@@ -232,6 +237,7 @@ def sin_orden(id_contacto: int | None = None) -> list[dict]:
                       WHERE d2.IdCompra = c.IdDeuda AND r2.Rubro IN ({_LABOR_SQL}))
           AND NOT EXISTS (SELECT 1 FROM dbo.OrdenesContratistaFacturas f WHERE f.IdCompra = c.IdDeuda)
           AND NOT {_ANULADA_SQL.format(c="c.IdDeuda")}
+          AND NOT EXISTS (SELECT 1 FROM dbo.OrdenesContratistaSinOrden s WHERE s.IdCompra = c.IdDeuda)
           {filtro}
         ORDER BY k.[Razon Social], c.Fecha, c.IdDeuda
         """, (*RUBROS_LABOR, *params))
