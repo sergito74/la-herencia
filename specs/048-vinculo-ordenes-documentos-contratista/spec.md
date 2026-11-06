@@ -101,7 +101,7 @@ Una pantalla lista, por contratista, cada factura con las órdenes que el sistem
 - **FR-002a**: Solo son "documentos de labor" (candidatos a vincular) los que tienen al menos un renglón de un rubro de labor: Fumigación, Siembra, Cosecha, Fertilización, Disqueado, Embolsado de grano. Lo que el contratista vende por otro negocio (hacienda, semilla, urea) no se propone. Hallazgo 06/11: el primer listado incluyó una factura de hacienda de Yanquelen ("Vacas preñadas").
 - **FR-003**: Ningún vínculo MUST quedar hecho sin la confirmación explícita del usuario (D1); las propuestas no afectan costos hasta confirmarse.
 - **FR-004**: Al confirmar o retirar un vínculo, el sistema MUST recalcular de inmediato el reparto del documento por cultivo/campaña/lote según la superficie de las órdenes vinculadas. Se reparte el neto completo del documento, incluidos los renglones que acompañan la labor (flete, traslado, viáticos, gasoil), EXCEPTO los renglones de insumos (Semillas, Fertilizantes, Agroquímicos) y de otros negocios (Hacienda, Trabajos Maq. Propia, Gastos de Comercialización), que siguen con su imputación propia para no contarse dos veces.
-- **FR-005**: Las NC/ND relacionadas con una factura vinculada MUST imputarse con el mismo reparto proporcional y su signo (D2), sin vínculo propio a la orden.
+- **FR-005**: Las NC/ND relacionadas con una factura vinculada MUST imputarse con el mismo reparto proporcional y su signo (D2), sin vínculo propio a la orden. Las NC/ND sin documento relacionado MUST poder relacionarse con su factura desde la revisión.
 - **FR-006**: El Resultado por cultivo MUST tomar el costo de contratista desde el reparto de los vínculos confirmados, y MUST excluir para esos documentos el cultivo/campaña cargado a mano en sus renglones (sin doble conteo).
 - **FR-007**: Los documentos de contratista no vinculados MUST seguir contando como hoy (por su carga manual), para que el Resultado no pierda costos mientras se revisa el histórico.
 - **FR-008**: La revisión en bloque MUST listar todas las facturas de contratistas desde 2015 con su propuesta, la diferencia de hectáreas y el motivo cuando no cierra.
@@ -125,7 +125,7 @@ Una pantalla lista, por contratista, cada factura con las órdenes que el sistem
 
 - **SC-001**: Vincular un documento a una orden toma menos de 30 segundos y no requiere conocer ningún número interno.
 - **SC-002**: El 100% de los documentos vinculados queda imputado a cultivo/campaña sin carga manual, y la suma del reparto de cada uno coincide con su neto al centavo.
-- **SC-003**: Tras la revisión del histórico, cada una de las 94 facturas de contratistas desde 2015 está vinculada, descartada con motivo o marcada "sin orden": ninguna queda sin estado.
+- **SC-003**: Tras la revisión del histórico, cada una de las 91 facturas de labor de contratistas desde 2015 está vinculada, descartada con motivo o marcada "sin orden": ninguna queda sin estado.
 - **SC-004**: El costo de contratista de una campaña en el Resultado no cambia por contar dos veces un mismo documento (control: total antes de vincular = total después, salvo diferencias de reparto entre cultivos que se muestran).
 - **SC-005**: Ningún saldo de cuenta corriente cambia (comparación antes/después al centavo).
 
@@ -135,5 +135,6 @@ Una pantalla lista, por contratista, cada factura con las órdenes que el sistem
 - El registro viejo de vínculos (vacío) se deja de usar; el Resultado pasa a leer el registro único que escribe la orden.
 - "Hectáreas facturadas" = suma de cantidades en renglones con unidad hectárea (o sin unidad); otras unidades se marcan como "otra unidad".
 - La regla de 10% es solo para ordenar y rotular propuestas; nunca confirma sola (D1).
-- La NC/ND se asocia a su factura a través de los documentos relacionados ya cargados; si no tiene, se propone como un documento más para revisar.
+- La NC/ND se asocia a su factura a través de los documentos relacionados ya cargados; si no tiene, se relaciona con su factura desde la revisión (hoy las 6 NC de contratistas no tienen relación).
+- Números al 06/11 con el filtro por rubro de labor: 91 facturas de labor, 21 sin orden (la aclaración registró 23 antes del filtro).
 - Todo se escribe en la base WC.

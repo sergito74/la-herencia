@@ -21,7 +21,7 @@ Solo documentos de labor del contratista de la orden (R1), del más nuevo al má
 
 ### PUT /api/ordenes/{idOrden}/documentos-contratista
 
-Body: `{ "idsCompra": [2143525198] }`. Deja vinculados exactamente esos documentos a la orden: agrega y quita, y recalcula y aprueba el reparto de cada documento afectado. 200 → `{ "repartos": [{ "idCompra", "total", "fracciones": [{ "lote", "cultivo", "campania", "importe" }] }] }`. 422 si algún documento no es de labor o es de otro contratista. 403 para solo lectura.
+Body: `{ "idsCompra": [2143525198] }`. Deja vinculados exactamente esos documentos a la orden: agrega y quita, y recalcula y aprueba el reparto de cada documento afectado. 200 → `{ "repartos": [{ "idCompra", "total", "fracciones": [{ "lote", "cultivo", "campania", "importe" }] }] }`. 422 si algún documento no es de labor, es de otro contratista o es una NC/ND (las NC/ND se relacionan con su factura). 403 para solo lectura.
 
 Los endpoints viejos `POST /{id}/factura-contratista` y `DELETE /{id}/factura-contratista/{idCompra}` se mantienen y delegan en la misma lógica.
 
@@ -51,6 +51,10 @@ Body: `{ "motivo": "propuesta_incorrecta" | "sin_orden", "observacion": "..." }`
 ### DELETE /api/ordenes/contratistas/revision/{idCompra}/descarte
 
 Reabre la factura.
+
+### POST /api/ordenes/contratistas/revision/{idNc}/relacionar
+
+Body: `{ "idFactura": 2143515170 }`. Relaciona una NC/ND del contratista con su factura (en `CompraDocumentosRelacionados`) y, si la factura está vinculada, imputa la NC/ND con sus proporciones. 422 si la factura no es de labor o es de otro contratista.
 
 ### GET /api/ordenes/contratistas/sin-orden y GET /api/ordenes/contratistas/sin-orden/exportar
 

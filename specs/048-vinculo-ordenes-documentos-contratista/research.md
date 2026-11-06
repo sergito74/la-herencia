@@ -23,12 +23,12 @@ Hallazgos verificados en WC el 06/11/2026.
 
 - **Decision**: confirmar = guardar el vínculo + `motor.evaluar_contratista(idCompra)` + `guardar_corrida` + `aprobar_corrida` con el usuario, todo en el mismo pedido. Desvincular = nueva corrida (sin órdenes → se retira; si quedan otras órdenes, se recalcula y aprueba).
 - **Neto a repartir**: suma de los renglones cuyo rubro no es insumo ni otro negocio (excluidos: Semillas, Fertilizantes, Agroquímicos, Hacienda, Trabajos Maq. Propia, Gastos Comercializacion). En dólares, al TC del comprobante. La última fracción absorbe el redondeo para cerrar al centavo.
-- **NC/ND**: si tienen documento relacionado (`CompraDocumentosRelacionados`) con una factura vinculada, se imputan con la misma proporción y su signo. Hoy las 6 NC de contratistas no tienen relación: aparecen en la revisión como documentos para vincular a mano (se relacionan con su factura o con la orden).
+- **NC/ND**: si tienen documento relacionado (`CompraDocumentosRelacionados`) con una factura vinculada, se imputan con la misma proporción y su signo. Hoy las 6 NC de contratistas no tienen relación: aparecen en la revisión con la acción "Relacionar con factura" (se agrega a `CompraDocumentosRelacionados`). Una NC/ND nunca se vincula directo a una orden (FR-005).
 - **Rationale**: el motor 017 ya reparte por superficie, maneja las órdenes sin cultivo (centro de costo) y guarda trazabilidad. La confirmación del usuario equivale a la aprobación de 017.
 
 ## R5. Resultado por cultivo sin doble conteo
 
-- **Decision**: `costos_heredados` excluye los renglones de labor de las compras con corrida de contratista aprobada vigente. `costos_contratista` pasa a sumar las fracciones aprobadas vigentes de `ImputacionPropuestas` (Origen = 'Contratista') del cultivo y campaña. Los renglones de insumo de esas compras siguen por la vista heredada.
+- **Decision**: `costos_heredados` excluye, de las compras con corrida de contratista aprobada vigente, todos los renglones repartidos (labor más flete, viáticos y gasoil: todo lo que no está en los rubros fuera del reparto). `costos_contratista` pasa a sumar las fracciones aprobadas vigentes de `ImputacionPropuestas` (Origen = 'Contratista') del cultivo y campaña. Solo los renglones de los rubros fuera del reparto (insumos, otros negocios) siguen por la vista heredada. Así el conjunto excluido es exactamente el repartido (análisis 06/11, F1).
 - **Rationale**: FR-006 y FR-007. Los documentos no vinculados siguen igual que hoy.
 - **Old table**: `Ordenes_Trabajo_Contratista_Factura` (0 filas) deja de leerse en `costos.py` y `resultado.py`; se elimina en una tarea posterior, con backup.
 
