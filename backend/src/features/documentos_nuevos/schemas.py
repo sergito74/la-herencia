@@ -65,6 +65,7 @@ class CorridaRutina(BaseModel):
     inicio: str | None = None
     fin: str | None = None
     estado: str
+    alcance: str = "todo"
     cuentasCorridas: int = 0
     cuentasConProblemas: int = 0
     mailsLeidos: int = 0
@@ -78,3 +79,6 @@ class EstadoRutina(BaseModel):
     proxima: str | None = None
     activa: bool = True
     ultima: CorridaRutina | None = None
+    ultimaDocumentos: CorridaRutina | None = None
+    ultimaPortales: CorridaRutina | None = None
+    pedidos: list[str] = []

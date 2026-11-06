@@ -100,7 +100,7 @@ class RepoSimulado:
         d["moduloAnterior"], d["modulo"], d["moduloCambiadoPor"] = d["modulo"], modulo, usuario
         return 1
 
-    def abrir_corrida(self, origen="programada"):
+    def abrir_corrida(self, origen="programada", alcance="todo"):
         if any(c["estado"] == "en_curso" for c in self.corridas):
             return None
         self.corridas.append({"estado": "en_curso", "origen": origen})

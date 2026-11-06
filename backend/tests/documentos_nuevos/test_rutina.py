@@ -111,3 +111,29 @@ def test_xml_se_guarda_con_su_extension(tmp_path):
 
     ruta = rutina._guardar(tmp_path, "20261104_Starlink.pdf", b"<?xml version='1.0'?><a/>", "sha")
     assert ruta.endswith(".xml")
+
+
+@pytest.mark.parametrize("alcance,esperado", [
+    ("documentos", ["mails", "carpetas"]),
+    ("portales", ["cuentas"]),
+    ("todo", ["mails", "cuentas", "carpetas"]),
+])
+def test_cada_busqueda_hace_solo_su_parte(repo_sim, monkeypatch, alcance, esperado):
+    hecho = []
+    monkeypatch.setattr(rutina, "_mails", lambda i, r, p, a: hecho.append("mails"))
+    monkeypatch.setattr(rutina, "_cuentas", lambda r, p: hecho.append("cuentas"))
+    monkeypatch.setattr(rutina, "_contar_portal", lambda i, r: None)
+    monkeypatch.setattr(rutina, "_carpetas", lambda i, r, p: hecho.append("carpetas"))
+    monkeypatch.setattr(rutina, "_reevaluar", lambda p: None)
+    rutina.correr("programada", alcance)
+    assert hecho == esperado
+
+
+def test_pedidos_desde_la_pantalla_se_atienden_en_orden(monkeypatch):
+    corridas = []
+    monkeypatch.setattr(rutina, "correr", lambda origen="programada", alcance="todo": corridas.append(alcance))
+    rutina.pedir("portales")
+    rutina.pedir("documentos")
+    rutina.pedir("portales")  # repetido: no se encola dos veces
+    assert rutina.tick() and rutina.tick()
+    assert corridas == ["portales", "documentos"] and rutina.pedidos_pendientes() == []

@@ -86,20 +86,31 @@ def resumen() -> dict:
 
 @router.get("/rutina", response_model=EstadoRutina, dependencies=[Depends(exigir_admin)])
 def estado_rutina() -> dict:
+    from src.features.documentos_nuevos import rutina
+
+    def fmt(c):
+        return {**c, "inicio": iso(c["inicio"]), "fin": iso(c["fin"])} if c else None
+
     prog = repository.programacion() or {}
-    ultima = repository.ultima_corrida()
-    if ultima:
-        ultima = {**ultima, "inicio": iso(ultima["inicio"]), "fin": iso(ultima["fin"])}
-    return {"proxima": iso(prog.get("proxima")), "activa": bool(prog.get("activa", True)), "ultima": ultima}
+    return {"proxima": iso(prog.get("proxima")), "activa": bool(prog.get("activa", True)),
+            "ultima": fmt(repository.ultima_corrida()),
+            "ultimaDocumentos": fmt(repository.ultima_corrida("documentos")),
+            "ultimaPortales": fmt(repository.ultima_corrida("portales")),
+            "pedidos": rutina.pedidos_pendientes()}
 
 
 @router.post("/rutina/ejecutar", dependencies=[Depends(exigir_admin)])
-def ejecutar_rutina() -> dict:
+def ejecutar_rutina(alcance: str = "todo") -> dict:
+    """`alcance`: 'documentos' (mails + carpetas de Compras e Impuestos) o 'portales' (cuentas de la bóveda).
+    Si la otra está corriendo, el pedido queda en cola y arranca al terminar."""
     from src.features.documentos_nuevos import rutina
 
-    if (repository.ultima_corrida() or {}).get("estado") == "en_curso":
-        raise HTTPException(status_code=409, detail="La rutina ya está corriendo")
-    rutina.PEDIDO.set()
+    if alcance not in rutina.ALCANCES:
+        raise HTTPException(status_code=422, detail="Alcance desconocido")
+    actual = repository.ultima_corrida() or {}
+    if actual.get("estado") == "en_curso" and actual.get("alcance") in (alcance, "todo"):
+        raise HTTPException(status_code=409, detail="Esa búsqueda ya está corriendo")
+    rutina.pedir(alcance)
     from src.features.boveda import planificador
 
     planificador.DESPERTAR.set()  # arranca ya, no en el próximo minuto

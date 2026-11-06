@@ -20,8 +20,29 @@ from src.features.documentos_nuevos import avisos, clasificador, lectores, mails
 
 log = logging.getLogger(__name__)
 
-# Pedido desde la pantalla: lo atiende el hilo del planificador, para no abrir dos navegadores a la vez.
-PEDIDO = threading.Event()
+# Pedidos desde la pantalla ('documentos' o 'portales'): los atiende el hilo del planificador, de a uno, para no
+# abrir dos navegadores a la vez.
+ALCANCES = ("documentos", "portales", "todo")
+_pedidos: list[str] = []
+_lock_pedidos = threading.Lock()
+
+
+def pedir(alcance: str) -> None:
+    if alcance not in ALCANCES:
+        raise ValueError(f"Alcance desconocido: {alcance}")
+    with _lock_pedidos:
+        if alcance not in _pedidos:
+            _pedidos.append(alcance)
+
+
+def pedidos_pendientes() -> list[str]:
+    with _lock_pedidos:
+        return list(_pedidos)
+
+
+def _tomar_pedido() -> str | None:
+    with _lock_pedidos:
+        return _pedidos.pop(0) if _pedidos else None
 
 PROBLEMAS = {"error", "sin_credenciales", "sin_autorizacion", "credenciales_rechazadas", "requiere_intervencion",
              "portal_cambio"}
@@ -260,9 +281,10 @@ def _reevaluar(problemas: list[str]) -> None:
         problemas.append("No se pudieron reevaluar los pendientes sin emisor")
 
 
-def correr(origen: str = "programada") -> int | None:
-    """Una corrida completa. `None` si ya había otra en curso."""
-    id_corrida = repository.abrir_corrida(origen)
+def correr(origen: str = "programada", alcance: str = "todo") -> int | None:
+    """Una corrida. `alcance`: 'documentos' (mails + carpetas de Compras e Impuestos), 'portales' (cuentas de la
+    bóveda) o 'todo'. `None` si ya había otra en curso."""
+    id_corrida = repository.abrir_corrida(origen, alcance)
     if id_corrida is None:
         return None
     r = {k: 0 for k in ("cuentasCorridas", "cuentasConProblemas", "mailsLeidos", "documentosNuevos",
@@ -270,10 +292,13 @@ def correr(origen: str = "programada") -> int | None:
     problemas: list[str] = []
     avisos.fijar_corrida(id_corrida)
     try:
-        _mails(id_corrida, r, problemas, datetime.now())  # primero: es rápido y no depende de ningún portal
-        _cuentas(r, problemas)
-        _contar_portal(id_corrida, r)
-        _carpetas(id_corrida, r, problemas)
+        if alcance in ("documentos", "todo"):
+            _mails(id_corrida, r, problemas, datetime.now())  # primero: es rápido y no depende de ningún portal
+        if alcance in ("portales", "todo"):
+            _cuentas(r, problemas)
+            _contar_portal(id_corrida, r)
+        if alcance in ("documentos", "todo"):
+            _carpetas(id_corrida, r, problemas)
         _reevaluar(problemas)
     except Exception:
         log.exception("Rutina: falló la corrida %s", id_corrida)
@@ -287,9 +312,9 @@ def correr(origen: str = "programada") -> int | None:
 def tick(ahora: datetime | None = None) -> bool:
     """Llamado por el planificador cada minuto. Corre si venció la próxima corrida (una sola vez aunque se hayan
     perdido varios horarios) y recalcula la siguiente desde ahora. Devuelve si corrió."""
-    if PEDIDO.is_set():
-        PEDIDO.clear()
-        correr("programada")
+    pedido = _tomar_pedido()
+    if pedido:
+        correr("programada", pedido)
         return True
     prog = repository.programacion()
     if not prog or not prog["activa"]:

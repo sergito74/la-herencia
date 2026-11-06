@@ -48,13 +48,13 @@ export interface DocumentoNuevo {
   renglones: RenglonNuevo[] | null;
 }
 
-export interface EstadoRutina {
-  proxima: string | null;
-  activa: boolean;
-  ultima: {
+export type AlcanceRutina = "documentos" | "portales";
+
+export interface CorridaRutina {
     inicio: string | null;
     fin: string | null;
     estado: "en_curso" | "ok" | "con_problemas" | "incompleta";
+    alcance: AlcanceRutina | "todo";
     cuentasCorridas: number;
     cuentasConProblemas: number;
     mailsLeidos: number;
@@ -62,7 +62,15 @@ export interface EstadoRutina {
     cargadosSolos: number;
     paraCargarAMano: number;
     mensaje: string | null;
-  } | null;
+}
+
+export interface EstadoRutina {
+  proxima: string | null;
+  activa: boolean;
+  ultimaDocumentos: CorridaRutina | null;
+  ultimaPortales: CorridaRutina | null;
+  pedidos: string[];
+  ultima: CorridaRutina | null;
 }
 
 export const ETIQUETA_MODULO: Record<ModuloAviso, string> = {
@@ -84,4 +92,5 @@ export const descartarNuevo = (id: number, motivo: string) =>
 export const moverNuevo = (id: number, modulo: ModuloAviso) =>
   apiPost<DocumentoNuevo>(`${BASE}/${id}/modulo`, { modulo });
 export const getEstadoRutina = () => apiGet<EstadoRutina>(`${BASE}/rutina`);
-export const ejecutarRutina = () => apiPost<{ ok: boolean }>(`${BASE}/rutina/ejecutar`, {});
+export const ejecutarRutina = (alcance: AlcanceRutina) =>
+  apiPost<{ ok: boolean }>(`${BASE}/rutina/ejecutar?alcance=${alcance}`, {});

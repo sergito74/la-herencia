@@ -149,12 +149,12 @@ def vincular_registro(id_documento: int, id_registro: int) -> int:
 
 # --- Rutina ------------------------------------------------------------------
 
-def abrir_corrida(origen: str = "programada") -> int | None:
+def abrir_corrida(origen: str = "programada", alcance: str = "todo") -> int | None:
     """Nueva corrida `en_curso`, o `None` si ya hay otra (índice único filtrado)."""
     try:
         return execute_insert_returning_id(
-            "INSERT INTO dbo.Rutina_Corridas (Origen, Estado) OUTPUT INSERTED.IdRutinaCorrida VALUES (?, 'en_curso')",
-            (origen,))
+            "INSERT INTO dbo.Rutina_Corridas (Origen, Estado, Alcance) OUTPUT INSERTED.IdRutinaCorrida "
+            "VALUES (?, 'en_curso', ?)", (origen, alcance))
     except pyodbc.IntegrityError:
         return None
 
@@ -175,12 +175,16 @@ def marcar_incompletas() -> int:
                          "Mensaje = N'Se cortó: el sistema se cerró durante la corrida' WHERE Estado = 'en_curso'")
 
 
-def ultima_corrida() -> dict | None:
+def ultima_corrida(alcance: str | None = None) -> dict | None:
+    """La última corrida; con `alcance` ('documentos' o 'portales'), la última que hizo esa parte ('todo' incluye
+    las dos)."""
+    filtro, params = ("WHERE Alcance IN (?, 'todo') ", (alcance,)) if alcance else ("", ())
     return fetch_one(
-        "SELECT TOP 1 Inicio AS inicio, Fin AS fin, Estado AS estado, CuentasCorridas AS cuentasCorridas, "
+        "SELECT TOP 1 Inicio AS inicio, Fin AS fin, Estado AS estado, Alcance AS alcance, "
+        "CuentasCorridas AS cuentasCorridas, "
         "CuentasConProblemas AS cuentasConProblemas, MailsLeidos AS mailsLeidos, DocumentosNuevos AS documentosNuevos, "
         "CargadosSolos AS cargadosSolos, ParaCargarAMano AS paraCargarAMano, Mensaje AS mensaje "
-        "FROM dbo.Rutina_Corridas ORDER BY IdRutinaCorrida DESC")
+        f"FROM dbo.Rutina_Corridas {filtro}ORDER BY IdRutinaCorrida DESC", params)
 
 
 def programacion() -> dict | None:
