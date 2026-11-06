@@ -183,7 +183,9 @@ class FacturaAPagar(FacturaPendiente):
     difCuenta: float = 0  # cuenta corriente − suma de facturas del proveedor (<0: pagos sin imputar)
     saldoCuenta: float = 0
     enCamino: float = 0
-    canjeGrano: str | None = None  # pagos hechos al proveedor que esperan el extracto del banco
+    canjeGrano: str | None = None
+    contratoCanje: str | None = None
+    campaniaCanje: str | None = None  # pagos hechos al proveedor que esperan el extracto del banco
 
 
 class PagoEnCamino(BaseModel):

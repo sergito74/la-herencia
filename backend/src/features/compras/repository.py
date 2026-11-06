@@ -194,7 +194,8 @@ def get_compra_cabecera(id_compra: int) -> dict | None:
             cmp.[Res gral 4169/96] AS resGral4169,
             cmp.[Ajusta Tipo Cambio] AS ajustaTipoCambio,
             cmp.[Documento Original] AS documentoOriginal,
-            cmp.CanjeGrano AS canjeGrano
+            cmp.CanjeGrano AS canjeGrano,
+            cmp.IdContratoCanje AS idContratoCanje
         FROM dbo.Compras cmp
         LEFT JOIN dbo.Contactos c ON c.IdContacto = cmp.IdContacto
         WHERE cmp.IdDeuda = ?
@@ -219,6 +220,7 @@ def get_compra_cabecera(id_compra: int) -> dict | None:
         "ajustaTipoCambio",
         "documentoOriginal",
         "canjeGrano",
+        "idContratoCanje",
     ):
         cabecera[campo] = row.get(campo)
     return cabecera
@@ -719,10 +721,10 @@ def _cabecera_insert_statement(cabecera: dict):
                 Fecha, IdContacto, Tipo, [Tipo documento], [Nro Documento], Moneda,
                 [Tipo de Cambio], [Ingresos Brutos], PercepcionIVA, [Conceptos no gravados], Guias,
                 Comision, Financiacion, [Gastos Varios], [Ley de Sellos],
-                [Res gral 4169/96], [Ajusta Tipo Cambio], [Documento Original], CanjeGrano
+                [Res gral 4169/96], [Ajusta Tipo Cambio], [Documento Original], CanjeGrano, IdContratoCanje
             )
             OUTPUT INSERTED.IdDeuda
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """
         params = (
             cabecera["fecha"],
@@ -744,6 +746,7 @@ def _cabecera_insert_statement(cabecera: dict):
             cabecera.get("ajustaTipoCambio") or False,
             cabecera.get("documentoOriginal"),
             cabecera.get("canjeGrano") or None,
+            cabecera.get("idContratoCanje") if cabecera.get("canjeGrano") else None,
         )
         return sql, params
 
@@ -756,7 +759,7 @@ def _cabecera_update_statement(id_compra: int, cabecera: dict) -> tuple[str, tup
             Fecha = ?, IdContacto = ?, Tipo = ?, [Tipo documento] = ?, [Nro Documento] = ?,
             Moneda = ?, [Tipo de Cambio] = ?, [Ingresos Brutos] = ?, PercepcionIVA = ?, [Conceptos no gravados] = ?,
             Guias = ?, Comision = ?, Financiacion = ?, [Gastos Varios] = ?, [Ley de Sellos] = ?,
-            [Res gral 4169/96] = ?, [Ajusta Tipo Cambio] = ?, [Documento Original] = ?, CanjeGrano = ?
+            [Res gral 4169/96] = ?, [Ajusta Tipo Cambio] = ?, [Documento Original] = ?, CanjeGrano = ?, IdContratoCanje = ?
         WHERE IdDeuda = ?
     """
     params = (
@@ -779,6 +782,7 @@ def _cabecera_update_statement(id_compra: int, cabecera: dict) -> tuple[str, tup
         cabecera.get("ajustaTipoCambio") or False,
         cabecera.get("documentoOriginal"),
         cabecera.get("canjeGrano") or None,
+        cabecera.get("idContratoCanje") if cabecera.get("canjeGrano") else None,
         id_compra,
     )
     return sql, params
@@ -942,3 +946,10 @@ def get_rubro_sugerido(producto_servicio: str) -> dict | None:
         (producto_servicio,),
     )
     return row
+
+
+def contratos_canje(id_contacto: int) -> list[dict]:
+    """Contratos de canje de granos del proveedor (Documents/La Herencia/Agricultura/Contratos), el más nuevo primero."""
+    return fetch_all("SELECT IdContratoCanje idContratoCanje, Numero numero, Fecha fecha, Grano grano, Campania campania, "
+                     "Kilos kilos, EntregaDesde entregaDesde, EntregaHasta entregaHasta FROM dbo.ContratosCanje "
+                     "WHERE IdContacto=? ORDER BY Fecha DESC", (id_contacto,))

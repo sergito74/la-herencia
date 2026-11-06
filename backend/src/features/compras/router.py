@@ -162,6 +162,12 @@ async def abrir_documento_local(ruta: str = Query(min_length=1)) -> FileResponse
     )
 
 
+@router.get("/contratos-canje")
+def contratos_canje(idContacto: int = Query(...)):
+    """Contratos de canje de granos del proveedor, para vincular la factura (Sergio 05/11/2026)."""
+    return repository.contratos_canje(idContacto)
+
+
 @router.get("/{id_compra}", response_model=CompraDetalle)
 async def get_compra_detalle(id_compra: int) -> CompraDetalle:
     cabecera = await run_in_threadpool(repository.get_compra_cabecera, id_compra)

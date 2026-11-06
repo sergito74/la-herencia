@@ -53,6 +53,7 @@ export function compraDetalleAInput(
     ajustaTipoCambio: data.ajustaTipoCambio ?? false,
     documentoOriginal: data.documentoOriginal ?? null,
     canjeGrano: data.canjeGrano ?? null,
+    idContratoCanje: data.idContratoCanje ?? null,
     lineas,
     vencimientos: data.vencimientos.map((v) => ({
       idVencimiento: v.idVencimiento,

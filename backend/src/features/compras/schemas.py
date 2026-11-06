@@ -88,6 +88,7 @@ class CompraDetalle(BaseModel):
     ajustaTipoCambio: bool | None = None
     documentoOriginal: str | None = None
     canjeGrano: str | None = Field(default=None, max_length=30)  # factura que se paga con granos (Soja, Maíz...)
+    idContratoCanje: int | None = None
     lineas: list[LineaCompra]
     vencimientos: list[VencimientoCompra] = []
 
@@ -240,6 +241,7 @@ class CompraAltaRequest(BaseModel):
     ajustaTipoCambio: bool = False
     documentoOriginal: str | None = None
     canjeGrano: str | None = Field(default=None, max_length=30)  # factura que se paga con granos (Soja, Maíz...)
+    idContratoCanje: int | None = None
     lineas: list[LineaInput] = Field(min_length=1)
     vencimientos: list[VencimientoInput] = []
 
@@ -285,6 +287,7 @@ class CompraDetalleResponse(BaseModel):
     ajustaTipoCambio: bool
     documentoOriginal: str | None = None
     canjeGrano: str | None = Field(default=None, max_length=30)  # factura que se paga con granos (Soja, Maíz...)
+    idContratoCanje: int | None = None
     subtotalNeto: float
     ivaCabecera: float
     importeTotal: float

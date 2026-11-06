@@ -23,6 +23,7 @@ import {
   type TipoDocumentoCompra,
   type VencimientoInput,
   urlDocumentoLocal,
+  getContratosCanje,
 } from "@/services/comprasApi";
 import { ApiError } from "@/services/apiClient";
 import { formatMoneda, numeroAEdicionLocal } from "@/lib/format";
@@ -143,6 +144,7 @@ export function CompraForm({
   }
   const [ajustaTipoCambio, setAjustaTipoCambio] = useState(initial?.ajustaTipoCambio ?? false);
   const [canjeGrano, setCanjeGrano] = useState<string>(initial?.canjeGrano ?? "");
+  const [idContratoCanje, setIdContratoCanje] = useState<number | null>(initial?.idContratoCanje ?? null);
   const [documentoOriginalLink, setDocumentoOriginalLink] = useState(initial?.documentoOriginal ?? prefill?.documentoOriginal ?? "");
   const [conceptos, setConceptos] = useState({
     ingresosBrutos: initial?.ingresosBrutos ?? 0,
@@ -225,6 +227,11 @@ export function CompraForm({
   // "pendientes" hasta que la compra tenga un id real; en edición se
   // vinculan/desvinculan al toque contra `WC`.
   const relacionadosKey = ["compras-relacionados", idCompra];
+  const { data: contratosCanje } = useQuery({
+    queryKey: ["contratos-canje", idContacto],
+    queryFn: () => getContratosCanje(idContacto as number),
+    enabled: !!idContacto && !!canjeGrano,
+  });
   const { data: relacionadosGuardados } = useQuery({
     queryKey: relacionadosKey,
     queryFn: () => fetchDocumentosRelacionados(idCompra!),
@@ -373,6 +380,7 @@ export function CompraForm({
       ajustaTipoCambio,
       documentoOriginal: documentoOriginalLink ? limpiarRutaCopiada(documentoOriginalLink) : null,
       canjeGrano: canjeGrano || null,
+      idContratoCanje: canjeGrano ? idContratoCanje : null,
       ...conceptos,
       lineas,
       vencimientos: vencimientosCompletos,
@@ -628,11 +636,18 @@ export function CompraForm({
             <input type="checkbox" checked={!!canjeGrano} onChange={e => setCanjeGrano(e.target.checked ? "Granos" : "")} />
             Canje de granos
           </label>
-          {!!canjeGrano && (
+          {!!canjeGrano && (contratosCanje?.length ? (
+            <select className="rounded border border-border bg-surface px-1 py-0.5" value={idContratoCanje ?? ""} aria-label="Contrato de canje"
+              onChange={e => { const c = contratosCanje.find(x => x.idContratoCanje === Number(e.target.value)); setIdContratoCanje(c?.idContratoCanje ?? null); setCanjeGrano(c?.grano ?? "Granos"); }}>
+              <option value="">Elegir contrato…</option>
+              {contratosCanje.map(c => <option key={c.idContratoCanje} value={c.idContratoCanje}>
+                {`${c.grano} ${c.campania ?? ""} · contrato ${c.numero}${c.kilos ? ` · ${numeroAEdicionLocal(c.kilos / 1000)} t` : ""}`}</option>)}
+            </select>
+          ) : (
             <select className="rounded border border-border bg-surface px-1 py-0.5" value={canjeGrano} onChange={e => setCanjeGrano(e.target.value)} aria-label="Grano del canje">
               {["Granos", "Soja", "Maíz", "Trigo", "Girasol", "Cebada"].map(g => <option key={g} value={g}>{g === "Granos" ? "Sin definir" : g}</option>)}
             </select>
-          )}
+          ))}
         </div>
 
         <div className="flex flex-col gap-2 rounded-md border border-border bg-surface-sunken p-2 xl:flex-row xl:items-start xl:justify-between">

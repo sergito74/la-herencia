@@ -58,10 +58,10 @@ def obtener(id_):
 def facturas(id_contacto, excluir_op=None, incluir_saldadas=False, incluir_suspendidas=False):
     # 046 T027: documentos en US$ en pesos al TC del comprobante (regla usd-tc-comprobante), como la fuente unificada.
     rows = fetch_all("SELECT TOP (2000) c.IdDeuda idCompra,c.[Nro Documento] numero,c.Fecha fecha,c.Moneda moneda,"
-                     "CAST(ISNULL(c.Suspendida,0) AS bit) suspendida,c.CanjeGrano canjeGrano,"
+                     "CAST(ISNULL(c.Suspendida,0) AS bit) suspendida,c.CanjeGrano canjeGrano,k.Numero contratoCanje,k.Campania campaniaCanje,"
                      "CASE WHEN c.Moneda='Dolares' THEN c.[Tipo de Cambio] END tc,"
                      "(t.GranTotal-ISNULL(pa.cp,0))*CASE WHEN c.Moneda='Dolares' THEN c.[Tipo de Cambio] ELSE 1 END total "
-                     "FROM dbo.Compras c "
+                     "FROM dbo.Compras c LEFT JOIN dbo.ContratosCanje k ON k.IdContratoCanje=c.IdContratoCanje "
                      "JOIN dbo.vw_Cns_Total_Compra t ON t.IdDeuda=c.IdDeuda "
                      "OUTER APPLY (SELECT SUM(d.Cantidad*d.[Precio Unitario]*(1+ISNULL(d.IVA,0)/100.0)) cp "
                      "FROM dbo.Det_Compras d WHERE d.IdCompra=c.IdDeuda AND d.Cantidad*d.[Precio Unitario]<0 "

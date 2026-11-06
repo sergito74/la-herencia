@@ -100,6 +100,7 @@ export interface CompraDetalle {
   ajustaTipoCambio: boolean | null;
   documentoOriginal: string | null;
   canjeGrano?: string | null;
+  idContratoCanje?: number | null;
   lineas: LineaCompra[];
   vencimientos: VencimientoCompra[];
 }
@@ -240,6 +241,7 @@ export interface CompraAltaInput {
   ajustaTipoCambio?: boolean;
   documentoOriginal?: string | null;
   canjeGrano?: string | null;
+  idContratoCanje?: number | null;
   lineas: LineaInput[];
   vencimientos: VencimientoInput[];
 }
@@ -369,4 +371,9 @@ export function agregarDocumentoRelacionado(idCompra: number, idCompraRelacionad
 
 export function quitarDocumentoRelacionado(idCompra: number, idCompraRelacionada: number): Promise<void> {
   return apiDelete(`/api/compras/${idCompra}/relacionados/${idCompraRelacionada}`);
+}
+
+export interface ContratoCanje { idContratoCanje: number; numero: string; fecha: string | null; grano: string; campania: string | null; kilos: number | null; entregaDesde: string | null; entregaHasta: string | null }
+export function getContratosCanje(idContacto: number) {
+  return apiGet<ContratoCanje[]>("/api/compras/contratos-canje", { idContacto });
 }
