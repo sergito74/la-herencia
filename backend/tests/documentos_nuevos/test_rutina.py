@@ -153,3 +153,18 @@ def test_pedidos_desde_la_pantalla_se_atienden_en_orden(monkeypatch):
     rutina.pedir("portales")  # repetido: no se encola dos veces
     assert rutina.tick() and rutina.tick()
     assert corridas == ["portales", "documentos"] and rutina.pedidos_pendientes() == []
+
+
+def test_recibo_propio_ilegible_avisa_aunque_el_remitente_no_sea_proveedor(repo_sim, monkeypatch, sin_cuentas):
+    """06/11/2026: un recibo de sueldo (estudio contable, no proveedor) fallaba y quedaba sin aviso."""
+    ultimo = datetime(2026, 11, 6, 11)
+    m = mails.Mail("e2", "sueldos@estudio.com", "Recibo", ultimo, [mails.Adjunto("RECIBO.pdf", b"%PDF")])
+    monkeypatch.setattr(mails, "nuevos", lambda marca_de, ahora: iter([mails.Almacen("Outlook", ultimo, [m], ultimo)]))
+    monkeypatch.setattr(rutina, "procesar_adjunto",
+                        lambda *a: (_ for _ in ()).throw(rutina.DocumentoPropioIlegible("Recibo de sueldo que no se pudo leer: x")))
+    monkeypatch.setattr(rutina, "_guardar", lambda carpeta, nombre, contenido, sha: str(carpeta / nombre))
+    from src.features.documentos_nuevos import clasificador
+    monkeypatch.setattr(clasificador, "contacto_por_remitente", lambda r: None)
+    rutina.correr()
+    (doc,) = repo_sim.docs.values()
+    assert doc["estado"] == "para_cargar" and "Recibo de sueldo" in doc["motivo"]

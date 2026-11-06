@@ -169,7 +169,10 @@ def procesar_adjunto(id_corrida: int | None, mail: mails.Mail, adj: mails.Adjunt
     from src.features.documentos_nuevos.lectores import sueldos
 
     if adj.nombre.lower().endswith(".pdf") and sueldos.reconoce(texto):
-        return sueldos.procesar(mail, adj, texto, sha, id_corrida)
+        try:
+            return sueldos.procesar(mail, adj, texto, sha, id_corrida)
+        except Exception as e:  # 06/11/2026: recibo propio que no se pudo leer: tiene que avisar aunque lo mande el estudio
+            raise DocumentoPropioIlegible(f"Recibo de sueldo que no se pudo leer: {e}") from e
     origen = {"idRutinaCorrida": id_corrida, "mailEntryId": mail.entry_id, "mailRemitente": mail.remitente,
               "mailAsunto": mail.asunto, "mailRecibido": mail.recibido}
     if adj.nombre.lower().endswith(".pdf") and not texto.strip():
@@ -199,11 +202,15 @@ def procesar_adjunto(id_corrida: int | None, mail: mails.Mail, adj: mails.Adjunt
     return estado_final
 
 
-def sin_procesar(id_corrida: int | None, mail: mails.Mail, adj: mails.Adjunto) -> str | None:
+class DocumentoPropioIlegible(Exception):
+    """El adjunto es de la empresa (ej. un recibo de sueldo de Giamigli) pero su lector no lo pudo terminar de leer."""
+
+
+def sin_procesar(id_corrida: int | None, mail: mails.Mail, adj: mails.Adjunto, motivo: str | None = None) -> str | None:
     """Adjunto que no se pudo leer: se guarda en Compras del ejercicio y queda "sin clasificar" con aviso.
-    06/11/2026: solo si el remitente es un proveedor conocido (como los escaneos); los resúmenes personales de Sergio
-    (ICBC, PDF con clave) entraban a Compras de Giamigli."""
-    if not clasificador.contacto_por_remitente(mail.remitente):
+    06/11/2026: solo si el remitente es un proveedor conocido (como los escaneos) o el documento es propio (`motivo`,
+    ej. recibo de sueldo del estudio); los resúmenes personales de Sergio (ICBC, PDF con clave) entraban a Compras."""
+    if not motivo and not clasificador.contacto_por_remitente(mail.remitente):
         return None
     sha = hashlib.sha256(adj.contenido).hexdigest()
     if repository.adjunto_procesado(mail.entry_id, sha) or repository.existente(sha):
@@ -214,7 +221,7 @@ def sin_procesar(id_corrida: int | None, mail: mails.Mail, adj: mails.Adjunto) -
         "idRutinaCorrida": id_corrida, "origen": "mail", "mailEntryId": mail.entry_id, "mailRemitente": mail.remitente,
         "mailAsunto": mail.asunto, "mailRecibido": mail.recibido, "sha256": sha, "ruta": ruta, "tipo": "otro",
         "modulo": "sin_clasificar", "estado": "para_cargar",
-        "motivo": "Documento pendiente de procesamiento: no se pudo leer el archivo",
+        "motivo": f"Documento pendiente de procesamiento: {motivo or 'no se pudo leer el archivo'}",
     })
     return "para_cargar"
 
@@ -231,10 +238,11 @@ def _mails(id_corrida: int, r: dict, problemas: list[str], ahora: datetime) -> N
                 for adj in mail.adjuntos:
                     try:
                         estado = procesar_adjunto(id_corrida, mail, adj)
-                    except Exception:
+                    except Exception as e:
                         log.exception("Rutina: falló el adjunto %s del mail %s", adj.nombre, mail.asunto)
+                        motivo = str(e) if isinstance(e, DocumentoPropioIlegible) else None
                         try:  # un archivo que falla siempre no traba el almacén: queda pendiente de procesamiento
-                            estado = sin_procesar(id_corrida, mail, adj)
+                            estado = sin_procesar(id_corrida, mail, adj, motivo)
                         except Exception:
                             log.exception("Rutina: no se pudo registrar el adjunto %s", adj.nombre)
                             completo = False

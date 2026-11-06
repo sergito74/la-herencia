@@ -19,6 +19,8 @@ CUITS_EMPLEADOR = {CUIT_GIAMIGLI, CUIT_LUCY}
 MESES = ("Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre")
 COLUMNAS = {
     "0010": "Sueldo basico", "0015": "Sueldo basico", "0017": "Sueldo basico",
+    # 06/11/2026: jornal de eventuales: días trabajados, ajuste, SAC y vacaciones proporcionales
+    "0012": "Sueldo basico", "0024": "Ajuste", "0203": "Aguinaldo", "0204": "Vacaciones",
     "0071": "Vacaciones", "0123": "Dia Gremio", "0154": "Antiguedad", "0200": "Antiguedad",
     "0166": "Ajuste No Remunerativo", "0401": "Ajuste No Remunerativo", "0800": "Redondeo",
     "0300": "Jubilacion", "0302": "Ley 19032", "0310": "Obra Social", "0315": "Obra Social Acuerdos",

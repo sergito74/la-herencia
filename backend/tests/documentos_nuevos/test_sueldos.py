@@ -98,3 +98,27 @@ Lugar y Fecha de Pago: BOLIVAR, 31/05/2026
     assert r["valores"]["Ajuste No Remunerativo"] == Decimal("11500.00")
     assert r["valores"]["Redondeo"] == Decimal("0.21")
     assert r["neto"] == Decimal("220436.00")
+
+
+TEXTO_JORNAL = """C.U.I.T. EMPRESA:30-71211460-2
+Mensual 10 2026 PEREZ JUAN 00000003 $ 54.368,02 1 año y 0 meses
+30/10/2026 PGJOR PEON GRAL (JORNAL) 20-11111111-2 /
+0012 DIAS TRABAJADOS 1,00 54.368,02 54.368,02
+0024 AJUSTE 41.000,00
+0203 AGUINALDO PROPOR. 7.947,34 7.947,34
+0166 ASIG. NO REMUN. C/OS T.AGRARIO 1,01 574,37 574,37
+0204 VACACIONES NO GOZADAS 10.331,54
+0800 DIFERENCIA REDONDEO 0,51 0,51
+0300 JUBILACION 11,00 103.315,36 -11.364,69
+0322 APORTE SINDICAL 2,00 103.889,73 -1.907,36
+0324 SERVICIO DE SEPELIO 1,50 103.315,36 -1.549,73
+BOLIVAR, 31/10/2026 000000 NINGUNA SUELDO NETO $ 99.400,00
+"""
+
+
+def test_lee_jornal_de_eventual():
+    """06/11/2026: recibo de un eventual con días trabajados, ajuste, SAC y vacaciones proporcionales."""
+    r = sueldos.leer_pagina(TEXTO_JORNAL)
+    assert r["neto"] == Decimal("99400.00") and r["periodo"] == "Octubre 2026"
+    assert r["valores"]["Sueldo basico"] == Decimal("54368.02") and r["valores"]["Ajuste"] == Decimal("41000.00")
+    assert r["valores"]["Aguinaldo"] == Decimal("7947.34") and r["valores"]["Vacaciones"] == Decimal("10331.54")
