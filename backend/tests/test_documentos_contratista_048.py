@@ -104,6 +104,12 @@ def test_si_la_imputacion_falla_los_vinculos_vuelven(factura, monkeypatch):
     assert factura["vinculos"] == {10}
 
 
+def test_regla_anulada_no_descarta_facturas_sin_nc():
+    """06/11: sin NC relacionada la suma era NULL y 'NOT anulada' descartaba todas las facturas del listado."""
+    sql = dc._ANULADA_SQL.format(c="c.IdDeuda")
+    assert "ISNULL(ABS(SUM" in sql and "EXISTS (SELECT 1 FROM dbo.CompraDocumentosRelacionados" in sql
+
+
 def test_nc_no_se_vincula_a_ordenes(monkeypatch):
     monkeypatch.setattr(dc, "_tipo", lambda idc: {"idCompra": idc, "idContacto": 1, "tipo": "Nota de Crédito"})
     with pytest.raises(ValueError):

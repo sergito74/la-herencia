@@ -36,12 +36,13 @@ def es_contratista(id_compra: int) -> bool:
 # Factura anulada: sus notas de crédito relacionadas cubren todo su neto (ej. Santos 00001-00000053, cebada mal
 # facturada, anulada con la NC 00001-00000006 y refacturada como trigo). No lleva orden; queda con imputación manual.
 _ANULADA_SQL = """(
-    (SELECT ABS(SUM(d.Cantidad * d.[Precio Unitario])) FROM dbo.Det_Compras d
+    (SELECT ISNULL(ABS(SUM(d.Cantidad * d.[Precio Unitario])), 0) FROM dbo.Det_Compras d
       JOIN dbo.Compras n ON n.IdDeuda = d.IdCompra
       WHERE n.[Tipo documento] COLLATE Latin1_General_CI_AI = 'Nota de Credito'
         AND n.IdDeuda IN (SELECT r.IdCompraRelacionada FROM dbo.CompraDocumentosRelacionados r WHERE r.IdCompra = {c}
                           UNION SELECT r.IdCompra FROM dbo.CompraDocumentosRelacionados r WHERE r.IdCompraRelacionada = {c}))
-    >= (SELECT SUM(d.Cantidad * d.[Precio Unitario]) FROM dbo.Det_Compras d WHERE d.IdCompra = {c}) - 0.01)"""
+    >= ISNULL((SELECT SUM(d.Cantidad * d.[Precio Unitario]) FROM dbo.Det_Compras d WHERE d.IdCompra = {c}), 0) - 0.01
+    AND EXISTS (SELECT 1 FROM dbo.CompraDocumentosRelacionados r WHERE r.IdCompra = {c} OR r.IdCompraRelacionada = {c}))"""
 
 
 def confirmada_sin_orden(id_compra: int) -> bool:
