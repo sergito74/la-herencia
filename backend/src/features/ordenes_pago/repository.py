@@ -292,7 +292,32 @@ def _pendientes():
         medio = medio_habitual(idc)
         for d in docs:  # canje de granos (Sergio 05/11): se paga con granos, no entra en lo que se paga en plata
             agregar(d, s, 'canje' if d.get('canjeGrano') else 'tarjeta' if medio == 'tarjetas' else 'a pagar', medio)
+    # Adelantos financieros que se cancelan con granos (Sergio 05/11: AF Cargill 03/06/2026 contra girasol y soja 26/27)
+    nombres = None
+    for a in _adelantos_canje():
+        if nombres is None:
+            nombres = {x['idContacto']: x for x in cuentas.get_saldos_todos()}
+        s = nombres.get(a['idContacto']) or {'idContacto': a['idContacto'], 'razonSocial': None, 'saldoParcial': 0}
+        agregar({'numero': 'Adelanto financiero', 'fecha': a['fecha'], 'fechaVto': a['vence'], 'moneda': 'Pesos',
+                 'total': a['importe'], 'saldo': a['importe'], 'disponible': a['importe'], 'origen': 'Adelanto',
+                 'canjeGrano': a['granos'], 'contratoCanje': a['contratos'], 'campaniaCanje': None}, s, 'canje', None)
     return sorted(resultado, key=lambda f: (f['vencimiento'] or date.max, f['proveedor'] or ''))
+
+
+def _adelantos_canje():
+    """Adelantos (crédito del banco del proveedor) vinculados a contratos de canje, con los granos que los cancelan."""
+    filas = fetch_all("SELECT k.IdContacto, k.MedioAdelanto, k.IdMovimientoAdelanto, k.Numero, k.Grano, k.Campania, "
+                      "k.Kilos, k.EntregaHasta, g.Fecha, g.[Créditos] importe FROM dbo.ContratosCanje k "
+                      "JOIN dbo.[Movimientos Galicia] g ON k.MedioAdelanto='galicia' AND g.IdMovimiento=k.IdMovimientoAdelanto "
+                      "WHERE k.Tipo='canje' ORDER BY k.EntregaHasta")
+    res = {}
+    for f in filas:
+        a = res.setdefault((f['IdContacto'], f['IdMovimientoAdelanto']), {
+            'idContacto': f['IdContacto'], 'fecha': f['Fecha'], 'importe': dinero(f['importe']), 'g': [], 'c': [], 'vence': None})
+        a['g'].append(f"{f['Grano']} {f['Campania'] or ''} ({round((f['Kilos'] or 0) / 1000)} t)".replace('  ', ' '))
+        a['c'].append(f['Numero'])
+        a['vence'] = date.fromisoformat(str(f['EntregaHasta'])[:10]) if f['EntregaHasta'] else None
+    return [{**a, 'granos': ' y '.join(a['g']), 'contratos': ', '.join(a['c'])} for a in res.values()]
 
 
 def pagos_en_camino():

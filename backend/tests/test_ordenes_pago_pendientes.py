@@ -33,6 +33,7 @@ def test_listado(monkeypatch):
     monkeypatch.setattr(repo, "_portal_pendientes", lambda: {258: [
         {"numero": "ND 1", "fecha": date(2026, 6, 10), "importe": Decimal("570.54"), "moneda": "Pesos"}]})
     monkeypatch.setattr(comprobantes_emitidos, "sincronizar", lambda: None)
+    monkeypatch.setattr(repo, "_adelantos_canje", lambda: [])
     monkeypatch.setattr(comprobantes_emitidos, "esperando_banco", lambda: {4: [{"importe": Decimal(5000)}]})
     movs = {1: [_m(10, date(2017, 1, 1), 500.0), _m(11, date(2026, 9, 1), 800.0), _m(12, date(2026, 10, 1), 700.0)]}
     monkeypatch.setattr(cuentas, "get_movimientos", lambda c, *a, **k: (movs.get(c, [_m(99, date(2026, 1, 1), 9e6)]), 0))
@@ -52,6 +53,7 @@ def test_portal_descuenta_pago_en_camino(monkeypatch):
         {"numero": "FT 1", "fecha": date(2026, 10, 1), "importe": Decimal(100), "moneda": "Pesos"},
         {"numero": "FT 2", "fecha": date(2026, 10, 20), "importe": Decimal(200), "moneda": "Pesos"}]})
     monkeypatch.setattr(comprobantes_emitidos, "sincronizar", lambda: None)
+    monkeypatch.setattr(repo, "_adelantos_canje", lambda: [])
     monkeypatch.setattr(comprobantes_emitidos, "esperando_banco", lambda: {48: [{"importe": Decimal("100.01")}]})
     filas = repo._pendientes()
     assert [(f["numero"], f["saldo"]) for f in filas] == [("FT 2", Decimal("199.99"))]
