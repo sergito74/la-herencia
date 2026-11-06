@@ -253,7 +253,11 @@ def listar_ordenes(
         f"""
         SELECT o.IdOrdenTrabajo AS idOrden, o.FechaPedido AS fechaPedido, o.FechaEjecucion AS fechaEjecucion,
                o.IdTipoLabor AS idTipoLabor, tl.Labor AS tipoLabor, o.IdContratistaContacto AS idContratistaContacto,
-               c.[Razon Social] AS contratista, o.Estado AS estado, o.IdRubro AS idRubro, o.IdCentroCostos AS idCentroCostos
+               c.[Razon Social] AS contratista, o.Estado AS estado, o.IdRubro AS idRubro, o.IdCentroCostos AS idCentroCostos,
+               -- superficie de la orden: cada lote una vez (máximo entre sus renglones de insumo), sumada
+               (SELECT SUM(s) FROM (SELECT MAX(d.Superficie) s FROM dbo.Ordenes_Trabajo_Distrib d
+                  JOIN dbo.Ordenes_Trabajo_Insumos i ON i.IdOrdenInsumo = d.IdOrdenInsumo
+                  WHERE i.IdOrdenTrabajo = o.IdOrdenTrabajo AND d.Aplicar = 1 GROUP BY d.IdLote) x) AS hectareas
         FROM dbo.Ordenes_Trabajo o
         LEFT JOIN dbo.[Tipo Labores] tl ON tl.IdLabor = o.IdTipoLabor
         LEFT JOIN dbo.Contactos c ON c.IdContacto = o.IdContratistaContacto
@@ -262,7 +266,8 @@ def listar_ordenes(
         """,
         tuple(params),
     )
-    items = [{**f, "fechaPedido": _d(f["fechaPedido"]), "fechaEjecucion": _d(f["fechaEjecucion"])} for f in filas]
+    items = [{**f, "fechaPedido": _d(f["fechaPedido"]), "fechaEjecucion": _d(f["fechaEjecucion"]), "hectareas": _f(f["hectareas"])}
+             for f in filas]
     inicio = (page - 1) * page_size
     pagina = items[inicio : inicio + page_size]
     if filtro_insumo and pagina:
@@ -278,7 +283,9 @@ def listar_ordenes(
             usados.setdefault(r["idOrden"], []).append({"producto": r["producto"], "cantidad": _f(r["cantidad"]), "unidad": r["unidad"]})
         for o in pagina:
             o["insumosCoincidentes"] = usados.get(o["idOrden"], [])
-    return {"items": pagina, "total": len(items), "page": page, "pageSize": page_size}
+    # Total de hectáreas de todas las órdenes filtradas (no solo la página); sin contar las anuladas.
+    total_ha = round(sum(o["hectareas"] for o in items if o["estado"] != "Anulada"), 1)
+    return {"items": pagina, "total": len(items), "page": page, "pageSize": page_size, "totalHectareas": total_ha}
 
 
 def obtener_orden(id_orden: int) -> dict | None:

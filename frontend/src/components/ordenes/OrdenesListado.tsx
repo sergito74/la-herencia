@@ -7,7 +7,7 @@ import { useState } from "react";
 import { DataTable, type DataTableColumn } from "@/components/ui/DataTable";
 import { ErrorState, LoadingState } from "@/components/ui/States";
 import { BadgeEstadoOrden } from "@/components/ordenes/EstadosOrden";
-import { formatCantidad, formatFecha } from "@/lib/format";
+import { formatCantidad, formatFecha, formatNumero } from "@/lib/format";
 import { fetchCatalogosOrdenes, fetchOrdenes, type FiltrosOrdenes, type OrdenListItem } from "@/services/ordenesApi";
 
 const ESTADOS = [
@@ -21,6 +21,17 @@ const VACIO: FiltrosOrdenes = { fechaDesde: "", fechaHasta: "", estado: "", insu
 
 const COLUMNAS: DataTableColumn<OrdenListItem>[] = [
   {
+    key: "idOrden",
+    header: "N°",
+    numeric: true,
+    align: "right",
+    render: (o) => (
+      <Link className="text-finance underline" href={`/produccion/ordenes/${o.idOrden}`}>
+        {o.idOrden}
+      </Link>
+    ),
+  },
+  {
     key: "fechaPedido",
     header: "Fecha",
     numeric: true,
@@ -32,6 +43,13 @@ const COLUMNAS: DataTableColumn<OrdenListItem>[] = [
   },
   { key: "tipoLabor", header: "Labor", render: (o) => o.tipoLabor ?? "—" },
   { key: "contratista", header: "Contratista", render: (o) => o.contratista ?? "Maquinaria propia" },
+  {
+    key: "hectareas",
+    header: "Hectáreas",
+    numeric: true,
+    align: "right",
+    render: (o) => (o.hectareas ? `${formatNumero(o.hectareas, { max: 1 })} ha` : "—"),
+  },
   { key: "estado", header: "Estado", render: (o) => <BadgeEstadoOrden estado={o.estado} /> },
 ];
 
@@ -139,6 +157,12 @@ export function OrdenesListado() {
 
       {isLoading && <LoadingState />}
       {isError && <ErrorState message="No se pudieron cargar las órdenes." />}
+      {data && (
+        <p className="text-sm text-ink-secondary">
+          {data.total} {data.total === 1 ? "orden" : "órdenes"} · Total {formatNumero(data.totalHectareas, { max: 1 })} ha
+          <span className="text-ink-muted"> (sin contar las anuladas)</span>
+        </p>
+      )}
       {data && (
         <DataTable
           columns={filtros.insumo ? [...COLUMNAS, COLUMNA_INSUMOS] : COLUMNAS}

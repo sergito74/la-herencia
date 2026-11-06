@@ -97,6 +97,8 @@ export interface OrdenListItem {
   estado: EstadoOrden;
   idRubro: number | null;
   idCentroCostos: number | null;
+  /** Superficie de la orden (cada lote una vez). */
+  hectareas: number;
   /** Solo al filtrar por insumo: los insumos de la orden que coinciden, con lo usado. */
   insumosCoincidentes?: { producto: string; cantidad: number; unidad: string }[];
 }
@@ -115,7 +117,7 @@ export interface FiltrosOrdenes {
 }
 
 export const fetchOrdenes = (f: FiltrosOrdenes, page: number, pageSize = 25) =>
-  apiGet<Paginado<OrdenListItem>>("/api/ordenes", {
+  apiGet<Paginado<OrdenListItem> & { totalHectareas: number }>("/api/ordenes", {
     idContratista: f.idContratista ?? undefined,
     idTipoLabor: f.idTipoLabor ?? undefined,
     idLote: f.idLote ?? undefined,

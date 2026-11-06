@@ -48,10 +48,10 @@ def ordenes_xlsx(**filtros) -> bytes:
     filtros.setdefault("page_size", 5000)
     items = repository.listar_ordenes(**filtros)["items"]
     wb = Workbook()
-    ws = _hoja(wb, "Órdenes de trabajo", [("N°", 8), ("Fecha", 12), ("Labor", 22), ("Contratista", 26), ("Estado", 14)])
+    ws = _hoja(wb, "Órdenes de trabajo", [("N°", 8), ("Fecha", 12), ("Labor", 22), ("Contratista", 26), ("Hectáreas", 11), ("Estado", 14)])
     for o in items:
-        ws.append([o["idOrden"], o["fechaPedido"], o["tipoLabor"], o["contratista"], o["estado"]])
-    _cerrar(ws, {1: _FECHA})
+        ws.append([o["idOrden"], o["fechaPedido"], o["tipoLabor"], o["contratista"], o["hectareas"], o["estado"]])
+    _cerrar(ws, {1: _FECHA, 4: _CANT})
     return _bytes(wb)
 
 
