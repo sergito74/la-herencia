@@ -64,63 +64,55 @@ export function DocumentosRelacionadosPanel({
     (c) => c.idCompra !== excluirIdCompra && !idsRelacionados.has(c.idCompra)
   );
 
+  const lista = (docs: DocumentoRelacionado[], vinculados: boolean) =>
+    docs.map((r) => (
+      <label key={r.idCompra} className="flex cursor-pointer items-center gap-1 whitespace-nowrap text-xs">
+        <input
+          type="checkbox"
+          checked={vinculados}
+          onChange={() => (vinculados ? onDesvincular(r.idCompra) : onVincular(r))}
+        />
+        <Link
+          href={`/compras/${r.idCompra}/editar`}
+          onClick={(e) => e.stopPropagation()}
+          className="text-ink-secondary underline decoration-dotted hover:text-finance"
+        >
+          {formatFecha(r.fecha)} · {r.tipoDocumento ?? "—"} {r.numeroDocumento ?? ""}
+        </Link>
+      </label>
+    ));
+
+  // Franja de una línea: lo vinculado (tildado) + buscador; los resultados se abren debajo sin empujar la grilla.
   return (
-    <div className="rounded-md border border-border bg-surface p-2">
-      <h3 className="text-xs font-medium text-ink-secondary">Documentos relacionados</h3>
-
-      {relacionados.length > 0 && (
-        <div className="mt-1 flex max-h-16 w-full flex-wrap gap-x-3 gap-y-1 overflow-y-auto">
-          {relacionados.map((r) => (
-            <label key={r.idCompra} className="flex cursor-pointer items-center gap-1 text-xs whitespace-nowrap">
-              <input type="checkbox" checked onChange={() => onDesvincular(r.idCompra)} />
-              <Link
-                href={`/compras/${r.idCompra}/editar`}
-                onClick={(e) => e.stopPropagation()}
-                className="text-ink-secondary underline decoration-dotted hover:text-finance"
-              >
-                {formatFecha(r.fecha)} · {r.tipoDocumento ?? "—"} {r.numeroDocumento ?? ""}
-              </Link>
-            </label>
-          ))}
-        </div>
-      )}
-
-      {idContacto == null && (
-        <p className="mt-1 text-xs text-ink-muted">Elegí un proveedor para ver sus documentos.</p>
-      )}
+    <div className="relative flex h-7 items-center gap-2 rounded border border-border bg-surface px-2 text-xs">
+      <span className="shrink-0 font-medium text-ink-secondary">Documentos relacionados:</span>
+      <div className="flex min-w-0 flex-1 items-center gap-x-3 overflow-x-auto">
+        {relacionados.length > 0 ? lista(relacionados, true) : <span className="text-ink-muted">ninguno</span>}
+      </div>
+      {idContacto == null && <span className="shrink-0 text-ink-muted">Elegí un proveedor</span>}
       {idContacto != null && tipos.length === 0 && (
-        <p className="mt-1 text-xs text-ink-muted">
-          No aplica para tipo de documento &quot;{tipoDocumento}&quot;.
-        </p>
+        <span className="shrink-0 text-ink-muted">No aplica a {tipoDocumento}</span>
       )}
       {idContacto != null && tipos.length > 0 && (
         <input
-          className={`${filterInputClass} mt-1 w-full px-1.5 py-0.5 text-xs`}
+          className={`${filterInputClass} h-5 w-52 shrink-0 px-1.5 py-0 text-xs`}
           value={busqueda}
           onChange={(e) => setBusqueda(e.target.value)}
-          placeholder={`Buscar nº de ${tipos.join("/")} de este proveedor para relacionar…`}
+          onKeyDown={(e) => e.key === "Escape" && setBusqueda("")}
+          placeholder={`Buscar nº de ${tipos.join("/")}…`}
+          aria-label={`Buscar nº de ${tipos.join("/")} de este proveedor para relacionar`}
         />
       )}
-
-      {buscando && isFetching && <p className="mt-1 text-xs text-ink-muted">Buscando…</p>}
-      {buscando && !isFetching && candidatos.length > 0 && (
-        <div className="mt-1 flex max-h-20 w-full flex-wrap gap-x-3 gap-y-1 overflow-y-auto">
-          {candidatos.map((c) => (
-            <label key={c.idCompra} className="flex cursor-pointer items-center gap-1 text-xs whitespace-nowrap">
-              <input type="checkbox" checked={false} onChange={() => onVincular(c)} />
-              <Link
-                href={`/compras/${c.idCompra}/editar`}
-                onClick={(e) => e.stopPropagation()}
-                className="text-ink-secondary underline decoration-dotted hover:text-finance"
-              >
-                {formatFecha(c.fecha)} · {c.tipoDocumento ?? "—"} {c.numeroDocumento ?? ""}
-              </Link>
-            </label>
-          ))}
+      {buscando && (
+        <div className="absolute right-0 top-full z-20 mt-1 w-[28rem] max-w-full rounded border border-border-strong bg-surface p-2 shadow-lg">
+          {isFetching && <p className="text-ink-muted">Buscando…</p>}
+          {!isFetching && candidatos.length > 0 && (
+            <div className="flex max-h-40 flex-col gap-1 overflow-y-auto">{lista(candidatos, false)}</div>
+          )}
+          {!isFetching && resultados && candidatos.length === 0 && (
+            <p className="text-ink-muted">Sin resultados para &quot;{busqueda}&quot;.</p>
+          )}
         </div>
-      )}
-      {buscando && !isFetching && resultados && candidatos.length === 0 && (
-        <p className="mt-1 text-xs text-ink-muted">Sin resultados para &quot;{busqueda}&quot;.</p>
       )}
     </div>
   );

@@ -1,7 +1,7 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { SoloLectura } from "@/components/auth/SoloLectura";
 import { useToast } from "@/components/ui/Toast";
@@ -23,14 +23,15 @@ const ha = (v: number) => `${formatNumero(v, { max: 1 })} ha`;
 const diasEntre = (desde: string, hasta: string) =>
   Math.round((new Date(hasta).getTime() - new Date(desde).getTime()) / 86_400_000);
 
-/** 048: órdenes de trabajo que cobra esta factura del contratista. Vista compacta: con órdenes vinculadas muestra solo
- *  esas y el reparto; la lista de candidatas aparece al pedir "Cambiar" (o si todavía no hay ninguna). */
+/** 048: órdenes de trabajo que cobra esta factura del contratista. Franja de una línea (resumen de lo
+ *  vinculado o aviso "Sin vincular"); las candidatas se abren a pedido en un desplegable que no empuja la grilla. */
 export function OrdenesTrabajoPanel({ idCompra }: { idCompra: number }) {
   const qc = useQueryClient();
   const { showToast } = useToast();
   const { data } = useQuery({ queryKey: ordenesTrabajoKey(idCompra), queryFn: () => fetchOrdenesTrabajoCompra(idCompra) });
   const [tildadas, setTildadas] = useState<Set<number>>(new Set());
-  const [editando, setEditando] = useState(false);
+  const [abierto, setAbierto] = useState(false);
+  const cajaRef = useRef<HTMLDivElement | null>(null);
   const [verTodas, setVerTodas] = useState(false);
 
   useEffect(() => {
@@ -41,7 +42,7 @@ export function OrdenesTrabajoPanel({ idCompra }: { idCompra: number }) {
     mutationFn: () => fijarOrdenesTrabajoCompra(idCompra, [...tildadas]),
     onSuccess: () => {
       showToast("Órdenes guardadas: el costo quedó imputado a sus cultivos.", "success");
-      setEditando(false);
+      setAbierto(false);
       qc.invalidateQueries({ queryKey: ordenesTrabajoKey(idCompra) });
       qc.invalidateQueries({ queryKey: ["ordenes"] });
       qc.invalidateQueries({ queryKey: ["resultado-cultivo"] });
@@ -62,13 +63,23 @@ export function OrdenesTrabajoPanel({ idCompra }: { idCompra: number }) {
     return { probables: ordenes.filter(esProbable), resto: ordenes.filter((o) => !esProbable(o)) };
   }, [data, fechaFactura]);
 
+  // Cierra el desplegable de candidatas al hacer clic afuera (sin perder lo tildado).
+  useEffect(() => {
+    if (!abierto) return;
+    function fuera(e: MouseEvent) {
+      if (cajaRef.current && !cajaRef.current.contains(e.target as Node)) setAbierto(false);
+    }
+    document.addEventListener("mousedown", fuera);
+    return () => document.removeEventListener("mousedown", fuera);
+  }, [abierto]);
+
   if (!data || !data.esContratista) return null;
   if (data.esNotaCreditoDebito) {
     return (
-      <Caja titulo="Órdenes de trabajo">
-        <span className="text-ink-secondary">Se imputa igual que su factura: relacionala en Documentos relacionados.</span>
+      <Franja titulo="Órdenes de trabajo">
+        <span className="truncate text-ink-secondary">Se imputa igual que su factura (relacionala en Documentos relacionados).</span>
         <Reparto filas={data.reparto} />
-      </Caja>
+      </Franja>
     );
   }
   if (!data.esDocumentoDeLabor) return null;
@@ -77,7 +88,7 @@ export function OrdenesTrabajoPanel({ idCompra }: { idCompra: number }) {
   const seleccionadas = data.ordenes.filter((o) => tildadas.has(o.idOrden));
   const haSel = seleccionadas.reduce((s, o) => s + o.hectareas, 0);
   const cambio = data.ordenes.some((o) => o.vinculada !== tildadas.has(o.idOrden));
-  const mostrarLista = editando || vinculadas.length === 0;
+  const sinVincular = vinculadas.length === 0;
 
   function alternar(id: number) {
     const s = new Set(tildadas);
@@ -86,86 +97,97 @@ export function OrdenesTrabajoPanel({ idCompra }: { idCompra: number }) {
     setTildadas(s);
   }
 
-  // Vista resumida: ya tiene órdenes y no se está cambiando.
-  if (!mostrarLista) {
-    return (
-      <Caja
-        titulo="Órdenes de trabajo"
-        accion={
-          <SoloLectura>
-            <button type="button" onClick={() => setEditando(true)} className="text-finance hover:underline">
-              Cambiar
-            </button>
-          </SoloLectura>
-        }
-      >
-        <span>
-          {vinculadas.map((o) => `${formatFecha(o.fecha)} · ${o.labor ?? "Labor"} · ${ha(o.hectareas)}`).join("  |  ")}
-        </span>
-        <Diferencia haFactura={haFactura} haSel={haSel} />
-        <Reparto filas={data.reparto} />
-      </Caja>
-    );
+  function cancelar() {
+    setAbierto(false);
+    setTildadas(new Set(vinculadas.map((o) => o.idOrden)));
   }
 
+  const resumen = sinVincular ? (
+    data.ordenes.length === 0 ? (
+      <span className="truncate text-ink-secondary">Sin órdenes pendientes de facturar para este contratista.</span>
+    ) : (
+      <span className="truncate text-status-warning">
+        Sin vincular · {probables.length > 0 ? `${probables.length} probable${probables.length === 1 ? "" : "s"}` : `${data.ordenes.length} pendiente${data.ordenes.length === 1 ? "" : "s"}`}
+      </span>
+    )
+  ) : (
+    <span className="min-w-0 truncate" title={vinculadas.map((o) => `${formatFecha(o.fecha)} · ${o.labor ?? "Labor"} · ${ha(o.hectareas)}`).join("\n")}>
+      {vinculadas.length === 1
+        ? `${formatFecha(vinculadas[0].fecha)} · ${vinculadas[0].labor ?? "Labor"} · ${ha(vinculadas[0].hectareas)}`
+        : `${vinculadas.length} órdenes · ${ha(vinculadas.reduce((s, o) => s + o.hectareas, 0))}`}
+    </span>
+  );
+
   return (
-    <Caja
-      titulo="Órdenes de trabajo que cobra esta factura"
-      accion={
-        <span className="flex items-center gap-3">
-          <Diferencia haFactura={haFactura} haSel={haSel} conFactura />
-          {editando && (
-            <button type="button" onClick={() => { setEditando(false); setTildadas(new Set(vinculadas.map((o) => o.idOrden))); }}
-              className="text-ink-secondary hover:underline">
-              Cancelar
-            </button>
-          )}
-          <SoloLectura>
-            <button
-              type="button"
-              onClick={() => guardar.mutate()}
-              disabled={!cambio || guardar.isPending}
-              className="rounded bg-finance px-3 py-1 text-xs font-medium text-white disabled:opacity-40"
-            >
-              {guardar.isPending ? "Guardando…" : "Guardar órdenes"}
-            </button>
-          </SoloLectura>
-        </span>
-      }
-    >
-      {data.ordenes.length === 0 ? (
-        <span className="text-ink-secondary">Este contratista no tiene órdenes sin facturar.</span>
-      ) : (
-        <div className="max-h-40 overflow-y-auto rounded border border-border">
-          {probables.length === 0 && (
-            <div className="px-2 py-1 text-ink-secondary">Sin órdenes sin facturar en los {DIAS_PROBABLE} días previos a la factura.</div>
-          )}
-          {probables.map((o) => (
-            <Fila key={o.idOrden} o={o} tildada={tildadas.has(o.idOrden)} onClick={() => alternar(o.idOrden)} fechaFactura={fechaFactura} haFactura={haFactura} />
-          ))}
-          {resto.length > 0 && !verTodas && (
-            <button type="button" onClick={() => setVerTodas(true)} className="w-full px-2 py-1 text-left text-finance hover:underline">
-              Ver órdenes más viejas ({resto.length})
-            </button>
-          )}
-          {verTodas &&
-            resto.map((o) => (
+    <div ref={cajaRef} className="relative">
+      <Franja
+        titulo="Órdenes de trabajo"
+        accion={
+          data.ordenes.length > 0 && (
+            <SoloLectura>
+              <button type="button" onClick={() => (abierto ? cancelar() : setAbierto(true))} className="whitespace-nowrap text-finance hover:underline">
+                {abierto ? "Cerrar" : sinVincular ? "Elegir" : "Cambiar"}
+              </button>
+            </SoloLectura>
+          )
+        }
+      >
+        {resumen}
+        {!sinVincular && <Diferencia haFactura={haFactura} haSel={haSel} />}
+        {!sinVincular && <Reparto filas={data.reparto} />}
+      </Franja>
+
+      {abierto && (
+        <div className="absolute left-0 right-0 top-full z-20 mt-1 rounded border border-border-strong bg-surface p-2 text-xs shadow-lg">
+          <div className="mb-1 flex items-center justify-between gap-3">
+            <span className="font-medium text-ink-primary">Órdenes que cobra esta factura</span>
+            <span className="flex items-center gap-3">
+              <Diferencia haFactura={haFactura} haSel={haSel} conFactura />
+              <button type="button" onClick={cancelar} className="text-ink-secondary hover:underline">
+                Cancelar
+              </button>
+              <SoloLectura>
+                <button
+                  type="button"
+                  onClick={() => guardar.mutate()}
+                  disabled={!cambio || guardar.isPending}
+                  className="rounded bg-finance px-3 py-1 text-xs font-medium text-white disabled:opacity-40"
+                >
+                  {guardar.isPending ? "Guardando…" : "Guardar órdenes"}
+                </button>
+              </SoloLectura>
+            </span>
+          </div>
+          <div className="max-h-64 overflow-y-auto rounded border border-border">
+            {probables.length === 0 && (
+              <div className="px-2 py-1 text-ink-secondary">Sin órdenes sin facturar en los {DIAS_PROBABLE} días previos a la factura.</div>
+            )}
+            {probables.map((o) => (
               <Fila key={o.idOrden} o={o} tildada={tildadas.has(o.idOrden)} onClick={() => alternar(o.idOrden)} fechaFactura={fechaFactura} haFactura={haFactura} />
             ))}
+            {resto.length > 0 && !verTodas && (
+              <button type="button" onClick={() => setVerTodas(true)} className="w-full px-2 py-1 text-left text-finance hover:underline">
+                Ver órdenes más viejas ({resto.length})
+              </button>
+            )}
+            {verTodas &&
+              resto.map((o) => (
+                <Fila key={o.idOrden} o={o} tildada={tildadas.has(o.idOrden)} onClick={() => alternar(o.idOrden)} fechaFactura={fechaFactura} haFactura={haFactura} />
+              ))}
+          </div>
         </div>
       )}
-    </Caja>
+    </div>
   );
 }
 
-function Caja({ titulo, accion, children }: { titulo: string; accion?: React.ReactNode; children?: React.ReactNode }) {
+/** Franja de una línea: título, resumen (se trunca) y acción a la derecha. */
+function Franja({ titulo, accion, children }: { titulo: string; accion?: React.ReactNode; children?: React.ReactNode }) {
   return (
-    <section className="mt-2 rounded border border-border bg-surface px-3 py-2 text-xs">
-      <div className="mb-1 flex items-center justify-between gap-3">
-        <span className="font-medium text-ink-primary">{titulo}</span>
-        {accion}
-      </div>
-      <div className="space-y-1">{children}</div>
+    <section className="flex h-7 items-center gap-2 rounded border border-border bg-surface px-2 text-xs">
+      <span className="shrink-0 font-medium text-ink-secondary">{titulo}:</span>
+      <div className="flex min-w-0 flex-1 items-center gap-2 overflow-hidden whitespace-nowrap">{children}</div>
+      {accion}
     </section>
   );
 }
@@ -215,8 +237,8 @@ function Reparto({ filas }: { filas: RepartoContratista[] }) {
   }, [filas]);
   if (porCultivo.length === 0) return null;
   return (
-    <div className="text-ink-secondary">
-      Imputado: {porCultivo.map(([k, v]) => `${k} ${formatMoneda(v)}`).join(" · ")}
-    </div>
+    <span className="min-w-0 truncate text-ink-secondary" title={porCultivo.map(([k, v]) => `${k} ${formatMoneda(v)}`).join("\n")}>
+      · Imputado a {porCultivo.map(([k, v]) => `${k} ${formatMoneda(v)}`).join(" · ")}
+    </span>
   );
 }

@@ -28,7 +28,7 @@ import {
   getContratosCanje,
 } from "@/services/comprasApi";
 import { ApiError } from "@/services/apiClient";
-import { formatMoneda, numeroAEdicionLocal } from "@/lib/format";
+import { formatMoneda, formatNumero, numeroAEdicionLocal } from "@/lib/format";
 import {
   BASE_DOCUMENTOS_COMPRAS,
   esRutaLocalWindows,
@@ -54,8 +54,21 @@ const TIPOS_DOCUMENTO: TipoDocumentoCompra[] = [
 ];
 
 const FILAS_INICIALES = 10;
-const inputCompacto = `${filterInputClass} w-full px-1.5 py-1 text-xs`;
-const labelCompacto = "flex flex-col gap-0.5 text-xs text-ink-secondary";
+const alturaCompacta = "h-7 px-1.5 py-0.5 text-xs";
+const inputCompacto = `${filterInputClass} w-full ${alturaCompacta}`;
+const labelCompacto = "flex min-w-0 flex-col gap-0.5 text-[11px] leading-tight text-ink-secondary";
+
+const CONCEPTOS = [
+  ["ingresosBrutos", "Percep. IIBB"],
+  ["percepcionIva", "Percep. IVA"],
+  ["conceptosNoGravados", "No gravados"],
+  ["guias", "Guías"],
+  ["comision", "Comisión"],
+  ["financiacion", "Financiación"],
+  ["gastosVarios", "Gastos varios"],
+  ["leyDeSellos", "Ley de Sellos"],
+  ["resGral4169", "RG 4169/96"],
+] as const;
 
 function generarUuid(): string {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) return crypto.randomUUID();
@@ -272,6 +285,10 @@ export function CompraForm({
     }
   }
 
+  // Conceptos del pie: solo los que tienen valor, o todos a pedido (para cargar uno nuevo).
+  const [verTodosConceptos, setVerTodosConceptos] = useState(false);
+  const conceptosVisibles = CONCEPTOS.filter(([key]) => verTodosConceptos || conceptos[key] !== 0);
+
   const lineasCalculadas = rows.map(calcularLinea);
   const subtotalNeto = lineasCalculadas.reduce((acc, l) => acc + l.subtotal, 0);
   const ivaLineas = lineasCalculadas.reduce((acc, l) => acc + l.importeIva, 0);
@@ -457,7 +474,7 @@ export function CompraForm({
   return (
     <form
       onSubmit={handleSubmit}
-      className="flex flex-col gap-2"
+      className="flex flex-col gap-1.5"
       style={{ height: "calc(100vh - 8rem)" }}
       // Mitiga falsos "Hydration failed" causados por extensiones del
       // navegador (gestores de contraseñas, Grammarly, etc.) que inyectan
@@ -479,14 +496,15 @@ export function CompraForm({
         </div>
       )}
 
-      {/* Encabezado fijo: grid que reparte los campos por todo el ancho
-          disponible (en vez de agruparlos a la izquierda) — cuantas más
-          columnas entran por fila, menos filas ocupa el encabezado. */}
-      <div className="shrink-0 space-y-2">
-        <div className="grid grid-cols-[repeat(auto-fit,minmax(10rem,1fr))] items-end gap-2 rounded-md border border-border bg-surface p-2">
-          <div className="sm:col-span-2">
+      {/* Encabezado fijo en una sola fila densa (en pantallas anchas): labels chicos arriba, inputs bajos.
+          En pantallas angostas se reparte en varias filas. */}
+      <div className="shrink-0 space-y-1">
+        <div className="grid grid-cols-[repeat(auto-fit,minmax(9rem,1fr))] items-end gap-x-2 gap-y-1 rounded-md border border-border bg-surface px-2 py-1.5 2xl:grid-cols-[minmax(14rem,2.2fr)_8.5rem_3.5rem_9.5rem_8.5rem_5.5rem_6rem_auto_minmax(10rem,1.6fr)]">
+          <div className={`${labelCompacto} sm:col-span-2 2xl:col-span-1`}>
+            <span>Proveedor</span>
             <ContactoSelect
-              label="Proveedor"
+              ariaLabel="Proveedor"
+              inputClassName={alturaCompacta}
               tipoContacto={TIPOS_CONTACTO_COMPRA}
               value={idContacto}
               razonSocial={razonSocialProveedor}
@@ -565,16 +583,16 @@ export function CompraForm({
               placeholder={moneda === "Dolares" ? "Obligatorio" : undefined}
             />
           </label>
-          <label className="flex items-center gap-1.5 self-center text-xs text-ink-secondary">
+          <label className="flex h-7 items-center gap-1.5 whitespace-nowrap text-xs text-ink-secondary" title="Ajusta tipo de cambio">
             <input
               type="checkbox"
               checked={ajustaTipoCambio}
               onChange={(e) => setAjustaTipoCambio(e.target.checked)}
             />
-            Ajusta tipo de cambio
+            Ajusta TC
           </label>
-          <label className="sm:col-span-2">
-            <span className="text-xs text-ink-secondary">Documento original (PDF)</span>
+          <label className={`${labelCompacto} sm:col-span-2 2xl:col-span-1`}>
+            <span>Documento original (PDF)</span>
             <div className="flex items-center gap-1">
               <input
                 className={inputCompacto}
@@ -601,15 +619,19 @@ export function CompraForm({
           </label>
         </div>
 
-        <DocumentosRelacionadosPanel
-          idContacto={idContacto}
-          tipoDocumento={tipoDocumento}
-          relacionados={relacionadosMostrados}
-          onVincular={handleVincularRelacionado}
-          onDesvincular={handleDesvincularRelacionado}
-          excluirIdCompra={idCompra}
-        />
-        {mode === "edicion" && idCompra != null && <OrdenesTrabajoPanel idCompra={idCompra} />}
+        {/* Documentos relacionados y órdenes de trabajo: franjas de una línea, lado a lado en pantallas anchas;
+            sus listas se abren en desplegables que no empujan la grilla. */}
+        <div className="grid gap-1 xl:grid-cols-2">
+          <DocumentosRelacionadosPanel
+            idContacto={idContacto}
+            tipoDocumento={tipoDocumento}
+            relacionados={relacionadosMostrados}
+            onVincular={handleVincularRelacionado}
+            onDesvincular={handleDesvincularRelacionado}
+            excluirIdCompra={idCompra}
+          />
+          {mode === "edicion" && idCompra != null && <OrdenesTrabajoPanel idCompra={idCompra} />}
+        </div>
       </div>
 
       {/* Cuerpo: única sección que scrollea. */}
@@ -623,11 +645,13 @@ export function CompraForm({
         />
       </div>
 
-      {/* Pie fijo, igual que una factura física: vencimientos + conceptos a
-          la izquierda, totales acumulados a la derecha. */}
-      <div className="shrink-0 space-y-2">
-        <div className="flex flex-wrap items-center gap-3 rounded-md border border-border bg-surface p-2 text-xs">
-          <div className="flex items-center gap-3">
+      {/* Pie fijo, igual que una factura física: condición de pago y conceptos a la izquierda,
+          totales y acciones a la derecha (siempre visibles). Solo se muestran los conceptos con
+          valor; el resto se abre a pedido. */}
+      <div className="flex shrink-0 flex-wrap items-end gap-x-4 gap-y-1 rounded-md border border-border bg-surface-sunken px-2 py-1.5 text-xs">
+        <div className="flex min-w-0 flex-1 flex-col gap-1">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+            <span className="font-medium text-ink-secondary">Pago:</span>
             <label className="flex items-center gap-1 text-ink-secondary">
               <input
                 type="radio"
@@ -646,96 +670,79 @@ export function CompraForm({
               />
               A Plazo
             </label>
+            {condicionPago === "A Plazo" && (
+              <VencimientosEditor vencimientos={vencimientos} onChange={setVencimientos} />
+            )}
+            <label className="flex items-center gap-1 text-ink-secondary">
+              <input type="checkbox" checked={!!canjeGrano} onChange={e => setCanjeGrano(e.target.checked ? "Granos" : "")} />
+              Canje de granos
+            </label>
+            {!!canjeGrano && (contratosCanje?.length ? (
+              <select className="rounded border border-border bg-surface px-1 py-0.5" value={idContratoCanje ?? ""} aria-label="Contrato de canje"
+                onChange={e => { const c = contratosCanje.find(x => x.idContratoCanje === Number(e.target.value)); setIdContratoCanje(c?.idContratoCanje ?? null); setCanjeGrano(c?.grano ?? "Granos"); }}>
+                <option value="">Elegir contrato…</option>
+                {contratosCanje.map(c => <option key={c.idContratoCanje} value={c.idContratoCanje}>
+                  {`${c.grano} ${c.campania ?? ""} · contrato ${c.numero}${c.kilos ? ` · ${numeroAEdicionLocal(c.kilos / 1000)} t` : ""}`}</option>)}
+              </select>
+            ) : (
+              <select className="rounded border border-border bg-surface px-1 py-0.5" value={canjeGrano} onChange={e => setCanjeGrano(e.target.value)} aria-label="Grano del canje">
+                {["Granos", "Soja", "Maíz", "Trigo", "Girasol", "Cebada"].map(g => <option key={g} value={g}>{g === "Granos" ? "Sin definir" : g}</option>)}
+              </select>
+            ))}
           </div>
-          {condicionPago === "A Plazo" && (
-            <VencimientosEditor vencimientos={vencimientos} onChange={setVencimientos} />
-          )}
-          <label className="flex items-center gap-1 text-ink-secondary">
-            <input type="checkbox" checked={!!canjeGrano} onChange={e => setCanjeGrano(e.target.checked ? "Granos" : "")} />
-            Canje de granos
-          </label>
-          {!!canjeGrano && (contratosCanje?.length ? (
-            <select className="rounded border border-border bg-surface px-1 py-0.5" value={idContratoCanje ?? ""} aria-label="Contrato de canje"
-              onChange={e => { const c = contratosCanje.find(x => x.idContratoCanje === Number(e.target.value)); setIdContratoCanje(c?.idContratoCanje ?? null); setCanjeGrano(c?.grano ?? "Granos"); }}>
-              <option value="">Elegir contrato…</option>
-              {contratosCanje.map(c => <option key={c.idContratoCanje} value={c.idContratoCanje}>
-                {`${c.grano} ${c.campania ?? ""} · contrato ${c.numero}${c.kilos ? ` · ${numeroAEdicionLocal(c.kilos / 1000)} t` : ""}`}</option>)}
-            </select>
-          ) : (
-            <select className="rounded border border-border bg-surface px-1 py-0.5" value={canjeGrano} onChange={e => setCanjeGrano(e.target.value)} aria-label="Grano del canje">
-              {["Granos", "Soja", "Maíz", "Trigo", "Girasol", "Cebada"].map(g => <option key={g} value={g}>{g === "Granos" ? "Sin definir" : g}</option>)}
-            </select>
-          ))}
-        </div>
 
-        <div className="flex flex-col gap-2 rounded-md border border-border bg-surface-sunken p-2 xl:flex-row xl:items-start xl:justify-between">
-          <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs">
-            {(
-              [
-                ["ingresosBrutos", "Percep. IIBB"],
-                ["percepcionIva", "Percep. IVA"],
-                ["conceptosNoGravados", "Conceptos no gravados"],
-                ["guias", "Guías"],
-                ["comision", "Comisión"],
-                ["financiacion", "Financiación"],
-                ["gastosVarios", "Gastos Varios"],
-                ["leyDeSellos", "Ley de Sellos"],
-                ["resGral4169", "Res. Gral. 4169/96"],
-              ] as const
-            ).map(([key, label]) => (
-              <label key={key} className="flex flex-col gap-0.5 text-ink-secondary">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+            <span className="font-medium text-ink-secondary">Percepciones y otros:</span>
+            {conceptosVisibles.map(([key, label]) => (
+              <label key={key} className="flex items-center gap-1 whitespace-nowrap text-ink-secondary">
                 {label}
                 <MoneyInput
-                  className={`${inputCompacto} w-24 text-right font-data`}
+                  className={`${filterInputClass} ${alturaCompacta} w-24 text-right font-data`}
                   value={conceptos[key]}
                   moneda={moneda}
                   onChange={(v) => setConceptos({ ...conceptos, [key]: v })}
                 />
               </label>
             ))}
-          </div>
-
-          <div className="min-w-[14rem] space-y-0.5 text-right text-xs xl:border-l xl:border-border xl:pl-4">
-            <p className="font-data text-ink-secondary">
-              Subtotal neto: <span className="text-ink-primary">{formatMoneda(subtotalNeto, moneda)}</span>
-            </p>
-            <p className="font-data text-ink-secondary">
-              IVA: <span className="text-ink-primary">{formatMoneda(ivaCabecera, moneda)}</span>
-            </p>
-            {moneda === "Dolares" ? (
-              <>
-                <p className="font-data text-sm font-semibold text-ink-primary">
-                  Importe total: {formatMoneda(importeTotal, "Dolares")}
-                </p>
-                {importePesificado != null && (
-                  <p className="font-data text-ink-secondary">
-                    Equivalente en pesos (TC {tipoDeCambio}): {formatMoneda(importePesificado, "Pesos")}
-                  </p>
-                )}
-              </>
-            ) : (
-              <p className="font-data text-sm font-semibold text-ink-primary">
-                Importe total: {formatMoneda(importeTotal, "Pesos")}
-              </p>
-            )}
+            {conceptosVisibles.length === 0 && <span className="text-ink-muted">ninguno</span>}
+            <button
+              type="button"
+              onClick={() => setVerTodosConceptos((v) => !v)}
+              className="whitespace-nowrap text-finance hover:underline"
+            >
+              {verTodosConceptos ? "Ocultar vacíos" : "+ Agregar / ver todos"}
+            </button>
           </div>
         </div>
 
-        <div className="flex justify-between gap-2">
-          {mode === "edicion" ? (
-            <button
-              type="button"
-              onClick={handleEliminar}
-              disabled={eliminando || isSaving || lockError != null}
-              title={lockError ?? "Eliminar esta compra (ej. cargada por error). No se puede deshacer."}
-              className="rounded-sm border border-status-danger px-3 py-1.5 text-xs text-status-danger hover:bg-status-danger-bg disabled:opacity-40"
-            >
-              {eliminando ? "Eliminando…" : "Eliminar compra"}
-            </button>
-          ) : (
-            <span />
-          )}
-          <div className="flex justify-end gap-2">
+        <div className="ml-auto flex items-end gap-4">
+          <div className="space-y-0.5 text-right">
+            <p className="font-data text-ink-secondary">
+              Neto <span className="text-ink-primary">{formatMoneda(subtotalNeto, moneda)}</span>
+              {" · "}IVA <span className="text-ink-primary">{formatMoneda(ivaCabecera, moneda)}</span>
+            </p>
+            <p className="font-data text-sm font-semibold text-ink-primary">
+              Importe total {formatMoneda(importeTotal, moneda)}
+            </p>
+            {moneda === "Dolares" && importePesificado != null && (
+              <p className="font-data text-ink-secondary">
+                En pesos (TC {formatNumero(tipoDeCambio ?? 0, { max: 4 })}): {formatMoneda(importePesificado, "Pesos")}
+              </p>
+            )}
+          </div>
+
+          <div className="flex items-center gap-2">
+            {mode === "edicion" && (
+              <button
+                type="button"
+                onClick={handleEliminar}
+                disabled={eliminando || isSaving || lockError != null}
+                title={lockError ?? "Eliminar esta compra (ej. cargada por error). No se puede deshacer."}
+                className="rounded-sm border border-status-danger px-3 py-1.5 text-xs text-status-danger hover:bg-status-danger-bg disabled:opacity-40"
+              >
+                {eliminando ? "Eliminando…" : "Eliminar compra"}
+              </button>
+            )}
             <button
               type="button"
               onClick={() => router.push("/compras")}

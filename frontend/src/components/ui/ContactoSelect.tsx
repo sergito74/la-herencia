@@ -24,6 +24,8 @@ export function ContactoSelect({
   tipoContacto,
   placeholder = "Buscar contacto…",
   label,
+  inputClassName,
+  ariaLabel,
 }: {
   /** IdContacto seleccionado, o null si no hay selección. */
   value: number | null;
@@ -38,6 +40,10 @@ export function ContactoSelect({
   tipoContacto?: TipoContacto | TipoContacto[];
   placeholder?: string;
   label?: string;
+  /** Clases extra del input (ej. versión compacta en formularios densos). */
+  inputClassName?: string;
+  /** Nombre accesible cuando el label visible lo pone el contenedor. */
+  ariaLabel?: string;
 }) {
   const [query, setQuery] = useState(razonSocial ?? "");
   const [isOpen, setIsOpen] = useState(false);
@@ -117,7 +123,8 @@ export function ContactoSelect({
       {label && <label className="text-sm text-ink-secondary">{label}</label>}
       <div className="flex items-center gap-1">
         <input
-          className={`${filterInputClass} w-full`}
+          className={`${filterInputClass} w-full ${inputClassName ?? ""}`}
+          aria-label={ariaLabel ?? label}
           value={query}
           placeholder={placeholder}
           onFocus={() => setIsOpen(true)}
