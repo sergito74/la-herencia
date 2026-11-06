@@ -58,6 +58,9 @@ def ordenes_del_contratista(id_compra: int) -> list[dict]:
                (SELECT STRING_AGG(l.[Numero Lote], ', ') FROM (SELECT DISTINCT d.IdLote FROM dbo.Ordenes_Trabajo_Distrib d
                   JOIN dbo.Ordenes_Trabajo_Insumos i ON i.IdOrdenInsumo = d.IdOrdenInsumo
                   WHERE i.IdOrdenTrabajo = o.IdOrdenTrabajo AND d.Aplicar = 1) x JOIN dbo.Lotes l ON l.IdLote = x.IdLote) AS lotes,
+               (SELECT STRING_AGG(cu.Cultivo, ', ') FROM (SELECT DISTINCT d.IdCultivo FROM dbo.Ordenes_Trabajo_Distrib d
+                  JOIN dbo.Ordenes_Trabajo_Insumos i ON i.IdOrdenInsumo = d.IdOrdenInsumo
+                  WHERE i.IdOrdenTrabajo = o.IdOrdenTrabajo AND d.Aplicar = 1) z JOIN dbo.Cultivos cu ON cu.IdCultivo = z.IdCultivo) AS cultivos,
                (SELECT SUM(s) FROM (SELECT MAX(d.Superficie) s FROM dbo.Ordenes_Trabajo_Distrib d
                   JOIN dbo.Ordenes_Trabajo_Insumos i ON i.IdOrdenInsumo = d.IdOrdenInsumo
                   WHERE i.IdOrdenTrabajo = o.IdOrdenTrabajo AND d.Aplicar = 1 GROUP BY d.IdLote) y) AS hectareas,
@@ -75,6 +78,17 @@ def ordenes_del_contratista(id_compra: int) -> list[dict]:
     filas.sort(key=lambda f: str(f["fecha"]), reverse=True)
     filas.sort(key=lambda f: f["tieneOtraFactura"] and not f["vinculada"])
     return filas
+
+
+def datos_factura(id_compra: int) -> dict:
+    """Fecha y hectáreas facturadas (renglones de labor en hectáreas o sin unidad), para comparar con las órdenes."""
+    f = fetch_one(
+        "SELECT CONVERT(date, c.Fecha) AS fecha, "
+        "(SELECT SUM(d.Cantidad) FROM dbo.Det_Compras d JOIN dbo.Rubros r ON r.IdRubro = d.IdRubro "
+        f" WHERE d.IdCompra = c.IdDeuda AND r.Rubro IN ({_LABOR_SQL}) "
+        "  AND (d.Unidad IS NULL OR d.Unidad = '' OR d.Unidad LIKE 'h%')) AS hectareas "
+        "FROM dbo.Compras c WHERE c.IdDeuda = ?", (*RUBROS_LABOR, id_compra)) or {}
+    return {"fecha": f.get("fecha"), "hectareas": float(f["hectareas"]) if f.get("hectareas") else None}
 
 
 def _guardar_aprobada(id_compra: int, fracciones: list[dict], usuario: str) -> None:

@@ -385,6 +385,7 @@ export interface OrdenTrabajoDeCompra {
   fecha: string;
   labor: string | null;
   lotes: string | null;
+  cultivos: string | null;
   hectareas: number;
   vinculada: boolean;
   tieneOtraFactura: boolean;
@@ -402,6 +403,7 @@ export interface OrdenesTrabajoDeCompra {
   esContratista: boolean;
   esDocumentoDeLabor: boolean;
   esNotaCreditoDebito: boolean;
+  factura: { fecha: string | null; hectareas: number | null } | null;
   ordenes: OrdenTrabajoDeCompra[];
   reparto: RepartoContratista[];
 }

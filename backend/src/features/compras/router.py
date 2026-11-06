@@ -238,6 +238,7 @@ def _ordenes_trabajo(id_compra: int) -> dict:
     nota = dc.es_nota_credito_debito(id_compra)
     labor = not nota and dc.es_documento_de_labor(id_compra)
     return {"esContratista": dc.es_contratista(id_compra), "esDocumentoDeLabor": labor, "esNotaCreditoDebito": nota,
+            "factura": dc.datos_factura(id_compra) if labor else None,
             "ordenes": dc.ordenes_del_contratista(id_compra) if labor else [],
             "reparto": dc.reparto(id_compra)}
 
