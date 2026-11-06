@@ -949,7 +949,8 @@ def get_rubro_sugerido(producto_servicio: str) -> dict | None:
 
 
 def contratos_canje(id_contacto: int) -> list[dict]:
-    """Contratos de canje de granos del proveedor (Documents/La Herencia/Agricultura/Contratos), el más nuevo primero."""
+    """Contratos de canje de granos del proveedor (Documents/La Herencia/Agricultura/Contratos), el más nuevo primero.
+    Solo los de tipo canje (se cancela una factura con granos); los de venta fijan precio por fuera de las facturas."""
     return fetch_all("SELECT IdContratoCanje idContratoCanje, Numero numero, Fecha fecha, Grano grano, Campania campania, "
                      "Kilos kilos, EntregaDesde entregaDesde, EntregaHasta entregaHasta FROM dbo.ContratosCanje "
-                     "WHERE IdContacto=? ORDER BY Fecha DESC", (id_contacto,))
+                     "WHERE IdContacto=? AND Tipo='canje' ORDER BY Fecha DESC", (id_contacto,))
