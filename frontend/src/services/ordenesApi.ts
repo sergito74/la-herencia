@@ -117,7 +117,7 @@ export interface FiltrosOrdenes {
 }
 
 export const fetchOrdenes = (f: FiltrosOrdenes, page: number, pageSize = 25) =>
-  apiGet<Paginado<OrdenListItem> & { totalHectareas: number }>("/api/ordenes", {
+  apiGet<Paginado<OrdenListItem>>("/api/ordenes", {
     idContratista: f.idContratista ?? undefined,
     idTipoLabor: f.idTipoLabor ?? undefined,
     idLote: f.idLote ?? undefined,

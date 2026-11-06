@@ -158,12 +158,6 @@ export function OrdenesListado() {
       {isLoading && <LoadingState />}
       {isError && <ErrorState message="No se pudieron cargar las órdenes." />}
       {data && (
-        <p className="text-sm text-ink-secondary">
-          {data.total} {data.total === 1 ? "orden" : "órdenes"} · Total {formatNumero(data.totalHectareas, { max: 1 })} ha
-          <span className="text-ink-muted"> (sin contar las anuladas)</span>
-        </p>
-      )}
-      {data && (
         <DataTable
           columns={filtros.insumo ? [...COLUMNAS, COLUMNA_INSUMOS] : COLUMNAS}
           rows={data.items}

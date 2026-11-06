@@ -283,9 +283,7 @@ def listar_ordenes(
             usados.setdefault(r["idOrden"], []).append({"producto": r["producto"], "cantidad": _f(r["cantidad"]), "unidad": r["unidad"]})
         for o in pagina:
             o["insumosCoincidentes"] = usados.get(o["idOrden"], [])
-    # Total de hectáreas de todas las órdenes filtradas (no solo la página); sin contar las anuladas.
-    total_ha = round(sum(o["hectareas"] for o in items if o["estado"] != "Anulada"), 1)
-    return {"items": pagina, "total": len(items), "page": page, "pageSize": page_size, "totalHectareas": total_ha}
+    return {"items": pagina, "total": len(items), "page": page, "pageSize": page_size}
 
 
 def obtener_orden(id_orden: int) -> dict | None:
