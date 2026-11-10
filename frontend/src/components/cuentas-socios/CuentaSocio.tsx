@@ -41,6 +41,11 @@ const ORIGENES: Record<string, string> = {
   Mutuo2018: "Mutuo 2018",
   PagoBalance2025: "Pago balance 2025",
   ArcaGaliciaLucy036: "Débito Galicia personal",
+  // Vínculo documental (10/11/2026): el socio pagó un gasto de Giamigli; apunta al comprobante, no mueve cuentas.
+  Impuestos: "Pagó el socio · obligación de impuesto",
+  Remuneraciones: "Pagó el socio · recibo de sueldo",
+  Compras: "Pagó el socio · factura de compra",
+  MercadoPago: "Mercado Pago Giamigli",
 };
 
 /** Origen del movimiento, en una segunda línea chica debajo del concepto. */
