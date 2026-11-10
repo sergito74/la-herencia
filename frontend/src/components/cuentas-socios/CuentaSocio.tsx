@@ -46,6 +46,7 @@ const ORIGENES: Record<string, string> = {
   Remuneraciones: "Pagó el socio · recibo de sueldo",
   Compras: "Pagó el socio · factura de compra",
   MercadoPago: "Mercado Pago Giamigli",
+  TrabajosEventuales: "Pagó el socio · trabajo eventual",
 };
 
 /** Origen del movimiento, en una segunda línea chica debajo del concepto. */
