@@ -127,4 +127,23 @@ def test_mail_con_factura_en_dolares(monkeypatch):
     texto = message_from_bytes(eml, policy=policy.default).get_body(('plain',)).get_content()
     assert '| Tipo Cambio | Importe pesos' in texto
     assert 'Dolares | Transferencia bancaria | US$ 5.227,20 | $ 267,95/u$s | $ 1.400.628,24' in texto
-    assert avisos == ['La factura 0149 - 00011970 no tiene archivo para adjuntar']
+    assert avisos == ['La factura 0149 - 00011970 de Lartirigoyen no tiene archivo para adjuntar']
+
+
+def test_mail_con_varias_ordenes_y_fecha_texto(monkeypatch, tmp_path):
+    a, b = tmp_path / 'a.pdf', tmp_path / 'b.pdf'
+    a.write_bytes(b'%PDF-1.4'); b.write_bytes(b'%PDF-1.4')
+    monkeypatch.setattr(mail, 'fetch_all', lambda *x: [
+        {'i': 1, 'f': date(2026, 11, 2), 'v': date(2026, 11, 30), 't': 'Factura', 'n': 'A-1', 'd': str(a)},
+        {'i': 2, 'f': date(2026, 11, 3), 'v': date(2026, 11, 3), 't': 'Factura', 'n': 'B-7', 'd': str(b)}])
+    ordenes = [{'proveedor': 'Prov A', 'fechaPago': '2026-11-10', 'facturas': [{'idCompra': 1, 'importe': 100}],
+                'medios': [{'medio': 'Transferencia'}]},
+               {'proveedor': 'Prov B', 'fechaPago': '2026-11-11', 'facturas': [{'idCompra': 2, 'importe': 200}],
+                'medios': [{'medio': 'Cheque'}]}]
+    eml, avisos = mail.armar(ordenes)
+    m = message_from_bytes(eml, policy=policy.default)
+    texto = m.get_body(('plain',)).get_content()
+    assert not avisos and m['Subject'] == 'Giamigli de Bolivar S.A. - Retenciones'
+    assert '02/11/2026 | 30/11/2026 | 10/11/2026 | Prov A' in texto and '11/11/2026 | Prov B' in texto
+    assert 'Cheque Electronico' in texto
+    assert [x.get_filename() for x in m.iter_attachments()] == ['a.pdf', 'b.pdf']

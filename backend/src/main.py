@@ -123,6 +123,7 @@ app.add_middleware(
     allow_methods=["GET", "PATCH", "POST", "PUT", "DELETE"],
     allow_headers=["*"],
     allow_credentials=True,
+    expose_headers=["X-Avisos", "Content-Disposition"],
 )
 
 # Endpoints exentos de autenticación (016-autenticacion, FR-001): el propio

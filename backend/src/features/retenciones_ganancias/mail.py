@@ -5,6 +5,7 @@ adjuntas. Se descarga como .eml sin enviar (X-Unsent) para que Outlook lo abra c
 """
 import mimetypes
 import os
+from datetime import date
 from email.message import EmailMessage
 from html import escape
 
@@ -24,6 +25,8 @@ def _pesos(v) -> str:
 
 
 def _fecha(d) -> str:
+    if isinstance(d, str):  # el repositorio devuelve fechas ISO como texto
+        d = date.fromisoformat(d[:10]) if d else None
     return f'{d:%d/%m/%Y}' if d else ''
 
 
@@ -37,31 +40,38 @@ def _archivos(doc: str | None) -> list[str]:
     return out
 
 
-def armar(orden: dict) -> tuple[bytes, list[str]]:
-    """Devuelve el .eml y los avisos (facturas sin archivo para adjuntar)."""
-    ids = [f['idCompra'] for f in orden['facturas']]
+def armar(ordenes: dict | list[dict]) -> tuple[bytes, list[str]]:
+    """Un solo mail con todas las órdenes (Sergio 10/11/2026). Devuelve el .eml y los avisos (facturas sin archivo)."""
+    ordenes = [ordenes] if isinstance(ordenes, dict) else ordenes
+    if not ordenes:
+        raise ValueError('Elegí al menos una orden de pago')
+    ids = list(dict.fromkeys(f['idCompra'] for o in ordenes for f in o['facturas']))
     marcas = ','.join('?' * len(ids))
+    # Vencimiento: dbo.[Vencimiento Compras] (A Plazo); si no hay, Contado = fecha de la factura. Nunca Compras.[Fecha Vto].
     compras = {c['i']: c for c in fetch_all(
-        f'SELECT IdDeuda i,Fecha f,[Fecha Vto] v,[Tipo documento] t,[Nro Documento] n,[Documento Original] d,Moneda m,[Tipo de Cambio] tc '
-        f'FROM dbo.Compras WHERE IdDeuda IN ({marcas})', tuple(ids))}
-    forma = ' / '.join(dict.fromkeys(FORMA.get(m['medio'], m['medio']) for m in orden['medios']))
+        f'SELECT c.IdDeuda i,c.Fecha f,ISNULL(v.vto,c.Fecha) v,c.[Tipo documento] t,c.[Nro Documento] n,'
+        f'c.[Documento Original] d,c.Moneda m,c.[Tipo de Cambio] tc FROM dbo.Compras c LEFT JOIN '
+        f'(SELECT IdCompra,MAX([Fecha de vencimiento]) vto FROM dbo.[Vencimiento Compras] GROUP BY IdCompra) v '
+        f'ON v.IdCompra=c.IdDeuda WHERE c.IdDeuda IN ({marcas})', tuple(ids))}
     filas, adjuntos, avisos = [], [], []
-    for f in orden['facturas']:
-        c = compras[f['idCompra']]
-        fila = [_fecha(c['f']), _fecha(c['v']), _fecha(orden['fechaPago']), orden['proveedor'], c['t'] or 'Factura', c['n'] or '']
-        if c.get('m') == 'Dolares':  # como en los mails de siempre: importe en US$, TC del comprobante e importe en pesos
-            tc = float(c['tc'])
-            filas.append((*fila, 'Dolares', forma, _pesos(float(f['importe']) / tc).replace('$', 'US$'),
-                          f"$ {_pesos(tc)[2:]}/u$s", _pesos(f['importe'])))
-        else:
-            filas.append((*fila, 'Pesos', forma, _pesos(f['importe']), '', _pesos(f['importe'])))
-        archivos = _archivos(c['d'])
-        if not archivos:
-            avisos.append(f"La factura {c['n']} no tiene archivo para adjuntar")
-        adjuntos += archivos
+    for orden in ordenes:
+        forma = ' / '.join(dict.fromkeys(FORMA.get(m['medio'], m['medio']) for m in orden['medios']))
+        for f in orden['facturas']:
+            c = compras[f['idCompra']]
+            fila = [_fecha(c['f']), _fecha(c['v']), _fecha(orden['fechaPago']), orden['proveedor'], c['t'] or 'Factura', c['n'] or '']
+            if c.get('m') == 'Dolares':  # como en los mails de siempre: importe en US$, TC del comprobante e importe en pesos
+                tc = float(c['tc'])
+                filas.append((*fila, 'Dolares', forma, _pesos(float(f['importe']) / tc).replace('$', 'US$'),
+                              f"$ {_pesos(tc)[2:]}/u$s", _pesos(f['importe'])))
+            else:
+                filas.append((*fila, 'Pesos', forma, _pesos(f['importe']), '', _pesos(f['importe'])))
+            archivos = _archivos(c['d'])
+            if not archivos:
+                avisos.append(f"La factura {c['n'] or 'sin número'} de {orden['proveedor']} no tiene archivo para adjuntar")
+            adjuntos += archivos
     columnas = COLUMNAS + ('Tipo Cambio', 'Importe pesos') if any(r[6] == 'Dolares' for r in filas) else COLUMNAS
     filas = [r if len(columnas) > len(COLUMNAS) else r[:len(COLUMNAS)] for r in filas]
-    varias = len(orden['facturas']) > 1
+    varias = len(filas) > 1
     intro = (f"Te mando adjunta{'s' if varias else ''} {'facturas' if varias else 'una factura'} para hacer el cálculo de la "
              f"retención de acuerdo al siguiente detalle:")
     texto = '\n'.join(['Hola Karen, buen día.', '', intro, '', ' | '.join(columnas)] + [' | '.join(r) for r in filas]

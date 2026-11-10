@@ -116,6 +116,7 @@ class OrdenResumen(BaseModel):
     estado: Estado
     observaciones: str | None
     version: int
+    retencionGanancias: float = 0
 
 
 class FacturaDetalle(BaseModel):
@@ -142,7 +143,6 @@ class RetencionDetalle(BaseModel):
 
 
 class Orden(OrdenResumen):
-    retencionGanancias: float = 0
     facturas: list[FacturaDetalle]
     medios: list[MedioDetalle]
     retenciones: list[RetencionDetalle] = []

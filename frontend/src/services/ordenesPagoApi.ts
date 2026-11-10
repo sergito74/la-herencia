@@ -34,5 +34,13 @@ export const exclusionesRetencion=()=>apiGet<Exclusion[]>(`${base}/retenciones/e
 export const agregarExclusion=(body:{idContacto:number;desde:string;hasta:string;observaciones:string})=>apiPost(`${base}/retenciones/exclusiones`,body);
 export const borrarExclusion=(id:number)=>apiDelete(`${base}/retenciones/exclusiones/${id}`);
 export const actualizarPadron=()=>apiPost<{contactosConCuit:number;encontrados:number;actualizado:string}>(`${base}/retenciones/padron`,{});
-export const mailEstudioOP=(id:number)=>`${API_BASE_URL}${base}/${id}/mail-estudio`;
+/** Descarga un solo borrador .eml con todas las órdenes elegidas; devuelve los avisos (facturas sin archivo). */
+export async function mailEstudioOP(ids:number[]):Promise<string[]>{
+ const q=ids.map(i=>`ids=${i}`).join('&');
+ const r=await fetch(`${API_BASE_URL}${base}/mail-estudio?${q}`,{credentials:'include'});
+ if(!r.ok){let m='No se pudo preparar el mail';try{const d=await r.json();if(typeof d.detail==='string')m=d.detail;}catch{}throw new Error(m);}
+ const nombre=/filename="([^"]+)"/.exec(r.headers.get('Content-Disposition')??'')?.[1]??'retencion.eml';
+ const url=URL.createObjectURL(await r.blob());const a=document.createElement('a');a.href=url;a.download=nombre;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
+ try{return JSON.parse(decodeURIComponent(r.headers.get('X-Avisos')??'%5B%5D'));}catch{return [];}
+}
 export const conciliarEmitidas=()=>apiPost<{pagadas:number[];ambiguas:number[]}>(`${base}/conciliar-emitidas`,{});

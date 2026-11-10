@@ -1,3 +1,6 @@
+import json
+from urllib.parse import quote
+
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import FileResponse, Response
 
@@ -119,12 +122,24 @@ def conciliar_emitidas(request: Request, idContacto: int | None = Query(None, gt
     return llamar(repo.conciliar_emitidas, usuario_actual(request), idContacto)
 
 
-@router.get('/{id_}/mail-estudio')
-def mail_estudio(id_: int):
-    orden = llamar(repo.obtener, id_)
-    eml, _ = mail.armar(orden)
-    nombre = f'OP{id_:06d}-retencion.eml'
-    return Response(eml, media_type='message/rfc822', headers={'Content-Disposition': f'attachment; filename="{nombre}"'})
+def _ordenes_para_mail(ids: list[int]) -> list[dict]:
+    ordenes = [repo.obtener(i) for i in dict.fromkeys(ids)]
+    for o in ordenes:
+        if o['estado'] == 'Anulada':
+            raise ValueError(f"La orden {o['idOrdenPago']:06d} está anulada")
+        if not o.get('retencionGanancias'):
+            raise ValueError(f"La orden {o['idOrdenPago']:06d} no lleva retención de Ganancias")
+    return ordenes
+
+
+@router.get('/mail-estudio')
+def mail_estudio(ids: list[int] = Query(..., min_length=1)):
+    """Un solo borrador de mail al estudio con todas las órdenes elegidas y sus facturas adjuntas."""
+    ordenes = llamar(_ordenes_para_mail, ids)
+    eml, avisos = llamar(mail.armar, ordenes)
+    nombre = (f'OP{ids[0]:06d}' if len(ordenes) == 1 else f'{len(ordenes)}-ordenes') + '-retencion.eml'
+    return Response(eml, media_type='message/rfc822', headers={
+        'Content-Disposition': f'attachment; filename="{nombre}"', 'X-Avisos': quote(json.dumps(avisos, ensure_ascii=False))})
 
 
 @router.get('/{id_}', response_model=Orden)
