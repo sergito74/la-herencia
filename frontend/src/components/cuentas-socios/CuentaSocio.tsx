@@ -27,20 +27,15 @@ import { formatCantidad, formatMoneda, formatFecha } from "@/lib/format";
 
 const MEDIOS_DEVOLUCION = ["Transferencia", "Efectivo", "Cheque", "Otro"];
 
-function OrigenMovimientoSocio({ m }: { m: MovimientoCuentaSocio }) {
-  if (m.tipo === "Devolucion") {
-    return <span>Devolución{m.medio ? ` (${m.medio})` : ""}</span>;
-  }
-  if (m.huerfano) {
-    return <span className="text-status-danger">Compra particular #{m.idOrigen} (ya no existe)</span>;
-  }
-  return (
-    <span>
-      {m.proveedorOrigen ?? "Compra particular"}
-      {m.numeroDocumentoOrigen ? ` — ${m.numeroDocumentoOrigen}` : ""}
-    </span>
-  );
+/** Origen del movimiento, en una segunda línea chica debajo del concepto. */
+function origenTexto(m: MovimientoCuentaSocio): string {
+  if (m.tipo === "Devolucion") return `Devolución${m.medio ? ` · ${m.medio}` : ""}`;
+  if (m.huerfano) return "Compra particular (ya no existe)";
+  return `Compra particular · ${m.proveedorOrigen ?? "sin proveedor"}${m.numeroDocumentoOrigen ? ` — ${m.numeroDocumentoOrigen}` : ""}`;
 }
+
+const debe = (m: MovimientoCuentaSocio) => m.tipo === "AsignacionGasto";
+const vacio = <span className="text-ink-muted">—</span>;
 
 /** Cuenta corriente de un socio: saldo + movimientos (021 US2), con
  * anulación en un paso (US1/US3) y registro de devoluciones (US3). Un
@@ -109,62 +104,66 @@ export function CuentaSocio({ idSocio }: { idSocio: number }) {
     }
   }
 
+  // Saldo acumulado (kg y US$) en orden cronológico; no depende del filtro ni del orden de la tabla.
+  const saldos = new Map<number, { kg: number; usd: number }>();
+  {
+    let kg = 0, usd = 0;
+    for (const m of data?.movimientos ?? []) {
+      if (!m.anulada) {
+        const signo = debe(m) ? 1 : -1;
+        kg += signo * (m.importeKgCarne ?? 0);
+        usd += signo * (m.importeUSD ?? 0);
+      }
+      saldos.set(m.idMovimiento, { kg, usd });
+    }
+  }
+  const celda = (m: MovimientoCuentaSocio, enDebe: boolean, v: number | null | undefined, formato: (v: number) => string) =>
+    enDebe === debe(m) && v ? formato(v) : vacio;
+  const pesos = (v: number) => formatMoneda(v);
+  const dolares = (v: number) => formatMoneda(v, "Dolares");
+  const kilos = (v: number) => `${formatCantidad(v)} kg`;
+  const tono = (v: number) => (v > 0 ? "text-status-danger" : v < 0 ? "text-status-success" : "");
+  const num = { align: "right" as const, numeric: true };
+
   const columns: DataTableColumn<MovimientoCuentaSocio>[] = [
-    { key: "fecha", header: "Fecha", sortValue: (m) => m.fecha, render: (m) => formatFecha(m.fecha) },
-    { key: "tipo", header: "Tipo", render: (m) => (m.tipo === "AsignacionGasto" ? "Debe" : "Haber") },
-    { key: "concepto", header: "Concepto", render: (m) => m.motivo ?? "—" },
-    { key: "origen", header: "Origen", render: (m) => <OrigenMovimientoSocio m={m} /> },
+    { key: "fecha", header: "Fecha", width: "w-[5.75rem]", sortValue: (m) => m.fecha, render: (m) => formatFecha(m.fecha) },
     {
-      key: "importe",
-      header: "Importe",
-      align: "right",
-      numeric: true,
-      sortValue: (m) => m.importe,
+      key: "concepto", header: "Concepto", wrap: true,
       render: (m) => (
-        <span className={m.tipo === "AsignacionGasto" ? "text-status-danger" : "text-status-success"}>
-          {formatMoneda(m.importe)}
-        </span>
+        <div title={m.usuario ? `Cargado por ${m.usuario}` : undefined}>
+          <div>{m.motivo ?? "—"}</div>
+          <div className={`text-xs ${m.huerfano ? "text-status-danger" : "text-ink-muted"}`}>{origenTexto(m)}</div>
+        </div>
       ),
     },
+    { key: "debe", header: "Debe $", width: "w-[7.25rem]", ...num, render: (m) => celda(m, true, m.importe, pesos) },
+    { key: "haber", header: "Haber $", width: "w-[7.25rem]", ...num, render: (m) => celda(m, false, m.importe, pesos) },
+    { key: "debeUSD", header: "Debe US$", width: "w-[6rem]", ...num, render: (m) => celda(m, true, m.importeUSD, dolares) },
+    { key: "haberUSD", header: "Haber US$", width: "w-[6rem]", ...num, render: (m) => celda(m, false, m.importeUSD, dolares) },
+    { key: "debeKg", header: "Debe kg", width: "w-[5.5rem]", ...num, render: (m) => celda(m, true, m.importeKgCarne, kilos) },
+    { key: "haberKg", header: "Haber kg", width: "w-[5.5rem]", ...num, render: (m) => celda(m, false, m.importeKgCarne, kilos) },
     {
-      key: "importeUSD",
-      header: "USD",
-      align: "right",
-      numeric: true,
-      sortValue: (m) => m.importeUSD,
-      render: (m) => (m.importeUSD ? formatMoneda(m.importeUSD, "Dolares") : "—"),
+      key: "saldoKg", header: "Saldo kg", width: "w-[7.25rem]", ...num,
+      render: (m) => { const v = saldos.get(m.idMovimiento)?.kg ?? 0; return <span className={`font-medium ${tono(v)}`}>{kilos(v)}</span>; },
     },
     {
-      key: "importeKgCarne",
-      header: "Kg. Carne",
-      align: "right",
-      numeric: true,
-      sortValue: (m) => m.importeKgCarne,
-      render: (m) => (m.importeKgCarne ? `${formatCantidad(m.importeKgCarne)} kg` : "—"),
+      key: "saldoUSD", header: "Saldo US$", width: "w-[7.25rem]", ...num,
+      render: (m) => { const v = saldos.get(m.idMovimiento)?.usd ?? 0; return <span className={`font-medium ${tono(v)}`}>{dolares(v)}</span>; },
     },
     {
-      key: "estado",
-      header: "Estado",
+      key: "acciones", header: "", width: "w-[5.5rem]",
       render: (m) =>
         m.anulada ? (
-          <span className="text-ink-secondary line-through" title={m.motivoAnulacion ?? ""}>
-            Anulado{m.motivoAnulacion ? `: ${m.motivoAnulacion}` : ""}
-          </span>
+          <span className="text-xs text-ink-secondary" title={m.motivoAnulacion ?? ""}>Anulado</span>
+        ) : m.idOperacionCaja ? (
+          <a className="text-xs text-finance underline" href="/finanzas/cajas" title="Se corrige o anula desde la caja que lo generó">De caja</a>
         ) : (
-          m.idOperacionCaja ? (
-            <a className="text-sm text-finance underline" href="/finanzas/cajas" title="Se corrige o anula desde la caja que lo generó">
-              De caja (op. {m.idOperacionCaja})
-            </a>
-          ) : (
-            <SoloLectura>
-              <span className="flex gap-3">
-                {m.editable && (
-                  <button type="button" onClick={() => setDrawer(m)} className="text-sm text-finance underline">Editar</button>
-                )}
-                <button type="button" onClick={() => anular(m)} className="text-sm text-finance underline">Anular</button>
-              </span>
-            </SoloLectura>
-          )
+          <SoloLectura>
+            <span className="flex gap-2 text-xs">
+              {m.editable && <button type="button" onClick={() => setDrawer(m)} className="text-finance underline">Editar</button>}
+              <button type="button" onClick={() => anular(m)} className="text-finance underline">Anular</button>
+            </span>
+          </SoloLectura>
         ),
     },
   ];
@@ -177,7 +176,7 @@ export function CuentaSocio({ idSocio }: { idSocio: number }) {
       {data && (
         <>
           <ControlBancoSocio idSocio={idSocio} />
-          <div className="flex items-center justify-between gap-4 rounded-md border border-border bg-surface p-4">
+          <div className="flex flex-wrap items-center justify-between gap-4 rounded-md border border-border bg-surface p-4">
             <div>
               <h2 className="text-lg font-semibold text-ink-primary">{data.nombre}</h2>
               <p className="text-sm text-ink-secondary">
@@ -314,6 +313,9 @@ export function CuentaSocio({ idSocio }: { idSocio: number }) {
             rows={[...data.movimientos].reverse().filter((m) => (verAnulados || !m.anulada) && (!anio || m.fecha.startsWith(anio))
               && (!buscar || `${m.motivo ?? ""} ${m.proveedorOrigen ?? ""} ${m.medio ?? ""}`.toLowerCase().includes(buscar.toLowerCase())))}
             keyField={(m) => m.idMovimiento}
+            layout="fixed"
+            stickyHeader
+            rowClassName={(m) => (m.anulada ? "line-through text-ink-muted" : undefined)}
             emptyMessage="Sin movimientos registrados para este socio."
             page={1}
             pageSize={Math.max(data.movimientos.length, 1)}

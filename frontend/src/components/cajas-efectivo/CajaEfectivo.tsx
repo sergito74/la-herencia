@@ -34,12 +34,13 @@ const NOMBRES: Record<CajaSlug, string> = {
 };
 
 const COLUMNS: DataTableColumn<MovimientoCajaEfectivo>[] = [
-  { key: "fecha", header: "Fecha", sortValue: (m) => m.fecha, render: (m) => formatFecha(m.fecha) },
-  { key: "concepto", header: "Concepto", sortValue: (m) => m.concepto ?? "", render: (m) => m.concepto ?? "—" },
-  { key: "detalle", header: "Detalle", sortValue: (m) => m.detalle ?? "", render: (m) => m.detalle ?? "—" },
+  { key: "fecha", header: "Fecha", width: "w-[6.5rem]", sortValue: (m) => m.fecha, render: (m) => formatFecha(m.fecha) },
+  { key: "concepto", header: "Concepto", wrap: true, width: "w-[17%]", sortValue: (m) => m.concepto ?? "", render: (m) => m.concepto ?? "—" },
+  { key: "detalle", header: "Detalle", wrap: true, sortValue: (m) => m.detalle ?? "", render: (m) => m.detalle ?? "—" },
   {
     key: "importe",
     header: "Importe",
+    width: "w-[9rem]",
     align: "right",
     numeric: true,
     sortValue: (m) => m.importe,
@@ -47,10 +48,10 @@ const COLUMNS: DataTableColumn<MovimientoCajaEfectivo>[] = [
       <span className={m.importe < 0 ? "text-status-danger" : "text-status-success"}>{formatMoneda(m.importe)}</span>
     ),
   },
-  { key: "cuenta", header: "Cuenta", render: (m) => m.cuenta ?? "—" },
-  { key: "saldo", header: "Saldo real de caja", align: "right", render: m => m.saldoCorridoDecimal == null ? "—" : formatMoneda(Number(m.saldoCorridoDecimal)) },
-  { key: "estado", header: "Estado", render: m => m.anulada ? "Anulado" : m.idOperacion ? "Vigente" : "Histórico" },
-  { key: "formaPago", header: "Forma de pago", render: (m) => m.formaPago ?? "—" },
+  { key: "cuenta", header: "Cuenta", wrap: true, width: "w-[12%]", render: (m) => m.cuenta ?? "—" },
+  { key: "saldo", header: "Saldo real de caja", align: "right", numeric: true, width: "w-[9.5rem]", render: m => m.saldoCorridoDecimal == null ? "—" : formatMoneda(Number(m.saldoCorridoDecimal)) },
+  { key: "estado", header: "Estado", width: "w-[6rem]", render: m => m.anulada ? "Anulado" : m.idOperacion ? "Vigente" : "Histórico" },
+  { key: "formaPago", header: "Forma de pago", wrap: true, width: "w-[8rem]", render: (m) => m.formaPago ?? "—" },
 ];
 
 /** Caja 038: operaciones, consulta, arqueos e importación con permisos existentes. */
@@ -138,9 +139,12 @@ export function CajaEfectivo({ caja }: { caja: CajaSlug }) {
 
       {movimientos && (
         <DataTable
-          columns={[...columns, { key: "operacion", header: "Origen", render: m => m.idOperacion ? <button className="underline" onClick={() => setDetalle(m.idOperacion!)}>Ver / anular / corregir</button> : m.numeroDocumento || m.formaPago || "Historia de planilla" }]}
+          columns={[...columns, { key: "operacion", header: "Origen", wrap: true, width: "w-[8rem]", render: m => m.idOperacion ? <button className="underline" onClick={() => setDetalle(m.idOperacion!)}>Ver / anular / corregir</button> : m.numeroDocumento || m.formaPago || "Historia de planilla" }]}
           rows={movimientos.items}
           keyField={(m) => m.idMovimiento}
+          layout="fixed"
+          stickyHeader
+          rowClassName={(m) => (m.anulada ? "line-through text-ink-muted" : undefined)}
           emptyMessage="Sin movimientos registrados para esta caja."
           page={movimientos.page}
           pageSize={movimientos.pageSize}

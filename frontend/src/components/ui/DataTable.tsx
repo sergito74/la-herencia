@@ -16,6 +16,8 @@ export interface DataTableColumn<T> {
    * o seguir en la fila de abajo). Marcar `wrap: true` solo en columnas de
    * texto libre genuinamente largo (descripción, detalle, comentarios). */
   wrap?: boolean;
+  /** Ancho de la columna (clase Tailwind, ej. "w-24"); se usa con `layout="fixed"`. Sin ancho, toma lo que sobra. */
+  width?: string;
   render: (row: T) => React.ReactNode;
   /** Si se define, la columna admite ordenamiento por click en el header. */
   sortValue?: (row: T) => string | number | null;
@@ -48,6 +50,13 @@ interface DataTableProps<T> {
    */
   sort?: SortState;
   onSortChange?: (sort: SortState) => void;
+  /** "fixed": la tabla nunca pasa del ancho de la pantalla (sin scroll horizontal); las columnas
+   * con `width` quedan fijas y el resto se reparte lo que sobra. */
+  layout?: "auto" | "fixed";
+  /** Títulos de columna fijos al bajar por la página (solo con layout "fixed"). */
+  stickyHeader?: boolean;
+  /** Clase extra por fila (ej. anulados tachados). */
+  rowClassName?: (row: T) => string | undefined;
 }
 
 /**
@@ -66,7 +75,11 @@ export function DataTable<T>({
   highlightKey,
   sort: controlledSort,
   onSortChange,
+  layout = "auto",
+  stickyHeader = false,
+  rowClassName,
 }: DataTableProps<T>) {
+  const fijo = layout === "fixed";
   const [internalSort, setInternalSort] = useState<SortState>(null);
   const controlado = onSortChange != null;
   const sort = controlado ? controlledSort ?? null : internalSort;
@@ -115,9 +128,10 @@ export function DataTable<T>({
 
   return (
     <div className="space-y-3">
-      <div className="overflow-x-auto rounded-md border border-border bg-surface">
-        <table className="min-w-full divide-y divide-border text-sm">
-          <thead className="bg-surface-sunken text-left">
+      <div className={`${fijo ? "" : "overflow-x-auto "}rounded-md border border-border bg-surface`}>
+        <table className={`${fijo ? "w-full table-fixed" : "min-w-full"} divide-y divide-border text-sm`}>
+          {fijo && <colgroup>{columns.map((c) => <col key={c.key} className={c.width} />)}</colgroup>}
+          <thead className={`bg-surface-sunken text-left ${fijo && stickyHeader ? "sticky top-[53px] z-10 shadow-[0_1px_0_var(--color-border,#e5e5e5)]" : ""}`}>
             <tr>
               {columns.map((col) => {
                 const active = sort?.key === col.key;
@@ -125,7 +139,7 @@ export function DataTable<T>({
                   <th
                     key={col.key}
                     title={col.sortValue ? "Ordenar por esta columna" : undefined}
-                    className={`px-3 py-1.5 whitespace-nowrap font-medium text-ink-secondary ${
+                    className={`${fijo ? "px-2" : "px-3"} py-1.5 whitespace-nowrap font-medium text-ink-secondary ${
                       col.align === "right" ? "text-right" : "text-left"
                     } ${col.sortValue ? "cursor-pointer select-none hover:text-ink-primary" : ""}`}
                     onClick={() => toggleSort(col)}
@@ -151,14 +165,14 @@ export function DataTable<T>({
                 <tr
                   key={key}
                   ref={isHighlighted ? highlightRef : undefined}
-                  className={isHighlighted ? "bg-status-warning-bg" : "hover:bg-surface-sunken"}
+                  className={`${isHighlighted ? "bg-status-warning-bg" : "hover:bg-surface-sunken"} ${rowClassName?.(row) ?? ""}`}
                 >
                   {columns.map((col) => (
                     <td
                       key={col.key}
-                      className={`px-3 py-1.5 ${col.align === "right" ? "text-right" : ""} ${
+                      className={`${fijo ? "px-2" : "px-3"} py-1.5 ${col.align === "right" ? "text-right" : ""} ${
                         col.numeric ? "font-data" : ""
-                      } ${col.wrap ? "" : "whitespace-nowrap"}`}
+                      } ${col.wrap ? "break-words align-top" : "whitespace-nowrap"} ${fijo ? "align-top" : ""}`}
                     >
                       {col.render(row)}
                     </td>
