@@ -26,7 +26,9 @@ from src.features.boveda.conectores.espera import cargada, ir
 
 INGRESO = "https://www.sancorseguros.com.ar/autogestion/ingresar"
 APP = "https://autogestion.sancorseguros.com.ar"
-ID_CONTACTO = 171
+ID_CONTACTO = 171  # Sancor Seguros Giamigli (Vida Colectivo 618733, Vida Obligatorio)
+# Sancor Seguros Irma (10/11/2026): Accidentes Personales, Salud y Vida Colectivo de Irma; las pagan los socios.
+ID_CONTACTO_IRMA = 5685
 RUBRO = 2047893446  # Seguros Laborales
 CENTRO_COSTO = 3  # Adm. General
 _FACTURA = re.compile(r"([ABC]) FACTURA N\S*:\s*(\d{5})\s*-\s*(\d{8})")
@@ -40,6 +42,15 @@ _NUMERO = re.compile(r"FACTURA N\S*\s*:\s*(\d{5})\s*-\s*(\d{8})")
 _INICIO = re.compile(r"(?=ORIGINAL\s*\n\s*[ABC] FACTURA N)")
 _POLIZA = re.compile(r"Vigencia\s*\n\s*(\d+)/\d+\s+(\d+)")
 RAMOS = {"600": "Acc. personales", "2500": "Salud", "1730": "Vida colectivo"}
+
+
+def contacto_del_pdf(texto: str) -> int:
+    """Cuenta de Sancor de un PDF de mail/Dropbox: si trae Accidentes Personales (ramo 600) o Salud (2500) es el
+    recibo de Irma (sus 3 pólizas vienen juntas); si no, Giamigli (Vida Colectivo 618733 / Vida Obligatorio)."""
+    ramos = {m.group(1) for m in _POLIZA.finditer(texto)}
+    if ramos & {"600", "2500"} or re.search(r"Acc\S*\s*personales|Accidentes Personales|\bSalud\b", texto, re.I):
+        return ID_CONTACTO_IRMA
+    return ID_CONTACTO
 
 
 def facturas_del_pdf(texto: str) -> list[str]:
@@ -70,9 +81,10 @@ class ConectorSancor:
     tiene_carga_compras = True
     mapeo_proveedores: dict = {}
 
-    def __init__(self, codigo: str = "sancor", nombre: str = "Sancor Seguros"):
+    def __init__(self, codigo: str = "sancor", nombre: str = "Sancor Seguros", id_contacto: int = ID_CONTACTO):
         self.codigo = codigo
         self.nombre = nombre
+        self.id_contacto = id_contacto
 
     def ingresar(self, pw, credencial: Credencial) -> _Sesion:
         browser = pw.chromium.launch(channel="chrome", headless=True)
@@ -158,7 +170,7 @@ class ConectorSancor:
                                      "date": impreso, "receipt": 0, "certificateNumber": str(pol.get("certificateNumber") or 0)}}
                 doc = DocumentoPortal(clave=f"sancor:{clave}", fecha=fecha, tipo="factura", proveedor="SancorSeguros",
                                       bajar=lambda: b"", moneda="ARS", detalle=f"Facturas de pólizas {fecha:%m/%Y}",
-                                      id_contacto=ID_CONTACTO)
+                                      id_contacto=self.id_contacto)
                 doc.bajar = self._bajador(sesion, cuerpo, doc)
                 docs[clave] = doc
         disponibles = []
@@ -253,7 +265,7 @@ class ConectorSancor:
             if aum_capital:
                 lineas.append(linea("Aumento Capital", aum_capital, 0.0))
         fecha = date(int(f.group(3)), int(f.group(2)), int(f.group(1)))
-        cabecera = _cabecera(ID_CONTACTO, fecha, numero, conceptosNoGravados=tasas + perc_tasa,
+        cabecera = _cabecera(documento.id_contacto or self.id_contacto, fecha, numero, conceptosNoGravados=tasas + perc_tasa,
                              percepcionIva=perc_iva, ingresosBrutos=perc_iibb, leyDeSellos=sellado)
         cabecera["tipo"] = m.group(1)
         return DatosCompra(cabecera=cabecera, lineas=lineas, numero=numero, total_impreso=a(total.group(1)))
@@ -262,5 +274,5 @@ class ConectorSancor:
         sesion.browser.close()
 
 
-registrar(ConectorSancor())
-registrar(ConectorSancor("sancor_giamigli", "Sancor Seguros Giamigli"))
+registrar(ConectorSancor("sancor", "Sancor Seguros Irma", ID_CONTACTO_IRMA))
+registrar(ConectorSancor("sancor_giamigli", "Sancor Seguros Giamigli", ID_CONTACTO))

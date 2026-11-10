@@ -66,9 +66,10 @@ def cargar_sancor(pdf: bytes, ruta: str, *, simular: bool = False) -> dict:
     de todas, como en las cargas a mano."""
     from src.features.boveda import repository as boveda
     from src.features.boveda.conectores.chrome_comun import _texto
-    from src.features.boveda.conectores.sancor import ID_CONTACTO, facturas_del_pdf
+    from src.features.boveda.conectores.sancor import contacto_del_pdf, facturas_del_pdf
     from src.features.compras import repository as compras
 
+    ID_CONTACTO = contacto_del_pdf(_texto(pdf))  # Irma o Giamigli (cuentas separadas desde 10/11/2026)
     conector = cargar_conectores()["sancor"]
     resultados = []
     for i in range(len(facturas_del_pdf(_texto(pdf)))):

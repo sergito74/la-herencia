@@ -341,7 +341,7 @@ def _clasificar_concepto_o_contacto(m: dict) -> tuple[str, str | None] | None:
         return "Tarjeta Corporativa BNA", "Adm. General"
 
     # 8. Seguros
-    if any(k in texto_total for k in ["ALLIANZ", "GARANTIZAR", "SEGURO", "SANCOR", "GALICIA SEGUROS", "SEGUROS GALICIA"]) or id_con in [171, 515, 575]:
+    if any(k in texto_total for k in ["ALLIANZ", "GARANTIZAR", "SEGURO", "SANCOR", "GALICIA SEGUROS", "SEGUROS GALICIA"]) or id_con in [171, 5685, 515, 575]:
         if imp > 0:
             return "Seguros Agricolas", None
         return "Seguros Generales", "Adm. General"
