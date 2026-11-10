@@ -27,11 +27,29 @@ import { formatCantidad, formatMoneda, formatFecha } from "@/lib/format";
 
 const MEDIOS_DEVOLUCION = ["Transferencia", "Efectivo", "Cheque", "Otro"];
 
+/** De dónde sale el movimiento, en palabras (nunca el nombre interno del origen). */
+const ORIGENES: Record<string, string> = {
+  Galicia: "Débito Galicia",
+  "Banco Nacion": "Débito Banco Nación",
+  BNACondominio036: "Débito Banco Nación (Condominio)",
+  PagosEfectivo: "Pago en efectivo",
+  TarjetaLineaConsumo: "Consumo con tarjeta",
+  ImpuestoParticular: "Impuesto particular",
+  Caja038: "Caja de efectivo",
+  CajaGiamigli036: "Caja de efectivo",
+  CondominioHist036: "Condominio LSC",
+  Mutuo2018: "Mutuo 2018",
+  PagoBalance2025: "Pago balance 2025",
+  ArcaGaliciaLucy036: "Débito Galicia personal",
+};
+
 /** Origen del movimiento, en una segunda línea chica debajo del concepto. */
 function origenTexto(m: MovimientoCuentaSocio): string {
-  if (m.tipo === "Devolucion") return `Devolución${m.medio ? ` · ${m.medio}` : ""}`;
   if (m.huerfano) return "Compra particular (ya no existe)";
-  return `Compra particular · ${m.proveedorOrigen ?? "sin proveedor"}${m.numeroDocumentoOrigen ? ` — ${m.numeroDocumentoOrigen}` : ""}`;
+  if (m.origen === "CompraParticular")
+    return `Compra particular · ${m.proveedorOrigen ?? "sin proveedor"}${m.numeroDocumentoOrigen ? ` — ${m.numeroDocumentoOrigen}` : ""}`;
+  const base = m.origen ? ORIGENES[m.origen] ?? "Otro origen" : m.tipo === "Devolucion" ? "Devolución" : "Asiento manual";
+  return m.medio && !base.includes(m.medio) ? `${base} · ${m.medio}` : base;
 }
 
 const debe = (m: MovimientoCuentaSocio) => m.tipo === "AsignacionGasto";
