@@ -5,7 +5,7 @@ adjuntas. Se descarga como .eml sin enviar (X-Unsent) para que Outlook lo abra c
 """
 import mimetypes
 import os
-from datetime import date
+from datetime import date, datetime
 from email.message import EmailMessage
 from html import escape
 
@@ -40,8 +40,8 @@ def _archivos(doc: str | None) -> list[str]:
     return out
 
 
-def armar(ordenes: dict | list[dict]) -> tuple[bytes, list[str]]:
-    """Un solo mail con todas las órdenes (Sergio 10/11/2026). Devuelve el .eml y los avisos (facturas sin archivo)."""
+def datos(ordenes: dict | list[dict]) -> dict:
+    """Un solo mail con todas las órdenes (Sergio 10/11/2026): asunto, cuerpo, PDF a adjuntar y avisos."""
     ordenes = [ordenes] if isinstance(ordenes, dict) else ordenes
     if not ordenes:
         raise ValueError('Elegí al menos una orden de pago')
@@ -55,41 +55,80 @@ def armar(ordenes: dict | list[dict]) -> tuple[bytes, list[str]]:
         f'ON v.IdCompra=c.IdDeuda WHERE c.IdDeuda IN ({marcas})', tuple(ids))}
     filas, adjuntos, avisos = [], [], []
     for orden in ordenes:
-        forma = ' / '.join(dict.fromkeys(FORMA.get(m['medio'], m['medio']) for m in orden['medios']))
+        medios = orden['medios']
+        forma = ' / '.join(dict.fromkeys(FORMA.get(m['medio'], m['medio']) for m in medios))
         for f in orden['facturas']:
             c = compras[f['idCompra']]
             fila = [_fecha(c['f']), _fecha(c['v']), _fecha(orden['fechaPago']), orden['proveedor'], c['t'] or 'Factura', c['n'] or '']
-            if c.get('m') == 'Dolares':  # como en los mails de siempre: importe en US$, TC del comprobante e importe en pesos
-                tc = float(c['tc'])
-                filas.append((*fila, 'Dolares', forma, _pesos(float(f['importe']) / tc).replace('$', 'US$'),
-                              f"$ {_pesos(tc)[2:]}/u$s", _pesos(f['importe'])))
-            else:
-                filas.append((*fila, 'Pesos', forma, _pesos(f['importe']), '', _pesos(f['importe'])))
+            # Como en los mails de Sergio (08/04/2026): una factura pagada con dos medios va en una fila por medio.
+            partes = ([(FORMA.get(m['medio'], m['medio']), float(m['importe'])) for m in medios]
+                      if len(orden['facturas']) == 1 and len(medios) > 1 and all(m.get('importe') for m in medios)
+                      else [(forma, float(f['importe']))])
+            for forma_i, importe in partes:
+                if c.get('m') == 'Dolares':  # importe en US$, TC del comprobante e importe en pesos
+                    tc = float(c['tc'])
+                    filas.append((*fila, 'Dolares', forma_i, _pesos(importe / tc).replace('$', 'US$'),
+                                  f"$ {_pesos(tc)[2:]}/u$s", _pesos(importe)))
+                else:
+                    filas.append((*fila, 'Pesos', forma_i, _pesos(importe), '', _pesos(importe)))
             archivos = _archivos(c['d'])
             if not archivos:
                 avisos.append(f"La factura {c['n'] or 'sin número'} de {orden['proveedor']} no tiene archivo para adjuntar")
             adjuntos += archivos
     columnas = COLUMNAS + ('Tipo Cambio', 'Importe pesos') if any(r[6] == 'Dolares' for r in filas) else COLUMNAS
     filas = [r if len(columnas) > len(COLUMNAS) else r[:len(COLUMNAS)] for r in filas]
-    varias = len(filas) > 1
-    intro = (f"Te mando adjunta{'s' if varias else ''} {'facturas' if varias else 'una factura'} para hacer el cálculo de la "
+    # Formato de los mails de Sergio a Karen (Enviados 2026): saludo según la hora, "una factura" o "N facturas",
+    # asunto siempre "Retencion", importes alineados a la derecha.
+    n = len(ids)
+    saludo = 'Hola Karen, buen día.' if datetime.now().hour < 13 else 'Buenas tardes Karen,'
+    intro = (f"Te mando {'adjunta una factura' if n == 1 else f'{n} facturas'} para hacer el cálculo de la "
              f"retención de acuerdo al siguiente detalle:")
-    texto = '\n'.join(['Hola Karen, buen día.', '', intro, '', ' | '.join(columnas)] + [' | '.join(r) for r in filas]
+    texto = '\n'.join([saludo, '', intro, '', ' | '.join(columnas)] + [' | '.join(r) for r in filas]
                       + ['', 'Gracias!', 'Saludos,', 'Sergio'])
-    celda = 'style="border:1px solid #999;padding:3px 6px"'
-    tabla = ('<table style="border-collapse:collapse">' + '<tr>' + ''.join(f'<th {celda}>{escape(c)}</th>' for c in columnas) + '</tr>'
-             + ''.join('<tr>' + ''.join(f'<td {celda}>{escape(str(v))}</td>' for v in r) + '</tr>' for r in filas) + '</table>')
-    html = (f'<p>Hola Karen, buen día.</p><p>{escape(intro)}</p>{tabla}<p>Gracias!<br>Saludos,<br>Sergio</p>')
+    celda = 'border:1px solid #999;padding:3px 6px;font-family:Calibri,sans-serif;font-size:11pt'
+    tabla = ('<table style="border-collapse:collapse">' + '<tr>' + ''.join(f'<th style="{celda}">{escape(c)}</th>' for c in columnas) + '</tr>'
+             + ''.join('<tr>' + ''.join(f'<td style="{celda}{";text-align:right" if "$" in str(v) else ""}">{escape(str(v))}</td>'
+                                        for v in r) + '</tr>' for r in filas) + '</table>')
+    p = 'style="font-family:Calibri,sans-serif;font-size:11pt"'
+    html = f'<p {p}>{escape(saludo)}</p><p {p}>{escape(intro)}</p>{tabla}<p {p}>Gracias!<br>Saludos,<br>Sergio</p>'
+    return {'asunto': 'Giamigli de Bolivar S.A. - Retencion', 'texto': texto, 'html': html,
+            'adjuntos': list(dict.fromkeys(adjuntos)), 'avisos': avisos}
+
+
+def armar(ordenes: dict | list[dict]) -> tuple[bytes, list[str]]:
+    """Alternativa sin Outlook: .eml sin enviar (X-Unsent) con las facturas adjuntas."""
+    d = datos(ordenes)
     msg = EmailMessage()
     msg['To'] = PARA
     msg['Cc'] = COPIA
-    msg['Subject'] = 'Giamigli de Bolivar S.A. - Retencion' + ('es' if varias else '')
+    msg['Subject'] = d['asunto']
     msg['X-Unsent'] = '1'
-    msg.set_content(texto)
-    msg.add_alternative(html, subtype='html')
-    for a in dict.fromkeys(adjuntos):
+    msg.set_content(d['texto'])
+    msg.add_alternative(d['html'], subtype='html')
+    for a in d['adjuntos']:
         tipo, _ = mimetypes.guess_type(a)
         principal, sub = (tipo or 'application/octet-stream').split('/')
         with open(a, 'rb') as fh:
             msg.add_attachment(fh.read(), maintype=principal, subtype=sub, filename=os.path.basename(a))
-    return bytes(msg), avisos
+    return bytes(msg), d['avisos']
+
+
+def abrir_en_outlook(ordenes: dict | list[dict]) -> list[str]:
+    """Crea el borrador en el Outlook de escritorio de esta PC y abre su ventana. NUNCA lo envía (Sergio 10/11/2026)."""
+    d = datos(ordenes)
+    try:
+        import pythoncom
+        import win32com.client
+        pythoncom.CoInitialize()
+        try:
+            m = win32com.client.Dispatch('Outlook.Application').CreateItem(0)  # olMailItem
+            m.To, m.CC, m.Subject, m.HTMLBody = PARA, COPIA, d['asunto'], d['html']
+            for a in d['adjuntos']:
+                m.Attachments.Add(a)
+            m.Save()      # queda en Borradores aunque se cierre la ventana
+            m.Display(False)
+        finally:
+            pythoncom.CoUninitialize()
+    except Exception as exc:  # sin Outlook o COM caído: el frontend cae a la descarga del .eml
+        raise ConnectionError(f'No se pudo abrir Outlook ({exc}). Se descarga el mail como archivo') from exc
+    return d['avisos']

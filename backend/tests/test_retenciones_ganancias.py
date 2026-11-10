@@ -143,7 +143,7 @@ def test_mail_con_varias_ordenes_y_fecha_texto(monkeypatch, tmp_path):
     eml, avisos = mail.armar(ordenes)
     m = message_from_bytes(eml, policy=policy.default)
     texto = m.get_body(('plain',)).get_content()
-    assert not avisos and m['Subject'] == 'Giamigli de Bolivar S.A. - Retenciones'
+    assert not avisos and m['Subject'] == 'Giamigli de Bolivar S.A. - Retencion' and 'Te mando 2 facturas' in texto
     assert '02/11/2026 | 30/11/2026 | 10/11/2026 | Prov A' in texto and '11/11/2026 | Prov B' in texto
     assert 'Cheque Electronico' in texto
     assert [x.get_filename() for x in m.iter_attachments()] == ['a.pdf', 'b.pdf']

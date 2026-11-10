@@ -35,8 +35,15 @@ export const agregarExclusion=(body:{idContacto:number;desde:string;hasta:string
 export const borrarExclusion=(id:number)=>apiDelete(`${base}/retenciones/exclusiones/${id}`);
 export const actualizarPadron=()=>apiPost<{contactosConCuit:number;encontrados:number;actualizado:string}>(`${base}/retenciones/padron`,{});
 /** Descarga un solo borrador .eml con todas las órdenes elegidas; devuelve los avisos (facturas sin archivo). */
-export async function mailEstudioOP(ids:number[]):Promise<string[]>{
+export async function mailEstudioOP(ids:number[]):Promise<{avisos:string[];outlook:boolean}>{
  const q=ids.map(i=>`ids=${i}`).join('&');
+ // Primero: borrador directo en Outlook (no se envía). Si Outlook falla (503), se descarga el .eml.
+ const o=await fetch(`${API_BASE_URL}${base}/mail-estudio/outlook?${q}`,{method:'POST',credentials:'include'});
+ if(o.ok)return {avisos:(await o.json()).avisos??[],outlook:true};
+ if(o.status!==503){let m='No se pudo preparar el mail';try{const d=await o.json();if(typeof d.detail==='string')m=d.detail;}catch{}throw new Error(m);}
+ return {avisos:await descargarMailEstudio(q),outlook:false};
+}
+async function descargarMailEstudio(q:string):Promise<string[]>{
  const r=await fetch(`${API_BASE_URL}${base}/mail-estudio?${q}`,{credentials:'include'});
  if(!r.ok){let m='No se pudo preparar el mail';try{const d=await r.json();if(typeof d.detail==='string')m=d.detail;}catch{}throw new Error(m);}
  const nombre=/filename="([^"]+)"/.exec(r.headers.get('Content-Disposition')??'')?.[1]??'retencion.eml';

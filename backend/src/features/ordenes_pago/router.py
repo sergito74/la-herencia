@@ -132,6 +132,13 @@ def _ordenes_para_mail(ids: list[int]) -> list[dict]:
     return ordenes
 
 
+@router.post('/mail-estudio/outlook')
+def mail_estudio_outlook(ids: list[int] = Query(..., min_length=1)):
+    """Abre en Outlook el borrador del mail al estudio con las facturas adjuntas (no lo envía)."""
+    ordenes = llamar(_ordenes_para_mail, ids)
+    return {'avisos': llamar(mail.abrir_en_outlook, ordenes)}
+
+
 @router.get('/mail-estudio')
 def mail_estudio(ids: list[int] = Query(..., min_length=1)):
     """Un solo borrador de mail al estudio con todas las órdenes elegidas y sus facturas adjuntas."""
