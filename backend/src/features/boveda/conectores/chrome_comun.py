@@ -155,7 +155,13 @@ def _completar_ingreso(p, cred: Credencial) -> None:
         except Exception:
             pass  # el ingreso ya estaba en curso
     else:
-        clave.press("Enter")
+        # 11/11/2026: Allianz valida reCAPTCHA al hacer clic en "Iniciar sesión"; con Enter respondía "inválidos".
+        iniciar = p.get_by_role("button", name=re.compile("iniciar sesi", re.I))
+        p.wait_for_timeout(1500)
+        if iniciar.count():
+            iniciar.first.click()
+        else:
+            clave.press("Enter")
 
 
 def _fecha_emision(pdf: bytes) -> date | None:
