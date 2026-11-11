@@ -335,7 +335,7 @@ def _insert_asiento(id_socio: int, lado: str, importe: float, fecha: date, medio
     )
 
 
-_TIPO_DOC_PAGABLE = {"Compras": "CompraDeuda", "Impuestos": "Impuesto"}
+_TIPO_DOC_PAGABLE = {"Compras": "CompraDeuda", "Impuestos": "Impuesto", "Remuneraciones": "Remuneracion"}
 
 
 def comprobantes_pendientes(id_contacto: int) -> list[dict]:
@@ -356,6 +356,25 @@ def comprobantes_pendientes(id_contacto: int) -> list[dict]:
             out.append({"tipoDocumento": tipo, "idDocumento": m["idOrigen"], "fecha": m["fecha"],
                         "descripcion": m.get("documento") or "", "numero": m.get("numeroDocumento") or "",
                         "total": total, "saldo": saldo})
+    # Lo que la cuenta realmente debe (pagos a cuenta incluidos) son los comprobantes más nuevos hasta completar esa deuda:
+    # los pagos cubren primero lo más viejo (misma regla que Facturas a pagar, Sergio 05/11/2026).
+    deuda = round(sum(float(m["deuda"] or 0) - float(m.get("credito") or 0) for m in movs), 2)
+    out.sort(key=lambda d: d["fecha"], reverse=True)
+    if deuda < 0.01:
+        # Cuenta en cero o a favor (ej. ARCA, que se lleva por clasificación): los comprobantes con saldo de los últimos
+        # 4 meses, para no listar años de boletas pagadas a cuenta.
+        from datetime import timedelta
+        desde = date.today() - timedelta(days=120)
+        out = [d for d in out if d["fecha"] and (d["fecha"].date() if hasattr(d["fecha"], "date") else d["fecha"]) >= desde]
+        deuda = float("inf")
+    recorte = []
+    for d in out:
+        if deuda < 0.01:
+            break
+        d["saldo"] = round(min(d["saldo"], deuda), 2)
+        deuda = round(deuda - d["saldo"], 2)
+        recorte.append(d)
+    out = recorte
     # Pagos de socio vinculados solo a la cuenta (sin comprobante) por el mismo importe: probablemente ya lo pagaron.
     sueltos = {round(float(f["i"]), 2) for f in fetch_all(
         "SELECT m.Importe AS i FROM dbo.PagosSocioProveedor p JOIN dbo.MovimientosCuentaSocio m ON m.IdMovimiento = p.IdMovimientoSocio "
