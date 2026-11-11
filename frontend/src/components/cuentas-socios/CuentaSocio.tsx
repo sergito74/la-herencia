@@ -15,6 +15,7 @@ import { SoloLectura } from "@/components/auth/SoloLectura";
 import { SideDrawer } from "@/components/ui/SideDrawer";
 import { AsientoSocioForm } from "./AsientoSocioForm";
 import { EfectivoSocioForm } from "./EfectivoSocioForm";
+import { PagoProveedorSocioForm } from "./PagoProveedorSocioForm";
 import { ControlBancoSocio } from "./ControlBancoSocio";
 import { ApiError } from "@/services/apiClient";
 import { DataTable, type DataTableColumn } from "@/components/ui/DataTable";
@@ -77,7 +78,7 @@ export function CuentaSocio({ idSocio }: { idSocio: number }) {
   });
 
   const [mostrarDevolucion, setMostrarDevolucion] = useState(false);
-  const [drawer, setDrawer] = useState<null | "asiento" | "efectivo" | MovimientoCuentaSocio>(null);
+  const [drawer, setDrawer] = useState<null | "asiento" | "efectivo" | "pago" | MovimientoCuentaSocio>(null);
   const [buscar, setBuscar] = useState("");
   const [anio, setAnio] = useState("");
   const [verAnulados, setVerAnulados] = useState(false);
@@ -256,6 +257,7 @@ export function CuentaSocio({ idSocio }: { idSocio: number }) {
 
           <div className="flex flex-wrap gap-3">
             <SoloLectura>
+              <button type="button" onClick={() => setDrawer("pago")} className="rounded-sm bg-finance px-4 py-2 text-sm text-white hover:opacity-90">Pagó un gasto de Giamigli…</button>
               <button type="button" onClick={() => setDrawer("asiento")} className="rounded-sm bg-agro px-4 py-2 text-sm text-white hover:opacity-90">+ Nuevo asiento</button>
               <button type="button" onClick={() => setDrawer("efectivo")} className="rounded-sm border border-border px-3 py-2 text-sm hover:bg-surface-sunken">Aporte / retiro en efectivo…</button>
             </SoloLectura>
@@ -330,8 +332,9 @@ export function CuentaSocio({ idSocio }: { idSocio: number }) {
             <label className="flex items-center gap-2"><input type="checkbox" checked={verAnulados} onChange={(e) => setVerAnulados(e.target.checked)} /> Ver anulados</label>
           </div>
           <SideDrawer open={drawer !== null} onClose={() => setDrawer(null)} maxWidthClass={drawer === "efectivo" ? "max-w-3xl" : "max-w-lg"}
-            title={drawer === "efectivo" ? `Aporte o retiro en efectivo — ${data.nombre}` : typeof drawer === "object" && drawer ? "Editar asiento" : `Nuevo asiento — ${data.nombre}`}>
-            {drawer === "efectivo" ? <EfectivoSocioForm idSocio={idSocio} onListo={() => { setDrawer(null); recargar(); }} />
+            title={drawer === "pago" ? `Gasto de Giamigli pagado por ${data.nombre}` : drawer === "efectivo" ? `Aporte o retiro en efectivo — ${data.nombre}` : typeof drawer === "object" && drawer ? "Editar asiento" : `Nuevo asiento — ${data.nombre}`}>
+            {drawer === "pago" ? <PagoProveedorSocioForm idSocio={idSocio} onListo={() => { setDrawer(null); recargar(); }} />
+              : drawer === "efectivo" ? <EfectivoSocioForm idSocio={idSocio} onListo={() => { setDrawer(null); recargar(); }} />
               : drawer !== null && <AsientoSocioForm key={typeof drawer === "object" ? drawer.idMovimiento : "nuevo"} idSocio={idSocio} movimiento={typeof drawer === "object" ? drawer : undefined} onListo={() => setDrawer(null)} />}
           </SideDrawer>
           <DataTable

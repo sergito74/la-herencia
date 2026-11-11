@@ -330,6 +330,30 @@ def _insert_asiento(id_socio: int, lado: str, importe: float, fecha: date, medio
     )
 
 
+def registrar_pago_proveedor(id_socio: int, id_contacto: int, importe: float, fecha: date, medio: str | None,
+                             motivo: str, usuario: str) -> dict:
+    """Pago de un gasto de Giamigli hecho por un socio (o el Condominio) desde su cuenta personal (Sergio 11/11/2026),
+    en un solo paso: Haber en la cuenta del socio (valuado en US$/kg como los demás asientos) y vínculo al proveedor en
+    PagosSocioProveedor, que la vista de cuentas corrientes toma como crédito ("Pago por socio")."""
+    ct = fetch_one("SELECT [Razon Social] AS r FROM dbo.Contactos WHERE IdContacto = ?", (id_contacto,))
+    if not ct:
+        raise ValueError("Elegí a quién se le pagó.")
+    concepto = f"{(ct['r'] or '').strip()} · {motivo.strip()}"[:250] if motivo and motivo.strip() else ""
+    res = execute_write_transaction([
+        _insert_asiento(id_socio, "haber", importe, fecha, medio, concepto, usuario),
+        lambda r: ("INSERT INTO dbo.AuditoriaReflejoSocio (Accion, IdMovimiento, IdSocio, Usuario, Detalle) VALUES (?, ?, ?, ?, ?)",
+                   ("Devolucion", r[0], id_socio, usuario, f"Pago a proveedor {id_contacto}: {concepto}"[:500])),
+        lambda r: ("INSERT INTO dbo.PagosSocioProveedor (IdMovimientoSocio, IdContacto, Criterio) VALUES (?, ?, ?)",
+                   (r[0], id_contacto, "pago-socio-pantalla")),
+    ])
+    try:
+        from src.features.auditoria_cuentas.bimonetaria import invalidar
+        invalidar()
+    except Exception:
+        pass
+    return _movimiento_por_id(res[0])
+
+
 def registrar_asiento(id_socio: int, lado: str, importe: float, fecha: date, medio: str | None, motivo: str, usuario: str) -> dict:
     sql = _insert_asiento(id_socio, lado, importe, fecha, medio, motivo, usuario)
     res = execute_write_transaction([

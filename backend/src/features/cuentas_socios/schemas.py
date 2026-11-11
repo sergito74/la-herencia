@@ -96,6 +96,14 @@ class AsientoRequest(BaseModel):
     motivo: str
 
 
+class PagoProveedorRequest(BaseModel):
+    idContacto: int
+    importe: float
+    fecha: date
+    medio: str | None = None
+    motivo: str
+
+
 class DevolucionRequest(BaseModel):
     importe: float
     fecha: date

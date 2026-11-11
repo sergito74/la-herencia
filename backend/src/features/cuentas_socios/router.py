@@ -16,6 +16,7 @@ from src.features.cuentas_socios.schemas import (
     AsignarGastoRequest,
     DetalleSocioResponse,
     DevolucionRequest,
+    PagoProveedorRequest,
     ListaCandidatasResponse,
     ListaSociosResponse,
     MovimientoCuentaSocio,
@@ -108,6 +109,19 @@ async def registrar_devolucion(idSocio: int, body: DevolucionRequest, request: R
     try:
         movimiento = await run_in_threadpool(
             repository.registrar_devolucion, idSocio, body.importe, body.fecha, body.medio, body.motivo, usuario
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+    return MovimientoCuentaSocio(**movimiento)
+
+
+@router.post("/{idSocio}/pago-proveedor", response_model=MovimientoCuentaSocio, status_code=201)
+async def registrar_pago_proveedor(idSocio: int, body: PagoProveedorRequest, request: Request) -> MovimientoCuentaSocio:
+    usuario = _usuario_actual(request)
+    try:
+        movimiento = await run_in_threadpool(
+            repository.registrar_pago_proveedor, idSocio, body.idContacto, body.importe, body.fecha, body.medio,
+            body.motivo, usuario
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e

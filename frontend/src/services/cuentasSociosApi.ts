@@ -95,6 +95,14 @@ export function anularMovimiento(idMovimiento: number, motivo: string): Promise<
   return apiPost<MovimientoCuentaSocio>(`/api/cuentas-socios/movimientos/${idMovimiento}/anular`, { motivo });
 }
 
+/** Gasto de Giamigli pagado por el socio: a favor del socio y crédito en la cuenta del proveedor, en un paso. */
+export function registrarPagoProveedor(
+  idSocio: number,
+  params: { idContacto: number; importe: number; fecha: string; medio: string | null; motivo: string }
+): Promise<MovimientoCuentaSocio> {
+  return apiPost<MovimientoCuentaSocio>(`/api/cuentas-socios/${idSocio}/pago-proveedor`, params);
+}
+
 export function registrarDevolucion(
   idSocio: number,
   params: { importe: number; fecha: string; medio: string; motivo: string }
