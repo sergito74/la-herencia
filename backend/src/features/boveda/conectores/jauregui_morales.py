@@ -70,7 +70,11 @@ class ConectorJaureguiMorales:
         self._ultima_sesion: _Sesion | None = None
 
     def ingresar(self, pw, credencial: Credencial) -> _Sesion:
-        browser = pw.chromium.launch(channel="chrome", headless=True)
+        # 11/11/2026: el portal es http con IP fija; Chrome nuevo lo bloquea (ERR_BLOCKED_BY_CLIENT) por las mejoras a https
+        # y el control de acceso a redes locales.
+        browser = pw.chromium.launch(channel="chrome", headless=True, args=[
+            "--disable-features=HttpsUpgrades,HttpsFirstBalancedModeAutoEnable,HttpsFirstModeV2ForTypicallySecureUsers,"
+            "BlockInsecurePrivateNetworkRequests,LocalNetworkAccessChecks"])
         try:
             p = browser.new_context().new_page()
             p.goto(INGRESO, wait_until="load", timeout=90000)

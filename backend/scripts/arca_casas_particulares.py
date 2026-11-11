@@ -28,6 +28,7 @@ def main():
     a.add_argument("dir")
     a.add_argument("--paso", action="append", default=[])
     a.add_argument("--pdf", default=None)
+    a.add_argument("--ver-recibo-nuevo", action="store_true")
     a.add_argument("--detalle", type=int, action="append", default=[], help="n-ésimo 'DETALLE DE PAGO' (0 = el más nuevo)")
     o = a.parse_args()
     d = Path(o.dir)
@@ -68,6 +69,13 @@ def main():
                 q.pdf(path=str(d / f"detalle-{n}.pdf"), format="A4", print_background=True)
                 q.emulate_media(media="screen")
                 print("detalle", n)
+            if o.ver_recibo_nuevo:
+                # Solo abre el formulario del período en curso para leerlo: no completa ni envía nada.
+                h = q.eval_on_selector_all("a[href*='GenerarRecibos.aspx']", "e => e.map(x => x.href)")
+                if h:
+                    ir(q, h[0])
+                    q.wait_for_timeout(4000)
+                    volcar(q, d, "recibo-en-curso")
             if o.pdf:
                 q.emulate_media(media="print")
                 q.pdf(path=str(d / o.pdf), format="A4", print_background=True)

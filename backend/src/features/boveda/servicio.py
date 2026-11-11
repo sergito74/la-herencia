@@ -374,8 +374,10 @@ def correr_portal(id_portal: int, origen: str, usuario: str | None) -> tuple[int
 # se mata con su navegador y la corrida queda cerrada con un aviso en palabras simples.
 SIN_AVANCE = 2 * 60
 # Esperas largas pero normales, avisadas por el conector con su paso: hasta este tiempo sin cortar.
-ESPERAS_LARGAS: dict[str, int] = {}
-LIMITE_TOTAL = 8 * 60  # la corrida buena más larga (Sancor) fue 6'49" en 2 semanas
+# 11/11/2026: ARCA tarda en el ingreso (varias redirecciones de hasta 90 s) y Sancor arma la lista de documentos con una
+# consulta por póliza sin avisar avance; con 2 minutos se cortaban casi siempre.
+ESPERAS_LARGAS: dict[str, int] = {"Ingresando al portal": 6 * 60, "Buscando documentos en el portal": 10 * 60}
+LIMITE_TOTAL = 15 * 60
 _LOG_TRABAJADOR = Path(__file__).resolve().parents[3] / "logs" / "boveda-trabajador.log"
 
 

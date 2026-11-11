@@ -136,7 +136,7 @@ class ConectorDeCampoACampo:
     mapeo_proveedores: dict = {}
 
     def ingresar(self, pw, credencial: Credencial) -> _Sesion:
-        browser = pw.chromium.launch(headless=True)
+        browser = pw.chromium.launch(channel="chrome", headless=True)  # el Chromium de Playwright no está instalado
         try:
             ctx = browser.new_context()
             p = ctx.new_page()
