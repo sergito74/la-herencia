@@ -251,7 +251,14 @@ def guardar_recibo(id_salario: int, fecha_pago, empleado: str, contenido: bytes)
     nombre = nombre_archivo_recibo(fecha_pago, empleado)
     carpeta_anio = Path(CARPETA_RECIBOS) / f"{fecha_pago.year}"
     carpeta_anio.mkdir(parents=True, exist_ok=True)
-    (carpeta_anio / nombre).write_bytes(contenido)
+    destino = carpeta_anio / nombre
+    # 11/11/2026: si se sube el mismo PDF que ya está en la carpeta (caso habitual: se elige el archivo desde ahí),
+    # no se reescribe; Windows rechaza la escritura si el archivo está abierto o bloqueado.
+    if not (destino.exists() and destino.read_bytes() == contenido):
+        try:
+            destino.write_bytes(contenido)
+        except PermissionError as e:
+            raise ValueError(f"No se pudo guardar el recibo: '{nombre}' está abierto en otro programa. Cerralo y probá de nuevo.") from e
 
     ruta_relativa = f"Personal\\Recibos\\{fecha_pago.year}\\{nombre}"
     execute_write(

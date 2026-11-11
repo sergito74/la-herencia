@@ -8,6 +8,7 @@ import {
   actualizarLiquidacion,
   fetchLiquidacion,
   subirRecibo,
+  urlRecibo,
   type NuevaLiquidacionRequest,
 } from "@/services/remuneracionesApi";
 import { ApiError } from "@/services/apiClient";
@@ -321,6 +322,19 @@ export function LiquidacionForm({
           onChange={(e) => setArchivo(e.target.files?.[0] ?? null)}
         />
       </label>
+      <div className="flex flex-wrap gap-4 text-sm">
+        {archivo && (
+          <button type="button" className="text-finance underline"
+            onClick={() => { const u = URL.createObjectURL(archivo); window.open(u, "_blank"); setTimeout(() => URL.revokeObjectURL(u), 60_000); }}>
+            Ver el archivo elegido
+          </button>
+        )}
+        {idSalario && (
+          <a href={urlRecibo(idSalario)} target="_blank" rel="noopener noreferrer" className="text-finance underline">
+            Ver el recibo guardado
+          </a>
+        )}
+      </div>
 
       <div className="flex items-center justify-between rounded-md border border-border bg-surface px-4 py-3">
         <span className="text-sm font-medium text-ink-secondary">Neto total liquidado</span>
