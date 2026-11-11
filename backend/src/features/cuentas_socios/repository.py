@@ -147,6 +147,11 @@ def anular_movimiento(id_movimiento: int, motivo: str, usuario: str, desde_opera
                 "VALUES (?, ?, ?, ?, ?)",
                 (accion, id_movimiento, movimiento["idSocio"], usuario, motivo),
             ),
+            (
+                "UPDATE dbo.AplicacionesPago SET Anulada = 1, MotivoAnulacion = ?, UsuarioAnulacion = ?, "
+                "FechaAnulacion = SYSUTCDATETIME() WHERE OrigenMovimiento = 'socio' AND IdMovimientoOrigen = ? AND Anulada = 0",
+                (f"Anulado el pago del socio: {motivo}"[:250], usuario, id_movimiento),
+            ),
         ]
     )
     return _movimiento_por_id(id_movimiento)
@@ -330,8 +335,40 @@ def _insert_asiento(id_socio: int, lado: str, importe: float, fecha: date, medio
     )
 
 
+_TIPO_DOC_PAGABLE = {"Compras": "CompraDeuda", "Impuestos": "Impuesto"}
+
+
+def comprobantes_pendientes(id_contacto: int) -> list[dict]:
+    """Facturas y boletas de impuestos del proveedor con saldo, para elegir qué paga el socio (Sergio 11/11/2026).
+    El saldo cuenta todas las vías de pago (fuente unificada); los más nuevos primero."""
+    from src.features.cuentas_corrientes import repository as cuentas
+    from src.features.vinculos import fuente
+
+    movs, _ = cuentas.get_movimientos(id_contacto, None, None, 1, 100000)
+    docs = [m for m in movs if (m["deuda"] or 0) > 0 and m["origenTipo"] in _TIPO_DOC_PAGABLE]
+    pagado = fuente.pagado_de_documentos([(_TIPO_DOC_PAGABLE[m["origenTipo"]], m["idOrigen"]) for m in docs])
+    out = []
+    for m in docs:
+        tipo = _TIPO_DOC_PAGABLE[m["origenTipo"]]
+        total = round(float(m["deuda"]), 2)
+        saldo = round(total - pagado.get((tipo, m["idOrigen"]), 0.0), 2)
+        if saldo >= 0.01:
+            out.append({"tipoDocumento": tipo, "idDocumento": m["idOrigen"], "fecha": m["fecha"],
+                        "descripcion": m.get("documento") or "", "numero": m.get("numeroDocumento") or "",
+                        "total": total, "saldo": saldo})
+    # Pagos de socio vinculados solo a la cuenta (sin comprobante) por el mismo importe: probablemente ya lo pagaron.
+    sueltos = {round(float(f["i"]), 2) for f in fetch_all(
+        "SELECT m.Importe AS i FROM dbo.PagosSocioProveedor p JOIN dbo.MovimientosCuentaSocio m ON m.IdMovimiento = p.IdMovimientoSocio "
+        "WHERE p.IdContacto = ? AND m.Anulada = 0 AND NOT EXISTS (SELECT 1 FROM dbo.AplicacionesPago a "
+        "WHERE a.OrigenMovimiento = 'socio' AND a.IdMovimientoOrigen = m.IdMovimiento AND a.Anulada = 0)", (id_contacto,))}
+    for d in out:
+        d["posiblePagoSocio"] = d["saldo"] in sueltos
+    out.sort(key=lambda d: d["fecha"], reverse=True)
+    return out
+
+
 def registrar_pago_proveedor(id_socio: int, id_contacto: int, importe: float, fecha: date, medio: str | None,
-                             motivo: str, usuario: str) -> dict:
+                             motivo: str, usuario: str, comprobantes: list[dict] | None = None) -> dict:
     """Pago de un gasto de Giamigli hecho por un socio (o el Condominio) desde su cuenta personal (Sergio 11/11/2026),
     en un solo paso: Haber en la cuenta del socio (valuado en US$/kg como los demás asientos) y vínculo al proveedor en
     PagosSocioProveedor, que la vista de cuentas corrientes toma como crédito ("Pago por socio")."""
@@ -339,12 +376,29 @@ def registrar_pago_proveedor(id_socio: int, id_contacto: int, importe: float, fe
     if not ct:
         raise ValueError("Elegí a quién se le pagó.")
     concepto = f"{(ct['r'] or '').strip()} · {motivo.strip()}"[:250] if motivo and motivo.strip() else ""
+    comprobantes = [c for c in (comprobantes or []) if (c.get("importe") or 0) > 0]
+    if comprobantes:
+        pendientes = {(d["tipoDocumento"], d["idDocumento"]): d for d in comprobantes_pendientes(id_contacto)}
+        for c in comprobantes:
+            d = pendientes.get((c["tipoDocumento"], c["idDocumento"]))
+            if not d:
+                raise ValueError("Uno de los comprobantes elegidos no es de este proveedor o ya está pagado.")
+            if c["importe"] - d["saldo"] > 0.005:
+                raise ValueError(f"El importe aplicado a {d['descripcion']} {d['numero']} supera su saldo.")
+        if sum(c["importe"] for c in comprobantes) - importe > 0.005:
+            raise ValueError("Lo aplicado a los comprobantes supera el importe pagado.")
+    aplicaciones = [
+        (lambda c: lambda r: ("INSERT INTO dbo.AplicacionesPago (OrigenMovimiento, IdMovimientoOrigen, TipoDocumento, "
+                              "IdDocumentoAplicado, ImporteAplicado, Usuario) VALUES ('socio', ?, ?, ?, ?, ?)",
+                              (r[0], c["tipoDocumento"], c["idDocumento"], round(c["importe"], 2), usuario)))(c)
+        for c in comprobantes]
     res = execute_write_transaction([
         _insert_asiento(id_socio, "haber", importe, fecha, medio, concepto, usuario),
         lambda r: ("INSERT INTO dbo.AuditoriaReflejoSocio (Accion, IdMovimiento, IdSocio, Usuario, Detalle) VALUES (?, ?, ?, ?, ?)",
                    ("Devolucion", r[0], id_socio, usuario, f"Pago a proveedor {id_contacto}: {concepto}"[:500])),
         lambda r: ("INSERT INTO dbo.PagosSocioProveedor (IdMovimientoSocio, IdContacto, Criterio) VALUES (?, ?, ?)",
                    (r[0], id_contacto, "pago-socio-pantalla")),
+        *aplicaciones,
     ])
     try:
         from src.features.auditoria_cuentas.bimonetaria import invalidar

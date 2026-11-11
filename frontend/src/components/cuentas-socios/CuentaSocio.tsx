@@ -331,7 +331,7 @@ export function CuentaSocio({ idSocio }: { idSocio: number }) {
             </select></label>
             <label className="flex items-center gap-2"><input type="checkbox" checked={verAnulados} onChange={(e) => setVerAnulados(e.target.checked)} /> Ver anulados</label>
           </div>
-          <SideDrawer open={drawer !== null} onClose={() => setDrawer(null)} maxWidthClass={drawer === "efectivo" ? "max-w-3xl" : "max-w-lg"}
+          <SideDrawer open={drawer !== null} onClose={() => setDrawer(null)} maxWidthClass={drawer === "efectivo" || drawer === "pago" ? "max-w-3xl" : "max-w-lg"}
             title={drawer === "pago" ? `Gasto de Giamigli pagado por ${data.nombre}` : drawer === "efectivo" ? `Aporte o retiro en efectivo — ${data.nombre}` : typeof drawer === "object" && drawer ? "Editar asiento" : `Nuevo asiento — ${data.nombre}`}>
             {drawer === "pago" ? <PagoProveedorSocioForm idSocio={idSocio} onListo={() => { setDrawer(null); recargar(); }} />
               : drawer === "efectivo" ? <EfectivoSocioForm idSocio={idSocio} onListo={() => { setDrawer(null); recargar(); }} />

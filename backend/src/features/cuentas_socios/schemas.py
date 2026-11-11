@@ -96,7 +96,14 @@ class AsientoRequest(BaseModel):
     motivo: str
 
 
+class ComprobanteAplicado(BaseModel):
+    tipoDocumento: str
+    idDocumento: int
+    importe: float
+
+
 class PagoProveedorRequest(BaseModel):
+    comprobantes: list[ComprobanteAplicado] = []
     idContacto: int
     importe: float
     fecha: date

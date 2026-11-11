@@ -98,9 +98,25 @@ export function anularMovimiento(idMovimiento: number, motivo: string): Promise<
 /** Gasto de Giamigli pagado por el socio: a favor del socio y crédito en la cuenta del proveedor, en un paso. */
 export function registrarPagoProveedor(
   idSocio: number,
-  params: { idContacto: number; importe: number; fecha: string; medio: string | null; motivo: string }
+  params: { idContacto: number; importe: number; fecha: string; medio: string | null; motivo: string;
+    comprobantes: { tipoDocumento: string; idDocumento: number; importe: number }[] }
 ): Promise<MovimientoCuentaSocio> {
   return apiPost<MovimientoCuentaSocio>(`/api/cuentas-socios/${idSocio}/pago-proveedor`, params);
+}
+
+export interface ComprobantePendiente {
+  tipoDocumento: string;
+  idDocumento: number;
+  fecha: string;
+  descripcion: string;
+  numero: string;
+  total: number;
+  saldo: number;
+  posiblePagoSocio: boolean;
+}
+
+export function fetchComprobantesPendientes(idContacto: number): Promise<ComprobantePendiente[]> {
+  return apiGet<ComprobantePendiente[]>("/api/cuentas-socios/comprobantes-pendientes", { idContacto });
 }
 
 export function registrarDevolucion(
