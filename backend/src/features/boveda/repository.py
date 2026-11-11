@@ -157,6 +157,13 @@ def marcar_rechazada(id_credencial: int) -> None:
     execute_write("UPDATE dbo.Boveda_Credenciales SET Rechazada = 1 WHERE IdCredencial = ?", (id_credencial,))
 
 
+def credencial_aceptada(id_credencial: int) -> None:
+    """11/11/2026: un rechazo puntual dejaba la credencial marcada para siempre aunque después ingresara bien."""
+    if fetch_one("SELECT 1 AS x FROM dbo.Boveda_Credenciales WHERE IdCredencial = ? AND Rechazada = 1", (id_credencial,)):
+        execute_write("UPDATE dbo.Boveda_Credenciales SET Rechazada = 0 WHERE IdCredencial = ?", (id_credencial,))
+        levantar_suspension_credencial(id_credencial)
+
+
 def leer_clave_cifrada(id_credencial: int) -> bytes | None:
     fila = fetch_one("SELECT ClaveCifrada AS blob FROM dbo.Boveda_Credenciales WHERE IdCredencial = ? AND Activo = 1",
                      (id_credencial,))

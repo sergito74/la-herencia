@@ -321,6 +321,8 @@ def ejecutar(id_portal: int, origen: str, usuario: str | None, lock, id_corrida:
         errores = res.pop("errores")
         estado = "error" if errores else "ok"
         mensaje = " · ".join(errores) or None
+        if portal.get("idCredencial"):  # ingresó: la credencial sirve
+            repository.credencial_aceptada(portal["idCredencial"])
     except SinAutorizacion as e:
         estado, mensaje = "sin_autorizacion", str(e)
     except CredencialesRechazadas:
