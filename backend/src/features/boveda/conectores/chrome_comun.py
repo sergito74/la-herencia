@@ -60,7 +60,7 @@ def _abrir_chrome(pw, perfil: Path, url: str) -> _Sesion:
     perfil.mkdir(parents=True, exist_ok=True)
     proceso = subprocess.Popen([str(chrome), f"--user-data-dir={perfil}", f"--remote-debugging-port={puerto}",
                                 "--remote-debugging-address=127.0.0.1", "--no-first-run",
-                                "--no-default-browser-check", url])
+                                "--no-default-browser-check", "--disable-extensions", url])
     try:
         for _ in range(30):
             try:
@@ -70,10 +70,25 @@ def _abrir_chrome(pw, perfil: Path, url: str) -> _Sesion:
                 time.sleep(1)
         else:
             raise PortalCambio("No se pudo abrir Chrome")
+        # 11/11/2026: una extensión del perfil (Acrobat) abrió su pestaña de novedades y se tomaba como la del portal.
+        from urllib.parse import urlparse
+
+        dominio = urlparse(url).hostname.split(".", 1)[-1]
         for _ in range(30):
-            if ctx.pages:
-                return _Sesion(proceso=proceso, pagina=ctx.pages[0])
+            propias = [pg for pg in ctx.pages if dominio in (urlparse(pg.url).hostname or "")]
+            if propias:
+                for pg in ctx.pages:
+                    if pg not in propias:
+                        try:
+                            pg.close()
+                        except Exception:
+                            pass
+                return _Sesion(proceso=proceso, pagina=propias[0])
             time.sleep(1)
+        if ctx.pages:  # redirección a otro dominio: se usa la última pestaña abierta con la dirección pedida
+            pg = ctx.new_page()
+            pg.goto(url, wait_until="load", timeout=90000)
+            return _Sesion(proceso=proceso, pagina=pg)
         raise PortalCambio("No se pudo abrir Chrome")
     except Exception:
         proceso.terminate()
@@ -251,10 +266,20 @@ class ConectorAllianz(_ChromeComun):
             adentro = lambda: _en_allianz_privado(p.url) and not _verificando(p)
             formulario = lambda: p.locator("input[type=password]").count() > 0 and not _verificando(p)
             _esperar(p, lambda: adentro() or formulario(), 120, "No apareció el ingreso de Allianz")
+            # 11/11/2026: con la sesión vencida del perfil, la página privada aparece un instante y redirige al login:
+            # solo cuenta como adentro si sigue ahí 8 segundos.
+            for _ in range(8):
+                if not adentro():
+                    break
+                p.wait_for_timeout(1000)
             if not adentro():
+                _esperar(p, formulario, 60, "No apareció el ingreso de Allianz")
                 _completar_ingreso(p, credencial)
                 codigo = lambda: p.locator("input[name=code]").count() > 0
-                _esperar(p, lambda: codigo() or "auth.allianz" not in p.url, 120, "Allianz no respondió al ingreso")
+                rechazo = lambda: p.get_by_text("contraseña inválidos", exact=False).count() > 0
+                _esperar(p, lambda: codigo() or rechazo() or "auth.allianz" not in p.url, 120, "Allianz no respondió al ingreso")
+                if rechazo():  # 11/11/2026: antes quedaba como "el portal cambió"
+                    raise CredencialesRechazadas("Allianz rechazó usuario o contraseña")
                 if codigo():
                     from src.features.boveda import conectores as _c
                     _c.paso("Esperando el código de Allianz por mail…")
