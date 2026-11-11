@@ -237,7 +237,9 @@ def listar_movimientos(id_socio: int) -> list[dict]:
                m.Origen AS origen, m.IdOrigen AS idOrigen, m.Medio AS medio, m.Motivo AS motivo,
                m.Usuario AS usuario, m.Anulada AS anulada, m.MotivoAnulacion AS motivoAnulacion,
                ct.[Razon Social] AS proveedorOrigen, c.[Nro Documento] AS numeroDocumentoOrigen,
-               CASE WHEN m.Origen = 'CompraParticular' AND c.IdDeuda IS NULL THEN 1 ELSE 0 END AS huerfano
+               CASE WHEN m.Origen = 'CompraParticular' AND c.IdDeuda IS NULL THEN 1 ELSE 0 END AS huerfano,
+               (SELECT TOP 1 cp.[Razon Social] FROM dbo.PagosSocioProveedor psp JOIN dbo.Contactos cp ON cp.IdContacto = psp.IdContacto
+                WHERE psp.IdMovimientoSocio = m.IdMovimiento) AS pagadoA
         FROM dbo.MovimientosCuentaSocio m
         LEFT JOIN dbo.Compras c ON m.Origen = 'CompraParticular' AND c.IdDeuda = m.IdOrigen
         LEFT JOIN dbo.Contactos ct ON ct.IdContacto = c.IdContacto

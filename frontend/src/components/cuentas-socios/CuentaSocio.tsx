@@ -54,6 +54,8 @@ function origenTexto(m: MovimientoCuentaSocio): string {
   if (m.huerfano) return "Compra particular (ya no existe)";
   if (m.origen === "CompraParticular")
     return `Compra particular · ${m.proveedorOrigen ?? "sin proveedor"}${m.numeroDocumentoOrigen ? ` — ${m.numeroDocumentoOrigen}` : ""}`;
+  if (m.pagadoA && (!m.origen || !ORIGENES[m.origen]?.startsWith("Pagó el socio")))
+    return `Pagó el socio · ${m.pagadoA}${m.medio ? ` · ${m.medio}` : ""}`;
   const base = m.origen ? ORIGENES[m.origen] ?? "Otro origen" : m.tipo === "Devolucion" ? "Devolución" : "Asiento manual";
   return m.medio && !base.includes(m.medio) ? `${base} · ${m.medio}` : base;
 }

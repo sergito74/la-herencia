@@ -23,6 +23,7 @@ export interface MovimientoCuentaSocio {
   origen: string | null;
   idOrigen: number | null;
   proveedorOrigen: string | null;
+  pagadoA?: string | null;
   numeroDocumentoOrigen: string | null;
   medio: string | null;
   motivo: string | null;

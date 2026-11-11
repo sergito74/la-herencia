@@ -25,6 +25,8 @@ class MovimientoCuentaSocio(BaseModel):
     origen: str | None = None
     idOrigen: int | None = None
     proveedorOrigen: str | None = None
+    # Proveedor al que el socio le pagó con fondos propios (PagosSocioProveedor), si lo hay.
+    pagadoA: str | None = None
     numeroDocumentoOrigen: str | None = None
     medio: str | None = None
     motivo: str | None = None
