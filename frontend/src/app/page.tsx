@@ -46,7 +46,6 @@ const PROCESOS: ProcessCard[] = [
       { href: "/finanzas/tesoreria", label: "Tesorería" },
       { href: "/finanzas/cuentas-corrientes", label: "Cuentas corrientes" },
       { href: "/finanzas/cuentas-socios", label: "Cuentas de socios" },
-      { href: "/finanzas/reasignacion-contacto", label: "Reasignación de contacto" },
       { href: "/finanzas/tarjetas", label: "Tarjetas" },
       { href: "/finanzas/impuestos", label: "Impuestos y retenciones" },
       { href: "/finanzas/arrendamientos", label: "Arrendamientos" },

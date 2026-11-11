@@ -21,6 +21,7 @@ from src.auth.tokens import verificar_token
 from src.errors import register_error_handlers
 from src.features.auth.router import COOKIE_NAME
 from src.features.auth.router import router as auth_router
+from src.features.reasignacion_contacto.router import router as reasignacion_contacto_router
 from src.features.aplicaciones_pago.router import router as aplicaciones_pago_router
 from src.features.arrendamientos.router import router as arrendamientos_router
 from src.features.cajas_efectivo.router import router as cajas_efectivo_router
@@ -41,15 +42,12 @@ from src.features.pastaje.router import router as pastaje_router
 from src.features.planificacion.router import router as planificacion_router
 from src.features.conciliacion_tesoreria.router import router as conciliacion_tesoreria_router
 from src.features.traspasos_internos_tesoreria.router import router as traspasos_internos_tesoreria_router
-from src.features.reasignacion_contacto.router import router as reasignacion_contacto_router
 from src.features.remitos.router import router as remitos_router
 from src.features.resultado_cultivo.router import router as resultado_cultivo_router
 from src.features.remitos.stock_router import router as stock_router
 from src.features.remuneraciones.router import router as remuneraciones_router
 from src.features.sesion.router import router as sesion_router
 from src.features.tarjetas.router import router as tarjetas_router
-from src.features.auditoria_cuentas.router import router as auditoria_cuentas_router
-from src.features.revision_cuentas.router import router as revision_cuentas_router
 from src.features.tarjetas_cuenta.router import router as tarjetas_cuenta_router
 from src.features.tarjetas_cuotas.router import router as tarjetas_cuotas_router
 from src.features.tarjetas_resumenes.router import router as tarjetas_resumenes_router
@@ -57,7 +55,6 @@ from src.features.tesoreria.router import router as tesoreria_router
 from src.features.ventas_granos.router import router as ventas_granos_router
 from src.features.ventas_hacienda.router import router as ventas_hacienda_router
 from src.features.vinculos.router import router as integridad_vinculos_router
-from src.features.recalculo_fifo.router import router as recalculo_fifo_router
 from src.features.facturas_faltantes.router import router as facturas_faltantes_router
 from src.features.cotizaciones.router import router as cotizaciones_router
 from src.features.boveda.router import router as boveda_router
@@ -83,13 +80,20 @@ register_error_handlers(app)
 
 
 @app.on_event("startup")
-def _precalentar_auditoria() -> None:
-    """Calcula la auditoría de cuentas en segundo plano al arrancar (tarda unos segundos): así la primera cuenta que se abre no espera."""
+def _precalentar_saldos() -> None:
+    """Deja listo el cálculo bimonetario de las cuentas al arrancar (tarda unos segundos): la primera cuenta no espera."""
     import threading
 
-    from src.features.auditoria_cuentas.router import precalentar
+    def precalentar() -> None:
+        try:
+            from src.features.auditoria_cuentas import bimonetaria
 
-    threading.Thread(target=precalentar, daemon=True, name="precalentar-auditoria").start()
+            bimonetaria.cargar_cuentas([])
+            bimonetaria._vista_en_memoria()
+        except Exception:
+            pass  # sin base todavía: se calcula al primer pedido
+
+    threading.Thread(target=precalentar, daemon=True, name="precalentar-saldos").start()
 
 
 @app.on_event("startup")
@@ -184,6 +188,7 @@ class AuthMiddleware(BaseHTTPMiddleware):
 app.add_middleware(AuthMiddleware)
 
 app.include_router(auth_router)
+app.include_router(reasignacion_contacto_router)
 app.include_router(aplicaciones_pago_router)
 app.include_router(arrendamientos_router)
 app.include_router(cajas_efectivo_router)
@@ -206,7 +211,6 @@ app.include_router(migracion_cajas_giamigli_router)
 app.include_router(remitos_router)
 app.include_router(ordenes_router)
 app.include_router(planificacion_router)
-app.include_router(reasignacion_contacto_router)
 app.include_router(resultado_cultivo_router)
 app.include_router(stock_router)
 from src.features.trabajos_eventuales.router import router as trabajos_eventuales_router
@@ -215,8 +219,6 @@ app.include_router(trabajos_eventuales_router)
 app.include_router(remuneraciones_router)
 app.include_router(sesion_router)
 app.include_router(tarjetas_router)
-app.include_router(auditoria_cuentas_router)
-app.include_router(revision_cuentas_router)
 app.include_router(tarjetas_cuenta_router)
 app.include_router(tarjetas_cuotas_router)
 app.include_router(tarjetas_resumenes_router)
@@ -225,7 +227,6 @@ app.include_router(traspasos_internos_tesoreria_router)
 app.include_router(ventas_granos_router)
 app.include_router(ventas_hacienda_router)
 app.include_router(integridad_vinculos_router)
-app.include_router(recalculo_fifo_router)
 app.include_router(facturas_faltantes_router)
 app.include_router(cotizaciones_router)
 

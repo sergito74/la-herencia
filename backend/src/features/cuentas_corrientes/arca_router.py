@@ -9,10 +9,20 @@ from pydantic import BaseModel, Field, field_validator
 from starlette.concurrency import run_in_threadpool
 
 from src.features.cuentas_corrientes import arca, arca_documentos, arca_fiscal
-from src.features.revision_cuentas.router import _usuario_actual
 
 router = APIRouter(prefix="/api/arca", tags=["arca"])
 Monto = Annotated[Decimal, Field(ge=0, max_digits=19, decimal_places=4)]
+
+
+def _usuario_actual(request) -> str:
+    """Nombre del usuario de la sesión."""
+    from src.db.connection import fetch_one
+
+    payload = getattr(request.state, "usuario", None)
+    if not payload:
+        return "desconocido"
+    fila = fetch_one("SELECT NombreUsuario AS n FROM dbo.AuthUsuarios WHERE IdUsuario = ?", (payload["idUsuario"],))
+    return fila["n"] if fila else "desconocido"
 
 
 @router.get('/fiscal')
