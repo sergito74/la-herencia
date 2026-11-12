@@ -1,4 +1,5 @@
 'use client';
+import { CuotasInfo } from './CuotasInfo';
 import { useState } from 'react';
 import { useMutation,useQuery } from '@tanstack/react-query';
 import { ContactoSelect } from '@/components/ui/ContactoSelect';
@@ -47,7 +48,7 @@ export function FormularioOrdenPago({orden,inicial,cerrar,guardado}:{orden?:Orde
    {q.isFetching&&<p>Cargando facturas…</p>}{q.isError&&<p role="alert">{q.error.message}</p>}
    {contacto&&q.data?.length===0&&<p>No hay facturas en pesos con saldo pendiente para este proveedor.</p>}
    <div className="overflow-auto max-h-80"><table className="w-full text-sm"><thead><tr><th>Factura</th><th>Fecha</th><th>Vencimiento</th><th>Saldo</th><th>En otras órdenes</th><th>A pagar</th></tr></thead><tbody>
-    {q.data?.map(f=><tr key={f.idCompra} className="border-b"><td className="p-2"><label><input type="checkbox" aria-label={`Seleccionar ${f.numero}`} disabled={f.disponible<=0} checked={f.idCompra in seleccion} onChange={e=>cambiarSeleccion(v=>{const n={...v};if(e.target.checked)n[f.idCompra]=f.disponible;else delete n[f.idCompra];return n;})}/> {f.numero||'Sin número'}</label>{f.moneda==='Dolares'&&!!f.tc&&<span className="block text-xs text-slate-600">Factura en US$ · {formatMoneda(f.total/f.tc,'Dolares')} al TC {formatNumero(f.tc)}</span>}</td><td>{formatFecha(f.fecha)}</td><td>{formatFecha(f.fechaVto??f.fecha)}</td><td>{formatMoneda(f.saldo)}</td><td>{formatMoneda(f.reservado)}</td><td><ImporteInput aria-label={`Importe ${f.numero}`} disabled={!(f.idCompra in seleccion)} value={seleccion[f.idCompra]} onChange={n=>cambiarSeleccion(v=>({...v,[f.idCompra]:n}))}/></td></tr>)}
+    {q.data?.map(f=><tr key={f.idCompra} className="border-b"><td className="p-2"><label><input type="checkbox" aria-label={`Seleccionar ${f.numero}`} disabled={f.disponible<=0} checked={f.idCompra in seleccion} onChange={e=>cambiarSeleccion(v=>{const n={...v};if(e.target.checked)n[f.idCompra]=f.disponible;else delete n[f.idCompra];return n;})}/> {f.numero||'Sin número'}</label>{f.moneda==='Dolares'&&!!f.tc&&<span className="block text-xs text-slate-600">Factura en US$ · {formatMoneda(f.total/f.tc,'Dolares')} al TC {formatNumero(f.tc)}</span>}</td><td>{formatFecha(f.fecha)}</td><td>{formatFecha(f.fechaVto??f.fecha)}<CuotasInfo f={f}/></td><td>{formatMoneda(f.saldo)}</td><td>{formatMoneda(f.reservado)}</td><td><ImporteInput aria-label={`Importe ${f.numero}`} disabled={!(f.idCompra in seleccion)} value={seleccion[f.idCompra]} onChange={n=>cambiarSeleccion(v=>({...v,[f.idCompra]:n}))}/></td></tr>)}
    </tbody></table></div>
    <section className="rounded border border-slate-200 p-3 space-y-2" aria-label="Retención de Ganancias">
     <div className="flex flex-wrap items-center gap-3"><h3 className="font-semibold">Retención de Ganancias</h3>

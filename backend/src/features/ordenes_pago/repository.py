@@ -76,10 +76,10 @@ def facturas(id_contacto, excluir_op=None, incluir_saldadas=False, incluir_suspe
     ids = [f['idCompra'] for f in rows]
     for i in range(0, len(ids), 900):
         parte = ids[i:i + 900]
-        for v in fetch_all("SELECT IdCompra id,[Fecha de vencimiento] f FROM dbo.[Vencimiento Compras] WHERE IdCompra IN ("
+        for v in fetch_all("SELECT IdCompra id,[Fecha de vencimiento] f,Importe i FROM dbo.[Vencimiento Compras] WHERE IdCompra IN ("
                            + ",".join("?" * len(parte)) + ") ORDER BY [Fecha de vencimiento]", tuple(parte)):
             if v['f']:
-                cuotas[v['id']].append(v['f'])
+                cuotas[v['id']].append((v['f'], v['i']))
     reserved = {f['idCompra']: dinero(f['importe']) for f in fetch_all(
         "SELECT d.IdCompra idCompra,SUM(d.Importe) importe FROM dbo.OrdenesPago_Detalle d "
         "JOIN dbo.OrdenesPago o ON o.IdOrdenPago=d.IdOrdenPago WHERE o.Estado='Emitida' "
@@ -89,12 +89,12 @@ def facturas(id_contacto, excluir_op=None, incluir_saldadas=False, incluir_suspe
         p = dinero(paid[('CompraDeuda', row['idCompra'])])
         saldo = dinero(row['total'])-p
         reserva = reserved.get(row['idCompra'], Decimal(0))
-        fechas = cuotas.get(row['idCompra'])
-        if fechas:
-            # Varias cuotas sin importe propio: se reparten en partes iguales y vence la primera no cubierta por lo pagado.
-            total = dinero(row['total'])
-            n = int(p * len(fechas) / total) if total > 0 else 0
-            row['fechaVto'] = fechas[min(n, len(fechas) - 1)]
+        lista = cuotas.get(row['idCompra'])
+        if lista:
+            row['cuotas'] = _cuotas(lista, dinero(row['total']), p, row.get('tc'))
+            pendiente = next((c for c in row['cuotas'] if c['saldo'] > 0), row['cuotas'][-1])
+            row['fechaVto'] = pendiente['fecha']
+            row['cuotaActual'] = pendiente['numero']
             row['condicion'] = 'A Plazo'
         else:
             row['fechaVto'] = row['fecha']
@@ -103,6 +103,26 @@ def facturas(id_contacto, excluir_op=None, incluir_saldadas=False, incluir_suspe
             result.append({**row, 'pagado': p, 'saldo': saldo, 'reservado': reserva,
                            'disponible': max(Decimal(0), saldo-reserva)})
     return result
+
+
+def _cuotas(lista, total, pagado, tc=None):
+    """Cuotas de una compra A Plazo con su saldo (12/11/2026): cada fecha con su importe (en la moneda de la factura, se
+    pesifica al TC de la factura como el total); si la compra no tiene importes por fecha, el total en partes iguales.
+    Lo pagado cubre primero la cuota más vieja (regla pago-vencidas-primero)."""
+    n = len(lista)
+    if all(i is not None for _, i in lista):
+        importes = [dinero(Decimal(str(i)) * Decimal(str(tc or 1))) for _, i in lista]
+        importes[-1] += total - sum(importes)  # el total manda (descuentos de lo particular, redondeos)
+    else:
+        parte = dinero(total / n) if n else Decimal(0)
+        importes = [parte] * n
+        importes[-1] = total - parte * (n - 1)
+    res, resto = [], pagado
+    for k, ((fecha, _), imp) in enumerate(zip(lista, importes), start=1):
+        cubre = min(max(resto, Decimal(0)), imp)
+        resto -= cubre
+        res.append({'numero': k, 'de': n, 'fecha': fecha, 'importe': imp, 'saldo': imp - cubre})
+    return res
 
 
 _CACHE_PENDIENTES: dict = {}

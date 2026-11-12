@@ -154,6 +154,14 @@ class ListaOrdenes(BaseModel):
     total: int
 
 
+class CuotaCompra(BaseModel):
+    numero: int
+    de: int
+    fecha: date
+    importe: float
+    saldo: float
+
+
 class FacturaPendiente(BaseModel):
     idCompra: int
     numero: str | None
@@ -167,6 +175,8 @@ class FacturaPendiente(BaseModel):
     saldo: float
     reservado: float
     disponible: float
+    cuotas: list[CuotaCompra] | None = None  # compras A Plazo: cada vencimiento con su importe y saldo (12/11/2026)
+    cuotaActual: int | None = None
 
 
 class FacturaAPagar(FacturaPendiente):

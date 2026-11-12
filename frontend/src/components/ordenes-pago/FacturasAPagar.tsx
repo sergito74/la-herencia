@@ -1,4 +1,5 @@
 'use client';
+import { CuotasInfo } from './CuotasInfo';
 import { useMemo, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { SoloLectura } from '@/components/auth/SoloLectura';
@@ -66,7 +67,7 @@ export function FacturasAPagar({ idContacto, crearOrden }: { idContacto: number 
             const tildada = sel?.idContacto === f.idContacto && f.idCompra in sel.facturas;
             return <tr key={`${f.origen ?? "Compras"}-${f.idCompra}-${i}`} className={`border-t ${tildada ? 'bg-emerald-50' : ''}`}>
               <td className="p-1 align-top"><input type="checkbox" aria-label={`Seleccionar ${f.numero ?? 'factura'} de ${f.proveedor ?? ''}`} disabled={(f.origen ?? 'Compras') !== 'Compras' || f.disponible <= 0} checked={!!tildada} onChange={e => tildar(f, e.target.checked)} /></td>
-              <td className={`p-1 align-top ${f.diasVencida > 0 ? 'text-red-700 font-medium' : ''}`}>{formatFecha(f.vencimiento)}<span className="block text-[11px] text-slate-600">{f.condicion === 'Contado' ? 'Contado' : 'A plazo'}</span>{f.diasVencida > 0 && <span className="block text-[11px]">vencida hace {f.diasVencida} días</span>}</td>
+              <td className={`p-1 align-top ${f.diasVencida > 0 ? 'text-red-700 font-medium' : ''}`}>{formatFecha(f.vencimiento)}<span className="block text-[11px] text-slate-600">{f.condicion === 'Contado' ? 'Contado' : 'A plazo'}</span><CuotasInfo f={f} />{f.diasVencida > 0 && <span className="block text-[11px]">vencida hace {f.diasVencida} días</span>}</td>
               <td className="p-1 align-top break-words">{f.proveedor}
                 {f.estado === 'tarjeta' && <span className="block text-[11px] text-slate-600">Se paga con tarjeta: queda saldada al cargar el resumen</span>}
                 {f.estado === 'canje' && <span className="block text-[11px] text-emerald-800">Canje de granos{f.canjeGrano && f.canjeGrano !== 'Granos' ? ` (${f.canjeGrano}${f.campaniaCanje ? ' ' + f.campaniaCanje : ''})` : ''}{f.contratoCanje ? ` · contrato ${f.contratoCanje}` : ''}: se paga con granos</span>}
