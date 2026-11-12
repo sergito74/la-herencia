@@ -21,6 +21,7 @@ class MedioInput(Estricto):
     medio: Literal['Transferencia', 'Efectivo', 'Cheque']
     cuenta: str = Field(min_length=1, max_length=150)
     importe: Dinero
+    fecha: date | None = None  # vencimiento de ese medio (ej. eCheq de la cuota 2); None = la fecha de pago
 
 
 class RetencionInput(Estricto):
@@ -134,6 +135,7 @@ class MedioDetalle(BaseModel):
     medio: str
     cuenta: str
     importe: float
+    fecha: date | None = None
 
 
 class RetencionDetalle(BaseModel):

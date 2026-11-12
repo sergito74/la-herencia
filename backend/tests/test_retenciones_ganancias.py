@@ -98,7 +98,7 @@ def test_factura_en_cuotas_ya_retenida_no_se_retiene_de_nuevo(monkeypatch):
 
 def test_acumula_el_mes_y_aplica_minimo(monkeypatch):
     monkeypatch.setattr(r, 'condicion', lambda *a: {'retiene': True, 'inscripto': True, 'persona': 'J'})
-    monkeypatch.setattr(r, '_bases', lambda f: ({94: Decimal('899099.98')}, []))
+    monkeypatch.setattr(r, '_bases', lambda f, d=None: ({94: Decimal('899099.98')}, []))
     monkeypatch.setattr(r, '_mes_anterior', lambda *a: (Decimal('899099.98'), Decimal('16638.60')))
     monkeypatch.setattr(r.simulador, 'concepto', lambda *a: {'ID_ALICUOTA': 34, 'CONCEPTO': 'Servicios'})
     llamadas = []

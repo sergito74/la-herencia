@@ -122,8 +122,10 @@ def condicion(id_contacto, fecha_pago) -> dict:
     return {**base, 'retiene': True, 'inscripto': p['g'] == 'AC'}
 
 
-def _bases(facturas):
-    """Base neta de IVA por régimen: el pago de cada factura se reparte según el neto de sus renglones."""
+def _bases(facturas, diferidas=None):
+    """Base neta de IVA por régimen: el pago de cada factura se reparte según el neto de sus renglones.
+    `diferidas` (opcional) recibe la base de las facturas cuyo pago es un adelanto: se calcula igual que ARCA pero la
+    retención no se descuenta en esta orden sino en la cuota 2."""
     ids = [f['idCompra'] for f in facturas]
     if not ids:
         return {}, []
@@ -144,7 +146,8 @@ def _bases(facturas):
         f"SELECT DISTINCT d.IdCompra i FROM dbo.OrdenesPago_Detalle d JOIN dbo.OrdenesPago o ON o.IdOrdenPago=d.IdOrdenPago "
         f"WHERE d.IdCompra IN ({marcas}) AND o.Estado IN ('Emitida','Pagada') AND ISNULL(o.RetencionGanancias,0)>0", tuple(ids))}
     for i in sorted(en_cuotas & adelanto):
-        avisos.append('Pago de adelanto: la retención de esa factura no se descuenta en esta orden, sino en la cuota 2')
+        avisos.append('Pago de adelanto: la retención se calcula sobre el total de la factura sin IVA pero no se descuenta '
+                      'en esta orden: se descuenta de la cuota 2')
     for i in sorted((en_cuotas - adelanto) & ya_retenidas):
         avisos.append('Una factura en cuotas ya tuvo su retención en una orden anterior: no se vuelve a retener')
     for r in ren:
@@ -152,7 +155,12 @@ def _bases(facturas):
         if not total or r['cod'] is None:
             continue
         if r['i'] in en_cuotas:
-            if r['i'] not in adelanto and r['i'] not in ya_retenidas:
+            if r['i'] in ya_retenidas:
+                continue
+            if r['i'] in adelanto:
+                if diferidas is not None:
+                    diferidas[r['cod']] += dinero(float(r['neto']))
+            else:
                 bases[r['cod']] += dinero(float(r['neto']))
             continue
         bases[r['cod']] += dinero(pago[r['i']] * float(r['neto']) / total)
@@ -175,9 +183,11 @@ def proponer(id_contacto: int, fecha_pago: date, facturas: list[dict], excluir_o
            'avisos': ['Los pagos del mes hechos fuera de órdenes de pago no se suman a la base']}
     if not cond['retiene']:
         return out
-    bases, avisos = _bases(facturas)
+    diferidas = defaultdict(Decimal)
+    bases, avisos = _bases(facturas, diferidas)
     out['avisos'] += avisos
-    for cod, base in sorted(bases.items()):
+    lista = [(cod, base, False) for cod, base in sorted(bases.items())] + [(cod, base, True) for cod, base in sorted(diferidas.items())]
+    for cod, base, diferida in lista:
         if base <= 0:
             continue
         ant, ret_ant = _mes_anterior(id_contacto, fecha_pago, cod, excluir_op)
@@ -188,6 +198,8 @@ def proponer(id_contacto: int, fecha_pago: date, facturas: list[dict], excluir_o
             ret = Decimal(0)
         out['lineas'].append({'codRegimen': cod, 'concepto': c['CONCEPTO'], 'basePago': base, 'pagosAnteriores': ant,
                               'retencionesAnteriores': ret_ant, 'alicuota': d['r_valicuota'],
-                              'noSujeto': dinero(d['r_vmonto_no_imponible']), 'retencion': ret, 'simulador': json.dumps(d)})
-        out['total'] += ret
+                              'noSujeto': dinero(d['r_vmonto_no_imponible']), 'retencion': ret, 'simulador': json.dumps(d),
+                              'diferida': diferida})
+        if not diferida:  # la del adelanto se informa, pero se descuenta en la orden de la cuota 2
+            out['total'] += ret
     return out

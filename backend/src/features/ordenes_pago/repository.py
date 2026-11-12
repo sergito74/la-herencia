@@ -46,7 +46,7 @@ def obtener(id_):
     row['facturas'] = fetch_all('SELECT d.IdCompra idCompra,c.[Nro Documento] numero,d.Importe importe '
                                'FROM dbo.OrdenesPago_Detalle d JOIN dbo.Compras c ON c.IdDeuda=d.IdCompra '
                                'WHERE d.IdOrdenPago=? ORDER BY d.IdDetalle', (id_,))
-    row['medios'] = fetch_all('SELECT Medio medio,Cuenta cuenta,Importe importe FROM dbo.OrdenesPago_Medios '
+    row['medios'] = fetch_all('SELECT Medio medio,Cuenta cuenta,Importe importe,Fecha fecha FROM dbo.OrdenesPago_Medios '
                              'WHERE IdOrdenPago=? ORDER BY IdMedio', (id_,))
     row['retenciones'] = fetch_all('SELECT CodRegimen codRegimen,Concepto concepto,BasePago basePago,PagosAnteriores pagosAnteriores,'
                                    'RetencionesAnteriores retencionesAnteriores,Alicuota alicuota,NoSujeto noSujeto,Retencion retencion '
@@ -401,8 +401,8 @@ def guardar(body: OrdenInput, usuario, id_=None):
     for f in body.facturas:
         execute_write('INSERT INTO dbo.OrdenesPago_Detalle (IdOrdenPago,IdCompra,Importe) VALUES (?,?,?)', (id_, f.idCompra, f.importe))
     for m in body.medios:
-        execute_write('INSERT INTO dbo.OrdenesPago_Medios (IdOrdenPago,Medio,Cuenta,Importe) VALUES (?,?,?,?)',
-                      (id_, m.medio, m.cuenta, m.importe))
+        execute_write('INSERT INTO dbo.OrdenesPago_Medios (IdOrdenPago,Medio,Cuenta,Importe,Fecha) VALUES (?,?,?,?,?)',
+                      (id_, m.medio, m.cuenta, m.importe, m.fecha))
     for r in body.retenciones:
         execute_write('INSERT INTO dbo.OrdenesPago_Retenciones (IdOrdenPago,CodRegimen,Concepto,BasePago,PagosAnteriores,'
                       'RetencionesAnteriores,Alicuota,NoSujeto,Retencion,Simulador) VALUES (?,?,?,?,?,?,?,?,?,?)',
