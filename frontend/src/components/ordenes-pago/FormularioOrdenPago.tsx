@@ -1,6 +1,6 @@
 'use client';
-import { CuotasInfo } from './CuotasInfo';
-import { useState } from 'react';
+import { CuotasInfo, esAdelanto, importeSugerido } from './CuotasInfo';
+import { useEffect, useRef, useState } from 'react';
 import { useMutation,useQuery } from '@tanstack/react-query';
 import { ContactoSelect } from '@/components/ui/ContactoSelect';
 import { formatFecha,formatMoneda,formatNumero,numeroAEdicionLocal,normalizarNumeroPegado,parseNumeroLocal } from '@/lib/format';
@@ -39,6 +39,19 @@ export function FormularioOrdenPago({orden,inicial,cerrar,guardado}:{orden?:Orde
  const total=Object.values(seleccion).reduce((a,b)=>a+b,0);
  const retencion=propuesta?.total??0;
  const diferencia=Math.round((total-retencion-medios.reduce((a,b)=>a+b.importe,0))*100)/100;
+ // Sugerencia del pago (12/11/2026): al abrir una orden nueva, las facturas en cuotas proponen la cuota que vence
+ // (y marcan si es el adelanto); el medio de pago único arranca con el neto a pagar.
+ const sugerido=useRef(false);
+ useEffect(()=>{if(orden||sugerido.current||!q.data)return;sugerido.current=true;
+  const conCuotas=q.data.filter(f=>f.idCompra in seleccion&&(f.cuotas?.length??0)>1);
+  if(conCuotas.length){setSeleccion(v=>{const n={...v};conCuotas.forEach(f=>{n[f.idCompra]=importeSugerido(f,pago);});return n;});
+   setAdelantos(x=>{const n={...x};conCuotas.forEach(f=>{n[f.idCompra]=esAdelanto(f);});return n;});}
+ // eslint-disable-next-line react-hooks/exhaustive-deps
+ },[q.data]);
+ const neto=Math.round((total-retencion)*100)/100;
+ useEffect(()=>{if(!orden&&medios.length===1&&neto>0)setMedios(m=>m.length===1?[{...m[0],importe:neto}]:m);
+ // eslint-disable-next-line react-hooks/exhaustive-deps
+ },[neto]);
  const guardar=useMutation({mutationFn:()=>guardarOP({idContacto:contacto!,fecha,fechaPago:pago,moneda:'ARS',observaciones:nota,
    facturas:facturasBody(),medios,retenciones:propuesta?.lineas??[],version:orden?.version},orden?.idOrdenPago),onSuccess:guardado});
  return <section className="rounded-xl border bg-white p-5 space-y-4" aria-label="Confeccionar orden de pago">
@@ -51,7 +64,7 @@ export function FormularioOrdenPago({orden,inicial,cerrar,guardado}:{orden?:Orde
    {q.isFetching&&<p>Cargando facturas…</p>}{q.isError&&<p role="alert">{q.error.message}</p>}
    {contacto&&q.data?.length===0&&<p>No hay facturas en pesos con saldo pendiente para este proveedor.</p>}
    <div className="overflow-auto max-h-80"><table className="w-full text-sm"><thead><tr><th>Factura</th><th>Fecha</th><th>Vencimiento</th><th>Saldo</th><th>En otras órdenes</th><th>A pagar</th></tr></thead><tbody>
-    {q.data?.map(f=><tr key={f.idCompra} className="border-b"><td className="p-2"><label><input type="checkbox" aria-label={`Seleccionar ${f.numero}`} disabled={f.disponible<=0} checked={f.idCompra in seleccion} onChange={e=>cambiarSeleccion(v=>{const n={...v};if(e.target.checked){n[f.idCompra]=(f.cuotas?.length??0)>1?(f.cuotas!.find(c=>c.numero===f.cuotaActual)?.saldo??f.disponible):f.disponible;setAdelantos(x=>({...x,[f.idCompra]:(f.cuotas?.length??0)>1&&f.cuotaActual===1}));}else delete n[f.idCompra];return n;})}/> {f.numero||'Sin número'}</label>{f.moneda==='Dolares'&&!!f.tc&&<span className="block text-xs text-slate-600">Factura en US$ · {formatMoneda(f.total/f.tc,'Dolares')} al TC {formatNumero(f.tc)}</span>}</td><td>{formatFecha(f.fecha)}</td><td>{formatFecha(f.fechaVto??f.fecha)}<CuotasInfo f={f}/>{(f.cuotas?.length??0)>1&&f.idCompra in seleccion&&<label className="block text-xs"><input type="checkbox" checked={!!adelantos[f.idCompra]} onChange={e=>{setAdelantos(x=>({...x,[f.idCompra]:e.target.checked}));setPropuesta(null);}}/> Es un adelanto (la retención va a la cuota 2)</label>}</td><td>{formatMoneda(f.saldo)}</td><td>{formatMoneda(f.reservado)}</td><td><ImporteInput aria-label={`Importe ${f.numero}`} disabled={!(f.idCompra in seleccion)} value={seleccion[f.idCompra]} onChange={n=>cambiarSeleccion(v=>({...v,[f.idCompra]:n}))}/></td></tr>)}
+    {q.data?.map(f=><tr key={f.idCompra} className="border-b"><td className="p-2"><label><input type="checkbox" aria-label={`Seleccionar ${f.numero}`} disabled={f.disponible<=0} checked={f.idCompra in seleccion} onChange={e=>cambiarSeleccion(v=>{const n={...v};if(e.target.checked){n[f.idCompra]=importeSugerido(f,pago);setAdelantos(x=>({...x,[f.idCompra]:esAdelanto(f)}));}else delete n[f.idCompra];return n;})}/> {f.numero||'Sin número'}</label>{f.moneda==='Dolares'&&!!f.tc&&<span className="block text-xs text-slate-600">Factura en US$ · {formatMoneda(f.total/f.tc,'Dolares')} al TC {formatNumero(f.tc)}</span>}</td><td>{formatFecha(f.fecha)}</td><td>{formatFecha(f.fechaVto??f.fecha)}<CuotasInfo f={f}/>{(f.cuotas?.length??0)>1&&f.idCompra in seleccion&&<label className="block text-xs"><input type="checkbox" checked={!!adelantos[f.idCompra]} onChange={e=>{setAdelantos(x=>({...x,[f.idCompra]:e.target.checked}));setPropuesta(null);}}/> Es un adelanto (la retención va a la cuota 2)</label>}</td><td>{formatMoneda(f.saldo)}</td><td>{formatMoneda(f.reservado)}</td><td><ImporteInput aria-label={`Importe ${f.numero}`} disabled={!(f.idCompra in seleccion)} value={seleccion[f.idCompra]} onChange={n=>cambiarSeleccion(v=>({...v,[f.idCompra]:n}))}/></td></tr>)}
    </tbody></table></div>
    <section className="rounded border border-slate-200 p-3 space-y-2" aria-label="Retención de Ganancias">
     <div className="flex flex-wrap items-center gap-3"><h3 className="font-semibold">Retención de Ganancias</h3>
@@ -74,7 +87,7 @@ export function FormularioOrdenPago({orden,inicial,cerrar,guardado}:{orden?:Orde
     <ImporteInput required aria-label={`Importe del medio ${i+1}`} value={m.importe} onChange={n=>setMedios(v=>v.map((x,j)=>j===i?{...x,importe:n}:x))}/>
     {medios.length>1&&<button type="button" onClick={()=>setMedios(v=>v.filter((_,j)=>i!==j))}>Quitar</button>}</div>)}
    <button type="button" className={campo} onClick={()=>setMedios(v=>[...v,{medio:'Transferencia',cuenta:'',importe:0}])}>Agregar medio</button>
-   <p className="font-semibold">Facturas: {formatMoneda(total)} · Retención: {formatMoneda(retencion)} · Neto a pagar: {formatMoneda(total-retencion)} · Falta distribuir: {formatMoneda(diferencia)}</p>
+   <p className="font-semibold">Facturas: {formatMoneda(total)} · Retención: {formatMoneda(retencion)} · Neto a pagar: {formatMoneda(total-retencion)} · Falta distribuir: {formatMoneda(diferencia)}{Math.abs(diferencia)>0.005&&medios.length>0&&<button type="button" className="ml-2 text-sm font-normal text-finance underline" onClick={()=>setMedios(m=>m.map((x,i)=>i===m.length-1?{...x,importe:Math.round((x.importe+diferencia)*100)/100}:x))}>Completar con el último medio</button>}</p>
    <label className="block">Observaciones<textarea aria-label="Observaciones" className={`${campo} block w-full`} maxLength={1000} value={nota} onChange={e=>setNota(e.target.value)}/></label>
    {guardar.isError&&<p role="alert" className="text-red-700">{guardar.error.message}</p>}
    <div className="flex gap-3"><button className={boton} disabled={guardar.isPending||!contacto||total<=0||!propuesta||diferencia!==0}>Guardar borrador</button><button type="button" className={campo} onClick={cerrar}>Cancelar</button></div>

@@ -1,5 +1,5 @@
 'use client';
-import { CuotasInfo } from './CuotasInfo';
+import { CuotasInfo, importeSugerido } from './CuotasInfo';
 import { useMemo, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { SoloLectura } from '@/components/auth/SoloLectura';
@@ -30,7 +30,7 @@ export function FacturasAPagar({ idContacto, crearOrden }: { idContacto: number 
     setSel(prev => {
       const base = prev && prev.idContacto === f.idContacto ? prev : { idContacto: f.idContacto, proveedor: f.proveedor, facturas: {} };
       const facturas = { ...base.facturas };
-      if (on) facturas[f.idCompra] = f.disponible; else delete facturas[f.idCompra];
+      if (on) facturas[f.idCompra] = importeSugerido(f, new Date().toISOString().slice(0, 10)); else delete facturas[f.idCompra];
       return Object.keys(facturas).length ? { ...base, facturas } : null;
     });
   }
