@@ -820,8 +820,8 @@ def _linea_insert_statement(linea: dict):
 def _vencimiento_insert_statement(vencimiento: dict):
     def build(results: list) -> tuple[str, tuple]:
         id_compra = results[0]
-        sql = "INSERT INTO dbo.[Vencimiento Compras] (IdCompra, [Fecha de vencimiento]) VALUES (?, ?)"
-        return sql, (id_compra, vencimiento["fechaVencimiento"])
+        sql = "INSERT INTO dbo.[Vencimiento Compras] (IdCompra, [Fecha de vencimiento], Importe) VALUES (?, ?, ?)"
+        return sql, (id_compra, vencimiento["fechaVencimiento"], vencimiento.get("importe"))
 
     return build
 
@@ -896,8 +896,8 @@ def update_compra(id_compra: int, cabecera: dict, lineas: list[dict], vencimient
     for vencimiento in vencimientos:
         statements.append(
             (
-                "INSERT INTO dbo.[Vencimiento Compras] (IdCompra, [Fecha de vencimiento]) VALUES (?, ?)",
-                (id_compra, vencimiento["fechaVencimiento"]),
+                "INSERT INTO dbo.[Vencimiento Compras] (IdCompra, [Fecha de vencimiento], Importe) VALUES (?, ?, ?)",
+                (id_compra, vencimiento["fechaVencimiento"], vencimiento.get("importe")),
             )
         )
 
@@ -925,7 +925,7 @@ def delete_compra(id_compra: int) -> None:
 
 def get_vencimientos_compra(id_compra: int) -> list[dict]:
     rows = fetch_all(
-        "SELECT IdVencimiento AS idVencimiento, [Fecha de vencimiento] AS fechaVencimiento "
+        "SELECT IdVencimiento AS idVencimiento, [Fecha de vencimiento] AS fechaVencimiento, CAST(Importe AS float) AS importe "
         "FROM dbo.[Vencimiento Compras] WHERE IdCompra = ? ORDER BY [Fecha de vencimiento] ASC",
         (id_compra,),
     )

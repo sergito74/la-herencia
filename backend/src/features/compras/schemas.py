@@ -65,6 +65,7 @@ class LineaCompra(BaseModel):
 class VencimientoCompra(BaseModel):
     idVencimiento: int
     fechaVencimiento: date | None = None
+    importe: float | None = None
 
 
 class CompraDetalle(BaseModel):
@@ -219,6 +220,8 @@ class LineaInput(BaseModel):
 
 class VencimientoInput(BaseModel):
     fechaVencimiento: date
+    # Monto a pagar en esa fecha (12/11/2026); None en cargas sin monto por cuota.
+    importe: float | None = None
 
 
 class CompraAltaRequest(BaseModel):

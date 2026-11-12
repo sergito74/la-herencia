@@ -77,6 +77,7 @@ export interface LineaCompra {
 export interface VencimientoCompra {
   idVencimiento: number;
   fechaVencimiento: string | null;
+  importe?: number | null;
 }
 
 export interface CompraDetalle {
@@ -219,6 +220,8 @@ export interface LineaInput {
 
 export interface VencimientoInput {
   fechaVencimiento: string;
+  /** Monto a pagar en esa fecha; null en cargas viejas sin monto por cuota. */
+  importe?: number | null;
 }
 
 export interface CompraAltaInput {

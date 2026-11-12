@@ -195,7 +195,7 @@ export function CompraForm({
   });
 
   const [vencimientos, setVencimientos] = useState<VencimientoInput[]>(
-    initial?.vencimientos.map(({ fechaVencimiento }) => ({ fechaVencimiento })) ?? []
+    initial?.vencimientos.map(({ fechaVencimiento, importe }) => ({ fechaVencimiento: fechaVencimiento ?? "", importe: importe ?? null })) ?? []
   );
   const [condicionPago, setCondicionPago] = useState<"Contado" | "A Plazo">(
     initial?.vencimientos.length ? "A Plazo" : "Contado"
@@ -387,6 +387,14 @@ export function CompraForm({
     if (condicionPago === "A Plazo" && vencimientosCompletos.length === 0) {
       showToast("Cargá al menos una fecha de vencimiento, o cambiá la condición a Contado.", "danger");
       return;
+    }
+
+    if (condicionPago === "A Plazo" && vencimientosCompletos.some((v) => v.importe != null)) {
+      const suma = vencimientosCompletos.reduce((a, v) => a + (v.importe ?? 0), 0);
+      if (Math.abs(suma - importeTotal) > 0.01) {
+        showToast(`Los importes de los vencimientos suman ${formatMoneda(suma, moneda)} y el total es ${formatMoneda(importeTotal, moneda)}.`, "danger");
+        return;
+      }
     }
 
     const input: CompraAltaInput = {
@@ -672,7 +680,7 @@ export function CompraForm({
               A Plazo
             </label>
             {condicionPago === "A Plazo" && (
-              <VencimientosEditor vencimientos={vencimientos} onChange={setVencimientos} />
+              <VencimientosEditor vencimientos={vencimientos} onChange={setVencimientos} total={importeTotal} moneda={moneda} />
             )}
             <label className="flex items-center gap-1 text-ink-secondary">
               <input type="checkbox" checked={!!canjeGrano} onChange={e => setCanjeGrano(e.target.checked ? "Granos" : "")} />
