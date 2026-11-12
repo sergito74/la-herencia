@@ -13,9 +13,14 @@ export default function EditarCompraPage() {
   const idCompra = Number(params.idCompra);
   const router = useRouter();
 
-  const { data, isLoading, isError, refetch } = useQuery({
+  // Siempre la versión guardada (12/11/2026): el formulario toma sus valores al abrirse, así que una copia vieja en
+  // caché pisaba lo último guardado (ej. importes de las cuotas).
+  const { data, isLoading, isFetching, isError, refetch } = useQuery({
     queryKey: ["compra-detalle-edicion", idCompra],
     queryFn: () => fetchCompraDetalle(idCompra),
+    staleTime: 0,
+    gcTime: 0,
+    refetchOnMount: "always",
   });
 
   return (

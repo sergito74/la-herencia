@@ -58,6 +58,7 @@ export function compraDetalleAInput(
     vencimientos: data.vencimientos.map((v) => ({
       idVencimiento: v.idVencimiento,
       fechaVencimiento: v.fechaVencimiento ?? "",
+      importe: v.importe ?? null,
     })),
     subtotalNeto,
     ivaCabecera,
