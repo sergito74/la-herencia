@@ -40,6 +40,23 @@ def _archivos(doc: str | None) -> list[str]:
     return out
 
 
+def _cuotas_brutas(factura: dict, medios: list[dict]):
+    """Vencimiento e importe bruto de cada cuota que paga la orden (una por medio con fecha), según los vencimientos
+    cargados en la compra; la última absorbe la diferencia para que la suma sea lo aplicado a la factura."""
+    if not all(m.get('fecha') for m in medios):
+        return None
+    vtos = {str(v['f'])[:10]: float(v['i']) for v in fetch_all(
+        "SELECT [Fecha de vencimiento] f, Importe i FROM dbo.[Vencimiento Compras] WHERE IdCompra=? AND Importe IS NOT NULL",
+        (factura['idCompra'],))}
+    if not vtos:
+        return None
+    filas = [(str(m['fecha'])[:10], vtos.get(str(m['fecha'])[:10])) for m in medios]
+    if any(i is None for _, i in filas):
+        return None
+    filas[-1] = (filas[-1][0], round(filas[-1][1] + float(factura['importe']) - sum(i for _, i in filas), 2))
+    return filas
+
+
 def datos(ordenes: dict | list[dict]) -> dict:
     """Un solo mail con todas las órdenes (Sergio 10/11/2026): asunto, cuerpo, PDF a adjuntar y avisos."""
     ordenes = [ordenes] if isinstance(ordenes, dict) else ordenes
@@ -64,6 +81,14 @@ def datos(ordenes: dict | list[dict]) -> dict:
             partes = ([(FORMA.get(m['medio'], m['medio']), float(m['importe'])) for m in medios]
                       if len(orden['facturas']) == 1 and len(medios) > 1 and all(m.get('importe') for m in medios)
                       else [(forma, float(f['importe']))])
+            cuotas = _cuotas_brutas(f, medios) if len(orden['facturas']) == 1 and len(medios) > 1 else None
+            if cuotas:
+                # Factura en cuotas (12/11/2026): una fila por cuota con su vencimiento y su importe BRUTO; la retención
+                # todavía no está confirmada (la calcula el estudio), así que no se descuenta en el cuadro.
+                for m, (vto, importe) in zip(medios, cuotas):
+                    filas.append((fila[0], _fecha(vto), _fecha(m.get('fecha') or vto), *fila[3:], 'Pesos',
+                                  FORMA.get(m['medio'], m['medio']), _pesos(importe), '', _pesos(importe)))
+                partes = []
             for forma_i, importe in partes:
                 if c.get('m') == 'Dolares':  # importe en US$, TC del comprobante e importe en pesos
                     tc = float(c['tc'])
