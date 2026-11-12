@@ -86,7 +86,7 @@ def datos(ordenes: dict | list[dict]) -> dict:
                 # Factura en cuotas (12/11/2026): una fila por cuota con su vencimiento y su importe BRUTO; la retención
                 # todavía no está confirmada (la calcula el estudio), así que no se descuenta en el cuadro.
                 for m, (vto, importe) in zip(medios, cuotas):
-                    filas.append((fila[0], _fecha(vto), _fecha(m.get('fecha') or vto), *fila[3:], 'Pesos',
+                    filas.append((fila[0], _fecha(vto), fila[2], *fila[3:], 'Pesos',  # fecha pago: cuando se transfiere o se emite el cheque
                                   FORMA.get(m['medio'], m['medio']), _pesos(importe), '', _pesos(importe)))
                 partes = []
             for forma_i, importe in partes:
