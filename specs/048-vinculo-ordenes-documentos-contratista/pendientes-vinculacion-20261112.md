@@ -23,7 +23,7 @@ Facturas de labor recientes (desde 07/2025) sin orden vinculada. Se vinculan **s
 
 ## C. Limpieza
 
-- OT 160 y 161: órdenes de PRUEBA T048 anuladas — borrar (regla sin datos de prueba).
+- ~~OT 160 y 161~~ — HECHO 12/11: borradas con insumos, distribución y formularios de retiro 7 y 8; stock sin cambios.
 
 ## Hecho
 
