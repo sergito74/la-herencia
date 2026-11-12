@@ -27,7 +27,7 @@ export interface PropuestaRetencion { condicion: { retiene: boolean; motivo?: st
 export interface RubroRetencion { idRubro: number; rubro: string; codRegimen: number | null; estado: 'Borrador'|'Validado contador'|'Ratificado estudio'; observaciones: string | null }
 export interface Regimen { codRegimen: number; concepto: string; alicuota: number; noSujeto: number }
 export interface Exclusion { idExclusion: number; idContacto: number; proveedor: string; desde: string; hasta: string; observaciones: string | null }
-export const proponerRetencion=(body:{idContacto:number;fechaPago:string;facturas:{idCompra:number;importe:number}[];excluirOrden?:number})=>apiPost<PropuestaRetencion>(`${base}/retenciones/proponer`,body);
+export const proponerRetencion=(body:{idContacto:number;fechaPago:string;facturas:{idCompra:number;importe:number;adelanto?:boolean}[];excluirOrden?:number})=>apiPost<PropuestaRetencion>(`${base}/retenciones/proponer`,body);
 export const rubrosRetencion=()=>apiGet<RubroRetencion[]>(`${base}/retenciones/rubros`);
 export const regimenesRetencion=()=>apiGet<Regimen[]>(`${base}/retenciones/regimenes`);
 export const guardarRubroRetencion=(id:number,body:Omit<RubroRetencion,'idRubro'|'rubro'>)=>apiPut(`${base}/retenciones/rubros/${id}`,body);

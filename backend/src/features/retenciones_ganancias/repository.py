@@ -135,9 +135,25 @@ def _bases(facturas):
                     f'WHERE d.IdCompra IN ({marcas}) GROUP BY d.IdCompra,c.CodRegimen', tuple(ids))
     bases, avisos = defaultdict(Decimal), []
     pago = {f['idCompra']: float(f['importe']) for f in facturas}
+    adelanto = {f['idCompra'] for f in facturas if f.get('adelanto')}
+    # Facturas en cuotas (Sergio 12/11/2026): la retención se calcula una sola vez, como indica ARCA, sobre el total de
+    # la factura sin IVA. Si el pago es el adelanto, no se retiene en esta orden: se descuenta de la cuota 2.
+    en_cuotas = {r['i'] for r in fetch_all(
+        f'SELECT IdCompra i FROM dbo.[Vencimiento Compras] WHERE IdCompra IN ({marcas}) GROUP BY IdCompra HAVING COUNT(*)>1', tuple(ids))}
+    ya_retenidas = {r['i'] for r in fetch_all(
+        f"SELECT DISTINCT d.IdCompra i FROM dbo.OrdenesPago_Detalle d JOIN dbo.OrdenesPago o ON o.IdOrdenPago=d.IdOrdenPago "
+        f"WHERE d.IdCompra IN ({marcas}) AND o.Estado IN ('Emitida','Pagada') AND ISNULL(o.RetencionGanancias,0)>0", tuple(ids))}
+    for i in sorted(en_cuotas & adelanto):
+        avisos.append('Pago de adelanto: la retención de esa factura no se descuenta en esta orden, sino en la cuota 2')
+    for i in sorted((en_cuotas - adelanto) & ya_retenidas):
+        avisos.append('Una factura en cuotas ya tuvo su retención en una orden anterior: no se vuelve a retener')
     for r in ren:
         total = tot.get(r['i']) or 0
         if not total or r['cod'] is None:
+            continue
+        if r['i'] in en_cuotas:
+            if r['i'] not in adelanto and r['i'] not in ya_retenidas:
+                bases[r['cod']] += dinero(float(r['neto']))
             continue
         bases[r['cod']] += dinero(pago[r['i']] * float(r['neto']) / total)
     if any(r['rubro'] is None for r in ren):

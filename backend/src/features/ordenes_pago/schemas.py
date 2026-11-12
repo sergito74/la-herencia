@@ -56,10 +56,15 @@ class OrdenInput(Estricto):
         return self
 
 
+class FacturaPropuestaInput(FacturaInput):
+    # Pago del adelanto de una factura en cuotas: la retención no se descuenta acá sino en la cuota 2 (Sergio 12/11/2026).
+    adelanto: bool = False
+
+
 class PropuestaInput(Estricto):
     idContacto: int = Field(gt=0)
     fechaPago: date
-    facturas: list[FacturaInput] = Field(min_length=1, max_length=100)
+    facturas: list[FacturaPropuestaInput] = Field(min_length=1, max_length=100)
     excluirOrden: int | None = Field(default=None, gt=0)
 
 

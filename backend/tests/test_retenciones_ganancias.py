@@ -58,10 +58,42 @@ def test_base_neta_repartida_por_regimen(monkeypatch):
     def todos(sql, params=()):
         if 'vw_Cns_Total_Compra' in sql:
             return [{'i': 1, 'g': 1210.0}]
+        if 'Vencimiento Compras' in sql or 'OrdenesPago_Detalle' in sql:
+            return []
         return [{'i': 1, 'neto': 600.0, 'cod': 78, 'rubro': 5}, {'i': 1, 'neto': 400.0, 'cod': 94, 'rubro': 6}]
     monkeypatch.setattr(r, 'fetch_all', todos)
     bases, avisos = r._bases([{'idCompra': 1, 'importe': 605}])  # mitad de la factura
     assert bases == {78: Decimal('300.00'), 94: Decimal('200.00')} and not avisos
+
+
+def _mock_cuotas(monkeypatch, retenida=False):
+    def todos(sql, params=()):
+        if 'vw_Cns_Total_Compra' in sql:
+            return [{'i': 1, 'g': 1210.0}]
+        if 'Vencimiento Compras' in sql:
+            return [{'i': 1}]
+        if 'OrdenesPago_Detalle' in sql:
+            return [{'i': 1}] if retenida else []
+        return [{'i': 1, 'neto': 600.0, 'cod': 78, 'rubro': 5}, {'i': 1, 'neto': 400.0, 'cod': 94, 'rubro': 6}]
+    monkeypatch.setattr(r, 'fetch_all', todos)
+
+
+def test_factura_en_cuotas_retiene_sobre_el_total_sin_iva(monkeypatch):
+    _mock_cuotas(monkeypatch)
+    bases, _ = r._bases([{'idCompra': 1, 'importe': 300}])  # paga una cuota, la base es la factura entera
+    assert bases == {78: Decimal('600.00'), 94: Decimal('400.00')}
+
+
+def test_adelanto_no_retiene_se_descuenta_en_la_cuota_2(monkeypatch):
+    _mock_cuotas(monkeypatch)
+    bases, avisos = r._bases([{'idCompra': 1, 'importe': 300, 'adelanto': True}])
+    assert not bases and any('cuota 2' in a for a in avisos)
+
+
+def test_factura_en_cuotas_ya_retenida_no_se_retiene_de_nuevo(monkeypatch):
+    _mock_cuotas(monkeypatch, retenida=True)
+    bases, _ = r._bases([{'idCompra': 1, 'importe': 300}])
+    assert not bases
 
 
 def test_acumula_el_mes_y_aplica_minimo(monkeypatch):

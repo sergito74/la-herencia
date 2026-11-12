@@ -73,7 +73,7 @@ def vincular(id_documento: int, body: VincularInput, request: Request):
 
 @router.post('/retenciones/proponer')
 def proponer_retencion(body: PropuestaInput):
-    facturas = [{'idCompra': f.idCompra, 'importe': f.importe} for f in body.facturas]
+    facturas = [{'idCompra': f.idCompra, 'importe': f.importe, 'adelanto': f.adelanto} for f in body.facturas]
     return llamar(retenciones.proponer, body.idContacto, body.fechaPago, facturas, body.excluirOrden)
 
 

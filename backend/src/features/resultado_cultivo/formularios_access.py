@@ -85,12 +85,26 @@ def superficie_sembrada_real(id_destino: int, id_campania: int) -> float | None:
         clave = (lote.group(1).strip() if lote else item.replace("c/sembradora propia", "").strip(), round(_f(f["ha"]), 2))
         lineas = por_factura.setdefault((f["contratista"], f["compra"]), {})
         lineas[clave] = _f(f["ha"])  # misma superficie del mismo lote repetida en la factura: cuenta una vez
-    if not por_factura:
+    # Siembra con maquinaria propia ([Labores Maquinaria propia], 2018/19 en adelante): también es superficie sembrada.
+    propia = {str(f["lote"]).strip().upper(): _f(f["ha"]) for f in fetch_all(
+        "SELECT Lote AS lote, SUM(Superficie) AS ha FROM dbo.[Labores Maquinaria propia] "
+        "WHERE Labor LIKE 'Siembra%' AND IdDestino = ? AND IdCampaña = ? GROUP BY Lote", (id_destino, id_campania))}
+    if not por_factura and not propia:
         return None
     por_contratista: dict = {}
+    por_lote: dict[str, float] = dict(propia)
     for (contratista, _), lineas in por_factura.items():
-        por_contratista[contratista] = max(por_contratista.get(contratista, 0.0), sum(lineas.values()))
-    return round(sum(por_contratista.values()), 1)
+        sin_lote = 0.0
+        for (lote, _), ha in lineas.items():
+            codigo = re.match(r"\s*(\d+[a-z]*)", lote)
+            if codigo and len(lote) <= 12:  # factura con el lote indicado: un mismo lote no se cuenta dos veces
+                k = codigo.group(1).upper()
+                por_lote[k] = max(por_lote.get(k, 0.0), ha)
+            else:
+                sin_lote += ha
+        if sin_lote:
+            por_contratista[contratista] = max(por_contratista.get(contratista, 0.0), sin_lote)
+    return round(sum(por_contratista.values()) + sum(por_lote.values()), 1)
 
 
 # ------------------------------------------------------------------ FrmCostos
