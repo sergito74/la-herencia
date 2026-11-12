@@ -21,7 +21,8 @@ import { BadgeEstadoOrden } from "@/components/ordenes/EstadosOrden";
 import { DevolucionPanel } from "@/components/ordenes/DevolucionPanel";
 import { HectareasAplicadasPanel } from "@/components/ordenes/HectareasAplicadasPanel";
 import { FormularioRetiroView } from "@/components/ordenes/FormularioRetiroView";
-import { BackLink } from "@/components/ui/BackLink";
+import { PageHeader } from "@/components/ui/PageHeader";
+import { CultivoChip } from "@/components/cultivos/CultivoChip";
 
 export default function DetalleOrdenPage() {
   const { idOrden } = useParams<{ idOrden: string }>();
@@ -94,13 +95,11 @@ export default function DetalleOrdenPage() {
   if (isError || !orden) return <ErrorState message="No se pudo cargar la orden." onRetry={refetch} />;
 
   return (
-    <main className="mx-auto max-w-none px-8 py-6">
-      <BackLink href="/produccion/ordenes">Volver a Órdenes de trabajo</BackLink>
-      <div className="mt-2 flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">
-          Orden N° {orden.idOrden} <BadgeEstadoOrden estado={orden.estado} />
-        </h1>
-        <div className="flex gap-2">
+    <main className="mx-auto max-w-none px-6 py-3">
+      <PageHeader
+        titulo={<span className="inline-flex items-center gap-2">Orden N° {orden.idOrden} <BadgeEstadoOrden estado={orden.estado} /></span>}
+        volver="/produccion/ordenes"
+      >
           {orden.editable && (
             <Link href={`/produccion/ordenes/${orden.idOrden}/editar`} className="rounded border border-border px-3 py-1.5 text-sm hover:bg-surface-sunken">
               Editar
@@ -116,16 +115,15 @@ export default function DetalleOrdenPage() {
               Anular
             </button>
           )}
-        </div>
-      </div>
+      </PageHeader>
 
-      <div className="mt-4 grid grid-cols-2 gap-4 text-sm sm:grid-cols-4">
+      <div className="grid grid-cols-2 gap-x-6 gap-y-1 rounded border border-border bg-surface-sunken/50 px-3 py-2 text-sm sm:grid-cols-5">
         <div>
-          <div className="text-ink-secondary">Fecha pedido</div>
+          <div className="text-xs text-ink-secondary">Fecha pedido</div>
           <div>{formatFecha(orden.fechaPedido)}</div>
         </div>
         <div>
-          <div className="text-ink-secondary">Fecha ejecución</div>
+          <div className="text-xs text-ink-secondary">Fecha ejecución</div>
           <div className="flex items-center gap-2">
             {formatFecha(orden.fechaEjecucion)}
             {orden.estado === "Ejecutada" && (
@@ -143,26 +141,30 @@ export default function DetalleOrdenPage() {
           </div>
         </div>
         <div>
-          <div className="text-ink-secondary">Labor</div>
+          <div className="text-xs text-ink-secondary">Labor</div>
           <div>{orden.tipoLabor ?? "—"}</div>
         </div>
         <div>
-          <div className="text-ink-secondary">Contratista</div>
-          <div>{orden.contratista ?? "Maquinaria propia"}</div>
+          <div className="text-xs text-ink-secondary">Contratista</div>
+          <div className="truncate" title={orden.contratista ?? undefined}>{orden.contratista ?? "Maquinaria propia"}</div>
+        </div>
+        <div>
+          <div className="text-xs text-ink-secondary">Superficie</div>
+          <div className="font-data">{formatCantidad(orden.hectareas)} ha</div>
         </div>
       </div>
 
       {orden.motivoAnulacion && (
-        <p className="mt-3 rounded border border-status-danger bg-status-danger-bg p-3 text-sm text-status-danger">Motivo de anulación: {orden.motivoAnulacion}</p>
+        <p className="mt-2 rounded border border-status-danger bg-status-danger-bg px-3 py-1.5 text-sm text-status-danger">Motivo de anulación: {orden.motivoAnulacion}</p>
       )}
 
       {corrigiendoFecha && (
-        <div className="mt-4 rounded border border-border p-3">
-          <label className="block text-sm">
+        <div className="mt-2 flex flex-wrap items-end gap-2 rounded border border-border p-2">
+          <label className="text-sm">
             Fecha de ejecución correcta
-            <input type="date" className="mt-1 w-full rounded border border-border px-2 py-1.5" value={fechaEjecucionCorregida} onChange={(e) => setFechaEjecucionCorregida(e.target.value)} />
+            <input type="date" className="mt-1 block w-full rounded border border-border px-2 py-1" value={fechaEjecucionCorregida} onChange={(e) => setFechaEjecucionCorregida(e.target.value)} />
           </label>
-          <div className="mt-2 flex gap-2">
+          <div className="flex gap-2">
             <button type="button" onClick={confirmarCorreccionFecha} disabled={!fechaEjecucionCorregida} className="rounded bg-finance px-3 py-1.5 text-sm text-white disabled:opacity-50">
               Guardar corrección
             </button>
@@ -174,12 +176,12 @@ export default function DetalleOrdenPage() {
       )}
 
       {ejecutando && (
-        <div className="mt-4 rounded border border-border p-3">
-          <label className="block text-sm">
+        <div className="mt-2 flex flex-wrap items-end gap-2 rounded border border-border p-2">
+          <label className="text-sm">
             Fecha de ejecución
-            <input type="date" className="mt-1 w-full rounded border border-border px-2 py-1.5" value={fechaEjecucion} onChange={(e) => setFechaEjecucion(e.target.value)} />
+            <input type="date" className="mt-1 block w-full rounded border border-border px-2 py-1" value={fechaEjecucion} onChange={(e) => setFechaEjecucion(e.target.value)} />
           </label>
-          <div className="mt-2 flex gap-2">
+          <div className="flex gap-2">
             <button type="button" onClick={confirmarEjecucion} disabled={!fechaEjecucion} className="rounded bg-finance px-3 py-1.5 text-sm text-white disabled:opacity-50">
               Confirmar ejecución
             </button>
@@ -191,12 +193,12 @@ export default function DetalleOrdenPage() {
       )}
 
       {anulando && (
-        <div className="mt-4 rounded border border-status-danger p-3">
-          <label className="block text-sm">
+        <div className="mt-2 flex flex-wrap items-end gap-2 rounded border border-status-danger p-2">
+          <label className="min-w-[20rem] flex-1 text-sm">
             Motivo de la anulación
-            <input className="mt-1 w-full rounded border border-border px-2 py-1.5" value={motivo} onChange={(e) => setMotivo(e.target.value)} />
+            <input className="mt-1 block w-full rounded border border-border px-2 py-1" value={motivo} onChange={(e) => setMotivo(e.target.value)} />
           </label>
-          <div className="mt-2 flex gap-2">
+          <div className="flex gap-2">
             <button type="button" onClick={confirmarAnulacion} disabled={!motivo.trim()} className="rounded bg-status-danger px-3 py-1.5 text-sm text-white disabled:opacity-50">
               Confirmar anulación
             </button>
@@ -207,94 +209,91 @@ export default function DetalleOrdenPage() {
         </div>
       )}
 
-      <div className="mt-6 space-y-4">
-        <h2 className="text-lg font-medium">Insumos y distribución</h2>
+      <div className="mt-3 space-y-2">
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-ink-secondary">Insumos y distribución</h2>
         {orden.insumos.map((r) => (
-          <div key={r.idOrdenInsumo} className="rounded border border-border p-3">
-            <div className="mb-2 font-medium">
+          <div key={r.idOrdenInsumo} className="rounded border border-border">
+            <div className="border-b border-border bg-surface-sunken/60 px-3 py-1.5 text-sm font-medium">
               {r.producto ?? r.idProducto} — {formatCantidad(r.cantidadTotal)} {r.unidad}
               {Math.abs(r.ajusteRecuento) > 0.00005 && (
-                <span className="ml-2 text-xs font-normal text-ink-secondary">
+                <span className="ml-2 text-xs font-normal text-ink-secondary" title="Se reparte entre los lotes en la misma proporción">
                   Ajuste por recuento físico: {r.ajusteRecuento > 0 ? "+" : ""}
-                  {formatCantidad(r.ajusteRecuento)} → consumo efectivo {formatCantidad(r.cantidadTotal + r.ajusteRecuento)} {r.unidad} (cada lote en la misma proporción)
+                  {formatCantidad(r.ajusteRecuento)} → consumo efectivo {formatCantidad(r.cantidadTotal + r.ajusteRecuento)} {r.unidad}
                 </span>
               )}
             </div>
             <table className="w-full text-sm">
               <thead>
-                <tr className="text-left text-ink-secondary">
-                  <th className="py-1 pr-3">Lote</th>
+                <tr className="text-left text-xs text-ink-secondary">
+                  <th className="px-3 py-1">Lote</th>
                   <th className="py-1 pr-3">Cultivo</th>
                   <th className="py-1 pr-3">Campaña</th>
                   <th className="py-1 pr-3 text-right">Dosis/ha</th>
                   <th className="py-1 pr-3 text-right">Superficie</th>
                   <th className="py-1 pr-3 text-right">Cantidad</th>
-                  <th className="py-1 pr-3">Unidad</th>
                   <th className="py-1 pr-3">Aplicado</th>
                 </tr>
               </thead>
               <tbody>
                 {r.distribuciones.map((d) => (
                   <tr key={d.idDistrib} className="border-t border-border">
-                    <td className="py-1 pr-3">{d.lote}</td>
-                    <td className="py-1 pr-3">{d.cultivo}</td>
-                    <td className="py-1 pr-3">{d.campania}</td>
-                    <td className="py-1 pr-3 text-right">{formatCantidad(d.dosisHa)}</td>
-                    <td className="py-1 pr-3 text-right">{formatCantidad(d.superficie)}</td>
-                    <td className="py-1 pr-3 text-right">{formatCantidad(d.cantidadAsignada)}</td>
-                    <td className="py-1 pr-3">{r.unidad}</td>
-                    <td className="py-1 pr-3">{d.aplicar ? "Sí" : "No"}</td>
+                    <td className="px-3 py-0.5">{d.lote}</td>
+                    <td className="py-0.5 pr-3"><CultivoChip cultivo={d.cultivo} /></td>
+                    <td className="py-0.5 pr-3">{d.campania}</td>
+                    <td className="py-0.5 pr-3 text-right font-data">{formatCantidad(d.dosisHa)}</td>
+                    <td className="py-0.5 pr-3 text-right font-data">{formatCantidad(d.superficie)}</td>
+                    <td className="py-0.5 pr-3 text-right font-data">{formatCantidad(d.cantidadAsignada)} {r.unidad}</td>
+                    <td className="py-0.5 pr-3">{d.aplicar ? "Sí" : <span className="text-ink-muted">No</span>}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
             {r.devoluciones.length > 0 && (
-              <div className="mt-2 text-sm text-ink-secondary">
+              <div className="px-3 pb-1 text-xs text-ink-secondary">
                 Devoluciones: {r.devoluciones.map((dv) => `${formatCantidad(dv.cantidad)} (${formatFecha(dv.fecha)})`).join(", ")}
               </div>
             )}
-            {orden.estado !== "Anulada" && <DevolucionPanel idOrden={id} renglon={r} onGuardada={refrescar} />}
+            {orden.estado !== "Anulada" && <div className="px-3 pb-1.5"><DevolucionPanel idOrden={id} renglon={r} onGuardada={refrescar} /></div>}
           </div>
         ))}
       </div>
 
       {orden.estado === "Ejecutada" && <HectareasAplicadasPanel orden={orden} onGuardada={refrescar} />}
 
-      <div className="mt-6">
-        <h2 className="text-lg font-medium">Maquinaria propia</h2>
+      <div className="mt-3 grid items-start gap-x-4 gap-y-2 lg:grid-cols-2">
+      <details open={orden.maquinaria.length > 0} className="rounded border border-border px-3 py-1">
+        <summary className="cursor-pointer select-none py-1 text-sm font-semibold uppercase tracking-wide text-ink-secondary">Maquinaria propia{orden.maquinaria.length > 0 && ` (${orden.maquinaria.length})`}</summary>
         {orden.maquinaria.map((m) => (
-          <div key={m.idOrdenMaquinaria} className="mt-2 rounded border border-border p-3 text-sm">
-            {m.descripcion} — {formatMoneda(m.costoPorHectarea)}/ha
+          <div key={m.idOrdenMaquinaria} className="flex justify-between border-t border-border py-1 text-sm">
+            <span>{m.descripcion}</span><span className="font-data">{formatMoneda(m.costoPorHectarea)}/ha</span>
           </div>
         ))}
         {orden.estado !== "Anulada" && (
-          <div className="mt-2 flex flex-wrap items-end gap-2">
+          <div className="flex flex-wrap items-end gap-2 py-1.5">
             <label className="text-sm">
               Descripción
-              <input className="mt-1 block rounded border border-border px-2 py-1.5" value={descMaquinaria} onChange={(e) => setDescMaquinaria(e.target.value)} />
+              <input className="mt-1 block rounded border border-border px-2 py-1" value={descMaquinaria} onChange={(e) => setDescMaquinaria(e.target.value)} />
             </label>
             <label className="text-sm">
               Costo por hectárea
-              <NumberInput className="mt-1 block w-32 rounded border border-border px-2 py-1.5 text-right" value={costoMaquinaria} onChange={setCostoMaquinaria} />
+              <NumberInput className="mt-1 block w-28 rounded border border-border px-2 py-1 text-right" value={costoMaquinaria} onChange={setCostoMaquinaria} />
             </label>
             <button type="button" onClick={guardarMaquinaria} disabled={!costoMaquinaria || !descMaquinaria.trim()} className="rounded bg-finance px-3 py-1.5 text-sm text-white disabled:opacity-50">
               Agregar
             </button>
           </div>
         )}
-      </div>
+      </details>
 
-      <div className="mt-6">
-        <h2 className="text-lg font-medium">Facturas del contratista</h2>
+      <details open={orden.facturasContratista.length > 0} className="rounded border border-border px-3 py-1">
+        <summary className="cursor-pointer select-none py-1 text-sm font-semibold uppercase tracking-wide text-ink-secondary">Facturas del contratista{orden.facturasContratista.length > 0 && ` (${orden.facturasContratista.length})`}</summary>
         {/* 048: solo lectura. Se vinculan desde la factura, en Compras (panel "Órdenes de trabajo"). */}
         {orden.facturasContratista.length === 0 ? (
-          <p className="mt-2 text-sm text-ink-secondary">
-            Todavía no hay facturas vinculadas a esta orden (se vinculan desde la factura, en Compras).
-          </p>
+          <p className="py-1 text-sm text-ink-secondary" title="Se vinculan desde la factura, en Compras">Sin facturas vinculadas (se vinculan desde Compras).</p>
         ) : (
-          <table className="mt-2 w-full text-sm">
+          <table className="w-full text-sm">
             <thead>
-              <tr className="text-left text-ink-secondary">
+              <tr className="text-left text-xs text-ink-secondary">
                 <th className="py-1">Documento</th>
                 <th className="py-1">Fecha</th>
                 <th className="py-1 text-right">Neto</th>
@@ -315,8 +314,8 @@ export default function DetalleOrdenPage() {
                     {d.reparto.length === 0
                       ? "—"
                       : d.reparto.map((r, k) => (
-                          <div key={k}>
-                            {r.cultivo ?? "Sin cultivo"} {r.campania ?? ""} {r.lote ? `· Lote ${r.lote}` : ""} · {formatMoneda(r.importe)}
+                          <div key={k} className="flex flex-wrap items-center gap-1">
+                            {r.cultivo ? <CultivoChip cultivo={r.cultivo} /> : "Sin cultivo"} {r.campania ?? ""} {r.lote ? `· Lote ${r.lote}` : ""} · <span className="font-data">{formatMoneda(r.importe)}</span>
                           </div>
                         ))}
                   </td>
@@ -325,11 +324,10 @@ export default function DetalleOrdenPage() {
             </tbody>
           </table>
         )}
+      </details>
       </div>
 
-      <div className="mt-6">
-        <FormularioRetiroView orden={orden} />
-      </div>
+      <FormularioRetiroView orden={orden} />
     </main>
   );
 }

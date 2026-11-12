@@ -18,7 +18,7 @@ export default function EditarVentaGranosPage() {
   });
 
   return (
-    <main className="mx-auto max-w-none px-8 py-3">
+    <main className="mx-auto max-w-none px-6 py-3">
       <div className="flex items-center gap-2">
         <button
           type="button"

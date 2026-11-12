@@ -1,4 +1,5 @@
 'use client';
+import { PageHeader } from '@/components/ui/PageHeader';
 import { useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useQuery,useMutation,useQueryClient } from '@tanstack/react-query';
@@ -30,8 +31,8 @@ export function OrdenesPago() {
  const cambio=useMutation({mutationFn:({id,accion}:{id:number;accion:'emitir'|'anular'})=>estadoOP(id,accion),onSuccess:o=>{refrescar();setMensaje(`Orden ${String(o.idOrdenPago).padStart(6,'0')}: ${o.estado.toLowerCase()}.`);}});
  const conciliar=useMutation({mutationFn:conciliarEmitidas,onSuccess:r=>{refrescar();setMensaje(r.pagadas.length?`${r.pagadas.length} órdenes pasaron a pagadas con su débito real.`:'No hay débitos nuevos que coincidan con órdenes emitidas.'+(r.ambiguas.length?` ${r.ambiguas.length} con más de un débito posible: vinculalas desde su recibo.`:''));}});
  const total=tab==='ordenes'?ordenes.data?.total:recibos.data?.total;
- return <main className="mx-auto max-w-[1600px] space-y-5 p-6">
-  <header><h1 className="text-2xl font-semibold">Pagos</h1><p className="text-slate-600">Facturas a pagar por vencimiento, órdenes de pago a proveedores y vinculación de sus recibos.</p></header>
+ return <main className="mx-auto max-w-[1600px] space-y-3 px-6 py-3">
+  <PageHeader titulo="Pagos" ayuda="Facturas a pagar por vencimiento, órdenes de pago a proveedores y vinculación de sus recibos." />
   <div className="flex gap-3"><button className={tab==='pendientes'?boton:campo} onClick={()=>setTab('pendientes')}>Facturas a pagar</button><button className={tab==='ordenes'?boton:campo} onClick={()=>{setTab('ordenes');setPage(1);}}>Órdenes de pago</button><button className={tab==='recibos'?boton:campo} onClick={()=>{setTab('recibos');setPage(1);}}>Recibos de proveedores</button><button className={tab==='retenciones'?boton:campo} onClick={()=>setTab('retenciones')}>Retenciones</button></div>
   {tab==='retenciones'&&<RetencionesConfig/>}
   {tab==='pendientes'&&!form&&<FacturasAPagar idContacto={contacto} crearOrden={s=>{setInicial(s);setForm(true);setId(null);setRecibo(null);window.scrollTo({top:0,behavior:'smooth'});}}/>}

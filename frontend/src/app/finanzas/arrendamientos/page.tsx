@@ -1,5 +1,5 @@
+import { PageHeader } from "@/components/ui/PageHeader";
 import { ArrendamientosListado } from "@/components/arrendamientos/ArrendamientosListado";
-import { BackLink } from "@/components/ui/BackLink";
 
 export const metadata = {
   title: "Arrendamientos",
@@ -7,13 +7,9 @@ export const metadata = {
 
 export default function ArrendamientosPage() {
   return (
-    <main className="mx-auto max-w-none px-8 py-6">
-      <BackLink href="/">Volver al inicio</BackLink>
-      <h1 className="mt-2 text-2xl font-semibold">Arrendamientos</h1>
-      <p className="mt-1 text-ink-secondary">
-        Contratos de arrendamiento y sus cobros asociados (solo lectura).
-      </p>
-      <div className="mt-6">
+    <main className="mx-auto max-w-none px-6 py-3">
+      <PageHeader titulo="Arrendamientos" ayuda="Contratos de arrendamiento y sus cobros asociados (solo lectura)." />
+      <div className="mt-3">
         <ArrendamientosListado />
       </div>
     </main>

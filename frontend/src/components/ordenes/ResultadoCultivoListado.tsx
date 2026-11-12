@@ -1,5 +1,6 @@
 "use client";
 
+import { CultivoChip } from "@/components/cultivos/CultivoChip";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 
@@ -75,7 +76,7 @@ export function ResultadoCultivoListado() {
           <tbody>
             {data.porCultivoCampania.map((r) => (
               <tr key={`${r.idCultivo}-${r.idCampania}-${r.idLote}`} className="border-b border-border">
-                <td className="py-1">{r.cultivo}</td>
+                <td className="py-1"><CultivoChip cultivo={r.cultivo} /></td>
                 <td className="py-1">{r.campania}</td>
                 <td className="py-1">{r.lote}</td>
                 <td className="py-1 text-right">{formatMoneda(r.costoInsumos)}</td>

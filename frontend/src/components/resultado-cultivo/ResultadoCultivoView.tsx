@@ -1,5 +1,6 @@
 "use client";
 
+import { CultivoChip } from "@/components/cultivos/CultivoChip";
 import { KpiCard } from "@/components/ui/KpiCard";
 import { EmptyState, ErrorState, LoadingState } from "@/components/ui/States";
 import { StatusBadge } from "@/components/ui/StatusBadge";
@@ -33,7 +34,7 @@ export function ResultadoCultivoView({
     <section>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h2 className="text-lg font-semibold">{datos.cultivo} · Campaña {datos.campania}</h2>
+          <h2 className="flex items-center gap-2 text-lg font-semibold"><CultivoChip cultivo={datos.cultivo} className="text-sm" /> Campaña {datos.campania}</h2>
           <p className="mt-1 text-sm text-ink-secondary">
             La superficie sembrada sale de la planificación agrícola; el rinde usa kilos cosechados sobre hectáreas cosechadas.
           </p>

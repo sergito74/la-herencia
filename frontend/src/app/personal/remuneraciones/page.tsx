@@ -1,11 +1,11 @@
 "use client";
 
+import { PageHeader } from "@/components/ui/PageHeader";
 import { useSearchParams } from "next/navigation";
 import { useState } from "react";
 
 import { PagosRemuneracionListado } from "@/components/remuneraciones/PagosRemuneracionListado";
 import { RemuneracionesListado } from "@/components/remuneraciones/RemuneracionesListado";
-import { BackLink } from "@/components/ui/BackLink";
 
 const TABS = ["Liquidaciones", "Pagos"] as const;
 
@@ -17,12 +17,8 @@ export default function RemuneracionesPage() {
   const empleadoInicial = searchParams.get("empleado");
 
   return (
-    <main className="mx-auto max-w-none px-8 py-6">
-      <BackLink href="/">Volver al inicio</BackLink>
-      <h1 className="mt-2 text-2xl font-semibold">Remuneraciones</h1>
-      <p className="mt-1 text-ink-secondary">
-        Liquidaciones de remuneraciones y pagos del personal.
-      </p>
+    <main className="mx-auto max-w-none px-6 py-3">
+      <PageHeader titulo="Remuneraciones" />
 
       <div className="mt-6 flex gap-2">
         {TABS.map((t) => (
@@ -40,7 +36,7 @@ export default function RemuneracionesPage() {
         ))}
       </div>
 
-      <div className="mt-6">
+      <div className="mt-3">
         {tab === "Liquidaciones" ? (
           <RemuneracionesListado highlightKey={highlightKey} empleadoInicial={empleadoInicial} />
         ) : (

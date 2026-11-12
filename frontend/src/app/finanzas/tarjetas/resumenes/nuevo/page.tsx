@@ -7,7 +7,7 @@ export const metadata = {
 
 export default function NuevoResumenPage() {
   return (
-    <main className="mx-auto max-w-none px-8 py-3">
+    <main className="mx-auto max-w-none px-6 py-3">
       <BackLink href="/finanzas/tarjetas/resumenes">Volver a Resúmenes</BackLink>
       <div className="mt-2">
         <ResumenForm mode="alta" />

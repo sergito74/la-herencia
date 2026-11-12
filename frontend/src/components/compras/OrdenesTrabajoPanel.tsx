@@ -3,6 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useRef, useState } from "react";
 
+import { CultivoChip } from "@/components/cultivos/CultivoChip";
 import { SoloLectura } from "@/components/auth/SoloLectura";
 import { useToast } from "@/components/ui/Toast";
 import { formatFecha, formatMoneda, formatNumero } from "@/lib/format";
@@ -266,7 +267,9 @@ function Fila({ o, tildada, onClick, fechaFactura, haFactura }: {
       </span>
       <span className="w-44 shrink-0 truncate">{o.labor ?? "Labor"}</span>
       <span className="min-w-0 flex-1 truncate text-ink-secondary" title={o.lotes ? `Lotes ${o.lotes}` : undefined}>
-        {o.cultivos ?? ""}
+        {(o.cultivos ?? "").split(",").map((c) => c.trim()).filter(Boolean).map((c) => (
+          <CultivoChip key={c} cultivo={c} className="mr-1" />
+        ))}
       </span>
       <span className={`w-20 shrink-0 text-right tabular-nums ${parecida ? "font-medium text-status-success" : ""}`}>{ha(o.hectareas)}</span>
     </label>

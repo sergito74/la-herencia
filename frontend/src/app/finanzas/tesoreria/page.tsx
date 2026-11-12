@@ -1,5 +1,6 @@
 "use client";
 
+import { PageHeader } from "@/components/ui/PageHeader";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
 
@@ -7,7 +8,6 @@ import { MEDIO_LABELS, MovimientosPorMedio } from "@/components/tesoreria/Movimi
 import { CargaExcel } from "@/components/tesoreria/CargaExcel";
 import { CargaExtractoPdf } from "@/components/tesoreria/CargaExtractoPdf";
 import { NuevosParaRevisar } from "@/components/documentos-nuevos/NuevosParaRevisar";
-import { BackLink } from "@/components/ui/BackLink";
 import type { Medio } from "@/services/tesoreriaApi";
 
 const MEDIOS: Medio[] = [
@@ -31,17 +31,13 @@ export default function TesoreriaPage() {
   const highlight = searchParams.get("highlight");
 
   return (
-    <main className="mx-auto max-w-none px-8 py-6">
-      <BackLink href="/">Volver al inicio</BackLink>
+    <main className="mx-auto max-w-none px-6 py-3">
       <Suspense fallback={null}>
         <NuevosParaRevisar modulo="tesoreria" />
       </Suspense>
-      <h1 className="mt-2 text-2xl font-semibold">Tesorería</h1>
-      <p className="mt-1 text-ink-secondary">
-        Consulta y conciliación de movimientos por banco, caja, valores y tarjetas.
-      </p>
+      <PageHeader titulo="Tesorería" ayuda="Consulta y conciliación de movimientos por banco, caja, valores y tarjetas." />
 
-      <div className="mt-6 flex flex-wrap gap-2">
+      <div className="flex flex-wrap gap-2">
         {MEDIOS.map((m) => (
           <button
             key={m}
@@ -57,7 +53,7 @@ export default function TesoreriaPage() {
         ))}
       </div>
 
-      <div className="mt-6">
+      <div className="mt-3">
         <MovimientosPorMedio medio={medio} highlightKey={highlight ? Number(highlight) : undefined} />
       </div>
 

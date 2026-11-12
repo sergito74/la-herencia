@@ -4,6 +4,7 @@ import { useState } from "react";
 
 import { formatCantidad } from "@/lib/format";
 import { repartirTotal } from "@/lib/repartoInsumo";
+import { CultivoChip } from "@/components/cultivos/CultivoChip";
 import { NumberInput } from "@/components/ui/NumberInput";
 import type { GrupoCultivoCampania } from "@/components/ordenes/CultivoCampaniaLotesSelector";
 import type { DistribucionIn } from "@/services/ordenesApi";
@@ -61,7 +62,7 @@ export function DistribucionLotesPanel({
   }
 
   return (
-    <div className="space-y-3 rounded border border-border p-3">
+    <div className="grid gap-2 xl:grid-cols-2">
       {gruposConFilas.map(({ g, filas }) => {
         const k = clave(g.idCultivo, g.idCampania);
         const superficieGrupo = filas.filter(({ d }) => d.aplicar).reduce((acc, { d }) => acc + d.superficie, 0);
@@ -69,12 +70,12 @@ export function DistribucionLotesPanel({
         return (
           <div key={k} className="rounded border border-border/60 p-2">
             <div className="mb-1 flex flex-wrap items-center gap-3">
-              <span className="text-sm font-medium">
-                {g.cultivo} — {g.campania}
-                <span className="ml-2 font-normal text-ink-secondary">({formatCantidad(superficieGrupo)} ha)</span>
+              <span className="inline-flex items-center gap-1.5 text-sm font-medium">
+                <CultivoChip cultivo={g.cultivo} /> {g.campania}
+                <span className="font-normal text-ink-secondary">(<span className="font-data">{formatCantidad(superficieGrupo)}</span> ha)</span>
               </span>
-              <label className="flex items-center gap-1 text-sm text-ink-secondary">
-                Aplicar a todo el grupo
+              <label className="flex items-center gap-1 text-sm text-ink-secondary" title="Dosis/ha para todos los lotes del grupo">
+                Dosis grupo
                 <NumberInput
                   className="w-20 rounded border border-border px-1 py-0.5 text-right"
                   value={dosisAtajo[k] ?? null}
@@ -85,16 +86,16 @@ export function DistribucionLotesPanel({
               <button type="button" onClick={() => aplicarAtajoAGrupo(g)} className="text-sm text-finance hover:underline">
                 Completar
               </button>
-              <span className="text-sm text-ink-secondary">Le corresponde al grupo: {formatCantidad(totalGrupo)}</span>
+              <span className="ml-auto text-sm text-ink-secondary" title="Le corresponde al grupo">Σ <span className="font-data">{formatCantidad(totalGrupo)}</span></span>
             </div>
             <table className="w-full text-sm">
               <thead>
-                <tr className="text-left text-ink-secondary">
+                <tr className="text-left text-xs text-ink-secondary">
                   <th className="pb-1">Lote</th>
-                  <th className="pb-1">Superficie</th>
+                  <th className="pb-1 text-right">Ha</th>
                   <th className="pb-1">Dosis/ha</th>
-                  <th className="pb-1">Cantidad (calculada)</th>
-                  <th className="pb-1">Aplicar</th>
+                  <th className="pb-1 text-right">Cantidad</th>
+                  <th className="pb-1 text-center">Aplicar</th>
                 </tr>
               </thead>
               <tbody>
@@ -102,13 +103,13 @@ export function DistribucionLotesPanel({
                   const lote = g.lotes.find((l) => l.idLote === d.idLote);
                   return (
                     <tr key={d.idLote} className="border-t border-border">
-                      <td className="py-1 pr-2">{lote?.numeroLote ?? d.idLote}</td>
-                      <td className="py-1 pr-2 text-right">{formatCantidad(d.superficie)}</td>
-                      <td className="py-1 pr-2">
+                      <td className="py-0.5 pr-2">{lote?.numeroLote ?? d.idLote}</td>
+                      <td className="py-0.5 pr-2 text-right">{formatCantidad(d.superficie)}</td>
+                      <td className="py-0.5 pr-2">
                         <NumberInput className="w-24 rounded border border-border px-1 py-0.5 text-right" value={d.dosisHa} onChange={(v) => actualizarFila(i, { dosisHa: v ?? 0 })} maxDecimales={4} />
                       </td>
-                      <td className="py-1 pr-2 text-right">{formatCantidad(cantidadPorFila[i])}</td>
-                      <td className="py-1 pr-2 text-center">
+                      <td className="py-0.5 pr-2 text-right">{formatCantidad(cantidadPorFila[i])}</td>
+                      <td className="py-0.5 pr-2 text-center">
                         <input type="checkbox" checked={d.aplicar} onChange={(e) => actualizarFila(i, { aplicar: e.target.checked })} />
                       </td>
                     </tr>
@@ -119,9 +120,6 @@ export function DistribucionLotesPanel({
           </div>
         );
       })}
-      <div className="flex items-center justify-end">
-        <span className="text-sm font-medium">Total del insumo (cargado): {formatCantidad(cantidadTotal)}</span>
-      </div>
     </div>
   );
 }

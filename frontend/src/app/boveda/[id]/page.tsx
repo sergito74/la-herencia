@@ -1,5 +1,6 @@
 "use client";
 
+import { PageHeader } from "@/components/ui/PageHeader";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useParams } from "next/navigation";
 import { useState } from "react";
@@ -12,7 +13,6 @@ import { DocumentosTabla } from "@/components/boveda/DocumentosTabla";
 import { EstadoCuentaPanel } from "@/components/boveda/EstadoCuentaPanel";
 import { PortalForm } from "@/components/boveda/PortalForm";
 import { ProgramacionPanel } from "@/components/boveda/ProgramacionPanel";
-import { BackLink } from "@/components/ui/BackLink";
 import {
   crearCredencial, editarPortal, getCorridas, getDocumentos, getPortal, type PortalEntrada,
 } from "@/services/bovedaApi";
@@ -63,34 +63,28 @@ export default function PortalPage() {
   });
 
   if (usuario && !esAdmin) {
-    return <main className="px-8 py-6 text-sm text-ink-secondary">Solo el administrador accede a la bóveda de portales.</main>;
+    return <main className="px-6 py-3 text-sm text-ink-secondary">Solo el administrador accede a la bóveda de portales.</main>;
   }
   const p = portal.data;
 
   return (
-    <main className="mx-auto max-w-none space-y-4 px-8 py-6">
-      <BackLink href="/boveda">Volver a la bóveda</BackLink>
+    <main className="mx-auto max-w-none space-y-3 px-6 py-3">
       {portal.isError && <p className="text-sm text-red-700">{portal.error.message}</p>}
       {p && (
         <>
-          <section className="flex items-start justify-between gap-4">
-            <div>
-              <h1 className="text-2xl font-semibold">{p.nombre}</h1>
-              <p className="text-sm text-ink-secondary">
-                {p.tipo}{p.contacto && ` · ${p.contacto}`} ·{" "}
-                {p.conector.disponible ? `Sincronización automática: ${p.conector.nombre}` : "Sincronización automática: próximamente"}
-              </p>
-              {p.notas && <p className="mt-1 whitespace-pre-line text-sm">{p.notas}</p>}
-            </div>
-            <div className="flex shrink-0 gap-2">
-              <a href={p.url} target="_blank" rel="noopener noreferrer"
-                className="rounded-md border border-border px-3 py-1.5 text-sm">Abrir portal</a>
-              {!editando && (
-                <button type="button" onClick={() => { guardar.reset(); setEditando(true); }}
-                  className="rounded-md border border-border px-3 py-1.5 text-sm">Editar</button>
-              )}
-            </div>
-          </section>
+          <PageHeader titulo={p.nombre} volver="/boveda">
+            <span className="text-sm text-ink-secondary">
+              {p.tipo}{p.contacto && ` · ${p.contacto}`} ·{" "}
+              {p.conector.disponible ? `Sincronización automática: ${p.conector.nombre}` : "Sincronización automática: próximamente"}
+            </span>
+            <a href={p.url} target="_blank" rel="noopener noreferrer"
+              className="rounded-md border border-border px-3 py-1 text-sm">Abrir portal</a>
+            {!editando && (
+              <button type="button" onClick={() => { guardar.reset(); setEditando(true); }}
+                className="rounded-md border border-border px-3 py-1 text-sm">Editar</button>
+            )}
+          </PageHeader>
+          {p.notas && <p className="-mt-2 whitespace-pre-line text-sm">{p.notas}</p>}
           {editando && (
             <PortalForm edicion enviando={guardar.isPending} error={guardar.error?.message ?? null}
               inicial={{ ...p, idCredencial: p.credencial?.idCredencial ?? null, codigoConector: p.conector.codigo }}

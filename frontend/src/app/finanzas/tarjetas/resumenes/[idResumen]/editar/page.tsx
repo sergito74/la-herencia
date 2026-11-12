@@ -21,7 +21,7 @@ export default function EditarResumenPage() {
   });
 
   return (
-    <main className="mx-auto max-w-none px-8 py-3">
+    <main className="mx-auto max-w-none px-6 py-3">
       <button type="button" onClick={() => returnParam ? router.push(retorno) : router.back()} className="text-sm text-finance underline">
         ← Volver a Resúmenes
       </button>

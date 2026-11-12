@@ -101,6 +101,9 @@ export interface OrdenListItem {
   hectareas: number;
   /** Solo al filtrar por insumo: los insumos de la orden que coinciden, con lo usado. */
   insumosCoincidentes?: { producto: string; cantidad: number; unidad: string }[];
+  /** Cultivo/campaña y lotes aplicados de la orden. */
+  cultivos?: { cultivo: string; campania: string | null }[];
+  lotes?: string[];
 }
 
 export interface FiltrosOrdenes {

@@ -1,5 +1,6 @@
 "use client";
 
+import { PageHeader } from "@/components/ui/PageHeader";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 
@@ -34,14 +35,10 @@ export default function FlujoCajaRealPage() {
   });
 
   return (
-    <main className="mx-auto max-w-5xl px-8 py-6">
-      <h1 className="text-2xl font-semibold">Flujo de caja real</h1>
-      <p className="mt-1 text-sm text-ink-secondary">
-        Movimientos bancarios reales (BNA + Galicia + Cajas en Efectivo) agregados por período, sin transferencias entre cuentas
-        propias ni movimientos de inversión financiera mezclados en el neto.
-      </p>
+    <main className="mx-auto max-w-5xl px-6 py-3">
+      <PageHeader titulo="Flujo de caja real" ayuda="Movimientos bancarios reales (BNA + Galicia + Cajas en Efectivo) agregados por período, sin transferencias entre cuentas propias ni movimientos de inversión financiera mezclados en el neto." />
 
-      <div className="mt-4 flex items-center gap-2">
+      <div className="flex items-center gap-2">
         <span className="text-sm text-ink-secondary">Ver por:</span>
         <div className="inline-flex rounded-md border border-border">
           {(["mensual", "semanal"] as const).map((g) => (
@@ -59,7 +56,7 @@ export default function FlujoCajaRealPage() {
         </div>
       </div>
 
-      <div className="mt-6">
+      <div className="mt-3">
         {resumen.isLoading && <p className="text-sm text-ink-secondary">Cargando…</p>}
         {resumen.isError && <p className="text-sm text-status-danger">No se pudo cargar el flujo de caja.</p>}
         {resumen.data && (

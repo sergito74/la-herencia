@@ -1,5 +1,6 @@
 "use client";
 
+import { PageHeader } from "@/components/ui/PageHeader";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
 
@@ -7,7 +8,6 @@ import { ImpuestosListado } from "@/components/impuestos/ImpuestosListado";
 import { RetencionesListado } from "@/components/impuestos/RetencionesListado";
 import { RetencionesVentaHaciendaListado } from "@/components/ventas-hacienda/RetencionesVentaHaciendaListado";
 import { NuevosParaRevisar } from "@/components/documentos-nuevos/NuevosParaRevisar";
-import { BackLink } from "@/components/ui/BackLink";
 
 const TABS = ["Impuestos", "Retenciones", "Retenciones Venta Hacienda"] as const;
 
@@ -25,17 +25,13 @@ export default function ImpuestosPage() {
   const highlightKey = highlight ? Number(highlight) : undefined;
 
   return (
-    <main className="mx-auto max-w-none px-8 py-6">
-      <BackLink href="/">Volver al inicio</BackLink>
+    <main className="mx-auto max-w-none px-6 py-3">
       <Suspense fallback={null}>
         <NuevosParaRevisar modulo="impuestos" />
       </Suspense>
-      <h1 className="mt-2 text-2xl font-semibold">Impuestos</h1>
-      <p className="mt-1 text-ink-secondary">
-        Boletas de impuestos (alta, edición y baja) y retenciones impositivas (solo lectura).
-      </p>
+      <PageHeader titulo="Impuestos" ayuda="Boletas de impuestos (alta, edición y baja) y retenciones impositivas (solo lectura)." />
 
-      <div className="mt-6 flex gap-2">
+      <div className="flex gap-2">
         {TABS.map((t) => (
           <button
             key={t}
@@ -51,7 +47,7 @@ export default function ImpuestosPage() {
         ))}
       </div>
 
-      <div className="mt-6">
+      <div className="mt-3">
         {tab === "Impuestos" && <ImpuestosListado highlightKey={highlightKey} />}
         {tab === "Retenciones" && <RetencionesListado highlightKey={highlightKey} />}
         {tab === "Retenciones Venta Hacienda" && (

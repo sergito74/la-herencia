@@ -8,7 +8,7 @@ import { RemitoDetalleView } from "@/components/remitos/RemitoDetalleView";
 export default function RemitoDetallePage() {
   const params = useParams<{ idRemito: string }>();
   return (
-    <main className="mx-auto max-w-6xl px-8 py-6">
+    <main className="mx-auto max-w-6xl px-6 py-3">
       <Link href="/produccion/remitos" className="text-sm text-finance underline">
         ← Remitos
       </Link>

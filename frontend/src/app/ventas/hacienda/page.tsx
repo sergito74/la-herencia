@@ -1,33 +1,30 @@
 "use client";
 
+import { PageHeader } from "@/components/ui/PageHeader";
 import Link from "next/link";
 
 import { VentasHaciendaListado } from "@/components/ventas-hacienda/VentasHaciendaListado";
 import { Suspense } from "react";
 import { NuevosParaRevisar } from "@/components/documentos-nuevos/NuevosParaRevisar";
-import { BackLink } from "@/components/ui/BackLink";
 import { SoloLectura } from "@/components/auth/SoloLectura";
 
 export default function VentasHaciendaPage() {
   return (
-    <main className="mx-auto max-w-none px-8 py-6">
-      <BackLink href="/">Volver al inicio</BackLink>
+    <main className="mx-auto max-w-none px-6 py-3">
       <Suspense fallback={null}>
         <NuevosParaRevisar modulo="ventas" />
       </Suspense>
-      <div className="mt-2 flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">Ventas de hacienda</h1>
+      <PageHeader titulo="Ventas de hacienda">
         <SoloLectura>
           <Link
             href="/ventas/hacienda/nueva"
-            className="rounded-sm bg-agro px-4 py-2 text-sm text-white hover:opacity-90"
+            className="rounded-sm bg-agro px-3 py-1 text-sm text-white hover:opacity-90"
           >
             + Nueva venta de hacienda
           </Link>
         </SoloLectura>
-      </div>
-
-      <div className="mt-6">
+      </PageHeader>
+      <div>
         <VentasHaciendaListado />
       </div>
     </main>

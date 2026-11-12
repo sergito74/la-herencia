@@ -1,4 +1,5 @@
 "use client";
+import { PageHeader } from "@/components/ui/PageHeader";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -77,8 +78,8 @@ export function TrabajosEventuales() {
   const {data,isLoading,isError,refetch}=useQuery({queryKey:["trabajos-eventuales",filtros],queryFn:()=>listarTrabajos(filtros)});
   useEffect(()=>{ if(id) document.getElementById("detalle-trabajo")?.scrollIntoView({behavior:"smooth",block:"start"}); },[id]);
   const refrescar=()=>{void qc.invalidateQueries({queryKey:["trabajos-eventuales"]});void qc.invalidateQueries({queryKey:["trabajo-eventual"]});};
-  return <main className="mx-auto max-w-none space-y-5 px-8 py-6">
-    <div className="flex flex-wrap items-start justify-between gap-3"><div><h1 className="text-2xl font-semibold">Trabajos eventuales</h1><p className="mt-1 text-sm text-ink-secondary">Labores, jornales, viáticos y su relación con las liquidaciones del personal.</p></div><div className="flex gap-3"><Link className={boton} href={`/personal/remuneraciones${nombre?`?empleado=${encodeURIComponent(nombre)}`:""}`}>Remuneraciones</Link><SoloLectura><button className={boton} onClick={()=>setForm("nuevo")}>Nuevo trabajo</button></SoloLectura></div></div>
+  return <main className="mx-auto max-w-none space-y-3 px-6 py-3">
+    <PageHeader titulo="Trabajos eventuales" ayuda="Labores, jornales, viáticos y su relación con las liquidaciones del personal."><Link className={boton} href={`/personal/remuneraciones${nombre?`?empleado=${encodeURIComponent(nombre)}`:""}`}>Remuneraciones</Link><SoloLectura><button className={boton} onClick={()=>setForm("nuevo")}>Nuevo trabajo</button></SoloLectura></PageHeader>
     {filtros.idSalario && <div className="flex flex-wrap items-center gap-3 rounded border border-border p-3 text-sm"><span>Trabajos vinculados a la liquidación seleccionada.</span><button className="text-finance underline" onClick={()=>setFiltros(f=>({...f,idSalario:undefined,page:1}))}>Ver todos los trabajos del trabajador</button></div>}
     <form className="flex flex-wrap items-end gap-3" onSubmit={e=>{e.preventDefault();setId(null);setFiltros({idContacto:contacto??undefined,desde,hasta,estadoPago:estado,vinculacion,page:1});}}>
       <ContactoSelect label="Trabajador" tipoContacto="Empleado" value={contacto} razonSocial={nombre} onChange={(i,n)=>{setContacto(i);setNombre(n??"");}} />

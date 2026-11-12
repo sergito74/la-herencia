@@ -1,16 +1,13 @@
 "use client";
 
 import { OrdenForm } from "@/components/ordenes/OrdenForm";
-import { BackLink } from "@/components/ui/BackLink";
+import { PageHeader } from "@/components/ui/PageHeader";
 
 export default function NuevaOrdenPage() {
   return (
-    <main className="mx-auto max-w-none px-8 py-6">
-      <BackLink href="/produccion/ordenes">Volver a Órdenes de trabajo</BackLink>
-      <h1 className="mt-2 text-2xl font-semibold">Nueva orden de trabajo</h1>
-      <div className="mt-6">
-        <OrdenForm />
-      </div>
+    <main className="mx-auto max-w-none px-6 py-3">
+      <PageHeader titulo="Nueva orden de trabajo" volver="/produccion/ordenes" />
+      <OrdenForm />
     </main>
   );
 }

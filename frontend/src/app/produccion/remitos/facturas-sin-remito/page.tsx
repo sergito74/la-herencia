@@ -1,18 +1,17 @@
 "use client";
 
+import { PageHeader } from "@/components/ui/PageHeader";
 import { FacturasSinRemitoListado } from "@/components/remitos/FacturasSinRemitoListado";
 import { RemitosSubNav } from "@/components/remitos/RemitosSubNav";
-import { BackLink } from "@/components/ui/BackLink";
 
 export default function Page() {
   return (
-    <main className="mx-auto max-w-none px-8 py-6">
-      <BackLink href="/produccion/remitos">Volver a Remitos</BackLink>
-      <h1 className="mt-2 text-2xl font-semibold">Facturas de insumos sin remito</h1>
-      <div className="mt-4">
+    <main className="mx-auto max-w-none px-6 py-3">
+      <PageHeader titulo="Facturas de insumos sin remito" volver="/produccion/remitos" />
+      <div>
         <RemitosSubNav grupo="remitos" />
       </div>
-      <div className="mt-6">
+      <div className="mt-3">
         <FacturasSinRemitoListado />
       </div>
     </main>

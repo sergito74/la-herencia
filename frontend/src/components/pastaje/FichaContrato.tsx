@@ -1,12 +1,12 @@
 "use client";
 
+import { PageHeader } from "@/components/ui/PageHeader";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 
 import { SoloLectura } from "@/components/auth/SoloLectura";
-import { Breadcrumb } from "@/components/ui/Breadcrumb";
 import { KpiCard } from "@/components/ui/KpiCard";
 import { SideDrawer } from "@/components/ui/SideDrawer";
 import { ErrorState, LoadingState } from "@/components/ui/States";
@@ -49,18 +49,14 @@ export function FichaContrato({ id }: { id: number }) {
   const curso = c.meses.find((m) => m.estado === "En curso");
 
   return (
-    <div className="space-y-5">
-      <Breadcrumb items={[{ label: "Ventas" }, { label: "Pastaje", href: "/ventas/pastaje" }, { label: c.cliente }]} />
-      <header className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-semibold">Pastaje · {c.cliente}</h1>
-          <p className="mt-1 text-ink-secondary">
-            {c.establecimiento ?? "La Herencia"} · desde {formatFecha(c.fechaInicio)}
-            {c.fechaFin ? ` hasta ${formatFecha(c.fechaFin)}` : ""} · {c.tarifas.map((t) => tarifaTexto(t)).join(" · ")}
-          </p>
-        </div>
+    <div className="space-y-3">
+      <PageHeader titulo={`Pastaje · ${c.cliente}`} volver="/ventas/pastaje">
+        <span className="text-sm text-ink-secondary">
+          {c.establecimiento ?? "La Herencia"} · desde {formatFecha(c.fechaInicio)}
+          {c.fechaFin ? ` hasta ${formatFecha(c.fechaFin)}` : ""} · {c.tarifas.map((t) => tarifaTexto(t)).join(" · ")}
+        </span>
         <StatusBadge label={c.estado} tone={tonoContrato(c.estado)} />
-      </header>
+      </PageHeader>
 
       {alertas.length > 0 && (
         <ul role="status" className="space-y-1 rounded-md border border-status-warning bg-status-warning-bg p-3 text-sm text-status-warning">

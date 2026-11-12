@@ -1,5 +1,6 @@
 "use client";
 
+import { PageHeader } from "@/components/ui/PageHeader";
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import { useMemo, useState } from "react";
@@ -27,14 +28,9 @@ export default function FacturasSinOrdenPage() {
   const contratistas = useMemo(() => [...new Set((data ?? []).map((r) => r.contratista))].sort(), [data]);
 
   return (
-    <main className="mx-auto max-w-none space-y-4 px-8 py-6">
-      <h1 className="text-2xl font-semibold">Imputación de costos</h1>
+    <main className="mx-auto max-w-none space-y-3 px-6 py-3">
+      <PageHeader titulo="Imputación de costos · contratistas sin orden" ayuda="Su costo cuenta por el cultivo y la campaña cargados a mano en cada renglón. Para que se impute solo por la superficie de la orden, abrí la factura y tildá sus órdenes de trabajo." />
       <RemitosSubNav grupo="costos" />
-      <h2 className="text-lg font-medium">Facturas de contratistas sin orden de trabajo</h2>
-      <p className="text-sm text-ink-secondary">
-        Su costo cuenta por el cultivo y la campaña cargados a mano en cada renglón. Para que se impute solo por la
-        superficie de la orden, abrí la factura y tildá sus órdenes de trabajo.
-      </p>
       <div className="flex flex-wrap items-end gap-3">
         <label className="text-sm">
           Contratista

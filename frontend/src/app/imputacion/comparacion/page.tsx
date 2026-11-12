@@ -1,5 +1,6 @@
 "use client";
 
+import { PageHeader } from "@/components/ui/PageHeader";
 import { useState } from "react";
 
 import { ComparacionCultivoCampania } from "@/components/imputacion/ComparacionCultivoCampania";
@@ -23,14 +24,10 @@ export default function ComparacionPage() {
   }
 
   return (
-    <main className="mx-auto max-w-none px-8 py-6">
-      <h1 className="text-2xl font-semibold">Comparación motor heredado vs. motor nuevo</h1>
-      <p className="mt-1 text-sm text-ink-secondary">
-        Punto de referencia (benchmark) — el motor heredado (012) sigue siendo la fuente oficial de Resultado y Costos de
-        Cultivo mientras se valida el motor nuevo.
-      </p>
+    <main className="mx-auto max-w-none px-6 py-3">
+      <PageHeader titulo="Comparación motor heredado vs. motor nuevo" volver="/imputacion" ayuda="El motor heredado sigue siendo la fuente oficial de Resultado y Costos de Cultivo mientras se valida el motor nuevo." />
 
-      <div className="mt-4 flex items-end gap-2">
+      <div className="flex items-end gap-2">
         <label className="text-sm">
           Campaña (IdCampania)
           <input
@@ -51,7 +48,7 @@ export default function ComparacionPage() {
       </div>
 
       {comparacion && (
-        <div className="mt-6">
+        <div className="mt-3">
           <ComparacionCultivoCampania comparacion={comparacion} />
         </div>
       )}

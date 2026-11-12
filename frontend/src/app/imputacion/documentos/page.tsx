@@ -1,5 +1,6 @@
 "use client";
 
+import { PageHeader } from "@/components/ui/PageHeader";
 import { useEffect, useState } from "react";
 
 import { API_BASE_URL, ApiError, apiGet, apiPost } from "@/services/apiClient";
@@ -225,16 +226,11 @@ export default function DocumentosImputacionPage() {
   }
 
   return (
-    <main className="mx-auto max-w-none px-8 py-6">
-      <h1 className="text-2xl font-semibold">Imputación de costos</h1>
-      <div className="mt-4"><RemitosSubNav grupo="costos" /></div>
-      <h2 className="mt-4 text-lg font-medium">Imputación por documento</h2>
-      <p className="mt-1 text-sm text-ink-secondary">
-        Cada línea de factura/NC/ND con su clasificación manual y la propuesta del
-        motor desplegable debajo.
-      </p>
+    <main className="mx-auto max-w-none px-6 py-3">
+      <PageHeader titulo="Imputación de costos · por documento" ayuda="Cada línea de factura/NC/ND con su clasificación manual y la propuesta del motor desplegable debajo." />
+      <RemitosSubNav grupo="costos" />
 
-      <div className="mt-4">
+      <div className="mt-3">
         <FilterBar onSubmit={aplicarFiltros}>
           <FilterField label="Proveedor">
             <ContactoSelect

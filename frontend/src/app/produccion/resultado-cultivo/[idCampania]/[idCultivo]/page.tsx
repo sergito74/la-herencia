@@ -28,9 +28,9 @@ export default function DetalleResultadoCultivoPage() {
   });
 
   return (
-    <main className="mx-auto max-w-none px-8 py-6">
+    <main className="mx-auto max-w-none px-6 py-3">
       <BackLink href="/produccion/resultado-cultivo">Volver al resultado de campaña</BackLink>
-      <div className="mt-6">
+      <div className="mt-3">
         <ResultadoCultivoView
           datos={resultado.data}
           costos={costos.data}

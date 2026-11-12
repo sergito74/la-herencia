@@ -9,7 +9,7 @@ export default function ContratoPastajePage({ params }: { params: { id: string }
   const id = Number(params.id);
   if (!Number.isInteger(id) || id <= 0) notFound();
   return (
-    <main className="mx-auto max-w-none px-8 py-6">
+    <main className="mx-auto max-w-none px-6 py-3">
       <Suspense>
         <FichaContrato id={id} />
       </Suspense>

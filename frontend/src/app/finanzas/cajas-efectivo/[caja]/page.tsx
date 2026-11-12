@@ -1,8 +1,8 @@
+import { PageHeader } from "@/components/ui/PageHeader";
 import { notFound } from "next/navigation";
 
 import { CajaEfectivo } from "@/components/cajas-efectivo/CajaEfectivo";
 import type { CajaSlug } from "@/services/cajasEfectivoApi";
-import { BackLink } from "@/components/ui/BackLink";
 import { CajasNav } from "@/components/cajas-efectivo/CajasNav";
 import { Suspense } from "react";
 
@@ -19,14 +19,11 @@ export default function CajaEfectivoPage({ params }: { params: { caja: string } 
   }
 
   return (
-    <main className="mx-auto max-w-none px-8 py-6">
-      <BackLink href="/finanzas/cajas">Volver a Cajas y socios</BackLink>
-      <h1 className="mt-2 text-2xl font-semibold">{caja === "condominio-lsc" ? "Condominio LSC — Movimientos vinculados" : "Caja de efectivo"}</h1>
-      <p className="mt-1 text-ink-secondary">
-        {caja === "condominio-lsc" ? "Relaciones documentadas con Giamigli; la administración del Condominio sigue en su propio sistema." : "Movimientos, pagos, aportes, traspasos, arqueos y comparación con la planilla."}
-      </p>
-      <div className="mt-4"><CajasNav /></div>
-      <div className="mt-6">
+    <main className="mx-auto max-w-none px-6 py-3">
+      <PageHeader titulo={caja === "condominio-lsc" ? "Condominio LSC — Movimientos vinculados" : "Caja de efectivo"} volver="/finanzas/cajas"
+        ayuda={caja === "condominio-lsc" ? "Relaciones documentadas con Giamigli; la administración del Condominio sigue en su propio sistema." : "Movimientos, pagos, aportes, traspasos, arqueos y comparación con la planilla."} />
+      <CajasNav />
+      <div className="mt-3">
         <Suspense><CajaEfectivo key={caja} caja={caja as CajaSlug} /></Suspense>
       </div>
     </main>

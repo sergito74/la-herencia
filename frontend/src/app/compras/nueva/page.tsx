@@ -26,7 +26,7 @@ export default function NuevaCompraPage({ searchParams }: { searchParams: Params
     documentoOriginal: uno(searchParams.documentoOriginal),
   };
   return (
-    <main className="mx-auto max-w-none px-8 py-3">
+    <main className="mx-auto max-w-none px-6 py-3">
       <BackLink href="/compras">Volver a Compras</BackLink>
       <div className="mt-2">
         <CompraForm mode="alta" prefill={prefill} />

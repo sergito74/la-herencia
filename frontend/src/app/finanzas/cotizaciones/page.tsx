@@ -5,6 +5,6 @@ export const metadata = {
 };
 
 export default function CotizacionesPage() {
-  return <CotizacionesPanel />;
+  return <main className="mx-auto max-w-none px-6 py-3"><CotizacionesPanel /></main>;
 }
 

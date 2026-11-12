@@ -6,6 +6,7 @@ import { useMemo, useState } from "react";
 import { ApiError } from "@/services/apiClient";
 import { corregirHectareas, fetchRepartoCultivos, type OrdenDetalle } from "@/services/ordenesApi";
 import { formatCantidad } from "@/lib/format";
+import { CultivoChip } from "@/components/cultivos/CultivoChip";
 import { NumberInput } from "@/components/ui/NumberInput";
 import { useToast } from "@/components/ui/Toast";
 
@@ -105,20 +106,21 @@ export function HectareasAplicadasPanel({ orden, onGuardada }: { orden: OrdenDet
   const cultivos = [...new Set(filas.map((f) => f.cultivo ?? "—"))];
 
   return (
-    <section className="mt-6">
-      <div className="flex items-baseline justify-between">
-        <h2 className="text-lg font-medium">Hectáreas aplicadas</h2>
+    <details className="mt-2 rounded border border-border px-3 py-1" open={editando || undefined}>
+      <summary className="flex cursor-pointer select-none items-baseline justify-between py-1">
+        <span className="inline-flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-ink-secondary">
+          Hectáreas aplicadas
+          <span tabIndex={0} className="flex h-4 w-4 cursor-help items-center justify-center rounded-full border border-border text-[10px] font-normal normal-case"
+            title="Si se aplicó menos (o más) superficie, cargá el total real de cada cultivo: se reparte entre sus lotes en proporción a lo que tenía cada uno, y el insumo usado se reparte de nuevo entre los cultivos. Las cantidades retiradas y el stock no cambian.">?</span>
+        </span>
         {!editando && (
-          <button type="button" onClick={() => setEditando(true)} className="text-sm text-finance underline">
+          <button type="button" onClick={(e) => { e.preventDefault(); setEditando(true); }} className="text-sm text-finance hover:underline">
             Corregir hectáreas aplicadas
           </button>
         )}
-      </div>
-      <p className="text-sm text-ink-secondary">
-        Si se aplicó menos (o más) superficie, cargá el total real de cada cultivo: se reparte entre sus lotes en
-        proporción a lo que tenía cada uno, y el insumo usado se reparte de nuevo entre los cultivos. Las cantidades
-        retiradas y el stock no cambian.
-      </p>
+      </summary>
+      <div className="flex flex-wrap items-start gap-x-8 gap-y-2 pb-2">
+      <div>
 
       {editando && (
         <label className="mt-2 flex items-center gap-2 text-sm">
@@ -138,7 +140,7 @@ export function HectareasAplicadasPanel({ orden, onGuardada }: { orden: OrdenDet
           <tbody>
             {[...teoricoCultivo.entries()].map(([c, teo]) => (
               <tr key={c}>
-                <td className="pr-6">{c}</td>
+                <td className="pr-6"><CultivoChip cultivo={c} /></td>
                 <td className="pr-6 text-right">{formatCantidad(teo)}</td>
                 <td className="py-0.5 text-right">
                   <NumberInput className="w-24 rounded border border-border px-2 py-0.5 text-right" maxDecimales={2}
@@ -160,7 +162,7 @@ export function HectareasAplicadasPanel({ orden, onGuardada }: { orden: OrdenDet
         <tbody>
           {lotes.map((l) => (
             <tr key={l.idLote}>
-              <td className="pr-6">{l.cultivo}</td>
+              <td className="pr-6"><CultivoChip cultivo={l.cultivo} /></td>
               <td className="pr-6">{l.lote}</td>
               <td className="py-0.5 text-right">
                 {editando ? (
@@ -176,7 +178,7 @@ export function HectareasAplicadasPanel({ orden, onGuardada }: { orden: OrdenDet
         <tfoot>
           {porCultivo.map(([c, ha]) => (
             <tr key={c} className="text-ink-secondary">
-              <td className="pr-6">Total {c}</td>
+              <td className="pr-6">Total <CultivoChip cultivo={c} punto /></td>
               <td />
               <td className="text-right">{formatCantidad(ha)}</td>
             </tr>
@@ -195,14 +197,15 @@ export function HectareasAplicadasPanel({ orden, onGuardada }: { orden: OrdenDet
         </div>
       )}
 
+      </div>
       {filas.length > 0 && (
-        <div className="mt-4 overflow-x-auto">
+        <div className="overflow-x-auto">
           <h3 className="text-sm font-medium">Insumo usado por cultivo (incluye el ajuste del recuento)</h3>
           <table className="mt-1 text-sm">
             <thead>
               <tr className="text-left text-ink-secondary">
                 <th className="pr-6 font-normal">Insumo</th>
-                {cultivos.map((c) => <th key={c} className="pr-4 text-right font-normal">{c}</th>)}
+                {cultivos.map((c) => <th key={c} className="pr-4 text-right font-normal"><CultivoChip cultivo={c} /></th>)}
               </tr>
             </thead>
             <tbody>
@@ -219,6 +222,7 @@ export function HectareasAplicadasPanel({ orden, onGuardada }: { orden: OrdenDet
           </table>
         </div>
       )}
-    </section>
+      </div>
+    </details>
   );
 }

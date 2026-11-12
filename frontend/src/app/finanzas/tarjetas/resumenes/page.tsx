@@ -1,28 +1,26 @@
 "use client";
 
+import { PageHeader } from "@/components/ui/PageHeader";
 import Link from "next/link";
 
 import { ResumenesListado } from "@/components/tarjetas-resumenes/ResumenesListado";
 import { TarjetasSubNav } from "@/components/tarjetas/TarjetasSubNav";
-import { BackLink } from "@/components/ui/BackLink";
 import { SoloLectura } from "@/components/auth/SoloLectura";
 
 export default function ResumenesPage() {
   return (
-    <main className="mx-auto max-w-none px-8 py-6">
-      <BackLink href="/finanzas/tarjetas">Volver a Tarjetas</BackLink>
-      <div className="mt-2 flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">Resúmenes de tarjeta</h1>
+    <main className="mx-auto max-w-none px-6 py-3">
+      <PageHeader titulo="Resúmenes de tarjeta" volver="/finanzas/tarjetas">
         <SoloLectura>
-          <Link href="/finanzas/tarjetas/resumenes/nuevo" className="rounded-sm bg-finance px-4 py-2 text-sm text-white hover:opacity-90">
+          <Link href="/finanzas/tarjetas/resumenes/nuevo" className="rounded-sm bg-finance px-3 py-1 text-sm text-white hover:opacity-90">
             + Nuevo resumen
           </Link>
         </SoloLectura>
-      </div>
-      <div className="mt-4">
+      </PageHeader>
+      <div>
         <TarjetasSubNav />
       </div>
-      <div className="mt-6">
+      <div className="mt-3">
         <ResumenesListado />
       </div>
     </main>

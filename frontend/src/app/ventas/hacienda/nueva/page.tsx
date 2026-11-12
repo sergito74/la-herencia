@@ -7,7 +7,7 @@ export const metadata = {
 
 export default function NuevaVentaHaciendaPage() {
   return (
-    <main className="mx-auto max-w-none px-8 py-3">
+    <main className="mx-auto max-w-none px-6 py-3">
       <BackLink href="/ventas/hacienda">Volver a Ventas de hacienda</BackLink>
       <div className="mt-2">
         <VentaHaciendaForm mode="alta" />

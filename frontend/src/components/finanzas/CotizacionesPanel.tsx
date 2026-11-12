@@ -4,7 +4,6 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 
 import { SoloLectura } from "@/components/auth/SoloLectura";
-import { Breadcrumb } from "@/components/ui/Breadcrumb";
 import { ErrorState, LoadingState } from "@/components/ui/States";
 import { formatCantidad, formatFecha, formatMoneda } from "@/lib/format";
 import { actualizarCotizaciones, fetchCotizaciones, type CotizacionDia } from "@/services/cotizacionesApi";
@@ -36,15 +35,12 @@ export function CotizacionesPanel() {
   const promedioDolar = valoresDolar.length > 0 ? valoresDolar.reduce((a, b) => a + b, 0) / valoresDolar.length : null;
 
   return (
-    <div className="space-y-6">
-      <Breadcrumb items={[{ label: "Finanzas", href: "/finanzas" }, { label: "Cotizaciones" }]} />
-
-      <div className="flex flex-wrap items-center justify-between gap-4 rounded-md border border-border bg-surface p-4">
-        <div>
-          <h1 className="text-xl font-bold text-ink-primary">Cotizaciones — Dólar BNA e Índice INMAG</h1>
-          <p className="text-sm text-ink-secondary">
-            Series históricas oficiales utilizadas para la valuación de cuentas de socios, pastaje y operaciones.
-          </p>
+    <div className="space-y-3">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <h1 className="text-lg font-semibold leading-tight text-ink-primary">Cotizaciones — Dólar BNA e Índice INMAG</h1>
+          <span tabIndex={0} title="Series históricas oficiales utilizadas para la valuación de cuentas de socios, pastaje y operaciones."
+            className="flex h-5 w-5 cursor-help items-center justify-center rounded-full border border-border text-[11px] text-ink-secondary">?</span>
         </div>
 
         <div className="flex flex-wrap items-center gap-3">

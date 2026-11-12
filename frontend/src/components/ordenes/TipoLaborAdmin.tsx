@@ -29,11 +29,10 @@ export function TipoLaborAdmin({ tiposLabor, onCreado }: { tiposLabor: TipoLabor
   }
 
   return (
-    <div className="rounded border border-border p-4">
-      <h2 className="mb-2 text-lg font-medium">Tipos de labor</h2>
-      <ul className="mb-3 list-disc pl-5 text-sm">
+    <div>
+      <ul className="mb-3 columns-2 text-sm">
         {tiposLabor.map((t) => (
-          <li key={t.idTipoLabor}>{t.nombre}</li>
+          <li key={t.idTipoLabor} className="py-0.5">{t.nombre}</li>
         ))}
       </ul>
       <div className="flex items-end gap-2">

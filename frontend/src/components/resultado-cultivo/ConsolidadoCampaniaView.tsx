@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 
+import { CultivoChip } from "@/components/cultivos/CultivoChip";
 import { KpiCard } from "@/components/ui/KpiCard";
 import { EmptyState, ErrorState, LoadingState } from "@/components/ui/States";
 import { StatusBadge } from "@/components/ui/StatusBadge";
@@ -136,7 +137,7 @@ export function ConsolidadoCampaniaView({
                         className="text-finance underline"
                         href={`/produccion/resultado-cultivo/${datos.idCampania}/${cultivo.idCultivo}`}
                       >
-                        {cultivo.cultivo}
+                        <CultivoChip cultivo={cultivo.cultivo} punto />
                       </Link>
                     </td>
                     <td className="px-3 py-2 text-right font-data">{formatCantidad(cultivo.superficieSembrada)} ha</td>

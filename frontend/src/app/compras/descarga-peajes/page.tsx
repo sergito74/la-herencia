@@ -1,12 +1,12 @@
 "use client";
 
+import { PageHeader } from "@/components/ui/PageHeader";
 import Link from "next/link";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { useAuth } from "@/components/auth/AuthContext";
 import { CorridasTabla } from "@/components/boveda/CorridasTabla";
 import { DocumentosTabla } from "@/components/boveda/DocumentosTabla";
-import { BackLink } from "@/components/ui/BackLink";
 import { formatFechaHora } from "@/lib/format";
 import { ETIQUETA_CORRIDA } from "@/services/bovedaApi";
 import { getCorridas, getDocumentos, getEstado, iniciarDescarga } from "@/services/descargaPeajesApi";
@@ -39,26 +39,19 @@ export default function DescargaPeajesPage() {
   const puedeDescargar = usuario?.rol !== "Lectura";
 
   return (
-    <main className="mx-auto max-w-none space-y-4 px-8 py-6">
-      <BackLink href="/compras">Volver a Compras</BackLink>
-      <section className="flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold">Descarga de peajes</h1>
-          <p className="mt-1 text-sm text-ink-secondary">
-            Las facturas se cargan solas en Compras cuando lo leído cierra al centavo con el total impreso; si no,
-            quedan pendientes con el motivo.
-            {usuario?.rol === "Administrador" && (
-              <> Credenciales y programación: <Link href="/boveda" className="text-finance underline">Bóveda de portales</Link>.</>
-            )}
-          </p>
-        </div>
+    <main className="mx-auto max-w-none space-y-3 px-6 py-3">
+      <PageHeader titulo="Descarga de peajes" volver="/compras"
+        ayuda="Las facturas se cargan solas en Compras cuando lo leído cierra al centavo con el total impreso; si no, quedan pendientes con el motivo.">
+        {usuario?.rol === "Administrador" && (
+          <Link href="/boveda" className="text-sm text-finance underline">Credenciales y programación</Link>
+        )}
         {puedeDescargar && (
           <button type="button" disabled={enCurso || descargar.isPending} onClick={() => descargar.mutate()}
-            className="shrink-0 rounded-md bg-finance px-4 py-1.5 text-sm font-medium text-white disabled:opacity-50">
+            className="shrink-0 rounded-md bg-finance px-3 py-1 text-sm font-medium text-white disabled:opacity-50">
             {enCurso ? "Descargando…" : "Descargar ahora"}
           </button>
         )}
-      </section>
+      </PageHeader>
       {descargar.isError && <p className="text-sm text-red-700">{descargar.error.message}</p>}
       {estado.isError && <p className="text-sm text-red-700">No se pudo leer el estado de la descarga.</p>}
 

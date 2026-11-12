@@ -7,7 +7,7 @@ export const metadata = {
 
 export default function NuevaVentaGranosPage() {
   return (
-    <main className="mx-auto max-w-none px-8 py-3">
+    <main className="mx-auto max-w-none px-6 py-3">
       <BackLink href="/ventas/granos">Volver a Ventas de granos</BackLink>
       <div className="mt-2">
         <VentaGranosForm mode="alta" />

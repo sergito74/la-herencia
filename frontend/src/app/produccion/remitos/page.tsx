@@ -1,18 +1,17 @@
 "use client";
 
+import { PageHeader } from "@/components/ui/PageHeader";
 import { RemitosListado } from "@/components/remitos/RemitosListado";
 import { RemitosSubNav } from "@/components/remitos/RemitosSubNav";
-import { BackLink } from "@/components/ui/BackLink";
 
 export default function RemitosPage() {
   return (
-    <main className="mx-auto max-w-none px-8 py-6">
-      <BackLink href="/">Volver al inicio</BackLink>
-      <h1 className="mt-2 text-2xl font-semibold">Remitos</h1>
-      <div className="mt-4">
+    <main className="mx-auto max-w-none px-6 py-3">
+      <PageHeader titulo="Remitos" />
+      <div>
         <RemitosSubNav grupo="remitos" />
       </div>
-      <div className="mt-6">
+      <div className="mt-3">
         <RemitosListado />
       </div>
     </main>

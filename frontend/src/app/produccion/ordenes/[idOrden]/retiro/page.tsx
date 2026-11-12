@@ -5,7 +5,7 @@ import { useParams, useSearchParams } from "next/navigation";
 import { Suspense, useEffect } from "react";
 
 import { FormularioRetiroDocumento } from "@/components/ordenes/FormularioRetiroDocumento";
-import { BackLink } from "@/components/ui/BackLink";
+import { PageHeader } from "@/components/ui/PageHeader";
 import { ErrorState, LoadingState } from "@/components/ui/States";
 import { fetchOrden, urlExportarFormularioRetiro, urlPdfFormularioRetiro } from "@/services/ordenesApi";
 
@@ -27,9 +27,8 @@ function Contenido() {
   if (!orden.formularioRetiro) return <p className="text-sm text-ink-secondary">La orden {id} no tiene Formulario de Retiro.</p>;
   return (
     <>
-      <div className="mb-4 flex items-center justify-between print:hidden">
-        <BackLink href={`/produccion/ordenes/${id}`}>Volver a la orden</BackLink>
-        <div className="flex gap-2">
+      <div className="print:hidden">
+        <PageHeader titulo={`Formulario de retiro · Orden N° ${id}`} volver={`/produccion/ordenes/${id}`}>
           <button type="button" onClick={() => window.print()} className="rounded bg-finance px-3 py-1.5 text-sm text-white hover:opacity-90">
             Imprimir
           </button>
@@ -39,7 +38,7 @@ function Contenido() {
           <a href={urlExportarFormularioRetiro(id)} className="rounded border border-border px-3 py-1.5 text-sm hover:bg-surface-sunken">
             Exportar a Excel
           </a>
-        </div>
+        </PageHeader>
       </div>
       <div className="rounded border border-border shadow-sm print:border-0 print:shadow-none">
         <FormularioRetiroDocumento orden={orden} />
@@ -50,7 +49,7 @@ function Contenido() {
 
 export default function FormularioRetiroPage() {
   return (
-    <main className="mx-auto max-w-none px-8 py-4 print:p-0">
+    <main className="mx-auto max-w-none px-6 py-3 print:p-0">
       <style>{"@page { size: A4 landscape; margin: 10mm; }"}</style>
       <Suspense fallback={null}>
         <Contenido />

@@ -24,6 +24,7 @@ import {
 import { formatCantidad } from "@/lib/format";
 import { repartirTotal } from "@/lib/repartoInsumo";
 import { NumberInput } from "@/components/ui/NumberInput";
+import { CultivoChip } from "@/components/cultivos/CultivoChip";
 
 type Renglon = { idProducto: number | null; producto: string; unidad: string; cantidadTotal: number; distribuciones: RenglonInsumoIn["distribuciones"] };
 
@@ -197,6 +198,8 @@ export function OrdenForm({ orden }: { orden?: OrdenDetalle }) {
   const superficiePorGrupo = grupos.map((g) => ({
     clave: `${g.idCultivo}-${g.idCampania}`,
     etiqueta: `${g.cultivo} — ${g.campania}`,
+    cultivo: g.cultivo,
+    campania: g.campania,
     superficie: g.lotes.filter((l) => l.incluido).reduce((acc, l) => acc + l.superficie, 0),
   }));
   const superficieTotal = superficiePorGrupo.reduce((acc, g) => acc + g.superficie, 0);
@@ -214,16 +217,17 @@ export function OrdenForm({ orden }: { orden?: OrdenDetalle }) {
     });
 
   return (
-    <div className="space-y-6">
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+    <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_18rem]">
+    <div className="space-y-3">
+      <div className="grid grid-cols-1 items-end gap-3 sm:grid-cols-[10rem_1fr_1.5fr_auto]">
         <label className="block text-sm">
           Fecha
-          <input type="date" className="mt-1 w-full rounded border border-border px-2 py-1.5" value={fecha} onChange={(e) => setFecha(e.target.value)} />
+          <input type="date" className="mt-1 w-full rounded border border-border px-2 py-1" value={fecha} onChange={(e) => setFecha(e.target.value)} />
         </label>
         <label className="block text-sm">
           Tipo de labor
           <select
-            className="mt-1 w-full rounded border border-border px-2 py-1.5"
+            className="mt-1 w-full rounded border border-border px-2 py-1"
             value={idTipoLabor ?? ""}
             onChange={(e) => setIdTipoLabor(Number(e.target.value) || null)}
           >
@@ -238,7 +242,7 @@ export function OrdenForm({ orden }: { orden?: OrdenDetalle }) {
         <label className="block text-sm">
           Contratista (opcional)
           <select
-            className="mt-1 w-full rounded border border-border px-2 py-1.5"
+            className="mt-1 w-full rounded border border-border px-2 py-1"
             value={idContratistaContacto ?? ""}
             onChange={(e) => setIdContratistaContacto(Number(e.target.value) || null)}
           >
@@ -250,17 +254,16 @@ export function OrdenForm({ orden }: { orden?: OrdenDetalle }) {
             ))}
           </select>
         </label>
+        <label className="flex items-center gap-2 pb-1.5 text-sm" title="Se imputa a Rubro y Centro de Costos, no a Cultivo/Campaña">
+          <input type="checkbox" checked={sinCultivo} onChange={(e) => setSinCultivo(e.target.checked)} />
+          Mantenimiento general (sin cultivo)
+        </label>
       </div>
-
-      <label className="flex items-center gap-2 text-sm">
-        <input type="checkbox" checked={sinCultivo} onChange={(e) => setSinCultivo(e.target.checked)} />
-        Orden de mantenimiento general (sin cultivo específico) — se imputa a Rubro y Centro de Costos, no a Cultivo/Campaña
-      </label>
       {sinCultivo && opcionesBajas && (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <label className="block text-sm">
             Rubro
-            <select className="mt-1 w-full rounded border border-border px-2 py-1.5" value={idRubro ?? ""} onChange={(e) => setIdRubro(Number(e.target.value) || null)}>
+            <select className="mt-1 w-full rounded border border-border px-2 py-1" value={idRubro ?? ""} onChange={(e) => setIdRubro(Number(e.target.value) || null)}>
               <option value="">Elegí…</option>
               {opcionesBajas.rubros.map((r) => (
                 <option key={r.idRubro} value={r.idRubro}>
@@ -271,7 +274,7 @@ export function OrdenForm({ orden }: { orden?: OrdenDetalle }) {
           </label>
           <label className="block text-sm">
             Centro de costos
-            <select className="mt-1 w-full rounded border border-border px-2 py-1.5" value={idCentroCostos ?? ""} onChange={(e) => setIdCentroCostos(Number(e.target.value) || null)}>
+            <select className="mt-1 w-full rounded border border-border px-2 py-1" value={idCentroCostos ?? ""} onChange={(e) => setIdCentroCostos(Number(e.target.value) || null)}>
               <option value="">Elegí…</option>
               {opcionesBajas.centros.map((c) => (
                 <option key={c.idCentro} value={c.idCentro}>
@@ -285,7 +288,7 @@ export function OrdenForm({ orden }: { orden?: OrdenDetalle }) {
 
       {!sinCultivo && (
         <div>
-          <h2 className="mb-2 text-lg font-medium">Cultivo / Campaña y lotes</h2>
+          <h2 className="mb-1 text-sm font-semibold uppercase tracking-wide text-ink-secondary">Cultivo / Campaña y lotes</h2>
           <CultivoCampaniaLotesSelector
             cultivos={catalogos.cultivos}
             campanias={catalogos.campanias}
@@ -297,11 +300,11 @@ export function OrdenForm({ orden }: { orden?: OrdenDetalle }) {
       )}
 
       <div>
-        <h2 className="mb-2 text-lg font-medium">Insumos</h2>
-        <div className="space-y-4">
+        <h2 className="mb-1 text-sm font-semibold uppercase tracking-wide text-ink-secondary">Insumos</h2>
+        <div className="space-y-2">
           {renglones.map((r, i) => (
-            <div key={i} className="rounded border border-border p-3">
-              <div className="mb-2 flex items-center gap-3">
+            <div key={i} className="rounded border border-border p-2">
+              <div className="mb-1.5 flex flex-wrap items-center gap-3">
                 <InsumoConStockSelect
                   value={r.idProducto ? { idProducto: r.idProducto, producto: r.producto } : null}
                   reservado={r.idProducto ? reservadoPorProducto.get(r.idProducto) ?? 0 : 0}
@@ -314,7 +317,7 @@ export function OrdenForm({ orden }: { orden?: OrdenDetalle }) {
                   className="flex-1"
                 />
                 <label className="flex items-center gap-1 text-sm">
-                  Cantidad total a aplicar
+                  Cantidad total
                   <NumberInput
                     className="w-28 rounded border border-border px-2 py-1 text-right"
                     value={r.cantidadTotal || null}
@@ -327,8 +330,9 @@ export function OrdenForm({ orden }: { orden?: OrdenDetalle }) {
                   />
                   {r.unidad}
                 </label>
-                <button type="button" onClick={() => quitarRenglon(i)} className="text-status-danger hover:underline">
-                  Quitar renglón
+                <button type="button" onClick={() => quitarRenglon(i)} title="Quitar renglón" aria-label="Quitar renglón"
+                  className="flex h-7 w-7 items-center justify-center rounded text-status-danger hover:bg-status-danger-bg">
+                  ✕
                 </button>
               </div>
               <DistribucionLotesPanel
@@ -344,21 +348,24 @@ export function OrdenForm({ orden }: { orden?: OrdenDetalle }) {
             </div>
           ))}
         </div>
-        <button type="button" onClick={agregarRenglon} className="mt-3 rounded border border-border px-3 py-1.5 text-sm hover:bg-surface-sunken">
+        <button type="button" onClick={agregarRenglon} className="mt-2 rounded border border-border px-3 py-1 text-sm hover:bg-surface-sunken">
           + Agregar insumo
         </button>
       </div>
 
+    </div>
+
+    <aside className="space-y-3 lg:sticky lg:top-3">
       {(superficiePorGrupo.length > 0 || totalesInsumos.length > 0) && (
         <div className="rounded border border-border bg-surface-sunken p-3">
-          <h2 className="mb-2 text-lg font-medium">Resumen</h2>
+          <h2 className="mb-1 text-sm font-semibold uppercase tracking-wide text-ink-secondary">Resumen</h2>
           {superficiePorGrupo.length > 0 && (
             <div className="mb-3">
               <p className="text-sm font-medium">Superficie afectada: {formatCantidad(superficieTotal)} ha</p>
               <ul className="ml-4 list-disc text-sm text-ink-secondary">
                 {superficiePorGrupo.map((g) => (
                   <li key={g.clave}>
-                    {g.etiqueta}: {formatCantidad(g.superficie)} ha
+                    <CultivoChip cultivo={g.cultivo} /> {g.campania}: <span className="font-data">{formatCantidad(g.superficie)}</span> ha
                   </li>
                 ))}
               </ul>
@@ -390,7 +397,7 @@ export function OrdenForm({ orden }: { orden?: OrdenDetalle }) {
 
       <label className="block text-sm">
         Observaciones
-        <textarea className="mt-1 w-full rounded border border-border px-2 py-1.5" value={observaciones} onChange={(e) => setObservaciones(e.target.value)} />
+        <textarea rows={2} className="mt-1 w-full rounded border border-border px-2 py-1" value={observaciones} onChange={(e) => setObservaciones(e.target.value)} />
       </label>
 
       {error && <p className="text-status-danger">{error}</p>}
@@ -418,10 +425,11 @@ export function OrdenForm({ orden }: { orden?: OrdenDetalle }) {
         type="button"
         onClick={() => guardar(false)}
         disabled={guardando}
-        className="rounded bg-finance px-4 py-2 text-white disabled:opacity-50"
+        className="w-full rounded bg-finance px-4 py-2 text-white disabled:opacity-50"
       >
         {guardando ? "Guardando…" : orden ? "Guardar cambios" : "Planificar orden"}
       </button>
+    </aside>
     </div>
   );
 }

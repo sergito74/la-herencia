@@ -283,6 +283,27 @@ def listar_ordenes(
             usados.setdefault(r["idOrden"], []).append({"producto": r["producto"], "cantidad": _f(r["cantidad"]), "unidad": r["unidad"]})
         for o in pagina:
             o["insumosCoincidentes"] = usados.get(o["idOrden"], [])
+    if pagina:
+        # Cultivo/campaña y lotes de cada orden de la página (para mostrarlos en la fila del listado).
+        ids = [o["idOrden"] for o in pagina]
+        cc: dict[int, list] = {}
+        lotes: dict[int, list] = {}
+        for r in fetch_all(
+            "SELECT DISTINCT i.IdOrdenTrabajo AS idOrden, cu.Cultivo AS cultivo, ca.Campaña AS campania, l.[Numero Lote] AS lote "
+            "FROM dbo.Ordenes_Trabajo_Distrib d JOIN dbo.Ordenes_Trabajo_Insumos i ON i.IdOrdenInsumo = d.IdOrdenInsumo "
+            "LEFT JOIN dbo.Cultivos cu ON cu.IdCultivo = d.IdCultivo LEFT JOIN dbo.Campañas ca ON ca.IdCampaña = d.IdCampania "
+            "LEFT JOIN dbo.Lotes l ON l.IdLote = d.IdLote "
+            f"WHERE i.IdOrdenTrabajo IN ({','.join('?' for _ in ids)}) AND d.Aplicar = 1",
+            tuple(ids),
+        ):
+            par = {"cultivo": r["cultivo"], "campania": r["campania"]}
+            if r["cultivo"] and par not in cc.setdefault(r["idOrden"], []):
+                cc[r["idOrden"]].append(par)
+            if r["lote"] and r["lote"] not in lotes.setdefault(r["idOrden"], []):
+                lotes[r["idOrden"]].append(r["lote"])
+        for o in pagina:
+            o["cultivos"] = cc.get(o["idOrden"], [])
+            o["lotes"] = sorted(lotes.get(o["idOrden"], []))
     return {"items": pagina, "total": len(items), "page": page, "pageSize": page_size}
 
 

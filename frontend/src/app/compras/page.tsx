@@ -1,10 +1,10 @@
+import { PageHeader } from "@/components/ui/PageHeader";
 import Link from "next/link";
 import { Suspense } from "react";
 
 import { ComprasListado } from "@/components/compras/ComprasListado";
 import { LoadingState } from "@/components/ui/States";
 import { ComprasConRevision } from "@/components/documentos-nuevos/ComprasConRevision";
-import { BackLink } from "@/components/ui/BackLink";
 import { SoloLectura } from "@/components/auth/SoloLectura";
 
 export const metadata = {
@@ -13,20 +13,18 @@ export const metadata = {
 
 export default function ComprasPage() {
   return (
-    <main className="mx-auto max-w-none px-8 py-6">
-      <BackLink href="/">Volver al inicio</BackLink>
-      <div className="mt-2 flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">Compras</h1>
+    <main className="mx-auto max-w-none px-6 py-3">
+      <PageHeader titulo="Compras">
         <SoloLectura>
           <Link
             href="/compras/nueva"
-            className="rounded-sm bg-agro px-4 py-2 text-sm text-white hover:opacity-90"
+            className="rounded-sm bg-agro px-3 py-1 text-sm text-white hover:opacity-90"
           >
             + Nueva compra
           </Link>
         </SoloLectura>
-      </div>
-      <div className="mt-6">
+      </PageHeader>
+      <div>
         <Suspense fallback={<LoadingState />}>
           <ComprasConRevision listado={<ComprasListado />} />
         </Suspense>

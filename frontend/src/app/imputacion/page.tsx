@@ -1,5 +1,6 @@
 "use client";
 
+import { PageHeader } from "@/components/ui/PageHeader";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
@@ -126,16 +127,11 @@ export default function ImputacionPage() {
   }
 
   return (
-    <main className="mx-auto max-w-none px-8 py-6">
-      <h1 className="text-2xl font-semibold">Imputación de costos</h1>
-      <div className="mt-4"><RemitosSubNav grupo="costos" /></div>
-      <h2 className="mt-4 text-lg font-medium">Imputación automática</h2>
-      <p className="mt-1 text-sm text-ink-secondary">
-        Propuestas de reparto de costos a Cultivo/Campaña calculadas a partir del consumo real (FIFO/Órdenes de
-        Trabajo) — quedan pendientes hasta que las apruebes o corrijas.
-      </p>
+    <main className="mx-auto max-w-none px-6 py-3">
+      <PageHeader titulo="Imputación de costos · automática" ayuda="Propuestas de reparto de costos a Cultivo/Campaña calculadas a partir del consumo real (FIFO/Órdenes de Trabajo) — quedan pendientes hasta que las apruebes o corrijas." />
+      <RemitosSubNav grupo="costos" />
 
-      <div className="mt-4 flex items-center gap-3">
+      <div className="mt-3 flex items-center gap-3">
         <SoloLectura>
           <button
             type="button"
@@ -186,7 +182,7 @@ export default function ImputacionPage() {
           )}
         </div>
       ) : idDetalleCompraFoco ? (
-        <div className="mt-6">
+        <div className="mt-3">
           <PropuestaCard key={idDetalleCompraFoco} idDetalleCompra={Number(idDetalleCompraFoco)} onAprobada={recargarLista} />
           <a href="/imputacion" className="mt-2 inline-block text-xs text-ink-secondary underline">
             ← Ver todas las propuestas

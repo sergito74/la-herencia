@@ -39,13 +39,13 @@ export function DevolucionPanel({ idOrden, renglon, onGuardada }: { idOrden: num
   if (disponible <= 0) return null;
 
   return (
-    <div className="mt-1 text-sm">
+    <div className="text-xs">
       {!abierto ? (
-        <button type="button" onClick={() => setAbierto(true)} className="text-finance underline">
+        <button type="button" onClick={() => setAbierto(true)} className="text-finance hover:underline">
           Registrar devolución (disponible: {formatCantidad(disponible)})
         </button>
       ) : (
-        <div className="flex items-center gap-2 rounded border border-border p-2">
+        <div className="inline-flex items-center gap-2 rounded border border-border p-1.5 text-sm">
           <input type="date" className="rounded border border-border px-2 py-1" value={fecha} onChange={(e) => setFecha(e.target.value)} />
           <NumberInput className="w-24 rounded border border-border px-2 py-1 text-right" value={cantidad} onChange={setCantidad} maxDecimales={4} placeholder="Cantidad" />
           <button type="button" onClick={confirmar} disabled={guardando || !cantidad} className="rounded bg-finance px-2 py-1 text-white disabled:opacity-50">

@@ -141,24 +141,19 @@ function ProcessCardView({ proceso }: { proceso: ProcessCard }) {
 
 export default function Home() {
   return (
-    <main className="mx-auto max-w-none px-8 py-6">
-      <h1 className="text-2xl font-semibold text-ink-primary">La Herencia</h1>
-      <p className="mt-2 text-ink-secondary">
-        Sistema administrativo por proceso de negocio (solo lectura salvo donde se indique).
-      </p>
-
-      <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+    <main className="mx-auto max-w-none px-6 py-3">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <DeudaTotalKpi />
         <TarjetasPendientesKpi />
         <AvisoFacturasAtrasadas />
         <CuotasArrendamientoKpis />
       </div>
 
-      <div className="mt-4">
+      <div className="mt-3">
         <ResultadoCampaniaKpi />
       </div>
 
-      <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+      <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
         {PROCESOS.map((p) => (
           <ProcessCardView key={p.label} proceso={p} />
         ))}

@@ -1,9 +1,9 @@
+import { PageHeader } from "@/components/ui/PageHeader";
 import Link from "next/link";
 
 import { CuentaCorriente } from "@/components/cuentas-corrientes/CuentaCorriente";
 import { Suspense } from "react";
 import { NuevosParaRevisar } from "@/components/documentos-nuevos/NuevosParaRevisar";
-import { BackLink } from "@/components/ui/BackLink";
 
 export const metadata = {
   title: "Cuentas corrientes",
@@ -11,34 +11,25 @@ export const metadata = {
 
 export default function CuentasCorrientesPage() {
   return (
-    <main className="mx-auto max-w-none px-8 py-6">
-      <BackLink href="/">Volver al inicio</BackLink>
+    <main className="mx-auto max-w-none px-6 py-3">
       <Suspense fallback={null}>
         <NuevosParaRevisar modulo="cuentas_corrientes" />
       </Suspense>
-      <div className="mt-2 flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold">Cuentas corrientes</h1>
-          <p className="mt-1 text-ink-secondary">
-            Buscar un contacto y ver su saldo y movimientos (solo lectura).
-          </p>
-        </div>
-        <div className="flex gap-2">
+      <PageHeader titulo="Cuentas corrientes" ayuda="Buscar un contacto y ver su saldo y movimientos (solo lectura).">
           <Link
             href="/finanzas/cuentas-corrientes/saldos"
-            className="rounded border border-border px-3 py-1.5 text-sm hover:bg-surface-sunken"
+            className="rounded border border-border px-3 py-1 text-sm hover:bg-surface-sunken"
           >
             Ver saldos de todos los proveedores
           </Link>
           <Link
             href="/finanzas/conciliacion-historico"
-            className="rounded border border-border px-3 py-1.5 text-sm hover:bg-surface-sunken"
+            className="rounded border border-border px-3 py-1 text-sm hover:bg-surface-sunken"
           >
             Conciliación histórica
           </Link>
-        </div>
-      </div>
-      <div className="mt-6">
+      </PageHeader>
+      <div>
         <CuentaCorriente />
       </div>
     </main>

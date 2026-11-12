@@ -14,25 +14,28 @@ import { urlExportarFormularioRetiro, urlPdfFormularioRetiro, type OrdenDetalle 
 export function FormularioRetiroView({ orden }: { orden: OrdenDetalle }) {
   if (!orden.formularioRetiro) return null;
   return (
-    <div className="space-y-2">
-      <div className="flex gap-2">
+    <details className="mt-2 rounded border border-border px-3 py-1">
+      <summary className="flex cursor-pointer select-none flex-wrap items-center gap-2 py-1 text-sm">
+        <span className="font-semibold uppercase tracking-wide text-ink-secondary">▸ Formulario de retiro</span>
+        <span className="ml-auto flex gap-2">
         <Link
           href={`/produccion/ordenes/${orden.idOrden}/retiro?imprimir=1`}
           target="_blank"
-          className="rounded bg-finance px-3 py-1.5 text-sm text-white hover:opacity-90"
+          className="rounded bg-finance px-2.5 py-1 text-xs text-white hover:opacity-90"
         >
           Imprimir
         </Link>
-        <a href={urlPdfFormularioRetiro(orden.idOrden)} className="rounded border border-border px-3 py-1.5 text-sm hover:bg-surface-sunken">
+        <a href={urlPdfFormularioRetiro(orden.idOrden)} className="rounded border border-border px-2.5 py-1 text-xs hover:bg-surface-sunken">
           Exportar a PDF
         </a>
-        <a href={urlExportarFormularioRetiro(orden.idOrden)} className="rounded border border-border px-3 py-1.5 text-sm hover:bg-surface-sunken">
+        <a href={urlExportarFormularioRetiro(orden.idOrden)} className="rounded border border-border px-2.5 py-1 text-xs hover:bg-surface-sunken">
           Exportar a Excel
         </a>
-      </div>
-      <div className="overflow-x-auto rounded border border-border">
+        </span>
+      </summary>
+      <div className="mb-2 overflow-x-auto rounded border border-border">
         <FormularioRetiroDocumento orden={orden} />
       </div>
-    </div>
+    </details>
   );
 }

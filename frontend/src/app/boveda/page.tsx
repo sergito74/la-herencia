@@ -1,5 +1,6 @@
 "use client";
 
+import { PageHeader } from "@/components/ui/PageHeader";
 import Link from "next/link";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
@@ -82,29 +83,21 @@ export default function BovedaPage() {
   }
 
   if (usuario && !esAdmin) {
-    return <main className="px-8 py-6 text-sm text-ink-secondary">Solo el administrador accede a la bóveda de portales.</main>;
+    return <main className="px-6 py-3 text-sm text-ink-secondary">Solo el administrador accede a la bóveda de portales.</main>;
   }
 
   const todasMarcadas = sincronizables.length > 0 && sincronizables.every((p) => seleccion.has(p.idPortal));
 
   return (
-    <main className="mx-auto max-w-none space-y-4 px-8 py-6">
-      <section className="flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold">Bóveda de portales</h1>
-          <p className="mt-1 max-w-3xl text-sm text-ink-secondary">
-            Accesos a los portales de organismos, proveedores y clientes, con las contraseñas cifradas. Las cuentas con
-            sincronización automática bajan facturas y resúmenes a la carpeta de Compras; las demás, por ahora, solo
-            guardan el acceso.
-          </p>
-        </div>
+    <main className="mx-auto max-w-none space-y-3 px-6 py-3">
+      <PageHeader titulo="Bóveda de portales" ayuda="Accesos a los portales de organismos, proveedores y clientes, con las contraseñas cifradas. Las cuentas con sincronización automática bajan facturas y resúmenes a la carpeta de Compras; las demás solo guardan el acceso.">
         {!alta && (
           <button type="button" onClick={() => { crear.reset(); setAlta(true); }}
-            className="shrink-0 rounded-md border border-border px-4 py-1.5 text-sm">
+            className="shrink-0 rounded-md border border-border px-3 py-1 text-sm">
             Agregar cuenta
           </button>
         )}
-      </section>
+      </PageHeader>
 
       {alta && (
         <PortalForm enviando={crear.isPending} error={crear.error?.message ?? null}

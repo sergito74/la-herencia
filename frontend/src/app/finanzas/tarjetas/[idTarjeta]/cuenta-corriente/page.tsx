@@ -10,7 +10,7 @@ export default function TarjetaCuentaCorrientePage() {
   const router = useRouter();
 
   return (
-    <main className="mx-auto max-w-none px-8 py-3">
+    <main className="mx-auto max-w-none px-6 py-3">
       <button
         type="button"
         onClick={() => router.push("/finanzas/tarjetas")}

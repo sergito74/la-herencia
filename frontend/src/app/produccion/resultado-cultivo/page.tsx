@@ -1,5 +1,6 @@
 "use client";
 
+import { PageHeader } from "@/components/ui/PageHeader";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
@@ -7,7 +8,6 @@ import { useQuery } from "@tanstack/react-query";
 import { ConsolidadoCampaniaView } from "@/components/resultado-cultivo/ConsolidadoCampaniaView";
 import { SelectorCampania } from "@/components/resultado-cultivo/SelectorCampania";
 import { SelectorCultivo } from "@/components/resultado-cultivo/SelectorCultivo";
-import { BackLink } from "@/components/ui/BackLink";
 import { fetchCampanias, fetchResultadoCampania } from "@/services/resultadoCultivoApi";
 
 export default function ResultadoCultivoPage() {
@@ -28,12 +28,8 @@ export default function ResultadoCultivoPage() {
   };
 
   return (
-    <main className="mx-auto max-w-none px-8 py-6">
-      <BackLink href="/produccion/ordenes">Volver a Producción</BackLink>
-      <h1 className="mt-2 text-2xl font-semibold">Resultado de cultivo</h1>
-      <p className="mt-1 text-ink-secondary">
-        Costos, ventas y márgenes de cada campaña, con detalle por cultivo.
-      </p>
+    <main className="mx-auto max-w-none px-6 py-3">
+      <PageHeader titulo="Resultado de cultivo" ayuda="Costos, ventas y márgenes de cada campaña, con detalle por cultivo." />
 
       <div className="mt-6 flex flex-wrap items-end gap-4">
         <SelectorCampania
@@ -52,7 +48,7 @@ export default function ResultadoCultivoPage() {
         />
       </div>
 
-      <div className="mt-6">
+      <div className="mt-3">
         <ConsolidadoCampaniaView
           datos={resultado.data}
           cargando={campanias.isPending || resultado.isPending}
