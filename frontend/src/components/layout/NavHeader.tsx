@@ -19,6 +19,10 @@ interface NavLeaf {
   badge?: "peajes";
   /** Documentos nuevos para revisar de este módulo (043): el número lleva a la vista "Nuevos para revisar". */
   nuevos?: AvisoNuevos;
+  /** Encabezado de sección que se muestra arriba de este ítem dentro del menú desplegable. */
+  grupo?: string;
+  /** Otras rutas que pertenecen a este ítem (pestañas de la misma sección). */
+  otras?: string[];
 }
 
 /** Clave del resumen de documentos nuevos; Compras suma lo "sin clasificar" (se revisa desde Compras). */
@@ -137,16 +141,12 @@ const NAV_ITEMS: NavItem[] = [
     label: "Producción",
     icon: ICONS.produccion,
     submenu: [
-      { href: "/produccion/planificacion", label: "Planificación agrícola" },
-      { href: "/produccion/remitos", label: "Remitos" },
-      { href: "/produccion/contratistas/sin-orden", label: "Facturas de contratistas sin orden" },
-      { href: "/produccion/stock", label: "Existencias de insumos" },
-      { href: "/produccion/stock/bajas", label: "Bajas de stock" },
-      { href: "/produccion/stock/ajustes", label: "Ajustes de inventario" },
+      { href: "/produccion/planificacion", label: "Planificación agrícola", grupo: "Campo" },
       { href: "/produccion/ordenes", label: "Órdenes de trabajo" },
       { href: "/produccion/resultado-cultivo", label: "Resultado de cultivo" },
-      { href: "/imputacion", label: "Imputación automática de costos" },
-      { href: "/imputacion/documentos", label: "Imputación por documento (contador)" },
+      { href: "/produccion/remitos", label: "Remitos", grupo: "Insumos" },
+      { href: "/produccion/stock", label: "Existencias de insumos" },
+      { href: "/imputacion", label: "Imputación de costos", grupo: "Costos", otras: ["/produccion/contratistas"] },
     ],
   },
   {
@@ -247,11 +247,17 @@ function NavDropdown({ item, active, peajes, nuevos }:
       {open && (
         <div className="absolute left-0 top-full z-10 min-w-[14rem] origin-top-left rounded-md border border-border bg-surface py-1 shadow-lg ring-1 ring-black/5 animate-[fadeIn_0.1s_ease-out]">
           {item.submenu!.map((leaf) => {
-            const leafActive = leaf.exact ? pathname === leaf.href : isActive(pathname, leaf.href);
+            const leafActive = leaf.exact ? pathname === leaf.href
+              : isActive(pathname, leaf.href) || (leaf.otras ?? []).some((o) => isActive(pathname, o));
             const cantidad = cantidadNuevos(nuevos, leaf.nuevos);
             return (
+              <div key={leaf.href}>
+              {leaf.grupo && (
+                <p className="mt-1 border-t border-border px-4 pb-1 pt-2 text-[11px] font-semibold uppercase tracking-wide text-ink-muted first:mt-0 first:border-t-0">
+                  {leaf.grupo}
+                </p>
+              )}
               <Link
-                key={leaf.href}
                 href={cantidad ? `${leaf.href}?nuevos=1` : leaf.href}
                 className={`block px-4 py-2 text-sm ${
                   leafActive
@@ -263,6 +269,7 @@ function NavDropdown({ item, active, peajes, nuevos }:
                 {leaf.badge === "peajes" && <Contador valor={peajes} />}
                 <Contador azul titulo={TITULO_NUEVOS} valor={cantidad} />
               </Link>
+              </div>
             );
           })}
         </div>
@@ -317,7 +324,7 @@ export function NavHeader() {
 
               const active =
                 isActive(pathname, item.href) ||
-                (item.submenu?.some((leaf) => isActive(pathname, leaf.href)) ?? false);
+                (item.submenu?.some((leaf) => isActive(pathname, leaf.href) || (leaf.otras ?? []).some((o) => isActive(pathname, o))) ?? false);
 
               if (item.submenu) {
                 return <NavDropdown key={item.href} item={item} active={active} peajes={peajes} nuevos={nuevos} />;

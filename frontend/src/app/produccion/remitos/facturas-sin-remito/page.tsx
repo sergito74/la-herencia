@@ -10,7 +10,7 @@ export default function Page() {
       <BackLink href="/produccion/remitos">Volver a Remitos</BackLink>
       <h1 className="mt-2 text-2xl font-semibold">Facturas de insumos sin remito</h1>
       <div className="mt-4">
-        <RemitosSubNav />
+        <RemitosSubNav grupo="remitos" />
       </div>
       <div className="mt-6">
         <FacturasSinRemitoListado />

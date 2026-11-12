@@ -10,7 +10,7 @@ export default function RemitosPage() {
       <BackLink href="/">Volver al inicio</BackLink>
       <h1 className="mt-2 text-2xl font-semibold">Remitos</h1>
       <div className="mt-4">
-        <RemitosSubNav />
+        <RemitosSubNav grupo="remitos" />
       </div>
       <div className="mt-6">
         <RemitosListado />

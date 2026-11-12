@@ -5,7 +5,6 @@ import { useState } from "react";
 
 import { OrdenesListado } from "@/components/ordenes/OrdenesListado";
 import { TipoLaborAdmin } from "@/components/ordenes/TipoLaborAdmin";
-import { RemitosSubNav } from "@/components/remitos/RemitosSubNav";
 import { BackLink } from "@/components/ui/BackLink";
 import { fetchTiposLabor } from "@/services/ordenesApi";
 
@@ -22,9 +21,6 @@ export default function OrdenesPage() {
         <button type="button" onClick={() => setMostrarLabores((v) => !v)} className="rounded border border-border px-3 py-1.5 text-sm hover:bg-surface-sunken">
           {mostrarLabores ? "Ocultar" : "Administrar"} tipos de labor
         </button>
-      </div>
-      <div className="mt-4">
-        <RemitosSubNav />
       </div>
       {mostrarLabores && tiposLabor && (
         <div className="mt-4">

@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 
-import { BackLink } from "@/components/ui/BackLink";
+import { RemitosSubNav } from "@/components/remitos/RemitosSubNav";
 import { filterInputClass } from "@/components/ui/FilterBar";
 import { ErrorState, LoadingState } from "@/components/ui/States";
 import { formatCantidad, formatFecha, formatMoneda } from "@/lib/format";
@@ -27,9 +27,10 @@ export default function FacturasSinOrdenPage() {
   const contratistas = useMemo(() => [...new Set((data ?? []).map((r) => r.contratista))].sort(), [data]);
 
   return (
-    <main className="mx-auto max-w-6xl space-y-4 p-4">
-      <BackLink href="/produccion/ordenes">Volver a Órdenes de trabajo</BackLink>
-      <h1 className="text-xl font-semibold">Facturas de contratistas sin orden de trabajo</h1>
+    <main className="mx-auto max-w-none space-y-4 px-8 py-6">
+      <h1 className="text-2xl font-semibold">Imputación de costos</h1>
+      <RemitosSubNav grupo="costos" />
+      <h2 className="text-lg font-medium">Facturas de contratistas sin orden de trabajo</h2>
       <p className="text-sm text-ink-secondary">
         Su costo cuenta por el cultivo y la campaña cargados a mano en cada renglón. Para que se impute solo por la
         superficie de la orden, abrí la factura y tildá sus órdenes de trabajo.

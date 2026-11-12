@@ -4,6 +4,7 @@ import { useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
 import { SoloLectura } from "@/components/auth/SoloLectura";
+import { RemitosSubNav } from "@/components/remitos/RemitosSubNav";
 import { PropuestaCard } from "@/components/imputacion/PropuestaCard";
 import { EncabezadoPropuesta } from "@/components/imputacion/EncabezadoPropuesta";
 import { useToast } from "@/components/ui/Toast";
@@ -126,7 +127,9 @@ export default function ImputacionPage() {
 
   return (
     <main className="mx-auto max-w-none px-8 py-6">
-      <h1 className="text-2xl font-semibold">Imputación automática</h1>
+      <h1 className="text-2xl font-semibold">Imputación de costos</h1>
+      <div className="mt-4"><RemitosSubNav grupo="costos" /></div>
+      <h2 className="mt-4 text-lg font-medium">Imputación automática</h2>
       <p className="mt-1 text-sm text-ink-secondary">
         Propuestas de reparto de costos a Cultivo/Campaña calculadas a partir del consumo real (FIFO/Órdenes de
         Trabajo) — quedan pendientes hasta que las apruebes o corrijas.

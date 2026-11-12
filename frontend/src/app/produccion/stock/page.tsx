@@ -10,7 +10,7 @@ export default function Page() {
       <BackLink href="/">Volver al inicio</BackLink>
       <h1 className="mt-2 text-2xl font-semibold">Existencias de insumos</h1>
       <div className="mt-4">
-        <RemitosSubNav />
+        <RemitosSubNav grupo="existencias" />
       </div>
       <div className="mt-6">
         <ExistenciasListado />

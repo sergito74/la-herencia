@@ -7,6 +7,7 @@ import { formatFecha } from "@/lib/format";
 import { ContactoSelect } from "@/components/ui/ContactoSelect";
 import { FilterBar, FilterField, FilterSubmitButton, filterInputClass } from "@/components/ui/FilterBar";
 import { SoloLectura } from "@/components/auth/SoloLectura";
+import { RemitosSubNav } from "@/components/remitos/RemitosSubNav";
 import { useToast } from "@/components/ui/Toast";
 import { ResumenImputacion } from "@/components/imputacion/ResumenImputacion";
 
@@ -225,9 +226,11 @@ export default function DocumentosImputacionPage() {
 
   return (
     <main className="mx-auto max-w-none px-8 py-6">
-      <h1 className="text-2xl font-semibold">Imputación por documento comercial</h1>
+      <h1 className="text-2xl font-semibold">Imputación de costos</h1>
+      <div className="mt-4"><RemitosSubNav grupo="costos" /></div>
+      <h2 className="mt-4 text-lg font-medium">Imputación por documento</h2>
       <p className="mt-1 text-sm text-ink-secondary">
-        Para la oficina del contador: cada línea de factura/NC/ND con su clasificación manual y la propuesta del
+        Cada línea de factura/NC/ND con su clasificación manual y la propuesta del
         motor desplegable debajo.
       </p>
 
