@@ -42,7 +42,7 @@ export function FormularioCostos() {
             <div className="flex flex-wrap items-center gap-x-8 gap-y-1 rounded-md border border-border bg-surface px-3 py-2 text-sm">
               <Titulo cultivo={data.cultivo} campania={data.campania} />
               <Dato label="Superficie afectada">{formatCantidad(data.superficieAfectada ?? 0)} ha</Dato>
-              <Dato label="Superficie sembrada">{formatCantidad(data.superficieSembrada ?? 0)} ha{data.superficieSembradaTeorica && <span className="ml-1 text-xs font-normal text-status-warning" title="Sin factura de siembra: es la superficie planificada">(teórica)</span>}</Dato>
+              <Dato label="Superficie sembrada">{formatCantidad(data.superficieSembrada ?? 0)} ha{data.superficieSembradaTeorica && <span className="ml-1 text-xs font-normal text-status-warning" title="Sin factura de siembra: es la superficie planificada">(teórica)</span>}{data.superficieSembradaSegunCosecha && <span className="ml-1 text-xs font-normal text-status-warning" title="Se cosechó más de lo que figura sembrado: faltan registros de siembra">(según cosecha)</span>}</Dato>
               <Dato label="Superficie picada">{formatCantidad(data.superficiePicada ?? 0)} ha</Dato>
             </div>
             <TablaCostosDirectos filas={data.costosDirectos ?? []} seleccionado={rubro?.id}

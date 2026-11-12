@@ -137,6 +137,8 @@ def formulario_costos(id_cultivo: int, id_campania: int) -> dict:
     if sup <= 0:
         return {**base, "sinSuperficie": True}
     picado = min(max(_f(r.get("SupPicado")), 0.0), sup)
+    cosechada = round(_f((fetch_one("SELECT SuperficieCosechada AS s FROM dbo.ResultadoCultivo_Cierre WHERE IdCultivo = ? AND IdCampaña = ?",
+                                    (id_cultivo, id_campania)) or {}).get("s")), 1)
     grano = sup - picado
     impl_p, impl_d = _f(r.get("TotalImplPesos")), _f(r.get("TotalImplDolares"))
     silo_p, silo_d = _f(r.get("TotalSiloPesos")), _f(r.get("TotalSiloDolares"))
@@ -157,8 +159,9 @@ def formulario_costos(id_cultivo: int, id_campania: int) -> dict:
         "sinSuperficie": False,
         "fechaInicio": _fecha_inicio(id_cultivo, id_campania, r.get("FechaInicio")),
         "superficieAfectada": round(sup, 1),
-        "superficieSembrada": real if (real := superficie_sembrada_real(id_destino, id_campania)) is not None else round(grano, 1),
+        "superficieSembrada": max(real, cosechada) if (real := superficie_sembrada_real(id_destino, id_campania)) is not None else round(grano, 1),
         "superficieSembradaTeorica": real is None,
+        "superficieSembradaSegunCosecha": real is not None and cosechada > real,
         "superficiePicada": round(picado, 1),
         "costosDirectos": [
             {"idRubro": f["IdRubroGrupo"], "concepto": f["Concepto"], "pesos": _f(f["Pesos"]), "dolares": _f(f["Dolares"]),
@@ -286,8 +289,10 @@ def formulario_resultados(id_cultivo: int, id_campania: int) -> dict:
         "aviso": None,
         "fechaInicio": fecha_inicio, "fechaFin": fecha_fin, "ocupacionDias": duracion if duracion > 0 else None,
         "superficieAfectada": round(sup, 1), "superficieCosechada": sup_cosecha,
-        "superficieSembrada": real if (real := superficie_sembrada_real(id_destino, id_campania)) is not None else round(sup, 1),
-        "superficieSembradaTeorica": real is None, "superficiePicada": sup_picado,
+        # No se puede cosechar más de lo sembrado (Sergio 12/11/2026): si la cosecha supera los registros de siembra, manda la cosecha.
+        "superficieSembrada": max(real, round(sup_cosecha, 1)) if (real := superficie_sembrada_real(id_destino, id_campania)) is not None else round(sup, 1),
+        "superficieSembradaTeorica": real is None,
+        "superficieSembradaSegunCosecha": real is not None and sup_cosecha > real, "superficiePicada": sup_picado,
         "cantidadCosechada": round(cant_cosecha), "cantidadVendida": round(cant_venta), "cantidadConsumida": round(cant_cosecha - cant_venta),
         "rinde": rinde, "rindeIndiferencia": rinde_indif, "volumenIndiferencia": round(rinde_indif * sup_cosecha),
         "margenBruto": {"pesos": mb_p, "dolares": mb_d},
