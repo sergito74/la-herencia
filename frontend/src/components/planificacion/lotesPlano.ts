@@ -1,3 +1,5 @@
+export { colorCultivo, hexCultivo } from "@/lib/cultivos";
+
 /** Lotes del plano de La Herencia (LH Plano Lotes.kmz) y a cuál pertenece cada lote del sistema. Las subdivisiones
  * (1B1, 10A1, 3AB…) se usaron en distintas campañas y caen dentro de su lote del plano (confirmado por Sergio 12/11/2026). */
 export const LOTES_PLANO: { id: string; nombre: string; ha: number }[] = [
@@ -24,42 +26,10 @@ export function lotePlano(numeroLote: string): string | null {
   return LOTES_PLANO.some((l) => l.id === id) ? id : LOTES_PLANO.some((l) => l.id === m[1]) ? m[1] : null;
 }
 
-/** Color fijo por cultivo (siempre acompañado del nombre). */
-export function colorCultivo(cultivo: string | null | undefined): string {
-  const c = (cultivo ?? "").toLowerCase();
-  if (c.includes("soja") && c.includes("segunda")) return "bg-lime-100 text-lime-900 border-lime-300";
-  if (c.includes("soja")) return "bg-green-200 text-green-900 border-green-400";
-  if (c.includes("diferido")) return "bg-orange-100 text-orange-900 border-orange-300";
-  if (c.includes("maiz") || c.includes("maíz")) return "bg-yellow-200 text-yellow-900 border-yellow-400";
-  if (c.includes("trigo")) return "bg-amber-100 text-amber-900 border-amber-300";
-  if (c.includes("cebada")) return "bg-stone-200 text-stone-800 border-stone-400";
-  if (c.includes("avena")) return "bg-sky-100 text-sky-900 border-sky-300";
-  if (c.includes("sorgo")) return "bg-rose-100 text-rose-900 border-rose-300";
-  if (c.includes("girasol")) return "bg-amber-300 text-amber-950 border-amber-500";
-  if (c.includes("pastura")) return "bg-teal-100 text-teal-900 border-teal-300";
-  return "bg-slate-100 text-slate-800 border-slate-300";
-}
-
 /** Año agrícola de una campaña: "2025/2026" (gruesa) y "2025" (fina) caen en la misma columna 25/26. */
 export function anioAgricola(nombre: string): { anio: number; fina: boolean } | null {
   const m = nombre.match(/^(\d{4})/);
   return m ? { anio: Number(m[1]), fina: !nombre.includes("/") } : null;
-}
-
-/** Color de relleno por cultivo para el plano y las barras (mismo criterio que colorCultivo). */
-export function hexCultivo(cultivo: string | null | undefined): string {
-  const c = (cultivo ?? "").toLowerCase();
-  if (c.includes("soja") && c.includes("segunda")) return "#bef264";
-  if (c.includes("soja")) return "#4ade80";
-  if (c.includes("diferido")) return "#fdba74";
-  if (c.includes("maiz") || c.includes("maíz")) return "#facc15";
-  if (c.includes("trigo")) return "#fcd34d";
-  if (c.includes("cebada")) return "#a8a29e";
-  if (c.includes("avena")) return "#7dd3fc";
-  if (c.includes("sorgo")) return "#fda4af";
-  if (c.includes("girasol")) return "#f59e0b";
-  if (c.includes("pastura")) return "#5eead4";
-  return "#cbd5e1";
 }
 
 /** Contorno de cada lote sobre la imagen del plano (public/plano-lotes.jpg, coordenadas 2184×1688). */
