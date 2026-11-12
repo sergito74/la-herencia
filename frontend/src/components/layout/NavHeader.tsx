@@ -146,7 +146,7 @@ const NAV_ITEMS: NavItem[] = [
       { href: "/produccion/resultado-cultivo", label: "Resultado de cultivo" },
       { href: "/produccion/remitos", label: "Remitos", grupo: "Insumos" },
       { href: "/produccion/stock", label: "Existencias de insumos" },
-      { href: "/imputacion", label: "Imputación de costos", grupo: "Costos", otras: ["/produccion/contratistas"] },
+      { href: "/imputacion", label: "Imputación de costos", grupo: "Costos", otras: ["/produccion/contratistas", "/produccion/ordenes/resultado-cultivo"] },
     ],
   },
   {

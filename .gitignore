@@ -63,3 +63,4 @@ backend/.auth_secret
 
 # Descarga de peajes (037): los PDFs reales tienen datos personales, no se versionan
 backend/tests/fixtures/peajes/*.pdf
+frontend/public/plano-lotes.jpg

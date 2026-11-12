@@ -9,7 +9,8 @@ import { ApiError } from "@/services/apiClient";
 import type { Campania, Cultivo, Lote } from "@/services/ordenesApi";
 import { crearPlanAgricola, eliminarPlanAgricola, type PlanAgricolaItem } from "@/services/planificacionApi";
 
-import { anioAgricola, colorCultivo, LOTES_PLANO, lotePlano } from "./lotesPlano";
+import { PlanoLotes } from "./PlanoLotes";
+import { anioAgricola, colorCultivo, hexCultivo, LOTES_PLANO, lotePlano } from "./lotesPlano";
 
 const VISIBLES = 6;
 const etiquetaAnio = (a: number) => `${String(a).slice(2)}/${String(a + 1).slice(2)}`;
@@ -45,6 +46,7 @@ export function PlanificacionAgricolaListado({
   const desde = Math.max(0, hasta - VISIBLES + 1);
   const visibles = anios.slice(desde, hasta + 1);
 
+  const [vista, setVista] = useState<"grilla" | "plano">("grilla");
   const [abiertos, setAbiertos] = useState<Record<string, boolean>>({});
   const [celda, setCelda] = useState<{ idLote: number | null; plano: string; anio: number } | null>(null);
 
@@ -54,7 +56,7 @@ export function PlanificacionAgricolaListado({
     const sinPlano: Lote[] = [];
     for (const l of lotesValidos) {
       const p = lotePlano(l.numeroLote);
-      if (!p) sinPlano.push(l);
+      if (!p) { if (l.numeroLote !== "S/L") sinPlano.push(l); }
       else porPlano.set(p, [...(porPlano.get(p) ?? []), l]);
     }
     return { porPlano, sinPlano };
@@ -121,20 +123,35 @@ export function PlanificacionAgricolaListado({
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center gap-2 text-sm">
-        <button type="button" className="rounded-sm border border-border px-2 py-1 disabled:opacity-40" disabled={desde === 0}
+        <button type="button" className="rounded-sm border border-border px-2 py-1 disabled:opacity-40" disabled={vista === "plano" ? hasta === 0 : desde === 0}
           onClick={() => setHasta(hasta - 1)} aria-label="Campaña anterior">←</button>
-        <span>Campañas {etiquetaAnio(visibles[0] ?? 0)} a {etiquetaAnio(visibles[visibles.length - 1] ?? 0)}</span>
+        <span className="min-w-[10rem] text-center">{vista === "plano" ? `Campaña ${etiquetaAnio(anios[hasta] ?? 0)}`
+          : `Campañas ${etiquetaAnio(visibles[0] ?? 0)} a ${etiquetaAnio(visibles[visibles.length - 1] ?? 0)}`}</span>
         <button type="button" className="rounded-sm border border-border px-2 py-1 disabled:opacity-40" disabled={hasta >= anios.length - 1}
           onClick={() => setHasta(hasta + 1)} aria-label="Campaña siguiente">→</button>
-        <span className="ml-2 text-ink-secondary">En cada celda: arriba la campaña fina, abajo la gruesa. Clic para asignar o quitar.</span>
+        <span className="ml-2 text-ink-secondary">{vista === "grilla"
+          ? "En cada celda: arriba la campaña fina, abajo la gruesa. Clic para asignar o quitar."
+          : "Fina y gruesa del mismo año juntas. Clic en un lote para ver su rotación."}</span>
+        <div role="tablist" aria-label="Vista" className="ml-auto flex rounded-md border border-border p-0.5">
+          {(["grilla", "plano"] as const).map((v) => (
+            <button key={v} type="button" role="tab" aria-selected={vista === v} onClick={() => setVista(v)}
+              className={`rounded px-3 py-1 ${vista === v ? "bg-agro text-white" : "text-ink-secondary hover:text-ink-primary"}`}>
+              {v === "grilla" ? "Grilla" : "Plano"}
+            </button>
+          ))}
+        </div>
       </div>
 
-      <div className="overflow-x-auto rounded-sm border border-border">
+      {vista === "plano" ? (
+        <PlanoLotes anio={anios[hasta]} items={items} onLote={(plano) => setCelda({ idLote: null, plano, anio: anios[hasta] })} />
+      ) : (<>
+
+      <div className="max-h-[calc(100vh-15rem)] overflow-auto rounded-sm border border-border">
         <table className="w-full table-fixed text-sm">
           <colgroup><col className="w-24" /><col className="w-16" />{visibles.map((a) => <col key={a} />)}</colgroup>
-          <thead className="bg-surface-sunken text-xs text-ink-secondary">
+          <thead className="sticky top-0 z-[3] bg-surface-sunken text-xs text-ink-secondary shadow-[0_1px_0_var(--tw-shadow-color)] shadow-border">
             <tr>
-              <th className="sticky left-0 bg-surface-sunken px-1 py-1.5 text-left">Lote</th>
+              <th className="sticky left-0 z-[4] bg-surface-sunken px-1 py-1.5 text-left">Lote</th>
               <th className="px-2 py-1.5 text-right">ha</th>
               {visibles.map((a) => <th key={a} className="px-1 py-1.5 text-left">{etiquetaAnio(a)}</th>)}
             </tr>
@@ -158,21 +175,11 @@ export function PlanificacionAgricolaListado({
               <Fila key={l.idLote} etiqueta={l.numeroLote} ha={l.superficie} idsLote={[l.idLote]} plano={l.numeroLote} idLote={l.idLote} />
             ))}
           </tbody>
-          <tfoot className="bg-surface-sunken text-xs">
-            <tr>
-              <th className="sticky left-0 bg-surface-sunken px-1 py-1.5 text-left align-top">Total ha</th>
-              <td />
-              {visibles.map((a) => (
-                <td key={a} className="px-1 py-1.5 align-top">
-                  {[...(totales.get(a) ?? new Map()).entries()].sort((x, y) => y[1] - x[1]).map(([c, ha]) => (
-                    <div key={c} className="flex justify-between gap-1"><span className="truncate">{c}</span><span>{formatCantidad(ha)}</span></div>
-                  ))}
-                </td>
-              ))}
-            </tr>
-          </tfoot>
         </table>
       </div>
+
+      <TotalesCampanias anios={visibles} totales={totales} />
+      </>)}
 
       {celda && (
         <PanelCelda celda={celda} lotes={lotesValidos} cultivos={cultivos} campanias={campanias} items={items}
@@ -269,5 +276,40 @@ function PanelCelda({ celda, lotes, cultivos, campanias, items, onClose, onCrear
         </section>
       </div>
     </SideDrawer>
+  );
+}
+
+/** Superficie por cultivo de cada campaña: barra apilada y lista con el color del cultivo. */
+function TotalesCampanias({ anios, totales }: { anios: number[]; totales: Map<number, Map<string, number>> }) {
+  return (
+    <section aria-label="Superficie por cultivo" className="grid gap-3" style={{ gridTemplateColumns: `repeat(${anios.length}, minmax(0, 1fr))` }}>
+      {anios.map((a) => {
+        const lista = [...(totales.get(a) ?? new Map<string, number>()).entries()].sort((x, y) => y[1] - x[1]);
+        const total = lista.reduce((t, [, ha]) => t + ha, 0);
+        return (
+          <div key={a} className="rounded-md border border-border bg-surface p-3 shadow-sm">
+            <div className="flex items-baseline justify-between">
+              <span className="text-sm font-semibold">{etiquetaAnio(a)}</span>
+              <span className="text-xs text-ink-secondary">{formatCantidad(total)} ha</span>
+            </div>
+            <div className="mt-2 flex h-2.5 overflow-hidden rounded-full bg-surface-sunken">
+              {lista.map(([c, ha]) => (
+                <span key={c} title={`${c}: ${formatCantidad(ha)} ha`} style={{ width: `${total ? (ha / total) * 100 : 0}%`, background: hexCultivo(c) }} />
+              ))}
+            </div>
+            <ul className="mt-2 space-y-0.5 text-xs">
+              {lista.map(([c, ha]) => (
+                <li key={c} className="flex items-center gap-1.5">
+                  <span className="h-2.5 w-2.5 shrink-0 rounded-sm" style={{ background: hexCultivo(c) }} aria-hidden />
+                  <span className="truncate">{c}</span>
+                  <span className="ml-auto tabular-nums text-ink-secondary">{formatCantidad(ha)}</span>
+                </li>
+              ))}
+              {lista.length === 0 && <li className="text-ink-muted">Sin planificar</li>}
+            </ul>
+          </div>
+        );
+      })}
+    </section>
   );
 }

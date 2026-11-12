@@ -20,6 +20,7 @@ const GRUPOS: Record<"remitos" | "existencias" | "costos", Tab[]> = {
   costos: [
     { href: "/imputacion", label: "Automática", exacto: true },
     { href: "/imputacion/documentos", label: "Por documento" },
+    { href: "/produccion/ordenes/resultado-cultivo", label: "Costo por cultivo / campaña" },
     { href: "/produccion/contratistas/sin-orden", label: "Facturas de contratistas sin orden" },
   ],
 };
