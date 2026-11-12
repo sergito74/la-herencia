@@ -41,7 +41,7 @@ export function OrdenesListado() {
   const aplicarInsumo = () => insumo.trim() !== (filtros.insumo ?? "") && cambiar({ insumo: insumo.trim() });
   const hayFiltros = JSON.stringify(filtros) !== JSON.stringify(VACIO) || insumo !== "";
   const campanias = [...(catalogos?.campanias ?? [])].sort((a, b) => b.nombre.localeCompare(a.nombre));
-  const ultimas = campanias.filter((c) => /^d{4}/.test(c.nombre)).slice(0, 4);
+  const ultimas = campanias.filter((c) => /^\d{4}/.test(c.nombre)).slice(0, 4);
   const conInsumo = !!filtros.insumo;
   const totalPaginas = data ? Math.max(1, Math.ceil(data.total / data.pageSize)) : 1;
   const haPagina = (data?.items ?? []).reduce((s, o) => s + (o.estado === "Anulada" ? 0 : o.hectareas || 0), 0);
