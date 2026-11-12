@@ -126,3 +126,41 @@ export const urlExportarCampania = (idCampania: number) => new URL(`/api/resulta
 
 export const urlExportarCultivo = (idCampania: number, idCultivo: number) =>
   new URL(`/api/resultado-cultivo/campania/${idCampania}/cultivo/${idCultivo}/exportar`, API_BASE_URL).toString();
+
+/* ---- Formularios de Access (FrmCostos / FrmResultados), 12/11/2026 ---- */
+
+export interface ParMonto { pesos: number; dolares: number; haPesos?: number; haDolares?: number }
+export interface CostoDirecto { idRubro: number; concepto: string; pesos: number; dolares: number; haPesos: number; haDolares: number }
+
+export interface FormularioCostos {
+  cultivo: string; campania: string; sinSuperficie: boolean; fechaInicio?: string | null;
+  superficieAfectada?: number; superficieSembrada?: number; superficiePicada?: number;
+  costosDirectos?: CostoDirecto[]; implantacion?: ParMonto; silo?: ParMonto; total?: ParMonto;
+}
+
+export interface DetalleRubroItem {
+  cantidad: number; producto: string; unitarioPesos: number | null; unitarioDolares: number | null; totalPesos: number; totalDolares: number;
+}
+
+export interface FormularioResultados {
+  cultivo: string; campania: string; aviso: string | null;
+  fechaInicio?: string; fechaFin?: string | null; ocupacionDias?: number | null;
+  superficieAfectada?: number; superficieCosechada?: number; superficiePicada?: number;
+  cantidadCosechada?: number; cantidadVendida?: number; cantidadConsumida?: number;
+  rinde?: number; rindeIndiferencia?: number; volumenIndiferencia?: number;
+  margenBruto?: ParMonto; margenBrutoHa?: ParMonto; rentabilidad?: ParMonto; rentaAnual?: ParMonto; precioNetoTn?: number;
+  costosDirectos?: CostoDirecto[]; implantacion?: ParMonto; silo?: ParMonto; cosecha?: ParMonto; totalCostos?: ParMonto;
+  ventaBruta?: ParMonto; bonificaciones?: ParMonto; totalVentas?: ParMonto;
+  deducciones?: { detalle: string; pesos: number; dolares: number }[];
+  gastos?: { concepto: string; pesos: number; dolares: number }[];
+  totalDeducciones?: ParMonto; recuperoSeguro?: ParMonto; produccionNoComercializada?: ParMonto; totalVentaNeta?: ParMonto;
+}
+
+export const fetchCampaniasDeCultivo = (idCultivo: number) =>
+  apiGet<CampaniaItem[]>(`/api/resultado-cultivo/access/cultivo/${idCultivo}/campanias`);
+export const fetchFormularioCostos = (idCultivo: number, idCampania: number) =>
+  apiGet<FormularioCostos>(`/api/resultado-cultivo/access/costos?idCultivo=${idCultivo}&idCampania=${idCampania}`);
+export const fetchDetalleRubro = (idCultivo: number, idCampania: number, idRubro: number) =>
+  apiGet<DetalleRubroItem[]>(`/api/resultado-cultivo/access/costos/detalle?idCultivo=${idCultivo}&idCampania=${idCampania}&idRubro=${idRubro}`);
+export const fetchFormularioResultados = (idCultivo: number, idCampania: number) =>
+  apiGet<FormularioResultados>(`/api/resultado-cultivo/access/resultados?idCultivo=${idCultivo}&idCampania=${idCampania}`);

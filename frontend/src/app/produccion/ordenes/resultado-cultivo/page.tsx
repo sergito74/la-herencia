@@ -1,17 +1,17 @@
 "use client";
 
-import { ResultadoCultivoListado } from "@/components/ordenes/ResultadoCultivoListado";
 import { RemitosSubNav } from "@/components/remitos/RemitosSubNav";
+import { FormularioCostos } from "@/components/resultado-cultivo/FormularioCostos";
+import { PageHeader } from "@/components/ui/PageHeader";
 
-export default function ResultadoCultivoPage() {
+/** Costos por cultivo / campaña: formato y cálculos del formulario FrmCostos de Access. */
+export default function CostoCultivoPage() {
   return (
-    <main className="mx-auto max-w-none px-8 py-6">
-      <h1 className="text-2xl font-semibold">Imputación de costos</h1>
-      <div className="mt-4"><RemitosSubNav grupo="costos" /></div>
-      <h2 className="mt-4 text-lg font-medium">Costo por cultivo / campaña</h2>
-      <div className="mt-4">
-        <ResultadoCultivoListado />
-      </div>
+    <main className="mx-auto max-w-none px-6 py-3">
+      <PageHeader titulo="Imputación de costos · costo por cultivo / campaña"
+        ayuda="Igual que el formulario Costos de Access: costos directos por concepto, en pesos y dólares, totales y por hectárea. Clic en un concepto para ver sus comprobantes." />
+      <RemitosSubNav grupo="costos" />
+      <div className="mt-3"><FormularioCostos /></div>
     </main>
   );
 }

@@ -6,7 +6,7 @@ from __future__ import annotations
 from fastapi import APIRouter, HTTPException, Response
 from starlette.concurrency import run_in_threadpool
 
-from src.features.resultado_cultivo import campania_actual, exportacion, resultado
+from src.features.resultado_cultivo import campania_actual, exportacion, formularios_access, resultado
 from src.db.connection import fetch_all
 
 router = APIRouter(prefix="/api/resultado-cultivo", tags=["resultado-cultivo"])
@@ -30,6 +30,28 @@ async def campanias() -> dict:
         "campanias": await run_in_threadpool(_campanias),
         "campaniaActualId": await run_in_threadpool(campania_actual.campania_actual),
     }
+
+
+@router.get("/access/cultivo/{id_cultivo}/campanias")
+async def access_campanias(id_cultivo: int) -> list[dict]:
+    return await run_in_threadpool(formularios_access.campanias_de_cultivo, id_cultivo)
+
+
+@router.get("/access/costos")
+async def access_costos(idCultivo: int, idCampania: int) -> dict:
+    """Formulario FrmCostos de Access."""
+    return await _ejecutar(formularios_access.formulario_costos, idCultivo, idCampania)
+
+
+@router.get("/access/costos/detalle")
+async def access_costos_detalle(idCultivo: int, idCampania: int, idRubro: int) -> list[dict]:
+    return await _ejecutar(formularios_access.detalle_rubro, idCultivo, idCampania, idRubro)
+
+
+@router.get("/access/resultados")
+async def access_resultados(idCultivo: int, idCampania: int) -> dict:
+    """Formulario FrmResultados de Access."""
+    return await _ejecutar(formularios_access.formulario_resultados, idCultivo, idCampania)
 
 
 @router.get("/campania/{id_campania}")
