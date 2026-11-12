@@ -30,7 +30,12 @@ export function FormularioOrdenPago({orden,inicial,cerrar,guardado}:{orden?:Orde
  const [medios,setMedios]=useState<MedioOP[]>(orden?.medios??[{medio:'Transferencia',cuenta:'',importe:0}]);
  const [propuesta,setPropuesta]=useState<PropuestaRetencion|null>(orden?.retenciones?.length?{condicion:{retiene:true},lineas:orden.retenciones,total:orden.retencionGanancias,avisos:[]}:null);
  const facturasBody=()=>Object.entries(seleccion).map(([idCompra,importe])=>({idCompra:Number(idCompra),importe}));
- const calcular=useMutation({mutationFn:()=>proponerRetencion({idContacto:contacto!,fechaPago:pago,facturas:facturasBody(),excluirOrden:orden?.idOrdenPago}),onSuccess:setPropuesta});
+ const calcular=useMutation({mutationFn:()=>proponerRetencion({idContacto:contacto!,fechaPago:pago,facturas:facturasBody(),excluirOrden:orden?.idOrdenPago}),onSuccess:p=>{setPropuesta(p);
+  // Regla de cuotas con retención (Sergio 12/11/2026): la cuota que se paga (ej. el adelanto) se transfiere completa; la retención
+  // se suma al importe aplicado a la factura y cancela parte de la cuota siguiente (Cuota 2 = saldo/2 − retención).
+  const conCuotas=(q.data??[]).filter(f=>f.idCompra in seleccion&&(f.cuotas?.length??0)>1);
+  if(p.total>0&&conCuotas.length){const base=conCuotas.reduce((a,f)=>a+seleccion[f.idCompra],0);
+   setSeleccion(v=>{const n={...v};let resto=p.total;conCuotas.forEach((f,i)=>{const parte=i===conCuotas.length-1?resto:Math.round(p.total*v[f.idCompra]/base*100)/100;resto-=parte;n[f.idCompra]=Math.min(f.disponible,Math.round((v[f.idCompra]+parte)*100)/100);});return n;});}}});
  const cambiarSeleccion:typeof setSeleccion=v=>{setSeleccion(v);setPropuesta(null);};
  const q=useQuery({queryKey:['op-facturas',contacto,orden?.idOrdenPago],queryFn:()=>facturasOP(contacto!,orden?.idOrdenPago),enabled:!!contacto});
  const total=Object.values(seleccion).reduce((a,b)=>a+b,0);
@@ -48,7 +53,7 @@ export function FormularioOrdenPago({orden,inicial,cerrar,guardado}:{orden?:Orde
    {q.isFetching&&<p>Cargando facturas…</p>}{q.isError&&<p role="alert">{q.error.message}</p>}
    {contacto&&q.data?.length===0&&<p>No hay facturas en pesos con saldo pendiente para este proveedor.</p>}
    <div className="overflow-auto max-h-80"><table className="w-full text-sm"><thead><tr><th>Factura</th><th>Fecha</th><th>Vencimiento</th><th>Saldo</th><th>En otras órdenes</th><th>A pagar</th></tr></thead><tbody>
-    {q.data?.map(f=><tr key={f.idCompra} className="border-b"><td className="p-2"><label><input type="checkbox" aria-label={`Seleccionar ${f.numero}`} disabled={f.disponible<=0} checked={f.idCompra in seleccion} onChange={e=>cambiarSeleccion(v=>{const n={...v};if(e.target.checked)n[f.idCompra]=f.disponible;else delete n[f.idCompra];return n;})}/> {f.numero||'Sin número'}</label>{f.moneda==='Dolares'&&!!f.tc&&<span className="block text-xs text-slate-600">Factura en US$ · {formatMoneda(f.total/f.tc,'Dolares')} al TC {formatNumero(f.tc)}</span>}</td><td>{formatFecha(f.fecha)}</td><td>{formatFecha(f.fechaVto??f.fecha)}<CuotasInfo f={f}/></td><td>{formatMoneda(f.saldo)}</td><td>{formatMoneda(f.reservado)}</td><td><ImporteInput aria-label={`Importe ${f.numero}`} disabled={!(f.idCompra in seleccion)} value={seleccion[f.idCompra]} onChange={n=>cambiarSeleccion(v=>({...v,[f.idCompra]:n}))}/></td></tr>)}
+    {q.data?.map(f=><tr key={f.idCompra} className="border-b"><td className="p-2"><label><input type="checkbox" aria-label={`Seleccionar ${f.numero}`} disabled={f.disponible<=0} checked={f.idCompra in seleccion} onChange={e=>cambiarSeleccion(v=>{const n={...v};if(e.target.checked)n[f.idCompra]=(f.cuotas?.length??0)>1?(f.cuotas!.find(c=>c.numero===f.cuotaActual)?.saldo??f.disponible):f.disponible;else delete n[f.idCompra];return n;})}/> {f.numero||'Sin número'}</label>{f.moneda==='Dolares'&&!!f.tc&&<span className="block text-xs text-slate-600">Factura en US$ · {formatMoneda(f.total/f.tc,'Dolares')} al TC {formatNumero(f.tc)}</span>}</td><td>{formatFecha(f.fecha)}</td><td>{formatFecha(f.fechaVto??f.fecha)}<CuotasInfo f={f}/></td><td>{formatMoneda(f.saldo)}</td><td>{formatMoneda(f.reservado)}</td><td><ImporteInput aria-label={`Importe ${f.numero}`} disabled={!(f.idCompra in seleccion)} value={seleccion[f.idCompra]} onChange={n=>cambiarSeleccion(v=>({...v,[f.idCompra]:n}))}/></td></tr>)}
    </tbody></table></div>
    <section className="rounded border border-slate-200 p-3 space-y-2" aria-label="Retención de Ganancias">
     <div className="flex flex-wrap items-center gap-3"><h3 className="font-semibold">Retención de Ganancias</h3>

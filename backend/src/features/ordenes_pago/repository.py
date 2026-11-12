@@ -80,6 +80,13 @@ def facturas(id_contacto, excluir_op=None, incluir_saldadas=False, incluir_suspe
                            + ",".join("?" * len(parte)) + ") ORDER BY [Fecha de vencimiento]", tuple(parte)):
             if v['f']:
                 cuotas[v['id']].append((v['f'], v['i']))
+    # Retenciones aplicadas a las compras en cuotas (van a la cuota siguiente al adelanto, ver _cuotas).
+    retenido = defaultdict(lambda: Decimal(0))
+    con_cuotas = [('CompraDeuda', i) for i in cuotas]
+    if con_cuotas:
+        for v in fuente.vinculos_de_documentos(con_cuotas):
+            if v['enDocumento'] and not v['redundante'] and v.get('origenMovimiento') == 'retenciones':
+                retenido[v['idDocumento']] += dinero(v['importeArs'])
     reserved = {f['idCompra']: dinero(f['importe']) for f in fetch_all(
         "SELECT d.IdCompra idCompra,SUM(d.Importe) importe FROM dbo.OrdenesPago_Detalle d "
         "JOIN dbo.OrdenesPago o ON o.IdOrdenPago=d.IdOrdenPago WHERE o.Estado='Emitida' "
@@ -91,7 +98,7 @@ def facturas(id_contacto, excluir_op=None, incluir_saldadas=False, incluir_suspe
         reserva = reserved.get(row['idCompra'], Decimal(0))
         lista = cuotas.get(row['idCompra'])
         if lista:
-            row['cuotas'] = _cuotas(lista, dinero(row['total']), p, row.get('tc'))
+            row['cuotas'] = _cuotas(lista, dinero(row['total']), p, row.get('tc'), retenido.get(row['idCompra'], Decimal(0)))
             pendiente = next((c for c in row['cuotas'] if c['saldo'] > 0), row['cuotas'][-1])
             row['fechaVto'] = pendiente['fecha']
             row['cuotaActual'] = pendiente['numero']
@@ -105,7 +112,7 @@ def facturas(id_contacto, excluir_op=None, incluir_saldadas=False, incluir_suspe
     return result
 
 
-def _cuotas(lista, total, pagado, tc=None):
+def _cuotas(lista, total, pagado, tc=None, retenido=Decimal(0)):
     """Cuotas de una compra A Plazo con su saldo (12/11/2026): cada fecha con su importe (en la moneda de la factura, se
     pesifica al TC de la factura como el total); si la compra no tiene importes por fecha, el total en partes iguales.
     Lo pagado cubre primero la cuota más vieja (regla pago-vencidas-primero)."""
@@ -117,11 +124,21 @@ def _cuotas(lista, total, pagado, tc=None):
         parte = dinero(total / n) if n else Decimal(0)
         importes = [parte] * n
         importes[-1] = total - parte * (n - 1)
-    res, resto = [], pagado
+    # Regla de Sergio (12/11/2026) para todo pago en cuotas con retención: la retención no achica la cuota que se paga
+    # (ej. el adelanto, que se transfiere completo) sino que cancela la cuota siguiente: Cuota 1 = adelanto,
+    # Cuota 2 = saldo/2 − retención, Cuota 3 = saldo/2. Si una cuota no alcanza, sigue en la próxima.
+    saldos = list(importes)
+    ret = min(max(retenido, Decimal(0)), sum(saldos))
+    for k in list(range(1, n)) + [0]:
+        cubre = min(ret, saldos[k])
+        saldos[k] -= cubre
+        ret -= cubre
+    resto = max(pagado - retenido, Decimal(0))  # el resto de lo pagado cubre la cuota más vieja primero
+    res = []
     for k, ((fecha, _), imp) in enumerate(zip(lista, importes), start=1):
-        cubre = min(max(resto, Decimal(0)), imp)
+        cubre = min(resto, saldos[k - 1])
         resto -= cubre
-        res.append({'numero': k, 'de': n, 'fecha': fecha, 'importe': imp, 'saldo': imp - cubre})
+        res.append({'numero': k, 'de': n, 'fecha': fecha, 'importe': imp, 'saldo': saldos[k - 1] - cubre})
     return res
 
 

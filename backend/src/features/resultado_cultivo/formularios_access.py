@@ -62,6 +62,37 @@ def campanias_de_cultivo(id_cultivo: int) -> list[dict]:
         "ORDER BY C.Campaña DESC", (id_cultivo,))
 
 
+def superficie_sembrada_real(id_destino: int, id_campania: int) -> float | None:
+    """Superficie realmente sembrada según las facturas de siembra (12/11/2026, reglas de Sergio):
+    - mismo contratista con varias facturas del mismo cultivo/campaña: se toma la mayor (la otra suele ser un adelanto
+      financiero que repite la superficie); contratistas distintos se suman;
+    - dentro de una factura se suman sus líneas, salvo la misma superficie repetida para el mismo lote
+      ("c/sembradora propia"), resiembras, diferencias de cambio, ajustes financieros y notas de crédito/débito.
+    None si no hay factura de siembra (se muestra la superficie planificada como teórica)."""
+    import re
+
+    filas = fetch_all(
+        "SELECT c.IdDeuda AS compra, c.IdContacto AS contratista, dc.Cantidad AS ha, dc.[Producto/Servicio] AS item "
+        "FROM dbo.Det_Compras dc JOIN dbo.Compras c ON c.IdDeuda = dc.IdCompra JOIN dbo.Rubros r ON r.IdRubro = dc.IdRubro "
+        "WHERE r.Rubro = 'Siembra' AND dc.IdDestino = ? AND dc.IdCampaña = ? AND ISNULL(dc.[Ajuste financiero], 0) = 0 "
+        "AND c.[Tipo documento] NOT LIKE 'Nota de%' AND ISNULL(dc.Cantidad, 0) > 0", (id_destino, id_campania))
+    por_factura: dict[tuple, dict] = {}
+    for f in filas:
+        item = (f["item"] or "").lower()
+        if "resiembra" in item or "dif" in item and "cambio" in item:
+            continue
+        lote = re.search(r"\(([^)]*)\)", item)
+        clave = (lote.group(1).strip() if lote else item.replace("c/sembradora propia", "").strip(), round(_f(f["ha"]), 2))
+        lineas = por_factura.setdefault((f["contratista"], f["compra"]), {})
+        lineas[clave] = _f(f["ha"])  # misma superficie del mismo lote repetida en la factura: cuenta una vez
+    if not por_factura:
+        return None
+    por_contratista: dict = {}
+    for (contratista, _), lineas in por_factura.items():
+        por_contratista[contratista] = max(por_contratista.get(contratista, 0.0), sum(lineas.values()))
+    return round(sum(por_contratista.values()), 1)
+
+
 # ------------------------------------------------------------------ FrmCostos
 
 # Cosecha agrupa tres rubros (igual que los procedimientos de Access).
@@ -112,7 +143,8 @@ def formulario_costos(id_cultivo: int, id_campania: int) -> dict:
         "sinSuperficie": False,
         "fechaInicio": _fecha_inicio(id_cultivo, id_campania, r.get("FechaInicio")),
         "superficieAfectada": round(sup, 1),
-        "superficieSembrada": round(grano, 1),
+        "superficieSembrada": real if (real := superficie_sembrada_real(id_destino, id_campania)) is not None else round(grano, 1),
+        "superficieSembradaTeorica": real is None,
         "superficiePicada": round(picado, 1),
         "costosDirectos": [
             {"idRubro": f["IdRubroGrupo"], "concepto": f["Concepto"], "pesos": _f(f["Pesos"]), "dolares": _f(f["Dolares"]),
@@ -239,7 +271,9 @@ def formulario_resultados(id_cultivo: int, id_campania: int) -> dict:
         **base,
         "aviso": None,
         "fechaInicio": fecha_inicio, "fechaFin": fecha_fin, "ocupacionDias": duracion if duracion > 0 else None,
-        "superficieAfectada": round(sup, 1), "superficieCosechada": sup_cosecha, "superficiePicada": sup_picado,
+        "superficieAfectada": round(sup, 1), "superficieCosechada": sup_cosecha,
+        "superficieSembrada": real if (real := superficie_sembrada_real(id_destino, id_campania)) is not None else round(sup, 1),
+        "superficieSembradaTeorica": real is None, "superficiePicada": sup_picado,
         "cantidadCosechada": round(cant_cosecha), "cantidadVendida": round(cant_venta), "cantidadConsumida": round(cant_cosecha - cant_venta),
         "rinde": rinde, "rindeIndiferencia": rinde_indif, "volumenIndiferencia": round(rinde_indif * sup_cosecha),
         "margenBruto": {"pesos": mb_p, "dolares": mb_d},

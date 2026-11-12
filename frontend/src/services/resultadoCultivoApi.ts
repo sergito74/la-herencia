@@ -134,7 +134,7 @@ export interface CostoDirecto { idRubro: number; concepto: string; pesos: number
 
 export interface FormularioCostos {
   cultivo: string; campania: string; sinSuperficie: boolean; fechaInicio?: string | null;
-  superficieAfectada?: number; superficieSembrada?: number; superficiePicada?: number;
+  superficieAfectada?: number; superficieSembrada?: number; superficieSembradaTeorica?: boolean; superficiePicada?: number;
   costosDirectos?: CostoDirecto[]; implantacion?: ParMonto; silo?: ParMonto; total?: ParMonto;
 }
 
@@ -145,7 +145,7 @@ export interface DetalleRubroItem {
 export interface FormularioResultados {
   cultivo: string; campania: string; aviso: string | null;
   fechaInicio?: string; fechaFin?: string | null; ocupacionDias?: number | null;
-  superficieAfectada?: number; superficieCosechada?: number; superficiePicada?: number;
+  superficieAfectada?: number; superficieSembrada?: number; superficieSembradaTeorica?: boolean; superficieCosechada?: number; superficiePicada?: number;
   cantidadCosechada?: number; cantidadVendida?: number; cantidadConsumida?: number;
   rinde?: number; rindeIndiferencia?: number; volumenIndiferencia?: number;
   margenBruto?: ParMonto; margenBrutoHa?: ParMonto; rentabilidad?: ParMonto; rentaAnual?: ParMonto; precioNetoTn?: number;
