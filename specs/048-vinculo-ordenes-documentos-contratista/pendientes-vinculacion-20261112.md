@@ -19,7 +19,10 @@ Facturas de labor recientes (desde 07/2025) sin orden vinculada. Se vinculan **s
 |---|---|---|
 | Pérez 0715 (06/04/2026, 117 ha × $9.198) | OT 148 tiene 94,8 ha (Soja 53,9, Pastura 30,9, Avena 10). Faltan ~22 ha (sobre todo avena/pastura): lotes no cargados en la orden o cobro de más. | Detalle de lotes de Pérez / Sergio |
 | Pérez 0723 (06/07/2026, 202 ha × $12.000) | Puede incluir órdenes de abril–junio que **no existen** ni en Access ni en el sistema (no hay órdenes de Pérez entre 12/03 y 23/06). Candidata: OT 150 (210,9 ha). | Detalle de Pérez / mails |
-| OT 150 (Access 182) | Fecha de ejecución real: Access no la tenía; la migración puso 22/09/2026. Pedido 23/06/2026. | Sergio / Pérez |
+| ~~OT 150~~ | HECHO 13/11: FechaEjecucion 24/06/2026 (planilla de labores de Juan Garay, mail 17/07/2026: 202 ha = factura 0723). | — |
+
+| FIFO Metilado ARN (37933) | Con OT 150 al 24/06 había 4,82 l y la orden usó 8,11 l: faltan 3,29 l hasta el remito del 31/08. Sergio: nunca faltó producto ni hubo insumos propios; posible reemplazo siliconado↔metilado. Revisar WhatsApp con Matías (23-24/06/2026). | Sergio |
+| Pérez 0715 / OT 148 | Planilla Garay 06/03/2026: Avena 7B1 14 + 9B1 14 (orden: solo 9B1 10); Pastura 9B 10 + 10B 20 (orden: 10A, 9A1); fecha 06/03 vs orden 12/03. | Sergio |
 
 ## C. Limpieza
 
