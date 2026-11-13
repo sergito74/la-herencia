@@ -48,9 +48,19 @@ export function OrdenesPago() {
    <p>Pago previsto {formatFecha(detalle.data.fechaPago)} · {formatMoneda(detalle.data.importeTotal)}</p>
    <ul>{detalle.data.facturas.map(f=><li key={f.idCompra}><a className="underline" href={`/compras/${f.idCompra}/editar`}>{f.numero||'Factura sin número'}</a> · {formatMoneda(f.importe)}</li>)}</ul>
    {detalle.data.retencionGanancias>0&&<p>Retención de Ganancias: {formatMoneda(detalle.data.retencionGanancias)} ({detalle.data.retenciones?.map(r=>r.concepto).join(' · ')}) · Neto a pagar {formatMoneda(detalle.data.importeTotal-detalle.data.retencionGanancias)}</p>}
-   <table className="text-sm"><thead><tr className="text-left text-slate-600"><th className="pr-6 font-normal">Fecha de pago / vencimiento</th><th className="pr-6 font-normal">Medio</th><th className="text-right font-normal">Importe</th></tr></thead>
-    <tbody>{[...detalle.data.medios].sort((a,b)=>(a.fecha??detalle.data!.fechaPago??'').localeCompare(b.fecha??detalle.data!.fechaPago??'')).map((m,i)=><tr key={i}><td className="pr-6">{formatFecha(m.fecha??detalle.data!.fechaPago)}</td><td className="pr-6">{m.medio}: {m.cuenta}</td><td className="text-right">{formatMoneda(m.importe)}</td></tr>)}
-    <tr className="border-t font-medium"><td className="pr-6">Total</td><td/><td className="text-right">{formatMoneda(detalle.data.medios.reduce((s,m)=>s+m.importe,0))}</td></tr></tbody></table>
+   {(()=>{const d=detalle.data!;const fp=d.fechaPago??'';
+    const medios=[...d.medios].sort((a,b)=>(a.fecha??fp).localeCompare(b.fecha??fp));
+    // La retención cancela la cuota siguiente al adelanto (regla 12/11/2026): se lista con la fecha de esa cuota.
+    const fRet=(medios.length>1?medios[1].fecha:medios[0]?.fecha)??fp;
+    const filas=[...medios.map(m=>({fecha:m.fecha??fp,texto:`${m.medio}: ${m.cuenta}`,importe:m.importe})),
+     ...(d.retencionGanancias>0?[{fecha:fRet,texto:'Retención de Ganancias (certificado)',importe:d.retencionGanancias}]:[])]
+     .sort((a,b)=>a.fecha.localeCompare(b.fecha));
+    const docs=d.facturas.reduce((s,f)=>s+f.importe,0);const mov=filas.reduce((s,f)=>s+f.importe,0);
+    return <table className="text-sm"><caption className="text-left font-medium pb-1">Movimientos que saldan los documentos</caption><thead><tr className="text-left text-slate-600"><th className="pr-6 font-normal">Fecha</th><th className="pr-6 font-normal">Movimiento</th><th className="text-right font-normal">Importe</th></tr></thead>
+    <tbody>{filas.map((f,i)=><tr key={i}><td className="pr-6">{formatFecha(f.fecha)}</td><td className="pr-6">{f.texto}</td><td className="text-right">{formatMoneda(f.importe)}</td></tr>)}
+    <tr className="border-t font-medium"><td className="pr-6">Total movimientos</td><td/><td className="text-right">{formatMoneda(mov)}</td></tr>
+    <tr><td className="pr-6">Total documentos</td><td/><td className="text-right">{formatMoneda(docs)}</td></tr>
+    {Math.abs(mov-docs)>=0.005&&<tr className="text-red-700 font-medium"><td className="pr-6">Diferencia</td><td>los movimientos no saldan los documentos</td><td className="text-right">{formatMoneda(mov-docs)}</td></tr>}</tbody></table>;})()}
    {lleva(detalle.data)&&<p><button className="text-emerald-700 underline" disabled={mail.isPending} onClick={()=>mail.mutate([detalle.data!.idOrdenPago])}>Preparar mail al estudio para el certificado de retención</button> <span className="text-sm text-slate-600">(se abre en Outlook listo para revisar y enviar, con las facturas adjuntas; para varias órdenes en un mismo mail, tildalas en el listado)</span></p>}<p>{detalle.data.observaciones}</p>
    <SoloLectura><div className="flex gap-3">{detalle.data.estado==='Borrador'&&<><button className={campo} onClick={()=>{setForm(detalle.data!);setId(null);}}>Editar</button><button className={boton} disabled={cambio.isPending} onClick={()=>cambio.mutate({id:detalle.data!.idOrdenPago,accion:'emitir'})}>Emitir orden</button></>}{['Borrador','Emitida'].includes(detalle.data.estado)&&<button className={campo} disabled={cambio.isPending} onClick={()=>cambio.mutate({id:detalle.data!.idOrdenPago,accion:'anular'})}>Anular orden</button>}</div></SoloLectura>
   </section>}
