@@ -2,7 +2,7 @@
 
 Facturas de labor recientes (desde 07/2025) sin orden vinculada. Se vinculan **solo cuando el dato esté completo**.
 
-## A. Listas para vincular (dato completo)
+## A. Listas para vincular (dato completo) — VINCULADAS 13/11/2026 (las 6, reparto aprobado)
 
 | Factura | Fecha | Ha | Orden | Ha orden |
 |---|---|---|---|---|
@@ -31,4 +31,8 @@ Facturas de labor recientes (desde 07/2025) sin orden vinculada. Se vinculan **s
 
 ## Hecho
 
+- 13/11: Betito (corrida 6828da4d) aprobada por Sergio. Las 6 facturas de la lista A vinculadas a sus OT.
+- 13/11: Sergio: la Pastura 2026 se sembró en **9A1 y 10A1** (no 10A). Mide en Google Earth las ha de cada sublote. Google Earth solo tiene lotes enteros: 9A 15,1 · 9B 26,7 · 10A 20,9 · 10B 11,4 · 7B 35,9. Al tener las medidas: corregir lotes de OT 141, 148, 149, 153 y plan agrícola (hoy dicen 10A).
+
 - 12/11: Yanquelen 0035 (Maíz Betito 1.200 kg) desvinculada de remitos 167/239/293; queda solo R562. Reparto recalculado a Maíz diferido 2024/25 (OT 139), pendiente de aprobación en pantalla.
+
