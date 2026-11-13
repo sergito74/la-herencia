@@ -31,8 +31,12 @@ Facturas de labor recientes (desde 07/2025) sin orden vinculada. Se vinculan **s
 
 ## Hecho
 
+- 13/11 (tarde): 0723 vinculada a OT 150. OT 148: se agregó 7B1 Avena 2026 14 ha (Sergio: por lo cobrado se aplicó; resto sin asignar de insumos = dosis de Matías) y 0715 vinculada (8 lotes, $1.076.166). 8B NO (pastura vieja, no se fumigó). OT 149: agregado 9A1 10 ha. Lotes: 9A1 11,6 · 9A2 3,5 · 10A 22,5 · 10B 9,7; 10A1 queda solo histórico. Recuentos dic/25-abr-jul recargados (ver memoria).
+- Abierto: 9B1 ¿14 ha (Matías/Garay) o 10 ha (sistema)?
+
 - 13/11: Betito (corrida 6828da4d) aprobada por Sergio. Las 6 facturas de la lista A vinculadas a sus OT.
 - 13/11: Sergio: la Pastura 2026 se sembró en **9A1 y 10A1** (no 10A). Mide en Google Earth las ha de cada sublote. Google Earth solo tiene lotes enteros: 9A 15,1 · 9B 26,7 · 10A 20,9 · 10B 11,4 · 7B 35,9. Al tener las medidas: corregir lotes de OT 141, 148, 149, 153 y plan agrícola (hoy dicen 10A).
 
 - 12/11: Yanquelen 0035 (Maíz Betito 1.200 kg) desvinculada de remitos 167/239/293; queda solo R562. Reparto recalculado a Maíz diferido 2024/25 (OT 139), pendiente de aprobación en pantalla.
+
 
