@@ -22,7 +22,8 @@ Facturas de labor recientes (desde 07/2025) sin orden vinculada. Se vinculan **s
 | ~~OT 150~~ | HECHO 13/11: FechaEjecucion 24/06/2026 (planilla de labores de Juan Garay, mail 17/07/2026: 202 ha = factura 0723). | — |
 
 | FIFO Metilado ARN (37933) | Con OT 150 al 24/06 había 4,82 l y la orden usó 8,11 l: faltan 3,29 l hasta el remito del 31/08. Sergio: nunca faltó producto ni hubo insumos propios; posible reemplazo siliconado↔metilado. Revisar WhatsApp con Matías (23-24/06/2026). | Sergio |
-| Pérez 0715 / OT 148 | Planilla Garay 06/03/2026: Avena 7B1 14 + 9B1 14 (orden: solo 9B1 10); Pastura 9B 10 + 10B 20 (orden: 10A, 9A1); fecha 06/03 vs orden 12/03. | Sergio |
+| Pérez 0715 / OT 148 | Orden de Matías (WhatsApp, 05/03/2026) revisada 13/11: insumos coinciden con OT 148 (metilado 41,4 vs 41,5; siliconado 3,75 vs 3,7) → OT 148 NO explica el faltante de metilado. Sergio 13/11: fecha 12/03 CORRECTA (confirmó el encargado); 7B1 NO se pulverizó (agua) y la avena no se sembró. Pendiente: alinear nombres de lotes (Garay/Matías 9B=10 ha y 10B=20 ha de pastura, 9B1=14 ha ↔ sistema 9A1 10, 10A 20,9, 9B1 10). | Sergio (historia de lotes) |
+| OT 149 siembra pastura (Santos, 13/04/2026) | Garay: 9B 10 + 10B 20 ha; la OT tiene solo 10A 20,9 ha (¿falta 9A1?). Revisar al alinear lotes. | Sergio |
 
 ## C. Limpieza
 
