@@ -31,6 +31,8 @@ Facturas de labor recientes (desde 07/2025) sin orden vinculada. Se vinculan **s
 
 ## Hecho
 
+- 13/11 (noche): 13 facturas Pérez 2022-2025 vinculadas por el n° de orden Access del concepto (Observaciones 'Migrado de Orden heredada #N'): 0532→OT93+94, 0538→96, 0546→99, 0571→108, 0583→109+111, 0585→112, 0594→114, 0606→116, 0633→124, 0636→127, 0643→128+129, 0647→132, 0662→135+136 ($5.396.746,98). Dudosas sin vincular: 0555 (216 ha vs 194,5), 0615 (orden 123 Access no migrada), 0628 (orden 127 no migrada), Gutiérrez 0563 (2021 vs órdenes 2018). OPs 1-3 ajustadas a los totales corregidos.
+
 - 13/11 (tarde): 0723 vinculada a OT 150. OT 148: se agregó 7B1 Avena 2026 14 ha (Sergio: por lo cobrado se aplicó; resto sin asignar de insumos = dosis de Matías) y 0715 vinculada (8 lotes, $1.076.166). 8B NO (pastura vieja, no se fumigó). OT 149: agregado 9A1 10 ha. Lotes: 9A1 11,6 · 9A2 3,5 · 10A 22,5 · 10B 9,7; 10A1 queda solo histórico. Recuentos dic/25-abr-jul recargados (ver memoria).
 - Abierto: 9B1 ¿14 ha (Matías/Garay) o 10 ha (sistema)?
 
