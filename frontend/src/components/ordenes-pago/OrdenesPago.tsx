@@ -50,8 +50,8 @@ export function OrdenesPago() {
    {detalle.data.retencionGanancias>0&&<p>Retención de Ganancias: {formatMoneda(detalle.data.retencionGanancias)} ({detalle.data.retenciones?.map(r=>r.concepto).join(' · ')}) · Neto a pagar {formatMoneda(detalle.data.importeTotal-detalle.data.retencionGanancias)}</p>}
    {(()=>{const d=detalle.data!;const fp=d.fechaPago??'';
     const medios=[...d.medios].sort((a,b)=>(a.fecha??fp).localeCompare(b.fecha??fp));
-    // La retención cancela la cuota siguiente al adelanto (regla 12/11/2026): se lista con la fecha de esa cuota.
-    const fRet=(medios.length>1?medios[1].fecha:medios[0]?.fecha)??fp;
+    // El certificado de retención sale con la fecha de emisión de la orden (13/11/2026), aunque descuente de la cuota 2.
+    const fRet=d.fecha??medios[0]?.fecha??fp;
     const filas=[...medios.map(m=>({fecha:m.fecha??fp,texto:`${m.medio}: ${m.cuenta}`,importe:m.importe})),
      ...(d.retencionGanancias>0?[{fecha:fRet,texto:'Retención de Ganancias (certificado)',importe:d.retencionGanancias}]:[])]
      .sort((a,b)=>a.fecha.localeCompare(b.fecha));
