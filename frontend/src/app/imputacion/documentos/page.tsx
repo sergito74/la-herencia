@@ -43,6 +43,7 @@ interface Linea {
   rubroManual: string | null;
   fracciones: Fraccion[];
   totalFracciones: number;
+  enRepartoOrdenes?: boolean;
 }
 
 interface Documento {
@@ -120,6 +121,8 @@ function LineaRow({ linea, onAprobada }: { linea: Linea; onAprobada: (idCorrida:
               {linea.totalFracciones.toLocaleString("es-AR")} ({linea.fracciones.length} fracción
               {linea.fracciones.length > 1 ? "es" : ""})
             </>
+          ) : linea.enRepartoOrdenes ? (
+            "en el reparto por órdenes"
           ) : (
             "sin propuesta"
           )}
@@ -131,7 +134,7 @@ function LineaRow({ linea, onAprobada }: { linea: Linea; onAprobada: (idCorrida:
             <td className="py-1 pl-14 text-ink-secondary">↳ {etiquetaDestino(f)}</td>
             <td className="py-1">{f.origen === "Contratista" ? "No aplica" : f.cantidad == null ? "No registrada" : `${f.cantidad.toLocaleString("es-AR", { maximumFractionDigits: 4 })} ${f.unidad || "(unidad no informada)"}`}</td>
             <td className="py-1">{f.campania ?? "—"}</td>
-            <td className="py-1">{f.lote ? `Lote ${f.lote}` : f.origen}</td>
+            <td className="py-1">{f.lote ? `Lote ${f.lote}` : f.origen}{f.idOrdenTrabajo ? ` · OT ${f.idOrdenTrabajo}` : ""}</td>
             <td className="py-1">
               <span className="mr-2">{f.importe.toLocaleString("es-AR")} ARS</span>
               {badgeEstado(f.estado)}

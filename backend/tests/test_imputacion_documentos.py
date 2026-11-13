@@ -104,8 +104,26 @@ def test_lineas_con_imputacion_batch_una_sola_query_por_tabla(monkeypatch):
 
     resultado = repository.lineas_con_imputacion_batch((1, 2))
 
-    assert len(llamadas) == 2  # 1 para líneas, 1 para fracciones — sin importar cuántos documentos
+    assert len(llamadas) == 3  # líneas, fracciones y reparto por órdenes — sin importar cuántos documentos
     assert set(resultado.keys()) == {1, 2}
+
+
+def test_reparto_por_ordenes_se_muestra_como_linea_propia(monkeypatch):
+    """13/11/2026: el reparto de contratista se guarda a nivel factura; la pantalla lo mostraba
+    como 'sin propuesta' en los renglones de labor."""
+    def fake_fetch_all(sql, params=()):
+        if "FROM dbo.Det_Compras dc" in sql:
+            return [{"idCompra": 1, "idDetalleCompra": 100, "producto": "Has. Siembra", "cantidad": 10.0, "unidad": None,
+                     "precioUnitario": 1.0, "campaniaManual": None, "centroCostoManual": None, "rubroManual": "Siembra"}]
+        if "p.Origen = 'Contratista'" in sql:
+            return [{"idCompra": 1, "idPropuesta": 9, "idOrdenTrabajo": 131, "lote": "7A", "importe": 50.0, "estado": "Aprobada"}]
+        return []
+
+    monkeypatch.setattr(repository, "fetch_all", fake_fetch_all)
+    lineas = repository.lineas_con_imputacion_batch((1,))[1]
+    assert lineas[0]["enRepartoOrdenes"] is True
+    assert lineas[-1]["producto"].endswith("(OT 131)")
+    assert lineas[-1]["fracciones"][0]["importe"] == 50.0
 
 
 def test_informe_documentos_xlsx_soporta_importes_decimal(monkeypatch):

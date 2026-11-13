@@ -394,8 +394,9 @@ _VIGENTE_SQL = (
 
 
 def _filtros_documentos(id_contacto, fecha_desde, fecha_hasta, estado) -> tuple[list[str], list]:
-    where = ["c.IdDeuda IN (SELECT DISTINCT dc.IdCompra FROM dbo.Det_Compras dc "
-             "JOIN dbo.ImputacionPropuestas p ON p.IdDetalleCompra = dc.IdDetalleCompra)"]
+    where = ["(c.IdDeuda IN (SELECT DISTINCT dc.IdCompra FROM dbo.Det_Compras dc "
+             "JOIN dbo.ImputacionPropuestas p ON p.IdDetalleCompra = dc.IdDetalleCompra AND p.Origen <> 'Contratista') "
+             "OR c.IdDeuda IN (SELECT p.IdDetalleCompra FROM dbo.ImputacionPropuestas p WHERE p.Origen = 'Contratista'))"]
     params: list = []
     if id_contacto is not None:
         where.append("c.IdContacto = ?")
@@ -408,11 +409,13 @@ def _filtros_documentos(id_contacto, fecha_desde, fecha_hasta, estado) -> tuple[
         params.append(fecha_hasta)
     if estado is not None:
         where.append(
-            "c.IdDeuda IN (SELECT DISTINCT dc.IdCompra FROM dbo.Det_Compras dc "
-            f"JOIN dbo.ImputacionPropuestas p ON p.IdDetalleCompra = dc.IdDetalleCompra AND {_VIGENTE_SQL} "
-            "WHERE p.Estado = ?)"
+            "(c.IdDeuda IN (SELECT DISTINCT dc.IdCompra FROM dbo.Det_Compras dc "
+            f"JOIN dbo.ImputacionPropuestas p ON p.IdDetalleCompra = dc.IdDetalleCompra AND p.Origen <> 'Contratista' AND {_VIGENTE_SQL} "
+            "WHERE p.Estado = ?) "
+            f"OR c.IdDeuda IN (SELECT p.IdDetalleCompra FROM dbo.ImputacionPropuestas p WHERE p.Origen = 'Contratista' AND {_VIGENTE_SQL} "
+            "AND p.Estado = ?))"
         )
-        params.append(estado)
+        params += [estado, estado]
     return where, params
 
 
@@ -424,13 +427,19 @@ def total_general_documentos(id_contacto=None, fecha_desde=None, fecha_hasta=Non
     where_sql = "WHERE " + " AND ".join(where)
     fila = fetch_one(
         f"""
-        SELECT SUM(p.Importe) AS total
-        FROM dbo.ImputacionPropuestas p
-        JOIN dbo.Det_Compras dc ON dc.IdDetalleCompra = p.IdDetalleCompra
-        JOIN dbo.Compras c ON c.IdDeuda = dc.IdCompra
-        WHERE {_VIGENTE_SQL} AND dc.IdCompra IN (SELECT c2.IdDeuda FROM dbo.Compras c2 {where_sql})
+        SELECT SUM(x.Importe) AS total FROM (
+          SELECT p.Importe
+          FROM dbo.ImputacionPropuestas p
+          JOIN dbo.Det_Compras dc ON dc.IdDetalleCompra = p.IdDetalleCompra
+          WHERE p.Origen <> 'Contratista' AND {_VIGENTE_SQL} AND dc.IdCompra IN (SELECT c.IdDeuda FROM dbo.Compras c {where_sql})
+          UNION ALL
+          SELECT p.Importe
+          FROM dbo.ImputacionPropuestas p
+          WHERE p.Origen = 'Contratista' AND p.IdOrdenTrabajo IS NOT NULL AND {_VIGENTE_SQL}
+            AND p.IdDetalleCompra IN (SELECT c.IdDeuda FROM dbo.Compras c {where_sql})
+        ) x
         """,
-        tuple(params),
+        tuple(params) * 2,
     )
     return float((fila or {}).get("total") or 0)
 
@@ -518,7 +527,7 @@ def lineas_con_imputacion_batch(ids_compra: tuple[int, ...]) -> dict[int, list[d
         LEFT JOIN dbo.Cultivos cu ON cu.IdCultivo = p.IdCultivo
         LEFT JOIN dbo.Campañas ca ON ca.IdCampaña = p.IdCampania
         LEFT JOIN dbo.[Centro de costos] cc ON cc.IdCentro = p.IdCentroCosto
-        WHERE p.IdDetalleCompra IN ({marcas_linea})
+        WHERE p.IdDetalleCompra IN ({marcas_linea}) AND p.Origen <> 'Contratista'
           AND p.IdCorrida = (SELECT TOP 1 p2.IdCorrida FROM dbo.ImputacionPropuestas p2
                               WHERE p2.IdDetalleCompra = p.IdDetalleCompra ORDER BY p2.FechaCalculo DESC)
         ORDER BY p.IdDetalleCompra, p.IdPropuesta
@@ -529,10 +538,45 @@ def lineas_con_imputacion_batch(ids_compra: tuple[int, ...]) -> dict[int, list[d
     for f in fracciones:
         fracciones_por_linea[f["idDetalleCompra"]].append(f)
 
+    # Reparto por órdenes de trabajo (facturas de contratista): se guarda a nivel factura
+    # (IdDetalleCompra = IdCompra), no por renglón — se muestra como una línea propia (13/11/2026).
+    contratista = fetch_all(
+        f"""
+        SELECT p.IdDetalleCompra AS idCompra, p.IdPropuesta AS idPropuesta, p.IdCorrida AS idCorrida, p.Origen AS origen,
+               p.IdOrdenTrabajo AS idOrdenTrabajo, p.IdLote AS idLote, lo.[Numero Lote] AS lote, p.IdCultivo AS idCultivo, cu.Cultivo AS cultivo,
+               p.IdCampania AS idCampania, ca.Campaña AS campania, p.IdCentroCosto AS idCentroCosto,
+               cc.[Centro de costos] AS centroCosto, p.EsGanaderia AS esGanaderia, p.Importe AS importe,
+               p.Estado AS estado, p.Cantidad AS cantidad, p.Unidad AS unidad
+        FROM dbo.ImputacionPropuestas p
+        LEFT JOIN dbo.Lotes lo ON lo.IdLote = p.IdLote
+        LEFT JOIN dbo.Cultivos cu ON cu.IdCultivo = p.IdCultivo
+        LEFT JOIN dbo.Campañas ca ON ca.IdCampaña = p.IdCampania
+        LEFT JOIN dbo.[Centro de costos] cc ON cc.IdCentro = p.IdCentroCosto
+        WHERE p.IdDetalleCompra IN ({marcas_compra}) AND p.Origen = 'Contratista' AND p.IdOrdenTrabajo IS NOT NULL
+          AND {_VIGENTE_SQL}
+        ORDER BY p.IdDetalleCompra, lo.[Numero Lote]
+        """,
+        ids_compra,
+    )
+    contratista_por_compra: dict[int, list[dict]] = defaultdict(list)
+    for f in contratista:
+        f["idDetalleCompra"] = f["idCompra"]
+        contratista_por_compra[f.pop("idCompra")].append(f)
+
     lineas_por_compra: dict[int, list[dict]] = defaultdict(list)
     for linea in lineas:
         linea["fracciones"] = fracciones_por_linea.get(linea["idDetalleCompra"], [])
+        linea["enRepartoOrdenes"] = bool(contratista_por_compra.get(linea["idCompra"])) and linea.get("rubroManual") in RUBROS_LABOR
         lineas_por_compra[linea["idCompra"]].append(linea)
+    for id_compra, fr in contratista_por_compra.items():
+        ordenes = sorted({f["idOrdenTrabajo"] for f in fr})
+        lineas_por_compra[id_compra].append({
+            "idCompra": id_compra, "idDetalleCompra": -id_compra,
+            "producto": "Labores según órdenes de trabajo (OT " + ", ".join(str(o) for o in ordenes) + ")",
+            "cantidad": None, "unidad": None, "precioUnitario": None,
+            "idCampaniaManual": None, "campaniaManual": None, "idCentroCostoManual": None, "centroCostoManual": None,
+            "idRubroManual": None, "rubroManual": None, "enRepartoOrdenes": False, "fracciones": fr,
+        })
     return lineas_por_compra
 
 
