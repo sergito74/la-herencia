@@ -236,7 +236,11 @@ def tamizar_compra(id_compra: int, *, guardar: bool = True, forzar: bool = False
             r["idCampania"] for r in renglones if r.get("idCampania") not in (None, repo.CAMPANIA_NO_APLICA)}
         ctx["cultivosPorCampania"] = {c: repo.cultivos_con_ordenes(c) for c in camps}
     clasificaciones = [clasificar_renglon(r, reglas_rubro, reglas_producto, ctx) for r in renglones]
-    if guardar:
+    if not forzar:
+        marcados = repo.renglones_marcados(id_compra)
+        if marcados is not None:
+            clasificaciones = [c for c in clasificaciones if c["idDetalleCompra"] in marcados]
+    if guardar and clasificaciones:
         repo.guardar_clasificaciones(clasificaciones)
     return clasificaciones
 

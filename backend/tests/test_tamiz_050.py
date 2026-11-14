@@ -110,6 +110,7 @@ def test_tamizar_compra_guarda_una_clasificacion_por_renglon(monkeypatch):
     monkeypatch.setattr(tamiz.repo, "reglas_rubro", lambda: REGLAS)
     monkeypatch.setattr(tamiz.repo, "reglas_producto", lambda: [])
     monkeypatch.setattr(tamiz.repo, "guardar_clasificaciones", lambda c, usuario=None: guardado.extend(c))
+    monkeypatch.setattr(tamiz.repo, "renglones_marcados", lambda i: None)  # compra nueva: entera
     res = tamiz.tamizar_compra(5)
     assert len(res) == 2 and len(guardado) == 2
     assert res[1]["estado"] == "Pendiente"
@@ -183,3 +184,15 @@ def test_cultivo_unico_con_ordenes_en_la_campania():
 def test_varios_cultivos_posibles_van_a_revision_con_opciones():
     res = tamiz.clasificar_renglon(_r(1, FUMIG, "Aplicacion", campania=32), REGLAS, [], CTX_DED)
     assert res["estado"] == "Pendiente" and "Maiz, Soja" in res["motivo"]
+
+
+def test_factura_vieja_solo_clasifica_los_renglones_marcados(monkeypatch):
+    guardado = []
+    monkeypatch.setattr(tamiz.repo, "compra_en_alcance", lambda i: True)
+    monkeypatch.setattr(tamiz.repo, "renglones_de_compra", lambda i: [_r(1, HERB, formulado=10), _r(2, SEGURO, cultivo=3, campania=32)])
+    monkeypatch.setattr(tamiz.repo, "reglas_rubro", lambda: REGLAS)
+    monkeypatch.setattr(tamiz.repo, "reglas_producto", lambda: [])
+    monkeypatch.setattr(tamiz.repo, "renglones_marcados", lambda i: {1})
+    monkeypatch.setattr(tamiz.repo, "guardar_clasificaciones", lambda c, usuario=None: guardado.extend(c))
+    res = tamiz.tamizar_compra(5)
+    assert [c["idDetalleCompra"] for c in res] == [1] and len(guardado) == 1

@@ -54,6 +54,17 @@ def compra_en_alcance(id_compra: int) -> bool:
     ) is not None
 
 
+def renglones_marcados(id_compra: int) -> set[int] | None:
+    """None = la compra entera es nueva (después del corte); si no, solo los renglones marcados en
+    ImputacionAlcance (R-01: en una factura vieja, lo ya imputado no se toca)."""
+    cfg = config()
+    if cfg["idDeudaCorte"] is not None and id_compra > int(cfg["idDeudaCorte"]):
+        return None
+    return {f["id"] for f in fetch_all(
+        "SELECT a.IdDetalleCompra AS id FROM dbo.ImputacionAlcance a JOIN dbo.Det_Compras d ON d.IdDetalleCompra = a.IdDetalleCompra "
+        "WHERE d.IdCompra = ?", (id_compra,))}
+
+
 def guardar_clasificaciones(clasificaciones: list[dict], usuario: str | None = None) -> None:
     """Una sola clasificación vigente por renglón: la anterior queda como historial (Vigente = 0)."""
     sentencias = []
