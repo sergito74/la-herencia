@@ -31,6 +31,9 @@ Facturas de labor recientes (desde 07/2025) sin orden vinculada. Se vinculan **s
 
 ## Hecho
 
+- 13/11 (noche, 2): cruce automático por renglones (labor + cultivo + campaña + ha; Sergio: "es un trabajo tuyo"). Vinculadas 23 facturas 2015-2025 (Pérez 0669, 0518, 0488, 0497, 0514, 0677, 0555; Gutiérrez 0372, 0563, 0418, 0391; Peveri 0209, 0091, 0023, 0137; Posada 0449; Cuatro Vientos 0018, 0082, 0002, 0012, 0066, 0006, 0023) + OT 134 a Yanquelen 0035. Criterio: todos los cultivos de la factura con orden, orden no repetida, dif. ha ≤16%. Pantalla 'Por documento' ya muestra el reparto por órdenes.
+- Excepciones (22): pares con renglones idénticos Peveri 0184/0196 ($92.797,90 c/u) y Gutiérrez 0549/0565 (0565 = mismos renglones + 'Remediación lote 9B' −$308.280) → ¿duplicadas?; Yanquelen 0028 (siembra maíz diferido sin orden), 0012, 0014, 0015, 0019, 0020, 0006, 0009 (faltan órdenes de siembra); Pérez 0505, 0615, 0628; Gutiérrez 0332; Cuatro Vientos 0029, 0035, 0076, 0100; Posada 0204; Peveri 0062.
+
 - 13/11 (noche): 13 facturas Pérez 2022-2025 vinculadas por el n° de orden Access del concepto (Observaciones 'Migrado de Orden heredada #N'): 0532→OT93+94, 0538→96, 0546→99, 0571→108, 0583→109+111, 0585→112, 0594→114, 0606→116, 0633→124, 0636→127, 0643→128+129, 0647→132, 0662→135+136 ($5.396.746,98). Dudosas sin vincular: 0555 (216 ha vs 194,5), 0615 (orden 123 Access no migrada), 0628 (orden 127 no migrada), Gutiérrez 0563 (2021 vs órdenes 2018). OPs 1-3 ajustadas a los totales corregidos.
 
 - 13/11 (tarde): 0723 vinculada a OT 150. OT 148: se agregó 7B1 Avena 2026 14 ha (Sergio: por lo cobrado se aplicó; resto sin asignar de insumos = dosis de Matías) y 0715 vinculada (8 lotes, $1.076.166). 8B NO (pastura vieja, no se fumigó). OT 149: agregado 9A1 10 ha. Lotes: 9A1 11,6 · 9A2 3,5 · 10A 22,5 · 10B 9,7; 10A1 queda solo histórico. Recuentos dic/25-abr-jul recargados (ver memoria).
