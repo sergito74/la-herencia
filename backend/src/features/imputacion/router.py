@@ -8,6 +8,7 @@ from datetime import date
 from fastapi import APIRouter, HTTPException, Query, Request, Response
 from starlette.concurrency import run_in_threadpool
 
+from src.features.imputacion import tamiz, tamiz_repository
 from src.features.imputacion import exportacion, motor, repository, presentacion
 from src.features.ordenes import resultado as ordenes_resultado
 from src.features.imputacion.repository import CorridaNoVigente
@@ -237,3 +238,34 @@ async def recalcular(body: RecalcularIn) -> dict:
     origen = await run_in_threadpool(repository.origen_de_corrida, vigente or "") or "Insumo"
     id_corrida = await run_in_threadpool(motor.recalcular_si_corresponde, body.idDetalleCompra, origen)
     return {"idCorrida": id_corrida}
+
+
+# ---- Tamiz por rubro (050) ----
+
+def _renglones_tamiz(id_compra: int) -> dict:
+    filas = tamiz_repository.clasificacion_vigente(id_compra)
+    for f in filas:
+        f["etiqueta"] = tamiz.ETIQUETAS.get(f["destino"], "Para revisar") if f["estado"] == "Aprobada" else "Para revisar"
+    return {"renglones": filas}
+
+
+@router.post("/tamiz/compra/{idCompra}")
+async def tamizar_compra(idCompra: int) -> dict:
+    await run_in_threadpool(tamiz.tamizar_compra, idCompra)
+    return await run_in_threadpool(_renglones_tamiz, idCompra)
+
+
+@router.get("/tamiz/compra/{idCompra}")
+async def ver_tamiz_compra(idCompra: int) -> dict:
+    return await run_in_threadpool(_renglones_tamiz, idCompra)
+
+
+@router.put("/tamiz/renglon/{idDetalleCompra}")
+async def corregir_renglon_tamiz(idDetalleCompra: int, body: dict, request: Request) -> dict:
+    try:
+        return await run_in_threadpool(
+            tamiz.corregir_renglon, idDetalleCompra, body.get("destino"), body.get("idParte"), body.get("idCultivo"),
+            body.get("idCampania"), bool(body.get("guardarRegla")), _usuario_actual(request),
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc

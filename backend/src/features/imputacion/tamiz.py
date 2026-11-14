@@ -9,6 +9,7 @@ imputación manual queda solo como referencia (049 FR-002): manda lo que aplican
 
 from __future__ import annotations
 
+import logging
 import unicodedata
 
 from src.features.imputacion import tamiz_repository as repo
@@ -22,6 +23,8 @@ ETIQUETAS = {
     "NoImputa": "No se imputa",
     "Depende": "Para revisar",
 }
+
+_log = logging.getLogger(__name__)
 
 _SUELO = ("SUELO",)
 _HACIENDA = ("HACIENDA", "SANGRE", "BRUCELOSIS", "TUBERCULOSIS", "BOVINO", "TORO", "VACA", "LECHE")
@@ -105,8 +108,13 @@ def clasificar_renglon(r: dict, reglas_rubro: dict, reglas_producto: list, conte
         if cultivo and campania:
             return _resultado(r, destino, parte, cultivo, campania, origen="Manual")
         falta = "cultivo y campaña" if not cultivo and not campania else ("cultivo" if not cultivo else "campaña")
+        motivo = f"Falta {falta}"
+        if not campania and contexto.get("campaniaVigente"):
+            # FR-006: sin dato, se propone la campaña vigente a la fecha, siempre para revisar.
+            campania = contexto["campaniaVigente"]
+            motivo += f" (se propone la vigente a la fecha: {contexto.get('campaniaVigenteNombre')})"
         return _resultado(r, destino, parte, cultivo, campania, origen="Revision", estado="Pendiente",
-                          motivo=f"Falta {falta}")
+                          motivo=motivo)
 
     if destino == "Depende":
         texto = normalizar(r.get("producto"))
@@ -139,6 +147,14 @@ def clasificar_renglon(r: dict, reglas_rubro: dict, reglas_producto: list, conte
     return _resultado(r, destino)
 
 
+def campania_vigente(fecha) -> str | None:
+    """Año agrícola julio-junio: 15/08/2026 → '2026/2027'; 10/03/2026 → '2025/2026'."""
+    if fecha is None:
+        return None
+    y = fecha.year if fecha.month >= 7 else fecha.year - 1
+    return f"{y}/{y + 1}"
+
+
 def _contexto(renglones: list[dict], reglas_rubro: dict) -> dict:
     textos = [normalizar(r.get("producto")) for r in renglones]
     hay_particular = any("PARTICULAR" in t for t in textos)
@@ -168,7 +184,34 @@ def tamizar_compra(id_compra: int, *, guardar: bool = True, forzar: bool = False
     reglas_rubro = repo.reglas_rubro()
     reglas_producto = repo.reglas_producto()
     ctx = _contexto(renglones, reglas_rubro)
+    nombre = campania_vigente(renglones[0].get("fecha")) if renglones else None
+    if nombre:
+        ctx["campaniaVigenteNombre"] = nombre
+        ctx["campaniaVigente"] = repo.campania_por_nombre(nombre)
     clasificaciones = [clasificar_renglon(r, reglas_rubro, reglas_producto, ctx) for r in renglones]
     if guardar:
         repo.guardar_clasificaciones(clasificaciones)
     return clasificaciones
+
+
+def tamizar_al_guardar(id_compra: int) -> None:
+    """Disparo del guardado de la compra (T013): solo en alcance y nunca impide guardar."""
+    try:
+        tamizar_compra(id_compra)
+    except Exception:  # noqa: BLE001 - el tamiz no puede romper el alta de la compra
+        _log.exception("Tamiz 050: no se pudo clasificar la compra %s", id_compra)
+
+
+def corregir_renglon(id_detalle: int, destino: str, id_parte: int | None, id_cultivo: int | None,
+                     id_campania: int | None, guardar_regla: bool, usuario: str | None) -> dict:
+    """Corrección a mano (PUT /tamiz/renglon): queda aprobada; opcionalmente aprende la regla por producto."""
+    if destino not in ETIQUETAS:
+        raise ValueError("Destino inválido")
+    if destino == "Cultivo" and not (id_cultivo and id_campania and id_campania != repo.CAMPANIA_NO_APLICA):
+        raise ValueError("Para imputar a cultivo hacen falta cultivo y campaña")
+    c = {"idDetalleCompra": id_detalle, "destino": destino, "idParte": id_parte, "idCultivo": id_cultivo,
+         "idCampania": id_campania, "origen": "Manual", "estado": "Aprobada", "motivo": "Corregido a mano"}
+    repo.guardar_clasificaciones([c], usuario)
+    if guardar_regla:
+        repo.guardar_regla_producto(id_detalle, destino, id_parte, usuario)
+    return c

@@ -13,6 +13,7 @@ import mimetypes
 from datetime import date
 from pathlib import Path
 
+from src.features.imputacion import tamiz
 from fastapi import APIRouter, Header, HTTPException, Query, Request
 from pydantic import BaseModel
 from fastapi.responses import FileResponse
@@ -317,6 +318,7 @@ async def crear_compra(body: CompraAltaRequest) -> CompraDetalleResponse:
         id_compra = await run_in_threadpool(repository.create_compra, cabecera, lineas, vencimientos)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=exc.args[0]) from exc
+    await run_in_threadpool(tamiz.tamizar_al_guardar, id_compra)
 
     lineas_con_defaults = repository.resolver_defaults_lineas(lineas)
     totales = repository.calcular_totales(lineas_con_defaults, cabecera)
@@ -367,6 +369,7 @@ async def editar_compra(
         await run_in_threadpool(repository.update_compra, id_compra, cabecera, lineas, vencimientos)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=exc.args[0]) from exc
+    await run_in_threadpool(tamiz.tamizar_al_guardar, id_compra)
 
     lineas_con_defaults = repository.resolver_defaults_lineas(lineas)
     totales = repository.calcular_totales(lineas_con_defaults, cabecera)

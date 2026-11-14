@@ -128,3 +128,32 @@ def test_linea_particular_con_renglones_de_cultivo_va_a_revision():
     renglones = [_r(1, FUMIG, cultivo=3, campania=32, precio=300), _r(2, VIATICOS, "Gasto particular", precio=-100)]
     ctx = tamiz._contexto(renglones, REGLAS)
     assert tamiz.clasificar_renglon(renglones[1], REGLAS, [], ctx)["estado"] == "Pendiente"
+
+
+def test_error_del_tamiz_no_impide_guardar_la_compra(monkeypatch):
+    def falla(i):
+        raise RuntimeError("base caída")
+    monkeypatch.setattr(tamiz.repo, "compra_en_alcance", falla)
+    tamiz.tamizar_al_guardar(5)  # no levanta
+
+
+def test_correccion_a_cultivo_exige_campania_real(monkeypatch):
+    import pytest
+    with pytest.raises(ValueError):
+        tamiz.corregir_renglon(1, "Cultivo", 4, 3, 20, False, None)
+    guardado = []
+    monkeypatch.setattr(tamiz.repo, "guardar_clasificaciones", lambda c, u=None: guardado.extend(c))
+    res = tamiz.corregir_renglon(1, "Cultivo", 4, 3, 32, False, "sergio")
+    assert res["estado"] == "Aprobada" and guardado[0]["origen"] == "Manual"
+
+
+def test_campania_vigente_por_anio_agricola():
+    from datetime import date
+    assert tamiz.campania_vigente(date(2026, 8, 15)) == "2026/2027"
+    assert tamiz.campania_vigente(date(2026, 3, 10)) == "2025/2026"
+
+
+def test_labor_sin_campania_propone_la_vigente_pero_queda_pendiente():
+    ctx = {**SIN_CTX, "campaniaVigente": 32, "campaniaVigenteNombre": "2026/2027"}
+    res = tamiz.clasificar_renglon(_r(1, FUMIG, cultivo=3), REGLAS, [], ctx)
+    assert res["estado"] == "Pendiente" and res["idCampania"] == 32 and "2026/2027" in res["motivo"]

@@ -102,3 +102,23 @@ def pendientes(limite: int = 500) -> list[dict]:
         ORDER BY t.FechaCalculo DESC
         """
     )
+
+
+def guardar_regla_producto(id_detalle: int, destino: str, id_parte: int | None, usuario: str | None) -> None:
+    """Aprende la regla del producto del renglón: por IdFormulado si lo tiene, si no por texto normalizado."""
+    from src.features.imputacion.tamiz import normalizar
+
+    r = fetch_one("SELECT NULLIF(IdFormulado, 0) AS f, [Producto/Servicio] AS p FROM dbo.Det_Compras WHERE IdDetalleCompra = ?",
+                  (id_detalle,))
+    if r is None:
+        raise ValueError("Renglón inexistente")
+    texto = None if r["f"] else normalizar(r["p"])
+    execute_write_transaction([(
+        "INSERT INTO dbo.TamizReglaProducto (TextoNormalizado, IdFormulado, Destino, IdParte, Usuario) VALUES (?, ?, ?, ?, ?)",
+        (texto, r["f"], destino, id_parte, usuario),
+    )])
+
+
+def campania_por_nombre(nombre: str) -> int | None:
+    r = fetch_one("SELECT TOP 1 [IdCampaña] AS id FROM dbo.[Campañas] WHERE [Campaña] = ?", (nombre,))
+    return r["id"] if r else None

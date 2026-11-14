@@ -68,8 +68,8 @@
   - el barbecho va al cultivo siguiente;
   - si no se puede determinar, la campaña vigente a la fecha y el renglón va a revisión.
 - [ ] T012 [US3] En tamiz.py, deducir el cultivo cuando falta (grano, fecha u orden más cercana). Imputar solo si hay una única opción; si no, mandar a revisión con las opciones.
-- [ ] T013 [US2] En backend/src/features/compras (el guardado y la edición de la compra), llamar a `tamiz.tamizar_compra(id)` después de guardar, solo si la compra está en alcance. Un error del tamiz no tiene que impedir guardar la compra.
-- [ ] T014 [US2] En backend/src/features/imputacion/router.py, agregar los endpoints `POST/GET /tamiz/compra/{idCompra}` y `PUT /tamiz/renglon/{idDetalleCompra}` según contracts/api.md.
+- [X] T013 [US2] En backend/src/features/compras (el guardado y la edición de la compra), llamar a `tamiz.tamizar_compra(id)` después de guardar, solo si la compra está en alcance. Un error del tamiz no tiene que impedir guardar la compra.
+- [X] T014 [US2] En backend/src/features/imputacion/router.py, agregar los endpoints `POST/GET /tamiz/compra/{idCompra}` y `PUT /tamiz/renglon/{idDetalleCompra}` según contracts/api.md.
 
 ## Phase 4: US9 — Imputación progresiva de insumos y vínculo remito↔factura (P1)
 
@@ -222,3 +222,9 @@
 - **Pendientes de esta fase**:
   - T011/T012: deducción de campaña y cultivo.
   - T013/T014: disparo al guardar la compra y endpoints.
+
+### Avance 14/11/2026 (2)
+- T013/T014 hechos: el tamiz corre al guardar/editar la compra (sin bloquear el guardado) y hay endpoints GET/POST /api/imputacion/tamiz/compra/{id} y PUT /tamiz/renglon/{id} (con "guardarRegla").
+- T011 parcial: sin campaña se propone la vigente a la fecha (año agrícola julio-junio), siempre Pendiente. Faltan seguro → campaña asegurada, flete granos → campaña de cosecha, barbecho → cultivo siguiente.
+- T012 pendiente: deducción de cultivo (necesita el plan agrícola, US4).
+- Con IdDeudaCorte vacío nada está en alcance: el disparo no escribe hasta activar.
