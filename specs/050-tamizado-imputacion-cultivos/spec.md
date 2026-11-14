@@ -156,6 +156,42 @@ El informe muestra cada cultivo/campaña:
 
 **Independent Test**: para un cultivo 2025/26, abrir una parte llega a los documentos que la forman, y la suma de esos documentos coincide con la parte.
 
+### User Story 8 - Listado de imputación para el Estudio contable (Priority: P2)
+
+Hoy el Estudio trabaja con "Listado General Compras - Imputacion (1-9-2015 en adelante).xlsx", que está en la carpeta Compras de Dropbox. Es una hoja de 14 columnas, con una fila por renglón y el total en la moneda del documento:
+
+1. Fecha
+2. Razón Social
+3. Tipo documento
+4. Nro Documento
+5. Moneda
+6. Tipo de Cambio
+7. Ajusta Tipo Cambio
+8. Cantidad
+9. Producto/Servicio
+10. Centro de costos
+11. Rubro
+12. Destino
+13. Campaña
+14. Total
+
+Sergio lo genera **a pedido**, con un botón en el sistema. El archivo se guarda en la misma carpeta y con el mismo nombre, y reemplaza al anterior.
+
+- **Las 14 columnas** quedan iguales, en el mismo orden y con el mismo formato.
+- **Columnas nuevas, agregadas a la derecha**:
+  - **Importe en pesos**: el Total pesificado al TC del comprobante.
+  - **Parte del costo**: Semilla, Agroquímicos, Labores, etc.
+- **Renglones fuera del esquema nuevo**: una fila, como hoy.
+- **Renglones de insumo en el esquema nuevo**: una fila por uso. Cada fila lleva su cantidad, su total, y el cultivo y la campaña de la orden en Destino/Campaña. Lo que no se usó todavía va en una fila con Destino "En stock". La suma de las filas da el total del renglón, al centavo.
+- **Renglones de una sola vez en el esquema nuevo**: Destino y Campaña son los que determinó el tamiz.
+
+**Independent Test**: se genera el listado y se compara con el actual. Las filas fuera de alcance son idénticas, y por cada documento la suma de Total coincide.
+
+**Acceptance Scenarios**:
+
+1. **Given** el renglón de 200 l de glifosato con 80 l usados en Soja 2026/27, 70 l en Maíz 2026/27 y 50 l en stock, **When** se genera el listado, **Then** aparecen 3 filas (80, 70 y 50 l) cuyos totales suman el del renglón; la tercera dice "En stock".
+2. **Given** el archivo abierto en Excel, **When** se genera, **Then** el sistema avisa que no lo puede reemplazar y no deja un archivo a medio escribir.
+
 ### Edge Cases
 
 - **Factura mixta de un proveedor que vende de todo**: cada renglón decide por su rubro, y nunca por el proveedor.
@@ -201,6 +237,9 @@ El informe muestra cada cultivo/campaña:
 - **FR-016**: El informe por cultivo/campaña MUST mostrar las partes de la estructura con $/ha y US$/ha, abrir hasta el documento o la orden, y mostrar aparte la Estructura y lo que sigue en stock sin consumir.
 - **FR-017**: Cualquier cambio de orden, remito, regla o tabla MUST recalcular lo afectado desde 2025/26, nunca antes, y dejar historial (fecha, qué cambió, cuánto movió) visible en la lista.
 - **FR-018**: Las compras particulares (Particular L/S) MUST NOT imputarse a cultivo. Lo de San Justo sigue bloqueado.
+
+- **FR-019**: El sistema MUST generar a pedido el listado de imputación para el Estudio en la carpeta Compras de Dropbox, con el mismo nombre que el actual. Mantiene las 14 columnas actuales y agrega a la derecha "Importe en pesos" y "Parte del costo".
+- **FR-020**: En el listado, los renglones en alcance MUST abrirse en una fila por uso más una fila "En stock" por el saldo. La suma de las filas de cada renglón es igual a su total, al centavo. Los renglones fuera de alcance salen exactamente como hoy.
 
 ### Key Entities
 

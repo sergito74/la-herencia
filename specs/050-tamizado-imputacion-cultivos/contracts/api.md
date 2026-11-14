@@ -60,6 +60,14 @@ Busca el par que corresponde y lo vincula si la coincidencia es única. Responde
   "estructuraCampania": { "pesos": 0, "dolares": 0 }, "enStockSinConsumir": { "pesos": 0, "dolares": 0 } }
 ```
 
+## Listado para el Estudio
+
+### `POST /listado-estudio/generar`
+Genera el Excel en la carpeta Compras de Dropbox y lo reemplaza.
+
+- **Responde**: `{ "filas": n, "archivo": "Listado General Compras - Imputacion (1-9-2015 en adelante).xlsx" }`.
+- **Error 409**: el archivo está abierto. Responde `{ "error": "El listado está abierto en Excel; cerralo y volvé a generarlo." }`.
+
 ## Activación e impacto (uso interno, lo corre Claude)
 
 - `scripts/activar_alcance_050.py --dry-run`: genera el Excel antes/después por cultivo/campaña sin escribir nada.

@@ -141,6 +141,11 @@ frontend/src/app/
    - recién después se activa.
 6. **Producto sugerido** y aprendizaje por producto.
 7. **UI**: "Para revisar", contador, sugerencia en la compra e informe por parte.
+9. **Listado para el Estudio** (Historia 8):
+   - `imputacion/listado_estudio.py`: las 14 columnas, más "Importe en pesos" y "Parte del costo", y una fila por uso para los renglones en alcance.
+   - Botón en la pantalla de Imputación que genera el archivo en `Dropbox\Giamigli de Bolivar SA\Compras\` con el mismo nombre.
+   - Se escribe en un archivo temporal y se renombra al final, así un archivo abierto en Excel no queda a medio escribir.
+   - Antes de reemplazar por primera vez, se verifica que las filas fuera de alcance son idénticas a las del archivo actual.
 8. **Control de cierre** comprado = aplicado + stock + bajas (049 Historia 5).
 
 ## Complexity Tracking
