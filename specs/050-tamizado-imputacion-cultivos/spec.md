@@ -196,6 +196,7 @@ Sergio lo genera **a pedido**, con un botón en el sistema. El archivo se guarda
 
 - **Factura mixta de un proveedor que vende de todo**: cada renglón decide por su rubro, y nunca por el proveedor.
 - **Semilla o insumo que pone el contratista dentro de su factura de labor**: se separa de la labor y entra a stock. Después lo consume la orden.
+- **Flete de insumos**: se suma al costo de los insumos que trajo, repartido por importe, y los acompaña hasta que se usan. Si viene en una factura aparte, el sistema propone relacionarla con la factura o el remito de insumos y queda pendiente hasta que Sergio la confirma.
 - **Semillas**: pasan por stock y las consume la orden de siembra. La semilla propia se valúa al precio del grano cuando se reservó.
 - **Sobrante al cerrar la campaña**: sigue en stock con su costo y lo paga el cultivo que lo aplique.
 - **Insumo vencido o dado de baja por mantenimiento**: va a Estructura como pérdida de la empresa. La diferencia normal del recuento sigue repartiéndose en las órdenes del período.
@@ -240,6 +241,8 @@ Sergio lo genera **a pedido**, con un botón en el sistema. El archivo se guarda
 
 - **FR-019**: El sistema MUST generar a pedido el listado de imputación para el Estudio en la carpeta Compras de Dropbox, con el mismo nombre que el actual. Mantiene las 14 columnas actuales y agrega a la derecha "Importe en pesos" y "Parte del costo".
 - **FR-020**: En el listado, los renglones en alcance MUST abrirse en una fila por uso más una fila "En stock" por el saldo. La suma de las filas de cada renglón es igual a su total, al centavo. Los renglones fuera de alcance salen exactamente como hoy.
+
+- **FR-021**: El flete de insumos MUST sumarse al costo de los renglones de insumo que trajo, en proporción a su importe, y seguir su imputación progresiva. Si viene en una factura aparte, MUST quedar pendiente hasta que se relacione con la factura o el remito de los insumos.
 
 ### Key Entities
 

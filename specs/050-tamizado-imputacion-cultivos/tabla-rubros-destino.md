@@ -27,7 +27,7 @@ Incluye los 48 rubros usados en compras desde el 01/07/2025 (n = renglones), con
 | Seguimiento cultivos | 93 | Asesoramiento/análisis |
 | Analisis PG | 2 | Asesoramiento/análisis |
 | Seguros Agricolas | 17 | Seguro agrícola |
-| Flete insumos | 13 | Fletes |
+| Flete insumos | 13 | Se suma al costo de los insumos que trajo (ver abajo) |
 | Gastos Comercializacion | 24 | Comercialización |
 | Flete granos | 3 | Comercialización |
 | Extraccion Grano | 1 | Comercialización |
@@ -65,3 +65,6 @@ Gastos bancarios (36).
 - **Arrendamiento** es un ingreso, no un costo. Sale de la estructura de costos.
 - **Silobolsa, hilo y malla**: su destino depende de lo que se guarda, y lo resuelve la orden que los usa.
 - **Analisis laboratorio** pasa de "Otro" a Depende.
+- **Flete insumos** (acordado 14/11):
+  - No se imputa de una vez. Se suma al costo de los insumos que trajo, repartido por importe, y los acompaña: la parte en stock queda en stock y la parte usada va al cultivo de cada orden.
+  - Si el flete viene en una factura aparte, el sistema propone relacionarla con la factura o el remito de insumos correspondiente, y Sergio confirma en "Para revisar". Hasta entonces el flete queda pendiente.

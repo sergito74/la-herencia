@@ -70,6 +70,19 @@ Hay dos casos en que la manual no manda:
 | Financiamiento | Si hay `CompraDocumentosRelacionados` con una factura de insumo → mismo reparto que esa factura, en proporción; si no → Financiero. |
 | Insumos productivos (silobolsa, hilo, malla) | Entra a stock y lo resuelve la orden que lo usa: si el cultivo de la orden es forrajero → ese cultivo; si es de grano → Comercialización de ese cultivo; si la orden es de centro Ganadería → Ganadería; si la orden no tiene cultivo ni centro → revisión. |
 
+## R-06b Flete de insumos
+
+**Decisión**: el flete de insumos es costo de adquisición. Al calcular el costo unitario de una capa, `costos_de_renglones` le suma el flete atribuido:
+
+- **Flete en la misma factura**: se reparte entre sus renglones de insumo en proporción al importe.
+- **Flete en factura aparte**: se reparte entre los renglones de insumo de la factura o el remito relacionados (`CompraDocumentosRelacionados` / `VinculoRemitoPendiente`, tipo `flete`), también en proporción al importe.
+
+El renglón de flete no tiene fracciones propias. Su importe se reparte entre las fracciones de los insumos, y el listado del Estudio lo muestra como filas por uso.
+
+**Alternativas descartadas**:
+- Imputar el flete de una vez: no hay campaña cierta mientras el insumo está en stock.
+- Repartirlo por cantidad: las unidades son mixtas.
+
 ## R-07 Doble conteo en el resultado del cultivo
 
 **Decisión**:
