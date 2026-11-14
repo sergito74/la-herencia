@@ -3,9 +3,8 @@
 - Insumo de stock: la corrida reparte el renglón entre los usos de las órdenes (FIFO) y lo que sigue en
   stock. Se aprueba sola si usos + stock = total del renglón (precio al TC + flete) al centavo y no hay
   dudas; si no, queda Pendiente con motivo (T023). Cada fracción lleva su parte de la estructura (T022).
-- Silobolsa / insumos productivos (regla SegunUsoOrden): el uso decide. Orden de cultivo forrajero → ese
-  cultivo; cultivo de grano → parte Comercialización; centro Ganadería → Ganadería; sin cultivo ni centro →
-  revisión.
+- Silobolsa / insumos productivos: el uso no queda en las órdenes (Sergio 14/11), así que no pasan por acá:
+  el tamiz los deja "Para revisar" y Sergio indica el uso; con eso quedan como renglón de una sola vez.
 - Renglón de una sola vez aprobado por el tamiz: una fracción 'Directo' con su destino (T025).
 
 Lo ya imputado no se toca: solo actúa sobre renglones con tamiz vigente (= en alcance).
@@ -95,8 +94,7 @@ def imputar_insumo(id_detalle: int) -> dict:
     fracciones = motor.calcular_propuesta_insumo(id_detalle)
     if not fracciones:
         return {"accion": "sinCapa"}
-    por_uso = t["regla"] == "SegunUsoOrden"
-    fracciones, motivo = asignar_partes(fracciones, t["idParte"], por_uso, motor._id_centro_ganaderia())
+    fracciones, motivo = asignar_partes(fracciones, t["idParte"], False, motor._id_centro_ganaderia())
     if motivo is None and posible_duplicado(id_detalle):
         motivo = "Posible duplicado: hay un remito sin vincular del mismo proveedor y producto"
     total = total_renglon(t, capas_factura.flete_por_renglon().get(id_detalle, 0.0))

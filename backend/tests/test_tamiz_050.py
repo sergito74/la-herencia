@@ -88,7 +88,7 @@ def test_flete_aparte_queda_pendiente():
 def test_financiamiento_sin_insumo_va_a_financiero_y_silobolsa_segun_uso():
     assert tamiz.clasificar_renglon(_r(1, FINANC), REGLAS, [], SIN_CTX)["destino"] == "Financiero"
     silo = tamiz.clasificar_renglon(_r(2, SILO, "Silobolsa 9 pies"), REGLAS, [], SIN_CTX)
-    assert silo["destino"] == "CultivoStock" and silo["estado"] == "Aprobada"
+    assert silo["estado"] == "Pendiente" and "indicar el uso" in silo["motivo"]  # el uso no está en las órdenes
 
 
 def test_compra_particular_total_no_se_imputa():

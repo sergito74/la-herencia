@@ -99,7 +99,7 @@
 - [X] T022 [US9] En backend/src/features/imputacion/motor.py, hacer tres cambios:
   - `calcular_propuesta_insumo` acepta capas F;
   - cada fracción lleva IdParte (desde TamizRubroDestino);
-  - silobolsa por uso: orden de cultivo forrajero → ese cultivo; cultivo de grano → parte Comercialización; centro Ganadería → Ganadería; sin cultivo ni centro → revisión.
+  - ~~silobolsa por uso de la orden~~ — corregido 14/11/2026: el uso no está en las órdenes; el tamiz lo deja "Para revisar" y Sergio indica el uso al cargar.
 - [X] T023 [US9] En motor.py, para los renglones en alcance:
   - si usos + stock = total al centavo y no hay dudas, la corrida queda Aprobada sola;
   - si no, Pendiente con motivo en la cola.

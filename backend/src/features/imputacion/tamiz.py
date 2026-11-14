@@ -129,8 +129,10 @@ def clasificar_renglon(r: dict, reglas_rubro: dict, reglas_producto: list, conte
                                   motivo="Interés de un insumo financiado: va al cultivo de ese insumo")
             return _resultado(r, "Financiero")
         if especial == "SegunUsoOrden":
-            return _resultado(r, "CultivoStock", None,
-                              motivo="Se imputa según lo que guarde la orden que lo use")
+            # Sergio 14/11: el uso del silobolsa no se registra en las órdenes; lo indica él al cargar.
+            # Grano para vender → A cultivo, parte Comercialización (cultivo y campaña); forraje/consumo → Ganadería.
+            return _resultado(r, None, origen="Revision", estado="Pendiente",
+                              motivo="Silobolsa / insumo productivo: indicar el uso (grano para vender: cultivo y campaña; forraje o consumo propio: Ganadería)")
         return _resultado(r, None, origen="Revision", estado="Pendiente", motivo="Regla sin resolver")
 
     # Ganadería / Financiero / Estructura / NoImputa: si a mano se cargó cultivo y campaña, se contradicen (P13).

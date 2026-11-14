@@ -200,7 +200,7 @@ Sergio lo genera **a pedido**, con un botón en el sistema. El archivo se guarda
 - **Semillas**: pasan por stock y las consume la orden de siembra. La semilla propia se valúa al precio del grano cuando se reservó.
 - **Sobrante al cerrar la campaña**: sigue en stock con su costo y lo paga el cultivo que lo aplique.
 - **Insumo vencido o dado de baja por mantenimiento**: va a Estructura como pérdida de la empresa. La diferencia normal del recuento sigue repartiéndose en las órdenes del período.
-- **Bolsas de silo, hilo y mallas**: entran a stock como cualquier insumo y las imputa la orden de embolsado o enrollado, según lo que se guarda: grano para vender → Comercialización de ese cultivo; forraje → cultivo forrajero; grano para consumo propio → Ganadería.
+- **Bolsas de silo, hilo y mallas** (corregido 14/11/2026: el uso no se registra en las órdenes): el renglón queda "Para revisar" y Sergio indica el uso al cargar. Grano para vender → Comercialización del cultivo y campaña que elija; forraje o consumo propio → Ganadería.
 - **Cultivo de cobertura**: es un cultivo propio, con su resultado.
 - **Pasturas y verdeos**: son cultivo forrajero con campaña propia; su costo pasa después a la hacienda.
 - **Rollos y silos**: van al cultivo forrajero; al consumirse pasan a ganadería al costo.

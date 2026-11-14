@@ -63,7 +63,7 @@ Gastos bancarios (36).
 
 - **Flete granos** queda en Comercialización, como hoy.
 - **Arrendamiento** es un ingreso, no un costo. Sale de la estructura de costos.
-- **Silobolsa, hilo y malla**: su destino depende de lo que se guarda, y lo resuelve la orden que los usa.
+- **Silobolsa, hilo y malla**: su destino depende de lo que se guarda. Como el uso no se registra en las órdenes, queda "Para revisar" y Sergio lo indica al cargar (corregido 14/11/2026).
 - **Analisis laboratorio** pasa de "Otro" a Depende.
 - **Flete insumos** (acordado 14/11):
   - No se imputa de una vez. Se suma al costo de los insumos que trajo, repartido por importe, y los acompaña: la parte en stock queda en stock y la parte usada va al cultivo de cada orden.
