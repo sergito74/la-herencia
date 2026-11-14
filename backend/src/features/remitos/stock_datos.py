@@ -15,6 +15,7 @@ from collections import defaultdict
 from datetime import date, datetime
 
 from src.db.connection import fetch_all
+from src.features.remitos import capas_factura
 from src.features.remitos.costeo import costo_unitario_renglon
 from src.features.remitos.stock_fifo import Capa, Salida, asignar_fifo
 
@@ -92,7 +93,16 @@ def costos_de_renglones(id_producto: int | None = None) -> dict[int, dict]:
         params,
     )
     por_renglon: dict[int, list[dict]] = defaultdict(list)
+    fletes = capas_factura.flete_por_renglon() if filas else {}
     for f in filas:
+        precio = _f(f["precioUnitario"])
+        flete = fletes.get(f["idDetalleCompra"])
+        if flete and _f(f["cantidadCompra"]) > 0:
+            # 050 R-06b: el flete de insumos (en pesos) se suma al precio del renglón, en la moneda del renglón.
+            tc = _f(f["tipoDeCambio"]) if f["moneda"] == "Dolares" else 1.0
+            if tc:
+                precio += flete / _f(f["cantidadCompra"]) / tc
+        f = {**f, "precioUnitario": precio}
         por_renglon[f["idDetalle"]].append(
             {
                 "idDetalleCompra": f["idDetalleCompra"],
@@ -151,6 +161,21 @@ def calcular_stock(id_producto: int | None = None, excluir_remito: int | None = 
         )
         meta[capa_id] = {"origen": "remito", "idRemito": e["idRemito"], "nroRemito": e["nroRemito"], "idDetalle": e["idDetalle"],
                          "estadoCosto": estado, "cantidadEntrada": cantidad * factor}
+
+    # 050 R-03: renglón de factura en alcance sin remito → capa virtual a la fecha de la factura.
+    renglones_fc = capas_factura.renglones_sin_remito(id_producto)
+    fletes_fc = capas_factura.flete_por_renglon() if renglones_fc else {}
+    for r in renglones_fc:
+        prod = r["idProducto"]
+        factor, falta = factor_a_base(prod, r["unidad"], bases, equiv)
+        if falta:
+            flags[prod]["equivalenciaPendiente"] = True
+        capa_id = f"FC{r['idDetalleCompra']}"
+        unitario = capas_factura.costo_unitario_factura(r, fletes_fc.get(r["idDetalleCompra"], 0.0))
+        capas[prod].append(Capa(id=capa_id, fecha=fecha(r["fecha"]), cantidad=_f(r["cantidad"]) * factor,
+                                costo_unitario=unitario / factor, orden=5 * 10**8 + r["idDetalleCompra"] % 10**8))
+        meta[capa_id] = {"origen": "factura", "idCompra": r["idCompra"], "idDetalleCompra": r["idDetalleCompra"],
+                         "nroDocumento": r["nroDocumento"], "estadoCosto": "completo", "cantidadEntrada": _f(r["cantidad"]) * factor}
 
     filtro_a, params_a = _filtro("a.IdProducto", id_producto)
     ajustes = fetch_all(

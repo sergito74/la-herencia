@@ -40,8 +40,8 @@ def guardar_corrida(origen: str, id_detalle_compra: int, fracciones: list[dict])
         (
             "INSERT INTO dbo.ImputacionPropuestas "
             "(IdCorrida, Origen, IdDetalleCompra, IdOrdenTrabajo, IdLote, IdCultivo, IdCampania, "
-            "IdCentroCosto, EsGanaderia, Importe, Estado, FechaAprobacion, Cantidad, Unidad) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            "IdCentroCosto, EsGanaderia, Importe, Estado, FechaAprobacion, Cantidad, Unidad, IdParte) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             (
                 id_corrida,
                 origen,
@@ -57,6 +57,7 @@ def guardar_corrida(origen: str, id_detalle_compra: int, fracciones: list[dict])
                 f.get("fechaAprobacion"),
                 f.get("cantidad"),
                 f.get("unidad"),
+                f.get("idParte"),
             ),
         )
         for f in fracciones

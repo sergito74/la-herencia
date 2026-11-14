@@ -244,10 +244,15 @@ def tamizar_compra(id_compra: int, *, guardar: bool = True, forzar: bool = False
 def tamizar_al_guardar(id_compra: int) -> None:
     """Disparo del guardado de la compra (T013): solo en alcance y nunca impide guardar."""
     try:
-        if tamizar_compra(id_compra):
+        clasificaciones = tamizar_compra(id_compra)
+        if clasificaciones:
+            from src.features.imputacion import progresivo
             from src.features.remitos import vinculo_auto
 
             vinculo_auto.vincular_seguro(vinculo_auto.vincular_por_compra, id_compra)
+            for c in clasificaciones:
+                if c["estado"] == "Aprobada":
+                    progresivo.imputar_renglon(c["idDetalleCompra"])  # T025 / imputación progresiva
     except Exception:  # noqa: BLE001 - el tamiz no puede romper el alta de la compra
         _log.exception("Tamiz 050: no se pudo clasificar la compra %s", id_compra)
 

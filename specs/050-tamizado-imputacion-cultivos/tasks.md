@@ -87,24 +87,24 @@
   - escribe en tblRemitoCompra mediante `execute_write_transaction`;
   - lo dudoso va a VinculoRemitoPendiente.
 - [X] T017 [US9] Llamar a vinculo_auto al guardar una compra en alcance (junto con T013) y al guardar un remito, en backend/src/features/remitos/repository.py.
-- [ ] T018 [P] [US9] Crear backend/tests/test_capa_factura_sin_remito_050.py con dos casos:
+- [X] T018 [P] [US9] Crear backend/tests/test_capa_factura_sin_remito_050.py con dos casos:
   - un renglón en alcance sin remito genera la capa `F{id}` a la fecha de la factura;
   - al vincular el remito, la capa F desaparece.
-- [ ] T019 [US9] En backend/src/features/remitos/stock_datos.py, agregar al FIFO de `calcular_stock` las capas virtuales `F{IdDetalleCompra}`, solo para renglones en alcance con destino CultivoStock y sin tblRemitoCompra. El costo unitario es el precio de la factura al TC del comprobante.
-- [ ] T020 [US9] En stock_datos.costos_de_renglones, sumar al costo unitario de cada capa el flete de insumos atribuido, repartido por importe (research R-06b). Contemplar el flete de la misma factura y el de una factura relacionada.
-- [ ] T021 [P] [US9] Crear backend/tests/test_flete_insumo_050.py con tres casos:
+- [X] T019 [US9] En backend/src/features/remitos/stock_datos.py, agregar al FIFO de `calcular_stock` las capas virtuales `F{IdDetalleCompra}`, solo para renglones en alcance con destino CultivoStock y sin tblRemitoCompra. El costo unitario es el precio de la factura al TC del comprobante.
+- [X] T020 [US9] En stock_datos.costos_de_renglones, sumar al costo unitario de cada capa el flete de insumos atribuido, repartido por importe (research R-06b). Contemplar el flete de la misma factura y el de una factura relacionada.
+- [X] T021 [P] [US9] Crear backend/tests/test_flete_insumo_050.py con tres casos:
   - $100.000 de flete sobre $2.000.000 de insumos se reparte por importe;
   - un uso del 40% se lleva el 40% del flete;
   - un flete en factura aparte sin relacionar queda pendiente.
-- [ ] T022 [US9] En backend/src/features/imputacion/motor.py, hacer tres cambios:
+- [X] T022 [US9] En backend/src/features/imputacion/motor.py, hacer tres cambios:
   - `calcular_propuesta_insumo` acepta capas F;
   - cada fracción lleva IdParte (desde TamizRubroDestino);
   - silobolsa por uso: orden de cultivo forrajero → ese cultivo; cultivo de grano → parte Comercialización; centro Ganadería → Ganadería; sin cultivo ni centro → revisión.
-- [ ] T023 [US9] En motor.py, para los renglones en alcance:
+- [X] T023 [US9] En motor.py, para los renglones en alcance:
   - si usos + stock = total al centavo y no hay dudas, la corrida queda Aprobada sola;
   - si no, Pendiente con motivo en la cola.
-- [ ] T024 [US9] En backend/src/features/ordenes/repository.py `_recalcular_imputacion_por_productos`, incluir también los renglones en alcance de esos productos que todavía no tienen corrida.
-- [ ] T025 [US9] En motor.py, agregar `calcular_directo(id_detalle_compra)`, que genera fracciones con Origen 'Directo' para los renglones de una sola vez con su destino, parte, cultivo y campaña. Llamarlo desde tamiz cuando el renglón queda Aprobado.
+- [X] T024 [US9] En backend/src/features/ordenes/repository.py `_recalcular_imputacion_por_productos`, incluir también los renglones en alcance de esos productos que todavía no tienen corrida.
+- [X] T025 [US9] En motor.py, agregar `calcular_directo(id_detalle_compra)`, que genera fracciones con Origen 'Directo' para los renglones de una sola vez con su destino, parte, cultivo y campaña. Llamarlo desde tamiz cuando el renglón queda Aprobado.
 - [ ] T026 [US9] Crear backend/scripts/imputacion_diaria_050.py con la pasada diaria:
   - vinculo_auto pendiente;
   - recálculo de los renglones en alcance con stock;
@@ -237,3 +237,9 @@
 - T006/T007: `ids_en_alcance` + `SQL_COMPRA_EN_ALCANCE` (filtro opcional `solo_alcance` en documentos); tests del repositorio.
 - T011/T012: campaña propuesta por año agrícola (seguro y barbecho de abril a junio → campaña siguiente), siempre para revisar; cultivo por nombre en el renglón o única opción con órdenes en la campaña (se aprueba solo si la campaña vino cargada).
 - Simulación 692 facturas: 1.445 aprobadas, 425 pendientes (2 labores pasaron a aprobadas con cultivo deducido por el producto; 14 quedan con campaña propuesta y opciones de cultivo).
+
+### Avance 14/11/2026 (5)
+- T018–T021: remitos/capas_factura.py — capa virtual `FC{IdDetalleCompra}` (prefijo FC porque `F{id}` ya son faltantes de ajuste) y flete repartido por importe sumado al costo de la capa (misma factura o relacionada, solo con el flete aprobado).
+- T022–T025: imputacion/progresivo.py — corrida con IdParte, silobolsa por uso (Pastura/Avena = forrajero), aprobación sola si usos + stock = total al centavo, fracción 'Directo' para renglones de una sola vez; la orden recalcula los renglones en alcance aunque no tengan corrida; el guardado de la compra dispara tamiz → vínculo → imputación.
+- Sin renglones en alcance el stock y los costos no cambian (verificado: TamizRenglones vacío).
+- Suite: los 25 fallos/errores restantes (impuestos, remuneraciones, tarjetas, peajes) son previos — fallan igual sin estos cambios.

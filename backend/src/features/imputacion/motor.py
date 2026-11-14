@@ -138,28 +138,31 @@ def calcular_propuesta_insumo(id_detalle_compra: int) -> list[dict]:
         return []
 
     vinculos = repository.vinculos_remito_para_compra(id_detalle_compra)
-    if not vinculos:
-        return []
-    peso_por_detalle_remito = {v["idDetalleRemito"]: float(v["cantidadRemitida"] or 0) for v in vinculos}
-    unidades_por_remito = {v["idDetalleRemito"]: v.get("unidad") for v in vinculos}
-
     stock = calcular_stock(id_producto).get(id_producto, {})
     capas = {c["id"]: c for c in stock.get("capas", [])}
     consumos = stock.get("consumos", {})
     salida_meta = stock.get("salidaMeta", {})
 
+    # (capa, peso de la factura en la capa, unidad). 050 R-03: sin remito, la capa virtual de la propia
+    # factura (`FC{id}`, solo renglones en alcance) es entera de este renglón.
+    entradas: list[tuple[str, float | None, str | None]] = [
+        (f"R{v['idDetalleRemito']}", float(v["cantidadRemitida"] or 0), v.get("unidad")) for v in vinculos
+    ]
+    if not entradas and f"FC{id_detalle_compra}" in capas:
+        entradas = [(f"FC{id_detalle_compra}", None, capas[f"FC{id_detalle_compra}"].get("unidadBase") or stock.get("unidadBase"))]
+    if not entradas:
+        return []
+
     fracciones: list[dict] = []
 
-    for capa_id, cantidad_remitida in peso_por_detalle_remito.items():
-        capa_key = f"R{capa_id}"
+    for capa_key, cantidad_remitida, unidad in entradas:
         capa = capas.get(capa_key)
         if capa is None or capa["cantidad"] <= EPS:
             continue
-        peso_factura_en_capa = cantidad_remitida / float(capa["cantidad"])
         # consumo_base / entrada_base es una proporción; al multiplicarla
         # por CantidadRemitida, la cantidad resultante queda en la unidad
         # original del remito, que puede diferir de la base FIFO y la factura.
-        unidad = unidades_por_remito[capa_id]
+        peso_factura_en_capa = 1.0 if cantidad_remitida is None else cantidad_remitida / float(capa["cantidad"])
         costo_unitario = capa.get("costoUnitario") or 0.0
 
         # Fracción todavía en stock (no consumida) atribuible a esta factura.

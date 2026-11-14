@@ -73,5 +73,5 @@ def test_guardar_corrida_persiste_cantidad_y_unidad_sin_exigirlas_en_servicios(m
     repository.guardar_corrida("Insumo", 10, [_calculada()])
     repository.guardar_corrida("Contratista", 20, [{"importe": 100}])
     assert "Cantidad, Unidad" in capturadas[0][0]
-    assert capturadas[0][1][-2:] == (2, "L")
-    assert capturadas[1][1][-2:] == (None, None)
+    assert capturadas[0][1][-3:-1] == (2, "L")  # 050: IdParte va al final
+    assert capturadas[1][1][-3:] == (None, None, None)
