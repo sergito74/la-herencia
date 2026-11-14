@@ -30,7 +30,7 @@
 
 ## Phase 2: Foundational
 
-- [ ] T005 Crear backend/src/features/imputacion/tamiz_repository.py con estas funciones:
+- [X] T005 Crear backend/src/features/imputacion/tamiz_repository.py con estas funciones:
   - lectura de reglas de rubro y de producto;
   - en_alcance(id_detalle_compra);
   - alta en el alcance;
@@ -48,7 +48,7 @@
 
 **Test independiente**: tamizar las 18 facturas mixtas reales en modo cálculo y comprobar que cada renglón tiene destino o motivo.
 
-- [ ] T008 [P] [US2] Crear backend/tests/test_tamiz_050.py con estos casos:
+- [X] T008 [P] [US2] Crear backend/tests/test_tamiz_050.py con estos casos:
   - el orden de prioridad manual > orden > producto > rubro > revisión;
   - en una factura mixta, cada renglón decide por sí mismo;
   - un rubro "no va" con campaña cargada termina en revisión;
@@ -56,8 +56,8 @@
   - un insumo con imputación manual igual termina en CultivoStock (la manual queda como referencia);
   - lo de San Justo bloqueado;
   - una compra particular termina en NoImputa.
-- [ ] T009 [US2] Crear backend/src/features/imputacion/tamiz.py con `tamizar_renglon(id_detalle_compra)` y `tamizar_compra(id_compra)`. La prioridad es la de research R-05: "manual" quiere decir un cultivo real y una campaña distinta de General/No Aplica.
-- [ ] T010 [US2] En tamiz.py, implementar las reglas Depende de research R-06:
+- [X] T009 [US2] Crear backend/src/features/imputacion/tamiz.py con `tamizar_renglon(id_detalle_compra)` y `tamizar_compra(id_compra)`. La prioridad es la de research R-05: "manual" quiere decir un cultivo real y una campaña distinta de General/No Aplica.
+- [X] T010 [US2] En tamiz.py, implementar las reglas Depende de research R-06:
   - AnalisisLaboratorio por palabra clave;
   - Combustible: Estructura salvo que pase por stock;
   - Financiamiento por documento relacionado;
@@ -205,3 +205,20 @@
 2. Después US9, con la imputación progresiva y los vínculos.
 3. Después US1/US7 y el Excel de impacto. Con el OK de Sergio, la activación.
 4. Por último US5, US6, US8 y US10.
+
+## Avance 14/11/2026
+
+- **T001–T004**: backup verificado; tablas creadas; 9 partes y 49 rubros cargados; Activo=0.
+- **T005, T008–T010**: `tamiz.py` y `tamiz_repository.py` hechos; 16 tests pasan.
+  - Regla adicional: una línea negativa "Compra/Seguro/Gasto particular" resta en el mismo destino que el resto de la factura. Si la factura tiene renglones de cultivo, va a revisión.
+- **Prueba sin guardar** sobre las 691 facturas reales desde el 01/07/2025 (1.869 renglones):
+  - 1.442 renglones (77%) quedan clasificados solos.
+  - 427 quedan pendientes:
+    - 392 insumos sin producto del catálogo (los resuelve US5, producto sugerido);
+    - 14 sin cultivo ni campaña, y 2 sin cultivo;
+    - 13 fletes sin insumos en la misma factura;
+    - 5 con rubro de gasto general y campaña cargada;
+    - 1 análisis de laboratorio.
+- **Pendientes de esta fase**:
+  - T011/T012: deducción de campaña y cultivo.
+  - T013/T014: disparo al guardar la compra y endpoints.

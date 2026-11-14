@@ -1,0 +1,104 @@
+"""Acceso a datos del tamiz por rubro (050): reglas, alcance y clasificación vigente por renglón."""
+
+from __future__ import annotations
+
+from src.db.connection import execute_write_transaction, fetch_all, fetch_one
+
+CAMPANIA_NO_APLICA = 20
+
+
+def config() -> dict:
+    return fetch_one("SELECT IdDeudaCorte AS idDeudaCorte, Activo AS activo FROM dbo.ImputacionConfig WHERE Id = 1") or {
+        "idDeudaCorte": None, "activo": False,
+    }
+
+
+def reglas_rubro() -> dict[int, dict]:
+    filas = fetch_all("SELECT IdRubro AS idRubro, Destino AS destino, IdParte AS idParte, ReglaDepende AS regla FROM dbo.TamizRubroDestino")
+    return {f["idRubro"]: f for f in filas}
+
+
+def reglas_producto() -> list[dict]:
+    return fetch_all(
+        "SELECT IdRegla AS idRegla, TextoNormalizado AS texto, IdFormulado AS idFormulado, Destino AS destino, IdParte AS idParte "
+        "FROM dbo.TamizReglaProducto"
+    )
+
+
+def renglones_de_compra(id_compra: int) -> list[dict]:
+    return fetch_all(
+        """
+        SELECT d.IdDetalleCompra AS idDetalleCompra, d.IdCompra AS idCompra, d.[Producto/Servicio] AS producto,
+               ISNULL(d.Cantidad, 0) AS cantidad, ISNULL(d.[Precio Unitario], 0) AS precio,
+               NULLIF(d.IdFormulado, 0) AS idFormulado, d.IdRubro AS idRubro, d.IdDestino AS idDestino,
+               de.IdCultivo AS idCultivo, d.[IdCampaña] AS idCampania, c.Fecha AS fecha, c.IdContacto AS idContacto
+        FROM dbo.Det_Compras d
+        JOIN dbo.Compras c ON c.IdDeuda = d.IdCompra
+        LEFT JOIN dbo.DestinoCompras de ON de.IdDestino = d.IdDestino
+        WHERE d.IdCompra = ?
+        ORDER BY d.IdDetalleCompra
+        """,
+        (id_compra,),
+    )
+
+
+def compra_en_alcance(id_compra: int) -> bool:
+    """Una compra entra al esquema nuevo si se cargó después del corte (IdDeuda > IdDeudaCorte) o si alguno de
+    sus renglones fue marcado en ImputacionAlcance (research R-01). Sin corte fijado, nada está en alcance."""
+    cfg = config()
+    if cfg["idDeudaCorte"] is not None and id_compra > int(cfg["idDeudaCorte"]):
+        return True
+    return fetch_one(
+        "SELECT TOP 1 1 AS x FROM dbo.ImputacionAlcance a JOIN dbo.Det_Compras d ON d.IdDetalleCompra = a.IdDetalleCompra "
+        "WHERE d.IdCompra = ?", (id_compra,),
+    ) is not None
+
+
+def guardar_clasificaciones(clasificaciones: list[dict], usuario: str | None = None) -> None:
+    """Una sola clasificación vigente por renglón: la anterior queda como historial (Vigente = 0)."""
+    sentencias = []
+    for c in clasificaciones:
+        sentencias.append(("UPDATE dbo.TamizRenglones SET Vigente = 0 WHERE IdDetalleCompra = ? AND Vigente = 1",
+                           (c["idDetalleCompra"],)))
+        sentencias.append((
+            "INSERT INTO dbo.TamizRenglones (IdDetalleCompra, Destino, IdParte, IdCultivo, IdCampania, OrigenDecision, "
+            "Estado, Motivo, Vigente, Usuario) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, ?)",
+            (c["idDetalleCompra"], c["destino"], c["idParte"], c["idCultivo"], c["idCampania"], c["origen"],
+             c["estado"], c["motivo"], usuario),
+        ))
+    if sentencias:
+        execute_write_transaction(sentencias)
+
+
+def clasificacion_vigente(id_compra: int) -> list[dict]:
+    return fetch_all(
+        """
+        SELECT t.IdDetalleCompra AS idDetalleCompra, t.Destino AS destino, p.Nombre AS parte, t.IdCultivo AS idCultivo,
+               cu.Cultivo AS cultivo, t.IdCampania AS idCampania, ca.[Campaña] AS campania, t.OrigenDecision AS origen,
+               t.Estado AS estado, t.Motivo AS motivo
+        FROM dbo.TamizRenglones t
+        JOIN dbo.Det_Compras d ON d.IdDetalleCompra = t.IdDetalleCompra
+        LEFT JOIN dbo.PartesEstructuraCosto p ON p.IdParte = t.IdParte
+        LEFT JOIN dbo.Cultivos cu ON cu.IdCultivo = t.IdCultivo
+        LEFT JOIN dbo.[Campañas] ca ON ca.[IdCampaña] = t.IdCampania
+        WHERE d.IdCompra = ? AND t.Vigente = 1
+        ORDER BY t.IdDetalleCompra
+        """,
+        (id_compra,),
+    )
+
+
+def pendientes(limite: int = 500) -> list[dict]:
+    return fetch_all(
+        f"""
+        SELECT TOP {int(limite)} t.IdDetalleCompra AS idDetalleCompra, d.IdCompra AS idCompra, c.Fecha AS fecha,
+               co.[Razon Social] AS proveedor, c.[Tipo documento] AS tipoDocumento, c.[Nro Documento] AS numero,
+               d.[Producto/Servicio] AS producto, t.Motivo AS motivo, t.FechaCalculo AS fechaCalculo
+        FROM dbo.TamizRenglones t
+        JOIN dbo.Det_Compras d ON d.IdDetalleCompra = t.IdDetalleCompra
+        JOIN dbo.Compras c ON c.IdDeuda = d.IdCompra
+        LEFT JOIN dbo.Contactos co ON co.IdContacto = c.IdContacto
+        WHERE t.Vigente = 1 AND t.Estado = 'Pendiente'
+        ORDER BY t.FechaCalculo DESC
+        """
+    )
