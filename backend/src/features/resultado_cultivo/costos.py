@@ -7,6 +7,8 @@ from __future__ import annotations
 from collections import defaultdict
 
 from src.db.connection import fetch_all
+from src.features.imputacion import tamiz_repository
+from src.features.remitos import capas_factura
 from src.features.remitos.stock_datos import calcular_stock
 from src.features.imputacion.repository import RUBROS_FUERA_REPARTO
 from src.features.resultado_cultivo import mapeo
@@ -29,6 +31,15 @@ def _f(v) -> float:
     return float(v) if v is not None else 0.0
 
 
+def esquema_050_activo() -> bool:
+    """050: con ImputacionConfig.Activo = 0 el resultado es idéntico al de antes."""
+    return bool(tamiz_repository.config().get("activo"))
+
+
+# 050: renglón en alcance = tiene clasificación vigente del tamiz; su costo entra por costos_alcance.
+_NO_EN_ALCANCE = " AND NOT EXISTS (SELECT 1 FROM dbo.TamizRenglones tz WHERE tz.IdDetalleCompra = c.IdDetalleCompra AND tz.Vigente = 1)"
+
+
 def costos_heredados(id_cultivo: int, id_campania: int) -> list[dict]:
     """Líneas de `vw_ResultadosCultivo_CostosBase` + `Seguros` para el
     `IdDestino` de este Cultivo, ya multiplicadas por `Signo` (cargo/crédito).
@@ -46,8 +57,8 @@ def costos_heredados(id_cultivo: int, id_campania: int) -> list[dict]:
           AND NOT EXISTS (  -- 048: renglón ya repartido por las órdenes de trabajo (reparto de contratista vigente)
               SELECT 1 FROM dbo.Det_Compras dd LEFT JOIN dbo.Rubros rr ON rr.IdRubro = dd.IdRubro
               WHERE dd.IdDetalleCompra = c.IdDetalleCompra AND c.IdCompra IN (SELECT rv.idCompra FROM {_REPARTO_VIGENTE} rv)
-                AND (rr.Rubro IS NULL OR rr.Rubro NOT IN ({_FUERA})))
-        """.format(_REPARTO_VIGENTE=_REPARTO_VIGENTE, _FUERA=_FUERA),
+                AND (rr.Rubro IS NULL OR rr.Rubro NOT IN ({_FUERA}))){_ALCANCE}
+        """.format(_REPARTO_VIGENTE=_REPARTO_VIGENTE, _FUERA=_FUERA, _ALCANCE=_NO_EN_ALCANCE if esquema_050_activo() else ""),
         (id_destino, id_campania, *RUBROS_FUERA_REPARTO),
     )
     seguros = fetch_all(
@@ -87,11 +98,22 @@ def costo_ordenes_trabajo(id_cultivo: int, id_campania: int) -> list[dict]:
 
     productos = {f["idProducto"] for f in distrib}
     costo_renglon: dict[int, float] = {}
+    activo = esquema_050_activo()
+    remitos_alcance = capas_factura.renglones_remito_en_alcance() if activo else {}
     for pid in productos:
         stock = calcular_stock(pid).get(pid, {})
+        cant_capa = {c["id"]: _f(c["cantidad"]) for c in stock.get("capas", [])}
         for sid, consumo in stock.get("consumos", {}).items():
             if sid.startswith("OT"):
-                costo_renglon[int(sid[2:])] = consumo["costo"]
+                costo = consumo["costo"]
+                if activo:
+                    # 050: lo consumido de capas en alcance ya está en las fracciones aprobadas (costos_alcance).
+                    costo -= sum(
+                        it["cantidad"] * (it["costo_unitario"] or 0.0)
+                        * capas_factura.parte_en_alcance(it["capa"], cant_capa.get(it["capa"], 0.0), remitos_alcance)
+                        for it in consumo["items"]
+                    )
+                costo_renglon[int(sid[2:])] = costo
 
     ordenes_ids = {f["idOrdenTrabajo"] for f in distrib}
     for f in distrib:
@@ -154,9 +176,33 @@ def costos_contratista(id_cultivo: int, id_campania: int) -> list[dict]:
     )
 
 
+def costos_alcance(id_cultivo: int, id_campania: int) -> list[dict]:
+    """050: fracciones Aprobadas (Insumo/Directo) de la corrida vigente de cada renglón en alcance."""
+    if not esquema_050_activo():
+        return []
+    return fetch_all(
+        """
+        SELECT CASE WHEN p.Origen = 'Directo' THEN 'Compra' ELSE 'Insumo' END AS concepto, pe.Nombre AS rubro,
+               p.Importe AS montoPesos,
+               p.Importe / NULLIF(CASE WHEN c.Moneda = 'Dolares' THEN c.[Tipo de Cambio] END, 0) AS montoDolares,
+               'Alcance050' AS origen, d.IdCompra AS idCompra, p.IdDetalleCompra AS idDetalleCompra,
+               p.IdOrdenTrabajo AS idOrdenTrabajo, p.IdParte AS idParte
+        FROM dbo.ImputacionPropuestas p
+        JOIN dbo.TamizRenglones tz ON tz.IdDetalleCompra = p.IdDetalleCompra AND tz.Vigente = 1
+        JOIN dbo.Det_Compras d ON d.IdDetalleCompra = p.IdDetalleCompra
+        JOIN dbo.Compras c ON c.IdDeuda = d.IdCompra
+        LEFT JOIN dbo.PartesEstructuraCosto pe ON pe.IdParte = p.IdParte
+        WHERE p.Origen IN ('Insumo', 'Directo') AND p.Estado = 'Aprobada' AND p.IdCultivo = ? AND p.IdCampania = ?
+          AND p.IdCorrida = (SELECT TOP 1 p2.IdCorrida FROM dbo.ImputacionPropuestas p2
+                             WHERE p2.IdDetalleCompra = p.IdDetalleCompra AND p2.Origen = p.Origen ORDER BY p2.FechaCalculo DESC)
+        """,
+        (id_cultivo, id_campania),
+    )
+
+
 def costo_total(id_cultivo: int, id_campania: int) -> dict:
     lineas = (costos_heredados(id_cultivo, id_campania) + costo_ordenes_trabajo(id_cultivo, id_campania)
-              + gastos_caja(id_cultivo, id_campania))
+              + gastos_caja(id_cultivo, id_campania) + costos_alcance(id_cultivo, id_campania))
     return {
         "pesos": round(sum(_f(l["montoPesos"]) for l in lineas), 2),
         "dolares": round(sum(_f(l["montoDolares"]) for l in lineas), 2),

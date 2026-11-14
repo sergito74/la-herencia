@@ -117,12 +117,12 @@
 
 **Test independiente**: un cultivo con renglones en alcance suma cada costo una sola vez. Una campaña sin renglones en alcance da diferencia $0,00 contra antes.
 
-- [ ] T028 [P] [US1] Crear backend/tests/test_costos_alcance_050.py con estos casos:
+- [X] T028 [P] [US1] Crear backend/tests/test_costos_alcance_050.py con estos casos:
   - un renglón en alcance queda excluido de costos_heredados;
   - el consumo de capas en alcance no se cuenta en costo_ordenes_trabajo;
   - las fracciones Aprobadas Insumo/Directo sí se cuentan;
   - con Activo=0, el resultado es igual al de hoy.
-- [ ] T029 [US1] En backend/src/features/resultado_cultivo/costos.py, hacer tres cambios:
+- [X] T029 [US1] En backend/src/features/resultado_cultivo/costos.py, hacer tres cambios:
   - excluir los renglones en alcance de costos_heredados;
   - descontar de costo_ordenes_trabajo el consumo de capas en alcance;
   - agregar `costos_alcance(id_cultivo, id_campania)` con las fracciones aprobadas.

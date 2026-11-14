@@ -104,3 +104,24 @@ def costo_unitario_factura(r: dict, flete_pesos: float) -> float:
     cantidad = float(r["cantidad"] or 0)
     unitario = _a_pesos(float(r["precio"] or 0), r.get("moneda"), float(r.get("tc") or 0))
     return unitario + (flete_pesos / cantidad if cantidad > _EPS else 0.0)
+
+
+def renglones_remito_en_alcance() -> dict[int, float]:
+    """{IdDetalleRemito: cantidad remitida a renglones en alcance} (para no contar dos veces su consumo)."""
+    return {f["id"]: float(f["cant"] or 0) for f in fetch_all(
+        """
+        SELECT t.IdDetalleRemito AS id, SUM(t.CantidadRemitida) AS cant FROM dbo.tblRemitoCompra t
+        JOIN dbo.TamizRenglones tz ON tz.IdDetalleCompra = t.IdDetalleCompra AND tz.Vigente = 1
+             AND tz.Destino = 'CultivoStock' AND tz.Estado = 'Aprobada'
+        GROUP BY t.IdDetalleRemito
+        """
+    )}
+
+
+def parte_en_alcance(capa_id: str, cantidad_capa: float, remitos_alcance: dict[int, float]) -> float:
+    """Pura: qué proporción de la capa pertenece a renglones en alcance (mismo peso que usa el motor)."""
+    if capa_id.startswith("FC"):
+        return 1.0
+    if capa_id.startswith("R") and cantidad_capa > _EPS:
+        return min(1.0, remitos_alcance.get(int(capa_id[1:]), 0.0) / cantidad_capa)
+    return 0.0

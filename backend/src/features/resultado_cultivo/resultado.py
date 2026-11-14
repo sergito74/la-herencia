@@ -78,7 +78,8 @@ def venta_neta(id_cultivo: int, id_campania: int) -> dict:
 
 
 def detalle_costos(id_cultivo: int, id_campania: int) -> list[dict]:
-    return costos.costos_heredados(id_cultivo, id_campania) + costos.costo_ordenes_trabajo(id_cultivo, id_campania)
+    return (costos.costos_heredados(id_cultivo, id_campania) + costos.costo_ordenes_trabajo(id_cultivo, id_campania)
+            + costos.costos_alcance(id_cultivo, id_campania))
 
 
 def _costo_por_hectarea(costo: float, superficie: float | None) -> float | None:
