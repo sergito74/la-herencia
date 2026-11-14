@@ -2,6 +2,7 @@
 
 import { useParams } from "next/navigation";
 
+import { CostoPorParte } from "@/components/resultado-cultivo/CostoPorParte";
 import { FormularioResultados } from "@/components/resultado-cultivo/FormularioResultados";
 import { PageHeader } from "@/components/ui/PageHeader";
 
@@ -14,7 +15,12 @@ export default function DetalleResultadoCultivoPage() {
     <main className="mx-auto max-w-none px-6 py-3">
       <PageHeader titulo="Resultado de cultivo" volver="/produccion/resultado-cultivo" />
       {Number.isInteger(idCampania) && Number.isInteger(idCultivo)
-        ? <FormularioResultados idCultivo={idCultivo} idCampania={idCampania} />
+        ? (
+          <>
+            <FormularioResultados idCultivo={idCultivo} idCampania={idCampania} />
+            <CostoPorParte idCultivo={idCultivo} idCampania={idCampania} />
+          </>
+        )
         : <p className="text-sm text-status-danger">Cultivo o campaña inválidos.</p>}
     </main>
   );

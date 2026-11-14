@@ -164,3 +164,34 @@ export const fetchDetalleRubro = (idCultivo: number, idCampania: number, idRubro
   apiGet<DetalleRubroItem[]>(`/api/resultado-cultivo/access/costos/detalle?idCultivo=${idCultivo}&idCampania=${idCampania}&idRubro=${idRubro}`);
 export const fetchFormularioResultados = (idCultivo: number, idCampania: number) =>
   apiGet<FormularioResultados>(`/api/resultado-cultivo/access/resultados?idCultivo=${idCultivo}&idCampania=${idCampania}`);
+
+// ------------------------------------------------------------------ 050: costo por parte de la estructura
+
+export interface DocumentoParte {
+  concepto: string | null;
+  rubro: string | null;
+  montoPesos: number | null;
+  montoDolares: number | null;
+  idCompra: number | null;
+  idDetalleCompra: number | null;
+  idOrdenTrabajo: number | null;
+}
+
+export interface CostoParte {
+  parte: string;
+  pesos: number;
+  dolares: number;
+  pesosHa: number | null;
+  dolaresHa: number | null;
+  documentos: DocumentoParte[];
+}
+
+export interface CostoPorParte {
+  superficieHa: number;
+  partes: CostoParte[];
+  estructuraCampania: { pesos: number; dolares: number };
+  enStockSinConsumir: { pesos: number; dolares: number };
+}
+
+export const fetchCostoPorParte = (idCampania: number, idCultivo: number) =>
+  apiGet<CostoPorParte>(`/api/resultado-cultivo/campania/${idCampania}/cultivo/${idCultivo}/por-parte`);
