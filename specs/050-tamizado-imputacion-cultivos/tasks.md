@@ -77,16 +77,16 @@
 
 **Test independiente**: el escenario del glifosato del quickstart §3 (con mocks): 200 l, uso de 80 l, quedan 120 l en stock, y usos + stock = total al centavo.
 
-- [ ] T015 [P] [US9] Crear backend/tests/test_vinculo_auto_050.py con estos casos:
+- [X] T015 [P] [US9] Crear backend/tests/test_vinculo_auto_050.py con estos casos:
   - una coincidencia exacta única vincula;
   - dos facturas posibles van a revisión;
   - una entrega parcial 100+100 contra 200 vincula los dos remitos;
   - la suma de CantidadRemitida nunca supera la cantidad del renglón;
   - un remito fuera de la ventana de −60/+30 días no es candidato.
-- [ ] T016 [US9] Crear backend/src/features/remitos/vinculo_auto.py con `vincular_por_compra(id_compra)` y `vincular_por_remito(id_remito)`:
+- [X] T016 [US9] Crear backend/src/features/remitos/vinculo_auto.py con `vincular_por_compra(id_compra)` y `vincular_por_remito(id_remito)`:
   - escribe en tblRemitoCompra mediante `execute_write_transaction`;
   - lo dudoso va a VinculoRemitoPendiente.
-- [ ] T017 [US9] Llamar a vinculo_auto al guardar una compra en alcance (junto con T013) y al guardar un remito, en backend/src/features/remitos/repository.py.
+- [X] T017 [US9] Llamar a vinculo_auto al guardar una compra en alcance (junto con T013) y al guardar un remito, en backend/src/features/remitos/repository.py.
 - [ ] T018 [P] [US9] Crear backend/tests/test_capa_factura_sin_remito_050.py con dos casos:
   - un renglón en alcance sin remito genera la capa `F{id}` a la fecha de la factura;
   - al vincular el remito, la capa F desaparece.
@@ -228,3 +228,7 @@
 - T011 parcial: sin campaña se propone la vigente a la fecha (año agrícola julio-junio), siempre Pendiente. Faltan seguro → campaña asegurada, flete granos → campaña de cosecha, barbecho → cultivo siguiente.
 - T012 pendiente: deducción de cultivo (necesita el plan agrícola, US4).
 - Con IdDeudaCorte vacío nada está en alcance: el disparo no escribe hasta activar.
+
+### Avance 14/11/2026 (3)
+- T015–T017 hechos: remitos/vinculo_auto.py (combinación exacta única en unidad base, ventana −60/+30, hasta 4 remitos), disparo al guardar compra (tras el tamiz) y remito; lo dudoso a VinculoRemitoPendiente.
+- Simulación sin escribir sobre insumos 2025/26 con producto (20 renglones): 4 ya vinculados, 15 a revisar por cantidades que no coinciden, 1 sin remito. Caso típico: factura del 26/03/2026 con el mismo producto (39124) partido en 14 renglones (~22 l) contra un remito de 5 l.

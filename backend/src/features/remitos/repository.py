@@ -13,6 +13,7 @@ import re
 from collections import defaultdict
 from datetime import date, datetime
 
+from src.features.remitos import vinculo_auto
 from src.db.connection import execute_write_transaction, fetch_all, fetch_one
 from src.db.params import as_sql_datetime
 from src.features.imputacion import motor as imputacion_motor
@@ -405,7 +406,9 @@ def crear_remito(datos: dict, confirmar: bool = False) -> int:
 
     statements = [*stmts_prev, cab, *[linea(r) for r in datos["renglones"]], extra]
     resultados = execute_write_transaction(statements)
-    return resultados[len(stmts_prev)]
+    id_nuevo = resultados[len(stmts_prev)]
+    vinculo_auto.vincular_seguro(vinculo_auto.vincular_por_remito, id_nuevo)
+    return id_nuevo
 
 
 # ------------------------------------------------------------------ edición
@@ -464,6 +467,7 @@ def actualizar_remito(id_remito: int, datos: dict, confirmar: bool = False) -> N
                           (id_remito, r["idProducto"], r["cantidad"], r["unidad"], venc)))
     stmts += _upsert_extra(id_remito, {"IdEstablecimiento": datos.get("idEstablecimiento"), "Observaciones": datos.get("observaciones") or None, "Archivo": datos.get("archivo") or None, "RevisarDuplicado": 1 if adv["duplicados"] else 0})
     execute_write_transaction(stmts)
+    vinculo_auto.vincular_seguro(vinculo_auto.vincular_por_remito, id_remito)
 
 
 # ------------------------------------------------------------------ anulación
