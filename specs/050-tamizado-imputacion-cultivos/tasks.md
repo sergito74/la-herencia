@@ -105,11 +105,11 @@
   - si no, Pendiente con motivo en la cola.
 - [X] T024 [US9] En backend/src/features/ordenes/repository.py `_recalcular_imputacion_por_productos`, incluir también los renglones en alcance de esos productos que todavía no tienen corrida.
 - [X] T025 [US9] En motor.py, agregar `calcular_directo(id_detalle_compra)`, que genera fracciones con Origen 'Directo' para los renglones de una sola vez con su destino, parte, cultivo y campaña. Llamarlo desde tamiz cuando el renglón queda Aprobado.
-- [ ] T026 [US9] Crear backend/scripts/imputacion_diaria_050.py con la pasada diaria:
+- [X] T026 [US9] Crear backend/scripts/imputacion_diaria_050.py con la pasada diaria:
   - vinculo_auto pendiente;
   - recálculo de los renglones en alcance con stock;
   - posibles duplicados (capa F junto a un remito sin vincular del mismo proveedor y producto) a revisión.
-- [ ] T027 [US9] Registrar imputacion_diaria_050.py en el Programador de tareas de Windows (igual que la rutina de peajes) y documentarlo en quickstart.md.
+- [X] T027 [US9] Registrar imputacion_diaria_050.py en el Programador de tareas de Windows (igual que la rutina de peajes) y documentarlo en quickstart.md.
 
 ## Phase 5: US1 + US7 — Estructura de costos e informe por parte (P1/P3)
 

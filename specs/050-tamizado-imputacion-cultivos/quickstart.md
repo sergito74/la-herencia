@@ -52,3 +52,10 @@ python scripts/imputacion_diaria_050.py
 Corre la pasada diaria. Al terminar se verifica:
 - No quedan renglones en alcance sin clasificar: cada uno tiene destino o está en revisión.
 - El control comprado = aplicado + stock + bajas, por producto y campaña, da diferencia 0 o la lista.
+
+## Pasada diaria (T026/T027)
+
+- Script: `backend/scripts/imputacion_diaria_050.py` (`python -m scripts.imputacion_diaria_050` desde `backend/`). Registro en `backend/logs/imputacion_diaria_050.log`.
+- Tarea programada: **LaHerencia - Imputacion diaria**, todos los días 21:00 (corre al prender la PC si estaba apagada). Se instala con `backend/scripts/instalar_imputacion_diaria_050.ps1` (registrada el 14/11/2026).
+- Hace: vínculo remito↔factura de las compras en alcance, recálculo de cada renglón en alcance (solo guarda si cambió) y deja los posibles duplicados pendientes.
+- Mientras el criterio no esté activado (sin renglones en alcance) no hace nada: resultado `{}`.

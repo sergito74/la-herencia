@@ -97,6 +97,8 @@ def imputar_insumo(id_detalle: int) -> dict:
         return {"accion": "sinCapa"}
     por_uso = t["regla"] == "SegunUsoOrden"
     fracciones, motivo = asignar_partes(fracciones, t["idParte"], por_uso, motor._id_centro_ganaderia())
+    if motivo is None and posible_duplicado(id_detalle):
+        motivo = "Posible duplicado: hay un remito sin vincular del mismo proveedor y producto"
     total = total_renglon(t, capas_factura.flete_por_renglon().get(id_detalle, 0.0))
     fracciones, motivo = decidir_estado(fracciones, total, motivo)
     if _misma_corrida(id_detalle, fracciones, "Insumo"):
@@ -142,3 +144,27 @@ def detalles_en_alcance_por_producto(id_producto: int) -> list[int]:
         "WHERE tz.Vigente = 1 AND tz.Destino = 'CultivoStock' AND tz.Estado = 'Aprobada' AND d.IdFormulado = ?",
         (id_producto,),
     )]
+
+
+def posible_duplicado(id_detalle: int) -> bool:
+    """R-03: la capa de la factura convive con un remito sin vincular del mismo proveedor y producto."""
+    return fetch_one(
+        """
+        SELECT TOP 1 1 AS x FROM dbo.Det_Compras d JOIN dbo.Compras c ON c.IdDeuda = d.IdCompra
+        JOIN dbo.Remitos r ON r.IdProveedor = c.IdContacto
+        JOIN dbo.Remitos_Detalles rd ON rd.IdRemito = r.IdRemito AND rd.IdFormulado = d.IdFormulado
+        LEFT JOIN dbo.Remitos_Extra x ON x.IdRemito = r.IdRemito
+        WHERE d.IdDetalleCompra = ? AND ISNULL(x.Anulado, 0) = 0
+          AND NOT EXISTS (SELECT 1 FROM dbo.tblRemitoCompra t WHERE t.IdDetalleCompra = d.IdDetalleCompra)
+          AND NOT EXISTS (SELECT 1 FROM dbo.tblRemitoCompra t WHERE t.IdDetalleRemito = rd.IdDetalleRemito)
+          AND r.Fecha BETWEEN DATEADD(day, -60, c.Fecha) AND DATEADD(day, 30, c.Fecha)
+        """,
+        (id_detalle,),
+    ) is not None
+
+
+def renglones_en_alcance() -> list[dict]:
+    return fetch_all(
+        "SELECT tz.IdDetalleCompra AS id, d.IdCompra AS idCompra, tz.Destino AS destino FROM dbo.TamizRenglones tz "
+        "JOIN dbo.Det_Compras d ON d.IdDetalleCompra = tz.IdDetalleCompra WHERE tz.Vigente = 1 AND tz.Estado = 'Aprobada'"
+    )
