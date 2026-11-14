@@ -308,11 +308,28 @@ def total_neto_compra(id_compra: int) -> dict | None:
     marcas = ",".join("?" * len(RUBROS_FUERA_REPARTO))
     return fetch_one(
         "SELECT c.Moneda AS moneda, c.[Tipo de Cambio] AS tipoDeCambio, c.[Tipo documento] AS tipoDocumento, "
-        "(SELECT SUM(ABS(ISNULL(d.Cantidad, 0) * ISNULL(d.[Precio Unitario], 0))) FROM dbo.Det_Compras d "
+        # 13/11/2026: ABS del total, no de cada renglón — un renglón de descuento (ej. Gutiérrez 0565, remediación
+        # −$308.280) se resta; antes se sumaba.
+        "(SELECT ABS(SUM(ISNULL(d.Cantidad, 0) * ISNULL(d.[Precio Unitario], 0))) FROM dbo.Det_Compras d "
         " LEFT JOIN dbo.Rubros r ON r.IdRubro = d.IdRubro "
         f" WHERE d.IdCompra = c.IdDeuda AND (r.Rubro IS NULL OR r.Rubro NOT IN ({marcas}))) AS neto "
         "FROM dbo.Compras c WHERE c.IdDeuda = ?",
         (*RUBROS_FUERA_REPARTO, id_compra),
+    )
+
+
+def renglones_repartibles(id_compra: int) -> list[dict]:
+    """048 (13/11/2026): renglones del neto repartible con su imputación manual (cultivo por nombre de destino,
+    campaña) — el reparto por órdenes respeta lo que Sergio imputó a mano por cultivo/campaña."""
+    marcas = ",".join("?" * len(RUBROS_FUERA_REPARTO))
+    return fetch_all(
+        "SELECT ISNULL(d.Cantidad, 0) * ISNULL(d.[Precio Unitario], 0) AS neto, cu.IdCultivo AS idCultivo, "
+        "d.IdCampaña AS idCampania FROM dbo.Det_Compras d "
+        "LEFT JOIN dbo.Rubros r ON r.IdRubro = d.IdRubro "
+        "LEFT JOIN dbo.DestinoCompras de ON de.IdDestino = d.IdDestino "
+        "LEFT JOIN dbo.Cultivos cu ON cu.Cultivo = de.Destino "
+        f"WHERE d.IdCompra = ? AND (r.Rubro IS NULL OR r.Rubro NOT IN ({marcas})) ORDER BY d.IdDetalleCompra",
+        (id_compra, *RUBROS_FUERA_REPARTO),
     )
 
 

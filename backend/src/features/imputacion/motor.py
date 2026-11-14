@@ -8,6 +8,7 @@ nada por sí solo: `repository.guardar_corrida()` persiste el resultado.
 """
 
 from __future__ import annotations
+from collections import defaultdict
 
 from src.features.compras.repository import get_id_centro_costo_por_nombre
 from src.features.imputacion import calendario_agricola, repository
@@ -254,16 +255,58 @@ def evaluar_contratista(id_compra: int) -> tuple[list[dict], str | None]:
     if peso_total <= EPS:
         return [], "sinOrdenVinculada"
 
+    # 13/11/2026 (Sergio): la imputación manual de cada renglón (cultivo/campaña) manda. El importe de cada
+    # renglón va a los lotes de las órdenes con ese cultivo y campaña (o solo ese cultivo); lo que no encaja
+    # se reparte por superficie entre todas las órdenes, como antes.
+    importes: dict[int, float] = defaultdict(float)  # índice en con_cultivo -> importe
+    importe_sin_cultivo = 0.0
+    sin_lote: dict[tuple, float] = defaultdict(float)
+    cambio_campania: dict[tuple, float] = defaultdict(float)
+    renglones = repository.renglones_repartibles(id_compra)
+    neto_renglones = sum(float(r["neto"] or 0) for r in renglones)
+    resto = monto_total
+    if abs(neto_renglones) > EPS:
+        for r in renglones:
+            monto = monto_total * float(r["neto"] or 0) / neto_renglones
+            destino = [i for i, f in enumerate(con_cultivo)
+                       if r["idCultivo"] and f["idCultivo"] == r["idCultivo"] and f["idCampania"] == r["idCampania"]]
+            sup = sum(con_cultivo[i]["superficie"] for i in destino)
+            otra_campania = [i for i, f in enumerate(con_cultivo) if r["idCultivo"] and f["idCultivo"] == r["idCultivo"]]
+            sup_otra = sum(con_cultivo[i]["superficie"] for i in otra_campania)
+            if destino and sup > EPS:
+                for i in destino:
+                    importes[i] += monto * con_cultivo[i]["superficie"] / sup
+                resto -= monto
+            elif otra_campania and sup_otra > EPS:
+                # Mismo cultivo, otra campaña en la orden: lotes de la orden, campaña la imputada a mano.
+                for i in otra_campania:
+                    cambio_campania[(i, r["idCampania"])] += monto * con_cultivo[i]["superficie"] / sup_otra
+                resto -= monto
+            elif r["idCultivo"]:
+                # Cultivo imputado a mano que ninguna orden tiene: queda en su cultivo/campaña, sin lote.
+                sin_lote[(r["idCultivo"], r["idCampania"])] += monto
+                resto -= monto
+    for i, f in enumerate(con_cultivo):
+        importes[i] += resto * f["superficie"] / peso_total
+    importe_sin_cultivo = resto / peso_total
+
     fracciones: list[dict] = []
     total_repartido = 0.0
-    for f in con_cultivo:
-        importe = round(monto_total * f["superficie"] / peso_total, 2)
+    for i, f in enumerate(con_cultivo):
+        importe = round(importes[i], 2)
         total_repartido += importe
         fracciones.append({**f, "importe": importe})
     for f in sin_cultivo:
-        importe = round(monto_total * 1 / peso_total, 2)
+        importe = round(importe_sin_cultivo, 2)
         total_repartido += importe
         fracciones.append({**f, "importe": importe})
+    for (i, id_campania), monto in cambio_campania.items():
+        fracciones.append({**con_cultivo[i], "idCampania": id_campania, "importe": round(monto, 2)})
+    for (id_cultivo, id_campania), monto in sin_lote.items():
+        fracciones.append({"idOrdenTrabajo": ordenes[0], "idLote": None, "idCultivo": id_cultivo,
+                           "idCampania": id_campania, "superficie": 0.0, "importe": round(monto, 2)})
+    fracciones = [f for f in fracciones if abs(f["importe"]) > 0.004] or fracciones
+    total_repartido = sum(f["importe"] for f in fracciones)
 
     # 048: la última fracción absorbe el redondeo para cerrar al centavo.
     if fracciones:

@@ -31,6 +31,10 @@ Facturas de labor recientes (desde 07/2025) sin orden vinculada. Se vinculan **s
 
 ## Hecho
 
+- 13/11 (noche, 3): Sergio: la imputación manual de cada renglón manda; las órdenes solo ponen los lotes. Motor de reparto cambiado: importe por cultivo/campaña = renglones; dentro de cada cultivo, por superficie de los lotes de las órdenes; mismo cultivo con otra campaña → lotes de la orden, campaña manual; cultivo sin orden → sin lote; 'No Aplica' → por superficie. Neto con signo (descuentos restan). 74 facturas vinculadas, las 74 coinciden con la imputación manual.
+- Pares aclarados: Peveri 0184 anulada por NC 0026 (refacturada 0196); Gutiérrez 0549 anulada por NC 0042 (refacturada 0565 con remediación lote 9B −$308.280). NC relacionadas en Documentos relacionados.
+- Quedan 7 sin ninguna orden en el sistema (conservan su imputación manual): Cuatro Vientos 0029, 0076; Pérez 0628; Posada 0204; Peveri 0062; Yanquelen 0006, 0009.
+
 - 13/11 (noche, 2): cruce automático por renglones (labor + cultivo + campaña + ha; Sergio: "es un trabajo tuyo"). Vinculadas 23 facturas 2015-2025 (Pérez 0669, 0518, 0488, 0497, 0514, 0677, 0555; Gutiérrez 0372, 0563, 0418, 0391; Peveri 0209, 0091, 0023, 0137; Posada 0449; Cuatro Vientos 0018, 0082, 0002, 0012, 0066, 0006, 0023) + OT 134 a Yanquelen 0035. Criterio: todos los cultivos de la factura con orden, orden no repetida, dif. ha ≤16%. Pantalla 'Por documento' ya muestra el reparto por órdenes.
 - Excepciones (22): pares con renglones idénticos Peveri 0184/0196 ($92.797,90 c/u) y Gutiérrez 0549/0565 (0565 = mismos renglones + 'Remediación lote 9B' −$308.280) → ¿duplicadas?; Yanquelen 0028 (siembra maíz diferido sin orden), 0012, 0014, 0015, 0019, 0020, 0006, 0009 (faltan órdenes de siembra); Pérez 0505, 0615, 0628; Gutiérrez 0332; Cuatro Vientos 0029, 0035, 0076, 0100; Posada 0204; Peveri 0062.
 
