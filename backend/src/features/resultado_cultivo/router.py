@@ -6,7 +6,7 @@ from __future__ import annotations
 from fastapi import APIRouter, HTTPException, Response
 from starlette.concurrency import run_in_threadpool
 
-from src.features.resultado_cultivo import campania_actual, exportacion, formularios_access, resultado
+from src.features.resultado_cultivo import campania_actual, exportacion, formularios_access, por_parte, resultado
 from src.db.connection import fetch_all
 
 router = APIRouter(prefix="/api/resultado-cultivo", tags=["resultado-cultivo"])
@@ -68,6 +68,13 @@ async def cultivo(id_campania: int, id_cultivo: int) -> dict:
 async def costos_cultivo(id_campania: int, id_cultivo: int) -> list[dict]:
     await _ejecutar(resultado.resultado_cultivo, id_cultivo, id_campania)
     return await run_in_threadpool(resultado.detalle_costos, id_cultivo, id_campania)
+
+
+@router.get("/campania/{id_campania}/cultivo/{id_cultivo}/por-parte")
+async def costos_por_parte(id_campania: int, id_cultivo: int) -> dict:
+    """050 US7: costo agrupado en las 9 partes de la estructura, con $/ha y US$/ha."""
+    await _ejecutar(resultado.resultado_cultivo, id_cultivo, id_campania)
+    return await run_in_threadpool(por_parte.costo_por_parte, id_cultivo, id_campania)
 
 
 @router.get("/campania/{id_campania}/exportar")

@@ -53,7 +53,7 @@ Busca el par que corresponde y lo vincula si la coincidencia es única. Responde
 
 ## Resultado
 
-### `GET /api/resultado-cultivo/{idCultivo}/{idCampania}/por-parte`
+### `GET /api/resultado-cultivo/campania/{idCampania}/cultivo/{idCultivo}/por-parte` (ruta alineada con el resto del router)
 ```json
 { "superficieHa": 0, "partes": [ { "parte": "Agroquímicos", "pesos": 0, "dolares": 0,
   "pesosHa": 0, "dolaresHa": 0, "documentos": [ … ] } ],

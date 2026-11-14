@@ -128,7 +128,7 @@
   - agregar `costos_alcance(id_cultivo, id_campania)` con las fracciones aprobadas.
 
   Todo esto solo si ImputacionConfig.Activo=1.
-- [ ] T030 [US7] Agregar el endpoint `GET /api/resultado-cultivo/{idCultivo}/{idCampania}/por-parte` en backend/src/features/resultado_cultivo/router.py, según contracts/api.md. Incluye partes, estructura de campaña y "en stock sin consumir".
+- [X] T030 [US7] Agregar el endpoint `GET /api/resultado-cultivo/{idCultivo}/{idCampania}/por-parte` en backend/src/features/resultado_cultivo/router.py, según contracts/api.md. Incluye partes, estructura de campaña y "en stock sin consumir".
 - [ ] T031 [US7] En frontend/src/app/resultado-cultivo, mostrar el informe por parte con $/ha y US$/ha y apertura hasta el documento o la orden, usando los helpers de formato de números (nada de toLocaleString).
 - [ ] T032 [US1] Crear backend/scripts/activar_alcance_050.py:
   - `--dry-run` arma el Excel antes/después por cultivo/campaña en la carpeta de la spec;
