@@ -122,3 +122,20 @@ def guardar_regla_producto(id_detalle: int, destino: str, id_parte: int | None, 
 def campania_por_nombre(nombre: str) -> int | None:
     r = fetch_one("SELECT TOP 1 [IdCampaña] AS id FROM dbo.[Campañas] WHERE [Campaña] = ?", (nombre,))
     return r["id"] if r else None
+
+
+def cultivos() -> dict[int, str]:
+    return {f["id"]: f["nombre"] for f in fetch_all("SELECT IdCultivo AS id, Cultivo AS nombre FROM dbo.Cultivos")}
+
+
+def cultivos_con_ordenes(id_campania: int) -> list[int]:
+    """Cultivos que tienen órdenes de trabajo en la campaña (opciones para deducir el cultivo, T012)."""
+    return [f["id"] for f in fetch_all(
+        "SELECT DISTINCT IdCultivo AS id FROM dbo.Ordenes_Trabajo_Distrib WHERE IdCampania = ? AND Aplicar = 1 AND IdCultivo IS NOT NULL",
+        (id_campania,),
+    )]
+
+
+def nombre_campania(id_campania: int) -> str | None:
+    r = fetch_one("SELECT [Campaña] AS n FROM dbo.[Campañas] WHERE [IdCampaña] = ?", (id_campania,))
+    return r["n"] if r else None

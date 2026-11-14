@@ -36,8 +36,8 @@
   - alta en el alcance;
   - guardar clasificación (una sola vigente);
   - la cola de revisión.
-- [ ] T006 [P] En backend/src/features/imputacion/repository.py, agregar el filtro de alcance a las consultas de documentos y fracciones (helper `ids_en_alcance`).
-- [ ] T007 [P] Crear backend/tests/test_tamiz_repository_050.py con tres casos:
+- [X] T006 [P] En backend/src/features/imputacion/repository.py, agregar el filtro de alcance a las consultas de documentos y fracciones (helper `ids_en_alcance`).
+- [X] T007 [P] Crear backend/tests/test_tamiz_repository_050.py con tres casos:
   - una sola fila vigente por renglón;
   - un rubro sin regla devuelve el motivo `rubroSinRegla`;
   - el alcance por `IdDeuda > IdDeudaCorte`.
@@ -62,12 +62,12 @@
   - Combustible: Estructura salvo que pase por stock;
   - Financiamiento por documento relacionado;
   - SegunUsoOrden: se resuelve en el motor.
-- [ ] T011 [US3] En tamiz.py, implementar la campaña de los renglones de una sola vez (FR-006):
+- [X] T011 [US3] En tamiz.py, implementar la campaña de los renglones de una sola vez (FR-006):
   - el seguro va a la campaña asegurada;
   - el flete de granos y la comercialización van a la campaña de cosecha del grano;
   - el barbecho va al cultivo siguiente;
   - si no se puede determinar, la campaña vigente a la fecha y el renglón va a revisión.
-- [ ] T012 [US3] En tamiz.py, deducir el cultivo cuando falta (grano, fecha u orden más cercana). Imputar solo si hay una única opción; si no, mandar a revisión con las opciones.
+- [X] T012 [US3] En tamiz.py, deducir el cultivo cuando falta (grano, fecha u orden más cercana). Imputar solo si hay una única opción; si no, mandar a revisión con las opciones.
 - [X] T013 [US2] En backend/src/features/compras (el guardado y la edición de la compra), llamar a `tamiz.tamizar_compra(id)` después de guardar, solo si la compra está en alcance. Un error del tamiz no tiene que impedir guardar la compra.
 - [X] T014 [US2] En backend/src/features/imputacion/router.py, agregar los endpoints `POST/GET /tamiz/compra/{idCompra}` y `PUT /tamiz/renglon/{idDetalleCompra}` según contracts/api.md.
 
@@ -232,3 +232,8 @@
 ### Avance 14/11/2026 (3)
 - T015–T017 hechos: remitos/vinculo_auto.py (combinación exacta única en unidad base, ventana −60/+30, hasta 4 remitos), disparo al guardar compra (tras el tamiz) y remito; lo dudoso a VinculoRemitoPendiente.
 - Simulación sin escribir sobre insumos 2025/26 con producto (20 renglones): 4 ya vinculados, 15 a revisar por cantidades que no coinciden, 1 sin remito. Caso típico: factura del 26/03/2026 con el mismo producto (39124) partido en 14 renglones (~22 l) contra un remito de 5 l.
+
+### Avance 14/11/2026 (4) — /speckit-implement
+- T006/T007: `ids_en_alcance` + `SQL_COMPRA_EN_ALCANCE` (filtro opcional `solo_alcance` en documentos); tests del repositorio.
+- T011/T012: campaña propuesta por año agrícola (seguro y barbecho de abril a junio → campaña siguiente), siempre para revisar; cultivo por nombre en el renglón o única opción con órdenes en la campaña (se aprueba solo si la campaña vino cargada).
+- Simulación 692 facturas: 1.445 aprobadas, 425 pendientes (2 labores pasaron a aprobadas con cultivo deducido por el producto; 14 quedan con campaña propuesta y opciones de cultivo).

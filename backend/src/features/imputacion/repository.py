@@ -410,7 +410,29 @@ _VIGENTE_SQL = (
 )
 
 
-def _filtros_documentos(id_contacto, fecha_desde, fecha_hasta, estado) -> tuple[list[str], list]:
+# Alcance del esquema nuevo (050 R-01): cargada después del corte o renglón marcado en ImputacionAlcance.
+SQL_COMPRA_EN_ALCANCE = (
+    "(c.IdDeuda > ISNULL((SELECT IdDeudaCorte FROM dbo.ImputacionConfig WHERE Id = 1), 2147483647) "
+    "OR EXISTS (SELECT 1 FROM dbo.ImputacionAlcance a JOIN dbo.Det_Compras da ON da.IdDetalleCompra = a.IdDetalleCompra "
+    "WHERE da.IdCompra = c.IdDeuda))"
+)
+
+
+def ids_en_alcance(ids_detalle_compra: list[int]) -> set[int]:
+    """De una lista de renglones de compra, los que están en el alcance 050."""
+    ids = [int(i) for i in ids_detalle_compra]
+    if not ids:
+        return set()
+    marcas = ",".join("?" for _ in ids)
+    filas = fetch_all(
+        f"SELECT d.IdDetalleCompra AS id FROM dbo.Det_Compras d JOIN dbo.Compras c ON c.IdDeuda = d.IdCompra "
+        f"WHERE d.IdDetalleCompra IN ({marcas}) AND {SQL_COMPRA_EN_ALCANCE}",
+        tuple(ids),
+    )
+    return {f["id"] for f in filas}
+
+
+def _filtros_documentos(id_contacto, fecha_desde, fecha_hasta, estado, solo_alcance: bool = False) -> tuple[list[str], list]:
     where = ["(c.IdDeuda IN (SELECT DISTINCT dc.IdCompra FROM dbo.Det_Compras dc "
              "JOIN dbo.ImputacionPropuestas p ON p.IdDetalleCompra = dc.IdDetalleCompra AND p.Origen <> 'Contratista') "
              "OR c.IdDeuda IN (SELECT p.IdDetalleCompra FROM dbo.ImputacionPropuestas p WHERE p.Origen = 'Contratista'))"]
@@ -433,6 +455,8 @@ def _filtros_documentos(id_contacto, fecha_desde, fecha_hasta, estado) -> tuple[
             "AND p.Estado = ?))"
         )
         params += [estado, estado]
+    if solo_alcance:
+        where.append(SQL_COMPRA_EN_ALCANCE)
     return where, params
 
 

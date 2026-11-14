@@ -107,14 +107,7 @@ def clasificar_renglon(r: dict, reglas_rubro: dict, reglas_producto: list, conte
     if destino == "Cultivo":
         if cultivo and campania:
             return _resultado(r, destino, parte, cultivo, campania, origen="Manual")
-        falta = "cultivo y campaña" if not cultivo and not campania else ("cultivo" if not cultivo else "campaña")
-        motivo = f"Falta {falta}"
-        if not campania and contexto.get("campaniaVigente"):
-            # FR-006: sin dato, se propone la campaña vigente a la fecha, siempre para revisar.
-            campania = contexto["campaniaVigente"]
-            motivo += f" (se propone la vigente a la fecha: {contexto.get('campaniaVigenteNombre')})"
-        return _resultado(r, destino, parte, cultivo, campania, origen="Revision", estado="Pendiente",
-                          motivo=motivo)
+        return _deducir(r, destino, parte, cultivo, campania, contexto)
 
     if destino == "Depende":
         texto = normalizar(r.get("producto"))
@@ -145,6 +138,53 @@ def clasificar_renglon(r: dict, reglas_rubro: dict, reglas_producto: list, conte
         return _resultado(r, destino, origen="Revision", estado="Pendiente",
                           motivo="El rubro es gasto general pero el renglón tiene cultivo y campaña cargados")
     return _resultado(r, destino)
+
+
+_PARTES_ANTICIPADAS = (7,)  # seguro agrícola: se contrata antes de la campaña que cubre
+
+
+def _anio_agricola(fecha, anticipado: bool) -> str | None:
+    """Campaña que corresponde a la fecha. `anticipado` (seguro, barbecho): de abril a junio ya cubre la que viene."""
+    if fecha is None:
+        return None
+    y = fecha.year if fecha.month >= 7 else fecha.year - 1
+    if anticipado and 4 <= fecha.month <= 6:
+        y += 1
+    return f"{y}/{y + 1}"
+
+
+def _deducir(r, destino, parte, cultivo, campania, contexto) -> dict:
+    """T011/T012 (FR-006): propone campaña y cultivo cuando faltan. La campaña deducida siempre queda para
+    revisar; el cultivo se asigna solo cuando hay una única opción y la campaña vino cargada."""
+    texto = normalizar(r.get("producto"))
+    motivos = []
+    campania_cargada = bool(campania)
+    if not campania:
+        anticipado = parte in _PARTES_ANTICIPADAS or "BARBECHO" in texto
+        nombre = _anio_agricola(contexto.get("fecha"), anticipado)
+        campania = (contexto.get("campaniasPorNombre") or {}).get(nombre)
+        if campania:
+            criterio = "campaña siguiente (se contrata antes)" if anticipado and nombre != campania_vigente(contexto.get("fecha")) else "vigente a la fecha"
+            motivos.append(f"Falta campaña: se propone {nombre} ({criterio})")
+        else:
+            motivos.append("Falta campaña")
+    if not cultivo:
+        nombres = contexto.get("cultivos") or {}
+        por_texto = [i for i, n in nombres.items() if n and len(normalizar(n)) >= 4 and normalizar(n) in texto]
+        opciones = por_texto or ((contexto.get("cultivosPorCampania") or {}).get(campania) or [])
+        if len(opciones) == 1:
+            cultivo = opciones[0]
+            if not motivos and campania_cargada:
+                origen = "el producto" if por_texto else "la única con órdenes en la campaña"
+                return _resultado(r, destino, parte, cultivo, campania, origen="Rubro",
+                                  motivo=f"Cultivo deducido por {origen}")
+            motivos.append(f"Cultivo propuesto: {nombres.get(cultivo)}")
+        elif opciones:
+            motivos.append("Falta cultivo; opciones: " + ", ".join(sorted(nombres.get(i, str(i)) for i in opciones)))
+        else:
+            motivos.append("Falta cultivo")
+    return _resultado(r, destino, parte, cultivo, campania, origen="Revision", estado="Pendiente",
+                      motivo="; ".join(motivos))
 
 
 def campania_vigente(fecha) -> str | None:
@@ -184,10 +224,17 @@ def tamizar_compra(id_compra: int, *, guardar: bool = True, forzar: bool = False
     reglas_rubro = repo.reglas_rubro()
     reglas_producto = repo.reglas_producto()
     ctx = _contexto(renglones, reglas_rubro)
-    nombre = campania_vigente(renglones[0].get("fecha")) if renglones else None
-    if nombre:
-        ctx["campaniaVigenteNombre"] = nombre
-        ctx["campaniaVigente"] = repo.campania_por_nombre(nombre)
+    fecha = renglones[0].get("fecha") if renglones else None
+    if hasattr(fecha, "date"):
+        fecha = fecha.date()
+    ctx["fecha"] = fecha
+    if any(r.get("idCultivo") is None or r.get("idCampania") in (None, repo.CAMPANIA_NO_APLICA) for r in renglones):
+        nombres = {n for n in (_anio_agricola(fecha, False), _anio_agricola(fecha, True)) if n}
+        ctx["campaniasPorNombre"] = {n: repo.campania_por_nombre(n) for n in nombres}
+        ctx["cultivos"] = repo.cultivos()
+        camps = {c for c in ctx["campaniasPorNombre"].values() if c} | {
+            r["idCampania"] for r in renglones if r.get("idCampania") not in (None, repo.CAMPANIA_NO_APLICA)}
+        ctx["cultivosPorCampania"] = {c: repo.cultivos_con_ordenes(c) for c in camps}
     clasificaciones = [clasificar_renglon(r, reglas_rubro, reglas_producto, ctx) for r in renglones]
     if guardar:
         repo.guardar_clasificaciones(clasificaciones)

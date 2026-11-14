@@ -153,7 +153,33 @@ def test_campania_vigente_por_anio_agricola():
     assert tamiz.campania_vigente(date(2026, 3, 10)) == "2025/2026"
 
 
+from datetime import date as _date
+
+CTX_DED = {**SIN_CTX, "fecha": _date(2026, 11, 10), "campaniasPorNombre": {"2026/2027": 32, "2027/2028": 34},
+           "cultivos": {1: "Soja", 3: "Maiz", 5: "Trigo"}, "cultivosPorCampania": {32: [1, 3], 33: [5]}}
+
+
 def test_labor_sin_campania_propone_la_vigente_pero_queda_pendiente():
-    ctx = {**SIN_CTX, "campaniaVigente": 32, "campaniaVigenteNombre": "2026/2027"}
-    res = tamiz.clasificar_renglon(_r(1, FUMIG, cultivo=3), REGLAS, [], ctx)
+    res = tamiz.clasificar_renglon(_r(1, FUMIG, cultivo=3), REGLAS, [], CTX_DED)
     assert res["estado"] == "Pendiente" and res["idCampania"] == 32 and "2026/2027" in res["motivo"]
+
+
+def test_seguro_en_mayo_propone_la_campania_siguiente():
+    ctx = {**CTX_DED, "fecha": _date(2027, 5, 20)}
+    res = tamiz.clasificar_renglon(_r(1, SEGURO, "Seguro granizo", cultivo=5), REGLAS, [], ctx)
+    assert res["idCampania"] == 34 and "siguiente" in res["motivo"]
+
+
+def test_cultivo_por_texto_del_renglon_con_campania_cargada_se_aprueba():
+    res = tamiz.clasificar_renglon(_r(1, FUMIG, "Fumigacion maiz lote 5", campania=32), REGLAS, [], CTX_DED)
+    assert res["estado"] == "Aprobada" and res["idCultivo"] == 3
+
+
+def test_cultivo_unico_con_ordenes_en_la_campania():
+    res = tamiz.clasificar_renglon(_r(1, FUMIG, "Aplicacion", campania=33), REGLAS, [], CTX_DED)
+    assert res["estado"] == "Aprobada" and res["idCultivo"] == 5
+
+
+def test_varios_cultivos_posibles_van_a_revision_con_opciones():
+    res = tamiz.clasificar_renglon(_r(1, FUMIG, "Aplicacion", campania=32), REGLAS, [], CTX_DED)
+    assert res["estado"] == "Pendiente" and "Maiz, Soja" in res["motivo"]
