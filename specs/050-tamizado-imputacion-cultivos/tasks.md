@@ -10,8 +10,8 @@
 
 ## Phase 1: Setup
 
-- [ ] T001 Hacer el backup verificado de WC y registrar el resultado en specs/050-tamizado-imputacion-cultivos/backup-20261114.md.
-- [ ] T002 Crear backend/scripts/crear_tablas_tamiz_050.py. Tiene que ser idempotente y crear las tablas de data-model.md:
+- [X] T001 Hacer el backup verificado de WC y registrar el resultado en specs/050-tamizado-imputacion-cultivos/backup-20261114.md.
+- [X] T002 Crear backend/scripts/crear_tablas_tamiz_050.py. Tiene que ser idempotente y crear las tablas de data-model.md:
   - PartesEstructuraCosto, PartesEstructuraCultivoInactivas, TamizRubroDestino, TamizReglaProducto, ImputacionConfig, ImputacionAlcance, TamizRenglones, VinculoRemitoPendiente.
   - Además: ALTER `ImputacionPropuestas` ADD `IdParte int NULL`.
   - Restricciones literales:
@@ -21,12 +21,12 @@
     - Motivo de alcance ∈ `Nuevo|StockSinImputar`.
     - IdParte es obligatorio si Destino ∈ (CultivoStock, Cultivo).
     - Una sola fila Vigente=1 por IdDetalleCompra en TamizRenglones.
-- [ ] T003 En el mismo script, cargar las 9 partes y las 48 filas de TamizRubroDestino según tabla-rubros-destino.md:
+- [X] T003 En el mismo script, cargar las 9 partes y las 48 filas de TamizRubroDestino según tabla-rubros-destino.md:
   - Flete insumos → `CultivoStock` con regla `FleteInsumo`.
   - Insumos productivos → `Depende`/`SegunUsoOrden`.
   - Flete granos → `Cultivo`/Comercialización.
   - ImputacionConfig con Activo=0.
-- [ ] T004 Correr crear_tablas_tamiz_050.py contra WC y verificar: 48 rubros cargados, ninguno sin parte cuando corresponde.
+- [X] T004 Correr crear_tablas_tamiz_050.py contra WC y verificar: 48 rubros cargados, ninguno sin parte cuando corresponde.
 
 ## Phase 2: Foundational
 
