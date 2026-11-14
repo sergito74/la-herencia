@@ -12,6 +12,11 @@ Las decisiones salen de las 50 preguntas respondidas por Sergio el 14/11/2026 ([
 
 Esta spec se apoya en la 049 y no reabre sus decisiones: los insumos cuentan por lo aplicado, rige desde la campaña 2025/2026 y la aprobación es automática con lista de revisión.
 
+**Alcance (14/11/2026)**:
+- Lo ya imputado no se toca.
+- Los insumos de stock siguen la imputación progresiva por renglón de la spec 049: entran "en stock" y se imputan a medida que las órdenes los usan.
+- El resto de los renglones (labores, seguros, arrendamiento, fletes, estructura) se imputa de una vez según este tamizado.
+
 ## Contexto (datos WC, renglones desde el 01/07/2025)
 
 - Hay 1.869 renglones en 688 facturas; 687 tienen rubro de cultivo.

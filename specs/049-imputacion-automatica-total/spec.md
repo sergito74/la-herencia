@@ -19,6 +19,21 @@
   - 2025: 15 de 61 renglones vinculados.
 - **Valuación sin explicar**: Maíz 2024/25 da $64 M por órdenes contra $5 M por factura.
 
+## Modelo acordado con Sergio (14/11/2026, reemplaza las "capas de stock vía remito")
+
+- **Los remitos manejan el stock; las facturas lo valorizan e imputan.** Cada renglón de remito queda vinculado a su renglón de factura.
+- **La imputación vive en el renglón de factura de insumo y se va completando con los usos.** Al entrar la factura, el renglón queda entero "en stock". Cada orden ejecutada descuenta su consumo del renglón con saldo más antiguo de ese producto y agrega una fracción con el cultivo/campaña de la orden. Lo que no se usó sigue "en stock" en el mismo renglón hasta que lo consuma una orden o se dé de baja.
+- **Invariante**: suma de los usos + saldo en stock = total del renglón, al centavo.
+- **Actualización**: al ejecutarse cada orden, más una pasada diaria que revisa todo.
+- **Orden de consumo**: lo que entró primero se usa primero. Si una orden necesita más de lo que le queda a un renglón, sigue con el renglón siguiente.
+- **Alcance**:
+  - facturas nuevas;
+  - facturas ya cargadas que tienen renglones de insumo sin imputar y producto todavía en stock. Las órdenes consumen primero ese stock, imputando contra esos renglones.
+  - **Lo ya imputado no se toca.**
+- **Renglones que no son insumos de stock** (labores, seguros, arrendamiento, fletes, estructura): se imputan de una sola vez por el tamizado de la spec 050.
+
+Donde las historias y los requisitos de abajo hablan de "capas de stock", se entienden como renglones de factura con saldo en stock.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Insumos: el costo es lo aplicado, sin doble conteo (Priority: P1)
@@ -138,6 +153,9 @@ Por cada producto y campaña, el sistema muestra el control **comprado = aplicad
 - **FR-011**: Los resultados de campañas anteriores a 2025/2026 MUST NOT cambiar.
 - **FR-012**: Antes de activar el criterio nuevo, el sistema MUST producir un informe de impacto por cultivo/campaña (antes/después). La valuación de Maíz 2024/25 se diagnostica en ese informe sin modificarla.
 - **FR-013**: Una facturación de insumo sin remito MUST entrar a stock a la fecha de la factura para poder ser consumida.
+- **FR-014**: Cada renglón de factura de insumo MUST llevar su propia imputación progresiva: fracciones de uso con orden, cultivo, campaña, cantidad e importe, más un saldo "en stock". Esa imputación se actualiza al ejecutarse cada orden y en una pasada diaria.
+- **FR-015**: Las imputaciones existentes MUST NOT modificarse. Solo entran al esquema las facturas nuevas y los renglones de insumo sin imputar con producto todavía en stock.
+- **FR-016**: En todo momento, la suma de los usos más el saldo en stock de un renglón MUST ser igual a su total, al centavo.
 
 ### Key Entities
 
