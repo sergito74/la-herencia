@@ -47,9 +47,9 @@ def test_labor_sin_campania_o_con_no_aplica_va_a_revision():
     assert res["estado"] == "Pendiente" and res["motivo"] == "Falta campaña"
 
 
-def test_rubro_general_con_campania_cargada_se_contradice():
+def test_rubro_general_con_cultivo_y_campania_cargados_gana_lo_manual():
     res = tamiz.clasificar_renglon(_r(1, VIATICOS, cultivo=3, campania=32), REGLAS, [], SIN_CTX)
-    assert res["estado"] == "Pendiente"
+    assert (res["destino"], res["origen"], res["estado"]) == ("Cultivo", "Manual", "Aprobada")
 
 
 def test_rubro_sin_regla_va_a_revision():
@@ -85,8 +85,10 @@ def test_flete_aparte_queda_pendiente():
     assert res["estado"] == "Pendiente"
 
 
-def test_financiamiento_sin_insumo_va_a_financiero_y_silobolsa_segun_uso():
-    assert tamiz.clasificar_renglon(_r(1, FINANC), REGLAS, [], SIN_CTX)["destino"] == "Financiero"
+def test_financiamiento_sin_relacion_ni_historia_va_a_revision_y_silobolsa_segun_uso():
+    assert tamiz.clasificar_renglon(_r(1, FINANC), REGLAS, [], SIN_CTX)["estado"] == "Pendiente"
+    fin = {**SIN_CTX, "financiaDestino": {"destino": "Cultivo", "idParte": 1, "idCultivo": 3, "idCampania": 32}}
+    assert tamiz.clasificar_renglon(_r(1, FINANC), REGLAS, [], fin)["idCultivo"] == 3
     silo = tamiz.clasificar_renglon(_r(2, SILO, "Silobolsa 9 pies"), REGLAS, [], SIN_CTX)
     assert silo["estado"] == "Pendiente" and "indicar el uso" in silo["motivo"]  # el uso no está en las órdenes
 
@@ -196,3 +198,35 @@ def test_factura_vieja_solo_clasifica_los_renglones_marcados(monkeypatch):
     monkeypatch.setattr(tamiz.repo, "guardar_clasificaciones", lambda c, usuario=None: guardado.extend(c))
     res = tamiz.tamizar_compra(5)
     assert [c["idDetalleCompra"] for c in res] == [1] and len(guardado) == 1
+
+
+
+def test_historia_decide_el_destino_por_el_texto():
+    from src.features.imputacion import aprendizaje as ap
+    m = ap.Modelo()
+    for _ in range(5):
+        m.observar(VIATICOS, "HONORARIOS SANGRADO BRUCELOSIS", None, None, 2)
+        m.observar(VIATICOS, "HONORARIOS Y CERTIFICACION BALANCE", None, None, 3)
+    ctx = {**SIN_CTX, "modelo": m}
+    gan = tamiz.clasificar_renglon(_r(1, VIATICOS, "Honorarios sangrado brucelosis"), REGLAS, [], ctx)
+    adm = tamiz.clasificar_renglon(_r(2, VIATICOS, "Honorarios y certificacion balance 2025"), REGLAS, [], ctx)
+    assert gan["destino"] == "Ganaderia" and gan["origen"] == "Historia"
+    assert adm["destino"] == "Estructura"
+
+
+def test_rubro_sin_regla_aprende_de_la_historia():
+    from src.features.imputacion import aprendizaje as ap
+    m = ap.Modelo()
+    for _ in range(5):
+        m.observar(999, "PASTAJE", None, None, 2)
+    res = tamiz.clasificar_renglon(_r(1, 999, "Pastaje novillos"), REGLAS, [], {**SIN_CTX, "modelo": m})
+    assert res["destino"] == "Ganaderia" and res["estado"] == "Aprobada"
+
+
+def test_centro_por_cultivo_forrajero():
+    from src.features.imputacion import aprendizaje as ap
+    m = ap.Modelo()
+    for _ in range(6):
+        m.observar(1, "GLIFOSATO", 7, 32, 2)
+        m.observar(1, "GLIFOSATO", 3, 32, 1)
+    assert m.centro_de_cultivo(7) == 2 and m.centro_de_cultivo(3) == 1

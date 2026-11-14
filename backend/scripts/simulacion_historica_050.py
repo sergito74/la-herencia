@@ -21,7 +21,7 @@ from openpyxl import Workbook
 from openpyxl.styles import Font
 
 from src.db.connection import fetch_all
-from src.features.imputacion import motor, tamiz
+from src.features.imputacion import aprendizaje, motor, tamiz
 from src.features.remitos import stock_datos
 
 SALIDA = Path(__file__).resolve().parents[2] / "specs" / "050-tamizado-imputacion-cultivos"
@@ -59,7 +59,7 @@ def main() -> None:
         """
         SELECT d.IdDetalleCompra AS id, d.IdCompra AS idCompra, c.Fecha AS fecha, co.[Razon Social] AS proveedor,
                c.[Tipo documento] AS tipo, c.[Nro Documento] AS nro, d.[Producto/Servicio] AS producto,
-               r.Rubro AS rubro, de.Destino AS destino, de.IdCultivo AS idCultivoDestino, d.[IdCampaña] AS idCampania,
+               r.Rubro AS rubro, d.IdRubro AS idRubro, de.Destino AS destino, de.IdCultivo AS idCultivoDestino, d.[IdCampaña] AS idCampania,
                d.IdCentroCostos AS idCentro, ISNULL(d.Cantidad, 0) * ISNULL(d.[Precio Unitario], 0) *
                CASE WHEN c.Moneda = 'Dolares' THEN ISNULL(c.[Tipo de Cambio], 0) ELSE 1 END AS pesos
         FROM dbo.Det_Compras d JOIN dbo.Compras c ON c.IdDeuda = d.IdCompra
@@ -80,8 +80,14 @@ def main() -> None:
     resumen: Counter = Counter()
     pesos: Counter = Counter()
     detalle = []
-    for id_compra, filas in por_compra.items():
-        clasif = {c["idDetalleCompra"]: c for c in tamiz.tamizar_compra(id_compra, guardar=False, forzar=True)}
+    # Aprendizaje sin mirar el futuro: cada compra se predice con la historia anterior y después se aprende.
+    modelo = aprendizaje.Modelo()
+    orden = sorted(por_compra, key=lambda i: (por_compra[i][0]["fecha"], i))
+    for id_compra in orden:
+        filas = por_compra[id_compra]
+        clasif = {c["idDetalleCompra"]: c for c in tamiz.tamizar_compra(id_compra, guardar=False, forzar=True, modelo=modelo)}
+        for r in filas:
+            modelo.observar(r["idRubro"], tamiz.normalizar(r["producto"]), r["idCultivoDestino"], r["idCampania"], r["idCentro"])
         for r in filas:
             m = _manual(r)
             t = clasif.get(r["id"], {})

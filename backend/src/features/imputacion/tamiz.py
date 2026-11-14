@@ -86,8 +86,15 @@ def clasificar_renglon(r: dict, reglas_rubro: dict, reglas_producto: list, conte
                               motivo="Falta cultivo o campaña")
         return _resultado(r, destino, regla["idParte"], origen="Producto")
 
+    texto = normalizar(r.get("producto"))
+    aprendido = _aprendido(r, texto, contexto)
+
     rr = reglas_rubro.get(r.get("idRubro"))
     if rr is None:
+        if cultivo and campania:
+            return _resultado(r, "Cultivo", None, cultivo, campania, origen="Manual")
+        if aprendido:
+            return _por_historia(r, aprendido)
         return _resultado(r, None, cultivo=cultivo, campania=campania, origen="Revision", estado="Pendiente",
                           motivo="El rubro no tiene regla de imputación")
     destino, parte, especial = rr["destino"], rr["idParte"], rr["regla"]
@@ -107,10 +114,11 @@ def clasificar_renglon(r: dict, reglas_rubro: dict, reglas_producto: list, conte
     if destino == "Cultivo":
         if cultivo and campania:
             return _resultado(r, destino, parte, cultivo, campania, origen="Manual")
+        if not cultivo and aprendido and aprendido.base != "rubro":
+            return _por_historia(r, aprendido)  # p. ej. comercialización de hacienda → Ganadería
         return _deducir(r, destino, parte, cultivo, campania, contexto)
 
     if destino == "Depende":
-        texto = normalizar(r.get("producto"))
         if especial == "AnalisisLaboratorio":
             if any(p in texto for p in _SUELO):
                 if cultivo and campania:
@@ -119,27 +127,56 @@ def clasificar_renglon(r: dict, reglas_rubro: dict, reglas_producto: list, conte
                                   motivo="Análisis de suelo: falta cultivo o campaña")
             if any(p in texto for p in _HACIENDA):
                 return _resultado(r, "Ganaderia")
+            if cultivo and campania:
+                return _resultado(r, "Cultivo", 8, cultivo, campania, origen="Manual")
+            if aprendido:
+                return _por_historia(r, aprendido)
             return _resultado(r, None, origen="Revision", estado="Pendiente",
                               motivo="Análisis de laboratorio: ¿de suelo o de hacienda?")
         if especial == "Combustible":
+            if cultivo and campania:
+                return _resultado(r, "Cultivo", None, cultivo, campania, origen="Manual")
+            if aprendido and aprendido.base != "rubro":
+                return _por_historia(r, aprendido)
             return _resultado(r, "Estructura", motivo="Combustible sin orden de labor propia")
         if especial == "Financiamiento":
-            if contexto.get("financiaInsumo"):
-                return _resultado(r, "Cultivo", None, origen="Revision", estado="Pendiente",
-                                  motivo="Interés de un insumo financiado: va al cultivo de ese insumo")
-            return _resultado(r, "Financiero")
+            # Sergio 14/11: se clasifica según lo que financió (documento relacionado); si no hay, la historia.
+            fin = contexto.get("financiaDestino")
+            if fin:
+                return _resultado(r, fin["destino"], fin.get("idParte"), fin.get("idCultivo"), fin.get("idCampania"),
+                                  motivo="Según lo que financió (documento relacionado)")
+            if cultivo and campania:
+                return _resultado(r, "Cultivo", None, cultivo, campania, origen="Manual")
+            if aprendido:
+                return _por_historia(r, aprendido)
+            return _resultado(r, None, origen="Revision", estado="Pendiente",
+                              motivo="Financiamiento: relacionarlo con lo que financió")
         if especial == "SegunUsoOrden":
+            if cultivo and campania:
+                return _resultado(r, "Cultivo", 9, cultivo, campania, origen="Manual")
             # Sergio 14/11: el uso del silobolsa no se registra en las órdenes; lo indica él al cargar.
             # Grano para vender → A cultivo, parte Comercialización (cultivo y campaña); forraje/consumo → Ganadería.
             return _resultado(r, None, origen="Revision", estado="Pendiente",
                               motivo="Silobolsa / insumo productivo: indicar el uso (grano para vender: cultivo y campaña; forraje o consumo propio: Ganadería)")
         return _resultado(r, None, origen="Revision", estado="Pendiente", motivo="Regla sin resolver")
 
-    # Ganadería / Financiero / Estructura / NoImputa: si a mano se cargó cultivo y campaña, se contradicen (P13).
-    if destino in ("Estructura", "Financiero") and cultivo and campania:
-        return _resultado(r, destino, origen="Revision", estado="Pendiente",
-                          motivo="El rubro es gasto general pero el renglón tiene cultivo y campaña cargados")
+    # Ganadería / Financiero / Estructura: lo cargado a mano (cultivo y campaña) gana sobre el rubro (R-05);
+    # sin eso, decide la historia del mismo texto en el rubro (el centro depende del destino, no del rubro).
+    if destino in ("Estructura", "Financiero", "Ganaderia") and cultivo and campania:
+        return _resultado(r, "Cultivo", None, cultivo, campania, origen="Manual")
+    if aprendido and aprendido.base != "rubro" and aprendido.destino != destino:
+        return _por_historia(r, aprendido)
     return _resultado(r, destino)
+
+
+def _aprendido(r: dict, texto: str, contexto: dict):
+    modelo = contexto.get("modelo")
+    return modelo.predecir(r.get("idRubro"), texto) if modelo is not None else None
+
+
+def _por_historia(r: dict, pred) -> dict:
+    return _resultado(r, pred.destino, origen="Historia",
+                      motivo=f"Como se imputó antes ({pred.base}, {round(pred.confianza * 100)}% de los casos)")
 
 
 _PARTES_ANTICIPADAS = (7,)  # seguro agrícola: se contrata antes de la campaña que cubre
@@ -217,7 +254,7 @@ def _contexto(renglones: list[dict], reglas_rubro: dict) -> dict:
     return {"particular": particular, "tieneInsumos": tiene_insumos, "destinoUnicoResto": destino_unico}
 
 
-def tamizar_compra(id_compra: int, *, guardar: bool = True, forzar: bool = False) -> list[dict]:
+def tamizar_compra(id_compra: int, *, guardar: bool = True, forzar: bool = False, modelo=None) -> list[dict]:
     """Clasifica todos los renglones de una compra. Solo guarda si la compra está en alcance (o `forzar`,
     para la vista previa del informe de impacto, que pasa `guardar=False`)."""
     if not forzar and not repo.compra_en_alcance(id_compra):
@@ -226,6 +263,12 @@ def tamizar_compra(id_compra: int, *, guardar: bool = True, forzar: bool = False
     reglas_rubro = repo.reglas_rubro()
     reglas_producto = repo.reglas_producto()
     ctx = _contexto(renglones, reglas_rubro)
+    if modelo is None:
+        from src.features.imputacion import aprendizaje
+
+        modelo = aprendizaje.modelo()
+    ctx["modelo"] = modelo
+    ctx["financiaDestino"] = repo.destino_financiado(id_compra)
     fecha = renglones[0].get("fecha") if renglones else None
     if hasattr(fecha, "date"):
         fecha = fecha.date()

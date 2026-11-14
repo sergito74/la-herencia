@@ -150,3 +150,19 @@ def cultivos_con_ordenes(id_campania: int) -> list[int]:
 def nombre_campania(id_campania: int) -> str | None:
     r = fetch_one("SELECT [Campaña] AS n FROM dbo.[Campañas] WHERE [IdCampaña] = ?", (id_campania,))
     return r["n"] if r else None
+
+
+def destino_financiado(id_compra: int) -> dict | None:
+    """050: un interés/financiamiento va donde fue lo que financió. Mira la factura relacionada
+    (CompraDocumentosRelacionados) y toma el destino vigente de sus renglones si es uno solo."""
+    filas = fetch_all(
+        """
+        SELECT DISTINCT tz.Destino AS destino, tz.IdParte AS idParte, tz.IdCultivo AS idCultivo, tz.IdCampania AS idCampania
+        FROM dbo.CompraDocumentosRelacionados rel
+        JOIN dbo.Det_Compras d ON d.IdCompra = CASE WHEN rel.IdCompra = ? THEN rel.IdCompraRelacionada ELSE rel.IdCompra END
+        JOIN dbo.TamizRenglones tz ON tz.IdDetalleCompra = d.IdDetalleCompra AND tz.Vigente = 1 AND tz.Estado = 'Aprobada'
+        WHERE ? IN (rel.IdCompra, rel.IdCompraRelacionada) AND tz.Destino <> 'CultivoStock'
+        """,
+        (id_compra, id_compra),
+    )
+    return filas[0] if len(filas) == 1 else None

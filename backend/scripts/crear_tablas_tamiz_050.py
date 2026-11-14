@@ -53,8 +53,8 @@ RUBROS = [
     (2047893453, "Ganaderia", None, None), (2047893466, "Ganaderia", None, None),
     (639489777, "Ganaderia", None, None), (2047893467, "Ganaderia", None, None),
     (2047893480, "Ganaderia", None, None),
-    # Financiero
-    (2047893509, "Financiero", None, None),
+    # Gastos bancarios → Adm. General (Sergio 14/11/2026: no es Financiero)
+    (2047893509, "Estructura", None, None),
     # Estructura
     *[(r, "Estructura", None, None) for r in (
         2047893477, 2047893454, 2047893446, 5, 2047893444, 13, 2047893486, 21, 14, 2047893459,
@@ -107,6 +107,15 @@ DDL = [
         IdVinculoPend int NOT NULL IDENTITY PRIMARY KEY, IdDetalleRemito int NULL, IdDetalleCompra int NULL,
         Tipo varchar(15) NOT NULL DEFAULT 'remito', CandidatosJson nvarchar(max) NULL, Motivo nvarchar(200) NULL,
         FechaCalculo datetime2 NOT NULL DEFAULT SYSDATETIME(), Resuelto bit NOT NULL DEFAULT 0)""",
+    # 14/11/2026: decisión aprendida de la historia (aprendizaje.py) → OrigenDecision 'Historia'.
+    """DECLARE @ck sysname = (SELECT TOP 1 cc.name FROM sys.check_constraints cc
+        WHERE cc.parent_object_id = OBJECT_ID('dbo.TamizRenglones') AND cc.definition LIKE '%OrigenDecision%'
+          AND cc.definition NOT LIKE '%Historia%');
+    IF @ck IS NOT NULL BEGIN
+        EXEC('ALTER TABLE dbo.TamizRenglones DROP CONSTRAINT [' + @ck + ']');
+        ALTER TABLE dbo.TamizRenglones ADD CONSTRAINT CK_TamizRenglones_Origen
+            CHECK (OrigenDecision IN ('Manual','Orden','Producto','Rubro','Revision','Historia'));
+    END""",
     """IF COL_LENGTH('dbo.ImputacionPropuestas','IdParte') IS NULL
     ALTER TABLE dbo.ImputacionPropuestas ADD IdParte int NULL""",
 ]
