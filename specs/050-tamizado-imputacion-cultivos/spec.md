@@ -15,7 +15,7 @@ Esta spec se apoya en la 049 y no reabre sus decisiones: los insumos cuentan por
 **Alcance (14/11/2026)**:
 - Lo ya imputado no se toca.
 - Los insumos de stock siguen la imputación progresiva por renglón de la spec 049: entran "en stock" y se imputan a medida que las órdenes los usan.
-- El resto de los renglones (labores, seguros, arrendamiento, fletes, estructura) se imputa de una vez según este tamizado.
+- El resto de los renglones (labores, seguros, fletes, estructura) se imputa de una vez según este tamizado.
 
 ## Contexto (datos WC, renglones desde el 01/07/2025)
 
@@ -29,7 +29,7 @@ Esta spec se apoya en la 049 y no reabre sus decisiones: los insumos cuentan por
 
 ### User Story 1 - Estructura de costos genérica (Priority: P1)
 
-Cada cultivo/campaña muestra su costo ordenado en una plantilla común de 10 partes:
+Cada cultivo/campaña muestra su costo ordenado en una plantilla común de 9 partes:
 
 1. Semilla
 2. Fertilizantes
@@ -39,14 +39,13 @@ Cada cultivo/campaña muestra su costo ordenado en una plantilla común de 10 pa
 6. Fletes
 7. Seguro agrícola
 8. Asesoramiento/análisis
-9. Arrendamiento
-10. Comercialización
+9. Comercialización
 
 Cada cultivo usa solo las partes que le corresponden. El resultado es **margen bruto**: los gastos generales quedan aparte, en "Estructura" de la campaña. La plantilla la mantiene Claude a pedido de Sergio; no hay pantalla de configuración.
 
 **Why this priority**: es el molde contra el que se tamiza todo lo demás.
 
-**Independent Test**: un cultivo/campaña 2025/26 muestra sus 10 partes, y la suma de las partes coincide con su costo total.
+**Independent Test**: un cultivo/campaña 2025/26 muestra sus 9 partes, y la suma de las partes coincide con su costo total.
 
 **Acceptance Scenarios**:
 
@@ -98,15 +97,15 @@ Si falta el cultivo o la campaña, el sistema lo deduce por grano, fecha u orden
 
 ### User Story 4 - Costos que se reparten (Priority: P2)
 
-Algunos costos son de la campaña y no de un cultivo: arrendamiento, asesoramiento sin cultivo y Comercialización común. Esos se reparten entre los cultivos de la campaña según la **superficie del plan agrícola**. El costo se lleva por cultivo/campaña, sin lote. Las labores de contratista mantienen el reparto por lote de la spec 048.
+Algunos costos son de la campaña y no de un cultivo: asesoramiento sin cultivo y Comercialización común. (El arrendamiento es un ingreso de la empresa, no un costo.) Esos se reparten entre los cultivos de la campaña según la **superficie del plan agrícola**. El costo se lleva por cultivo/campaña, sin lote. Las labores de contratista mantienen el reparto por lote de la spec 048.
 
 **Why this priority**: evita inflar un cultivo y dejar a otro sin costo.
 
-**Independent Test**: el arrendamiento de una campaña con fina y gruesa se reparte entre los dos cultivos por superficie planificada y suma el total de la factura al centavo.
+**Independent Test**: un asesoramiento de una campaña con fina y gruesa se reparte entre los dos cultivos por superficie planificada y suma el total de la factura al centavo.
 
 **Acceptance Scenarios**:
 
-1. **Given** un arrendamiento de $1.000.000 y un plan con 60 ha de trigo y 40 ha de soja en el mismo campo, **When** se reparte, **Then** trigo recibe $600.000, soja $400.000, y no se asigna lote.
+1. **Given** un asesoramiento de campaña de $1.000.000 y un plan con 60 ha de trigo y 40 ha de soja en el mismo campo, **When** se reparte, **Then** trigo recibe $600.000, soja $400.000, y no se asigna lote.
 
 ---
 
@@ -164,7 +163,7 @@ El informe muestra cada cultivo/campaña:
 - **Semillas**: pasan por stock y las consume la orden de siembra. La semilla propia se valúa al precio del grano cuando se reservó.
 - **Sobrante al cerrar la campaña**: sigue en stock con su costo y lo paga el cultivo que lo aplique.
 - **Insumo vencido o dado de baja por mantenimiento**: va a Estructura como pérdida de la empresa. La diferencia normal del recuento sigue repartiéndose en las órdenes del período.
-- **Bolsas de silo, hilo y mallas**: van a Cosecha del cultivo que se embolsa o enrolla.
+- **Bolsas de silo, hilo y mallas**: entran a stock como cualquier insumo y las imputa la orden de embolsado o enrollado, según lo que se guarda: grano para vender → Comercialización de ese cultivo; forraje → cultivo forrajero; grano para consumo propio → Ganadería.
 - **Cultivo de cobertura**: es un cultivo propio, con su resultado.
 - **Pasturas y verdeos**: son cultivo forrajero con campaña propia; su costo pasa después a la hacienda.
 - **Rollos y silos**: van al cultivo forrajero; al consumirse pasan a ganadería al costo.
@@ -184,7 +183,7 @@ El informe muestra cada cultivo/campaña:
 
 ### Functional Requirements
 
-- **FR-001**: El sistema MUST tener una única plantilla de estructura de costos con las 10 partes de la Historia 1. Cada cultivo puede desactivar partes.
+- **FR-001**: El sistema MUST tener una única plantilla de estructura de costos con las 9 partes de la Historia 1. Cada cultivo puede desactivar partes.
 - **FR-002**: El sistema MUST mantener una tabla fija rubro → destino. Los destinos posibles son: parte de la estructura, stock, Estructura, Ganadería, Resultado financiero o No se imputa. La tabla se arma con Sergio una sola vez, cubre todos los rubros en uso desde 2025/26 y la mantiene Claude a pedido.
 - **FR-003**: Cada renglón MUST clasificarse por sí mismo, sin heredar el destino de otro renglón ni del proveedor. No hay reglas por proveedor.
 - **FR-004**: El destino de un renglón MUST resolverse en este orden: imputación manual > lo aplicado por orden (insumos) > regla por producto > regla por rubro > lista de revisión.
@@ -205,7 +204,7 @@ El informe muestra cada cultivo/campaña:
 
 ### Key Entities
 
-- **Parte de la estructura**: una de las 10 partes del costo de un cultivo.
+- **Parte de la estructura**: una de las 9 partes del costo de un cultivo.
 - **Regla de rubro**: asocia un rubro con un destino (parte, Stock, Estructura, Ganadería, Financiero, No se imputa) o con "depende".
 - **Regla de producto**: un producto con su destino o parte. Puede venir de una corrección de Sergio.
 - **Renglón tamizado**: el renglón de factura con su destino, cultivo, campaña, motivo, origen de la decisión (manual, orden, producto, rubro) y estado (aprobado o pendiente).

@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8"><title>Tabla rubro → destino</title>
+<style>
+body{font-family:Segoe UI,Arial,sans-serif;margin:24px;background:#f6f7f9;color:#222}
+h1{font-size:22px;margin:0 0 4px}p.sub{margin:0 0 18px;color:#666}
+table{border-collapse:collapse;width:100%;max-width:1100px;background:#fff;box-shadow:0 1px 3px #0002}
+th{background:#2f3e46;color:#fff;text-align:left;padding:9px 12px;position:sticky;top:0}
+td{padding:7px 12px;border-bottom:1px solid #e5e5e5}
+td.n{text-align:right;color:#555;width:80px}
+tr.g td{font-weight:600;font-size:15px;padding-top:14px}
+.stock td:first-child{border-left:6px solid #2e7d32}.cult td:first-child{border-left:6px solid #66bb6a}
+.dep td:first-child{border-left:6px solid #f9a825}.gan td:first-child{border-left:6px solid #8d6e63}
+.fin td:first-child{border-left:6px solid #5c6bc0}.est td:first-child{border-left:6px solid #9e9e9e}
+tr.g.stock{background:#e8f5e9}tr.g.cult{background:#f1f8e9}tr.g.dep{background:#fff8e1}tr.g.gan{background:#efebe9}tr.g.fin{background:#e8eaf6}tr.g.est{background:#f5f5f5}
+.cambio{background:#ffe0b2;border-radius:4px;padding:1px 6px;font-size:12px;margin-left:6px}
+.obs{max-width:1100px;margin-top:18px;background:#fff3e0;padding:12px 16px;border-left:5px solid #fb8c00}
+</style></head><body>
+<h1>Tabla rubro → destino</h1>
+<p class="sub">Propuesta del 14/11/2026 · 48 rubros usados en compras desde el 01/07/2025 · "Renglones" = cantidad de renglones cargados</p>
+<table>
+<tr><th>Rubro</th><th>Renglones</th><th>Destino</th><th>Parte del costo / regla</th></tr>
+
+<tr class="g stock"><td colspan="4">A cultivo · insumos: entran a stock y se imputan a medida que se usan</td></tr>
+<tr class="stock"><td>Herbicidas</td><td class="n">239</td><td>A cultivo (stock)</td><td>Agroquímicos</td></tr>
+<tr class="stock"><td>Coadyuvantes</td><td class="n">127</td><td>A cultivo (stock)</td><td>Agroquímicos</td></tr>
+<tr class="stock"><td>Insecticidas</td><td class="n">23</td><td>A cultivo (stock)</td><td>Agroquímicos</td></tr>
+<tr class="stock"><td>Fungicidas</td><td class="n">10</td><td>A cultivo (stock)</td><td>Agroquímicos</td></tr>
+<tr class="stock"><td>Fertilizantes</td><td class="n">49</td><td>A cultivo (stock)</td><td>Fertilizantes</td></tr>
+<tr class="stock"><td>Semillas</td><td class="n">28</td><td>A cultivo (stock)</td><td>Semilla</td></tr>
+<tr class="stock"><td>Inoculantes</td><td class="n">4</td><td>A cultivo (stock)</td><td>Semilla</td></tr>
+
+<tr class="g cult"><td colspan="4">A cultivo · de una sola vez</td></tr>
+<tr class="cult"><td>Fumigacion</td><td class="n">22</td><td>A cultivo</td><td>Labores</td></tr>
+<tr class="cult"><td>Siembra</td><td class="n">11</td><td>A cultivo</td><td>Labores</td></tr>
+<tr class="cult"><td>Fertilizacion</td><td class="n">5</td><td>A cultivo</td><td>Labores</td></tr>
+<tr class="cult"><td>Disqueado</td><td class="n">4</td><td>A cultivo</td><td>Labores</td></tr>
+<tr class="cult"><td>Cosecha</td><td class="n">5</td><td>A cultivo</td><td>Cosecha</td></tr>
+<tr class="cult"><td>Control Cosecha</td><td class="n">5</td><td>A cultivo</td><td>Cosecha</td></tr>
+<tr class="cult"><td>Seguimiento cultivos</td><td class="n">93</td><td>A cultivo</td><td>Asesoramiento / análisis</td></tr>
+<tr class="cult"><td>Analisis PG</td><td class="n">2</td><td>A cultivo</td><td>Asesoramiento / análisis</td></tr>
+<tr class="cult"><td>Seguros Agricolas</td><td class="n">17</td><td>A cultivo</td><td>Seguro agrícola</td></tr>
+<tr class="cult"><td>Flete insumos</td><td class="n">13</td><td>A cultivo</td><td>Fletes</td></tr>
+<tr class="cult"><td>Gastos Comercializacion</td><td class="n">24</td><td>A cultivo</td><td>Comercialización</td></tr>
+<tr class="cult"><td>Flete granos</td><td class="n">3</td><td>A cultivo</td><td>Comercialización</td></tr>
+<tr class="cult"><td>Extraccion Grano</td><td class="n">1</td><td>A cultivo</td><td>Comercialización</td></tr>
+<tr class="cult"><td>Honorarios Laboratorio</td><td class="n">2</td><td>A cultivo</td><td>Comercialización (calidad del grano)</td></tr>
+
+<tr class="g dep"><td colspan="4">Depende del renglón (si no se puede resolver, va a la lista)</td></tr>
+<tr class="dep"><td>Analisis laboratorio<span class="cambio">cambia: hoy Otro</span></td><td class="n">2</td><td>Depende</td><td>Suelo → Asesoramiento del cultivo · Hacienda → Ganadería</td></tr>
+<tr class="dep"><td>Combustible</td><td class="n">16</td><td>Depende</td><td>Con orden de labor propia → Labores · Si no → Estructura</td></tr>
+<tr class="dep"><td>Financiamiento</td><td class="n">17</td><td>Depende</td><td>Insumo financiado (canje, plazo) → cultivo del insumo · Si no → Financiero</td></tr>
+<tr class="dep"><td>Insumos productivos<span class="cambio">propuesta nueva</span></td><td class="n">4</td><td>Stock → según uso</td><td>Entra a stock como un insumo. Lo imputa la orden de embolsado o enrollado según lo que se guarda: grano para vender → Comercialización de ese cultivo · forraje → cultivo forrajero · grano para consumo propio → Ganadería</td></tr>
+
+<tr class="g gan"><td colspan="4">Ganadería</td></tr>
+<tr class="gan"><td>Productos Veterinarios</td><td class="n">29</td><td>Ganadería</td><td></td></tr>
+<tr class="gan"><td>Vacunas</td><td class="n">15</td><td>Ganadería</td><td></td></tr>
+<tr class="gan"><td>Inseminacion</td><td class="n">5</td><td>Ganadería</td><td></td></tr>
+<tr class="gan"><td>Aranceles Vacunacion</td><td class="n">5</td><td>Ganadería</td><td></td></tr>
+<tr class="gan"><td>Flete hacienda</td><td class="n">3</td><td>Ganadería</td><td></td></tr>
+
+<tr class="g fin"><td colspan="4">Financiero</td></tr>
+<tr class="fin"><td>Gastos bancarios</td><td class="n">36</td><td>Financiero</td><td></td></tr>
+
+<tr class="g est"><td colspan="4">Estructura (gasto general, fuera del cultivo)</td></tr>
+<tr class="est"><td>Viaticos</td><td class="n">428</td><td>Estructura</td><td>Movilidad</td></tr>
+<tr class="est"><td>Electricidad</td><td class="n">131</td><td>Estructura</td><td>Servicios</td></tr>
+<tr class="est"><td>Seguros Laborales</td><td class="n">103</td><td>Estructura</td><td>Seguros</td></tr>
+<tr class="est"><td>Mantenimiento Construcciones</td><td class="n">96</td><td>Estructura</td><td>Mantenimiento</td></tr>
+<tr class="est"><td>Seguros Generales</td><td class="n">83</td><td>Estructura</td><td>Seguros</td></tr>
+<tr class="est"><td>Mantenimiento Maquinarias</td><td class="n">29</td><td>Estructura</td><td>Mantenimiento</td></tr>
+<tr class="est"><td>Internet</td><td class="n">27</td><td>Estructura</td><td>Servicios</td></tr>
+<tr class="est"><td>Telefono</td><td class="n">22</td><td>Estructura</td><td>Servicios</td></tr>
+<tr class="est"><td>Gastos de Administracion</td><td class="n">21</td><td>Estructura</td><td>Administración</td></tr>
+<tr class="est"><td>Honorarios Contables</td><td class="n">19</td><td>Estructura</td><td>Honorarios</td></tr>
+<tr class="est"><td>Gas</td><td class="n">17</td><td>Estructura</td><td>Servicios</td></tr>
+<tr class="est"><td>Honorarios Administracion</td><td class="n">16</td><td>Estructura</td><td>Honorarios</td></tr>
+<tr class="est"><td>Insumos Generales</td><td class="n">16</td><td>Estructura</td><td>Otros</td></tr>
+<tr class="est"><td>Mantenimiento Instalaciones</td><td class="n">13</td><td>Estructura</td><td>Mantenimiento</td></tr>
+<tr class="est"><td>Honorarios Profesionales</td><td class="n">10</td><td>Estructura</td><td>Honorarios</td></tr>
+<tr class="est"><td>Movilidad</td><td class="n">8</td><td>Estructura</td><td>Movilidad</td></tr>
+<tr class="est"><td>Herramientas</td><td class="n">6</td><td>Estructura</td><td>Mantenimiento</td></tr>
+<tr class="est"><td>Bienes de uso</td><td class="n">5</td><td>Estructura</td><td>Se amortiza aparte</td></tr>
+</table>
+<div class="obs"><b>Corregido 14/11:</b> Flete granos queda en Comercialización · El arrendamiento es un ingreso (sale de la estructura de costos) · Silobolsa: ver la propuesta nueva en "Depende".</div>
+</body></html>
