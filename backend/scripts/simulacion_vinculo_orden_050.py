@@ -79,6 +79,42 @@ def buscar(objetivo: float, candidatos: list[dict], fecha: date) -> list[dict] |
     return None
 
 
+REMITOS = True
+CARPETA_REMITOS = Path(__file__).resolve().parents[2] / "backups" / "baya-remitos-20261115"
+
+
+def asignar_remitos(facturas: dict, sug, bases, equiv, clave) -> dict:
+    """Factura (de Bayá Casal) → fecha del remito del portal (Insumos → mercadería remitida) con el mismo producto y
+    la misma cantidad; si no hay igual, el remito más cercano anterior del producto con saldo suficiente."""
+    import json
+    archivo = CARPETA_REMITOS / "merrem.json"
+    if not archivo.exists():
+        return {}
+    rem = []
+    for f in json.loads(archivo.read_text(encoding="utf-8")):
+        if len(f) < 4:
+            continue
+        pid = sug.sugerir(f[2])[0]
+        if not pid:
+            continue
+        q = float(f[3].replace(".", "").replace(",", "."))
+        d, m, a = f[0].split("/")
+        rem.append({"fecha": date(int(a), int(m), int(d)), "p": pid, "q": q * _factor(pid, "", bases, equiv), "resto": q, "nro": f[1]})
+    out = {}
+    baya = sorted((k for k, x in facturas.items() if "baya" in (x["prov"] or "").lower() and not x.get("apertura")),
+                  key=lambda k: facturas[k]["fecha"])
+    for k in baya:
+        x = facturas[k]
+        cand = [r for r in rem if (r["p"] == x["p"] or clave(r["p"]) == x["ia"]) and r["resto"] > 1e-6]
+        igual = [r for r in cand if abs(r["resto"] - x["q"]) <= 0.01 * max(x["q"], 1)]
+        # Solo la misma cantidad; entre varios, el remito más cercano (antes que después de la factura).
+        r = min(igual, key=lambda r: (abs((r["fecha"] - x["fecha"]).days) + (0 if r["fecha"] <= x["fecha"] else 365))) if igual else None
+        if r:
+            r["resto"] -= min(r["resto"], x["q"])
+            out[k] = r["fecha"]
+    return out
+
+
 def _factor(pid, unidad, bases, equiv) -> float:
     factor, falta = stock_datos.factor_a_base(pid, unidad, bases, equiv)
     if falta and (unidad or "").strip().upper().startswith("TON") and (bases.get(pid) or "").upper().startswith("K"):
@@ -256,18 +292,23 @@ def main(inicio: date = INICIO, fin: date | None = None, recuento: date | None =
     resto_f = {k: x["q"] for k, x in facturas.items() if x["q"] > 0 and x["pesos"] > 0}
     resto_o = {id(o): o["q"] for o in ordenes if inicio <= o["fecha"] < hasta}
 
+    # Fecha de ingreso (Sergio 15/11): la del remito del proveedor, no la de la factura. Con remito, la factura entra
+    # al kardex en esa fecha y no puede cubrir órdenes anteriores a su ingreso; sin remito, sin restricción.
+    ingreso = asignar_remitos(facturas, sug, bases, equiv, lambda p: ia.get(p) or f"#{p}") if REMITOS else {}
+
     def emparejar(fks, ords, etiqueta):
-        fks = sorted(fks, key=lambda k: (facturas[k]["fecha"], k))
+        fks = sorted(fks, key=lambda k: (ingreso.get(k) or facturas[k]["fecha"], k))
         ords = sorted(ords, key=lambda o: (o["fecha"], o["orden"]))
-        i = j = 0
-        while i < len(fks) and j < len(ords):
-            k, o = fks[i], ords[j]
-            if resto_f[k] <= 1e-9:
-                i += 1
-                continue
-            if resto_o[id(o)] <= 1e-9:
-                j += 1
-                continue
+        for k in fks:
+            ing = ingreso.get(k)
+            for o in ords:
+                if resto_f[k] <= 1e-9:
+                    break
+                if resto_o[id(o)] <= 1e-9 or (ing and o["fecha"] < ing - timedelta(days=7)):
+                    continue
+                consumir(k, o, etiqueta)
+
+    def consumir(k, o, etiqueta):
             t = min(resto_f[k], resto_o[id(o)])
             resto_f[k] -= t
             resto_o[id(o)] -= t

@@ -3,7 +3,7 @@
 Una hoja por recuento ("May 25", "Sep 25", ...). Fila con la fecha, encabezado TIPO / MARCA COMERCIAL / EMPRESA /
 TIPO INSUMO / Existencia / Unidad / ... y una fila por marca. Hay meses sin hoja porque ese mes no se contó.
 También define las familias de fertilizantes que Sergio nombra genéricamente con un producto del catálogo:
-  · ARRANCADOR = la mezcla con más fósforo (Arrancador 1515K, NP 326, MZCLA 7N-39P, Fert. Mezcla 7N-40P, ...).
+  · ARRANCADOR = la mezcla con más fósforo (Arrancador 1515K, NP 326, Proterra 740 = 7N-40P, MZCLA 7N-39P, Fert. Mezcla 7N-40P, ...).
   · UREA = la mezcla principalmente nitrogenada (Urea granulada Profertil, urea a granel, ...).
 """
 
@@ -28,7 +28,7 @@ def familia_fertilizante(texto: str | None) -> str | None:
     t = normalizar(texto or "")
     if "UREA" in t:
         return "UREA"
-    if "ARRANCADOR" in t or re.search(r"\bNP\s*\d", t):
+    if "ARRANCADOR" in t or "PROTERRA 740" in t or re.search(r"\bNP\s*\d", t):
         return "ARRANCADOR"
     m = re.search(r"(\d+)\s*N\W*(\d+)\s*P", t)
     if m:
