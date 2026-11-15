@@ -84,35 +84,38 @@ CARPETA_REMITOS = Path(__file__).resolve().parents[2] / "backups" / "baya-remito
 
 
 def asignar_remitos(facturas: dict, sug, bases, equiv, clave) -> dict:
-    """Factura (de Bayá Casal) → fecha del remito del portal (Insumos → mercadería remitida) con el mismo producto y
-    la misma cantidad; si no hay igual, el remito más cercano anterior del producto con saldo suficiente."""
-    import json
-    archivo = CARPETA_REMITOS / "merrem.json"
-    if not archivo.exists():
-        return {}
+    """Factura → fecha de ingreso = fecha del remito cargado en el sistema (dbo.Remitos, incluidos los «SIN REMITO»
+    que Sergio carga cuando el proveedor entrega sin remito) del mismo proveedor, con el mismo producto (o principio
+    activo / familia) y la misma cantidad. Sergio 15/11: las cantidades ingresadas y usadas son correctas porque el
+    stock cierra con el recuento físico. Entre varios iguales, el más cercano (antes que después de la factura)."""
     rem = []
-    for f in json.loads(archivo.read_text(encoding="utf-8")):
-        if len(f) < 4:
-            continue
-        pid = sug.sugerir(f[2])[0]
-        if not pid:
-            continue
-        q = float(f[3].replace(".", "").replace(",", "."))
-        d, m, a = f[0].split("/")
-        rem.append({"fecha": date(int(a), int(m), int(d)), "p": pid, "q": q * _factor(pid, "", bases, equiv), "resto": q, "nro": f[1]})
+    for f in fetch_all(
+        """SELECT r.Fecha f, r.NroRemito n, COALESCE(r.IdContacto, r.IdProveedor) c, co.[Razon Social] prov, rd.IdFormulado p,
+                  rd.Cantidad q, rd.[Unidad Medida] u
+           FROM dbo.Remitos r JOIN dbo.Remitos_Detalles rd ON rd.IdRemito = r.IdRemito
+           LEFT JOIN dbo.Contactos co ON co.IdContacto = COALESCE(r.IdContacto, r.IdProveedor)
+           WHERE r.Fecha >= '2015-01-01' AND rd.IdFormulado > 0 AND rd.Cantidad > 0"""
+    ):
+        rem.append({"fecha": _d(f["f"]), "prov": f["prov"], "p": int(f["p"]), "resto": float(f["q"]) * _factor(int(f["p"]), f["u"], bases, equiv)})
     out = {}
-    baya = sorted((k for k, x in facturas.items() if "baya" in (x["prov"] or "").lower() and not x.get("apertura")),
-                  key=lambda k: facturas[k]["fecha"])
-    for k in baya:
+    for k in sorted((k for k, x in facturas.items() if not x.get("apertura")), key=lambda k: facturas[k]["fecha"]):
         x = facturas[k]
-        cand = [r for r in rem if (r["p"] == x["p"] or clave(r["p"]) == x["ia"]) and r["resto"] > 1e-6]
-        igual = [r for r in cand if abs(r["resto"] - x["q"]) <= 0.01 * max(x["q"], 1)]
-        # Solo la misma cantidad; entre varios, el remito más cercano (antes que después de la factura).
-        r = min(igual, key=lambda r: (abs((r["fecha"] - x["fecha"]).days) + (0 if r["fecha"] <= x["fecha"] else 365))) if igual else None
-        if r:
-            r["resto"] -= min(r["resto"], x["q"])
+        cand = [r for r in rem if r["prov"] == x["prov"] and (r["p"] == x["p"] or clave(r["p"]) == x["ia"]) and r["resto"] > 1e-6
+                and abs(r["resto"] - x["q"]) <= 0.01 * max(x["q"], 1)]
+        if cand:
+            r = min(cand, key=lambda r: abs((r["fecha"] - x["fecha"]).days) + (0 if r["fecha"] <= x["fecha"] else 365))
+            r["resto"] = 0.0
             out[k] = r["fecha"]
     return out
+
+
+def _envase(txt: str | None, unidad: str | None, q: float) -> float:
+    """'HERB GLIFOSATO 66% x 20 Lts', cantidad 4 y sin unidad = 4 bidones de 20 L → 80."""
+    import re
+    if (unidad or "").strip() or not txt:
+        return 1.0
+    m = re.search(r"\bX\s*(\d+(?:[.,]\d+)?)\s*(L|LT|LTS|LITROS|KG|KGS|KILOS)\b", txt.upper())
+    return float(m.group(1).replace(",", ".")) if m and q < 200 else 1.0
 
 
 def _factor(pid, unidad, bases, equiv) -> float:
@@ -213,12 +216,24 @@ def main(inicio: date = INICIO, fin: date | None = None, recuento: date | None =
                                     "ia": ia.get(pid) or f"#{pid}", "q": 0.0, "pesos": 0.0, "manual": Counter()})
         factor = _factor(pid, f["u"], bases, equiv)
         pesos = float(f["pesos"] or 0)
-        x["q"] += float(f["q"] or 0) * factor
+        x["q"] += float(f["q"] or 0) * factor * _envase(f["txt"], f["u"], float(f["q"] or 0))
         x["pesos"] += pesos
         ca = f["ca"] if f["ca"] not in (None, NO_APLICA) else None
         x["manual"][(f["cu"], ca) if f["cu"] and ca else STOCK] += pesos
 
     # NC con cantidad: si anula entera una factura anterior del mismo proveedor y producto, las dos se cancelan.
+    import re as _re
+    anuladas = set()
+    for f in ncs:
+        m = _re.search(r"\bFC\s*0*(\d{3,8})\b", (f["txt"] or "").upper())
+        if m:
+            nro = m.group(1)
+            for k, x in list(facturas.items()):
+                if x["prov"] == f["prov"] and _re.sub(r"\D", "", x["nro"] or "").endswith(nro.zfill(8)[-len(nro):]) and x["fecha"] <= _d(f["f"]):
+                    facturas.pop(k)
+                    anuladas.add(k[0])
+                    cobertura["factura anulada por NC que la nombra"] += 1
+    ncs = [f for f in ncs if not _re.search(r"\bFC\s*0*\d{3,8}\b", (f["txt"] or "").upper())]
     agrup_nc: dict[tuple, dict] = {}
     for f in ncs:
         pid = f["p"] or sug.sugerir(f["txt"])[0] or identificar(f["txt"], f["rubro"])[0]
