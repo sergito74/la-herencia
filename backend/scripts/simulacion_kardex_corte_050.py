@@ -95,6 +95,22 @@ class Sugeridor:
                 mejor_m = (s, len(m), p)
         if mejor_m[2]:
             return int(mejor_m[2]), "marca comercial"
+        # Código de la marca escrito distinto ("SOJA DM 46 R 18" = DON MARIO 46R18, "MAIZ LT 725 TRE" = LT725TRE), o una
+        # palabra distintiva que solo tiene una marca (Rinder = DIFLU 50 RINDER).
+        compacto = re.sub(r"[^A-Z0-9]", "", t)
+        cand = set()
+        for m, p in self.marcas:
+            cod = [w for w in m if any(ch.isdigit() for ch in w) and len(w) >= 4]
+            if cod and all(w in compacto for w in cod) and len(re.sub(r"\D", "", "".join(cod))) >= 3:
+                cand.add(int(p))
+        if len(cand) == 1:
+            return cand.pop(), "código de marca"
+        if not hasattr(self, "_unicas"):
+            cuenta = Counter(w for m, _ in self.marcas for w in m)
+            self._unicas = {w: int(p) for m, p in self.marcas for w in m if cuenta[w] == 1 and len(w) >= 5 and w.isalpha()}
+        hits = {self._unicas[w] for w in mis if w in self._unicas}
+        if len(hits) == 1:
+            return hits.pop(), "palabra única de marca"
         return None, "sin sugerencia"
 
 

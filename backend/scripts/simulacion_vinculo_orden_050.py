@@ -83,12 +83,14 @@ def main() -> None:
     cult = {f["i"]: f["n"] for f in fetch_all("SELECT IdCultivo i, Cultivo n FROM dbo.Cultivos")}
     camp = {f["i"]: f["n"] for f in fetch_all("SELECT [IdCampaña] i, [Campaña] n FROM dbo.[Campañas]")}
     sug = Sugeridor()
+    nombres = {int(f["i"]): f["n"] for f in fetch_all("SELECT IdProducto i, Producto n FROM dbo.vw_ProductosBase WHERE IdProducto IS NOT NULL")}
     tipo = {int(f["i"]): ("Semillas/fertilizantes" if f["t"] in ("Semilla", "Fertilizante") else "Agroquímicos")
             for f in fetch_all("SELECT IdProducto i, TipoProducto t FROM dbo.vw_ProductosBase WHERE IdProducto IS NOT NULL")}
 
     facturas: dict[tuple, dict] = {}
     cobertura = Counter()
     ncs: list[dict] = []
+    sin_prod: list[list] = []
     for f in fetch_all(
         f"""
         SELECT d.IdCompra idc, c.Fecha f, co.[Razon Social] prov, c.[Nro Documento] nro, c.[Tipo documento] tipo,
@@ -120,6 +122,8 @@ def main() -> None:
         pid, via = (f["p"], "con producto") if f["p"] else sug.sugerir(f["txt"])
         if pid is None:
             cobertura["sin producto"] += 1
+            sin_prod.append([_d(f["f"]), f["prov"], f["nro"], f["txt"], f["q"], f["u"], round(float(f["pesos"] or 0), 2),
+                             f"{cult.get(f['cu'], '')} {camp.get(f['ca'], '')}".strip()])
             continue
         cobertura[via] += 1
         k = (f["idc"], pid)
@@ -296,7 +300,7 @@ def main() -> None:
     for w in wb.worksheets:
         for cel in w[1]:
             cel.font = Font(bold=True)
-    destino = SALIDA / f"simulacion-vinculo-orden-{date.today():%Y%m%d}.xlsx"
+    destino = SALIDA / f"simulacion-vinculo-orden-{date.today():%Y%m%d}-v2.xlsx"
     wb.save(destino)
     print("cobertura", dict(cobertura))
     for m, cc in porm.items():
@@ -305,6 +309,26 @@ def main() -> None:
         ag = sum(min(m1[z], k1[z]) for z in set(m1) | set(k1)) / (sum(m1.values()) or 1)
         print(t, "importe $M", round(a2 / 1e6, 1), "factura x factura", round(a1 / a2 * 100, 1), "agregado", round(ag * 100, 1))
         ws.append([t, "importe $", round(a2, 2), "factura x factura %", round(a1 / a2 * 100, 1), "agregado %", round(ag * 100, 1)])
+    w3 = wb.create_sheet("Faltantes")
+    w3.append(["Tipo", "Fecha", "Proveedor / Orden", "Nro", "Producto", "Cantidad", "Unidad", "Importe $", "Imputación manual"])
+    for r in sin_prod:
+        w3.append(["Renglón sin producto identificado", *r])
+    for k, x in facturas.items():
+        mo = motor.get(k, Counter())
+        if x.get("apertura") or not mo:
+            continue
+        en_stock = mo[STOCK] / (sum(mo.values()) or 1)
+        man_cult = sum(v for z, v in x["manual"].items() if z != STOCK) / (sum(x["manual"].values()) or 1)
+        if en_stock > 0.05 and man_cult > 0.05:
+            w3.append(["Factura imputada a cultivo sin orden que la consuma", x["fecha"], x["prov"], x["nro"], x["txt"],
+                       round(x["q"] * en_stock, 2), "", round(x["pesos"] * en_stock, 2), _txt(x["manual"], cult, camp)])
+    for o in ordenes:
+        r = resto_o.get(id(o), 0)
+        if r > 1e-6:
+            w3.append(["Orden aplicada sin factura que la cubra", o["fecha"], f"Orden {o['orden']}", "", nombres.get(o["p"], o["p"]),
+                       round(r, 2), "", None, _txt(o["reparto"], cult, camp)])
+    for cel in w3[1]:
+        cel.font = Font(bold=True)
     wb.save(destino)
     print("ponderada", round(cp / tot * 100, 1), "agregada", round(agreg * 100, 1))
     print("Excel:", destino)
