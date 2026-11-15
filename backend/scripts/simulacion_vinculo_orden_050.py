@@ -24,11 +24,14 @@ from openpyxl.styles import Font
 
 from src.db.connection import fetch_all
 from src.features.remitos import stock_datos
+from scripts.recuentos_planilla_050 import Catalogo, familia_fertilizante, leer_recuentos
 from scripts.simulacion_kardex_corte_050 import CORTE, MONETARIAS, RUBROS, STOCK, Sugeridor, _anterior, _d, _ia_norm
 
 SALIDA = Path(__file__).resolve().parents[2] / "specs" / "050-tamizado-imputacion-cultivos"
 NO_APLICA = 20
 TOL = 0.005
+# Punto de partida (Sergio 15/11): recuento del 12/05/2025, el último antes de la primera orden de 2025/26.
+INICIO = date(2025, 5, 12)
 
 
 def ordenes_por_producto() -> list[dict]:
@@ -76,6 +79,13 @@ def buscar(objetivo: float, candidatos: list[dict], fecha: date) -> list[dict] |
     return None
 
 
+def _factor(pid, unidad, bases, equiv) -> float:
+    factor, falta = stock_datos.factor_a_base(pid, unidad, bases, equiv)
+    if falta and (unidad or "").strip().upper().startswith("TON") and (bases.get(pid) or "").upper().startswith("K"):
+        return 1000.0
+    return factor
+
+
 def main() -> None:
     ia = {int(f["i"]): _ia_norm(f["a"]) for f in fetch_all(
         "SELECT IdProducto i, IngredienteActivo a FROM dbo.vw_ProductosBase WHERE IdProducto IS NOT NULL")}
@@ -83,7 +93,33 @@ def main() -> None:
     cult = {f["i"]: f["n"] for f in fetch_all("SELECT IdCultivo i, Cultivo n FROM dbo.Cultivos")}
     camp = {f["i"]: f["n"] for f in fetch_all("SELECT [IdCampaña] i, [Campaña] n FROM dbo.[Campañas]")}
     sug = Sugeridor()
+    tipo_raw = {int(f["i"]): f["t"] for f in fetch_all("SELECT IdProducto i, TipoProducto t FROM dbo.vw_ProductosBase WHERE IdProducto IS NOT NULL")}
     nombres = {int(f["i"]): f["n"] for f in fetch_all("SELECT IdProducto i, Producto n FROM dbo.vw_ProductosBase WHERE IdProducto IS NOT NULL")}
+    # Familias de fertilizante (Sergio 15/11): el arrancador (más fósforo) y la urea (más nitrógeno) se nombran con
+    # cualquier producto del catálogo; se emparejan entre sí como si fueran un principio activo.
+    ordenes = ordenes_por_producto()
+    usados_ord = Counter(o["p"] for o in ordenes)
+    rep_fam: dict[str, int] = {}
+    for pid_, n_ in nombres.items():
+        fam = familia_fertilizante(n_) if tipo_raw.get(pid_) == "Fertilizante" else None
+        if fam:
+            ia[pid_] = f"FAMILIA {fam}"
+            if usados_ord[pid_] > usados_ord.get(rep_fam.get(fam), -1):
+                rep_fam[fam] = pid_
+    # Marcas que Sergio confirmó como la misma de las órdenes (15/11).
+    alias = {"CLETODIM 36": "CLETODIM ARN EBC", "2,4 D 102,5": "2,4D EH 102,5% EBC"}
+    por_nombre = {v: k for k, v in nombres.items() if usados_ord[k]}
+
+    def identificar(txt, rubro):
+        for a, marca in alias.items():
+            if a in (txt or "").upper() and marca in por_nombre:
+                return por_nombre[marca], "marca confirmada por Sergio"
+        if rubro == "Fertilizantes":
+            fam = familia_fertilizante(txt)
+            if fam and fam in rep_fam:
+                return rep_fam[fam], f"familia {fam.lower()}"
+        return None, "sin sugerencia"
+
     tipo = {int(f["i"]): ("Semillas/fertilizantes" if f["t"] in ("Semilla", "Fertilizante") else "Agroquímicos")
             for f in fetch_all("SELECT IdProducto i, TipoProducto t FROM dbo.vw_ProductosBase WHERE IdProducto IS NOT NULL")}
 
@@ -94,7 +130,7 @@ def main() -> None:
     for f in fetch_all(
         f"""
         SELECT d.IdCompra idc, c.Fecha f, co.[Razon Social] prov, c.[Nro Documento] nro, c.[Tipo documento] tipo,
-               d.IdFormulado p, d.[Producto/Servicio] txt, d.Cantidad q, d.Unidad u, de.IdCultivo cu, d.[IdCampaña] ca,
+               d.IdFormulado p, d.[Producto/Servicio] txt, ru.Rubro rubro, d.Cantidad q, d.Unidad u, de.IdCultivo cu, d.[IdCampaña] ca,
                ISNULL(d.Cantidad,0)*ISNULL(d.[Precio Unitario],0)*CASE WHEN c.Moneda='Dolares' THEN ISNULL(c.[Tipo de Cambio],0) ELSE 1 END pesos
         FROM dbo.Det_Compras d JOIN dbo.Compras c ON c.IdDeuda = d.IdCompra
         JOIN dbo.Rubros ru ON ru.IdRubro = d.IdRubro
@@ -102,7 +138,7 @@ def main() -> None:
         LEFT JOIN dbo.DestinoCompras de ON de.IdDestino = d.IdDestino
         WHERE c.Fecha >= ? AND ru.Rubro IN ({",".join("?" * len(RUBROS))})
         """,
-        (CORTE.isoformat(), *RUBROS),
+        (INICIO.isoformat(), *RUBROS),
     ):
         td = (f["tipo"] or "").lower()
         if (f["u"] or "").strip().upper() in MONETARIAS:
@@ -120,6 +156,10 @@ def main() -> None:
             cobertura["historia (campaña anterior)"] += 1
             continue
         pid, via = (f["p"], "con producto") if f["p"] else sug.sugerir(f["txt"])
+        if pid is None or "CLETODIM 36" in (f["txt"] or "").upper() or "2,4 D 102,5" in (f["txt"] or "").upper():
+            pid2, via2 = identificar(f["txt"], f["rubro"])
+            if pid2:
+                pid, via = pid2, via2
         if pid is None:
             cobertura["sin producto"] += 1
             sin_prod.append([_d(f["f"]), f["prov"], f["nro"], f["txt"], f["q"], f["u"], round(float(f["pesos"] or 0), 2),
@@ -129,7 +169,7 @@ def main() -> None:
         k = (f["idc"], pid)
         x = facturas.setdefault(k, {"fecha": _d(f["f"]), "prov": f["prov"], "nro": f["nro"], "txt": f["txt"], "p": pid,
                                     "ia": ia.get(pid) or f"#{pid}", "q": 0.0, "pesos": 0.0, "manual": Counter()})
-        factor, _ = stock_datos.factor_a_base(pid, f["u"], bases, equiv)
+        factor = _factor(pid, f["u"], bases, equiv)
         pesos = float(f["pesos"] or 0)
         x["q"] += float(f["q"] or 0) * factor
         x["pesos"] += pesos
@@ -139,16 +179,16 @@ def main() -> None:
     # NC con cantidad: si anula entera una factura anterior del mismo proveedor y producto, las dos se cancelan.
     agrup_nc: dict[tuple, dict] = {}
     for f in ncs:
-        pid = f["p"] or sug.sugerir(f["txt"])[0]
+        pid = f["p"] or sug.sugerir(f["txt"])[0] or identificar(f["txt"], f["rubro"])[0]
         if not pid or not f["q"]:
             cobertura["nota de crédito (ajuste, sigue a su factura)"] += 1
             continue
-        factor, _ = stock_datos.factor_a_base(pid, f["u"], bases, equiv)
+        factor = _factor(pid, f["u"], bases, equiv)
         x = agrup_nc.setdefault((f["idc"], pid), {"prov": f["prov"], "fecha": _d(f["f"]), "p": pid, "q": 0.0, "n": 0})
         x["q"] += float(f["q"]) * factor
         x["n"] += 1
     for nk, nc in agrup_nc.items():
-        cand = [k for k, x in facturas.items() if x["prov"] == nc["prov"] and x["p"] == nc["p"] and x["fecha"] <= nc["fecha"]
+        cand = [k for k, x in facturas.items() if x["prov"] == nc["prov"] and x["ia"] == (ia.get(nc["p"]) or f"#{nc['p']}") and x["fecha"] <= nc["fecha"]
                 and abs(x["q"] - nc["q"]) <= TOL * max(nc["q"], 1)]
         if cand:
             k = max(cand, key=lambda k: facturas[k]["fecha"])
@@ -157,33 +197,46 @@ def main() -> None:
         else:
             cobertura["nota de crédito (ajuste, sigue a su factura)"] += nc["n"]
 
-    # Apertura (hoja "Facturas Insumos en Stock" de Sergio): facturas anteriores al arranque que él dejó en Stock.
+    # Apertura = recuento del 12/05/2025 (planilla Stock Insumos.xlsx), valuado a la última factura anterior del
+    # producto (o, si no hay, del mismo principio activo / familia).
+    precio_pid, precio_ia = {}, {}
     for f in fetch_all(
         f"""
-        SELECT d.IdCompra idc, c.Fecha f, co.[Razon Social] prov, c.[Nro Documento] nro, d.IdFormulado p, d.[Producto/Servicio] txt,
-               d.Cantidad q, d.Unidad u,
-               ISNULL(d.Cantidad,0)*ISNULL(d.[Precio Unitario],0)*CASE WHEN c.Moneda='Dolares' THEN ISNULL(c.[Tipo de Cambio],0) ELSE 1 END pesos
-        FROM dbo.Det_Compras d JOIN dbo.Compras c ON c.IdDeuda = d.IdCompra
-        JOIN dbo.Rubros ru ON ru.IdRubro = d.IdRubro
-        LEFT JOIN dbo.Contactos co ON co.IdContacto = c.IdContacto
-        LEFT JOIN dbo.DestinoCompras de ON de.IdDestino = d.IdDestino
-        WHERE c.Fecha >= '2022-07-01' AND c.Fecha < ? AND de.Destino = 'Stock' AND c.[Tipo documento] NOT LIKE '%dito%'
+        SELECT c.Fecha f, d.IdFormulado p, d.[Producto/Servicio] txt, ru.Rubro rubro, d.Cantidad q, d.Unidad u,
+               d.[Precio Unitario]*CASE WHEN c.Moneda='Dolares' THEN ISNULL(c.[Tipo de Cambio],0) ELSE 1 END pu
+        FROM dbo.Det_Compras d JOIN dbo.Compras c ON c.IdDeuda = d.IdCompra JOIN dbo.Rubros ru ON ru.IdRubro = d.IdRubro
+        WHERE c.Fecha >= '2020-07-01' AND c.Fecha < ? AND c.[Tipo documento] = 'Factura' AND d.Cantidad > 0 AND d.[Precio Unitario] > 0
           AND ISNULL(d.Unidad, '') NOT IN ('ARS', 'USD') AND ru.Rubro IN ({",".join("?" * len(RUBROS))})
+        ORDER BY c.Fecha
         """,
-        (CORTE.isoformat(), *RUBROS),
+        (INICIO.isoformat(), *RUBROS),
     ):
-        pid = f["p"] or sug.sugerir(f["txt"])[0]
-        if not pid or not f["q"]:
+        pid = f["p"] or identificar(f["txt"], f["rubro"])[0] or sug.sugerir(f["txt"])[0]
+        if not pid:
             continue
-        factor, _ = stock_datos.factor_a_base(pid, f["u"], bases, equiv)
-        k = (f["idc"], pid)
-        x = facturas.setdefault(k, {"fecha": _d(f["f"]), "prov": f["prov"], "nro": f["nro"], "txt": f["txt"], "p": pid, "apertura": True,
-                                    "ia": ia.get(pid) or f"#{pid}", "q": 0.0, "pesos": 0.0, "manual": Counter()})
-        x["q"] += float(f["q"]) * factor
-        x["pesos"] += float(f["pesos"] or 0)
-        cobertura["apertura: en Stock antes del arranque"] += 1
+        factor = _factor(pid, f["u"], bases, equiv)
+        precio_pid[pid] = float(f["pu"]) / (factor or 1)
+        precio_ia[ia.get(pid) or f"#{pid}"] = precio_pid[pid]
+    cat = Catalogo()
+    rec = next(r for r in leer_recuentos() if r["fecha"] == INICIO)
+    sin_valor = []
+    for i_, r in enumerate(rec["renglones"]):
+        pid = cat.producto(r["marca"], sug)
+        if not pid or r["q"] <= 0:
+            continue
+        a = ia.get(pid) or f"#{pid}"
+        pu = precio_pid.get(pid) or precio_ia.get(a)
+        if not pu:
+            sin_valor.append(r["marca"])
+            pu = 0.0
+        factor = _factor(pid, r["unidad"], bases, equiv)
+        facturas[("recuento", i_)] = {"fecha": INICIO - timedelta(days=1), "prov": "Recuento 12/05/2025", "nro": rec["hoja"],
+                                      "txt": r["marca"], "p": pid, "ia": a, "q": r["q"] * factor, "pesos": max(pu, 1e-6) * r["q"] * factor,
+                                      "manual": Counter(), "apertura": True}
+        cobertura["apertura: recuento 12/05/2025"] += 1
+    if sin_valor:
+        print("recuento sin precio de factura:", sin_valor)
 
-    ordenes = ordenes_por_producto()
     por_prod, por_ia = defaultdict(list), defaultdict(list)
     for o in ordenes:
         por_prod[o["p"]].append(o)
@@ -195,7 +248,7 @@ def main() -> None:
     motor: dict[tuple, Counter] = defaultdict(Counter)
     metodo: dict[tuple, str] = {}
     resto_f = {k: x["q"] for k, x in facturas.items() if x["q"] > 0 and x["pesos"] > 0}
-    resto_o = {id(o): o["q"] for o in ordenes if o["fecha"] >= CORTE}
+    resto_o = {id(o): o["q"] for o in ordenes if o["fecha"] >= INICIO}
 
     def emparejar(fks, ords, etiqueta):
         fks = sorted(fks, key=lambda k: (facturas[k]["fecha"], k))
@@ -300,7 +353,7 @@ def main() -> None:
     for w in wb.worksheets:
         for cel in w[1]:
             cel.font = Font(bold=True)
-    destino = SALIDA / f"simulacion-vinculo-orden-{date.today():%Y%m%d}-v2.xlsx"
+    destino = SALIDA / f"simulacion-vinculo-orden-{date.today():%Y%m%d}-recuento.xlsx"
     wb.save(destino)
     print("cobertura", dict(cobertura))
     for m, cc in porm.items():
