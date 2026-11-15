@@ -89,7 +89,9 @@ class Sugeridor:
             if not m:
                 continue
             s = len(m & mis) / len(m)
-            if s >= 0.67 and len(m & mis) >= 1 and (s, len(m), p) > mejor_m:
+            # "SYN 3970" = "SYN 3970 CL": todo el texto (con su código numérico) está dentro de la marca.
+            todo = len(m & mis) >= 2 and mis <= m and any(ch.isdigit() for w in mis for ch in w)
+            if (s >= 0.67 or todo) and len(m & mis) >= 1 and (s, len(m), p) > mejor_m:
                 mejor_m = (s, len(m), p)
         if mejor_m[2]:
             return int(mejor_m[2]), "marca comercial"

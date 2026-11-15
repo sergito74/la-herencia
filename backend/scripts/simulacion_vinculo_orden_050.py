@@ -88,6 +88,7 @@ def main() -> None:
 
     facturas: dict[tuple, dict] = {}
     cobertura = Counter()
+    ncs: list[dict] = []
     for f in fetch_all(
         f"""
         SELECT d.IdCompra idc, c.Fecha f, co.[Razon Social] prov, c.[Nro Documento] nro, c.[Tipo documento] tipo,
@@ -101,8 +102,17 @@ def main() -> None:
         """,
         (CORTE.isoformat(), *RUBROS),
     ):
-        if (f["u"] or "").strip().upper() in MONETARIAS or "credito" in (f["tipo"] or "").lower():
-            cobertura["ajuste en $ / NC (sigue a su factura)"] += 1
+        td = (f["tipo"] or "").lower()
+        if (f["u"] or "").strip().upper() in MONETARIAS:
+            cobertura["ajuste en $ (sigue a su factura)"] += 1
+            continue
+        # Las notas de débito repiten la cantidad de la factura pero solo ajustan el precio (TC, diferencias):
+        # no entran mercadería. Las notas de crédito con cantidad anulan un pedido facturado (PED. 43194 ↔ NC).
+        if "bito" in td:
+            cobertura["nota de débito (ajuste de precio, sigue a su factura)"] += 1
+            continue
+        if "dito" in td:
+            ncs.append(f)
             continue
         if _anterior(camp.get(f["ca"])):
             cobertura["historia (campaña anterior)"] += 1
@@ -121,6 +131,27 @@ def main() -> None:
         x["pesos"] += pesos
         ca = f["ca"] if f["ca"] not in (None, NO_APLICA) else None
         x["manual"][(f["cu"], ca) if f["cu"] and ca else STOCK] += pesos
+
+    # NC con cantidad: si anula entera una factura anterior del mismo proveedor y producto, las dos se cancelan.
+    agrup_nc: dict[tuple, dict] = {}
+    for f in ncs:
+        pid = f["p"] or sug.sugerir(f["txt"])[0]
+        if not pid or not f["q"]:
+            cobertura["nota de crédito (ajuste, sigue a su factura)"] += 1
+            continue
+        factor, _ = stock_datos.factor_a_base(pid, f["u"], bases, equiv)
+        x = agrup_nc.setdefault((f["idc"], pid), {"prov": f["prov"], "fecha": _d(f["f"]), "p": pid, "q": 0.0, "n": 0})
+        x["q"] += float(f["q"]) * factor
+        x["n"] += 1
+    for nk, nc in agrup_nc.items():
+        cand = [k for k, x in facturas.items() if x["prov"] == nc["prov"] and x["p"] == nc["p"] and x["fecha"] <= nc["fecha"]
+                and abs(x["q"] - nc["q"]) <= TOL * max(nc["q"], 1)]
+        if cand:
+            k = max(cand, key=lambda k: facturas[k]["fecha"])
+            facturas.pop(k)
+            cobertura["factura anulada por NC (se cancelan)"] += nc["n"]
+        else:
+            cobertura["nota de crédito (ajuste, sigue a su factura)"] += nc["n"]
 
     # Apertura (hoja "Facturas Insumos en Stock" de Sergio): facturas anteriores al arranque que él dejó en Stock.
     for f in fetch_all(
