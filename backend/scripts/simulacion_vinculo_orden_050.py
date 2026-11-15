@@ -42,7 +42,7 @@ def ordenes_por_producto() -> list[dict]:
                d.IdCultivo cu, d.IdCampania ca, d.CantidadAsignada qa
         FROM dbo.Ordenes_Trabajo ot JOIN dbo.Ordenes_Trabajo_Insumos oti ON oti.IdOrdenTrabajo = ot.IdOrdenTrabajo
         LEFT JOIN dbo.Ordenes_Trabajo_Distrib d ON d.IdOrdenInsumo = oti.IdOrdenInsumo
-        WHERE ot.Estado <> 'Anulada' AND oti.CantidadTotal > 0 AND COALESCE(ot.FechaEjecucion, ot.FechaPedido) >= '2024-07-01'
+        WHERE ot.Estado <> 'Anulada' AND oti.CantidadTotal > 0 AND COALESCE(ot.FechaEjecucion, ot.FechaPedido) >= '2015-01-01'
         """
     )
     g: dict[tuple, dict] = {}
@@ -86,7 +86,13 @@ def _factor(pid, unidad, bases, equiv) -> float:
     return factor
 
 
-def main() -> None:
+def main(inicio: date = INICIO, fin: date | None = None, recuento: date | None = INICIO, auditoria: bool = False,
+         guardar: bool = True) -> dict:
+    """Una ventana: facturas y órdenes en [inicio, fin), apertura = recuento (o nada). auditoria: sin filtro de historia."""
+    # Margen: facturas y órdenes hasta 6 meses después del fin participan del emparejamiento (la factura puede
+    # llegar después de la orden), pero solo se comparan las facturas de la ventana.
+    hasta = (fin + timedelta(days=183)) if fin else date(2100, 1, 1)
+    fin_ = hasta.isoformat()
     ia = {int(f["i"]): _ia_norm(f["a"]) for f in fetch_all(
         "SELECT IdProducto i, IngredienteActivo a FROM dbo.vw_ProductosBase WHERE IdProducto IS NOT NULL")}
     bases, equiv = stock_datos.unidades_base(), stock_datos.equivalencias()
@@ -136,9 +142,9 @@ def main() -> None:
         JOIN dbo.Rubros ru ON ru.IdRubro = d.IdRubro
         LEFT JOIN dbo.Contactos co ON co.IdContacto = c.IdContacto
         LEFT JOIN dbo.DestinoCompras de ON de.IdDestino = d.IdDestino
-        WHERE c.Fecha >= ? AND ru.Rubro IN ({",".join("?" * len(RUBROS))})
+        WHERE c.Fecha >= ? AND c.Fecha < ? AND ru.Rubro IN ({",".join("?" * len(RUBROS))})
         """,
-        (INICIO.isoformat(), *RUBROS),
+        (inicio.isoformat(), fin_, *RUBROS),
     ):
         td = (f["tipo"] or "").lower()
         if (f["u"] or "").strip().upper() in MONETARIAS:
@@ -152,7 +158,7 @@ def main() -> None:
         if "dito" in td:
             ncs.append(f)
             continue
-        if _anterior(camp.get(f["ca"])):
+        if not auditoria and _anterior(camp.get(f["ca"])):
             cobertura["historia (campaña anterior)"] += 1
             continue
         pid, via = (f["p"], "con producto") if f["p"] else sug.sugerir(f["txt"])
@@ -209,7 +215,7 @@ def main() -> None:
           AND ISNULL(d.Unidad, '') NOT IN ('ARS', 'USD') AND ru.Rubro IN ({",".join("?" * len(RUBROS))})
         ORDER BY c.Fecha
         """,
-        (INICIO.isoformat(), *RUBROS),
+        ((recuento or inicio).isoformat(), *RUBROS),
     ):
         pid = f["p"] or identificar(f["txt"], f["rubro"])[0] or sug.sugerir(f["txt"])[0]
         if not pid:
@@ -218,7 +224,7 @@ def main() -> None:
         precio_pid[pid] = float(f["pu"]) / (factor or 1)
         precio_ia[ia.get(pid) or f"#{pid}"] = precio_pid[pid]
     cat = Catalogo()
-    rec = next(r for r in leer_recuentos() if r["fecha"] == INICIO)
+    rec = next((r for r in leer_recuentos() if r["fecha"] == recuento), {"renglones": [], "hoja": ""}) if recuento else {"renglones": [], "hoja": ""}
     sin_valor = []
     for i_, r in enumerate(rec["renglones"]):
         pid = cat.producto(r["marca"], sug)
@@ -230,10 +236,10 @@ def main() -> None:
             sin_valor.append(r["marca"])
             pu = 0.0
         factor = _factor(pid, r["unidad"], bases, equiv)
-        facturas[("recuento", i_)] = {"fecha": INICIO - timedelta(days=1), "prov": "Recuento 12/05/2025", "nro": rec["hoja"],
+        facturas[("recuento", i_)] = {"fecha": recuento - timedelta(days=1), "prov": f"Recuento {recuento:%d/%m/%Y}", "nro": rec["hoja"],
                                       "txt": r["marca"], "p": pid, "ia": a, "q": r["q"] * factor, "pesos": max(pu, 1e-6) * r["q"] * factor,
                                       "manual": Counter(), "apertura": True}
-        cobertura["apertura: recuento 12/05/2025"] += 1
+        cobertura["apertura: recuento"] += 1
     if sin_valor:
         print("recuento sin precio de factura:", sin_valor)
 
@@ -248,7 +254,7 @@ def main() -> None:
     motor: dict[tuple, Counter] = defaultdict(Counter)
     metodo: dict[tuple, str] = {}
     resto_f = {k: x["q"] for k, x in facturas.items() if x["q"] > 0 and x["pesos"] > 0}
-    resto_o = {id(o): o["q"] for o in ordenes if o["fecha"] >= INICIO}
+    resto_o = {id(o): o["q"] for o in ordenes if inicio <= o["fecha"] < hasta}
 
     def emparejar(fks, ords, etiqueta):
         fks = sorted(fks, key=lambda k: (facturas[k]["fecha"], k))
@@ -302,7 +308,7 @@ def main() -> None:
     for k, x in facturas.items():
         man, mo = x["manual"], motor.get(k, Counter())
         tm, tmo = sum(man.values()), sum(mo.values())
-        if x.get("apertura") or x["pesos"] <= 0 or tm <= 0 or tmo <= 0:
+        if x.get("apertura") or x["pesos"] <= 0 or tm <= 0 or tmo <= 0 or (fin and x["fecha"] >= fin):
             continue
         c = sum(min(man[z] / tm, mo[z] / tmo) for z in set(man) | set(mo))
         # Lo que Sergio dejó en stock y la simulación ya asignó a una orden posterior es consistente (se usó después).
@@ -326,6 +332,26 @@ def main() -> None:
         detalle.append([x["fecha"], x["prov"], x["nro"], x["ia"], x["txt"], metodo[k], round(x["q"], 2), round(x["pesos"], 2),
                         round(c * 100, 1), _txt(man, cult, camp), _txt(mo, cult, camp)])
     agreg = sum(min(agM[z], agK[z]) for z in set(agM) | set(agK)) / (sum(agM.values()) or 1)
+
+    faltantes = [["Renglón sin producto identificado", *r] for r in sin_prod]
+    for k, x in facturas.items():
+        mo = motor.get(k, Counter())
+        if x.get("apertura") or not mo or (fin and x["fecha"] >= fin):
+            continue
+        en_stock = mo[STOCK] / (sum(mo.values()) or 1)
+        man_cult = sum(v for z, v in x["manual"].items() if z != STOCK) / (sum(x["manual"].values()) or 1)
+        if en_stock > 0.05 and man_cult > 0.05:
+            faltantes.append(["Factura imputada a cultivo sin orden que la consuma", x["fecha"], x["prov"], x["nro"], x["txt"],
+                              round(x["q"] * en_stock, 2), "", round(x["pesos"] * en_stock, 2), _txt(x["manual"], cult, camp)])
+    for o in ordenes:
+        r = resto_o.get(id(o), 0)
+        if r > 1e-6 and not (fin and o["fecha"] >= fin):
+            faltantes.append(["Orden aplicada sin factura que la cubra", o["fecha"], f"Orden {o['orden']}", "", nombres.get(o["p"], o["p"]),
+                              round(r, 2), "", None, _txt(o["reparto"], cult, camp)])
+    salida = {"detalle": detalle, "faltantes": faltantes, "portipo": portipo, "agM": agM, "agK": agK, "cp": cp, "tot": tot,
+              "cobertura": cobertura, "cult": cult, "camp": camp}
+    if not guardar:
+        return salida
 
     wb = Workbook()
     ws = wb.active
@@ -364,27 +390,14 @@ def main() -> None:
         ws.append([t, "importe $", round(a2, 2), "factura x factura %", round(a1 / a2 * 100, 1), "agregado %", round(ag * 100, 1)])
     w3 = wb.create_sheet("Faltantes")
     w3.append(["Tipo", "Fecha", "Proveedor / Orden", "Nro", "Producto", "Cantidad", "Unidad", "Importe $", "Imputación manual"])
-    for r in sin_prod:
-        w3.append(["Renglón sin producto identificado", *r])
-    for k, x in facturas.items():
-        mo = motor.get(k, Counter())
-        if x.get("apertura") or not mo:
-            continue
-        en_stock = mo[STOCK] / (sum(mo.values()) or 1)
-        man_cult = sum(v for z, v in x["manual"].items() if z != STOCK) / (sum(x["manual"].values()) or 1)
-        if en_stock > 0.05 and man_cult > 0.05:
-            w3.append(["Factura imputada a cultivo sin orden que la consuma", x["fecha"], x["prov"], x["nro"], x["txt"],
-                       round(x["q"] * en_stock, 2), "", round(x["pesos"] * en_stock, 2), _txt(x["manual"], cult, camp)])
-    for o in ordenes:
-        r = resto_o.get(id(o), 0)
-        if r > 1e-6:
-            w3.append(["Orden aplicada sin factura que la cubra", o["fecha"], f"Orden {o['orden']}", "", nombres.get(o["p"], o["p"]),
-                       round(r, 2), "", None, _txt(o["reparto"], cult, camp)])
+    for r in faltantes:
+        w3.append(r)
     for cel in w3[1]:
         cel.font = Font(bold=True)
     wb.save(destino)
     print("ponderada", round(cp / tot * 100, 1), "agregada", round(agreg * 100, 1))
     print("Excel:", destino)
+    return salida
 
 
 def _txt(c: Counter, cult, camp) -> str:
