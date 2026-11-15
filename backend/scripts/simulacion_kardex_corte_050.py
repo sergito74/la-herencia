@@ -16,6 +16,7 @@ Uso (desde backend/):  python -m scripts.simulacion_kardex_corte_050
 
 from __future__ import annotations
 
+import re
 from collections import Counter, defaultdict
 from datetime import date, datetime
 from pathlib import Path
@@ -47,6 +48,13 @@ def _ia_norm(a):
     return " ".join((a or "").upper().replace("EQUIVALENTE ACIDO", "").replace("EQUIVALETE ACIDO", "").split())
 
 
+def _palabras(t: str) -> frozenset:
+    """Palabras del texto normalizado conservando códigos con números (3970, 46R18), sin conectores ni unidades."""
+    ruido = {"DE", "DEL", "LA", "EL", "Y", "X", "KG", "KGS", "LTS", "LT", "L", "LITROS", "BOLSA", "BOLSAS", "BIG", "BAG",
+             "GRANEL", "TRAT", "C", "B1", "B2", "SEMILLA", "SEMILLAS"}
+    return frozenset(w for w in re.split(r"[^A-Z0-9]+", t) if len(w) >= 2 and w not in ruido)
+
+
 class Sugeridor:
     def __init__(self):
         self.exacto: dict[str, Counter] = defaultdict(Counter)
@@ -55,11 +63,12 @@ class Sugeridor:
             t = normalizar(f["t"])
             self.exacto[t][f["p"]] += 1
             self.toks.setdefault(t, tokens(t))
+        # Fitosanitarios, semillas y fertilizantes (vw_ProductosBase) usados en órdenes o recuentos.
         usados = fetch_all(
-            """SELECT DISTINCT f.NroReg_int p, f.[MARCA COMERCIAL] m FROM dbo.Formulados f
-               WHERE f.NroReg_int IN (SELECT IdProducto FROM dbo.Ordenes_Trabajo_Insumos UNION SELECT IdFormulado FROM dbo.Ordenes_Detalles
+            """SELECT DISTINCT CAST(v.IdProducto AS bigint) p, v.Producto m FROM dbo.vw_ProductosBase v
+               WHERE v.IdProducto IN (SELECT IdProducto FROM dbo.Ordenes_Trabajo_Insumos UNION SELECT IdFormulado FROM dbo.Ordenes_Detalles
                                       UNION SELECT IdProducto FROM dbo.Stock_Recuentos_Detalle)""")
-        self.marcas = [(normalizar(u["m"]), u["p"]) for u in usados if u["m"] and len(normalizar(u["m"])) >= 4]
+        self.marcas = [(_palabras(normalizar(u["m"])), u["p"]) for u in usados if u["m"]]
 
     def sugerir(self, texto) -> tuple[int | None, str]:
         t = normalizar(texto)
@@ -74,9 +83,16 @@ class Sugeridor:
                     mejor, pid = s, self.exacto[otro].most_common(1)[0][0]
         if mejor >= 0.6:
             return pid, "texto parecido"
-        largo = [(len(m), p) for m, p in self.marcas if f" {m} " in f" {t} "]
-        if largo:
-            return max(largo)[1], "marca comercial"
+        mis = _palabras(t)
+        mejor_m = (0.0, 0, None)
+        for m, p in self.marcas:
+            if not m:
+                continue
+            s = len(m & mis) / len(m)
+            if s >= 0.67 and len(m & mis) >= 1 and (s, len(m), p) > mejor_m:
+                mejor_m = (s, len(m), p)
+        if mejor_m[2]:
+            return int(mejor_m[2]), "marca comercial"
         return None, "sin sugerencia"
 
 
