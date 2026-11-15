@@ -175,6 +175,7 @@ def main(inicio: date = INICIO, fin: date | None = None, recuento: date | None =
     for f in fetch_all(
         f"""
         SELECT d.IdCompra idc, c.Fecha f, co.[Razon Social] prov, c.[Nro Documento] nro, c.[Tipo documento] tipo,
+               ISNULL(c.[Ajusta Tipo Cambio], 0) atc,
                d.IdFormulado p, d.[Producto/Servicio] txt, ru.Rubro rubro, d.Cantidad q, d.Unidad u, de.IdCultivo cu, d.[IdCampaña] ca,
                ISNULL(d.Cantidad,0)*ISNULL(d.[Precio Unitario],0)*CASE WHEN c.Moneda='Dolares' THEN ISNULL(c.[Tipo de Cambio],0) ELSE 1 END pesos
         FROM dbo.Det_Compras d JOIN dbo.Compras c ON c.IdDeuda = d.IdCompra
@@ -186,6 +187,11 @@ def main(inicio: date = INICIO, fin: date | None = None, recuento: date | None =
         (inicio.isoformat(), fin_, *RUBROS),
     ):
         td = (f["tipo"] or "").lower()
+        # Sergio 15/11: los documentos que "Ajusta tipo de cambio" no mueven stock; van con su documento base
+        # (documentos relacionados) y siguen su imputación.
+        if f["atc"]:
+            cobertura["ajusta tipo de cambio (sigue a su documento base)"] += 1
+            continue
         if (f["u"] or "").strip().upper() in MONETARIAS:
             cobertura["ajuste en $ (sigue a su factura)"] += 1
             continue
