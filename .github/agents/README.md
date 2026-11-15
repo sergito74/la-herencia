@@ -10,6 +10,7 @@ Estos agentes trabajan como un equipo para migrar La Herencia a una aplicación 
 4. `agroux-lead-product-architect` diseña la arquitectura de producto completa: árbol de navegación, design system y especificación funcional de cada pantalla — se consulta antes de diseñar o rediseñar cualquier pantalla o flujo nuevo. `agro-erp-frontend-specialist` queda para consultas puntuales de nomenclatura/agrupación de un módulo aislado, siempre alineadas con el design system que define el arquitecto de producto.
 5. `web-frontend-engineer` implementa los componentes y la experiencia operativa siguiendo esa especificación.
 6. `python-engineer` automatiza auditorías, análisis y pruebas.
+7. `forensic-accounting-specialist` reconstruye y audita la historia administrativa, financiera y contable con evidencia documental; se consulta antes de cualquier saneamiento de saldos, imputaciones o movimientos históricos.
 
 ## Reglas compartidas
 
