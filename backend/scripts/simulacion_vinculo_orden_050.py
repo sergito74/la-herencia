@@ -299,7 +299,12 @@ def main(inicio: date = INICIO, fin: date | None = None, recuento: date | None =
             motor[k][STOCK] += q * facturas[k]["pesos"] / facturas[k]["q"]
             metodo.setdefault(k, "stock")
 
-    # Comparación.
+    # Comparación. Uso posterior por principio activo: lo que la simulación deja en stock al cierre y Sergio imputó a un
+    # cultivo/campaña donde ese producto se aplicó después es consistente ("en stock al cierre, usado después").
+    usos = defaultdict(list)
+    for o in ordenes:
+        for z in o["reparto"]:
+            usos[ia.get(o["p"]) or f"#{o['p']}"].append((o["fecha"], z))
     res, porm = Counter(), defaultdict(Counter)
     agM, agK = Counter(), Counter()
     portipo = defaultdict(lambda: [0.0, 0.0, Counter(), Counter()])
@@ -313,6 +318,14 @@ def main(inicio: date = INICIO, fin: date | None = None, recuento: date | None =
         c = sum(min(man[z] / tm, mo[z] / tmo) for z in set(man) | set(mo))
         # Lo que Sergio dejó en stock y la simulación ya asignó a una orden posterior es consistente (se usó después).
         c = min(1.0, c + man[STOCK] / tm - min(man[STOCK] / tm, mo[STOCK] / tmo))
+        despues = {z for fe, z in usos.get(x["ia"], []) if fe >= x["fecha"]}
+        libre = mo[STOCK] / tmo - min(man[STOCK] / tm, mo[STOCK] / tmo)
+        extra = 0.0
+        for z, v in man.items():
+            if z != STOCK and z in despues:
+                extra += max(0.0, v / tm - min(v / tm, mo[z] / tmo))
+        usado_despues = min(libre, extra)
+        c = min(1.0, c + usado_despues)
         b = "100%" if c > 0.995 else "90-99%" if c >= 0.9 else "50-89%" if c >= 0.5 else "<50%"
         res[b] += 1
         porm[metodo[k]][b] += 1
@@ -330,7 +343,8 @@ def main(inicio: date = INICIO, fin: date | None = None, recuento: date | None =
         for z, v in mo.items():
             agK[z] += v * x["pesos"] / tmo
         detalle.append([x["fecha"], x["prov"], x["nro"], x["ia"], x["txt"], metodo[k], round(x["q"], 2), round(x["pesos"], 2),
-                        round(c * 100, 1), _txt(man, cult, camp), _txt(mo, cult, camp)])
+                        round(c * 100, 1), _txt(man, cult, camp), _txt(mo, cult, camp), dict(man), {z: v / tmo for z, v in mo.items()},
+                        round(usado_despues * 100, 1), x["p"]])
     agreg = sum(min(agM[z], agK[z]) for z in set(agM) | set(agK)) / (sum(agM.values()) or 1)
 
     faltantes = [["Renglón sin producto identificado", *r] for r in sin_prod]
