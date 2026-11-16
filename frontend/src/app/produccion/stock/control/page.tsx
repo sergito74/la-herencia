@@ -7,7 +7,7 @@ import { RemitosSubNav } from "@/components/remitos/RemitosSubNav";
 export default function Page() {
   return (
     <main className="mx-auto max-w-none px-6 py-3">
-      <PageHeader titulo="Control de cierre de insumos" volver="/produccion/stock" />
+      <PageHeader titulo="Pendientes de carga" volver="/produccion/stock" />
       <div>
         <RemitosSubNav grupo="existencias" />
       </div>

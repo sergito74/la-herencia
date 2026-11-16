@@ -69,10 +69,10 @@ async def set_equivalencia(id_producto: int, body: EquivalenciaIn) -> None:
 
 
 # ------------------------------------------------------------------ existencias
-@router.get("/control-cierre")
-async def control_de_cierre() -> dict:
-    """050: por producto, facturado / remitido / usado / stock desde la activación, con alertas de lo que no cierra."""
-    return await _ejecutar(control_cierre.control)
+@router.get("/pendientes-carga")
+async def pendientes_carga() -> dict:
+    """050: remitos sin factura e insumos usados sin remito de entrada, para cargar lo que falta."""
+    return await _ejecutar(control_cierre.pendientes)
 
 
 @router.get("/existencias")
