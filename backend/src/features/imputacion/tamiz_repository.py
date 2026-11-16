@@ -266,3 +266,14 @@ def relacionada_con_insumos(id_compra: int) -> bool:
         """,
         (id_compra, id_compra),
     ) is not None
+
+
+def nombre_producto(id_producto: int) -> str:
+    f = fetch_one("SELECT Producto AS n FROM dbo.vw_ProductosBase WHERE IdProducto = ?", (id_producto,))
+    return (f or {}).get("n") or f"producto {id_producto}"
+
+
+def renglones_corregidos_a_mano(id_compra: int) -> set[int]:
+    return {f["i"] for f in fetch_all(
+        "SELECT tz.IdDetalleCompra AS i FROM dbo.TamizRenglones tz JOIN dbo.Det_Compras d ON d.IdDetalleCompra = tz.IdDetalleCompra "
+        "WHERE d.IdCompra = ? AND tz.Vigente = 1 AND tz.OrigenDecision = 'Manual'", (id_compra,))}

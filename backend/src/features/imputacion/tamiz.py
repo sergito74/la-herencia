@@ -110,13 +110,16 @@ def clasificar_renglon(r: dict, reglas_rubro: dict, reglas_producto: list, conte
                           motivo="Flete sin insumos en la factura: relacionarlo con la factura o remito que trajo")
 
     if destino == "CultivoStock":
+        if "REDONDEO" in texto:
+            return _resultado(r, "NoImputa", motivo="Redondeo del comprobante")
         if (r.get("tipoDocumento") or "").startswith("Nota"):
             # NC / ND de insumos (ajuste de precio o de tipo de cambio): no mueven stock, siguen el reparto de su
             # documento base (Sergio 15/11/2026).
             return _resultado(r, destino, parte, motivo="Sigue a su documento base")
         if r.get("idFormulado") is None:
-            return _resultado(r, destino, parte, origen="Revision", estado="Pendiente",
-                              motivo="Insumo sin producto del catálogo")
+            sugerido = (contexto.get("sugerencias") or {}).get(r.get("idDetalleCompra"))
+            motivo = "Insumo sin producto del catálogo" + (f" (¿es {repo.nombre_producto(sugerido)}?)" if sugerido else "")
+            return _resultado(r, destino, parte, origen="Revision", estado="Pendiente", motivo=motivo)
         return _resultado(r, destino, parte)
 
     if destino == "Cultivo":
@@ -278,6 +281,9 @@ def tamizar_compra(id_compra: int, *, guardar: bool = True, forzar: bool = False
     ctx["modelo"] = modelo
     ctx["financiaDestino"] = repo.destino_financiado(id_compra)
     ctx["anulada"] = repo.anulada(id_compra)
+    # Renglón de insumo sin producto del catálogo: se busca por el texto (050, 16/11/2026). Con una coincidencia segura
+    # se le asigna el producto; si no, queda pendiente con la sugerencia.
+    asignados = _sugerir_productos(renglones, reglas_rubro, ctx)
     if not ctx.get("tieneInsumos") and repo.relacionada_con_insumos(id_compra):
         # Flete facturado aparte y relacionado con la factura de la mercadería: se suma a esos insumos.
         ctx["tieneInsumos"] = True
@@ -297,9 +303,37 @@ def tamizar_compra(id_compra: int, *, guardar: bool = True, forzar: bool = False
         marcados = repo.renglones_marcados(id_compra)
         if marcados is not None:
             clasificaciones = [c for c in clasificaciones if c["idDetalleCompra"] in marcados]
+    # Una corrección hecha a mano (OrigenDecision = 'Manual') no se pisa al volver a clasificar la compra.
+    manuales = repo.renglones_corregidos_a_mano(id_compra)
+    clasificaciones = [c for c in clasificaciones if c["idDetalleCompra"] not in manuales]
     if guardar and clasificaciones:
+        if asignados:
+            from src.db.connection import execute_write_transaction
+            execute_write_transaction([("UPDATE dbo.Det_Compras SET IdFormulado = ? WHERE IdDetalleCompra = ? AND ISNULL(IdFormulado, 0) = 0",
+                                        (pid, idd)) for idd, pid in asignados.items()])
         repo.guardar_clasificaciones(clasificaciones)
     return clasificaciones
+
+
+def _sugerir_productos(renglones: list[dict], reglas_rubro: dict, ctx: dict) -> dict[int, int]:
+    pendientes = [r for r in renglones if r.get("idFormulado") is None
+                  and (reglas_rubro.get(r.get("idRubro")) or {}).get("destino") == "CultivoStock"
+                  and (reglas_rubro.get(r.get("idRubro")) or {}).get("regla") != "FleteInsumo"
+                  and not (r.get("tipoDocumento") or "").startswith("Nota")
+                  and (r.get("unidad") or "").strip().upper() not in ("ARS", "USD")]
+    if not pendientes:
+        return {}
+    from src.features.imputacion.sugeridor import SEGURAS, Sugeridor
+    sug, asignados = Sugeridor(), {}
+    ctx.setdefault("sugerencias", {})
+    for r in pendientes:
+        pid, via = sug.sugerir(r.get("producto"))
+        if pid and via in SEGURAS:
+            r["idFormulado"] = int(pid)
+            asignados[r["idDetalleCompra"]] = int(pid)
+        elif pid:
+            ctx["sugerencias"][r["idDetalleCompra"]] = int(pid)
+    return asignados
 
 
 def tamizar_al_guardar(id_compra: int) -> None:
