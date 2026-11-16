@@ -252,3 +252,17 @@ def anulada(id_compra: int) -> str | None:
         return f"Anulada por la nota de crédito {nro[pares[id_compra]]}" if id_compra in pares else None
     anuladas = [nro[f] for f, n in pares.items() if n == id_compra]
     return f"Anula la factura {', '.join(anuladas)}" if anuladas else None
+
+
+def relacionada_con_insumos(id_compra: int) -> bool:
+    """La compra está relacionada (documentos relacionados) con una factura que trae insumos de stock."""
+    return fetch_one(
+        """
+        SELECT TOP 1 1 AS x FROM (SELECT IdCompraRelacionada AS id FROM dbo.CompraDocumentosRelacionados WHERE IdCompra = ?
+                                  UNION SELECT IdCompra FROM dbo.CompraDocumentosRelacionados WHERE IdCompraRelacionada = ?) r
+        JOIN dbo.Det_Compras d ON d.IdCompra = r.id
+        JOIN dbo.TamizRubroDestino tr ON tr.IdRubro = d.IdRubro
+        WHERE tr.Destino = 'CultivoStock' AND ISNULL(tr.ReglaDepende, '') <> 'FleteInsumo'
+        """,
+        (id_compra, id_compra),
+    ) is not None

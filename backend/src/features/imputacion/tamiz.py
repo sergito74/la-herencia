@@ -278,6 +278,9 @@ def tamizar_compra(id_compra: int, *, guardar: bool = True, forzar: bool = False
     ctx["modelo"] = modelo
     ctx["financiaDestino"] = repo.destino_financiado(id_compra)
     ctx["anulada"] = repo.anulada(id_compra)
+    if not ctx.get("tieneInsumos") and repo.relacionada_con_insumos(id_compra):
+        # Flete facturado aparte y relacionado con la factura de la mercadería: se suma a esos insumos.
+        ctx["tieneInsumos"] = True
     fecha = renglones[0].get("fecha") if renglones else None
     if hasattr(fecha, "date"):
         fecha = fecha.date()
