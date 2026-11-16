@@ -1,16 +1,25 @@
-"""Vínculo automático remito ↔ factura (050 US9, research R-04).
+"""Vínculo automático remito ↔ factura (050 US9, research R-04; regla validada el 16/11/2026).
 
-Candidato = mismo proveedor, mismo producto (IdFormulado) y fecha del remito entre 60 días antes y
-30 días después de la factura. Se comparan cantidades en la unidad base del producto, sin tolerancias
-(P17): solo se vincula si hay UNA combinación exacta de remitos (entregas parciales incluidas) que suma
-lo pendiente del renglón. Lo demás va a VinculoRemitoPendiente con los candidatos. Nunca se vincula más
-de lo que tiene el renglón de factura ni más de lo que le queda al renglón de remito.
+Misma regla que la simulación y la revisión forense (scripts/simulacion_vinculo_orden_050.py):
+  · mismo proveedor; mismo producto o equivalente (mismo principio activo, o la misma familia de fertilizante:
+    arrancador / urea), porque las marcas se intercambian según lo que haya;
+  · los renglones de la factura se agrupan por producto (Sergio parte cada producto en un renglón por cultivo);
+  · primero un remito que cubra la factura entera; si no, producto por producto;
+  · la misma cantidad (±1%) o una combinación exacta de entregas parciales;
+  · remito hasta VENTANA_DIAS antes o después de la factura (el proveedor guarda lo pedido y factura antes o
+    después: Bayá Casal facturó 199 días después). La ventana es para emparejar factura y remito; el producto
+    puede quedar en el galpón todo lo que haga falta (FIFO);
+  · entre varios candidatos, el más cercano en fecha (antes de la factura primero); si empatan, a revisión.
+Nunca vincula más de lo que tiene el renglón de factura ni toma un renglón de remito que ya tiene factura.
+Lo dudoso va a VinculoRemitoPendiente con los candidatos.
 """
 
 from __future__ import annotations
 
 import json
 import logging
+import re
+from collections import defaultdict
 from datetime import date, datetime, timedelta
 from itertools import combinations
 
@@ -18,7 +27,8 @@ from src.db.connection import execute_write_transaction, fetch_all, fetch_one
 
 _log = logging.getLogger(__name__)
 
-DIAS_ANTES, DIAS_DESPUES = 60, 30
+VENTANA_DIAS = 270
+TOLERANCIA = 0.01  # 1% de la cantidad
 MAX_REMITOS_COMBINADOS = 4
 _EPS = 1e-6
 
@@ -37,38 +47,94 @@ def en_ventana(fecha_factura, fecha_remito) -> bool:
     ff, fr = _fecha(fecha_factura), _fecha(fecha_remito)
     if ff is None or fr is None:
         return False
-    return ff - timedelta(days=DIAS_ANTES) <= fr <= ff + timedelta(days=DIAS_DESPUES)
+    return abs((fr - ff).days) <= VENTANA_DIAS
+
+
+def _distancia(fecha_factura, fecha_remito) -> int:
+    """Días entre factura y remito; un remito posterior a la factura pesa 30 días más (primero los anteriores)."""
+    ff, fr = _fecha(fecha_factura), _fecha(fecha_remito)
+    return abs((fr - ff).days) + (0 if fr <= ff else 30)
+
+
+def _iguales(a: float, b: float) -> bool:
+    return abs(a - b) <= TOLERANCIA * max(abs(a), abs(b), 1.0)
 
 
 def combinaciones_exactas(pendiente: float, candidatos: list[dict]) -> list[tuple[dict, ...]]:
-    """Subconjuntos de candidatos (cada uno con `disponible`, en base) cuya suma es exactamente `pendiente`.
-    Pura: la usa la vinculación y los tests."""
+    """Subconjuntos de candidatos (cada uno con `disponible`, en base) cuya suma es `pendiente` (±1%)."""
     utiles = [c for c in candidatos if c["disponible"] > _EPS]
     out = []
     for n in range(1, min(MAX_REMITOS_COMBINADOS, len(utiles)) + 1):
         for combo in combinations(utiles, n):
-            if abs(sum(c["disponible"] for c in combo) - pendiente) <= _EPS * max(1.0, pendiente):
+            if _iguales(sum(c["disponible"] for c in combo), pendiente):
                 out.append(combo)
     return out
 
 
 def decidir(renglon: dict, candidatos: list[dict]) -> dict:
-    """`renglon`: {idDetalleCompra, fecha, pendiente (base)}; `candidatos`: renglones de remito del mismo
-    proveedor y producto con {idDetalleRemito, fecha, disponible (base), factor}. Devuelve
-    {'accion': 'vincular', 'items': [...]} | {'accion': 'revisar', 'motivo', 'candidatos'} | {'accion': 'nada'}."""
+    """Pura. `renglon`: {fecha, pendiente (base)}; `candidatos`: renglones de remito equivalentes del proveedor con
+    {idDetalleRemito, fecha, disponible (base), factor}. Devuelve {'accion': 'vincular', 'items'} |
+    {'accion': 'revisar', 'motivo', 'candidatos'} | {'accion': 'nada'}."""
     if renglon["pendiente"] <= _EPS:
         return {"accion": "nada"}
-    en_v = [c for c in candidatos if en_ventana(renglon["fecha"], c["fecha"])]
+    en_v = [c for c in candidatos if en_ventana(renglon["fecha"], c["fecha"]) and c["disponible"] > _EPS]
     if not en_v:
-        return {"accion": "nada"}  # todavía no llegó el remito: queda la capa de la factura
+        return {"accion": "nada"}  # todavía no llegó el remito
     combos = combinaciones_exactas(renglon["pendiente"], en_v)
-    if len(combos) == 1:
-        items = [{"idDetalleRemito": c["idDetalleRemito"], "cantidadRemito": c["disponible"] / c["factor"]}
-                 for c in combos[0]]
-        return {"accion": "vincular", "items": items}
-    motivo = "Varias combinaciones de remitos posibles" if combos else "Las cantidades de los remitos no coinciden con la factura"
+    if combos:
+        dist = lambda combo: max(_distancia(renglon["fecha"], c["fecha"]) for c in combo)
+        combos.sort(key=lambda combo: (len(combo), dist(combo)))
+        mejor = combos[0]
+        empate = [c for c in combos[1:] if len(c) == len(mejor) and dist(c) == dist(mejor)]
+        if not empate:
+            return {"accion": "vincular", "items": [{"idDetalleRemito": c["idDetalleRemito"], "cantidadBase": c["disponible"]}
+                                                    for c in mejor]}
+        motivo = "Varios remitos posibles con la misma cantidad y fecha"
+    else:
+        motivo = "Las cantidades de los remitos no coinciden con la factura"
     return {"accion": "revisar", "motivo": motivo,
             "candidatos": [{"idDetalleRemito": c["idDetalleRemito"], "disponible": c["disponible"]} for c in en_v]}
+
+
+# ---------------------------------------------------------------- equivalencia de productos
+
+def _normalizar(t) -> str:
+    import unicodedata
+    t = unicodedata.normalize("NFKD", t or "").encode("ascii", "ignore").decode().upper()
+    return " ".join(t.split())
+
+
+def familia_fertilizante(texto: str | None) -> str | None:
+    """'ARRANCADOR' (más fósforo) o 'UREA' (más nitrógeno): Sergio los nombra con cualquier producto del catálogo."""
+    t = _normalizar(texto)
+    if "UREA" in t:
+        return "UREA"
+    if "ARRANCADOR" in t or "PROTERRA 740" in t or re.search(r"\bNP\s*\d", t):
+        return "ARRANCADOR"
+    m = re.search(r"(\d+)\s*N\W*(\d+)\s*P", t)
+    if m:
+        return "ARRANCADOR" if int(m.group(2)) > int(m.group(1)) else "UREA"
+    return None
+
+
+def clave_producto(id_producto: int, cache: dict | None = None) -> str:
+    """Clave de equivalencia: la familia de fertilizante, o el principio activo normalizado, o el propio producto."""
+    if cache is not None and id_producto in cache:
+        return cache[id_producto]
+    p = fetch_one("SELECT Producto AS n, TipoProducto AS t, IngredienteActivo AS a FROM dbo.vw_ProductosBase WHERE IdProducto = ?",
+                  (id_producto,))
+    clave = f"#{id_producto}"
+    if p:
+        fam = familia_fertilizante(p["n"]) if (p["t"] or "") == "Fertilizante" else None
+        ia = _normalizar(p["a"]).replace("EQUIVALENTE", "")
+        ia = " ".join(ia.split()[:4])
+        if fam:
+            clave = f"FAMILIA {fam}"
+        elif ia and (p["t"] or "") not in ("Semilla",):
+            clave = f"IA {ia}"
+    if cache is not None:
+        cache[id_producto] = clave
+    return clave
 
 
 # ---------------------------------------------------------------- acceso a datos
@@ -82,24 +148,25 @@ def _renglones_factura(id_compra: int) -> list[dict]:
         FROM dbo.Det_Compras d
         JOIN dbo.Compras c ON c.IdDeuda = d.IdCompra
         JOIN dbo.TamizRenglones tz ON tz.IdDetalleCompra = d.IdDetalleCompra AND tz.Vigente = 1
-        WHERE d.IdCompra = ? AND tz.Destino = 'CultivoStock' AND NULLIF(d.IdFormulado, 0) IS NOT NULL
-          AND c.[Tipo documento] = 'Factura'
+        WHERE d.IdCompra = ? AND tz.Destino = 'CultivoStock' AND tz.Estado = 'Aprobada' AND NULLIF(d.IdFormulado, 0) IS NOT NULL
+          AND c.[Tipo documento] = 'Factura' AND ISNULL(d.Unidad, '') NOT IN ('ARS', 'USD') AND ISNULL(d.Cantidad, 0) > 0
         """,
         (id_compra,),
     )
 
 
-def _remitos_candidatos(id_proveedor: int, id_producto: int) -> list[dict]:
+def _remitos_libres(id_proveedor: int) -> list[dict]:
+    """Renglones de remito del proveedor sin ninguna factura vinculada (no anulados)."""
     return fetch_all(
         """
-        SELECT rd.IdDetalleRemito AS idDetalleRemito, r.Fecha AS fecha, rd.[Unidad Medida] AS unidad,
-               ISNULL(rd.Cantidad, 0) - ISNULL((SELECT SUM(t.CantidadRemitida) FROM dbo.tblRemitoCompra t
-                                               WHERE t.IdDetalleRemito = rd.IdDetalleRemito), 0) AS disponible
+        SELECT rd.IdDetalleRemito AS idDetalleRemito, rd.IdRemito AS idRemito, r.Fecha AS fecha, rd.IdFormulado AS idProducto,
+               rd.[Unidad Medida] AS unidad, ISNULL(rd.Cantidad, 0) AS cantidad
         FROM dbo.Remitos_Detalles rd JOIN dbo.Remitos r ON r.IdRemito = rd.IdRemito
         LEFT JOIN dbo.Remitos_Extra x ON x.IdRemito = r.IdRemito
-        WHERE r.IdProveedor = ? AND rd.IdFormulado = ? AND ISNULL(x.Anulado, 0) = 0
+        WHERE COALESCE(r.IdContacto, r.IdProveedor) = ? AND ISNULL(x.Anulado, 0) = 0 AND ISNULL(rd.Cantidad, 0) > 0
+          AND NOT EXISTS (SELECT 1 FROM dbo.tblRemitoCompra t WHERE t.IdDetalleRemito = rd.IdDetalleRemito)
         """,
-        (id_proveedor, id_producto),
+        (id_proveedor,),
     )
 
 
@@ -108,48 +175,118 @@ def _ya_pendiente(id_detalle_compra: int) -> bool:
                      (id_detalle_compra,)) is not None
 
 
-def vincular_por_compra(id_compra: int) -> dict:
-    """Vincula los renglones de insumo de la factura con sus remitos. Devuelve un resumen."""
-    from src.features.remitos import repository as remitos_repo
+def proponer_por_compra(id_compra: int) -> dict:
+    """Sin escribir: {'vincular': [{idRemito, items:[{idDetalleRemito, idDetalleCompra, cantidad}]}], 'revisar': [...]}."""
     from src.features.remitos.stock_datos import equivalencias, factor_a_base, unidades_base
 
     bases, equiv = unidades_base(), equivalencias()
+    cache: dict = {}
+
+    def a_base(pid, unidad, q):
+        """Cantidad en la unidad base del producto. La misma unidad escrita distinto (Kilos/KGS, BOL/BOLSA,
+        LITROS/LTS, PACK) no es una conversión: vale 1. Si no hay forma de convertir, queda la cantidad tal cual."""
+        from src.features.remitos.stock_datos import _familia_unidad
+        u = (unidad or "").strip().upper()
+        if clave_producto(pid, cache).startswith("FAMILIA") and (u.startswith("TON") or (not u and q < 100)):
+            return q * 1000  # fertilizante en toneladas (o sin unidad y cantidad chica) contra remito en kilos
+        f, falta = factor_a_base(pid, unidad, bases, equiv)
+        return q * f if not falta else q
+
+    renglones = _renglones_factura(id_compra)
+    if not renglones:
+        return {"vincular": [], "revisar": []}
+    fecha_fac = renglones[0]["fecha"]
+    # Grupos de la factura por producto equivalente, con lo pendiente de cada renglón (en base y en su unidad).
+    grupos: dict[str, list[dict]] = defaultdict(list)
+    for r in renglones:
+        pend = float(r["cantidad"]) - float(r["vinculada"])
+        if pend > _EPS:
+            grupos[clave_producto(r["idProducto"], cache)].append({**r, "pendiente": pend,
+                                                                   "pendBase": a_base(r["idProducto"], r["unidad"], pend)})
+    if not grupos:
+        return {"vincular": [], "revisar": []}
+    libres = []
+    for c in _remitos_libres(renglones[0]["idProveedor"]):
+        if not en_ventana(fecha_fac, c["fecha"]):
+            continue
+        libres.append({**c, "disponible": a_base(c["idProducto"], c["unidad"], float(c["cantidad"])),
+                       "clave": clave_producto(c["idProducto"], cache)})
+    usados: set[int] = set()
+
+    def items_grupo(lineas, asignacion):
+        """Reparte los renglones de remito elegidos entre los renglones de factura del grupo (cada uno con su cantidad)."""
+        out = []
+        for rem in asignacion:
+            for l in lineas:
+                out.append({"idDetalleRemito": rem["idDetalleRemito"], "idRemito": rem["idRemito"], "idDetalleCompra": l["idDetalleCompra"],
+                            "cantidad": l["pendiente"] * rem["disponible"] / sum(x["disponible"] for x in asignacion)})
+        return out
+
+    vincular: list[dict] = []
+    revisar: list[dict] = []
+    # 1) Un remito que cubra la factura entera (todos los grupos, cada uno con un renglón distinto del remito).
+    por_remito = defaultdict(list)
+    for c in libres:
+        por_remito[c["idRemito"]].append(c)
+    completos = []
+    for id_remito, lineas_rem in por_remito.items():
+        disponibles = list(lineas_rem)
+        asig = {}
+        for clave, lineas in grupos.items():
+            total = sum(l["pendBase"] for l in lineas)
+            elegido = next((c for c in disponibles if c["clave"] == clave and _iguales(c["disponible"], total)), None)
+            if elegido is None:
+                break
+            asig[clave] = elegido
+            disponibles.remove(elegido)
+        else:
+            completos.append((min(_distancia(fecha_fac, c["fecha"]) for c in lineas_rem), id_remito, asig))
+    if completos:
+        completos.sort(key=lambda x: x[0])
+        if len(completos) == 1 or completos[0][0] != completos[1][0]:
+            for clave, rem in completos[0][2].items():
+                vincular += items_grupo(grupos[clave], [rem])
+                usados.add(rem["idDetalleRemito"])
+            grupos = {}
+    # 2) Producto por producto.
+    for clave, lineas in grupos.items():
+        cand = [c for c in libres if c["clave"] == clave and c["idDetalleRemito"] not in usados]
+        d = decidir({"fecha": fecha_fac, "pendiente": sum(l["pendBase"] for l in lineas)},
+                    [{"idDetalleRemito": c["idDetalleRemito"], "fecha": c["fecha"], "disponible": c["disponible"]} for c in cand])
+        if d["accion"] == "vincular":
+            elegidos = [next(c for c in cand if c["idDetalleRemito"] == it["idDetalleRemito"]) for it in d["items"]]
+            vincular += items_grupo(lineas, elegidos)
+            usados.update(c["idDetalleRemito"] for c in elegidos)
+        elif d["accion"] == "revisar":
+            revisar += [{"idDetalleCompra": l["idDetalleCompra"], "motivo": d["motivo"], "candidatos": d["candidatos"]} for l in lineas]
+    agrupado = defaultdict(list)
+    for it in vincular:
+        agrupado[it["idRemito"]].append({k: it[k] for k in ("idDetalleRemito", "idDetalleCompra", "cantidad")})
+    return {"vincular": [{"idRemito": k, "items": v} for k, v in agrupado.items()], "revisar": revisar}
+
+
+def vincular_por_compra(id_compra: int) -> dict:
+    """Vincula los renglones de insumo de la factura con sus remitos (y deja lo dudoso para revisar)."""
+    from src.features.remitos import repository as remitos_repo
+
+    prop = proponer_por_compra(id_compra)
     resumen = {"vinculados": 0, "revisar": 0}
-    for r in _renglones_factura(id_compra):
-        f_fac, falta_fac = factor_a_base(r["idProducto"], r["unidad"], bases, equiv)
-        pendiente = (float(r["cantidad"]) - float(r["vinculada"])) * f_fac
-        cands = []
-        for c in _remitos_candidatos(r["idProveedor"], r["idProducto"]):
-            f_rem, falta_rem = factor_a_base(r["idProducto"], c["unidad"], bases, equiv)
-            if falta_rem:
-                continue
-            cands.append({**c, "factor": f_rem, "disponible": float(c["disponible"]) * f_rem})
-        decision = decidir({**r, "pendiente": pendiente}, cands)
-        if decision["accion"] == "vincular" and not falta_fac:
-            por_remito: dict[int, list] = {}
-            for it in decision["items"]:
-                id_remito = fetch_one("SELECT IdRemito AS r FROM dbo.Remitos_Detalles WHERE IdDetalleRemito = ?",
-                                      (it["idDetalleRemito"],))["r"]
-                # CantidadRemitida se guarda en la unidad de la factura, como hace la pantalla de remitos.
-                cant = it["cantidadRemito"] * next(c["factor"] for c in cands if c["idDetalleRemito"] == it["idDetalleRemito"]) / f_fac
-                por_remito.setdefault(id_remito, []).append(
-                    {"idDetalleRemito": it["idDetalleRemito"], "idDetalleCompra": r["idDetalleCompra"], "cantidad": cant})
-            for id_remito, items in por_remito.items():
-                remitos_repo.vincular_renglones(id_remito, items)
-            resumen["vinculados"] += 1
-        elif decision["accion"] in ("vincular", "revisar") and not _ya_pendiente(r["idDetalleCompra"]):
-            motivo = decision.get("motivo") or "Falta la equivalencia de unidades del producto"
+    for grupo in prop["vincular"]:
+        remitos_repo.vincular_renglones(grupo["idRemito"], grupo["items"], equivalente_ok=True)
+        resumen["vinculados"] += len(grupo["items"])
+    for r in prop["revisar"]:
+        if not _ya_pendiente(r["idDetalleCompra"]):
             execute_write_transaction([(
                 "INSERT INTO dbo.VinculoRemitoPendiente (IdDetalleCompra, Tipo, CandidatosJson, Motivo) VALUES (?, 'remito', ?, ?)",
-                (r["idDetalleCompra"], json.dumps(decision.get("candidatos") or [], default=str), motivo),
+                (r["idDetalleCompra"], json.dumps(r["candidatos"], default=str), r["motivo"]),
             )])
             resumen["revisar"] += 1
     return resumen
 
 
 def vincular_por_remito(id_remito: int) -> dict:
-    """Al guardar un remito: intenta vincular las facturas en alcance del mismo proveedor cercanas en fecha."""
-    cab = fetch_one("SELECT IdProveedor AS p, Fecha AS f FROM dbo.Remitos WHERE IdRemito = ?", (id_remito,))
+    """Al guardar un remito: intenta vincular las facturas en alcance del mismo proveedor dentro de la ventana."""
+    cab = fetch_one("SELECT COALESCE(IdContacto, IdProveedor) AS p, Fecha AS f FROM dbo.Remitos WHERE IdRemito = ?", (id_remito,))
     if cab is None:
         return {"vinculados": 0, "revisar": 0}
     compras = fetch_all(
@@ -158,7 +295,7 @@ def vincular_por_remito(id_remito: int) -> dict:
         JOIN dbo.TamizRenglones tz ON tz.IdDetalleCompra = d.IdDetalleCompra AND tz.Vigente = 1 AND tz.Destino = 'CultivoStock'
         WHERE c.IdContacto = ? AND c.Fecha BETWEEN DATEADD(day, -?, ?) AND DATEADD(day, ?, ?)
         """,
-        (cab["p"], DIAS_DESPUES, cab["f"], DIAS_ANTES, cab["f"]),
+        (cab["p"], VENTANA_DIAS, cab["f"], VENTANA_DIAS, cab["f"]),
     )
     total = {"vinculados": 0, "revisar": 0}
     for c in compras:

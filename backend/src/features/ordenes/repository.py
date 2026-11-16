@@ -21,20 +21,10 @@ from src.features.remitos.stock_datos import calcular_stock
 
 
 def _recalcular_imputacion_por_productos(ids_producto: set[int]) -> None:
-    """Dispara `imputacion.motor.recalcular_si_corresponde` para todo renglón
-    de factura que ya tenga una corrida calculada para estos productos —
-    017-imputacion-automatica-costos, FR-011/FR-012. Sin efecto si el motor
-    nunca calculó nada para ese producto todavía."""
+    """Cambió el consumo de estos productos: se reimputan sus renglones (050: flujo nuevo, aprueba solo lo que cierra)."""
     from src.features.imputacion import progresivo
 
-    for id_producto in ids_producto:
-        # 050 T024: los renglones en alcance se imputan siempre (tengan o no corrida); los demás, como antes.
-        en_alcance = set(progresivo.detalles_en_alcance_por_producto(id_producto))
-        for id_detalle_compra in en_alcance:
-            progresivo.imputar_insumo(id_detalle_compra)
-        for id_detalle_compra in imputacion_repository.detalles_compra_con_corrida_por_producto(id_producto):
-            if id_detalle_compra not in en_alcance:
-                imputacion_motor.recalcular_si_corresponde(id_detalle_compra, "Insumo")
+    progresivo.recalcular_productos(ids_producto)
 
 TOLERANCIA = 0.005
 ESTADOS = ("Planificada", "Ejecutada", "Anulada")

@@ -314,6 +314,9 @@ def tamizar_al_guardar(id_compra: int) -> None:
             for c in clasificaciones:
                 if c["estado"] == "Aprobada":
                     progresivo.imputar_renglon(c["idDetalleCompra"])  # T025 / imputación progresiva
+            # La factura nueva cambia las capas FIFO de sus productos: se reimputan los demás renglones (050, 16/11/2026).
+            pids = {r["idFormulado"] for r in repo.renglones_de_compra(id_compra) if r.get("idFormulado")}
+            progresivo.recalcular_seguro(progresivo.recalcular_productos, pids)
     except Exception:  # noqa: BLE001 - el tamiz no puede romper el alta de la compra
         _log.exception("Tamiz 050: no se pudo clasificar la compra %s", id_compra)
 

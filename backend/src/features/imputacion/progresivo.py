@@ -224,3 +224,56 @@ def renglones_en_alcance() -> list[dict]:
         "SELECT tz.IdDetalleCompra AS id, d.IdCompra AS idCompra, tz.Destino AS destino FROM dbo.TamizRenglones tz "
         "JOIN dbo.Det_Compras d ON d.IdDetalleCompra = tz.IdDetalleCompra WHERE tz.Vigente = 1 AND tz.Estado = 'Aprobada'"
     )
+
+
+# ---------------------------------------------------------------- recálculo (050, 16/11/2026)
+
+def notas_de_compra(id_compra: int) -> list[int]:
+    """Renglones de NC/ND en alcance relacionados con esta factura (siguen su reparto)."""
+    return [f["id"] for f in fetch_all(
+        """
+        SELECT tz.IdDetalleCompra AS id FROM dbo.TamizRenglones tz
+        JOIN dbo.Det_Compras d ON d.IdDetalleCompra = tz.IdDetalleCompra JOIN dbo.Compras c ON c.IdDeuda = d.IdCompra
+        WHERE tz.Vigente = 1 AND tz.Estado = 'Aprobada' AND c.[Tipo documento] LIKE 'Nota%'
+          AND d.IdCompra IN (SELECT IdCompra FROM dbo.CompraDocumentosRelacionados WHERE IdCompraRelacionada = ?
+                             UNION SELECT IdCompraRelacionada FROM dbo.CompraDocumentosRelacionados WHERE IdCompra = ?)
+        """,
+        (id_compra, id_compra),
+    )]
+
+
+def recalcular_detalle(id_detalle: int) -> None:
+    """Vuelve a imputar un renglón (y las notas que siguen a su factura). Fuera de alcance: el recálculo viejo."""
+    t = _tamiz(id_detalle)
+    if t is None:
+        return  # fuera de alcance (anterior a la activación): la historia no se recalcula
+    imputar_renglon(id_detalle)
+    fila = fetch_one("SELECT IdCompra AS c FROM dbo.Det_Compras WHERE IdDetalleCompra = ?", (id_detalle,))
+    if fila:
+        for n in notas_de_compra(fila["c"]):
+            imputar_renglon(n)
+
+
+def recalcular_productos(ids_producto) -> None:
+    """Cambió el stock de estos productos (orden, remito, recuento): se reimputan todos sus renglones en alcance y
+    sus notas. Lo anterior a la activación no se recalcula (no se corrige la historia)."""
+    compras = set()
+    for pid in {int(p) for p in ids_producto if p}:
+        en_alcance = detalles_en_alcance_por_producto(pid)
+        for d in en_alcance:
+            imputar_insumo(d)
+            fila = fetch_one("SELECT IdCompra AS c FROM dbo.Det_Compras WHERE IdDetalleCompra = ?", (d,))
+            if fila:
+                compras.add(fila["c"])
+    for c in compras:
+        for n in notas_de_compra(c):
+            imputar_renglon(n)
+
+
+def recalcular_seguro(funcion, *args) -> None:
+    """Disparo desde un guardado: un error de imputación nunca impide guardar."""
+    import logging
+    try:
+        funcion(*args)
+    except Exception:  # noqa: BLE001
+        logging.getLogger(__name__).exception("Imputación 050: no se pudo recalcular %s", args)

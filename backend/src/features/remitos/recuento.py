@@ -254,6 +254,9 @@ def aplicar(contenido: bytes, fecha: date | None, motivo: str, asignaciones: dic
 
                 stmts.append(ajuste)
     resultado = execute_write_transaction(stmts)
+    from src.features.imputacion import progresivo
+    progresivo.recalcular_seguro(progresivo.recalcular_productos,
+                                 {f["IdProducto"] for f in fetch_all("SELECT IdProducto FROM dbo.Stock_Recuentos_Detalle WHERE IdRecuento = ?", (resultado[0],))})
     return {"idRecuento": resultado[0], "ajustesOrden": ajustes_orden, "sinImputar": sin_imputar, **prev["resumen"]}
 
 
@@ -286,3 +289,6 @@ def anular(id_recuento: int, motivo: str) -> None:
          "(SELECT IdAjusteSinImputar FROM dbo.Stock_Recuentos_Detalle WHERE IdRecuento = ? AND IdAjusteSinImputar IS NOT NULL)",
          (f"Recuento anulado: {motivo.strip()}"[:255], id_recuento)),
     ])
+    from src.features.imputacion import progresivo
+    progresivo.recalcular_seguro(progresivo.recalcular_productos,
+                                 {f["IdProducto"] for f in fetch_all("SELECT IdProducto FROM dbo.Stock_Recuentos_Detalle WHERE IdRecuento = ?", (id_recuento,))})

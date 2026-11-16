@@ -408,6 +408,8 @@ def crear_remito(datos: dict, confirmar: bool = False) -> int:
     resultados = execute_write_transaction(statements)
     id_nuevo = resultados[len(stmts_prev)]
     vinculo_auto.vincular_seguro(vinculo_auto.vincular_por_remito, id_nuevo)
+    from src.features.imputacion import progresivo
+    progresivo.recalcular_seguro(progresivo.recalcular_productos, {r["idProducto"] for r in datos["renglones"]})
     return id_nuevo
 
 
@@ -468,6 +470,8 @@ def actualizar_remito(id_remito: int, datos: dict, confirmar: bool = False) -> N
     stmts += _upsert_extra(id_remito, {"IdEstablecimiento": datos.get("idEstablecimiento"), "Observaciones": datos.get("observaciones") or None, "Archivo": datos.get("archivo") or None, "RevisarDuplicado": 1 if adv["duplicados"] else 0})
     execute_write_transaction(stmts)
     vinculo_auto.vincular_seguro(vinculo_auto.vincular_por_remito, id_remito)
+    from src.features.imputacion import progresivo
+    progresivo.recalcular_seguro(progresivo.recalcular_productos, {r["idProducto"] for r in datos["renglones"]})
 
 
 # ------------------------------------------------------------------ anulación
@@ -541,7 +545,7 @@ def facturas_candidatas(id_remito: int) -> list[dict]:
     return [{**f, "fecha": _d(f["fecha"]), "vinculada": bool(f["vinculada"]), "lineas": lineas.get(f["idCompra"], [])} for f in facturas]
 
 
-def vincular_renglones(id_remito: int, items: list[dict]) -> dict:
+def vincular_renglones(id_remito: int, items: list[dict], equivalente_ok: bool = False) -> dict:
     """Vincula renglones de remito con renglones de factura (renglón por renglón).
     Devuelve `advertencias` (p. ej. se vincula más de lo remitido)."""
     remito = get_remito(id_remito)
@@ -568,7 +572,9 @@ def vincular_renglones(id_remito: int, items: list[dict]) -> dict:
             raise ValueError([f"El renglón de factura {it['idDetalleCompra']} no existe."])
         if dc["idProveedor"] != remito["idProveedor"]:
             raise ValueError(["La factura es de otro proveedor."])
-        if dc["idProducto"] not in (None, 0, r["idProducto"]):
+        if dc["idProducto"] not in (None, 0, r["idProducto"]) and not (
+                equivalente_ok and vinculo_auto.clave_producto(dc["idProducto"]) == vinculo_auto.clave_producto(r["idProducto"])):
+            # 050: el vínculo automático acepta marcas equivalentes (mismo principio activo / familia de fertilizante).
             raise ValueError([f"El renglón de factura «{dc['descripcion']}» corresponde a otro producto."])
         if fetch_one("SELECT 1 AS x FROM dbo.tblRemitoCompra WHERE IdDetalleRemito = ? AND IdDetalleCompra = ?", (it["idDetalleRemito"], it["idDetalleCompra"])):
             raise ValueError([f"El renglón «{r['producto']}» ya está vinculado a ese renglón de la factura."])
@@ -592,8 +598,9 @@ def vincular_renglones(id_remito: int, items: list[dict]) -> dict:
     execute_write_transaction(stmts)
     # Nuevo vínculo renglón↔factura: recalcula cualquier propuesta pendiente
     # del motor de imputación para estos renglones (017-imputacion-automatica-costos).
+    from src.features.imputacion import progresivo
     for it in items:
-        imputacion_motor.recalcular_si_corresponde(it["idDetalleCompra"], "Insumo")
+        progresivo.recalcular_seguro(progresivo.recalcular_detalle, it["idDetalleCompra"])
     return {"advertencias": avisos}
 
 
@@ -621,7 +628,8 @@ def desvincular_renglon(id_remito: int, id_vinculo: int) -> None:
         if dc and dc["p"] == fila["idProducto"]:
             stmts.append(("UPDATE dbo.Det_Compras SET IdFormulado = NULL WHERE IdDetalleCompra = ?", (fila["idDetalleCompra"],)))
     execute_write_transaction(stmts)
-    imputacion_motor.recalcular_si_corresponde(fila["idDetalleCompra"], "Insumo")
+    from src.features.imputacion import progresivo
+    progresivo.recalcular_seguro(progresivo.recalcular_productos, {fila["idProducto"]})
 
 
 def vincular_factura(id_remito: int, id_compra: int) -> None:
