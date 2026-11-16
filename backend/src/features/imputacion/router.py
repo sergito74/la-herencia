@@ -243,6 +243,18 @@ async def recalcular(body: RecalcularIn) -> dict:
     return {"idCorrida": id_corrida}
 
 
+# ---- Listado para el Estudio contable (050 US8) ----
+
+@router.post("/listado-estudio/generar")
+async def generar_listado_estudio() -> dict:
+    from src.features.imputacion import listado_estudio
+
+    try:
+        return await run_in_threadpool(listado_estudio.generar)
+    except listado_estudio.ListadoAbierto as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+
 # ---- Tamiz por rubro (050) ----
 
 def _renglones_tamiz(id_compra: int) -> dict:

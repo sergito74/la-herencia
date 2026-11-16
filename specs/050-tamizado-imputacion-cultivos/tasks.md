@@ -138,10 +138,10 @@
 
 ## Phase 6: US4 — Reparto por superficie del plan agrícola (P2)
 
-- [ ] T033 [P] [US4] Crear backend/tests/test_reparto_plan_050.py con dos casos:
+- [X] T033 [P] [US4] Crear backend/tests/test_reparto_plan_050.py con dos casos: — Hecho 16/11/2026 (más casos: labor de contratista no se reparte, tamiz aprueba con plan).
   - 60 ha de trigo y 40 ha de soja reparten $1.000.000 en 600.000 y 400.000;
   - un plan sin superficie manda el renglón a revisión.
-- [ ] T034 [US4] En tamiz.py, repartir según la superficie de backend/src/features/planificacion los renglones "a cultivo" sin cultivo y con campaña única, sin lote. El último cultivo absorbe los centavos de redondeo.
+- [X] T034 [US4] En tamiz.py, repartir según la superficie de backend/src/features/planificacion los renglones "a cultivo" sin cultivo y con campaña única, sin lote. El último cultivo absorbe los centavos de redondeo. — Hecho 16/11/2026 en reparto_plan.py + tamiz._deducir + progresivo.fracciones_directo; solo partes 7/8/9 (seguro, asesoramiento/análisis, comercialización) con campaña cargada; las labores siguen 048.
 
 ## Phase 7: US5 — Producto sugerido y aprendizaje (P2)
 
@@ -161,16 +161,16 @@
 
 ## Phase 9: US8 — Listado para el Estudio contable (P2)
 
-- [ ] T042 [P] [US8] Crear backend/tests/test_listado_estudio_050.py con estos casos:
+- [X] T042 [P] [US8] Crear backend/tests/test_listado_estudio_050.py con estos casos: — Hecho 16/11/2026.
   - el listado mantiene las 14 columnas en el orden actual, más "Importe en pesos" y "Parte del costo";
   - un renglón fuera de alcance sale en una sola fila, idéntica a la de hoy;
   - el renglón del glifosato sale en 3 filas cuya suma da el total;
   - un archivo bloqueado devuelve 409 y no deja el archivo a medio escribir.
-- [ ] T043 [US8] Crear backend/src/features/imputacion/listado_estudio.py:
+- [X] T043 [US8] Crear backend/src/features/imputacion/listado_estudio.py: — Hecho 16/11/2026; el flete sigue los usos de sus insumos.
   - escribe primero a un archivo temporal y lo renombra sobre `C:\Users\Sergio\Dropbox\Giamigli de Bolivar SA\Compras\Listado General Compras - Imputacion (1-9-2015 en adelante).xlsx`;
   - incluye los registros desde el 01/09/2015.
-- [ ] T044 [US8] Agregar el endpoint `POST /listado-estudio/generar` y el botón en frontend/src/app/imputacion.
-- [ ] T045 [US8] Antes del primer reemplazo, comparar el resultado contra el archivo actual: las filas fuera de alcance tienen que ser idénticas. Informar las diferencias a Sergio.
+- [X] T044 [US8] Agregar el endpoint `POST /listado-estudio/generar` y el botón en frontend/src/app/imputacion. — Hecho 16/11/2026: botón 'Generar listado para el Estudio' en Costos → Automática.
+- [X] T045 [US8] Antes del primer reemplazo, comparar el resultado contra el archivo actual: las filas fuera de alcance tienen que ser idénticas. Informar las diferencias a Sergio. — Comparado 16/11/2026: comparacion-listado-estudio-20261116.xlsx. El reemplazo del archivo de Dropbox espera el OK de Sergio.
 
 ## Phase 10: US10 — Control de cierre (P3)
 

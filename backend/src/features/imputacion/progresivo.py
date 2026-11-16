@@ -15,7 +15,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 
 from src.db.connection import fetch_all, fetch_one
-from src.features.imputacion import motor, repository
+from src.features.imputacion import motor, reparto_plan, repository
 from src.features.remitos import capas_factura
 
 PARTE_COMERCIALIZACION = 9
@@ -163,10 +163,14 @@ def imputar_insumo(id_detalle: int) -> dict:
     return {"accion": "aprobada" if motivo is None else "pendiente", "idCorrida": id_corrida, "motivo": motivo}
 
 
-def fracciones_directo(t: dict, total: float, id_centro_adm: int | None) -> list[dict]:
-    """Pura (T025): la fracción única de un renglón de una sola vez."""
+def fracciones_directo(t: dict, total: float, id_centro_adm: int | None, superficies: dict[int, float] | None = None) -> list[dict]:
+    """Pura (T025): la fracción única de un renglón de una sola vez. Sin cultivo (US4): una fracción por cultivo del
+    plan agrícola de la campaña, según su superficie."""
     base = {"importe": total, "idParte": t.get("idParte"), "estado": "Aprobada",
             "fechaAprobacion": datetime.now(timezone.utc)}
+    if t["destino"] == "Cultivo" and t.get("idCultivo") is None:
+        return [{**base, "importe": imp, "idCultivo": c, "idCampania": t["idCampania"]}
+                for c, imp in reparto_plan.repartir(total, superficies or {}).items()]
     if t["destino"] == "Cultivo":
         return [{**base, "idCultivo": t["idCultivo"], "idCampania": t["idCampania"]}]
     if t["destino"] == "Ganaderia":
@@ -180,7 +184,9 @@ def calcular_directo(id_detalle: int) -> dict:
     t = _tamiz(id_detalle)
     if t is None or t["estado"] != "Aprobada" or t["destino"] in ("CultivoStock", "Depende", None):
         return {"accion": "fueraDeAlcance"}
-    fracciones = fracciones_directo(t, total_renglon(t, 0.0), motor._id_centro_adm_general())
+    superficies = (reparto_plan.superficie_por_cultivo(t["idCampania"])
+                   if t["destino"] == "Cultivo" and t.get("idCultivo") is None and t.get("idCampania") else None)
+    fracciones = fracciones_directo(t, total_renglon(t, 0.0), motor._id_centro_adm_general(), superficies)
     if not fracciones or _misma_corrida(id_detalle, fracciones, "Directo"):
         return {"accion": "sinCambios"}
     return {"accion": "aprobada", "idCorrida": repository.guardar_corrida("Directo", id_detalle, fracciones)}

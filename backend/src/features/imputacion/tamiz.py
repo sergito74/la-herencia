@@ -13,6 +13,7 @@ import logging
 import unicodedata
 
 from src.features.imputacion import tamiz_repository as repo
+from src.features.imputacion.reparto_plan import PARTES_REPARTIBLES
 
 ETIQUETAS = {
     "CultivoStock": "Va a stock",
@@ -222,7 +223,13 @@ def _deducir(r, destino, parte, cultivo, campania, contexto) -> dict:
         nombres = contexto.get("cultivos") or {}
         por_texto = [i for i, n in nombres.items() if n and len(normalizar(n)) >= 4 and normalizar(n) in texto]
         opciones = por_texto or ((contexto.get("cultivosPorCampania") or {}).get(campania) or [])
-        if len(opciones) == 1:
+        if not por_texto and campania_cargada and not motivos and parte in PARTES_REPARTIBLES:
+            # 050 US4: costo de la campaña y no de un cultivo → se reparte por la superficie del plan agrícola.
+            if (contexto.get("superficiePlan") or {}).get(campania):
+                return _resultado(r, destino, parte, None, campania, origen="Rubro",
+                                  motivo="Repartido según la superficie del plan agrícola")
+            motivos.append("Falta cultivo y el plan agrícola no tiene superficie para la campaña")
+        elif len(opciones) == 1:
             cultivo = opciones[0]
             if not motivos and campania_cargada:
                 origen = "el producto" if por_texto else "la única con órdenes en la campaña"
@@ -298,6 +305,8 @@ def tamizar_compra(id_compra: int, *, guardar: bool = True, forzar: bool = False
         camps = {c for c in ctx["campaniasPorNombre"].values() if c} | {
             r["idCampania"] for r in renglones if r.get("idCampania") not in (None, repo.CAMPANIA_NO_APLICA)}
         ctx["cultivosPorCampania"] = {c: repo.cultivos_con_ordenes(c) for c in camps}
+        from src.features.imputacion import reparto_plan
+        ctx["superficiePlan"] = {c: reparto_plan.superficie_por_cultivo(c) for c in camps}
     clasificaciones = [clasificar_renglon(r, reglas_rubro, reglas_producto, ctx) for r in renglones]
     if not forzar:
         marcados = repo.renglones_marcados(id_compra)

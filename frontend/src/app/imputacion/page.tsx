@@ -9,6 +9,7 @@ import { RemitosSubNav } from "@/components/remitos/RemitosSubNav";
 import { PropuestaCard } from "@/components/imputacion/PropuestaCard";
 import { EncabezadoPropuesta } from "@/components/imputacion/EncabezadoPropuesta";
 import { useToast } from "@/components/ui/Toast";
+import { formatCantidad } from "@/lib/format";
 import { apiGet, ApiError, apiPost } from "@/services/apiClient";
 import type { AprobarLoteOut, PendienteIntervencionOut, PropuestaFraccion } from "@/services/imputacionApi";
 
@@ -64,6 +65,19 @@ export default function ImputacionPage() {
       showToast(e instanceof ApiError ? e.message : "No se pudo calcular las propuestas pendientes.", "danger");
     } finally {
       setCalculando(false);
+    }
+  }
+
+  const [generandoListado, setGenerandoListado] = useState(false);
+  async function generarListadoEstudio() {
+    setGenerandoListado(true);
+    try {
+      const r = await apiPost<{ filas: number; archivo: string }>("/api/imputacion/listado-estudio/generar", {});
+      showToast(`Listado para el Estudio actualizado en la carpeta Compras de Dropbox (${formatCantidad(r.filas)} filas).`, "success");
+    } catch (e) {
+      showToast(e instanceof ApiError ? e.message : "No se pudo generar el listado para el Estudio.", "danger");
+    } finally {
+      setGenerandoListado(false);
     }
   }
 
@@ -140,6 +154,17 @@ export default function ImputacionPage() {
             className="rounded-md bg-agro px-3 py-1.5 text-sm text-white disabled:opacity-60"
           >
             {calculando ? "Calculando…" : "Calcular pendientes"}
+          </button>
+        </SoloLectura>
+        <SoloLectura>
+          <button
+            type="button"
+            onClick={generarListadoEstudio}
+            disabled={generandoListado}
+            title="Reemplaza el listado de imputación de compras de la carpeta Compras de Dropbox"
+            className="rounded-md border border-border px-3 py-1.5 text-sm text-ink-primary disabled:opacity-60"
+          >
+            {generandoListado ? "Generando…" : "Generar listado para el Estudio"}
           </button>
         </SoloLectura>
         {ultimoCalculo && (
