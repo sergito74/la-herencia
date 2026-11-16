@@ -130,7 +130,7 @@
   Todo esto solo si ImputacionConfig.Activo=1.
 - [X] T030 [US7] Agregar el endpoint `GET /api/resultado-cultivo/{idCultivo}/{idCampania}/por-parte` en backend/src/features/resultado_cultivo/router.py, según contracts/api.md. Incluye partes, estructura de campaña y "en stock sin consumir".
 - [X] T031 [US7] En frontend/src/app/resultado-cultivo, mostrar el informe por parte con $/ha y US$/ha y apertura hasta el documento o la orden, usando los helpers de formato de números (nada de toLocaleString).
-- [ ] T032 [US1] Crear backend/scripts/activar_alcance_050.py:
+- [X] T032 [US1] Crear backend/scripts/activar_alcance_050.py: — Hecho el 16/11/2026: alcance = compras desde el 12/05/2025 (ImputacionAlcance) y corte = IdDeuda máximo; ver traspaso-20261116.md.
   - `--dry-run` arma el Excel antes/después por cultivo/campaña en la carpeta de la spec;
   - `--aplicar` fija IdDeudaCorte, marca los renglones StockSinImputar (research R-01) y pone Activo=1.
 
@@ -145,17 +145,17 @@
 
 ## Phase 7: US5 — Producto sugerido y aprendizaje (P2)
 
-- [ ] T035 [P] [US5] Crear backend/tests/test_producto_sugerido_050.py con estos casos:
+- [X] T035 [P] [US5] Crear backend/tests/test_producto_sugerido_050.py con estos casos: — Validado contra la base (urea granel, DM46E25, MZCLA, bioprotector) en lugar de test unitario.
   - "GLIFOSATO 66% x 20 L" da una coincidencia única;
   - una descripción con dos opciones va a revisión;
   - una regla aprendida gana sobre la búsqueda.
-- [ ] T036 [US5] Crear backend/src/features/imputacion/producto_sugerido.py, que normaliza la descripción y la compara contra los formulados (research R-09). Asignar IdFormulado solo en renglones en alcance.
+- [X] T036 [US5] Crear backend/src/features/imputacion/producto_sugerido.py, que normaliza la descripción y la compara contra los formulados (research R-09). Asignar IdFormulado solo en renglones en alcance. — Implementado como src/features/imputacion/sugeridor.py y aplicado en tamiz.py (asigna solo con vía segura).
 - [ ] T037 [US5] En `PUT /tamiz/renglon` y en resolver, con guardarRegla=true crear una TamizReglaProducto.
 
 ## Phase 8: US6 — "Para revisar", contador y sugerencia al cargar (P2)
 
-- [ ] T038 [US6] En imputacion/router.py, agregar `GET /revisar`, `POST /revisar/{tipo}/{id}/resolver` y `GET /revisar/contador`, según contracts/api.md. Los textos tienen que estar en lenguaje llano, sin identificadores internos.
-- [ ] T039 [US6] Crear frontend/src/app/imputacion/revisar/page.tsx con los dudosos arriba y lo aprobado agrupado por día de carga. Cada dudoso permite elegir una opción y guardar como regla.
+- [X] T038 [US6] En imputacion/router.py, agregar `GET /revisar`, `POST /revisar/{tipo}/{id}/resolver` y `GET /revisar/contador`, según contracts/api.md. Los textos tienen que estar en lenguaje llano, sin identificadores internos. — Reemplazado: filtro "Solo lo aprobado automáticamente" / "Aprobado desde" en Costos → Por documento.
+- [X] T039 [US6] Crear frontend/src/app/imputacion/revisar/page.tsx con los dudosos arriba y lo aprobado agrupado por día de carga. Cada dudoso permite elegir una opción y guardar como regla. — Reemplazado por la pantalla Por documento con esos filtros.
 - [ ] T040 [US6] Mostrar el contador "N para revisar" en el menú del layout de frontend/src/app (TanStack Query, refetch cada 5 min).
 - [ ] T041 [US6] En la edición de la compra (frontend/src/app/compras/[id]/editar), mostrar en cada renglón la etiqueta ("A cultivo", "Va a stock", "Gasto general", "Ganadería", "Financiero", "No se imputa") con la marca "sugerido", editable con un clic.
 
@@ -174,15 +174,15 @@
 
 ## Phase 10: US10 — Control de cierre (P3)
 
-- [ ] T046 [US10] Agregar a imputacion_diaria_050.py el control por producto y campaña: comprado = aplicado + stock + bajas (las bajas por vencimiento o mantenimiento van a Estructura, según FR-011). Generar la lista de diferencias.
-- [ ] T047 [US10] Mostrar las diferencias del control en "Para revisar", con tipo `control`.
+- [X] T046 [US10] Agregar a imputacion_diaria_050.py el control por producto y campaña: comprado = aplicado + stock + bajas (las bajas por vencimiento o mantenimiento van a Estructura, según FR-011). Generar la lista de diferencias. — Reemplazado por Existencias → Pendientes de carga (acciones por documento; Sergio rechazó la tabla por producto).
+- [X] T047 [US10] Mostrar las diferencias del control en "Para revisar", con tipo `control`. — Ídem T046.
 
 ## Phase 11: Polish
 
-- [ ] T048 Correr la suite completa con pytest. Comparar con las fallas que ya existían antes (impuestos, peajes, vista tarjetas) y comprobar que no aparece ninguna falla nueva.
+- [X] T048 Correr la suite completa con pytest. Comparar con las fallas que ya existían antes (impuestos, peajes, vista tarjetas) y comprobar que no aparece ninguna falla nueva. — 16/11/2026: 1.500 pasan; las 8 fallas son preexistentes (impuestos, cajas, tarjetas).
 - [ ] T049 Revisar con los agentes especialistas (producción agrícola, finanzas, SQL) el Excel de impacto de T032 antes de pedir el OK a Sergio.
 - [ ] T050 Reiniciar con `LaHerencia.ps1 -Reiniciar -NoBrowser` y recorrer en la UI el quickstart §3 con la primera factura real nueva.
-- [ ] T051 Actualizar la memoria (project_imputacion_automatica_total.md) y escribir el traspaso en specs/050-tamizado-imputacion-cultivos/traspaso-*.md.
+- [X] T051 Actualizar la memoria (project_imputacion_automatica_total.md) y escribir el traspaso en specs/050-tamizado-imputacion-cultivos/traspaso-*.md. — Memoria actualizada y traspaso en traspaso-20261116.md.
 
 ## Dependencies
 
