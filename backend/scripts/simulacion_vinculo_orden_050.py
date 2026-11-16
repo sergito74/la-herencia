@@ -88,25 +88,49 @@ def asignar_remitos(facturas: dict, sug, bases, equiv, clave) -> dict:
     que Sergio carga cuando el proveedor entrega sin remito) del mismo proveedor, con el mismo producto (o principio
     activo / familia) y la misma cantidad. Sergio 15/11: las cantidades ingresadas y usadas son correctas porque el
     stock cierra con el recuento físico. Entre varios iguales, el más cercano (antes que después de la factura)."""
-    rem = []
+    # Revisión forense 16/11: se asigna por REMITO COMPLETO (todos los renglones de la factura contra renglones
+    # distintos de un mismo remito) y dentro de una ventana de ±VENTANA_REMITO días; antes era renglón por renglón
+    # y sin ventana, y el metilado de dos facturas del mismo día quedaba cruzado.
+    rems: dict = {}
     for f in fetch_all(
-        """SELECT r.Fecha f, r.NroRemito n, COALESCE(r.IdContacto, r.IdProveedor) c, co.[Razon Social] prov, rd.IdFormulado p,
-                  rd.Cantidad q, rd.[Unidad Medida] u
+        """SELECT r.IdRemito id, r.Fecha f, co.[Razon Social] prov, rd.IdFormulado p, rd.Cantidad q, rd.[Unidad Medida] u
            FROM dbo.Remitos r JOIN dbo.Remitos_Detalles rd ON rd.IdRemito = r.IdRemito
            LEFT JOIN dbo.Contactos co ON co.IdContacto = COALESCE(r.IdContacto, r.IdProveedor)
            WHERE r.Fecha >= '2015-01-01' AND rd.IdFormulado > 0 AND rd.Cantidad > 0"""
     ):
-        rem.append({"fecha": _d(f["f"]), "prov": f["prov"], "p": int(f["p"]), "resto": float(f["q"]) * _factor(int(f["p"]), f["u"], bases, equiv)})
+        r = rems.setdefault(f["id"], {"fecha": _d(f["f"]), "prov": f["prov"], "lineas": [], "usado": False})
+        r["lineas"].append((int(f["p"]), float(f["q"]) * _factor(int(f["p"]), f["u"], bases, equiv)))
+
+    def cubre(r, keys):
+        libres = list(range(len(r["lineas"])))
+        for k in keys:
+            x = facturas[k]
+            i = next((i for i in libres if (r["lineas"][i][0] == x["p"] or clave(r["lineas"][i][0]) == x["ia"])
+                      and abs(r["lineas"][i][1] - x["q"]) <= 0.01 * max(x["q"], 1)), None)
+            if i is None:
+                return False
+            libres.remove(i)
+        return True
+
+    docs = defaultdict(list)
+    for k, x in facturas.items():
+        if not x.get("apertura"):
+            docs[k[0]].append(k)
     out = {}
-    for k in sorted((k for k, x in facturas.items() if not x.get("apertura")), key=lambda k: facturas[k]["fecha"]):
-        x = facturas[k]
-        cand = [r for r in rem if r["prov"] == x["prov"] and (r["p"] == x["p"] or clave(r["p"]) == x["ia"]) and r["resto"] > 1e-6
-                and abs(r["resto"] - x["q"]) <= 0.01 * max(x["q"], 1)]
+    for idc in sorted(docs, key=lambda i: facturas[docs[i][0]]["fecha"]):
+        keys = docs[idc]
+        x0 = facturas[keys[0]]
+        cand = [r for r in rems.values() if not r["usado"] and r["prov"] == x0["prov"]
+                and abs((r["fecha"] - x0["fecha"]).days) <= VENTANA_REMITO and cubre(r, keys)]
         if cand:
-            r = min(cand, key=lambda r: abs((r["fecha"] - x["fecha"]).days) + (0 if r["fecha"] <= x["fecha"] else 365))
-            r["resto"] = 0.0
-            out[k] = r["fecha"]
+            r = min(cand, key=lambda r: abs((r["fecha"] - x0["fecha"]).days) + (0 if r["fecha"] <= x0["fecha"] else 30))
+            r["usado"] = True
+            for k in keys:
+                out[k] = r["fecha"]
     return out
+
+
+VENTANA_REMITO = 180  # días entre remito y factura (el proveedor guarda lo pedido y factura antes o después).
 
 
 def _envase(txt: str | None, unidad: str | None, q: float) -> float:
@@ -192,6 +216,10 @@ def main(inicio: date = INICIO, fin: date | None = None, recuento: date | None =
         if f["atc"]:
             cobertura["ajusta tipo de cambio (sigue a su documento base)"] += 1
             continue
+        # Serie 7028 de Cargill = notas de intereses sobre una compra, no mercadería (revisión forense 16/11).
+        if "CARGILL" in (f["prov"] or "").upper() and (f["nro"] or "").strip().startswith("7028"):
+            cobertura["intereses Cargill serie 7028 (no mueve stock)"] += 1
+            continue
         if (f["u"] or "").strip().upper() in MONETARIAS:
             cobertura["ajuste en $ (sigue a su factura)"] += 1
             continue
@@ -221,6 +249,10 @@ def main(inicio: date = INICIO, fin: date | None = None, recuento: date | None =
         x = facturas.setdefault(k, {"fecha": _d(f["f"]), "prov": f["prov"], "nro": f["nro"], "txt": f["txt"], "p": pid,
                                     "ia": ia.get(pid) or f"#{pid}", "q": 0.0, "pesos": 0.0, "manual": Counter()})
         factor = _factor(pid, f["u"], bases, equiv)
+        # Fertilizante sin unidad y cantidad chica ("MZCLA 3,5") = toneladas, no kilos (revisión forense 16/11).
+        if f["rubro"] == "Fertilizantes" and not (f["u"] or "").strip() and 0 < float(f["q"] or 0) < 100:
+            factor = 1000.0
+            cobertura["fertilizante sin unidad tomado en toneladas"] += 1
         pesos = float(f["pesos"] or 0)
         x["q"] += float(f["q"] or 0) * factor * _envase(f["txt"], f["u"], float(f["q"] or 0))
         x["pesos"] += pesos
@@ -229,17 +261,64 @@ def main(inicio: date = INICIO, fin: date | None = None, recuento: date | None =
 
     # NC con cantidad: si anula entera una factura anterior del mismo proveedor y producto, las dos se cancelan.
     import re as _re
-    anuladas = set()
+    # Revisión forense 16/11: la NC anula una factura solo si (a) la nombra con su número completo (sin ceros a la
+    # izquierda, comparación exacta) o está en documentos relacionados, Y (b) el importe de la NC iguala al de la
+    # factura (±2%). Si no anula nada, la NC sigue como ajuste de su factura (no se descarta).
+    relacion = defaultdict(set)
+    for r in fetch_all("SELECT IdCompra a, IdCompraRelacionada b FROM dbo.CompraDocumentosRelacionados"):
+        relacion[r["a"]].add(r["b"])
+        relacion[r["b"]].add(r["a"])
+    pesos_doc = defaultdict(float)
+    for k, x in facturas.items():
+        pesos_doc[k[0]] += x["pesos"]
+    pesos_nc = defaultdict(float)
+    for f in ncs:
+        pesos_nc[f["idc"]] += abs(float(f["pesos"] or 0))
+
+    def nro_num(s):
+        d = _re.sub(r"\D", "", s or "")
+        return int(d[-8:]) if d else None
+
+    def anular(idc_fac, idc_nc, motivo, n=1, controlar_importe=True):
+        if controlar_importe and abs(pesos_doc[idc_fac] - pesos_nc[idc_nc]) > TOL * max(pesos_doc[idc_fac], 1):
+            return False
+        for k in [k for k in facturas if k[0] == idc_fac]:
+            anuladas_x.append(facturas.pop(k))
+        cobertura[motivo] += n
+        return True
+
+    anuladas_x: list[dict] = []
+
+    # (a) Renglón de NC que nombra la factura con su número exacto ("NC FC 3233 ... (cambia cond.)"): la anula aunque
+    #     el precio cambie (Sergio 15/11: NC 13569 anula 3231 y 3233, refacturadas 3310/3313). Por renglón: una NC
+    #     puede anular varias facturas.
+    usados = set()
     for f in ncs:
         m = _re.search(r"\bFC\s*0*(\d{3,8})\b", (f["txt"] or "").upper())
-        if m:
-            nro = m.group(1)
-            for k, x in list(facturas.items()):
-                if x["prov"] == f["prov"] and _re.sub(r"\D", "", x["nro"] or "").endswith(nro.zfill(8)[-len(nro):]) and x["fecha"] <= _d(f["f"]):
-                    facturas.pop(k)
-                    anuladas.add(k[0])
-                    cobertura["factura anulada por NC que la nombra"] += 1
-    ncs = [f for f in ncs if not _re.search(r"\bFC\s*0*\d{3,8}\b", (f["txt"] or "").upper())]
+        if not m:
+            continue
+        cand = {k[0] for k, x in facturas.items() if x["prov"] == f["prov"] and x["fecha"] <= _d(f["f"])
+                and nro_num(x["nro"]) == int(m.group(1))}
+        if len(cand) == 1:
+            anular(cand.pop(), f["idc"], "factura anulada por NC que la nombra", controlar_importe=False)
+            usados.add(id(f))
+    # (b) NC vinculada en documentos relacionados: anula solo si el importe total coincide (si no, es ajuste).
+    for f in ncs:
+        if id(f) in usados:
+            continue
+        for idc_fac in relacion.get(f["idc"], ()):
+            if any(k[0] == idc_fac for k in facturas) and anular(idc_fac, f["idc"], "factura anulada por NC relacionada (mismo importe)"):
+                usados.update(id(g) for g in ncs if g["idc"] == f["idc"])
+                break
+    ncs = [f for f in ncs if id(f) not in usados]
+    # Refactura (Guazzaroni 3233 NP 326 -> NC 13569 -> 3313 "MZCLA 7N-39P"): la factura posterior del mismo proveedor,
+    # misma familia/principio activo y misma cantidad hereda la marca de la anulada, que es la que nombran las órdenes.
+    for a in anuladas_x:
+        cand = [x for k, x in facturas.items() if not x.get("apertura") and x["prov"] == a["prov"] and x["ia"] == a["ia"]
+                and x["fecha"] >= a["fecha"] and x["p"] != a["p"] and abs(x["q"] - a["q"]) <= 0.01 * max(a["q"], 1)]
+        if len(cand) == 1:
+            cand[0]["p"] = a["p"]
+            cobertura["refactura: hereda la marca de la factura anulada"] += 1
     agrup_nc: dict[tuple, dict] = {}
     for f in ncs:
         pid = f["p"] or sug.sugerir(f["txt"])[0] or identificar(f["txt"], f["rubro"])[0]
@@ -253,10 +332,11 @@ def main(inicio: date = INICIO, fin: date | None = None, recuento: date | None =
     for nk, nc in agrup_nc.items():
         cand = [k for k, x in facturas.items() if x["prov"] == nc["prov"] and x["ia"] == (ia.get(nc["p"]) or f"#{nc['p']}") and x["fecha"] <= nc["fecha"]
                 and abs(x["q"] - nc["q"]) <= TOL * max(nc["q"], 1)]
+        # Además de la cantidad, el importe de la NC tiene que igualar al de la factura (si no, es ajuste de precio).
+        cand = [k for k in cand if abs(pesos_doc[k[0]] - pesos_nc[nk[0]]) <= TOL * max(pesos_doc[k[0]], 1)]
         if cand:
             k = max(cand, key=lambda k: facturas[k]["fecha"])
-            facturas.pop(k)
-            cobertura["factura anulada por NC (se cancelan)"] += nc["n"]
+            anular(k[0], nk[0], "factura anulada por NC (misma cantidad e importe)", nc["n"])
         else:
             cobertura["nota de crédito (ajuste, sigue a su factura)"] += nc["n"]
 
@@ -377,9 +457,9 @@ def main(inicio: date = INICIO, fin: date | None = None, recuento: date | None =
         tm, tmo = sum(man.values()), sum(mo.values())
         if x.get("apertura") or x["pesos"] <= 0 or tm <= 0 or tmo <= 0 or (fin and x["fecha"] >= fin):
             continue
+        # Coincidencia ESTRICTA (revisión forense 16/11): sin bonificación por lo dejado en stock ni por "usado
+        # después"; ese dato se informa aparte en el detalle, no suma al porcentaje.
         c = sum(min(man[z] / tm, mo[z] / tmo) for z in set(man) | set(mo))
-        # Lo que Sergio dejó en stock y la simulación ya asignó a una orden posterior es consistente (se usó después).
-        c = min(1.0, c + man[STOCK] / tm - min(man[STOCK] / tm, mo[STOCK] / tmo))
         despues = {z for fe, z in usos.get(x["ia"], []) if fe >= x["fecha"]}
         libre = mo[STOCK] / tmo - min(man[STOCK] / tm, mo[STOCK] / tmo)
         extra = 0.0
@@ -387,7 +467,6 @@ def main(inicio: date = INICIO, fin: date | None = None, recuento: date | None =
             if z != STOCK and z in despues:
                 extra += max(0.0, v / tm - min(v / tm, mo[z] / tmo))
         usado_despues = min(libre, extra)
-        c = min(1.0, c + usado_despues)
         b = "100%" if c > 0.995 else "90-99%" if c >= 0.9 else "50-89%" if c >= 0.5 else "<50%"
         res[b] += 1
         porm[metodo[k]][b] += 1
@@ -406,7 +485,7 @@ def main(inicio: date = INICIO, fin: date | None = None, recuento: date | None =
             agK[z] += v * x["pesos"] / tmo
         detalle.append([x["fecha"], x["prov"], x["nro"], x["ia"], x["txt"], metodo[k], round(x["q"], 2), round(x["pesos"], 2),
                         round(c * 100, 1), _txt(man, cult, camp), _txt(mo, cult, camp), dict(man), {z: v / tmo for z, v in mo.items()},
-                        round(usado_despues * 100, 1), x["p"]])
+                        round(usado_despues * 100, 1), x["p"], ingreso.get(k)])
     agreg = sum(min(agM[z], agK[z]) for z in set(agM) | set(agK)) / (sum(agM.values()) or 1)
 
     faltantes = [["Renglón sin producto identificado", *r] for r in sin_prod]
