@@ -5,10 +5,11 @@ from __future__ import annotations
 from datetime import date
 
 from fastapi import APIRouter, HTTPException, Query, Response
+from pydantic import BaseModel
 from starlette.concurrency import run_in_threadpool
 
 from src.db.connection import fetch_all
-from src.features.remitos import exportacion, repository
+from src.features.remitos import exportacion, repository, vinculo_propuestas
 from src.features.remitos.repository import RequiereConfirmacion
 from src.features.remitos.schemas import AnularIn, FacturaIn, RemitoIn, ValidarRemitoIn, VincularIn
 
@@ -64,6 +65,26 @@ async def facturas_sin_remito(
 ) -> dict:
     """Facturas con renglones de insumos que no tienen remito vinculado."""
     return await _ejecutar(repository.facturas_sin_remito, fechaDesde, fechaHasta, proveedor, max(page, 1), min(max(pageSize, 1), 200))
+
+
+class _IdsIn(BaseModel):
+    ids: list[int]
+
+
+@router.get("/vinculos-propuestos")
+async def vinculos_propuestos() -> dict:
+    """050: vínculos remito ↔ factura propuestos por la regla de emparejamiento, para revisar antes de grabar."""
+    return await _ejecutar(vinculo_propuestas.listar)
+
+
+@router.post("/vinculos-propuestos/grabar")
+async def grabar_vinculos_propuestos(body: _IdsIn) -> dict:
+    return await _ejecutar(vinculo_propuestas.grabar, body.ids)
+
+
+@router.post("/vinculos-propuestos/descartar")
+async def descartar_vinculos_propuestos(body: _IdsIn) -> dict:
+    return {"descartados": await _ejecutar(vinculo_propuestas.descartar, body.ids)}
 
 
 @router.post("/validar")

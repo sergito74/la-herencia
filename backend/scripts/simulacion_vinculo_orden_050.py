@@ -83,6 +83,9 @@ REMITOS = True
 CARPETA_REMITOS = Path(__file__).resolve().parents[2] / "backups" / "baya-remitos-20261115"
 
 
+VINCULOS: dict = {}  # clave factura -> {regla, remito, linea}: lo usa scripts/vinculo_propuesta_050.py
+
+
 def asignar_remitos(facturas: dict, sug, bases, equiv, clave) -> dict:
     """Factura → fecha de ingreso = fecha del remito cargado en el sistema (dbo.Remitos, incluidos los «SIN REMITO»
     que Sergio carga cuando el proveedor entrega sin remito) del mismo proveedor, con el mismo producto (o principio
@@ -93,15 +96,15 @@ def asignar_remitos(facturas: dict, sug, bases, equiv, clave) -> dict:
     # y sin ventana, y el metilado de dos facturas del mismo día quedaba cruzado.
     rems: dict = {}
     for f in fetch_all(
-        """SELECT r.IdRemito id, r.Fecha f, co.[Razon Social] prov, rd.IdFormulado p, rd.Cantidad q, rd.[Unidad Medida] u
+        """SELECT r.IdRemito id, r.Fecha f, r.NroRemito nro, rd.IdDetalleRemito idr, co.[Razon Social] prov, rd.IdFormulado p, rd.Cantidad q, rd.[Unidad Medida] u
            FROM dbo.Remitos r JOIN dbo.Remitos_Detalles rd ON rd.IdRemito = r.IdRemito
            LEFT JOIN dbo.Contactos co ON co.IdContacto = COALESCE(r.IdContacto, r.IdProveedor)
            WHERE r.Fecha >= '2015-01-01' AND rd.IdFormulado > 0 AND rd.Cantidad > 0"""
     ):
-        r = rems.setdefault(f["id"], {"fecha": _d(f["f"]), "prov": f["prov"], "lineas": [], "usado": False})
-        r["lineas"].append((int(f["p"]), float(f["q"]) * _factor(int(f["p"]), f["u"], bases, equiv)))
+        r = rems.setdefault(f["id"], {"id": f["id"], "nro": f["nro"], "fecha": _d(f["f"]), "prov": f["prov"], "lineas": [], "usado": False})
+        r["lineas"].append((int(f["p"]), float(f["q"]) * _factor(int(f["p"]), f["u"], bases, equiv), f["idr"]))
 
-    def cubre(r, keys):
+    def cubre(r, keys, asignar=None):
         libres = list(range(len(r["lineas"])))
         for k in keys:
             x = facturas[k]
@@ -110,6 +113,8 @@ def asignar_remitos(facturas: dict, sug, bases, equiv, clave) -> dict:
             if i is None:
                 return False
             libres.remove(i)
+            if asignar is not None:
+                asignar[k] = (r, i)
         return True
 
     docs = defaultdict(list)
@@ -120,6 +125,7 @@ def asignar_remitos(facturas: dict, sug, bases, equiv, clave) -> dict:
         return abs((r["fecha"] - x["fecha"]).days) + (0 if r["fecha"] <= x["fecha"] else 30)
 
     out = {}
+    VINCULOS.clear()
     orden_docs = sorted(docs, key=lambda i: facturas[docs[i][0]]["fecha"])
     # Paso 1: un remito que cubre la factura entera (la evidencia más fuerte).
     for idc in orden_docs:
@@ -130,8 +136,11 @@ def asignar_remitos(facturas: dict, sug, bases, equiv, clave) -> dict:
         if cand:
             r = min(cand, key=lambda r: dist(r, x0))
             r["usado"] = True
+            asig = {}
+            cubre(r, keys, asig)
             for k in keys:
                 out[k] = r["fecha"]
+                VINCULOS[k] = {"regla": "remito completo", "remito": r, "linea": asig[k][1]}
     # Paso 2 (re-revisión forense 16/11): una factura puede agrupar varios remitos (Bayá 431429 = remitos 213 + 214)
     # o tener parte sin remito (Guazzaroni 4338): renglón por renglón contra renglones libres de remitos no usados
     # enteros, dentro de la ventana.
@@ -148,6 +157,7 @@ def asignar_remitos(facturas: dict, sug, bases, equiv, clave) -> dict:
             if cand:
                 c = min(cand, key=lambda c: dist(c[0], x))
                 out[k] = c[0]["fecha"]
+                VINCULOS[k] = {"regla": "renglón por renglón", "remito": c[0], "linea": c[1]}
                 c[1] = None
     return out
 
@@ -227,7 +237,7 @@ def main(inicio: date = INICIO, fin: date | None = None, recuento: date | None =
     sin_prod: list[list] = []
     for f in fetch_all(
         f"""
-        SELECT d.IdCompra idc, c.Fecha f, co.[Razon Social] prov, c.[Nro Documento] nro, c.[Tipo documento] tipo,
+        SELECT d.IdCompra idc, d.IdDetalleCompra idd, c.Fecha f, co.[Razon Social] prov, c.[Nro Documento] nro, c.[Tipo documento] tipo,
                ISNULL(c.[Ajusta Tipo Cambio], 0) atc,
                d.IdFormulado p, d.[Producto/Servicio] txt, ru.Rubro rubro, d.Cantidad q, d.Unidad u, de.IdCultivo cu, d.[IdCampaña] ca,
                ISNULL(d.Cantidad,0)*ISNULL(d.[Precio Unitario],0)*CASE WHEN c.Moneda='Dolares' THEN ISNULL(c.[Tipo de Cambio],0) ELSE 1 END pesos
@@ -276,14 +286,17 @@ def main(inicio: date = INICIO, fin: date | None = None, recuento: date | None =
         cobertura[via] += 1
         k = (f["idc"], pid)
         x = facturas.setdefault(k, {"fecha": _d(f["f"]), "prov": f["prov"], "nro": f["nro"], "txt": f["txt"], "p": pid,
-                                    "ia": ia.get(pid) or f"#{pid}", "q": 0.0, "pesos": 0.0, "manual": Counter()})
+                                    "ia": ia.get(pid) or f"#{pid}", "q": 0.0, "pesos": 0.0, "manual": Counter(),
+                                    "idc": f["idc"], "renglones": []})
         factor = _factor(pid, f["u"], bases, equiv)
         # Fertilizante sin unidad y cantidad chica ("MZCLA 3,5") = toneladas, no kilos (revisión forense 16/11).
         if f["rubro"] == "Fertilizantes" and not (f["u"] or "").strip() and 0 < float(f["q"] or 0) < 100:
             factor = 1000.0
             cobertura["fertilizante sin unidad tomado en toneladas"] += 1
         pesos = float(f["pesos"] or 0)
-        x["q"] += float(f["q"] or 0) * factor * _envase(f["txt"], f["u"], float(f["q"] or 0))
+        q_base = float(f["q"] or 0) * factor * _envase(f["txt"], f["u"], float(f["q"] or 0))
+        x["q"] += q_base
+        x["renglones"].append((f["idd"], q_base, float(f["q"] or 0)))
         x["pesos"] += pesos
         ca = f["ca"] if f["ca"] not in (None, NO_APLICA) else None
         x["manual"][(f["cu"], ca) if f["cu"] and ca else STOCK] += pesos
@@ -552,7 +565,7 @@ def main(inicio: date = INICIO, fin: date | None = None, recuento: date | None =
             faltantes.append(["Orden aplicada sin factura que la cubra", o["fecha"], f"Orden {o['orden']}", "", nombres.get(o["p"], o["p"]),
                               round(r, 2), "", None, _txt(o["reparto"], cult, camp)])
     salida = {"detalle": detalle, "faltantes": faltantes, "portipo": portipo, "agM": agM, "agK": agK, "cp": cp, "tot": tot,
-              "cobertura": cobertura, "cult": cult, "camp": camp}
+              "cobertura": cobertura, "cult": cult, "camp": camp, "facturas": facturas}
     if not guardar:
         return salida
 

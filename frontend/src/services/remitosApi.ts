@@ -428,3 +428,31 @@ export const previsualizarRecuento = (archivo: File, fecha: string, asignaciones
   apiPostForm<PreviaRecuento>("/api/stock/existencias/recuento/previsualizar", formRecuento(archivo, fecha, asignaciones));
 export const aplicarRecuento = (archivo: File, fecha: string, motivo: string, asignaciones: AsignacionesRecuento = {}) =>
   apiPostForm<{ idRecuento: number; ajustesOrden: number; sinImputar: number }>("/api/stock/existencias/recuento/aplicar", formRecuento(archivo, fecha, asignaciones, motivo));
+
+// ------------------------------------------------------------------ vínculos propuestos (050)
+
+export interface VinculoPropuesto {
+  ids: number[];
+  idCompra: number;
+  idRemito: number | null;
+  factura: string | null;
+  fechaFactura: string | null;
+  proveedor: string | null;
+  producto: string | null;
+  remito: string | null;
+  fechaRemito: string | null;
+  regla: string | null;
+  cantidad: number;
+  renglones: number;
+  sinRemito: boolean;
+}
+
+export const fetchVinculosPropuestos = () =>
+  apiGet<{ items: VinculoPropuesto[]; conRemito: number; sinRemito: number }>("/api/remitos/vinculos-propuestos");
+export const grabarVinculosPropuestos = (ids: number[]) =>
+  apiPost<{ grabados: number; errores: { idRemito: number; mensajes: string[] }[]; advertencias: string[] }>(
+    "/api/remitos/vinculos-propuestos/grabar",
+    { ids },
+  );
+export const descartarVinculosPropuestos = (ids: number[]) =>
+  apiPost<{ descartados: number }>("/api/remitos/vinculos-propuestos/descartar", { ids });

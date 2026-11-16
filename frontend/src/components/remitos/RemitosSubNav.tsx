@@ -10,6 +10,7 @@ const GRUPOS: Record<"remitos" | "existencias" | "costos", Tab[]> = {
   remitos: [
     { href: "/produccion/remitos", label: "Remitos", exacto: true },
     { href: "/produccion/remitos/facturas-sin-remito", label: "Facturas sin remito" },
+    { href: "/produccion/remitos/vinculos-propuestos", label: "Vínculos propuestos" },
   ],
   existencias: [
     { href: "/produccion/stock", label: "Existencias", exacto: true },
