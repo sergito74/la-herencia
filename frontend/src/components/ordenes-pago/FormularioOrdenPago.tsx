@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useMutation,useQuery } from '@tanstack/react-query';
 import { ContactoSelect } from '@/components/ui/ContactoSelect';
 import { formatFecha,formatMoneda,formatNumero,numeroAEdicionLocal,normalizarNumeroPegado,parseNumeroLocal } from '@/lib/format';
-import { facturasOP,guardarOP,proponerRetencion,type OrdenOP,type MedioOP,type PropuestaRetencion } from '@/services/ordenesPagoApi';
+import { facturasOP,guardarOP,proponerRetencion,regimenesRetencion,type OrdenOP,type MedioOP,type PropuestaRetencion } from '@/services/ordenesPagoApi';
 
 export const campo='rounded border border-slate-300 px-3 py-2 text-sm';
 export const boton='rounded bg-emerald-700 px-4 py-2 text-sm text-white disabled:opacity-50';
@@ -33,9 +33,12 @@ export function FormularioOrdenPago({orden,inicial,cerrar,guardado}:{orden?:Orde
  const [planAuto,setPlanAuto]=useState(!orden);
  const editarMedios:typeof setMedios=v=>{setPlanAuto(false);setMedios(v);};
  const [adelantos,setAdelantos]=useState<Record<number,boolean>>({});
+ // Concepto de ARCA por factura (16/11/2026): por defecto el del rubro; se puede elegir otro para toda la factura.
+ const [conceptos,setConceptos]=useState<Record<number,number>>(()=>{const r=orden?.retenciones??[];const f=orden?.facturas??[];return r.length===1&&f.length===1?{[f[0].idCompra]:r[0].codRegimen}:{};});
+ const regimenes=useQuery({queryKey:['ret-regimenes'],queryFn:regimenesRetencion,staleTime:3600_000});
  const [propuesta,setPropuesta]=useState<PropuestaRetencion|null>(orden?.retenciones?.length?{condicion:{retiene:true},lineas:orden.retenciones,total:orden.retencionGanancias,avisos:[]}:null);
  const facturasBody=()=>Object.entries(seleccion).map(([idCompra,importe])=>({idCompra:Number(idCompra),importe}));
- const calcular=useMutation({mutationFn:()=>proponerRetencion({idContacto:contacto!,fechaPago:pago,facturas:facturasBody(),excluirOrden:orden?.idOrdenPago}),onSuccess:setPropuesta});
+ const calcular=useMutation({mutationFn:()=>proponerRetencion({idContacto:contacto!,fechaPago:pago,facturas:facturasBody().map(f=>({...f,codRegimen:conceptos[f.idCompra]})),excluirOrden:orden?.idOrdenPago}),onSuccess:setPropuesta});
  const cambiarSeleccion:typeof setSeleccion=v=>{setSeleccion(v);setPropuesta(null);};
  const q=useQuery({queryKey:['op-facturas',contacto,orden?.idOrdenPago],queryFn:()=>facturasOP(contacto!,orden?.idOrdenPago),enabled:!!contacto});
  const total=Object.values(seleccion).reduce((a,b)=>a+b,0);
@@ -74,7 +77,7 @@ export function FormularioOrdenPago({orden,inicial,cerrar,guardado}:{orden?:Orde
    {q.isFetching&&<p>Cargando facturas…</p>}{q.isError&&<p role="alert">{q.error.message}</p>}
    {contacto&&q.data?.length===0&&<p>No hay facturas en pesos con saldo pendiente para este proveedor.</p>}
    <div className="overflow-auto max-h-80"><table className="w-full text-sm"><thead><tr><th>Factura</th><th>Fecha</th><th>Vencimiento</th><th>Saldo</th><th>En otras órdenes</th><th>A pagar</th></tr></thead><tbody>
-    {q.data?.map(f=><tr key={f.idCompra} className="border-b"><td className="p-2"><label><input type="checkbox" aria-label={`Seleccionar ${f.numero}`} disabled={f.disponible<=0} checked={f.idCompra in seleccion} onChange={e=>cambiarSeleccion(v=>{const n={...v};if(e.target.checked){n[f.idCompra]=f.disponible;setAdelantos(x=>({...x,[f.idCompra]:esAdelanto(f)}));}else delete n[f.idCompra];return n;})}/> {f.numero||'Sin número'}</label>{f.moneda==='Dolares'&&!!f.tc&&<span className="block text-xs text-slate-600">Factura en US$ · {formatMoneda(f.total/f.tc,'Dolares')} al TC {formatNumero(f.tc)}</span>}</td><td>{formatFecha(f.fecha)}</td><td>{formatFecha(f.fechaVto??f.fecha)}<CuotasInfo f={f}/>{(f.cuotas?.length??0)>1&&f.idCompra in seleccion&&<label className="block text-xs"><input type="checkbox" checked={!!adelantos[f.idCompra]} onChange={e=>setAdelantos(x=>({...x,[f.idCompra]:e.target.checked}))}/> La cuota 1 es un adelanto (la retención se resta de la cuota 2)</label>}</td><td>{formatMoneda(f.saldo)}</td><td>{formatMoneda(f.reservado)}</td><td><ImporteInput aria-label={`Importe ${f.numero}`} disabled={!(f.idCompra in seleccion)} value={seleccion[f.idCompra]} onChange={n=>cambiarSeleccion(v=>({...v,[f.idCompra]:n}))}/></td></tr>)}
+    {q.data?.map(f=><tr key={f.idCompra} className="border-b"><td className="p-2"><label><input type="checkbox" aria-label={`Seleccionar ${f.numero}`} disabled={f.disponible<=0} checked={f.idCompra in seleccion} onChange={e=>cambiarSeleccion(v=>{const n={...v};if(e.target.checked){n[f.idCompra]=f.disponible;setAdelantos(x=>({...x,[f.idCompra]:esAdelanto(f)}));}else delete n[f.idCompra];return n;})}/> {f.numero||'Sin número'}</label>{f.moneda==='Dolares'&&!!f.tc&&<span className="block text-xs text-slate-600">Factura en US$ · {formatMoneda(f.total/f.tc,'Dolares')} al TC {formatNumero(f.tc)}</span>}</td><td>{formatFecha(f.fecha)}</td><td>{formatFecha(f.fechaVto??f.fecha)}<CuotasInfo f={f}/>{(f.cuotas?.length??0)>1&&f.idCompra in seleccion&&<label className="block text-xs"><input type="checkbox" checked={!!adelantos[f.idCompra]} onChange={e=>setAdelantos(x=>({...x,[f.idCompra]:e.target.checked}))}/> La cuota 1 es un adelanto (la retención se resta de la cuota 2)</label>}</td><td>{formatMoneda(f.saldo)}</td><td>{formatMoneda(f.reservado)}</td><td><ImporteInput aria-label={`Importe ${f.numero}`} disabled={!(f.idCompra in seleccion)} value={seleccion[f.idCompra]} onChange={n=>cambiarSeleccion(v=>({...v,[f.idCompra]:n}))}/>{f.idCompra in seleccion&&<select aria-label={`Concepto de ARCA de ${f.numero}`} className={`${campo} mt-1 block w-72 text-xs`} value={conceptos[f.idCompra]??''} onChange={e=>{const v=e.target.value;setConceptos(x=>{const n={...x};if(v)n[f.idCompra]=Number(v);else delete n[f.idCompra];return n;});setPropuesta(null);}}><option value="">Concepto de ARCA: según el rubro</option>{regimenes.data?.map(r=><option key={r.codRegimen} value={r.codRegimen}>{r.codRegimen} · {r.concepto}</option>)}</select>}</td></tr>)}
    </tbody></table></div>
    <section className="rounded border border-slate-200 p-3 space-y-2" aria-label="Retención de Ganancias">
     <div className="flex flex-wrap items-center gap-3"><h3 className="font-semibold">Retención de Ganancias</h3>

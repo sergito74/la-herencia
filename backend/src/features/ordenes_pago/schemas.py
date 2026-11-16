@@ -60,6 +60,9 @@ class OrdenInput(Estricto):
 class FacturaPropuestaInput(FacturaInput):
     # Pago del adelanto de una factura en cuotas: la retención no se descuenta acá sino en la cuota 2 (Sergio 12/11/2026).
     adelanto: bool = False
+    # Concepto de ARCA elegido en la orden para toda la factura (16/11/2026): el del rubro no siempre alcanza
+    # (p. ej. Inseminación depende del bien o servicio). None = según el rubro de cada renglón.
+    codRegimen: int | None = Field(default=None, gt=0)
 
 
 class PropuestaInput(Estricto):

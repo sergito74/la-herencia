@@ -150,6 +150,10 @@ def _bases(facturas, diferidas=None):
                       'en esta orden: se descuenta de la cuota 2')
     for i in sorted((en_cuotas - adelanto) & ya_retenidas):
         avisos.append('Una factura en cuotas ya tuvo su retención en una orden anterior: no se vuelve a retener')
+    elegido = {f['idCompra']: f['codRegimen'] for f in facturas if f.get('codRegimen')}
+    for r in ren:
+        if r['i'] in elegido:
+            r['cod'] = elegido[r['i']]  # concepto elegido en la orden para toda la factura
     for r in ren:
         total = tot.get(r['i']) or 0
         if not total or r['cod'] is None:
