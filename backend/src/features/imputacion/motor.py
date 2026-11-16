@@ -168,7 +168,7 @@ def calcular_propuesta_insumo(id_detalle_compra: int) -> list[dict]:
         # Fracción todavía en stock (no consumida) atribuible a esta factura.
         cantidad_stock = float(capa.get("restante", 0)) * peso_factura_en_capa
         if cantidad_stock > EPS:
-            fracciones.append({"importe": round(cantidad_stock * costo_unitario, 2), "esStock": True,
+            fracciones.append({"importe": cantidad_stock * costo_unitario, "esStock": True,
                                "cantidad": cantidad_stock, "unidad": unidad})
 
         for sid, consumo in consumos.items():
@@ -178,20 +178,36 @@ def calcular_propuesta_insumo(id_detalle_compra: int) -> list[dict]:
             if tomado_de_esta_capa <= EPS:
                 continue
             cantidad_atribuida = tomado_de_esta_capa * peso_factura_en_capa
-            importe = round(cantidad_atribuida * costo_unitario, 2)
+            importe = cantidad_atribuida * costo_unitario
             meta = salida_meta.get(sid, {})
 
             if meta.get("tipo") == "ordenTrabajo":
                 for destino in _destino_de_orden_insumo(int(sid[2:]), meta["idOrdenTrabajo"], cantidad_atribuida):
                     proporcion = destino["cantidad"] / cantidad_atribuida if cantidad_atribuida > EPS else 0
-                    fracciones.append({**destino, "importe": round(importe * proporcion, 2), "unidad": unidad})
+                    fracciones.append({**destino, "importe": importe * proporcion, "unidad": unidad})
             elif meta.get("tipo") == "baja":
                 for destino in _destino_de_baja(meta, cantidad_atribuida, id_producto):
                     fracciones.append({**destino, "importe": importe, "unidad": unidad})
             # Otros tipos de salida (ajuste faltante, orden heredada) quedan
             # fuera de alcance de este motor (FR-014): no se les propone reparto.
 
-    return [f for f in fracciones if abs(f["importe"]) > EPS or f.get("esStock")]
+    return _redondear(fracciones)
+
+
+def _redondear(fracciones: list[dict]) -> list[dict]:
+    """Redondea a centavos una sola vez (16/11/2026: redondear por orden y otra vez por lote perdía 15-20 centavos
+    por renglón y la corrida no cerraba al centavo). La diferencia de redondeo va a la fracción más grande."""
+    utiles = [f for f in fracciones if abs(f["importe"]) > EPS or f.get("esStock")]
+    if not utiles:
+        return []
+    objetivo = round(sum(f["importe"] for f in utiles), 2)
+    for f in utiles:
+        f["importe"] = round(f["importe"], 2)
+    diferencia = round(objetivo - sum(f["importe"] for f in utiles), 2)
+    if diferencia:
+        mayor = max(utiles, key=lambda f: abs(f["importe"]))
+        mayor["importe"] = round(mayor["importe"] + diferencia, 2)
+    return utiles
 
 
 def recalcular_si_corresponde(id_detalle_compra: int, origen: str = "Insumo") -> str | None:

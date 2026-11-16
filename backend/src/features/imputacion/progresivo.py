@@ -21,6 +21,7 @@ from src.features.remitos import capas_factura
 PARTE_COMERCIALIZACION = 9
 CULTIVOS_FORRAJEROS = {7, 9}  # Pastura, Avena
 _CENT = 0.005
+PRECISION_BASE = 5e-6  # error relativo máximo por la precisión de las cantidades guardadas (7 dígitos)
 
 
 def _tamiz(id_detalle: int) -> dict | None:
@@ -69,6 +70,15 @@ def asignar_partes(fracciones: list[dict], id_parte: int | None, por_uso: bool, 
 def decidir_estado(fracciones: list[dict], total: float, motivo: str | None) -> tuple[list[dict], str | None]:
     """Pura (T023): todo Aprobada si cierra al centavo y no hay motivo de duda."""
     suma = round(sum(float(f["importe"]) for f in fracciones), 2)
+    # Precisión de la base (16/11/2026): las cantidades se guardan con 7 dígitos (tipo real), así el costo por unidad
+    # del remito difiere en millonésimas del precio de la factura (Lambda 451193: 15-21 centavos sobre $ 70-100 mil).
+    # Esa diferencia no es real: va a la fracción más grande para que el renglón cierre al centavo.
+    diferencia = round(total - suma, 2)
+    if fracciones and _CENT < abs(diferencia) <= max(abs(total) * PRECISION_BASE, _CENT):
+        fracciones = [dict(f) for f in fracciones]
+        mayor = max(fracciones, key=lambda f: abs(float(f["importe"])))
+        mayor["importe"] = round(float(mayor["importe"]) + diferencia, 2)
+        suma = round(sum(float(f["importe"]) for f in fracciones), 2)
     if motivo is None and abs(suma - total) > _CENT:
         motivo = f"Usos + stock ({suma:,.2f}) no igualan el total del renglón ({total:,.2f})"
     if motivo is None:
