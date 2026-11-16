@@ -116,21 +116,45 @@ def asignar_remitos(facturas: dict, sug, bases, equiv, clave) -> dict:
     for k, x in facturas.items():
         if not x.get("apertura"):
             docs[k[0]].append(k)
+    def dist(r, x):
+        return abs((r["fecha"] - x["fecha"]).days) + (0 if r["fecha"] <= x["fecha"] else 30)
+
     out = {}
-    for idc in sorted(docs, key=lambda i: facturas[docs[i][0]]["fecha"]):
+    orden_docs = sorted(docs, key=lambda i: facturas[docs[i][0]]["fecha"])
+    # Paso 1: un remito que cubre la factura entera (la evidencia más fuerte).
+    for idc in orden_docs:
         keys = docs[idc]
         x0 = facturas[keys[0]]
         cand = [r for r in rems.values() if not r["usado"] and r["prov"] == x0["prov"]
                 and abs((r["fecha"] - x0["fecha"]).days) <= VENTANA_REMITO and cubre(r, keys)]
         if cand:
-            r = min(cand, key=lambda r: abs((r["fecha"] - x0["fecha"]).days) + (0 if r["fecha"] <= x0["fecha"] else 30))
+            r = min(cand, key=lambda r: dist(r, x0))
             r["usado"] = True
             for k in keys:
                 out[k] = r["fecha"]
+    # Paso 2 (re-revisión forense 16/11): una factura puede agrupar varios remitos (Bayá 431429 = remitos 213 + 214)
+    # o tener parte sin remito (Guazzaroni 4338): renglón por renglón contra renglones libres de remitos no usados
+    # enteros, dentro de la ventana.
+    libres = [[r, i] for r in rems.values() if not r["usado"] for i in range(len(r["lineas"]))]
+    for idc in orden_docs:
+        for k in docs[idc]:
+            if k in out:
+                continue
+            x = facturas[k]
+            cand = [c for c in libres if c[1] is not None and c[0]["prov"] == x["prov"]
+                    and abs((c[0]["fecha"] - x["fecha"]).days) <= VENTANA_REMITO
+                    and (c[0]["lineas"][c[1]][0] == x["p"] or clave(c[0]["lineas"][c[1]][0]) == x["ia"])
+                    and abs(c[0]["lineas"][c[1]][1] - x["q"]) <= 0.01 * max(x["q"], 1)]
+            if cand:
+                c = min(cand, key=lambda c: dist(c[0], x))
+                out[k] = c[0]["fecha"]
+                c[1] = None
     return out
 
 
-VENTANA_REMITO = 180  # días entre remito y factura (el proveedor guarda lo pedido y factura antes o después).
+# Días entre remito y factura: Bayá Casal facturó el 26/03/2026 lo remitido el 08/09/2025 (199 días); el proveedor
+# guarda lo pedido y factura antes o después.
+VENTANA_REMITO = 270
 
 
 def _envase(txt: str | None, unidad: str | None, q: float) -> float:
@@ -271,9 +295,19 @@ def main(inicio: date = INICIO, fin: date | None = None, recuento: date | None =
     pesos_doc = defaultdict(float)
     for k, x in facturas.items():
         pesos_doc[k[0]] += x["pesos"]
+    # Re-revisión forense 16/11: el importe de la NC se toma solo de renglones de mercadería (sin ajustes en $/US$,
+    # sin fletes y sin renglones que nombran otra factura), igual que el de la factura.
+    def es_mercaderia_nc(f):
+        t = (f["txt"] or "").upper()
+        return ((f["u"] or "").strip().upper() not in MONETARIAS and "FLETE" not in t
+                and not _re.search(r"\bFC\s*0*\d{3,8}\b", t))
+    fletes_nc = [f for f in ncs if "FLETE" in (f["txt"] or "").upper()]
+    cobertura["flete en NC (no es mercadería)"] += len(fletes_nc)
+    ncs = [f for f in ncs if "FLETE" not in (f["txt"] or "").upper()]
     pesos_nc = defaultdict(float)
     for f in ncs:
-        pesos_nc[f["idc"]] += abs(float(f["pesos"] or 0))
+        if es_mercaderia_nc(f):
+            pesos_nc[f["idc"]] += abs(float(f["pesos"] or 0))
 
     def nro_num(s):
         d = _re.sub(r"\D", "", s or "")
@@ -326,17 +360,21 @@ def main(inicio: date = INICIO, fin: date | None = None, recuento: date | None =
             cobertura["nota de crédito (ajuste, sigue a su factura)"] += 1
             continue
         factor = _factor(pid, f["u"], bases, equiv)
-        x = agrup_nc.setdefault((f["idc"], pid), {"prov": f["prov"], "fecha": _d(f["f"]), "p": pid, "q": 0.0, "n": 0})
+        x = agrup_nc.setdefault((f["idc"], pid), {"prov": f["prov"], "fecha": _d(f["f"]), "p": pid, "q": 0.0, "n": 0, "pesos": 0.0})
         x["q"] += float(f["q"]) * factor
+        x["pesos"] += abs(float(f["pesos"] or 0))
         x["n"] += 1
     for nk, nc in agrup_nc.items():
         cand = [k for k, x in facturas.items() if x["prov"] == nc["prov"] and x["ia"] == (ia.get(nc["p"]) or f"#{nc['p']}") and x["fecha"] <= nc["fecha"]
                 and abs(x["q"] - nc["q"]) <= TOL * max(nc["q"], 1)]
         # Además de la cantidad, el importe de la NC tiene que igualar al de la factura (si no, es ajuste de precio).
-        cand = [k for k in cand if abs(pesos_doc[k[0]] - pesos_nc[nk[0]]) <= TOL * max(pesos_doc[k[0]], 1)]
+        # Importe por producto: el renglón de la NC contra el mismo producto de la factura (no toda la NC contra toda
+        # la factura); se anula solo ese producto de la factura (devolución parcial).
+        cand = [k for k in cand if abs(facturas[k]["pesos"] - nc["pesos"]) <= TOL * max(facturas[k]["pesos"], 1)]
         if cand:
             k = max(cand, key=lambda k: facturas[k]["fecha"])
-            anular(k[0], nk[0], "factura anulada por NC (misma cantidad e importe)", nc["n"])
+            anuladas_x.append(facturas.pop(k))
+            cobertura["producto devuelto por NC (misma cantidad e importe)"] += nc["n"]
         else:
             cobertura["nota de crédito (ajuste, sigue a su factura)"] += nc["n"]
 
