@@ -152,6 +152,11 @@ def asignar_remitos(facturas: dict, sug, bases, equiv, clave) -> dict:
     return out
 
 
+# Factura que repone un préstamo → orden que usó lo prestado.
+#   0037-00003310 (Guazzaroni, refactura de 3231): 80 L de glifosato que Agribaps prestó para terminar la orden 148
+#   (mail de Matías Aramburu del 13/03/2026, "Insumos").
+PRESTAMOS = {"0037-00003310": 148}
+
 # Días entre remito y factura: Bayá Casal facturó el 26/03/2026 lo remitido el 08/09/2025 (199 días); el proveedor
 # guarda lo pedido y factura antes o después.
 VENTANA_REMITO = 270
@@ -457,6 +462,15 @@ def main(inicio: date = INICIO, fin: date | None = None, recuento: date | None =
                 motor[k][kk] += t * unit * v / tot
             metodo.setdefault(k, etiqueta)
 
+    # Reposición de préstamo (Sergio 16/11): la compra repone producto que prestó un tercero y ya se aplicó; se imputa
+    # a la orden que usó el préstamo aunque su remito sea posterior. Respaldo en el mail de cada caso.
+    for k, x in facturas.items():
+        nro_orden = PRESTAMOS.get((x.get("nro") or "").strip())
+        if nro_orden is None or k not in resto_f:
+            continue
+        for o in ordenes:
+            if o["orden"] == nro_orden and id(o) in resto_o and (ia.get(o["p"]) or f"#{o['p']}") == x["ia"]:
+                consumir(k, o, "reposición de préstamo")
     fpp, opp = defaultdict(list), defaultdict(list)
     for k in resto_f:
         fpp[facturas[k]["p"]].append(k)
