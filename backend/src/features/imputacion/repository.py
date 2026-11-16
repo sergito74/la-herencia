@@ -352,7 +352,7 @@ def reparto_contratista_vigente(id_compra: int) -> str | None:
 def fracciones_de_corrida(id_corrida: str) -> list[dict]:
     return fetch_all(
         "SELECT IdOrdenTrabajo AS idOrdenTrabajo, IdLote AS idLote, IdCultivo AS idCultivo, IdCampania AS idCampania, "
-        "IdCentroCosto AS idCentroCosto, Importe AS importe FROM dbo.ImputacionPropuestas WHERE IdCorrida = ? "
+        "IdCentroCosto AS idCentroCosto, Importe AS importe, Estado AS estado FROM dbo.ImputacionPropuestas WHERE IdCorrida = ? "
         "ORDER BY IdPropuesta",
         (id_corrida,),
     )

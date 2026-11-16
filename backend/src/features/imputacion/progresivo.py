@@ -127,7 +127,7 @@ def _misma_corrida(id_detalle: int, fracciones: list[dict], origen: str) -> bool
     previas = repository.fracciones_de_corrida(vigente)
     clave = lambda f: tuple(-1 if v is None else v for v in (
         f.get("idOrdenTrabajo"), f.get("idLote"), f.get("idCultivo"), f.get("idCampania"), f.get("idCentroCosto"))) + (
-        round(float(f.get("importe") or 0), 2),)
+        round(float(f.get("importe") or 0), 2), f.get("estado") or "Pendiente")
     return sorted(map(clave, previas)) == sorted(map(clave, fracciones))
 
 
