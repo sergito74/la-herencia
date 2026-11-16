@@ -76,6 +76,10 @@ def clasificar_renglon(r: dict, reglas_rubro: dict, reglas_producto: list, conte
         return _resultado(r, "NoImputa", origen="Revision", estado="Pendiente",
                           motivo="Factura con parte particular y renglones de cultivo: confirmar qué parte es del campo")
 
+    if contexto.get("anulada"):
+        # 050 (16/11/2026): factura anulada por NC (o la NC que la anula): la mercadería no se usó o se refacturó.
+        return _resultado(r, "NoImputa", motivo=contexto["anulada"])
+
     regla = _regla_producto(r, reglas_producto)
     if regla is not None:
         destino = regla["destino"]
@@ -106,6 +110,10 @@ def clasificar_renglon(r: dict, reglas_rubro: dict, reglas_producto: list, conte
                           motivo="Flete sin insumos en la factura: relacionarlo con la factura o remito que trajo")
 
     if destino == "CultivoStock":
+        if (r.get("tipoDocumento") or "").startswith("Nota"):
+            # NC / ND de insumos (ajuste de precio o de tipo de cambio): no mueven stock, siguen el reparto de su
+            # documento base (Sergio 15/11/2026).
+            return _resultado(r, destino, parte, motivo="Sigue a su documento base")
         if r.get("idFormulado") is None:
             return _resultado(r, destino, parte, origen="Revision", estado="Pendiente",
                               motivo="Insumo sin producto del catálogo")
@@ -269,6 +277,7 @@ def tamizar_compra(id_compra: int, *, guardar: bool = True, forzar: bool = False
         modelo = aprendizaje.modelo()
     ctx["modelo"] = modelo
     ctx["financiaDestino"] = repo.destino_financiado(id_compra)
+    ctx["anulada"] = repo.anulada(id_compra)
     fecha = renglones[0].get("fecha") if renglones else None
     if hasattr(fecha, "date"):
         fecha = fecha.date()

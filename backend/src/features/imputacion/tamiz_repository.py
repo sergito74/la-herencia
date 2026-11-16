@@ -31,7 +31,8 @@ def renglones_de_compra(id_compra: int) -> list[dict]:
         SELECT d.IdDetalleCompra AS idDetalleCompra, d.IdCompra AS idCompra, d.[Producto/Servicio] AS producto,
                ISNULL(d.Cantidad, 0) AS cantidad, ISNULL(d.[Precio Unitario], 0) AS precio,
                NULLIF(d.IdFormulado, 0) AS idFormulado, d.IdRubro AS idRubro, d.IdDestino AS idDestino,
-               de.IdCultivo AS idCultivo, d.[IdCampaña] AS idCampania, c.Fecha AS fecha, c.IdContacto AS idContacto
+               de.IdCultivo AS idCultivo, d.[IdCampaña] AS idCampania, c.Fecha AS fecha, c.IdContacto AS idContacto,
+               c.[Tipo documento] AS tipoDocumento, d.Unidad AS unidad
         FROM dbo.Det_Compras d
         JOIN dbo.Compras c ON c.IdDeuda = d.IdCompra
         LEFT JOIN dbo.DestinoCompras de ON de.IdDestino = d.IdDestino
@@ -166,3 +167,88 @@ def destino_financiado(id_compra: int) -> dict | None:
         (id_compra, id_compra),
     )
     return filas[0] if len(filas) == 1 else None
+
+
+_MONETARIAS = ("ARS", "USD")
+
+
+def _docs_insumo(id_contacto: int, desde) -> list[dict]:
+    """Facturas y NC del proveedor desde `desde`, con sus renglones de mercadería (sin ajustes en $ / us$)."""
+    filas = fetch_all(
+        """
+        SELECT c.IdDeuda AS id, c.Fecha AS fecha, c.[Tipo documento] AS tipo, c.[Nro Documento] AS nro,
+               d.[Producto/Servicio] AS texto, ISNULL(d.Cantidad, 0) AS cantidad, ISNULL(d.[Precio Unitario], 0) AS precio,
+               ISNULL(d.Unidad, '') AS unidad
+        FROM dbo.Compras c JOIN dbo.Det_Compras d ON d.IdCompra = c.IdDeuda
+        WHERE c.IdContacto = ? AND c.Fecha >= ? AND c.[Tipo documento] IN ('Factura', 'Nota de Crédito')
+        """,
+        (id_contacto, desde),
+    )
+    docs: dict[int, dict] = {}
+    for f in filas:
+        d = docs.setdefault(f["id"], {"id": f["id"], "fecha": f["fecha"], "tipo": f["tipo"], "nro": f["nro"], "renglones": []})
+        if (f["unidad"] or "").strip().upper() not in _MONETARIAS:
+            d["renglones"].append(f)
+    return list(docs.values())
+
+
+def anulada(id_compra: int) -> str | None:
+    """050 (16/11/2026): la factura anulada por una NC y esa NC no se imputan (la mercadería no se usó o se
+    refacturó). Una NC anula una factura del mismo proveedor, anterior o del mismo día, si (a) un renglón de la NC
+    la nombra con su número exacto ("NC FC 3233"), o (b) devuelve los mismos productos en la misma cantidad y por el
+    mismo importe (±2%). Devuelve el motivo o None."""
+    import re
+    cab = fetch_one("SELECT IdContacto AS c, Fecha AS f, [Tipo documento] AS t FROM dbo.Compras WHERE IdDeuda = ?", (id_compra,))
+    if cab is None or cab["t"] not in ("Factura", "Nota de Crédito"):
+        return None
+    docs = _docs_insumo(cab["c"], "2015-01-01")
+    facturas = [d for d in docs if d["tipo"] == "Factura" and d["renglones"]]
+    notas = [d for d in docs if d["tipo"] == "Nota de Crédito" and d["renglones"]]
+
+    relacionadas = {(x["a"], x["b"]) for x in fetch_all(
+        "SELECT IdCompra AS a, IdCompraRelacionada AS b FROM dbo.CompraDocumentosRelacionados "
+        "UNION SELECT IdCompraRelacionada, IdCompra FROM dbo.CompraDocumentosRelacionados")}
+
+    def numero(nro):
+        dig = re.sub(r"\D", "", nro or "")
+        return int(dig[-8:]) if dig else None
+
+    def total(d):
+        return abs(sum(float(r["cantidad"]) * float(r["precio"]) for r in d["renglones"]))
+
+    def clave(d):
+        return sorted((re.sub(r"\s+", " ", (r["texto"] or "").upper()).strip(), round(abs(float(r["cantidad"])), 2)) for r in d["renglones"])
+
+    def nombra(nc, fac):
+        for r in nc["renglones"]:
+            m = re.search(r"\bFC\s*0*(\d{3,8})\b", (r["texto"] or "").upper())
+            if m and int(m.group(1)) == numero(fac["nro"]):
+                return True
+        return False
+
+    def iguales(nc, fac):
+        mismo_importe = abs(total(nc) - total(fac)) <= 0.02 * max(total(fac), 1)
+        agrup = lambda d: {t: sum(q for tt, q in clave(d) if tt == t) for t, _ in clave(d)}
+        if agrup(nc) == agrup(fac) and mismo_importe:
+            return True
+        # Relacionadas en documentos relacionados, con la misma cantidad total aunque el texto difiera.
+        cant = lambda d: round(sum(abs(float(r["cantidad"])) for r in d["renglones"]), 2)
+        return mismo_importe and cant(nc) == cant(fac) and (nc["id"], fac["id"]) in relacionadas
+
+    # Emparejamiento: una NC que nombra facturas anula esas (puede ser más de una); si no, anula UNA sola factura,
+    # la más cercana anterior con el mismo contenido que no haya anulado otra NC.
+    pares: dict[int, int] = {}  # factura -> NC
+    for nc in sorted(notas, key=lambda d: (d["fecha"], d["id"])):
+        nombradas = [f for f in facturas if f["fecha"] <= nc["fecha"] and nombra(nc, f)]
+        if nombradas:
+            for f in nombradas:
+                pares.setdefault(f["id"], nc["id"])
+            continue
+        cand = [f for f in facturas if f["fecha"] <= nc["fecha"] and f["id"] not in pares and iguales(nc, f)]
+        if cand:
+            pares[max(cand, key=lambda f: (f["fecha"], f["id"]))["id"]] = nc["id"]
+    nro = {d["id"]: d["nro"] for d in docs}
+    if cab["t"] == "Factura":
+        return f"Anulada por la nota de crédito {nro[pares[id_compra]]}" if id_compra in pares else None
+    anuladas = [nro[f] for f, n in pares.items() if n == id_compra]
+    return f"Anula la factura {', '.join(anuladas)}" if anuladas else None

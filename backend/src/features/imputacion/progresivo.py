@@ -29,7 +29,8 @@ def _tamiz(id_detalle: int) -> dict | None:
         """
         SELECT tz.Destino AS destino, tz.IdParte AS idParte, tz.IdCultivo AS idCultivo, tz.IdCampania AS idCampania,
                tz.Estado AS estado, tr.ReglaDepende AS regla, ISNULL(d.Cantidad, 0) AS cantidad,
-               ISNULL(d.[Precio Unitario], 0) AS precio, c.Moneda AS moneda, c.[Tipo de Cambio] AS tc
+               ISNULL(d.[Precio Unitario], 0) AS precio, c.Moneda AS moneda, c.[Tipo de Cambio] AS tc,
+               c.[Tipo documento] AS tipoDocumento, d.Unidad AS unidad
         FROM dbo.TamizRenglones tz
         JOIN dbo.Det_Compras d ON d.IdDetalleCompra = tz.IdDetalleCompra
         JOIN dbo.Compras c ON c.IdDeuda = d.IdCompra
@@ -101,6 +102,19 @@ def imputar_insumo(id_detalle: int) -> dict:
     t = _tamiz(id_detalle)
     if t is None or t["destino"] != "CultivoStock" or t["estado"] != "Aprobada":
         return {"accion": "fueraDeAlcance"}
+    if (t.get("tipoDocumento") or "").startswith("Nota"):
+        # NC / ND de insumos: sigue el reparto de su factura base (050, 16/11/2026).
+        total = total_renglon(t, 0.0)
+        if (t.get("tipoDocumento") or "").startswith("Nota de Cr") and total > 0:
+            total = -total
+        fracciones, motivo = motor.evaluar_nota_insumo(id_detalle, total)
+        if not fracciones:
+            return {"accion": "pendiente", "idCorrida": repository.guardar_requiere_intervencion("Insumo", id_detalle, motivo), "motivo": motivo}
+        fracciones, motivo = decidir_estado(fracciones, round(total, 2), None)
+        if _misma_corrida(id_detalle, fracciones, "Insumo"):
+            return {"accion": "sinCambios"}
+        id_corrida = repository.guardar_corrida("Insumo", id_detalle, fracciones)
+        return {"accion": "aprobada" if motivo is None else "pendiente", "idCorrida": id_corrida, "motivo": motivo}
     fracciones = motor.calcular_propuesta_insumo(id_detalle)
     if not fracciones:
         return {"accion": "sinCapa"}

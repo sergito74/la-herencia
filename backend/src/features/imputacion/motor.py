@@ -360,6 +360,41 @@ def evaluar_nota_relacionada(id_nc: int) -> list[dict]:
     return fracciones
 
 
+def evaluar_nota_insumo(id_detalle_compra: int, total: float) -> tuple[list[dict], str | None]:
+    """050 (16/11/2026): renglón de NC/ND de insumos (ajuste de precio o de tipo de cambio). No mueve stock: copia
+    las proporciones del reparto vigente de su factura base (todos sus renglones de insumos, incluida la parte en
+    stock) sobre su propio importe. Sin factura base o sin reparto: ([], motivo)."""
+    from src.db.connection import fetch_one, fetch_all
+    fila = fetch_one("SELECT IdCompra AS c FROM dbo.Det_Compras WHERE IdDetalleCompra = ?", (id_detalle_compra,))
+    id_factura = repository.factura_de_nota(fila["c"]) if fila else None
+    if not id_factura:
+        return [], "Nota sin factura base en documentos relacionados"
+    base = fetch_all(
+        """
+        SELECT p.IdOrdenTrabajo AS idOrdenTrabajo, p.IdLote AS idLote, p.IdCultivo AS idCultivo, p.IdCampania AS idCampania,
+               p.IdCentroCosto AS idCentroCosto, p.EsGanaderia AS esGanaderia, p.IdParte AS idParte, SUM(p.Importe) AS importe
+        FROM dbo.ImputacionPropuestas p
+        JOIN dbo.Det_Compras d ON d.IdDetalleCompra = p.IdDetalleCompra
+        WHERE d.IdCompra = ? AND p.Origen = 'Insumo' AND p.Estado <> 'RequiereIntervencion'
+          AND p.FechaCalculo = (SELECT MAX(q.FechaCalculo) FROM dbo.ImputacionPropuestas q
+                                WHERE q.IdDetalleCompra = p.IdDetalleCompra AND q.Origen = 'Insumo')
+        GROUP BY p.IdOrdenTrabajo, p.IdLote, p.IdCultivo, p.IdCampania, p.IdCentroCosto, p.EsGanaderia, p.IdParte
+        """,
+        (id_factura,),
+    )
+    total_base = sum(float(f["importe"] or 0) for f in base)
+    if abs(total_base) <= EPS:
+        return [], "La factura base todavía no tiene reparto"
+    fracciones = []
+    for f in base:
+        fr = {k: f[k] for k in ("idOrdenTrabajo", "idLote", "idCultivo", "idCampania", "idCentroCosto", "esGanaderia", "idParte")}
+        fr["importe"] = total * float(f["importe"]) / total_base
+        if all(fr[k] is None for k in ("idOrdenTrabajo", "idLote", "idCultivo", "idCampania", "idCentroCosto")) and not fr["esGanaderia"]:
+            fr["esStock"] = True
+        fracciones.append(fr)
+    return _redondear(fracciones), None
+
+
 def trazabilidad_insumo(id_detalle_compra: int) -> list[dict]:
     """Remonta, on-demand (sin persistir), qué remito/capa/Orden/renglón de
     distribución originó cada fracción de la propuesta vigente de un renglón
