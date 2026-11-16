@@ -33,6 +33,8 @@ class Compra(BaseModel):
     # ojo entre varias compras candidatas al vincular manualmente el
     # consumo de una tarjeta (008-tarjetas, feedback 2026-09-19).
     importeDocumento: float | None = None
+    # "Pesos" / "Dolares" — el listado muestra $ o us$ (pedido 16/11/2026).
+    moneda: str | None = None
 
 
 class ComprasListResponse(BaseModel):

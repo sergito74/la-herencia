@@ -44,6 +44,7 @@ def _row_to_compra(row: dict) -> dict:
         "tipoDocumento": row["tipoDocumento"],
         "numeroDocumento": row["numeroDocumento"],
         "importeDocumento": row.get("importeDocumento"),
+        "moneda": row.get("moneda"),
     }
 
 
@@ -159,7 +160,8 @@ def search_compras(
             c.[Razon Social] AS razonSocial,
             cmp.[Tipo documento] AS tipoDocumento,
             cmp.[Nro Documento] AS numeroDocumento,
-            vw.ImporteDocumento AS importeDocumento
+            vw.ImporteDocumento AS importeDocumento,
+            cmp.Moneda AS moneda
         FROM dbo.Compras cmp
         LEFT JOIN dbo.Contactos c ON c.IdContacto = cmp.IdContacto
         LEFT JOIN dbo.vw_Compras_ImporteDocumento vw ON vw.IdDeuda = cmp.IdDeuda

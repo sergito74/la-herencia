@@ -44,6 +44,8 @@ export interface Compra {
   /** Importe total del documento (`vw_Compras_ImporteDocumento`) — ver
    * uso en el buscador manual de facturas de Tarjetas (008). */
   importeDocumento: number | null;
+  /** "Pesos" | "Dolares" del documento. */
+  moneda?: string | null;
 }
 
 export interface ComprasListResponse {

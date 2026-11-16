@@ -72,7 +72,10 @@ function buildColumns(mostrarProveedor: boolean): DataTableColumn<Compra>[] {
       align: "right",
       numeric: true,
       sortValue: (c) => c.importeDocumento,
-      render: (c) => (c.importeDocumento != null ? formatMoneda(c.importeDocumento) : "—"),
+      render: (c) =>
+        c.importeDocumento != null
+          ? formatMoneda(c.importeDocumento, c.moneda === "Dolares" ? "Dolares" : "Pesos")
+          : "—",
     },
     {
       key: "editar",
