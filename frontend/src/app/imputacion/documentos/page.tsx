@@ -177,11 +177,16 @@ export default function DocumentosImputacionPage() {
   const [fechaDesde, setFechaDesde] = useState("");
   const [fechaHasta, setFechaHasta] = useState("");
   const [estado, setEstado] = useState<Estado | "">("");
-  const [filtrosAplicados, setFiltrosAplicados] = useState<{ idContacto: number | null; fechaDesde: string; fechaHasta: string; estado: Estado | "" }>({
+  // Regla de carga automática (050): revisar lo que el motor aprobó solo, desde una fecha.
+  const [automatico, setAutomatico] = useState(false);
+  const [aprobadoDesde, setAprobadoDesde] = useState("");
+  const [filtrosAplicados, setFiltrosAplicados] = useState<{ idContacto: number | null; fechaDesde: string; fechaHasta: string; estado: Estado | ""; automatico: boolean; aprobadoDesde: string }>({
     idContacto: null,
     fechaDesde: "",
     fechaHasta: "",
     estado: "",
+    automatico: false,
+    aprobadoDesde: "",
   });
 
   useEffect(() => {
@@ -192,6 +197,8 @@ export default function DocumentosImputacionPage() {
       fechaDesde: filtrosAplicados.fechaDesde || undefined,
       fechaHasta: filtrosAplicados.fechaHasta || undefined,
       estado: filtrosAplicados.estado || undefined,
+      automatico: filtrosAplicados.automatico ? "true" : undefined,
+      aprobadoDesde: filtrosAplicados.aprobadoDesde || undefined,
     }).then((r) => {
       setDocumentos(r.items);
       setTotal(r.total);
@@ -202,7 +209,7 @@ export default function DocumentosImputacionPage() {
   function aplicarFiltros(e: React.FormEvent) {
     e.preventDefault();
     setPage(1);
-    setFiltrosAplicados({ idContacto, fechaDesde, fechaHasta, estado });
+    setFiltrosAplicados({ idContacto, fechaDesde, fechaHasta, estado, automatico, aprobadoDesde });
   }
 
   function marcarCorridaAprobada(idCorrida: string) {
@@ -259,6 +266,15 @@ export default function DocumentosImputacionPage() {
               <option value="Aprobada">Aprobada</option>
               <option value="RequiereIntervencion">Requiere intervención</option>
             </select>
+          </FilterField>
+          <FilterField label="Para revisar">
+            <label className="flex items-center gap-2 text-sm">
+              <input type="checkbox" checked={automatico} onChange={(e) => setAutomatico(e.target.checked)} />
+              Solo lo aprobado automáticamente
+            </label>
+          </FilterField>
+          <FilterField label="Aprobado desde">
+            <input type="date" className={filterInputClass} value={aprobadoDesde} onChange={(e) => setAprobadoDesde(e.target.value)} />
           </FilterField>
           <FilterSubmitButton />
         </FilterBar>

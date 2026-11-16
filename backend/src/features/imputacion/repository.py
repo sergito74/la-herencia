@@ -435,7 +435,8 @@ def ids_en_alcance(ids_detalle_compra: list[int]) -> set[int]:
     return {f["id"] for f in filas}
 
 
-def _filtros_documentos(id_contacto, fecha_desde, fecha_hasta, estado, solo_alcance: bool = False) -> tuple[list[str], list]:
+def _filtros_documentos(id_contacto, fecha_desde, fecha_hasta, estado, solo_alcance: bool = False,
+                        automatico: bool = False, aprobado_desde=None) -> tuple[list[str], list]:
     where = ["(c.IdDeuda IN (SELECT DISTINCT dc.IdCompra FROM dbo.Det_Compras dc "
              "JOIN dbo.ImputacionPropuestas p ON p.IdDetalleCompra = dc.IdDetalleCompra AND p.Origen <> 'Contratista') "
              "OR c.IdDeuda IN (SELECT p.IdDetalleCompra FROM dbo.ImputacionPropuestas p WHERE p.Origen = 'Contratista'))"]
@@ -458,16 +459,33 @@ def _filtros_documentos(id_contacto, fecha_desde, fecha_hasta, estado, solo_alca
             "AND p.Estado = ?))"
         )
         params += [estado, estado]
+    if automatico or aprobado_desde is not None:
+        # 050 (regla de carga automática): lo que el motor aprobó solo (sin usuario), opcionalmente desde una fecha.
+        cond = ["p.Estado = 'Aprobada'"]
+        if automatico:
+            cond.append("p.UsuarioAprobacion IS NULL")
+        if aprobado_desde is not None:
+            cond.append("p.FechaAprobacion >= ?")
+        cond_sql = " AND ".join(cond)
+        where.append(
+            "(c.IdDeuda IN (SELECT DISTINCT dc.IdCompra FROM dbo.Det_Compras dc "
+            f"JOIN dbo.ImputacionPropuestas p ON p.IdDetalleCompra = dc.IdDetalleCompra AND p.Origen <> 'Contratista' AND {_VIGENTE_SQL} "
+            f"WHERE {cond_sql}) "
+            f"OR c.IdDeuda IN (SELECT p.IdDetalleCompra FROM dbo.ImputacionPropuestas p WHERE p.Origen = 'Contratista' AND {_VIGENTE_SQL} "
+            f"AND {cond_sql}))"
+        )
+        if aprobado_desde is not None:
+            params += [aprobado_desde, aprobado_desde]
     if solo_alcance:
         where.append(SQL_COMPRA_EN_ALCANCE)
     return where, params
 
 
-def total_general_documentos(id_contacto=None, fecha_desde=None, fecha_hasta=None, estado=None) -> float:
+def total_general_documentos(id_contacto=None, fecha_desde=None, fecha_hasta=None, estado=None, automatico=False, aprobado_desde=None) -> float:
     """Suma de `Importe` (fracciones vigentes) de TODOS los documentos que
     matchean el filtro, no solo la página actual — para el total general
     del informe (pedido del usuario 2026-09-25)."""
-    where, params = _filtros_documentos(id_contacto, fecha_desde, fecha_hasta, estado)
+    where, params = _filtros_documentos(id_contacto, fecha_desde, fecha_hasta, estado, automatico=automatico, aprobado_desde=aprobado_desde)
     where_sql = "WHERE " + " AND ".join(where)
     fila = fetch_one(
         f"""
@@ -495,11 +513,13 @@ def listar_documentos_con_imputacion(
     estado: str | None = None,
     page: int = 1,
     page_size: int = 20,
+    automatico: bool = False,
+    aprobado_desde=None,
 ) -> tuple[list[dict], int]:
     """Documentos comerciales (Compras) que ya tienen al menos una propuesta
     del motor — informe/pantalla para la oficina del contador (pedido del
     usuario, 2026-09-25)."""
-    where, params = _filtros_documentos(id_contacto, fecha_desde, fecha_hasta, estado)
+    where, params = _filtros_documentos(id_contacto, fecha_desde, fecha_hasta, estado, automatico=automatico, aprobado_desde=aprobado_desde)
     where_sql = "WHERE " + " AND ".join(where)
 
     total = fetch_one(f"SELECT COUNT(*) AS total FROM dbo.Compras c {where_sql}", tuple(params))["total"]

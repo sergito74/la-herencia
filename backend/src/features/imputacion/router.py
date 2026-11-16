@@ -155,14 +155,17 @@ async def listar_documentos(
     estado: EstadoPropuesta | None = Query(default=None),
     page: int = Query(default=1, ge=1),
     pageSize: int = Query(default=20, ge=1, le=100),
+    automatico: bool = Query(default=False),
+    aprobadoDesde: str | None = Query(default=None),
 ) -> dict:
     """Documentos comerciales con sus renglones e imputaciones (manual +
     motor) — informe/pantalla para la oficina del contador. `estado` filtra
     a los documentos que tienen al menos una fracción vigente en ese estado
     (ej. "solo lo que requiere intervención")."""
-    documentos, total = await run_in_threadpool(repository.listar_documentos_con_imputacion, idContacto, fechaDesde, fechaHasta, estado, page, pageSize)
+    documentos, total = await run_in_threadpool(repository.listar_documentos_con_imputacion, idContacto, fechaDesde, fechaHasta, estado, page, pageSize,
+                                                automatico, aprobadoDesde)
     lineas_por_compra = await run_in_threadpool(repository.lineas_con_imputacion_batch, tuple(d["idCompra"] for d in documentos))
-    total_general = await run_in_threadpool(repository.total_general_documentos, idContacto, fechaDesde, fechaHasta, estado)
+    total_general = await run_in_threadpool(repository.total_general_documentos, idContacto, fechaDesde, fechaHasta, estado, automatico, aprobadoDesde)
 
     for doc in documentos:
         lineas = lineas_por_compra.get(doc["idCompra"], [])
