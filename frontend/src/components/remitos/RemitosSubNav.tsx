@@ -17,6 +17,7 @@ const GRUPOS: Record<"remitos" | "existencias" | "costos", Tab[]> = {
     { href: "/produccion/stock/bajas", label: "Bajas de stock" },
     { href: "/produccion/stock/ajustes", label: "Ajustes de inventario" },
     { href: "/produccion/stock/unidades", label: "Unidades de productos" },
+    { href: "/produccion/stock/control", label: "Control de cierre" },
   ],
   costos: [
     { href: "/imputacion", label: "Automática", exacto: true },

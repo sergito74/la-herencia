@@ -8,7 +8,7 @@ from datetime import date
 from fastapi import APIRouter, Form, HTTPException, Response, UploadFile
 from starlette.concurrency import run_in_threadpool
 
-from src.features.remitos import catalogo, exportacion, recuento, stock_repo
+from src.features.remitos import catalogo, control_cierre, exportacion, recuento, stock_repo
 from src.features.remitos.repository import RequiereConfirmacion
 from src.features.remitos.router import _ejecutar
 from src.features.remitos.schemas import (
@@ -69,6 +69,12 @@ async def set_equivalencia(id_producto: int, body: EquivalenciaIn) -> None:
 
 
 # ------------------------------------------------------------------ existencias
+@router.get("/control-cierre")
+async def control_de_cierre() -> dict:
+    """050: por producto, facturado / remitido / usado / stock desde la activación, con alertas de lo que no cierra."""
+    return await _ejecutar(control_cierre.control)
+
+
 @router.get("/existencias")
 async def existencias(q: str | None = None, tipo: str | None = None, estado: str | None = None) -> dict:
     """Existencia y valor FIFO por producto. `estado`: conStock, negativo, costoPendiente, todos."""
