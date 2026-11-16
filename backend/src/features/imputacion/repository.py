@@ -244,9 +244,11 @@ def vinculos_remito_para_compra(id_detalle_compra: int) -> list[dict]:
     remitida de cada uno (`tblRemitoCompra`, fuente de verdad del vínculo)."""
     return fetch_all(
         "SELECT v.IdDetalleRemito AS idDetalleRemito, v.CantidadRemitida AS cantidadRemitida, "
-        "rd.[Unidad Medida] AS unidad "
+        "rd.[Unidad Medida] AS unidad, d.Unidad AS unidadCompra, "
+        "(SELECT SUM(x.CantidadRemitida) FROM dbo.tblRemitoCompra x WHERE x.IdDetalleRemito = v.IdDetalleRemito) AS sumaVinculadaRemito "
         "FROM dbo.tblRemitoCompra v "
         "JOIN dbo.Remitos_Detalles rd ON rd.IdDetalleRemito = v.IdDetalleRemito "
+        "JOIN dbo.Det_Compras d ON d.IdDetalleCompra = v.IdDetalleCompra "
         "WHERE v.IdDetalleCompra = ?",
         (id_detalle_compra,),
     )

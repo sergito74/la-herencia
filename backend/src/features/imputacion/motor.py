@@ -12,7 +12,7 @@ from collections import defaultdict
 
 from src.features.compras.repository import get_id_centro_costo_por_nombre
 from src.features.imputacion import calendario_agricola, repository
-from src.features.remitos.stock_datos import calcular_stock
+from src.features.remitos.stock_datos import _familia_unidad, calcular_stock
 from src.features.remitos.stock_datos import fecha as _normalizar_fecha
 
 EPS = 1e-6
@@ -145,6 +145,7 @@ def calcular_propuesta_insumo(id_detalle_compra: int) -> list[dict]:
 
     # (capa, peso de la factura en la capa, unidad). 050 R-03: sin remito, la capa virtual de la propia
     # factura (`FC{id}`, solo renglones en alcance) es entera de este renglón.
+    vinc_por_capa = {f"R{v['idDetalleRemito']}": v for v in vinculos}
     entradas: list[tuple[str, float | None, str | None]] = [
         (f"R{v['idDetalleRemito']}", float(v["cantidadRemitida"] or 0), v.get("unidad")) for v in vinculos
     ]
@@ -163,6 +164,11 @@ def calcular_propuesta_insumo(id_detalle_compra: int) -> list[dict]:
         # por CantidadRemitida, la cantidad resultante queda en la unidad
         # original del remito, que puede diferir de la base FIFO y la factura.
         peso_factura_en_capa = 1.0 if cantidad_remitida is None else cantidad_remitida / float(capa["cantidad"])
+        v = vinc_por_capa.get(capa_key)
+        if v and _familia_unidad(v.get("unidadCompra")) != _familia_unidad(v.get("unidad")) and float(v.get("sumaVinculadaRemito") or 0) > EPS:
+            # 050: factura en otra unidad que el remito (t contra kg, bolsas contra kg): su parte es la proporción de
+            # lo vinculado, no cantidad de factura / cantidad del remito.
+            peso_factura_en_capa = cantidad_remitida / float(v["sumaVinculadaRemito"])
         costo_unitario = capa.get("costoUnitario") or 0.0
 
         # Fracción todavía en stock (no consumida) atribuible a esta factura.
@@ -384,7 +390,25 @@ def evaluar_nota_insumo(id_detalle_compra: int, total: float) -> tuple[list[dict
     )
     total_base = sum(float(f["importe"] or 0) for f in base)
     if abs(total_base) <= EPS:
-        return [], "La factura base todavía no tiene reparto"
+        # Factura base anterior a la activación (sin corrida del motor): sigue su imputación manual por renglón;
+        # lo que no tiene cultivo y campaña queda como stock.
+        base = fetch_all(
+            """
+            SELECT de.IdCultivo AS idCultivo, CASE WHEN de.IdCultivo IS NULL OR d.[IdCampaña] = 20 THEN NULL ELSE d.[IdCampaña] END AS idCampania,
+                   SUM(ABS(ISNULL(d.Cantidad, 0) * ISNULL(d.[Precio Unitario], 0))) AS importe
+            FROM dbo.Det_Compras d LEFT JOIN dbo.DestinoCompras de ON de.IdDestino = d.IdDestino
+            WHERE d.IdCompra = ? AND ISNULL(d.Unidad, '') NOT IN ('ARS', 'USD')
+            GROUP BY de.IdCultivo, CASE WHEN de.IdCultivo IS NULL OR d.[IdCampaña] = 20 THEN NULL ELSE d.[IdCampaña] END
+            """,
+            (id_factura,),
+        )
+        for f in base:
+            if f["idCampania"] is None:
+                f["idCultivo"] = None
+            f.update({"idOrdenTrabajo": None, "idLote": None, "idCentroCosto": None, "esGanaderia": None, "idParte": None})
+        total_base = sum(float(f["importe"] or 0) for f in base)
+    if abs(total_base) <= EPS:
+        return [], "La factura base no tiene reparto ni imputación manual"
     fracciones = []
     for f in base:
         fr = {k: f[k] for k in ("idOrdenTrabajo", "idLote", "idCultivo", "idCampania", "idCentroCosto", "esGanaderia", "idParte")}

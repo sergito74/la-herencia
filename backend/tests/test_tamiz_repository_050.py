@@ -26,7 +26,9 @@ def test_alcance_por_corte_de_iddeuda(monkeypatch):
     assert repo.compra_en_alcance(1000) is False
 
 
-def test_sin_corte_nada_esta_en_alcance_en_wc():
-    # Lectura real: hoy ImputacionConfig.IdDeudaCorte está vacío y ImputacionAlcance sin filas.
-    ids = [f["IdDetalleCompra"] for f in repository.fetch_all("SELECT TOP 5 IdDetalleCompra FROM dbo.Det_Compras ORDER BY IdDetalleCompra DESC")]
-    assert repository.ids_en_alcance(ids) == set()
+def test_activado_los_renglones_recientes_estan_en_alcance_en_wc():
+    # Lectura real: activado el 16/11/2026 (corte = IdDeuda máximo de ese día, alcance = compras desde el 12/05/2025).
+    ids = [f["IdDetalleCompra"] for f in repository.fetch_all(
+        "SELECT TOP 5 d.IdDetalleCompra FROM dbo.Det_Compras d JOIN dbo.Compras c ON c.IdDeuda = d.IdCompra "
+        "WHERE c.Fecha >= '2025-05-12' ORDER BY d.IdDetalleCompra DESC")]
+    assert repository.ids_en_alcance(ids) == set(ids)

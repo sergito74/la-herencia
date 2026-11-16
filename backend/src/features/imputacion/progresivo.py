@@ -21,7 +21,7 @@ from src.features.remitos import capas_factura
 PARTE_COMERCIALIZACION = 9
 CULTIVOS_FORRAJEROS = {7, 9}  # Pastura, Avena
 _CENT = 0.005
-PRECISION_BASE = 5e-6  # error relativo máximo por la precisión de las cantidades guardadas (7 dígitos)
+PRECISION_BASE = 2e-5  # error relativo máximo por la precisión de las cantidades guardadas (7 dígitos) y del TC
 
 
 def _tamiz(id_detalle: int) -> dict | None:
@@ -68,6 +68,38 @@ def asignar_partes(fracciones: list[dict], id_parte: int | None, por_uso: bool, 
     return out, motivo
 
 
+def valuar_a_precio_propio(fracciones: list[dict], total: float, cantidad_vinculada: float | None) -> list[dict]:
+    """Pura (050, 16/11/2026). Un remito que comparten facturas de distinto precio da un costo promedio; cada
+    factura reparte SU importe según las cantidades que consumió cada orden. Solo si las cantidades del reparto
+    cubren todo lo vinculado (±0,5%): si falta cantidad (p. ej. un faltante de recuento) no se toca y queda pendiente."""
+    if not fracciones or not cantidad_vinculada:
+        return fracciones
+    cant = sum(float(f.get("cantidad") or 0) for f in fracciones)
+    suma = sum(float(f["importe"]) for f in fracciones)
+    if abs(cant - cantidad_vinculada) > 0.005 * cantidad_vinculada or abs(suma) <= _CENT or abs(total - suma) <= _CENT:
+        return fracciones
+    out = [{**f, "importe": round(float(f["importe"]) * total / suma, 2)} for f in fracciones]
+    mayor = max(out, key=lambda f: abs(f["importe"]))
+    mayor["importe"] = round(mayor["importe"] + round(total - sum(f["importe"] for f in out), 2), 2)
+    return out
+
+
+def cantidad_vinculada_base(id_detalle: int) -> float | None:
+    """Lo que la factura tiene vinculado a remitos, en la unidad de las fracciones del motor (la del remito)."""
+    filas = repository.vinculos_remito_para_compra(id_detalle)
+    if not filas:
+        return None
+    from src.features.remitos.stock_datos import _familia_unidad
+    total = 0.0
+    for v in filas:
+        q = float(v["cantidadRemitida"] or 0)
+        if _familia_unidad(v.get("unidadCompra")) != _familia_unidad(v.get("unidad")) and float(v.get("sumaVinculadaRemito") or 0) > 0:
+            rd = fetch_one("SELECT Cantidad AS c FROM dbo.Remitos_Detalles WHERE IdDetalleRemito = ?", (v["idDetalleRemito"],))
+            q = q / float(v["sumaVinculadaRemito"]) * float(rd["c"] or 0) if rd else q
+        total += q
+    return total
+
+
 def decidir_estado(fracciones: list[dict], total: float, motivo: str | None) -> tuple[list[dict], str | None]:
     """Pura (T023): todo Aprobada si cierra al centavo y no hay motivo de duda."""
     suma = round(sum(float(f["importe"]) for f in fracciones), 2)
@@ -93,8 +125,9 @@ def _misma_corrida(id_detalle: int, fracciones: list[dict], origen: str) -> bool
     if vigente is None:
         return False
     previas = repository.fracciones_de_corrida(vigente)
-    clave = lambda f: (f.get("idOrdenTrabajo"), f.get("idLote"), f.get("idCultivo"), f.get("idCampania"),
-                       f.get("idCentroCosto"), round(float(f.get("importe") or 0), 2))
+    clave = lambda f: tuple(-1 if v is None else v for v in (
+        f.get("idOrdenTrabajo"), f.get("idLote"), f.get("idCultivo"), f.get("idCampania"), f.get("idCentroCosto"))) + (
+        round(float(f.get("importe") or 0), 2),)
     return sorted(map(clave, previas)) == sorted(map(clave, fracciones))
 
 
@@ -122,6 +155,7 @@ def imputar_insumo(id_detalle: int) -> dict:
     if motivo is None and posible_duplicado(id_detalle):
         motivo = "Posible duplicado: hay un remito sin vincular del mismo proveedor y producto"
     total = total_renglon(t, capas_factura.flete_por_renglon().get(id_detalle, 0.0))
+    fracciones = valuar_a_precio_propio(fracciones, total, cantidad_vinculada_base(id_detalle))
     fracciones, motivo = decidir_estado(fracciones, total, motivo)
     if _misma_corrida(id_detalle, fracciones, "Insumo"):
         return {"accion": "sinCambios"}

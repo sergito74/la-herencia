@@ -83,6 +83,7 @@ def costos_de_renglones(id_producto: int | None = None) -> dict[int, dict]:
         SELECT t.IdDetalleRemito AS idDetalle, t.IdDetalleCompra AS idDetalleCompra,
                t.CantidadRemitida AS cantidadRemitida, dc.Cantidad AS cantidadCompra,
                dc.[Precio Unitario] AS precioUnitario, cm.Moneda AS moneda, cm.[Tipo de Cambio] AS tipoDeCambio,
+               dc.Unidad AS unidadCompra,
                SUM(t.CantidadRemitida) OVER (PARTITION BY t.IdDetalleCompra) AS sumaRemitidaLineaCompra
         FROM dbo.tblRemitoCompra t
         JOIN dbo.Remitos_Detalles rd ON rd.IdDetalleRemito = t.IdDetalleRemito
@@ -112,9 +113,41 @@ def costos_de_renglones(id_producto: int | None = None) -> dict[int, dict]:
                 "moneda": f["moneda"],
                 "tipoDeCambio": _f(f["tipoDeCambio"]) or None,
                 "sumaRemitidaLineaCompra": _f(f["sumaRemitidaLineaCompra"]),
+                "unidadCompra": f.get("unidadCompra"),
             }
         )
     return por_renglon
+
+
+EPS = 1e-9
+
+
+def _familia_unidad(u) -> str | None:
+    u = (u or "").strip().upper()
+    for pref, fam in (("KG", "KG"), ("KIL", "KG"), ("LT", "L"), ("LIT", "L"), ("L", "L"), ("BOL", "BOL"), ("TON", "TON"), ("UN", "UN")):
+        if u.startswith(pref):
+            return fam
+    return None
+
+
+def _unidad_factura_a_remito(vinculos, unidad_remito, cantidad_remito, costo, estado, vinculada):
+    """050 (16/11/2026): CantidadRemitida se guarda en la unidad de la factura. Si la factura está en otra unidad
+    que el remito (toneladas o sin unidad contra kilos, bolsas contra kilos), el costo salía por unidad de la factura
+    y se aplicaba a cada unidad del remito (NP 326: $ 1,16 M por kg; LT 725 2024: el costo por bolsa a cada kilo).
+    Si todas las líneas de factura vinculadas están completas y en otra unidad, se reparte el total de la factura
+    sobre la cantidad del remito."""
+    if costo is None or not vinculos or cantidad_remito <= EPS or vinculada <= EPS:
+        return costo, estado, vinculada
+    fam_r = _familia_unidad(unidad_remito)
+    if not all(_familia_unidad(v.get("unidadCompra")) != fam_r for v in vinculos):
+        return costo, estado, vinculada
+    if not all(abs(float(v["cantidadCompra"] or 0) - float(v["sumaRemitidaLineaCompra"] or 0)) <= 0.01 * max(float(v["cantidadCompra"] or 0), EPS)
+               for v in vinculos):
+        return costo, estado, vinculada
+    ratio = cantidad_remito / vinculada
+    if abs(ratio - 1) <= 0.02:
+        return costo, estado, vinculada
+    return costo / ratio, "completo", cantidad_remito
 
 
 def calcular_stock(id_producto: int | None = None, excluir_remito: int | None = None) -> dict[int, dict]:
@@ -149,6 +182,8 @@ def calcular_stock(id_producto: int | None = None, excluir_remito: int | None = 
             flags[prod]["equivalenciaPendiente"] = True
         cantidad = _f(e["cantidad"])
         costo_remito, estado, vinculada = costo_unitario_renglon(vinculos.get(e["idDetalle"], []), cantidad)
+        costo_remito, estado, vinculada = _unidad_factura_a_remito(vinculos.get(e["idDetalle"], []), e["unidad"], cantidad,
+                                                                   costo_remito, estado, vinculada)
         capa_id = f"R{e['idDetalle']}"
         capas[prod].append(
             Capa(

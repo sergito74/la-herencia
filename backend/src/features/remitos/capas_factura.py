@@ -93,6 +93,7 @@ def renglones_sin_remito(id_producto: int | None = None) -> list[dict]:
         JOIN dbo.Compras c ON c.IdDeuda = d.IdCompra
         WHERE tz.Vigente = 1 AND tz.Destino = 'CultivoStock' AND tz.Estado = 'Aprobada'
           AND NULLIF(d.IdFormulado, 0) IS NOT NULL AND ISNULL(d.Cantidad, 0) > 0 AND c.Fecha IS NOT NULL
+          AND c.[Tipo documento] = 'Factura' AND ISNULL(d.Unidad, '') NOT IN ('ARS', 'USD')
           AND NOT EXISTS (SELECT 1 FROM dbo.tblRemitoCompra t WHERE t.IdDetalleCompra = d.IdDetalleCompra){filtro}
         """,
         params,
