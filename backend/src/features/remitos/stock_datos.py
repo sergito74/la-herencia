@@ -198,6 +198,30 @@ def calcular_stock(id_producto: int | None = None, excluir_remito: int | None = 
             sid = f"F{a['id']}"
             salidas[prod].append(Salida(id=sid, fecha=fecha(a["fecha"]), cantidad=-cant, tipo="faltante", orden=a["id"]))
             salida_meta[sid] = {"tipo": "faltante", "idAjuste": a["id"], "fecha": fecha(a["fecha"]), "motivo": a["motivo"]}
+    # Devolución al proveedor (renglón de remito con cantidad negativa, 050 16/11/2026): antes quedaba como una capa
+    # negativa que el FIFO salteaba, así las capas anteriores conservaban mercadería ya devuelta y los consumos se
+    # corrían de compra. Ahora descuenta la entrada positiva más reciente del producto hasta su fecha (lo devuelto es
+    # lo último que llegó); si no alcanza, el resto sale como consumo "devolución" a su fecha.
+    for prod, lista in capas.items():
+        negativas = [c for c in lista if c.cantidad < 0 and meta.get(c.id, {}).get("origen") == "remito"]
+        for neg in negativas:
+            falta = -neg.cantidad
+            previas = sorted((c for c in lista if c.cantidad > 0 and (c.fecha, c.orden) <= (neg.fecha, neg.orden)),
+                             key=lambda c: (abs(c.cantidad - falta) <= 1e-6, c.fecha, c.orden), reverse=True)
+            for c in previas:
+                if falta <= 1e-9:
+                    break
+                toma = min(c.cantidad, falta)
+                c.cantidad -= toma
+                meta[c.id]["devuelto"] = meta[c.id].get("devuelto", 0.0) + toma
+                falta -= toma
+            lista.remove(neg)
+            meta[neg.id]["devolucion"] = True
+            if falta > 1e-9:
+                sid = f"D{neg.id}"
+                salidas[prod].append(Salida(id=sid, fecha=neg.fecha, cantidad=falta, tipo="devolucion", orden=neg.orden))
+                salida_meta[sid] = {"tipo": "devolucion", "fecha": neg.fecha, "idRemito": meta[neg.id].get("idRemito"),
+                                    "nroRemito": meta[neg.id].get("nroRemito")}
     # Un sobrante sin costo informado toma el de la capa anterior más cercana.
     for prod, lista in capas.items():
         lista.sort(key=lambda c: (c.fecha, c.orden))

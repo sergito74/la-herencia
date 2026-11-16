@@ -27,17 +27,17 @@ from __future__ import annotations
 from datetime import date
 
 CALENDARIO = {
-    "Trigo": {"inicio_mes": 6, "fin_mes": 1, "margen_previo_meses": 4},
-    "Soja primera": {"inicio_mes": 11, "fin_mes": 5, "margen_previo_meses": 4},
-    "Soja segunda": {"inicio_mes": 12, "fin_mes": 5, "margen_previo_meses": 4},
-    "Maiz": {"inicio_mes": 9, "fin_mes": 5, "margen_previo_meses": 4},
-    "Girasol": {"inicio_mes": 9, "fin_mes": 4, "margen_previo_meses": 4},
+    "Trigo": {"inicio_mes": 6, "fin_mes": 1, "margen_previo_meses": 7},
+    "Soja primera": {"inicio_mes": 11, "fin_mes": 5, "margen_previo_meses": 7},
+    "Soja segunda": {"inicio_mes": 12, "fin_mes": 5, "margen_previo_meses": 7},
+    "Maiz": {"inicio_mes": 9, "fin_mes": 5, "margen_previo_meses": 7},
+    "Girasol": {"inicio_mes": 9, "fin_mes": 4, "margen_previo_meses": 7},
     # Sorgo/Maíz diferido/Avena: forrajeros "que se consumen con la hacienda"
     # (pastoreo directo) — el fin teórico es aproximado, el pastoreo y el
     # mantenimiento posterior (fertilización) no tienen un corte estricto.
-    "Sorgo": {"inicio_mes": 11, "fin_mes": 3, "margen_previo_meses": 4, "margen_posterior_meses": 4},
-    "Maiz diferido": {"inicio_mes": 11, "fin_mes": 6, "margen_previo_meses": 4, "margen_posterior_meses": 4},
-    "Avena": {"inicio_mes": 3, "fin_mes": 11, "margen_previo_meses": 4, "margen_posterior_meses": 4},
+    "Sorgo": {"inicio_mes": 11, "fin_mes": 3, "margen_previo_meses": 7, "margen_posterior_meses": 4},
+    "Maiz diferido": {"inicio_mes": 11, "fin_mes": 6, "margen_previo_meses": 7, "margen_posterior_meses": 4},
+    "Avena": {"inicio_mes": 3, "fin_mes": 11, "margen_previo_meses": 7, "margen_posterior_meses": 4},
     # Pastura: multi-año (4-5 temporadas), sin mes de fin fijo. Margen previo
     # más amplio que los anuales: la preparación de suelo para implantar una
     # pastura (laboreo, fertilización) arranca meses antes que un cultivo
