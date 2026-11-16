@@ -89,6 +89,7 @@ export function ExistenciasListado() {
         </button>
       ),
     },
+    { key: "ingredienteActivo", header: "Principio activo", render: (r) => r.ingredienteActivo ?? "—" },
     { key: "tipo", header: "Tipo", render: (r) => r.tipo ?? "—" },
     { key: "unidad", header: "Unidad", render: (r) => r.unidadBase ?? "—" },
     { key: "existencia", header: "Existencia", numeric: true, align: "right", render: (r) => <span className={r.negativo ? "text-status-danger" : ""}>{formatCantidad(r.existencia)}</span> },

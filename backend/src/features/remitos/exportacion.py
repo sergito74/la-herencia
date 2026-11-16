@@ -76,7 +76,7 @@ def remitos_xlsx(**filtros) -> bytes:
 def existencias_xlsx(q=None, tipo=None, estado=None) -> bytes:
     datos = stock_repo.existencias(q, tipo, estado)
     wb = Workbook()
-    ws = _hoja(wb, "Existencias", [("Producto", 42), ("Tipo", 16), ("Unidad", 9), ("Existencia", 13), ("Valor (FIFO)", 16), ("Costo promedio", 15),
+    ws = _hoja(wb, "Existencias", [("Producto", 42), ("Principio activo", 36), ("Tipo", 16), ("Unidad", 9), ("Existencia", 13), ("Valor (FIFO)", 16), ("Costo promedio", 15),
                                    ("Cantidad sin costo", 15), ("Observaciones", 40)], primera=True)
     for i in datos["items"]:
         obs = []
@@ -86,20 +86,20 @@ def existencias_xlsx(q=None, tipo=None, estado=None) -> bytes:
             obs.append("Parte del stock sin costo (remito sin factura vinculada)")
         if i["equivalenciaPendiente"]:
             obs.append("Falta equivalencia de una presentación")
-        ws.append([i["producto"], i["tipo"], i["unidadBase"], i["existencia"], i["valor"], i["costoPromedio"], i["cantidadCostoPendiente"] or None, "; ".join(obs) or None])
+        ws.append([i["producto"], i["ingredienteActivo"], i["tipo"], i["unidadBase"], i["existencia"], i["valor"], i["costoPromedio"], i["cantidadCostoPendiente"] or None, "; ".join(obs) or None])
     if datos["items"]:
         n = ws.max_row
-        ws.append(["Total", None, None, None, f"=SUM(E2:E{n})"])
-        for c in range(1, 6):
+        ws.append(["Total", None, None, None, None, f"=SUM(F2:F{n})"])
+        for c in range(1, 7):
             ws.cell(row=ws.max_row, column=c).font = Font(bold=True)
-        ws.cell(row=ws.max_row, column=5).number_format = _PESOS
+        ws.cell(row=ws.max_row, column=6).number_format = _PESOS
     for fila in ws.iter_rows(min_row=2, max_row=ws.max_row - (1 if datos["items"] else 0)):
-        fila[3].number_format = _CANT
-        fila[4].number_format = _PESOS
+        fila[4].number_format = _CANT
         fila[5].number_format = _PESOS
-        fila[6].number_format = _CANT
+        fila[6].number_format = _PESOS
+        fila[7].number_format = _CANT
     if datos["items"]:
-        ws.auto_filter.ref = f"A1:H{ws.max_row - 1}"
+        ws.auto_filter.ref = f"A1:I{ws.max_row - 1}"
     return _bytes(wb)
 
 
