@@ -108,15 +108,36 @@ def costo_unitario_factura(r: dict, flete_pesos: float) -> float:
 
 
 def renglones_remito_en_alcance() -> dict[int, float]:
-    """{IdDetalleRemito: cantidad remitida a renglones en alcance} (para no contar dos veces su consumo)."""
-    return {f["id"]: float(f["cant"] or 0) for f in fetch_all(
+    """{IdDetalleRemito: cantidad (en la unidad del remito) remitida a renglones en alcance} (para no contar dos veces
+    su consumo). CantidadRemitida está en la unidad de la factura: si la factura usa otra unidad que el remito
+    (toneladas contra kilos, bolsas contra kilos), se toma la proporción de lo vinculado sobre la cantidad del remito,
+    igual que el motor (050, 16/11/2026)."""
+    from src.features.remitos.stock_datos import _familia_unidad
+
+    por_remito: dict[int, dict] = {}
+    for f in fetch_all(
         """
-        SELECT t.IdDetalleRemito AS id, SUM(t.CantidadRemitida) AS cant FROM dbo.tblRemitoCompra t
-        JOIN dbo.TamizRenglones tz ON tz.IdDetalleCompra = t.IdDetalleCompra AND tz.Vigente = 1
-             AND tz.Destino = 'CultivoStock' AND tz.Estado = 'Aprobada'
-        GROUP BY t.IdDetalleRemito
+        SELECT t.IdDetalleRemito AS id, t.CantidadRemitida AS cant, d.Unidad AS uFac, rd.Cantidad AS qRem, rd.[Unidad Medida] AS uRem,
+               CASE WHEN EXISTS (SELECT 1 FROM dbo.TamizRenglones tz WHERE tz.IdDetalleCompra = t.IdDetalleCompra AND tz.Vigente = 1
+                                 AND tz.Destino = 'CultivoStock' AND tz.Estado = 'Aprobada') THEN 1 ELSE 0 END AS enAlcance
+        FROM dbo.tblRemitoCompra t
+        JOIN dbo.Det_Compras d ON d.IdDetalleCompra = t.IdDetalleCompra
+        JOIN dbo.Remitos_Detalles rd ON rd.IdDetalleRemito = t.IdDetalleRemito
         """
-    )}
+    ):
+        r = por_remito.setdefault(f["id"], {"alc": 0.0, "tot": 0.0, "qRem": float(f["qRem"] or 0), "uRem": f["uRem"], "otraUnidad": False})
+        q = float(f["cant"] or 0)
+        r["tot"] += q
+        if f["enAlcance"]:
+            r["alc"] += q
+        if _familia_unidad(f["uFac"]) != _familia_unidad(f["uRem"]):
+            r["otraUnidad"] = True
+    out = {}
+    for idr, r in por_remito.items():
+        if r["alc"] <= 0:
+            continue
+        out[idr] = r["alc"] / r["tot"] * r["qRem"] if r["otraUnidad"] and r["tot"] > 0 else r["alc"]
+    return out
 
 
 def parte_en_alcance(capa_id: str, cantidad_capa: float, remitos_alcance: dict[int, float]) -> float:
