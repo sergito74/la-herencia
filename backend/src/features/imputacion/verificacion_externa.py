@@ -32,6 +32,11 @@ _lock = threading.Lock()
 _corriendo = {"si": False}
 PORTAL_ARCA = 15
 NOTAS_CREDITO = {3, 8, 13, 53, 113, 203, 208, 213}
+# Comprobantes de ARCA ya revisados con Sergio que no se cargan (CUIT, punto de venta, número): no se vuelven a avisar.
+REVISADOS = {
+    ("20218532994", 2, 23),       # Breccia, Domingo Sergio, factura C del 11/05/2026: sin copia ni pago identificado (17/11/2026)
+    ("27121593403", 2, 480),      # Cordero, Claudia Hilda, recibo C del 11/12/2024: ídem
+}
 
 
 def _num(s: str) -> float:
@@ -65,7 +70,7 @@ def cruzar(arca: list[dict], sistema: list[dict], en_costo: set[int]) -> list[di
         importes[(a["cuit"], round(a["total"], 2))] += 1
     anulados = {k for k in importes if importes.get((k[0], -k[1]))}
     for a in arca:
-        if (a["cuit"], round(a["total"], 2)) in anulados:
+        if (a["cuit"], round(a["total"], 2)) in anulados or (a["cuit"], a["pv"], a["nro"]) in REVISADOS:
             continue
         cands =[w for w in por_numero.get((a["pv"], a["nro"]), []) if abs(float(w["tot"] or 0)) > 0.005] or por_numero.get((a["pv"], a["nro"]), [])
         propios = [w for w in cands if w["cuit"] == a["cuit"]] or (cands if len(cands) == 1 else [])
