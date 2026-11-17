@@ -81,6 +81,9 @@ def clasificar_renglon(r: dict, reglas_rubro: dict, reglas_producto: list, conte
         # 050 (16/11/2026): factura anulada por NC (o la NC que la anula): la mercadería no se usó o se refacturó.
         return _resultado(r, "NoImputa", motivo=contexto["anulada"])
 
+    if "REDONDEO" in normalizar(r.get("producto")):
+        return _resultado(r, "NoImputa", motivo="Redondeo del comprobante")
+
     regla = _regla_producto(r, reglas_producto)
     if regla is not None:
         destino = regla["destino"]
