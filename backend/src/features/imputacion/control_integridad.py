@@ -538,9 +538,17 @@ def _control_dosis() -> list[dict]:
     return out
 
 
+# Revisados: el costo está imputado a mano en la factura, con otro nombre de producto.
+_REMITOS_REVISADOS = {
+    "0005-00000937",  # Folgado, semillas de pastura: facturas 00011-907/908 imputadas a Pastura 2026 (17/11/2026)
+}
+
+
 def _remito_sin_costo_en_factura(nro_remito: str, producto: str) -> bool:
     """El costo de ese insumo no está en ningún cultivo: la factura del remito no aparece o dejó el producto en
     "Stock" (si la factura lo imputó a mano a un cultivo, el costo ya está ahí)."""
+    if nro_remito in _REMITOS_REVISADOS:
+        return False
     r = fetch_all("SELECT TOP 1 NroFactura AS nf, COALESCE(IdContacto, IdProveedor) AS prov FROM dbo.Remitos WHERE NroRemito = ?", (nro_remito,))
     if not r or not r[0]["nf"]:
         return True
