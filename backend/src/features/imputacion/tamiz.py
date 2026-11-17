@@ -110,6 +110,11 @@ def clasificar_renglon(r: dict, reglas_rubro: dict, reglas_producto: list, conte
     if especial == "FleteInsumo":
         if contexto.get("tieneInsumos"):
             return _resultado(r, "CultivoStock", parte, motivo="Se suma al costo de los insumos de esta factura")
+        if cultivo and campania:
+            # Flete de insumos que no tienen factura (semilla propia o entregada sin remito): va directo al cultivo y
+            # campaña cargados en la compra (Sergio 17/11/2026).
+            return _resultado(r, "Cultivo", parte, cultivo, campania, origen="Manual",
+                              motivo="Flete de insumos sin factura: va al cultivo y campaña cargados")
         return _resultado(r, "CultivoStock", parte, origen="Revision", estado="Pendiente",
                           motivo="Flete sin insumos en la factura: relacionarlo con la factura o remito que trajo")
 
@@ -379,4 +384,7 @@ def corregir_renglon(id_detalle: int, destino: str, id_parte: int | None, id_cul
     repo.guardar_clasificaciones([c], usuario)
     if guardar_regla:
         repo.guardar_regla_producto(id_detalle, destino, id_parte, usuario)
+    from src.features.imputacion import progresivo
+
+    progresivo.imputar_renglon(id_detalle)  # la corrección se refleja en el costo en el momento
     return c

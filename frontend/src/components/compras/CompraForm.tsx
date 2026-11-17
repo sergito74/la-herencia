@@ -42,6 +42,7 @@ import { useToast } from "@/components/ui/Toast";
 import { ComprasGrid, FILA_VACIA, calcularLinea, filasARequestLineas, type GridRow } from "@/components/compras/ComprasGrid";
 import { DocumentosRelacionadosPanel } from "@/components/compras/DocumentosRelacionadosPanel";
 import { OrdenesTrabajoPanel, ordenesTrabajoKey } from "@/components/compras/OrdenesTrabajoPanel";
+import { ImputacionRenglonesPanel, imputacionCompraKey } from "@/components/compras/ImputacionRenglonesPanel";
 import { VencimientosEditor } from "@/components/compras/VencimientosEditor";
 import { NumberInput } from "@/components/ui/NumberInput";
 
@@ -446,6 +447,7 @@ export function CompraForm({
       if (mode === "edicion" && idCompra != null) {
         await liberarLock(idCompra, lockToken).catch(() => {});
       }
+      queryClient.invalidateQueries({ queryKey: imputacionCompraKey(resultado.idCompra) });
       if (alGuardar) alGuardar(resultado.idCompra);
       else router.push("/compras");
     } catch (err) {
@@ -640,6 +642,7 @@ export function CompraForm({
             fechaReferencia={fecha}
           />
           {mode === "edicion" && idCompra != null && <OrdenesTrabajoPanel idCompra={idCompra} />}
+          {mode === "edicion" && idCompra != null && <ImputacionRenglonesPanel idCompra={idCompra} />}
         </div>
       </div>
 

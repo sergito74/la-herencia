@@ -150,14 +150,14 @@
   - una descripción con dos opciones va a revisión;
   - una regla aprendida gana sobre la búsqueda.
 - [X] T036 [US5] Crear backend/src/features/imputacion/producto_sugerido.py, que normaliza la descripción y la compara contra los formulados (research R-09). Asignar IdFormulado solo en renglones en alcance. — Implementado como src/features/imputacion/sugeridor.py y aplicado en tamiz.py (asigna solo con vía segura).
-- [ ] T037 [US5] En `PUT /tamiz/renglon` y en resolver, con guardarRegla=true crear una TamizReglaProducto.
+- [X] T037 [US5] En `PUT /tamiz/renglon` y en resolver, con guardarRegla=true crear una TamizReglaProducto. — Hecho 17/11/2026: 'Recordar para este producto' en el panel Imputación de la compra; la corrección reimputa en el momento.
 
 ## Phase 8: US6 — "Para revisar", contador y sugerencia al cargar (P2)
 
 - [X] T038 [US6] En imputacion/router.py, agregar `GET /revisar`, `POST /revisar/{tipo}/{id}/resolver` y `GET /revisar/contador`, según contracts/api.md. Los textos tienen que estar en lenguaje llano, sin identificadores internos. — Reemplazado: filtro "Solo lo aprobado automáticamente" / "Aprobado desde" en Costos → Por documento.
 - [X] T039 [US6] Crear frontend/src/app/imputacion/revisar/page.tsx con los dudosos arriba y lo aprobado agrupado por día de carga. Cada dudoso permite elegir una opción y guardar como regla. — Reemplazado por la pantalla Por documento con esos filtros.
-- [ ] T040 [US6] Mostrar el contador "N para revisar" en el menú del layout de frontend/src/app (TanStack Query, refetch cada 5 min).
-- [ ] T041 [US6] En la edición de la compra (frontend/src/app/compras/[id]/editar), mostrar en cada renglón la etiqueta ("A cultivo", "Va a stock", "Gasto general", "Ganadería", "Financiero", "No se imputa") con la marca "sugerido", editable con un clic.
+- [X] T040 [US6] Mostrar el contador "N para revisar" en el menú del layout de frontend/src/app (TanStack Query, refetch cada 5 min). — Hecho 17/11/2026: contador en Producción → Imputación de costos; lleva a la lista 'Para revisar' de Por documento.
+- [X] T041 [US6] En la edición de la compra (frontend/src/app/compras/[id]/editar), mostrar en cada renglón la etiqueta ("A cultivo", "Va a stock", "Gasto general", "Ganadería", "Financiero", "No se imputa") con la marca "sugerido", editable con un clic. — Hecho 17/11/2026: franja 'Imputación' en la edición de la compra, con etiqueta, '(sugerido)' y 'Cambiar' por renglón.
 
 ## Phase 9: US8 — Listado para el Estudio contable (P2)
 

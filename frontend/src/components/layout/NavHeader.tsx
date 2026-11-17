@@ -6,6 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
 
 import { useAuth } from "@/components/auth/AuthContext";
+import { apiGet } from "@/services/apiClient";
 import { getResumenBoveda } from "@/services/bovedaApi";
 import { getResumen } from "@/services/descargaPeajesApi";
 import { getResumenNuevos, type ResumenNuevos } from "@/services/documentosNuevosApi";
@@ -16,7 +17,7 @@ interface NavLeaf {
   /** Activo solo con la ruta exacta (ej. "/compras" no se marca dentro de "/compras/descarga-peajes"). */
   exact?: boolean;
   /** Contador opcional (pendientes de la descarga de peajes, 037). */
-  badge?: "peajes";
+  badge?: "peajes" | "revisar";
   /** Documentos nuevos para revisar de este módulo (043): el número lleva a la vista "Nuevos para revisar". */
   nuevos?: AvisoNuevos;
   /** Encabezado de sección que se muestra arriba de este ítem dentro del menú desplegable. */
@@ -146,7 +147,7 @@ const NAV_ITEMS: NavItem[] = [
       { href: "/produccion/resultado-cultivo", label: "Resultado de cultivo" },
       { href: "/produccion/remitos", label: "Remitos", grupo: "Insumos" },
       { href: "/produccion/stock", label: "Existencias de insumos" },
-      { href: "/imputacion", label: "Imputación de costos", grupo: "Costos", otras: ["/produccion/contratistas", "/produccion/ordenes/resultado-cultivo"] },
+      { href: "/imputacion", label: "Imputación de costos", grupo: "Costos", badge: "revisar", otras: ["/produccion/contratistas", "/produccion/ordenes/resultado-cultivo"] },
     ],
   },
   {
@@ -195,6 +196,19 @@ function useAvisosBoveda(habilitado: boolean): number {
   return data?.total ?? 0;
 }
 
+/** Imputación de costos para revisar (050 US6): renglones de compra que esperan una decisión. Cada 5 min. */
+function useRevisarImputacion(habilitado: boolean): number {
+  const { data } = useQuery({
+    queryKey: ["imputacion-revisar", "contador"],
+    queryFn: () => apiGet<{ renglones: number; documentos: number }>("/api/imputacion/revisar/contador"),
+    enabled: habilitado,
+    refetchInterval: 5 * 60 * 1000,
+    refetchOnWindowFocus: true,
+    retry: false,
+  });
+  return data?.documentos ?? 0;
+}
+
 /** Documentos nuevos sin revisar por módulo (043). Se consulta cada 5 min y al volver a la pestaña. */
 function useResumenNuevos(habilitado: boolean): ResumenNuevos | undefined {
   const { data } = useQuery({
@@ -219,9 +233,10 @@ function Contador({ valor, titulo = "Pendientes de carga manual o portales con e
 }
 
 const TITULO_NUEVOS = "Documentos nuevos para revisar";
+const TITULO_REVISAR = "Comprobantes con imputación para revisar";
 
-function NavDropdown({ item, active, peajes, nuevos }:
-  { item: NavItem; active: boolean; peajes: number; nuevos: ResumenNuevos | undefined }) {
+function NavDropdown({ item, active, peajes, nuevos, revisar = 0 }:
+  { item: NavItem; active: boolean; peajes: number; nuevos: ResumenNuevos | undefined; revisar?: number }) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
 
@@ -240,6 +255,7 @@ function NavDropdown({ item, active, peajes, nuevos }:
         <Icon>{item.icon}</Icon>
         {item.label}
         {item.submenu?.some((l) => l.badge === "peajes") && <Contador valor={peajes} />}
+        {item.submenu?.some((l) => l.badge === "revisar") && <Contador valor={revisar} titulo={TITULO_REVISAR} />}
         <Contador azul titulo={TITULO_NUEVOS}
           valor={(item.submenu ?? []).reduce((n, l) => n + cantidadNuevos(nuevos, l.nuevos), 0)} />
         <Icon className={`h-3.5 w-3.5 transition-transform ${open ? "rotate-180" : ""}`}>{ICONS.chevron}</Icon>
@@ -258,7 +274,7 @@ function NavDropdown({ item, active, peajes, nuevos }:
                 </p>
               )}
               <Link
-                href={cantidad ? `${leaf.href}?nuevos=1` : leaf.href}
+                href={leaf.badge === "revisar" && revisar ? "/imputacion/documentos?revisar=1" : cantidad ? `${leaf.href}?nuevos=1` : leaf.href}
                 className={`block px-4 py-2 text-sm ${
                   leafActive
                     ? "font-medium text-finance"
@@ -267,6 +283,7 @@ function NavDropdown({ item, active, peajes, nuevos }:
               >
                 {leaf.label}
                 {leaf.badge === "peajes" && <Contador valor={peajes} />}
+                {leaf.badge === "revisar" && <Contador valor={revisar} titulo={TITULO_REVISAR} />}
                 <Contador azul titulo={TITULO_NUEVOS} valor={cantidad} />
               </Link>
               </div>
@@ -285,6 +302,7 @@ export function NavHeader() {
   const peajes = usePendientesPeajes(pathname !== "/login" && !!usuario);
   const avisosBoveda = useAvisosBoveda(pathname !== "/login" && usuario?.rol === "Administrador");
   const nuevos = useResumenNuevos(pathname !== "/login" && !!usuario);
+  const revisar = useRevisarImputacion(pathname !== "/login" && !!usuario);
 
   if (pathname === "/login") return null;
 
@@ -327,7 +345,7 @@ export function NavHeader() {
                 (item.submenu?.some((leaf) => isActive(pathname, leaf.href) || (leaf.otras ?? []).some((o) => isActive(pathname, o))) ?? false);
 
               if (item.submenu) {
-                return <NavDropdown key={item.href} item={item} active={active} peajes={peajes} nuevos={nuevos} />;
+                return <NavDropdown key={item.href} item={item} active={active} peajes={peajes} nuevos={nuevos} revisar={revisar} />;
               }
 
               return (

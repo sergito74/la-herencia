@@ -261,7 +261,24 @@ def _renglones_tamiz(id_compra: int) -> dict:
     filas = tamiz_repository.clasificacion_vigente(id_compra)
     for f in filas:
         f["etiqueta"] = tamiz.ETIQUETAS.get(f["destino"], "Para revisar") if f["estado"] == "Aprobada" else "Para revisar"
+        f["sugerido"] = f["origen"] != "Manual"
     return {"renglones": filas}
+
+
+@router.get("/tamiz/catalogo")
+async def catalogo_tamiz() -> dict:
+    return await run_in_threadpool(tamiz_repository.catalogo_correccion)
+
+
+@router.get("/revisar")
+async def para_revisar() -> list[dict]:
+    return await run_in_threadpool(tamiz_repository.para_revisar)
+
+
+@router.get("/revisar/contador")
+async def contador_revisar() -> dict:
+    filas = await run_in_threadpool(tamiz_repository.para_revisar)
+    return {"renglones": len(filas), "documentos": len({f["idCompra"] for f in filas})}
 
 
 @router.post("/tamiz/compra/{idCompra}")

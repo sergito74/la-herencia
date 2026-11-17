@@ -184,12 +184,19 @@ def fracciones_directo(t: dict, total: float, id_centro_adm: int | None, superfi
 
 def calcular_directo(id_detalle: int) -> dict:
     t = _tamiz(id_detalle)
-    if t is None or t["estado"] != "Aprobada" or t["destino"] in ("CultivoStock", "Depende", None):
+    if t is None or t["destino"] in ("CultivoStock", "Depende", None):
         return {"accion": "fueraDeAlcance"}
+    if t["estado"] != "Aprobada":
+        return {"accion": "pendiente"}
     superficies = (reparto_plan.superficie_por_cultivo(t["idCampania"])
                    if t["destino"] == "Cultivo" and t.get("idCultivo") is None and t.get("idCampania") else None)
     fracciones = fracciones_directo(t, total_renglon(t, 0.0), motor._id_centro_adm_general(), superficies)
-    if not fracciones or _misma_corrida(id_detalle, fracciones, "Directo"):
+    if not fracciones:
+        # Financiero / No se imputa: si antes iba a un costo, esa imputación deja de valer.
+        from src.db.connection import execute_write
+        borradas = execute_write("DELETE FROM dbo.ImputacionPropuestas WHERE IdDetalleCompra = ? AND Origen = 'Directo'", (id_detalle,))
+        return {"accion": "anulada" if borradas else "sinCambios"}
+    if _misma_corrida(id_detalle, fracciones, "Directo"):
         return {"accion": "sinCambios"}
     return {"accion": "aprobada", "idCorrida": repository.guardar_corrida("Directo", id_detalle, fracciones)}
 

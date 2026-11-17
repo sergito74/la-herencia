@@ -85,7 +85,9 @@ def guardar_clasificaciones(clasificaciones: list[dict], usuario: str | None = N
 def clasificacion_vigente(id_compra: int) -> list[dict]:
     return fetch_all(
         """
-        SELECT t.IdDetalleCompra AS idDetalleCompra, t.Destino AS destino, p.Nombre AS parte, t.IdCultivo AS idCultivo,
+        SELECT t.IdDetalleCompra AS idDetalleCompra, d.[Producto/Servicio] AS producto,
+               ISNULL(d.Cantidad, 0) * ISNULL(d.[Precio Unitario], 0) AS importe, t.IdParte AS idParte,
+               t.Destino AS destino, p.Nombre AS parte, t.IdCultivo AS idCultivo,
                cu.Cultivo AS cultivo, t.IdCampania AS idCampania, ca.[Campaña] AS campania, t.OrigenDecision AS origen,
                t.Estado AS estado, t.Motivo AS motivo
         FROM dbo.TamizRenglones t
@@ -277,3 +279,33 @@ def renglones_corregidos_a_mano(id_compra: int) -> set[int]:
     return {f["i"] for f in fetch_all(
         "SELECT tz.IdDetalleCompra AS i FROM dbo.TamizRenglones tz JOIN dbo.Det_Compras d ON d.IdDetalleCompra = tz.IdDetalleCompra "
         "WHERE d.IdCompra = ? AND tz.Vigente = 1 AND tz.OrigenDecision = 'Manual'", (id_compra,))}
+
+
+def para_revisar() -> list[dict]:
+    """050 US6: renglones en alcance que esperan una decisión: clasificación pendiente del tamiz o imputación
+    pendiente (la corrida vigente no cerró). Por documento, en lenguaje llano."""
+    return fetch_all(
+        """
+        SELECT c.IdDeuda AS idCompra, c.Fecha AS fecha, co.[Razon Social] AS proveedor, c.[Tipo documento] AS tipoDocumento,
+               c.[Nro Documento] AS nroDocumento, d.IdDetalleCompra AS idDetalleCompra, d.[Producto/Servicio] AS producto,
+               ISNULL(d.Cantidad, 0) * ISNULL(d.[Precio Unitario], 0) AS importe, c.Moneda AS moneda,
+               ISNULL(tz.Motivo, 'La imputación no cierra: revisar') AS motivo
+        FROM dbo.TamizRenglones tz
+        JOIN dbo.Det_Compras d ON d.IdDetalleCompra = tz.IdDetalleCompra
+        JOIN dbo.Compras c ON c.IdDeuda = d.IdCompra
+        LEFT JOIN dbo.Contactos co ON co.IdContacto = c.IdContacto
+        WHERE tz.Vigente = 1 AND (tz.Estado = 'Pendiente' OR EXISTS (
+            SELECT 1 FROM dbo.ImputacionPropuestas p WHERE p.IdDetalleCompra = d.IdDetalleCompra AND p.Estado = 'Pendiente'
+              AND p.IdCorrida = (SELECT TOP 1 p2.IdCorrida FROM dbo.ImputacionPropuestas p2
+                                 WHERE p2.IdDetalleCompra = p.IdDetalleCompra AND p2.Origen = p.Origen ORDER BY p2.FechaCalculo DESC)))
+        ORDER BY c.Fecha DESC, c.IdDeuda, d.IdDetalleCompra
+        """
+    )
+
+
+def catalogo_correccion() -> dict:
+    return {
+        "cultivos": fetch_all("SELECT IdCultivo AS id, Cultivo AS nombre FROM dbo.Cultivos ORDER BY Cultivo"),
+        "campanias": fetch_all("SELECT TOP 12 [IdCampaña] AS id, [Campaña] AS nombre FROM dbo.[Campañas] "
+                               "WHERE [Campaña] <> 'No Aplica' ORDER BY [IdCampaña] DESC"),
+    }
