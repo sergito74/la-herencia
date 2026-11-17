@@ -106,7 +106,8 @@ def costos_heredados(id_cultivo: int, id_campania: int) -> list[dict]:
         return []
     base = fetch_all(
         """
-        SELECT c.Concepto AS concepto, r.Rubro AS rubro, ABS(c.Pesos) * c.Signo AS montoPesos, ABS(c.Dolares) * c.Signo AS montoDolares,
+        SELECT c.Concepto AS concepto, r.Rubro AS rubro, c.IdRubro AS idRubro, c.IdClasifCostoCultivo AS clasif, c.Item AS item,
+               c.Cantidad AS cantidad, ABS(c.Pesos) * c.Signo AS montoPesos, ABS(c.Dolares) * c.Signo AS montoDolares,
                CASE WHEN c.Origen = 'MaqPropia' THEN 'MaquinariaPropia' ELSE 'Compra' END AS origen, c.IdCompra AS idCompra, c.IdDetalleCompra AS idDetalleCompra
         FROM dbo.vw_ResultadosCultivo_CostosBase c
         LEFT JOIN dbo.Rubros r ON r.IdRubro = c.IdRubro
@@ -213,7 +214,8 @@ def costo_ordenes_trabajo(id_cultivo: int, id_campania: int, pendientes: list | 
     for f in distrib:
         total_renglon = _f(f["cantidadTotal"]) or 1.0
         proporcion = _f(f["cantidadAsignada"]) / total_renglon
-        g = por_renglon.setdefault(f["idOrdenInsumo"], {"orden": f["idOrdenTrabajo"], "p": 0.0})
+        g = por_renglon.setdefault(f["idOrdenInsumo"], {"orden": f["idOrdenTrabajo"], "p": 0.0, "producto": f["idProducto"],
+                                                       "cantidadTotal": _f(f["cantidadTotal"])})
         g["p"] += proporcion
     for oi, g in por_renglon.items():
         costo = costo_renglon.get(oi, 0.0) * g["p"]
@@ -226,6 +228,7 @@ def costo_ordenes_trabajo(id_cultivo: int, id_campania: int, pendientes: list | 
                     "concepto": "Insumo", "rubro": None, "montoPesos": round(costo, 2),
                     "montoDolares": round(usd_renglon.get(oi, 0.0) * g["p"], 2),
                     "origen": "OrdenTrabajo", "idCompra": None, "idDetalleCompra": None, "idOrdenTrabajo": g["orden"],
+                    "idProducto": g["producto"], "cantidad": round(g["cantidadTotal"] * g["p"], 4),
                 }
             )
 
@@ -263,7 +266,7 @@ def costos_contratista(id_cultivo: int, id_campania: int) -> list[dict]:
     campaña. Pesos = importe; dólares con la regla de la casa (_USD_SQL)."""
     return fetch_all(
         f"""
-        SELECT 'Contratista' AS concepto, r.Rubro AS rubro, p.Importe AS montoPesos,
+        SELECT 'Contratista' AS concepto, r.Rubro AS rubro, r.IdRubro AS idRubro, p.Importe AS montoPesos,
                {_USD_SQL} AS montoDolares,
                'OrdenTrabajo' AS origen, p.IdDetalleCompra AS idCompra, NULL AS idDetalleCompra,
                p.IdOrdenTrabajo AS idOrdenTrabajo
@@ -284,7 +287,8 @@ def costos_alcance(id_cultivo: int, id_campania: int) -> list[dict]:
         return []
     return fetch_all(
         """
-        SELECT CASE WHEN p.Origen = 'Directo' THEN 'Compra' ELSE 'Insumo' END AS concepto, pe.Nombre AS rubro,
+        SELECT CASE WHEN p.Origen = 'Directo' THEN 'Compra' ELSE 'Insumo' END AS concepto, pe.Nombre AS rubro, d.IdRubro AS idRubro,
+               d.[Producto/Servicio] AS item, p.Cantidad AS cantidad,
                p.Importe AS montoPesos,
                {usd} AS montoDolares,
                'Alcance050' AS origen, d.IdCompra AS idCompra, p.IdDetalleCompra AS idDetalleCompra,
@@ -321,8 +325,10 @@ def gastos_caja(id_cultivo: int, id_campania: int) -> list[dict]:
     if destino is None:
         return []
     return fetch_all(
-        "SELECT g.Concepto concepto,r.Rubro rubro,d.ImportePesos montoPesos,"
-        "CASE WHEN g.ImporteUSD IS NULL THEN NULL ELSE g.ImporteUSD*d.ImportePesos/g.ImportePesos END montoDolares,"
+        "SELECT g.Concepto concepto,r.Rubro rubro,r.IdRubro idRubro,d.ImportePesos montoPesos,"
+        # 17/11/2026: gasto de caja en pesos se dolariza al BNA comprador divisa del día (regla de la casa)
+        "CASE WHEN g.ImporteUSD IS NOT NULL THEN g.ImporteUSD*d.ImportePesos/NULLIF(g.ImportePesos,0) "
+        "ELSE d.ImportePesos/NULLIF((SELECT TOP 1 b.Comp_Divisa FROM dbo.[Dolar BNA] b WHERE b.Fecha<=CAST(op.Fecha AS date) ORDER BY b.Fecha DESC),0) END montoDolares,"
         "'GastoCaja' origen,g.IdGasto idGasto,d.IdReparto idReparto,g.IdOperacion idOperacion,"
         "NULL idCompra,NULL idDetalleCompra,NULL idOrdenTrabajo "
         "FROM dbo.GastoCajaEfectivo g JOIN dbo.RepartosGastoCaja d ON d.IdGasto=g.IdGasto "
@@ -331,3 +337,51 @@ def gastos_caja(id_cultivo: int, id_campania: int) -> list[dict]:
         "WHERE g.Anulada=0 AND op.Estado='Vigente' AND d.IdDestino=? AND d.IdCampania=?",
         (destino, id_campania),
     )
+
+
+# ---------------------------------------------------------------- líneas con clasificación de Access (17/11/2026)
+# Un solo cálculo de costo para todas las pantallas: las de Costo por cultivo y Resultado de cultivo (formato Access)
+# agrupan estas mismas líneas por rubro y por clasificación (1 implantación, 2 cosecha, 3 silo, 4 comercialización).
+
+RUBRO_POR_TIPO_PRODUCTO = {
+    "Semilla": 564800828, "Fertilizante": 2047893449, "Herbicida": 2, "Fungicida": 2047893470,
+    "Insecticida": 2047893469, "Acaricida": 2047893469, "Nematicida": 2047893469, "Carbamato": 2047893469,
+    "Matababosas": 2047893469, "Coadyuvante": 2047893505,
+}
+RUBRO_COADYUVANTES, RUBRO_TRABAJOS_MAQ_PROPIA, RUBRO_FUMIGACION = 2047893505, 2047893507, 2047893441
+CLASIF_POR_PARTE = {"Cosecha": 2, "Comercialización": 4}
+
+
+def _rubros() -> dict[int, dict]:
+    return {f["IdRubro"]: f for f in fetch_all("SELECT IdRubro, Rubro, IdClasifCostoCultivo FROM dbo.Rubros")}
+
+
+def lineas_clasificadas(id_cultivo: int, id_campania: int) -> list[dict]:
+    """costo_total con cada línea en su rubro y clasificación de Access."""
+    lineas = costo_total(id_cultivo, id_campania)["lineas"]
+    rubros = _rubros()
+    productos = {int(l["idProducto"]) for l in lineas if l.get("idProducto")}
+    tipo, nombre = {}, {}
+    if productos:
+        for f in fetch_all(f"SELECT IdProducto, Producto, TipoProducto FROM dbo.vw_ProductosBase WHERE IdProducto IN ({','.join('?' * len(productos))})",
+                           tuple(productos)):
+            tipo[int(f["IdProducto"])], nombre[int(f["IdProducto"])] = f["TipoProducto"], f["Producto"]
+    for l in lineas:
+        id_rubro = l.get("idRubro")
+        if l.get("concepto") == "Insumo" and l.get("origen") == "OrdenTrabajo":
+            pid = int(l["idProducto"]) if l.get("idProducto") else None
+            id_rubro = RUBRO_POR_TIPO_PRODUCTO.get(tipo.get(pid), RUBRO_COADYUVANTES)
+            l["item"] = f"{nombre.get(pid, 'Insumo')} (orden {l.get('idOrdenTrabajo')})"
+        elif l.get("concepto") == "Maquinaria propia" or l.get("origen") == "MaquinariaPropia":
+            id_rubro = id_rubro or RUBRO_TRABAJOS_MAQ_PROPIA
+            l.setdefault("item", f"Maquinaria propia (orden {l.get('idOrdenTrabajo')})")
+        elif l.get("concepto") == "Contratista":
+            id_rubro = id_rubro or RUBRO_FUMIGACION
+            l["item"] = f"Labor según orden {l.get('idOrdenTrabajo')}"
+        r = rubros.get(id_rubro) or {}
+        clasif = l.get("clasif") or r.get("IdClasifCostoCultivo")
+        if clasif not in (1, 2, 3, 4):
+            clasif = CLASIF_POR_PARTE.get(l.get("rubro"), 1)  # rubro fuera de la clasificación: por la parte del costo
+        l["idRubro"], l["clasif"] = id_rubro, clasif
+        l["rubroNombre"] = r.get("Rubro") or l.get("rubro") or l.get("concepto")
+    return lineas

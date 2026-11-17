@@ -110,28 +110,62 @@ def superficie_sembrada_real(id_destino: int, id_campania: int) -> float | None:
 # ------------------------------------------------------------------ FrmCostos
 
 # Cosecha agrupa tres rubros (igual que los procedimientos de Access).
+# 17/11/2026: un solo cálculo de costo. Las pantallas con formato Access agrupan las líneas de costos.lineas_clasificadas
+# (el mismo costo que usa el resto del sistema: órdenes de trabajo, contratistas, imputación 050, caja y compras), con las
+# mismas fórmulas de FrmCostos / FrmResultados. Antes leían solo la vista heredada y daban otro número.
+_COSECHA_RUBROS = (12, 2047893500, 2047893473)
+
+
+def _grupo(l: dict) -> tuple[int, str]:
+    if l.get("idRubro") in _COSECHA_RUBROS:
+        return 12, "Cosecha"
+    return l.get("idRubro") or 0, l.get("rubroNombre") or "Sin rubro"
+
+
+def _es_implantacion(l: dict) -> bool:
+    return l.get("clasif") == 1 or l.get("origen") == "MaquinariaPropia"
+
+
+def _lineas(id_cultivo: int, id_campania: int) -> list[dict]:
+    from src.features.resultado_cultivo import costos as _costos
+    return _costos.lineas_clasificadas(id_cultivo, id_campania)
+
+
+def _sumar(lineas) -> tuple[float, float]:
+    return sum(_f(l.get("montoPesos")) for l in lineas), sum(_f(l.get("montoDolares")) for l in lineas)
+
+
+def _agrupar(lineas) -> list[dict]:
+    g: dict[tuple, list] = {}
+    for l in lineas:
+        g.setdefault(_grupo(l), []).append(l)
+    out = []
+    for (id_rubro, concepto), ls in sorted(g.items(), key=lambda kv: kv[0][1]):
+        p_, d_ = _sumar(ls)
+        out.append({"idRubro": id_rubro, "concepto": concepto, "pesos": p_, "dolares": d_})
+    return out
+
+
 _GRUPO_RUBRO = "CASE WHEN B.IdRubro IN (12, 2047893500, 2047893473) THEN 12 ELSE B.IdRubro END"
 _GRUPO_CONCEPTO = "CASE WHEN B.IdRubro IN (12, 2047893500, 2047893473) THEN 'Cosecha' ELSE B.Concepto END"
 
 def formulario_costos(id_cultivo: int, id_campania: int) -> dict:
     id_destino, cultivo = _destino(id_cultivo)
     campania = _campania(id_campania)
-    # = dbo.sp_FrmCostos_Resumen (la conexión de lectura solo admite SELECT).
+    # Superficie, fecha de inicio y picado como dbo.sp_FrmCostos_Resumen; los importes, del cálculo único.
     r = fetch_one(
         "SELECT (SELECT SUM(L.Superficie) FROM dbo.Lotes L JOIN (SELECT DISTINCT P.IdLote FROM dbo.PlanAgricola P "
         "  WHERE P.IdCultivo = ? AND P.IdCampaña = ?) X ON L.IdLote = X.IdLote) AS Superficie, "
         "(SELECT MIN(O.[Fecha Ejecucion]) FROM dbo.Ordenes O JOIN dbo.Ordenes_Lotes OL ON O.IdOrden = OL.IdOrden "
         "  WHERE OL.IdCultivo = ? AND OL.IdCampaña = ? AND O.[Fecha Ejecucion] IS NOT NULL) AS FechaInicio, "
         "(SELECT SUM(DC.Cantidad) FROM dbo.Det_Compras DC JOIN dbo.Rubros R ON DC.IdRubro = R.IdRubro "
-        "  WHERE R.Rubro = 'Confeccion Silo' AND DC.IdDestino = ? AND DC.IdCampaña = ? AND ISNULL(DC.[Ajuste financiero], 0) = 0) AS SupPicado, "
-        "SUM(CASE WHEN B.IdClasifCostoCultivo = 1 OR B.Origen = 'MaqPropia' THEN B.Pesos ELSE 0 END) AS TotalImplPesos, "
-        "SUM(CASE WHEN B.IdClasifCostoCultivo = 1 OR B.Origen = 'MaqPropia' THEN B.Dolares ELSE 0 END) AS TotalImplDolares, "
-        "SUM(CASE WHEN B.Concepto = 'Confeccion Silo' THEN B.Pesos ELSE 0 END) AS TotalSiloPesos, "
-        "SUM(CASE WHEN B.Concepto = 'Confeccion Silo' THEN B.Dolares ELSE 0 END) AS TotalSiloDolares, "
-        "SUM(CASE WHEN B.Concepto IN ('Cosecha', 'Control Cosecha', 'Embolsado Grano') THEN B.Pesos ELSE 0 END) AS TotalCosechaPesos, "
-        "SUM(CASE WHEN B.Concepto IN ('Cosecha', 'Control Cosecha', 'Embolsado Grano') THEN B.Dolares ELSE 0 END) AS TotalCosechaDolares "
-        "FROM dbo.vw_ResultadosCultivo_CostosBase B WHERE B.IdDestino = ? AND B.IdCampaña = ?",
-        (id_cultivo, id_campania, id_cultivo, id_campania, id_destino, id_campania, id_destino, id_campania)) or {}
+        "  WHERE R.Rubro = 'Confeccion Silo' AND DC.IdDestino = ? AND DC.IdCampaña = ? AND ISNULL(DC.[Ajuste financiero], 0) = 0) AS SupPicado",
+        (id_cultivo, id_campania, id_cultivo, id_campania, id_destino, id_campania)) or {}
+    lineas = _lineas(id_cultivo, id_campania)
+    impl_lineas = [l for l in lineas if _es_implantacion(l)]
+    r["TotalImplPesos"], r["TotalImplDolares"] = _sumar(impl_lineas)
+    r["TotalSiloPesos"], r["TotalSiloDolares"] = _sumar([l for l in lineas if l.get("rubroNombre") == "Confeccion Silo"])
+    r["TotalCosechaPesos"], r["TotalCosechaDolares"] = _sumar([l for l in lineas if l.get("idRubro") in _COSECHA_RUBROS])
     sup = _f(r.get("Superficie"))
     base = {"cultivo": cultivo, "campania": campania, "idCultivo": id_cultivo, "idCampania": id_campania}
     if sup <= 0:
@@ -146,14 +180,10 @@ def formulario_costos(id_cultivo: int, id_campania: int) -> dict:
     impl_ha_p, impl_ha_d = impl_p / sup, impl_d / sup
     grano_p = impl_p - impl_ha_p * picado + cos_p
     grano_d = impl_d - impl_ha_d * picado + cos_d
-    # = dbo.sp_FrmCostos_ImplantacionAgrupado.
-    filas = fetch_all(
-        f"SELECT {_GRUPO_RUBRO} AS IdRubroGrupo, {_GRUPO_CONCEPTO} AS Concepto, SUM(B.Pesos) AS Pesos, SUM(B.Dolares) AS Dolares, "
-        "ROUND(SUM(B.Pesos) / ?, 2) AS CostoHAPesos, ROUND(SUM(B.Dolares) / ?, 2) AS CostoHADolares "
-        "FROM dbo.vw_ResultadosCultivo_CostosBase B WHERE B.IdDestino = ? AND B.IdCampaña = ? "
-        "AND (B.IdClasifCostoCultivo = 1 OR B.Origen = 'MaqPropia') "
-        f"GROUP BY {_GRUPO_RUBRO}, {_GRUPO_CONCEPTO} ORDER BY Concepto",
-        (sup, sup, id_destino, id_campania))
+    # = dbo.sp_FrmCostos_ImplantacionAgrupado, sobre el cálculo único.
+    filas = [{"IdRubroGrupo": g["idRubro"], "Concepto": g["concepto"], "Pesos": g["pesos"], "Dolares": g["dolares"],
+              "CostoHAPesos": round(g["pesos"] / sup, 2), "CostoHADolares": round(g["dolares"] / sup, 2)}
+             for g in _agrupar(impl_lineas)]
     return {
         **base,
         "sinSuperficie": False,
@@ -176,21 +206,17 @@ def formulario_costos(id_cultivo: int, id_campania: int) -> dict:
 
 
 def detalle_rubro(id_cultivo: int, id_campania: int, id_rubro: int) -> list[dict]:
-    """Subformulario "Detalles Costos" de Access (al hacer clic en un concepto)."""
-    id_destino, _ = _destino(id_cultivo)
-    return [
-        {"cantidad": _f(f["Cantidad"]), "producto": f["Producto/Servicio"],
-         "unitarioPesos": f["PrecioUnitarioARS"], "unitarioDolares": f["PrecioUnitarioUSD"],
-         "totalPesos": _f(f["TotalARS"]), "totalDolares": _f(f["TotalUSD"])}
-        # = dbo.sp_FrmCostos_DetalleRubro.
-        for f in fetch_all(
-            "SELECT B.Cantidad, B.Item AS [Producto/Servicio], "
-            "CASE WHEN ISNULL(B.Cantidad, 0) = 0 THEN NULL ELSE B.Pesos / B.Cantidad END AS PrecioUnitarioARS, "
-            "CASE WHEN ISNULL(B.Cantidad, 0) = 0 THEN NULL ELSE B.Dolares / B.Cantidad END AS PrecioUnitarioUSD, "
-            "B.Pesos AS TotalARS, B.Dolares AS TotalUSD FROM dbo.vw_ResultadosCultivo_CostosBase B "
-            "WHERE B.IdDestino = ? AND B.IdCampaña = ? AND (B.IdRubro = ? OR (? = 12 AND B.IdRubro IN (12, 2047893500, 2047893473))) "
-            "ORDER BY B.IdCompra, B.IdDetalleCompra", (id_destino, id_campania, id_rubro, id_rubro))
-    ]
+    """Subformulario "Detalles Costos" de Access (al hacer clic en un concepto), sobre el cálculo único."""
+    out = []
+    for l in _lineas(id_cultivo, id_campania):
+        if _grupo(l)[0] != id_rubro:
+            continue
+        q = _f(l.get("cantidad"))
+        p_, d_ = _f(l.get("montoPesos")), _f(l.get("montoDolares"))
+        out.append({"cantidad": q, "producto": l.get("item") or l.get("rubroNombre"),
+                    "unitarioPesos": p_ / q if q else None, "unitarioDolares": d_ / q if q else None,
+                    "totalPesos": p_, "totalDolares": d_})
+    return out
 
 
 # ------------------------------------------------------------------ FrmResultados
@@ -235,31 +261,23 @@ def formulario_resultados(id_cultivo: int, id_campania: int) -> dict:
     rinde = round(cant_cosecha / sup_cosecha) if sup_cosecha > 0 else 0
     tot_vta_p, tot_vta_d = round(venta_p + bonif_p, 2), round(venta_d + bonif_d, 2)
 
-    costos = fetch_all(
-        "SELECT Concepto, IdRubro, Pesos, Dolares FROM dbo.vw_ResultadosCultivo_CostosAgrupados "
-        "WHERE IdDestino = ? AND IdCampaña = ? AND IdClasifCostoCultivo = 1 ORDER BY Concepto", (id_destino, id_campania))
-    costos_directos = [{"idRubro": c["IdRubro"], "concepto": c["Concepto"], "pesos": _f(c["Pesos"]), "dolares": _f(c["Dolares"]),
-                        "haPesos": _f(c["Pesos"]) / sup, "haDolares": _f(c["Dolares"]) / sup} for c in costos]
+    lineas = _lineas(id_cultivo, id_campania)
+    costos_directos = [{**g, "haPesos": g["pesos"] / sup, "haDolares": g["dolares"] / sup}
+                       for g in _agrupar([l for l in lineas if l.get("clasif") == 1])]
     impl_p = sum(c["pesos"] for c in costos_directos)
     impl_d = sum(c["dolares"] for c in costos_directos)
     impl_ha_p = sum(c["haPesos"] for c in costos_directos)
     impl_ha_d = sum(c["haDolares"] for c in costos_directos)
 
-    cosecha = fetch_all(
-        "SELECT Pesos, Dolares FROM dbo.vw_ResultadosCultivo_CostosAgrupados "
-        "WHERE IdDestino = ? AND IdCampaña = ? AND IdClasifCostoCultivo = 2", (id_destino, id_campania))
-    cos_p = sum(_f(c["Pesos"]) for c in cosecha)
-    cos_d = sum(_f(c["Dolares"]) for c in cosecha)
+    cos_p, cos_d = _sumar([l for l in lineas if l.get("clasif") == 2])
     cos_ha_p = cos_p / sup_cosecha if sup_cosecha > 0 else 0.0
     cos_ha_d = cos_d / sup_cosecha if sup_cosecha > 0 else 0.0
 
     deducciones = [{"detalle": d["Detalle"], "pesos": _f(d["Pesos"]), "dolares": _f(d["Dolares"])} for d in fetch_all(
         "SELECT Detalle, Pesos, Dolares FROM dbo.vw_ResultadosCultivo_Deducciones WHERE IdCultivo = ? AND Campaña = ? ORDER BY Detalle",
         (id_cultivo, camp))]
-    gastos = [{"concepto": g["Concepto"], "pesos": _f(g["p"]), "dolares": _f(g["d"])} for g in fetch_all(
-        "SELECT Concepto, SUM(Pesos) AS p, SUM(Dolares) AS d FROM dbo.vw_ResultadosCultivo_CostosBase "
-        "WHERE IdDestino = ? AND IdCampaña = ? AND IdClasifCostoCultivo = 4 GROUP BY Concepto ORDER BY Concepto",
-        (id_destino, id_campania))]
+    gastos = [{"concepto": g["concepto"], "pesos": g["pesos"], "dolares": g["dolares"]}
+              for g in _agrupar([l for l in lineas if l.get("clasif") == 4])]
     desc_p = sum(x["pesos"] for x in deducciones) + sum(x["pesos"] for x in gastos)
     desc_d = sum(x["dolares"] for x in deducciones) + sum(x["dolares"] for x in gastos)
     s = fetch_one("SELECT SeguroPesos, SeguroDolares FROM dbo.vw_ResultadosCultivo_Seguros WHERE IdDestino = ? AND IdCampaña = ?",

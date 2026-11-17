@@ -127,20 +127,8 @@ def _control_huerfanas() -> list[dict]:
 
 
 def _control_resultado() -> list[dict]:
-    from src.features.resultado_cultivo import costos
-
-    pares = fetch_all(
-        """SELECT DISTINCT p.IdCultivo AS c, p.IdCampania AS ca, cu.Cultivo AS cultivo, x.[Campaña] AS campania
-           FROM dbo.ImputacionPropuestas p JOIN dbo.Cultivos cu ON cu.IdCultivo = p.IdCultivo
-           JOIN dbo.[Campañas] x ON x.[IdCampaña] = p.IdCampania
-           WHERE p.Estado = 'Aprobada' AND p.Origen IN ('Insumo', 'Directo', 'Contratista')
-             AND p.FechaCalculo >= '2025-05-12' AND p.IdCultivo IS NOT NULL"""
-    )
     dobles: dict[tuple, set] = defaultdict(set)
-    # Cada cultivo/campaña es independiente: se calculan en paralelo (cada consulta abre su propia conexión).
-    with ThreadPoolExecutor(max_workers=8) as ex:
-        resultados = list(ex.map(lambda p: costos.costo_total(p["c"], p["ca"])["lineas"], pares))
-    for p, lineas in zip(pares, resultados):
+    for p, lineas in _datos_resultado():
         for camino, id_ in dobles_en_resultado(lineas):
             dobles[(camino, id_)].add(f"{p['cultivo']} {p['campania']}")
     if not dobles:
@@ -164,6 +152,272 @@ def _control_resultado() -> list[dict]:
                   else "se suma por la imputación cargada a mano y además por el esquema nuevo")
         out.append({"tipo": "Factura contada dos veces en el resultado", "idCompra": f.get("idCompra"), "documento": _doc(f),
                     "detalle": f"{motivo} ({', '.join(sorted(cultivos))})"})
+    return out
+
+
+# ---- fotos de campañas cerradas (17/11/2026): ningún resultado cerrado cambia sin que se vea ----
+
+def campania_cerrada(campania: str, hoy) -> bool:
+    """Pura: una campaña está cerrada desde septiembre del año en que termina ('2024/2025' → sep/2025; las de un
+    año, como la avena o la pastura '2025', se toman igual que la 2025/2026)."""
+    if not campania or not campania[:4].isdigit():
+        return False
+    fin = int(campania[:4]) + 1
+    return (hoy.year, hoy.month) >= (fin, 9)
+
+
+def clave_documento(l: dict) -> str:
+    """Pura: a qué documento pertenece una línea de costo."""
+    if l.get("idDetalleCompra"):
+        return f"D{l['idDetalleCompra']}"
+    if l.get("idCompra"):
+        return f"C{l['idCompra']}|{l.get('idOrdenTrabajo') or ''}"
+    if l.get("idGasto"):
+        return f"G{l['idGasto']}"
+    if l.get("idOrdenTrabajo"):
+        return f"O{l['idOrdenTrabajo']}|{l.get('concepto')}"
+    return f"X{l.get('concepto')}|{l.get('origen')}"
+
+
+def diferencias(antes: dict[str, float], ahora: dict[str, float], tolerancia: float = 0.01) -> dict[str, float]:
+    """Pura: documentos cuyo importe cambió (nuevos, quitados o distintos)."""
+    return {k: round(ahora.get(k, 0.0) - antes.get(k, 0.0), 2) for k in set(antes) | set(ahora)
+            if abs(ahora.get(k, 0.0) - antes.get(k, 0.0)) > tolerancia}
+
+
+def _nombre_documento(clave: str) -> str:
+    try:
+        if clave.startswith("D"):
+            f = fetch_all(f"SELECT {_DOC_SQL}, d.[Producto/Servicio] AS producto FROM dbo.Det_Compras d JOIN dbo.Compras c ON c.IdDeuda = d.IdCompra "
+                          "LEFT JOIN dbo.Contactos co ON co.IdContacto = c.IdContacto WHERE d.IdDetalleCompra = ?", (int(clave[1:]),))
+            return f"{_doc(f[0])} ({f[0]['producto']})" if f else clave
+        if clave.startswith("C"):
+            f = fetch_all(f"SELECT {_DOC_SQL} FROM dbo.Compras c LEFT JOIN dbo.Contactos co ON co.IdContacto = c.IdContacto WHERE c.IdDeuda = ?",
+                          (int(clave[1:].split("|")[0]),))
+            return _doc(f[0]) if f else clave
+        if clave.startswith("O"):
+            orden, concepto = clave[1:].split("|")
+            return f"Orden {orden} ({concepto.lower()})"
+        if clave.startswith("G"):
+            return f"Gasto de caja {clave[1:]}"
+    except Exception:  # noqa: BLE001
+        pass
+    return clave
+
+
+def _control_cerradas() -> list[dict]:
+    import json
+    from datetime import date, timedelta
+    from src.db.connection import execute_write
+
+    hoy = date.today()
+    ultimas = {(f["c"], f["ca"]): f for f in fetch_all(
+        "SELECT f.IdCultivo AS c, f.IdCampania AS ca, f.PorDocumento AS doc FROM dbo.ResultadoCultivo_Fotos f "
+        "WHERE f.IdFoto = (SELECT MAX(x.IdFoto) FROM dbo.ResultadoCultivo_Fotos x WHERE x.IdCultivo = f.IdCultivo AND x.IdCampania = f.IdCampania)")}
+    for p, lineas in _datos_resultado():
+        if not campania_cerrada(p["campania"], hoy):
+            continue
+        ahora: dict[str, float] = defaultdict(float)
+        for l in lineas:
+            ahora[clave_documento(l)] += float(l.get("montoPesos") or 0)
+        ahora = {k: round(v, 2) for k, v in ahora.items() if abs(v) > 0.005}
+        previa = ultimas.get((p["c"], p["ca"]))
+        cambios = diferencias(json.loads(previa["doc"]), ahora) if previa else {}
+        if previa is None or cambios:
+            execute_write(
+                "INSERT INTO dbo.ResultadoCultivo_Fotos (IdCultivo, IdCampania, CostoPesos, CostoDolares, PorDocumento, Cambios) VALUES (?, ?, ?, ?, ?, ?)",
+                (p["c"], p["ca"], round(_pesos(lineas), 2), round(_usd(lineas), 2), json.dumps(ahora),
+                 json.dumps(cambios) if previa else None))
+    desde = hoy - timedelta(days=30)
+    out = []
+    for f in fetch_all(
+        "SELECT f.Fecha, f.Cambios, cu.Cultivo AS cultivo, k.[Campaña] AS campania FROM dbo.ResultadoCultivo_Fotos f "
+        "JOIN dbo.Cultivos cu ON cu.IdCultivo = f.IdCultivo JOIN dbo.[Campañas] k ON k.[IdCampaña] = f.IdCampania "
+        "WHERE f.Cambios IS NOT NULL AND f.Fecha >= ? ORDER BY f.Fecha DESC", (desde,)):
+        cambios = json.loads(f["Cambios"])
+        total = sum(cambios.values())
+        principales = sorted(cambios.items(), key=lambda kv: -abs(kv[1]))[:5]
+        out.append({"tipo": "Cambió el costo de una campaña cerrada", "idCompra": None,
+                    "documento": f"{f['cultivo']} {f['campania']} ({str(f['Fecha'])[8:10]}/{str(f['Fecha'])[5:7]}/{str(f['Fecha'])[:4]})",
+                    "detalle": f"{'+' if total >= 0 else ''}$ {total:,.2f}: " + "; ".join(
+                        f"{_nombre_documento(k)} {'+' if v >= 0 else ''}$ {v:,.2f}" for k, v in principales)})
+    return out
+
+
+
+# ---- datos compartidos por los controles del resultado (se calculan una vez por corrida) ----
+
+_cache_datos: dict = {}
+_DESDE_CAMPANIA = "2022"  # campañas que se controlan (las de un año desde 2022, las dobles desde 2022/2023)
+
+
+def _pares_con_costo() -> list[dict]:
+    return fetch_all(
+        f"""
+        SELECT DISTINCT x.c, x.ca, cu.Cultivo AS cultivo, k.[Campaña] AS campania FROM (
+            SELECT p.IdCultivo AS c, p.IdCampania AS ca FROM dbo.ImputacionPropuestas p
+              WHERE p.Estado = 'Aprobada' AND p.IdCultivo IS NOT NULL
+            UNION SELECT m.IdCultivo, b.IdCampaña FROM dbo.vw_ResultadosCultivo_CostosBase b
+              JOIN dbo.Map_CultivoResultado m ON m.IdDestino = b.IdDestino
+            UNION SELECT d.IdCultivo, d.IdCampania FROM dbo.Ordenes_Trabajo_Distrib d WHERE d.Aplicar = 1
+            UNION SELECT p.IdCultivo, p.[IdCampaña] FROM dbo.PlanAgricola p
+        ) x JOIN dbo.Cultivos cu ON cu.IdCultivo = x.c JOIN dbo.[Campañas] k ON k.[IdCampaña] = x.ca
+        WHERE k.[Campaña] LIKE '[12][0-9][0-9][0-9]%' AND LEFT(k.[Campaña], 4) >= '{_DESDE_CAMPANIA}'
+        """
+    )
+
+
+def _datos_resultado() -> list[tuple[dict, list[dict]]]:
+    if "resultado" not in _cache_datos:
+        from src.features.resultado_cultivo import costos
+
+        pares = _pares_con_costo()
+        # Cada cultivo/campaña es independiente: se calculan en paralelo (cada consulta abre su propia conexión).
+        with ThreadPoolExecutor(max_workers=8) as ex:
+            lineas = list(ex.map(lambda p: costos.costo_total(p["c"], p["ca"])["lineas"], pares))
+        _cache_datos["resultado"] = list(zip(pares, lineas))
+    return _cache_datos["resultado"]
+
+
+def _plan() -> dict[tuple, float]:
+    """(cultivo, campaña) del plan agrícola → hectáreas sembradas (sin los lotes no sembrados)."""
+    out: dict[tuple, float] = {}
+    for f in fetch_all(
+        "SELECT p.IdCultivo AS c, p.[IdCampaña] AS ca, SUM(CASE WHEN ISNULL(p.NoSembrado, 0) = 0 THEN l.Superficie ELSE 0 END) AS ha "
+        "FROM dbo.PlanAgricola p JOIN dbo.Lotes l ON l.IdLote = p.IdLote GROUP BY p.IdCultivo, p.[IdCampaña]"
+    ):
+        out[(f["c"], f["ca"])] = float(f["ha"] or 0)
+    return out
+
+
+def _pesos(lineas) -> float:
+    return sum(float(l.get("montoPesos") or 0) for l in lineas)
+
+
+def _usd(lineas) -> float:
+    return sum(float(l.get("montoDolares") or 0) for l in lineas)
+
+
+# ---- controles de razonabilidad (17/11/2026, auditoría de costos) ----
+
+def campania_anterior(campania: str) -> str | None:
+    """Pura: '2025/2026' → '2024/2025'; '2026' → '2025'."""
+    if not campania or not campania[:4].isdigit():
+        return None
+    a = int(campania[:4]) - 1
+    return f"{a}/{a + 1}" if len(campania) > 4 else str(a)
+
+
+def fuera_de_rango(actual: float, anterior: float, minimo: float = 50.0) -> bool:
+    """Pura: costo por hectárea más del doble o menos de la mitad que la campaña anterior (ambos por encima de un
+    mínimo, para no alarmar por cultivos casi sin costo)."""
+    if actual < minimo or anterior < minimo:
+        return False
+    return actual > 2 * anterior or actual < 0.5 * anterior
+
+
+def siembra_terminada(campania: str, hoy) -> bool:
+    """Pura: ya pasó la siembra: campaña doble desde febrero del año en que termina; de un año, desde julio."""
+    if not campania or not campania[:4].isdigit():
+        return False
+    anio = int(campania[:4])
+    return (hoy.year, hoy.month) >= ((anio + 1, 2) if len(campania) > 4 else (anio, 7))
+
+
+def _control_fuera_del_plan() -> list[dict]:
+    """Costo imputado a un cultivo y campaña que no está en el plan agrícola (ej. Soja 1ª en un año sin soja 1ª)."""
+    plan = _plan()
+    out = []
+    for p, lineas in _datos_resultado():
+        total = _pesos(lineas)
+        if (p["c"], p["ca"]) not in plan and abs(total) > 1000:
+            docs = sorted({l.get("idCompra") for l in lineas if l.get("idCompra")})
+            out.append({"tipo": "Costo en un cultivo que no está en el plan agrícola", "idCompra": docs[0] if len(docs) == 1 else None,
+                        "documento": f"{p['cultivo']} {p['campania']}",
+                        "detalle": f"$ {total:,.2f} en {len(docs)} comprobante(s): revisar si el cultivo o la campaña son otros"})
+    return out
+
+
+def _control_dolares() -> list[dict]:
+    """Línea de costo con pesos y sin dólares (salvo los ajustes de tipo de cambio, que no suman US$)."""
+    ajustes = {f["c"] for f in fetch_all("SELECT IdDeuda AS c FROM dbo.Compras WHERE ISNULL([Ajusta Tipo Cambio], 0) = 1")}
+    out = []
+    for p, lineas in _datos_resultado():
+        sin = [l for l in lineas if abs(float(l.get("montoPesos") or 0)) > 1000 and not l.get("montoDolares")
+               and l.get("idCompra") not in ajustes]
+        if sin:
+            out.append({"tipo": "Costo sin dólares", "idCompra": None, "documento": f"{p['cultivo']} {p['campania']}",
+                        "detalle": f"{len(sin)} línea(s) por $ {_pesos(sin):,.2f} no suman US$: el costo en dólares queda bajo"})
+    return out
+
+
+def _control_ingresos_en_costo() -> list[dict]:
+    """Cobros, ventas, recuperos o indemnizaciones dentro del costo."""
+    import re
+    patron = re.compile(r"COBR|VENTA|RECUPER|INDEMN|SINIESTR", re.I)
+    out = []
+    for p, lineas in _datos_resultado():
+        malas = [l for l in lineas if l.get("origen") == "Seguro" or patron.search(f"{l.get('concepto') or ''} {l.get('rubro') or ''}")]
+        if malas:
+            out.append({"tipo": "Un ingreso está sumado como costo", "idCompra": None, "documento": f"{p['cultivo']} {p['campania']}",
+                        "detalle": f"$ {_pesos(malas):,.2f} ({', '.join(sorted({str(l.get('concepto')) for l in malas}))})"})
+    return out
+
+
+def _control_rubros_faltantes() -> list[dict]:
+    """Cultivo sembrado sin semilla, sin labores o (si se cosechó) sin cosecha."""
+    from src.features.resultado_cultivo import por_parte
+
+    partes, por_rubro = por_parte._partes(), por_parte._parte_por_rubro()
+    plan = _plan()
+    con_semilla_orden = {(f["c"], f["ca"]) for f in fetch_all(
+        "SELECT DISTINCT d.IdCultivo AS c, d.IdCampania AS ca FROM dbo.Ordenes_Trabajo_Distrib d "
+        "JOIN dbo.Ordenes_Trabajo_Insumos oi ON oi.IdOrdenInsumo = d.IdOrdenInsumo JOIN dbo.Ordenes_Trabajo ot ON ot.IdOrdenTrabajo = oi.IdOrdenTrabajo "
+        "JOIN dbo.vw_ProductosBase pb ON pb.IdProducto = oi.IdProducto WHERE ot.Estado <> 'Anulada' AND d.Aplicar = 1 AND pb.TipoProducto = 'Semilla'")}
+    cosechados = {(f["c"], f["ca"]) for f in fetch_all(
+        "SELECT IdCultivo AS c, IdCampaña AS ca FROM dbo.ResultadoCultivo_Cierre WHERE ISNULL(SuperficieCosechada, 0) > 0")}
+    cosechados |= {(f["c"], f["ca"]) for f in fetch_all(
+        "SELECT DISTINCT m.IdCultivo AS c, k.[IdCampaña] AS ca FROM dbo.[Venta Granos] v JOIN dbo.Map_CultivoResultado m ON m.IdGrano = v.IdProducto "
+        "JOIN dbo.[Campañas] k ON k.[Campaña] = v.[Campaña]")}
+    from datetime import date
+    hoy = date.today()
+    out = []
+    for p, lineas in _datos_resultado():
+        if plan.get((p["c"], p["ca"]), 0) <= 0 or not siembra_terminada(p["campania"], hoy):
+            continue  # no sembrado, fuera del plan (lo ve otro control) o todavía en siembra
+        nombres = {por_parte.parte_de_linea(l, partes, por_rubro) for l in lineas}
+        rubros = " ".join(str(l.get("rubro") or "") for l in lineas).upper()
+        faltan = []
+        if "Semilla" not in nombres and (p["c"], p["ca"]) not in con_semilla_orden:
+            faltan.append("semilla")
+        if "Labores" not in nombres:
+            faltan.append("labores (siembra/pulverización)")
+        if (p["c"], p["ca"]) in cosechados and "Cosecha" not in nombres and "COSECHA" not in rubros:
+            faltan.append("cosecha")
+        if faltan:
+            out.append({"tipo": "Le falta un rubro esencial al cultivo", "idCompra": None, "documento": f"{p['cultivo']} {p['campania']}",
+                        "detalle": "sin " + ", ".join(faltan) + ": puede faltar una factura o estar imputada a otro cultivo/campaña"})
+    return out
+
+
+def _control_costo_por_hectarea() -> list[dict]:
+    """Costo en US$/ha más del doble o menos de la mitad que el mismo cultivo en la campaña anterior (campañas cerradas)."""
+    from datetime import date
+    plan = _plan()
+    por_nombre = {(p["cultivo"], p["campania"]): (p, lineas) for p, lineas in _datos_resultado()}
+    out = []
+    for (cultivo, campania), (p, lineas) in por_nombre.items():
+        ha = plan.get((p["c"], p["ca"]), 0)
+        ant = por_nombre.get((cultivo, campania_anterior(campania)))
+        if ha <= 0 or ant is None or not campania_cerrada(campania, date.today()):
+            continue
+        ha_ant = plan.get((ant[0]["c"], ant[0]["ca"]), 0)
+        if ha_ant <= 0:
+            continue
+        actual, anterior = _usd(lineas) / ha, _usd(ant[1]) / ha_ant
+        if fuera_de_rango(actual, anterior):
+            out.append({"tipo": "Costo por hectárea fuera de lo normal", "idCompra": None, "documento": f"{cultivo} {campania}",
+                        "detalle": f"US$ {actual:,.0f}/ha contra US$ {anterior:,.0f}/ha en {campania_anterior(campania)}: revisar"})
     return out
 
 
@@ -229,8 +483,11 @@ def _control_distribucion() -> list[dict]:
 
 def controlar() -> list[dict]:
     problemas: list[dict] = []
+    _cache_datos.clear()
     for control in (_control_recalculos, _control_dos_imputaciones, _control_huerfanas, _control_renglones,
-                    _control_distribucion, _control_resultado, _control_listado):
+                    _control_distribucion, _control_resultado, _control_fuera_del_plan, _control_dolares,
+                    _control_ingresos_en_costo, _control_rubros_faltantes, _control_costo_por_hectarea,
+                    _control_cerradas, _control_listado):
         try:
             problemas += control()
         except Exception as exc:  # un control que falla se informa, no tapa a los demás
