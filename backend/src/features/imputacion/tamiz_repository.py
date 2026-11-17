@@ -288,7 +288,7 @@ def para_revisar() -> list[dict]:
         """
         SELECT c.IdDeuda AS idCompra, c.Fecha AS fecha, co.[Razon Social] AS proveedor, c.[Tipo documento] AS tipoDocumento,
                c.[Nro Documento] AS nroDocumento, d.IdDetalleCompra AS idDetalleCompra, d.[Producto/Servicio] AS producto,
-               ISNULL(d.Cantidad, 0) * ISNULL(d.[Precio Unitario], 0) AS importe, c.Moneda AS moneda,
+               ISNULL(d.Cantidad, 0) * ISNULL(d.[Precio Unitario], 0) AS importe, c.Moneda AS moneda, c.[Tipo de Cambio] AS tc,
                ISNULL(tz.Motivo, 'La imputación no cierra: revisar') AS motivo
         FROM dbo.TamizRenglones tz
         JOIN dbo.Det_Compras d ON d.IdDetalleCompra = tz.IdDetalleCompra
@@ -309,3 +309,10 @@ def catalogo_correccion() -> dict:
         "campanias": fetch_all("SELECT TOP 12 [IdCampaña] AS id, [Campaña] AS nombre FROM dbo.[Campañas] "
                                "WHERE [Campaña] <> 'No Aplica' ORDER BY [IdCampaña] DESC"),
     }
+
+
+def resumen_para_revisar() -> dict:
+    """Total en pesos (al TC del comprobante) de lo que espera una decisión y todavía no entró a ningún cultivo."""
+    filas = para_revisar()
+    pesos = sum(float(f["importe"] or 0) * (float(f["tc"] or 0) if f["moneda"] == "Dolares" else 1.0) for f in filas)
+    return {"pesos": round(pesos, 2), "documentos": len({f["idCompra"] for f in filas})}

@@ -62,9 +62,10 @@ def _origen_trazable(f: dict) -> str:
     return " · ".join(partes) if partes else "—"
 
 
-def informe_documentos_xlsx(id_contacto: int | None, fecha_desde, fecha_hasta, estado: str | None = None) -> bytes:
+def informe_documentos_xlsx(id_contacto: int | None, fecha_desde, fecha_hasta, estado: str | None = None,
+                            automatico: bool = False, aprobado_desde=None) -> bytes:
     documentos, _total = repository.listar_documentos_con_imputacion(
-        id_contacto, fecha_desde, fecha_hasta, estado, page=1, page_size=5000
+        id_contacto, fecha_desde, fecha_hasta, estado, page=1, page_size=5000, automatico=automatico, aprobado_desde=aprobado_desde
     )
     total_general = 0.0
 

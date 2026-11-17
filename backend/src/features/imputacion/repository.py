@@ -556,6 +556,12 @@ def lineas_con_imputacion_batch(ids_compra: tuple[int, ...]) -> dict[int, list[d
     revisión SQL, 2026-09-25)."""
     if not ids_compra:
         return {}
+    if len(ids_compra) > 50:
+        # SQL Server admite hasta 2100 parámetros: la exportación completa se arma por tandas.
+        out: dict[int, list[dict]] = {}
+        for i in range(0, len(ids_compra), 50):
+            out.update(lineas_con_imputacion_batch(tuple(ids_compra[i:i + 50])))
+        return out
 
     marcas_compra = ",".join("?" for _ in ids_compra)
     lineas = fetch_all(

@@ -233,6 +233,8 @@ export default function DocumentosImputacionPage() {
     if (filtrosAplicados.fechaDesde) url.searchParams.set("fechaDesde", filtrosAplicados.fechaDesde);
     if (filtrosAplicados.fechaHasta) url.searchParams.set("fechaHasta", filtrosAplicados.fechaHasta);
     if (filtrosAplicados.estado) url.searchParams.set("estado", filtrosAplicados.estado);
+    if (filtrosAplicados.automatico) url.searchParams.set("automatico", "true");
+    if (filtrosAplicados.aprobadoDesde) url.searchParams.set("aprobadoDesde", filtrosAplicados.aprobadoDesde);
     return url.toString();
   }
 

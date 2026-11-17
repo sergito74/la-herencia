@@ -191,6 +191,8 @@ export interface CostoPorParte {
   partes: CostoParte[];
   estructuraCampania: { pesos: number; dolares: number };
   enStockSinConsumir: { pesos: number; dolares: number };
+  /** 050: lo que espera una decisión y todavía no entró a ningún cultivo. */
+  paraRevisar?: { pesos: number; documentos: number };
 }
 
 export const fetchCostoPorParte = (idCampania: number, idCultivo: number) =>

@@ -80,6 +80,13 @@ export function CostoPorParte({ idCultivo, idCampania }: { idCultivo: number; id
           </tr>
         </tbody>
       </table>
+      {d.paraRevisar && d.paraRevisar.documentos > 0 && (
+        <p className="border-t border-status-warning bg-status-warning-bg px-3 py-2 text-xs text-status-warning">
+          Hay {ar(d.paraRevisar.pesos)} en {d.paraRevisar.documentos} comprobante{d.paraRevisar.documentos === 1 ? "" : "s"} para revisar
+          que todavía no entraron a ningún cultivo: este costo puede estar incompleto.{" "}
+          <Link className="underline" href="/imputacion/documentos?revisar=1">Ver para revisar</Link>
+        </p>
+      )}
       {(d.enStockSinConsumir.pesos !== 0 || d.estructuraCampania.pesos !== 0) && (
         <div className="space-y-0.5 border-t border-border px-3 py-2 text-xs text-ink-muted">
           {d.enStockSinConsumir.pesos !== 0 && <p>En stock sin consumir (todavía no es costo): {ar(d.enStockSinConsumir.pesos)}</p>}

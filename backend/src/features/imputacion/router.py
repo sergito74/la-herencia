@@ -183,8 +183,11 @@ async def exportar_documentos(
     fechaDesde: str | None = Query(default=None),
     fechaHasta: str | None = Query(default=None),
     estado: EstadoPropuesta | None = Query(default=None),
+    automatico: bool = Query(default=False),
+    aprobadoDesde: str | None = Query(default=None),
 ) -> Response:
-    contenido = await run_in_threadpool(exportacion.informe_documentos_xlsx, idContacto, fechaDesde, fechaHasta, estado)
+    contenido = await run_in_threadpool(exportacion.informe_documentos_xlsx, idContacto, fechaDesde, fechaHasta, estado,
+                                        automatico, aprobadoDesde)
     return Response(
         content=contenido,
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",

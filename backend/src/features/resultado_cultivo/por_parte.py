@@ -121,4 +121,13 @@ def costo_por_parte(id_cultivo: int, id_campania: int) -> dict:
         "partes": agrupar(lineas, _partes(), _parte_por_rubro(), superficie),
         "estructuraCampania": _estructura_campania(id_campania),
         "enStockSinConsumir": _en_stock_sin_consumir(),
+        "paraRevisar": _para_revisar(),
     }
+
+
+def _para_revisar() -> dict:
+    if not costos.esquema_050_activo():
+        return {"pesos": 0.0, "documentos": 0}
+    from src.features.imputacion import tamiz_repository
+
+    return tamiz_repository.resumen_para_revisar()
