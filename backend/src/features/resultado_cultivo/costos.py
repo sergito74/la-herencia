@@ -285,7 +285,9 @@ def costos_contratista(id_cultivo: int, id_campania: int) -> list[dict]:
         JOIN dbo.Compras c ON c.IdDeuda = p.IdDetalleCompra
         LEFT JOIN dbo.vw_TC_BNA_PorCompra tcb ON tcb.IdDeuda = c.IdDeuda
         LEFT JOIN dbo.Ordenes_Trabajo o ON o.IdOrdenTrabajo = p.IdOrdenTrabajo
-        LEFT JOIN dbo.Rubros r ON r.IdRubro = o.IdRubro
+        -- 17/11/2026: el rubro de la labor sale de la orden o, si no lo tiene, de su tipo de labor (Siembra, Pulverización…)
+        LEFT JOIN dbo.Map_Rubro_TipoLabor mtl ON mtl.IdLabor = o.IdTipoLabor
+        LEFT JOIN dbo.Rubros r ON r.IdRubro = COALESCE(o.IdRubro, mtl.IdRubro)
         WHERE p.IdCultivo = ? AND p.IdCampania = ? AND p.IdOrdenTrabajo IS NOT NULL
         """, (id_cultivo, id_campania),
     )
