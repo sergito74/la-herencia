@@ -6,7 +6,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 
-from src.db.connection import fetch_all
+from src.db.connection import fetch_all, fetch_one
 from src.features.imputacion import tamiz_repository
 from src.features.remitos import capas_factura
 from src.features.remitos.stock_datos import calcular_stock
@@ -25,6 +25,41 @@ _REPARTO_VIGENTE = """(
     WHERE x.rn = 1 AND x.conOrden = 1)"""
 
 _EPS = 1e-6
+
+# 17/11/2026: dólares del costo con la misma regla de la vista heredada (vw_ResultadosCultivo_CostosBase): comprobante
+# en dólares -> sus US$ (pesos / TC del comprobante); en pesos -> pesos / BNA comprador divisa del día del comprobante;
+# los que ajustan el tipo de cambio no suman dólares.
+_USD_SQL = ("CASE WHEN c.Moneda = 'Dolares' THEN p.Importe / NULLIF(c.[Tipo de Cambio], 0) "
+            "WHEN ISNULL(c.[Ajusta Tipo Cambio], 0) = 0 THEN p.Importe / NULLIF(tcb.TC_CompDivisa, 0) ELSE 0 END")
+
+
+def _divisor_usd_capas() -> dict[str, float]:
+    """TC con que se pasa a dólares el costo de cada capa de stock: el de su factura (en dólares, su TC; en pesos,
+    BNA comprador divisa del día). Capas de remito (R...) por su factura vinculada; capas de factura (FC...) directo."""
+    out: dict[str, float] = {}
+    for f in fetch_all(
+        """
+        SELECT 'R' + CAST(t.IdDetalleRemito AS varchar(20)) AS id,
+               MAX(CASE WHEN c.Moneda = 'Dolares' THEN c.[Tipo de Cambio] ELSE tcb.TC_CompDivisa END) AS tc
+        FROM dbo.tblRemitoCompra t JOIN dbo.Det_Compras d ON d.IdDetalleCompra = t.IdDetalleCompra
+        JOIN dbo.Compras c ON c.IdDeuda = d.IdCompra LEFT JOIN dbo.vw_TC_BNA_PorCompra tcb ON tcb.IdDeuda = c.IdDeuda
+        GROUP BY t.IdDetalleRemito
+        UNION ALL
+        SELECT 'FC' + CAST(d.IdDetalleCompra AS varchar(20)),
+               CASE WHEN c.Moneda = 'Dolares' THEN c.[Tipo de Cambio] ELSE tcb.TC_CompDivisa END
+        FROM dbo.TamizRenglones tz JOIN dbo.Det_Compras d ON d.IdDetalleCompra = tz.IdDetalleCompra
+        JOIN dbo.Compras c ON c.IdDeuda = d.IdCompra LEFT JOIN dbo.vw_TC_BNA_PorCompra tcb ON tcb.IdDeuda = c.IdDeuda
+        WHERE tz.Vigente = 1 AND tz.Destino = 'CultivoStock'
+        """
+    ):
+        if f["tc"]:
+            out[f["id"]] = float(f["tc"])
+    return out
+
+
+def _bna(fecha) -> float | None:
+    f = fetch_one("SELECT TOP 1 Comp_Divisa AS tc FROM dbo.[Dolar BNA] WHERE Fecha <= ? ORDER BY Fecha DESC", (fecha,))
+    return float(f["tc"]) if f and f["tc"] else None
 
 # 050 (17/11/2026, revisión de especialistas): una sola imputación vigente por renglón, la del origen que corresponde
 # a su clasificación (Insumo ↔ Va a stock; Directo ↔ a cultivo, ganadería o gasto general). Desempate determinista.
@@ -49,8 +84,8 @@ _NO_EN_ALCANCE = " AND NOT EXISTS (SELECT 1 FROM dbo.TamizRenglones tz WHERE tz.
 
 
 # 050 (17/11/2026): factura anterior al corte cuya mercadería entró por remito: su costo llega por el consumo de las
-# órdenes (FIFO), así que la imputación manual de la factura no se suma. Rige desde las campañas 2023 (Sergio
-# 17/11/2026, re-auditoría: el doble conteo de 2023/24 y 2024/25 también se corrige). Solo cuenta un remito de hasta
+# órdenes (FIFO), así que la imputación manual de la factura no se suma. Rige para todas las campañas (Sergio
+# 17/11/2026: primero desde 2023, después "Sí" a extenderlo a las anteriores). Solo cuenta un remito de hasta
 # un año antes de la factura: los vínculos heredados de Access con remitos viejos (ej. semilla de sorgo 2023 contra
 # un remito de 2019) no se consumen en la campaña de la factura y su costo se perdería.
 _PASO_POR_STOCK = """
@@ -59,13 +94,11 @@ _PASO_POR_STOCK = """
                            JOIN dbo.Remitos rx ON rx.IdRemito = rdx.IdRemito
                            JOIN dbo.Det_Compras dcx ON dcx.IdDetalleCompra = trc.IdDetalleCompra
                            JOIN dbo.Compras cpx ON cpx.IdDeuda = dcx.IdCompra
-                           WHERE trc.IdDetalleCompra = c.IdDetalleCompra AND rx.Fecha >= DATEADD(day, -365, cpx.Fecha))
-                   AND EXISTS (SELECT 1 FROM dbo.[Campañas] cx WHERE cx.[IdCampaña] = c.IdCampaña
-                               AND cx.[Campaña] LIKE '[12][0-9][0-9][0-9]%' AND LEFT(cx.[Campaña], 4) >= '2023'))"""
+                           WHERE trc.IdDetalleCompra = c.IdDetalleCompra AND rx.Fecha >= DATEADD(day, -365, cpx.Fecha)))"""
 
 
 def costos_heredados(id_cultivo: int, id_campania: int) -> list[dict]:
-    """Líneas de `vw_ResultadosCultivo_CostosBase` + `Seguros` para el
+    """Líneas de `vw_ResultadosCultivo_CostosBase` (sin los cobros de seguro, que son ingreso) para el
     `IdDestino` de este Cultivo, ya multiplicadas por `Signo` (cargo/crédito).
     Lista vacía si el Cultivo no tiene `IdDestino` mapeado."""
     id_destino = mapeo.idCultivo_a_destino(id_cultivo)
@@ -86,21 +119,33 @@ def costos_heredados(id_cultivo: int, id_campania: int) -> list[dict]:
                    _STOCK=_PASO_POR_STOCK if esquema_050_activo() else ""),
         (id_destino, id_campania, *RUBROS_FUERA_REPARTO),
     )
-    seguros = fetch_all(
-        """
-        SELECT 'Seguro agrícola' AS concepto, 'Seguros' AS rubro, s.SeguroPesos AS montoPesos, s.SeguroDolares AS montoDolares,
-               'Seguro' AS origen, NULL AS idCompra, NULL AS idDetalleCompra
-        FROM dbo.vw_ResultadosCultivo_Seguros s
-        WHERE s.IdDestino = ? AND s.IdCampaña = ?
-        """,
-        (id_destino, id_campania),
-    )
-    for f in base + seguros:
+    # 17/11/2026: lo de Cultivos_Seguros_Cobros son indemnizaciones COBRADAS por siniestros: no son costo, son un
+    # recupero que suma a la venta neta (resultado.recupero_seguro), como en el formulario de Access.
+    for f in base:
         f["idOrdenTrabajo"] = None
-    return base + seguros
+    return base
 
 
-def costo_ordenes_trabajo(id_cultivo: int, id_campania: int) -> list[dict]:
+def consumos_sin_factura(id_cultivo: int, id_campania: int) -> list[dict]:
+    """17/11/2026: insumos que las órdenes de este cultivo/campaña consumieron de remitos sin factura vinculada (o sin
+    remito): valen $0 hasta que llegue la factura, así que el costo es provisorio. Por remito y producto."""
+    filas: list[dict] = []
+    costo_ordenes_trabajo(id_cultivo, id_campania, filas)
+    agrupado: dict[tuple, dict] = {}
+    for f in filas:
+        k = (f["remito"], f["idProducto"])
+        g = agrupado.setdefault(k, {**f, "cantidad": 0.0, "ordenes": set()})
+        g["cantidad"] += f["cantidad"]
+        g["ordenes"].add(f["idOrdenTrabajo"])
+    from src.features.imputacion.tamiz_repository import nombre_producto
+    out = []
+    for g in agrupado.values():
+        out.append({"remito": g["remito"] or "sin remito", "fecha": g["fecha"], "producto": nombre_producto(g["idProducto"]),
+                    "cantidad": round(g["cantidad"], 2), "ordenes": sorted(o for o in g["ordenes"] if o)})
+    return sorted(out, key=lambda x: (str(x["fecha"] or ""), x["remito"]))
+
+
+def costo_ordenes_trabajo(id_cultivo: int, id_campania: int, pendientes: list | None = None) -> list[dict]:
     """Insumos FIFO, estimado manual de maquinaria propia y factura imputada.
 
     No se reparte el contratista por superficie ni por cantidad de insumos.
@@ -125,31 +170,62 @@ def costo_ordenes_trabajo(id_cultivo: int, id_campania: int) -> list[dict]:
     costo_renglon: dict[int, float] = {}
     activo = esquema_050_activo()
     remitos_alcance = capas_factura.renglones_remito_en_alcance() if activo else {}
+    divisor = _divisor_usd_capas()
+    usd_renglon: dict[int, float] = {}
+    pendiente_renglon: dict[int, list] = defaultdict(list)
     for pid in productos:
         stock = calcular_stock(pid).get(pid, {})
         cant_capa = {c["id"]: _f(c["cantidad"]) for c in stock.get("capas", [])}
         for sid, consumo in stock.get("consumos", {}).items():
             if sid.startswith("OT"):
                 costo = consumo["costo"]
-                if activo:
-                    # 050: lo consumido de capas en alcance ya está en las fracciones aprobadas (costos_alcance).
-                    costo -= sum(
-                        it["cantidad"] * (it["costo_unitario"] or 0.0)
-                        * capas_factura.parte_en_alcance(it["capa"], cant_capa.get(it["capa"], 0.0), remitos_alcance)
-                        for it in consumo["items"]
-                    )
+                usd = 0.0
+                fecha = (stock.get("salidaMeta", {}).get(sid) or {}).get("fecha")
+                bna_orden = None
+                capas_meta = {c["id"]: c for c in stock.get("capas", [])}
+                for it in consumo["items"]:
+                    if it["costo_unitario"] is None:
+                        # capa sin factura: costo pendiente (no suma pesos ni dólares); se informa como provisorio
+                        if it["cantidad"] > 0.001:
+                            m = capas_meta.get(it["capa"]) or {}
+                            pendiente_renglon[int(sid[2:])].append(
+                                {"idProducto": pid, "cantidad": it["cantidad"], "remito": m.get("nroRemito"),
+                                 "idRemito": m.get("idRemito"), "fecha": m.get("fecha")})
+                        continue
+                    pesos = it["cantidad"] * it["costo_unitario"]
+                    if activo:
+                        # 050: lo consumido de capas en alcance ya está en las fracciones aprobadas (costos_alcance).
+                        en_alcance = pesos * capas_factura.parte_en_alcance(it["capa"], cant_capa.get(it["capa"], 0.0), remitos_alcance)
+                        costo -= en_alcance
+                        pesos -= en_alcance
+                    tc = divisor.get(it["capa"])
+                    if tc is None and fecha is not None:
+                        if bna_orden is None:
+                            bna_orden = _bna(fecha) or 0.0
+                        tc = bna_orden or None
+                    usd += pesos / tc if tc else 0.0
                 costo_renglon[int(sid[2:])] = costo
+                usd_renglon[int(sid[2:])] = usd
 
     ordenes_ids = {f["idOrdenTrabajo"] for f in distrib}
+    # 17/11/2026: una línea por renglón de orden (suma de sus lotes) y redondeo al final, para no perder centavos.
+    por_renglon: dict[int, dict] = {}
     for f in distrib:
         total_renglon = _f(f["cantidadTotal"]) or 1.0
         proporcion = _f(f["cantidadAsignada"]) / total_renglon
-        costo = costo_renglon.get(f["idOrdenInsumo"], 0.0) * proporcion
+        g = por_renglon.setdefault(f["idOrdenInsumo"], {"orden": f["idOrdenTrabajo"], "p": 0.0})
+        g["p"] += proporcion
+    for oi, g in por_renglon.items():
+        costo = costo_renglon.get(oi, 0.0) * g["p"]
+        for pe in pendiente_renglon.get(oi, []):
+            if pendientes is not None:
+                pendientes.append({**pe, "cantidad": pe["cantidad"] * g["p"], "idOrdenTrabajo": g["orden"]})
         if abs(costo) > _EPS:
             resultado.append(
                 {
-                    "concepto": "Insumo", "rubro": None, "montoPesos": round(costo, 2), "montoDolares": None,
-                    "origen": "OrdenTrabajo", "idCompra": None, "idDetalleCompra": None, "idOrdenTrabajo": f["idOrdenTrabajo"],
+                    "concepto": "Insumo", "rubro": None, "montoPesos": round(costo, 2),
+                    "montoDolares": round(usd_renglon.get(oi, 0.0) * g["p"], 2),
+                    "origen": "OrdenTrabajo", "idCompra": None, "idDetalleCompra": None, "idOrdenTrabajo": g["orden"],
                 }
             )
 
@@ -184,16 +260,17 @@ def costo_ordenes_trabajo(id_cultivo: int, id_campania: int) -> list[dict]:
 
 def costos_contratista(id_cultivo: int, id_campania: int) -> list[dict]:
     """048: fracciones del reparto vigente (última corrida APROBADA de contratista con orden) de este cultivo y
-    campaña. Pesos = importe; dólares al TC del comprobante."""
+    campaña. Pesos = importe; dólares con la regla de la casa (_USD_SQL)."""
     return fetch_all(
         f"""
         SELECT 'Contratista' AS concepto, r.Rubro AS rubro, p.Importe AS montoPesos,
-               p.Importe / NULLIF(CASE WHEN c.Moneda = 'Dolares' THEN c.[Tipo de Cambio] END, 0) AS montoDolares,
+               {_USD_SQL} AS montoDolares,
                'OrdenTrabajo' AS origen, p.IdDetalleCompra AS idCompra, NULL AS idDetalleCompra,
                p.IdOrdenTrabajo AS idOrdenTrabajo
         FROM dbo.ImputacionPropuestas p
         JOIN {_REPARTO_VIGENTE} v ON v.idCorrida = p.IdCorrida
         JOIN dbo.Compras c ON c.IdDeuda = p.IdDetalleCompra
+        LEFT JOIN dbo.vw_TC_BNA_PorCompra tcb ON tcb.IdDeuda = c.IdDeuda
         LEFT JOIN dbo.Ordenes_Trabajo o ON o.IdOrdenTrabajo = p.IdOrdenTrabajo
         LEFT JOIN dbo.Rubros r ON r.IdRubro = o.IdRubro
         WHERE p.IdCultivo = ? AND p.IdCampania = ? AND p.IdOrdenTrabajo IS NOT NULL
@@ -209,20 +286,21 @@ def costos_alcance(id_cultivo: int, id_campania: int) -> list[dict]:
         """
         SELECT CASE WHEN p.Origen = 'Directo' THEN 'Compra' ELSE 'Insumo' END AS concepto, pe.Nombre AS rubro,
                p.Importe AS montoPesos,
-               p.Importe / NULLIF(CASE WHEN c.Moneda = 'Dolares' THEN c.[Tipo de Cambio] END, 0) AS montoDolares,
+               {usd} AS montoDolares,
                'Alcance050' AS origen, d.IdCompra AS idCompra, p.IdDetalleCompra AS idDetalleCompra,
                p.IdOrdenTrabajo AS idOrdenTrabajo, p.IdParte AS idParte
         FROM dbo.ImputacionPropuestas p
         JOIN dbo.TamizRenglones tz ON tz.IdDetalleCompra = p.IdDetalleCompra AND tz.Vigente = 1
         JOIN dbo.Det_Compras d ON d.IdDetalleCompra = p.IdDetalleCompra
         JOIN dbo.Compras c ON c.IdDeuda = d.IdCompra
+        LEFT JOIN dbo.vw_TC_BNA_PorCompra tcb ON tcb.IdDeuda = c.IdDeuda
         LEFT JOIN dbo.PartesEstructuraCosto pe ON pe.IdParte = p.IdParte
         WHERE p.Origen IN ('Insumo', 'Directo') AND p.Estado = 'Aprobada' AND p.IdCultivo = ? AND p.IdCampania = ?
           AND {vigente}
           -- Factura de contratista con reparto por órdenes (048) vigente: manda ese reparto (no se cuenta dos veces).
           AND NOT (p.Origen = 'Directo' AND d.IdCompra IN (SELECT rv.idCompra FROM {reparto} rv)
                    AND NOT EXISTS (SELECT 1 FROM dbo.Rubros rr WHERE rr.IdRubro = d.IdRubro AND rr.Rubro IN ({fuera})))
-        """.format(vigente=VIGENTE_050, reparto=_REPARTO_VIGENTE, fuera=_FUERA),
+        """.format(vigente=VIGENTE_050, reparto=_REPARTO_VIGENTE, fuera=_FUERA, usd=_USD_SQL),
         (id_cultivo, id_campania, *RUBROS_FUERA_REPARTO),
     )
 

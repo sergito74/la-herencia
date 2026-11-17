@@ -88,6 +88,12 @@ def clasificar_renglon(r: dict, reglas_rubro: dict, reglas_producto: list, conte
         # Crédito fiscal, no costo (Sergio 17/11/2026).
         return _resultado(r, "NoImputa", motivo="Percepción de IVA: crédito fiscal")
 
+    if r.get("idDetalleCompra") in (contexto.get("porOrdenes") or set()):
+        # 17/11/2026: labor de una factura de contratista repartida por las órdenes de trabajo: va a los cultivos de
+        # esas órdenes (no a la historia del texto, que podía mandarla a gasto general).
+        return _resultado(r, "Cultivo", cultivo=cultivo, campania=campania, origen="Orden",
+                          motivo="Repartido según las órdenes de trabajo")
+
     # Lo cargado en la factura (cultivo y campaña) manda sobre la regla aprendida del producto: la regla se usa
     # solo cuando la factura no trae el cultivo (Sergio 17/11/2026).
     regla = None if (cultivo and campania) else _regla_producto(r, reglas_producto)
@@ -312,6 +318,8 @@ def tamizar_compra(id_compra: int, *, guardar: bool = True, forzar: bool = False
     ctx["modelo"] = modelo
     ctx["financiaDestino"] = repo.destino_financiado(id_compra)
     ctx["anulada"] = repo.anulada(id_compra)
+    from src.features.imputacion import repository as _rep
+    ctx["porOrdenes"] = {r["idDetalleCompra"] for r in renglones if _rep.en_reparto_por_ordenes(r["idDetalleCompra"])}
     # Renglón de insumo sin producto del catálogo: se busca por el texto (050, 16/11/2026). Con una coincidencia segura
     # se le asigna el producto; si no, queda pendiente con la sugerencia.
     asignados = _sugerir_productos(renglones, reglas_rubro, ctx)

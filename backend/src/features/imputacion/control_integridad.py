@@ -186,9 +186,51 @@ def _control_listado() -> list[dict]:
     ]
 
 
+_errores_recalculo: list[dict] = []
+
+
+def registrar_error_recalculo(descripcion: str, exc: Exception) -> None:
+    """17/11/2026: un recálculo de imputación que falla ya no queda solo en el log: se muestra en el control."""
+    with _lock:
+        _errores_recalculo.append({"fecha": datetime.now(), "detalle": f"{descripcion}: {exc}"})
+        del _errores_recalculo[:-50]
+    lanzar(forzar=True)  # se vuelve a controlar enseguida
+
+
+def _control_recalculos() -> list[dict]:
+    with _lock:
+        errores = list(_errores_recalculo)
+    return [{"tipo": "Un recálculo de imputación falló", "idCompra": None, "documento": "",
+             "detalle": f"{e['fecha'].strftime('%d/%m/%Y %H:%M')} — {e['detalle']}. Puede haber quedado una imputación vieja."}
+            for e in errores]
+
+
+def _control_distribucion() -> list[dict]:
+    """Renglón de orden ejecutada cuya distribución por lote no suma lo usado: parte del costo no llega a ningún cultivo
+    (o llega de más)."""
+    return [
+        {"tipo": "La distribución de una orden no suma lo usado", "idCompra": None, "documento": f"Orden {f['ot']}",
+         "detalle": f"{f['producto']}: usado {f['total']:,.2f}, distribuido a los lotes {f['asignado']:,.2f}"}
+        for f in fetch_all(
+            """
+            SELECT oi.IdOrdenTrabajo AS ot, p.Producto AS producto, MAX(oi.CantidadTotal) AS total,
+                   SUM(CASE WHEN d.Aplicar = 1 THEN d.CantidadAsignada ELSE 0 END) AS asignado
+            FROM dbo.Ordenes_Trabajo_Insumos oi JOIN dbo.Ordenes_Trabajo ot ON ot.IdOrdenTrabajo = oi.IdOrdenTrabajo
+            JOIN dbo.Ordenes_Trabajo_Distrib d ON d.IdOrdenInsumo = oi.IdOrdenInsumo
+            LEFT JOIN dbo.vw_ProductosBase p ON p.IdProducto = oi.IdProducto
+            WHERE ot.Estado <> 'Anulada' AND ot.FechaEjecucion >= '2025-05-12'
+            GROUP BY oi.IdOrdenInsumo, oi.IdOrdenTrabajo, p.Producto
+            HAVING ABS(MAX(oi.CantidadTotal) - SUM(CASE WHEN d.Aplicar = 1 THEN d.CantidadAsignada ELSE 0 END))
+                   > 0.01 * ABS(MAX(oi.CantidadTotal)) + 0.01
+            """
+        )
+    ]
+
+
 def controlar() -> list[dict]:
     problemas: list[dict] = []
-    for control in (_control_dos_imputaciones, _control_huerfanas, _control_renglones, _control_resultado, _control_listado):
+    for control in (_control_recalculos, _control_dos_imputaciones, _control_huerfanas, _control_renglones,
+                    _control_distribucion, _control_resultado, _control_listado):
         try:
             problemas += control()
         except Exception as exc:  # un control que falla se informa, no tapa a los demás

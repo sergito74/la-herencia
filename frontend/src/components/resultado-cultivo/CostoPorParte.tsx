@@ -87,6 +87,21 @@ export function CostoPorParte({ idCultivo, idCampania }: { idCultivo: number; id
           <Link className="underline" href="/imputacion/documentos?revisar=1">Ver para revisar</Link>
         </p>
       )}
+      {d.sinFactura && d.sinFactura.length > 0 && (
+        <div className="border-t border-status-warning bg-status-warning-bg px-3 py-2 text-xs text-status-warning">
+          <p className="font-medium">
+            Costo provisorio: las órdenes usaron insumos que todavía no tienen factura (valen $ 0 hasta que llegue).
+          </p>
+          <ul className="mt-1 list-disc pl-4">
+            {d.sinFactura.map((x, i) => (
+              <li key={i}>
+                {x.producto}: {formatNumero(x.cantidad)} — {x.remito === "sin remito" ? "sin remito" : `remito ${x.remito}`}
+                {x.ordenes.length > 0 && ` (orden ${x.ordenes.join(", ")})`}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
       {(d.enStockSinConsumir.pesos !== 0 || d.estructuraCampania.pesos !== 0) && (
         <div className="space-y-0.5 border-t border-border px-3 py-2 text-xs text-ink-muted">
           {d.enStockSinConsumir.pesos !== 0 && <p>En stock sin consumir (todavía no es costo): {ar(d.enStockSinConsumir.pesos)}</p>}

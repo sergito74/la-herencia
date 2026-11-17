@@ -53,6 +53,14 @@ def cantidad_cosechada(id_cultivo: int, id_campania: int) -> float | None:
     return round(_f(fila["total"]), 2)
 
 
+def recupero_seguro(id_cultivo: int, id_campania: int) -> dict:
+    """17/11/2026: indemnizaciones cobradas por siniestros del cultivo/campaña (ingreso, no costo)."""
+    id_destino = mapeo.idCultivo_a_destino(id_cultivo)
+    f = fetch_one("SELECT SeguroPesos AS p, SeguroDolares AS d FROM dbo.vw_ResultadosCultivo_Seguros WHERE IdDestino = ? AND IdCampaña = ?",
+                  (id_destino, id_campania)) if id_destino is not None else None
+    return {"pesos": round(_f((f or {}).get("p")), 2), "dolares": round(_f((f or {}).get("d")), 2)}
+
+
 def venta_neta(id_cultivo: int, id_campania: int) -> dict:
     id_grano = mapeo.idCultivo_a_grano(id_cultivo)
     if id_grano is None:
@@ -107,6 +115,8 @@ def resultado_cultivo(id_cultivo: int, id_campania: int) -> dict:
     rinde = round(cant_cosechada / sup_cosechada, 2) if cant_cosechada is not None and sup_cosechada is not None and sup_cosechada > 0 and mapeo.idCultivo_a_grano(id_cultivo) is not None else None
 
     venta = venta_neta(id_cultivo, id_campania)
+    seguro = recupero_seguro(id_cultivo, id_campania)
+    venta = {"pesos": round(venta["pesos"] + seguro["pesos"], 2), "dolares": round(venta["dolares"] + seguro["dolares"], 2)}
     margen_pesos = round(venta["pesos"] - costo_pesos, 2)
     margen_dolares = round(venta["dolares"] - costo_dolares, 2)
     rentabilidad_pesos = round(margen_pesos / costo_pesos, 4) if costo_pesos else None
@@ -129,6 +139,8 @@ def resultado_cultivo(id_cultivo: int, id_campania: int) -> dict:
         "costoPorHectareaCosechadaDolares": _costo_por_hectarea(costo_dolares, sup_cosechada),
         "ventaNetaPesos": venta["pesos"],
         "ventaNetaDolares": venta["dolares"],
+        "recuperoSeguroPesos": seguro["pesos"],
+        "recuperoSeguroDolares": seguro["dolares"],
         "margenBrutoPesos": margen_pesos,
         "margenBrutoDolares": margen_dolares,
         "rentabilidadPesos": rentabilidad_pesos,

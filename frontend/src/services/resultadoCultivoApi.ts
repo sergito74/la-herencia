@@ -193,6 +193,7 @@ export interface CostoPorParte {
   enStockSinConsumir: { pesos: number; dolares: number };
   /** 050: lo que espera una decisión y todavía no entró a ningún cultivo. */
   paraRevisar?: { pesos: number; documentos: number };
+  sinFactura?: { remito: string; fecha: string | null; producto: string; cantidad: number; ordenes: number[] }[];
 }
 
 export const fetchCostoPorParte = (idCampania: number, idCultivo: number) =>

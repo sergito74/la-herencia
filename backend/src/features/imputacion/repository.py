@@ -359,6 +359,17 @@ def renglones_repartibles(id_compra: int) -> list[dict]:
     )
 
 
+def en_reparto_por_ordenes(id_detalle_compra: int) -> bool:
+    """17/11/2026: renglón de labor (rubro que no queda fuera del reparto) de una factura de contratista con reparto
+    por órdenes vigente: su costo entra por las órdenes, no por una imputación propia."""
+    f = fetch_one(
+        "SELECT d.IdCompra AS c, r.Rubro AS rubro FROM dbo.Det_Compras d LEFT JOIN dbo.Rubros r ON r.IdRubro = d.IdRubro "
+        "WHERE d.IdDetalleCompra = ?", (id_detalle_compra,))
+    if not f or (f["rubro"] in RUBROS_FUERA_REPARTO):
+        return False
+    return reparto_contratista_vigente(f["c"]) is not None
+
+
 def reparto_contratista_vigente(id_compra: int) -> str | None:
     """048: `IdCorrida` de la ÚLTIMA corrida APROBADA de contratista del documento, si tiene reparto (alguna
     fracción con orden). Una corrida Pendiente posterior (ej. /recalcular) no la reemplaza; una aprobada sin

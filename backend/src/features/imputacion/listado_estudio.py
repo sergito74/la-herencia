@@ -18,7 +18,7 @@ from datetime import date
 from pathlib import Path
 
 from src.db.connection import fetch_all
-from src.features.resultado_cultivo.costos import VIGENTE_050
+from src.features.resultado_cultivo.costos import _REPARTO_VIGENTE, VIGENTE_050
 
 CARPETA = Path(r"C:\Users\Sergio\Dropbox\Giamigli de Bolivar SA\Compras")
 ARCHIVO = "Listado General Compras - Imputacion (1-9-2015 en adelante).xlsx"
@@ -107,6 +107,31 @@ def _fracciones() -> dict[int, list[dict]]:
     return out
 
 
+def _reparto_ordenes() -> tuple[dict[int, list[dict]], set[int]]:
+    """17/11/2026: facturas de contratista repartidas por órdenes de trabajo (048): fracciones por compra, y los
+    renglones de labor que siguen ese reparto (clasificados "según las órdenes")."""
+    por_compra: dict[int, list[dict]] = defaultdict(list)
+    for f in fetch_all(
+        f"""
+        SELECT p.IdDetalleCompra AS idCompra, p.IdCultivo AS idCultivo, p.IdCampania AS idCampania, p.EsGanaderia AS ganaderia,
+               p.IdCentroCosto AS idCentro, p.Importe AS importe, p.Cantidad AS cantidad, pe.Nombre AS parte,
+               ca.[Campaña] AS campania, de.Destino AS destino
+        FROM dbo.ImputacionPropuestas p
+        JOIN {_REPARTO_VIGENTE} v ON v.idCorrida = p.IdCorrida
+        LEFT JOIN dbo.PartesEstructuraCosto pe ON pe.IdParte = p.IdParte
+        LEFT JOIN dbo.[Campañas] ca ON ca.[IdCampaña] = p.IdCampania
+        LEFT JOIN dbo.Map_CultivoResultado m ON m.IdCultivo = p.IdCultivo
+        LEFT JOIN dbo.DestinoCompras de ON de.IdDestino = m.IdDestino
+        WHERE p.IdOrdenTrabajo IS NOT NULL
+        """
+    ):
+        f["cantidad"] = None  # la cantidad del reparto son hectáreas de la orden, no la del renglón
+        por_compra[f["idCompra"]].append(f)
+    renglones = {f["id"] for f in fetch_all(
+        "SELECT IdDetalleCompra AS id FROM dbo.TamizRenglones WHERE Vigente = 1 AND OrigenDecision = 'Orden'")}
+    return por_compra, renglones
+
+
 def _clave(f: dict, base: dict) -> tuple:
     """Agrupa las fracciones (que vienen por lote) en lo que ve el Estudio: centro, destino, campaña y parte."""
     if f["idCultivo"] is not None:
@@ -138,6 +163,7 @@ def _fila(base: dict, total: float, cantidad, centro, destino, campania, parte) 
 def armar_filas() -> list[list]:
     renglones = _renglones()
     fracciones = _fracciones()
+    ordenes_compra, por_ordenes = _reparto_ordenes()
     relacionadas = None
     por_compra: dict[int, list[int]] = defaultdict(list)
     for r in renglones:
@@ -148,6 +174,8 @@ def armar_filas() -> list[list]:
     for r in renglones:
         total = float(r["total"]) if r["total"] is not None else None
         propias = fracciones.get(r["id"])
+        if not propias and r["id"] in por_ordenes and ordenes_compra.get(r["idCompra"]):
+            propias = ordenes_compra[r["idCompra"]]  # labor repartida según las órdenes de trabajo
         if r["esFlete"] and r["destinoTamiz"] == "CultivoStock" and not propias:
             # Flete de insumos: sigue a los usos de los insumos de su factura (o de la factura relacionada).
             destinos = list(por_compra.get(r["idCompra"], []))

@@ -119,6 +119,8 @@ def costo_por_parte(id_cultivo: int, id_campania: int) -> dict:
         "estructuraCampania": _estructura_campania(id_campania),
         "enStockSinConsumir": _en_stock_sin_consumir(),
         "paraRevisar": _para_revisar(),
+        # 17/11/2026: insumos usados por las órdenes que todavía no tienen factura (valen $0): costo provisorio.
+        "sinFactura": costos.consumos_sin_factura(id_cultivo, id_campania),
     }
 
 

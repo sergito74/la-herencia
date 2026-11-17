@@ -194,6 +194,9 @@ def calcular_directo(id_detalle: int) -> dict:
         return {"accion": "fueraDeAlcance"}
     if t["estado"] != "Aprobada":
         return {"accion": "pendiente"}
+    if repository.en_reparto_por_ordenes(id_detalle):
+        # Su costo llega por el reparto de las órdenes (048): una imputación directa propia quedaría de más.
+        return {"accion": "anulada" if repository.marcar_reemplazada(id_detalle, "Directo") else "porOrdenes"}
     superficies = (reparto_plan.superficie_por_cultivo(t["idCampania"])
                    if t["destino"] == "Cultivo" and t.get("idCultivo") is None and t.get("idCampania") else None)
     fracciones = fracciones_directo(t, total_renglon(t, 0.0), motor._id_centro_adm_general(), superficies)
@@ -297,5 +300,11 @@ def recalcular_seguro(funcion, *args) -> None:
     import logging
     try:
         funcion(*args)
-    except Exception:  # noqa: BLE001
+    except Exception as exc:  # noqa: BLE001
         logging.getLogger(__name__).exception("Imputación 050: no se pudo recalcular %s", args)
+        try:
+            from src.features.imputacion import control_integridad
+
+            control_integridad.registrar_error_recalculo(f"{getattr(funcion, '__name__', funcion)}{args}", exc)
+        except Exception:  # noqa: BLE001
+            pass
