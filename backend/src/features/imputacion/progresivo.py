@@ -169,8 +169,10 @@ def fracciones_directo(t: dict, total: float, id_centro_adm: int | None, superfi
     base = {"importe": total, "idParte": t.get("idParte"), "estado": "Aprobada",
             "fechaAprobacion": datetime.now(timezone.utc)}
     if t["destino"] == "Cultivo" and t.get("idCultivo") is None:
-        return [{**base, "importe": imp, "idCultivo": c, "idCampania": t["idCampania"]}
-                for c, imp in reparto_plan.repartir(total, superficies or {}).items()]
+        # Clave (cultivo, campaña): la avena y la pastura llevan su campaña de un año (Avena 2025 en 2025/2026).
+        return [{**base, "importe": imp, "idCultivo": k[0] if isinstance(k, tuple) else k,
+                 "idCampania": k[1] if isinstance(k, tuple) else t["idCampania"]}
+                for k, imp in reparto_plan.repartir(total, superficies or {}).items()]
     if t["destino"] == "Cultivo":
         return [{**base, "idCultivo": t["idCultivo"], "idCampania": t["idCampania"]}]
     if t["destino"] == "Ganaderia":

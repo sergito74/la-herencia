@@ -43,3 +43,9 @@ def test_labor_de_contratista_no_se_reparte_por_plan():
     reglas = {10: {"destino": "Cultivo", "idParte": 4, "regla": None}}
     c = tamiz.clasificar_renglon(_renglon(), reglas, [], _ctx({1: 60, 2: 40}))
     assert c["estado"] == "Pendiente" and "Repartido" not in (c["motivo"] or "")
+
+
+def test_doble_cultivo_trigo_soja_segunda_va_50_y_50():
+    filas = [{"idLote": 1, "idCultivo": 8, "superficie": 40}, {"idLote": 1, "idCultivo": 4, "superficie": 40},
+             {"idLote": 2, "idCultivo": 6, "superficie": 60}]
+    assert reparto_plan.superficies_de_lotes(filas) == {8: 20.0, 4: 20.0, 6: 60.0}
