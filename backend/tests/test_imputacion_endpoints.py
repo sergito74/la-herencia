@@ -132,9 +132,22 @@ def test_aprobar_corrida_guarda_usuario(monkeypatch):
 
     repository.aprobar_corrida("corrida-1", usuario="sergio")
 
-    sql, params = llamadas[-1]
-    assert "UsuarioAprobacion" in sql
-    assert params == ("sergio", "corrida-1")
+    sql, params = llamadas[0]
+    assert "UsuarioAprobacion" in sql and "UPDLOCK" in sql
+    assert params == ("sergio", "corrida-1", 900, "Insumo")
+
+
+def test_aprobar_corrida_que_dejo_de_ser_vigente_se_rechaza(monkeypatch):
+    """Un recálculo entre la lectura y la aprobación: el UPDATE condicionado no toca filas y se rechaza."""
+    import pytest
+    from src.features.imputacion.repository import CorridaNoVigente
+
+    monkeypatch.setattr(repository, "detalle_compra_de_corrida", lambda idc: 900)
+    monkeypatch.setattr(repository, "origen_de_corrida", lambda idc: "Insumo")
+    monkeypatch.setattr(repository, "corrida_vigente", lambda idd, origen=None: "corrida-1")
+    monkeypatch.setattr(repository, "execute_write_transaction", lambda stmts: [0])
+    with pytest.raises(CorridaNoVigente):
+        repository.aprobar_corrida("corrida-1", usuario="sergio")
 
 
 def test_aprobar_lote_procesa_cada_corrida_independiente(monkeypatch):

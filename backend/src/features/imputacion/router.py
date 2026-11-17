@@ -280,8 +280,28 @@ async def para_revisar() -> list[dict]:
 
 @router.get("/revisar/contador")
 async def contador_revisar() -> dict:
+    from src.features.imputacion import control_integridad
+
     filas = await run_in_threadpool(tamiz_repository.para_revisar)
-    return {"renglones": len(filas), "documentos": len({f["idCompra"] for f in filas})}
+    control = control_integridad.estado()
+    return {"renglones": len(filas), "documentos": len({f["idCompra"] for f in filas}),
+            "controlDiferencias": len(control["problemas"])}
+
+
+@router.get("/control")
+async def control_costos() -> dict:
+    """Último resultado del control de integridad (corre solo en segundo plano, una vez por día)."""
+    from src.features.imputacion import control_integridad
+
+    return control_integridad.estado()
+
+
+@router.post("/control/controlar")
+async def controlar_costos() -> dict:
+    from src.features.imputacion import control_integridad
+
+    control_integridad.lanzar(forzar=True)
+    return control_integridad.estado()
 
 
 @router.post("/tamiz/compra/{idCompra}")

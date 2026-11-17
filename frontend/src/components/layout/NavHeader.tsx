@@ -200,13 +200,13 @@ function useAvisosBoveda(habilitado: boolean): number {
 function useRevisarImputacion(habilitado: boolean): number {
   const { data } = useQuery({
     queryKey: ["imputacion-revisar", "contador"],
-    queryFn: () => apiGet<{ renglones: number; documentos: number }>("/api/imputacion/revisar/contador"),
+    queryFn: () => apiGet<{ renglones: number; documentos: number; controlDiferencias?: number }>("/api/imputacion/revisar/contador"),
     enabled: habilitado,
     refetchInterval: 5 * 60 * 1000,
     refetchOnWindowFocus: true,
     retry: false,
   });
-  return data?.documentos ?? 0;
+  return (data?.documentos ?? 0) + (data?.controlDiferencias ?? 0);
 }
 
 /** Documentos nuevos sin revisar por módulo (043). Se consulta cada 5 min y al volver a la pestaña. */
@@ -233,7 +233,7 @@ function Contador({ valor, titulo = "Pendientes de carga manual o portales con e
 }
 
 const TITULO_NUEVOS = "Documentos nuevos para revisar";
-const TITULO_REVISAR = "Comprobantes con imputación para revisar";
+const TITULO_REVISAR = "Comprobantes para revisar o diferencias del control de costos";
 
 function NavDropdown({ item, active, peajes, nuevos, revisar = 0 }:
   { item: NavItem; active: boolean; peajes: number; nuevos: ResumenNuevos | undefined; revisar?: number }) {

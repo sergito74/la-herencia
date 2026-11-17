@@ -124,7 +124,18 @@ def aprobar_corrida(id_corrida: str, correcciones: list[dict] | None = None, usu
     if str(vigente or "").upper() != str(id_corrida).upper():
         raise CorridaNoVigente(f"Corrida {id_corrida} ya no es la vigente para el renglón {id_detalle_compra}")
 
-    statements: list = []
+    # La verificación de vigencia va dentro del mismo UPDATE, con bloqueo de rango sobre el renglón: un recálculo
+    # que llegue en el medio espera a que termine la aprobación (o la aprobación ve 0 filas y se rechaza).
+    origen = origen_de_corrida(id_corrida)
+    sigue_vigente = (
+        "AND IdCorrida = (SELECT TOP 1 q.IdCorrida FROM dbo.ImputacionPropuestas q WITH (UPDLOCK, HOLDLOCK) "
+        "WHERE q.IdDetalleCompra = ? AND q.Origen = ? ORDER BY q.FechaCalculo DESC, q.IdPropuesta DESC)"
+    )
+    statements: list = [(
+        f"UPDATE dbo.ImputacionPropuestas SET Estado = 'Aprobada', FechaAprobacion = SYSUTCDATETIME(), UsuarioAprobacion = ? "
+        f"WHERE IdCorrida = ? {sigue_vigente}",
+        (usuario, id_corrida, id_detalle_compra, origen),
+    )]
     for c in correcciones or []:
         sets, params = [], []
         for campo, columna in (("idLote", "IdLote"), ("idCultivo", "IdCultivo"), ("idCampania", "IdCampania"), ("importe", "Importe")):
@@ -132,16 +143,12 @@ def aprobar_corrida(id_corrida: str, correcciones: list[dict] | None = None, usu
                 sets.append(f"{columna} = ?")
                 params.append(c[campo])
         if sets:
-            params.append(c["idPropuesta"])
-            statements.append((f"UPDATE dbo.ImputacionPropuestas SET {', '.join(sets)} WHERE IdPropuesta = ?", tuple(params)))
+            params += [c["idPropuesta"], id_corrida]
+            statements.append((f"UPDATE dbo.ImputacionPropuestas SET {', '.join(sets)} WHERE IdPropuesta = ? AND IdCorrida = ?", tuple(params)))
 
-    statements.append(
-        (
-            "UPDATE dbo.ImputacionPropuestas SET Estado = 'Aprobada', FechaAprobacion = SYSUTCDATETIME(), UsuarioAprobacion = ? WHERE IdCorrida = ?",
-            (usuario, id_corrida),
-        )
-    )
-    execute_write_transaction(statements)
+    filas = execute_write_transaction(statements)
+    if not filas or not filas[0]:
+        raise CorridaNoVigente(f"Corrida {id_corrida} ya no es la vigente para el renglón {id_detalle_compra}")
 
     for c in correcciones or []:
         if c.get("idCultivo") is None and c.get("idCampania") is None:

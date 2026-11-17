@@ -12,6 +12,7 @@ import { RemitosSubNav } from "@/components/remitos/RemitosSubNav";
 import { useToast } from "@/components/ui/Toast";
 import { ResumenImputacion } from "@/components/imputacion/ResumenImputacion";
 import { ParaRevisar } from "@/components/imputacion/ParaRevisar";
+import { ControlCostos } from "@/components/imputacion/ControlCostos";
 
 interface Fraccion {
   idPropuesta: number;
@@ -242,6 +243,7 @@ export default function DocumentosImputacionPage() {
     <main className="mx-auto max-w-none px-6 py-3">
       <PageHeader titulo="Imputación de costos · por documento" ayuda="Cada línea de factura/NC/ND con su clasificación manual y la propuesta del motor desplegable debajo." />
       <RemitosSubNav grupo="costos" />
+      <ControlCostos />
       <ParaRevisar />
 
       <div className="mt-3">
