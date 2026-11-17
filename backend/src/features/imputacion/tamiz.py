@@ -104,7 +104,7 @@ def clasificar_renglon(r: dict, reglas_rubro: dict, reglas_producto: list, conte
         if cultivo and campania:
             return _resultado(r, "Cultivo", None, cultivo, campania, origen="Manual")
         if aprendido:
-            return _por_historia(r, aprendido)
+            return _historia(r, aprendido)
         return _resultado(r, None, cultivo=cultivo, campania=campania, origen="Revision", estado="Pendiente",
                           motivo="El rubro no tiene regla de imputación")
     destino, parte, especial = rr["destino"], rr["idParte"], rr["regla"]
@@ -137,7 +137,7 @@ def clasificar_renglon(r: dict, reglas_rubro: dict, reglas_producto: list, conte
         if cultivo and campania:
             return _resultado(r, destino, parte, cultivo, campania, origen="Manual")
         if not cultivo and aprendido and aprendido.base != "rubro":
-            return _por_historia(r, aprendido)  # p. ej. comercialización de hacienda → Ganadería
+            return _historia(r, aprendido)  # p. ej. comercialización de hacienda → Ganadería
         return _deducir(r, destino, parte, cultivo, campania, contexto)
 
     if destino == "Depende":
@@ -152,14 +152,14 @@ def clasificar_renglon(r: dict, reglas_rubro: dict, reglas_producto: list, conte
             if cultivo and campania:
                 return _resultado(r, "Cultivo", 8, cultivo, campania, origen="Manual")
             if aprendido:
-                return _por_historia(r, aprendido)
+                return _historia(r, aprendido)
             return _resultado(r, None, origen="Revision", estado="Pendiente",
                               motivo="Análisis de laboratorio: ¿de suelo o de hacienda?")
         if especial == "Combustible":
             if cultivo and campania:
                 return _resultado(r, "Cultivo", None, cultivo, campania, origen="Manual")
             if aprendido and aprendido.base != "rubro":
-                return _por_historia(r, aprendido)
+                return _historia(r, aprendido)
             return _resultado(r, "Estructura", motivo="Combustible sin orden de labor propia")
         if especial == "Financiamiento":
             # Sergio 14/11: se clasifica según lo que financió (documento relacionado); si no hay, la historia.
@@ -170,7 +170,7 @@ def clasificar_renglon(r: dict, reglas_rubro: dict, reglas_producto: list, conte
             if cultivo and campania:
                 return _resultado(r, "Cultivo", None, cultivo, campania, origen="Manual")
             if aprendido:
-                return _por_historia(r, aprendido)
+                return _historia(r, aprendido)
             return _resultado(r, None, origen="Revision", estado="Pendiente",
                               motivo="Financiamiento: relacionarlo con lo que financió")
         if especial == "SegunUsoOrden":
@@ -187,13 +187,23 @@ def clasificar_renglon(r: dict, reglas_rubro: dict, reglas_producto: list, conte
     if destino in ("Estructura", "Financiero", "Ganaderia") and cultivo and campania:
         return _resultado(r, "Cultivo", None, cultivo, campania, origen="Manual")
     if aprendido and aprendido.base != "rubro" and aprendido.destino != destino:
-        return _por_historia(r, aprendido)
+        return _historia(r, aprendido)
     return _resultado(r, destino)
 
 
 def _aprendido(r: dict, texto: str, contexto: dict):
     modelo = contexto.get("modelo")
     return modelo.predecir(r.get("idRubro"), texto) if modelo is not None else None
+
+
+def _historia(r: dict, pred) -> dict:
+    """La historia decide sola solo si la misma descripción se imputó siempre igual (100%); si no, sugiere y pregunta
+    (Sergio 17/11/2026: una palabra suelta o un texto parecido no alcanzan para el sistema autónomo)."""
+    if pred.base == "texto" and pred.confianza >= 0.9999:
+        return _por_historia(r, pred)
+    sugerido = ETIQUETAS.get(pred.destino, pred.destino)
+    return _resultado(r, pred.destino, origen="Revision", estado="Pendiente",
+                      motivo=f"¿{sugerido}? Se sugiere por {pred.base} ({round(pred.confianza * 100)}% de los casos): confirmar")
 
 
 def _por_historia(r: dict, pred) -> dict:

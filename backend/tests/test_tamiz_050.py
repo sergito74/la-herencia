@@ -219,8 +219,12 @@ def test_rubro_sin_regla_aprende_de_la_historia():
     m = ap.Modelo()
     for _ in range(5):
         m.observar(999, "PASTAJE", None, None, 2)
-    res = tamiz.clasificar_renglon(_r(1, 999, "Pastaje novillos"), REGLAS, [], {**SIN_CTX, "modelo": m})
-    assert res["destino"] == "Ganaderia" and res["estado"] == "Aprobada"
+    ctx = {**SIN_CTX, "modelo": m}
+    igual = tamiz.clasificar_renglon(_r(1, 999, "Pastaje"), REGLAS, [], ctx)
+    assert igual["destino"] == "Ganaderia" and igual["estado"] == "Aprobada"
+    # Texto parecido (no idéntico): sugiere y pregunta (Sergio 17/11/2026).
+    parecido = tamiz.clasificar_renglon(_r(1, 999, "Pastaje novillos"), REGLAS, [], ctx)
+    assert parecido["destino"] == "Ganaderia" and parecido["estado"] == "Pendiente" and "Ganadería" in parecido["motivo"]
 
 
 def test_centro_por_cultivo_forrajero():
