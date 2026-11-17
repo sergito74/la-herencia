@@ -273,6 +273,8 @@ def calcular_stock(id_producto: int | None = None, excluir_remito: int | None = 
     # dos veces (acá y en la consulta de abajo) porque la migración copia los datos, no
     # mueve/borra las filas heredadas. El marcador es el mismo que usa `migrar_ordenes.py`
     # para su propia idempotencia.
+    # 17/11/2026: la marca sigue valiendo si después se le agregó una nota a la orden migrada (por ejemplo
+    # "#143. 06/11/2026 ..."). Con la igualdad exacta la orden heredada volvía a contarse (DM 40R21, 4.600 kg dos veces).
     filtro_o, params_o = _filtro("od.IdFormulado", id_producto)
     for o in fetch_all(
         f"""
@@ -283,6 +285,8 @@ def calcular_stock(id_producto: int | None = None, excluir_remito: int | None = 
           AND NOT EXISTS (
               SELECT 1 FROM dbo.Ordenes_Trabajo mt
               WHERE mt.Observaciones = 'Migrado de Orden heredada #' + CAST(o.IdOrden AS nvarchar(20))
+                 OR mt.Observaciones LIKE 'Migrado de Orden heredada #' + CAST(o.IdOrden AS nvarchar(20)) + '.%'
+                 OR mt.Observaciones LIKE 'Migrado de Orden heredada #' + CAST(o.IdOrden AS nvarchar(20)) + ' %'
           )
         """,
         params_o,

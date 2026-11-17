@@ -1,10 +1,10 @@
 """Control de integridad de los costos (050, 17/11/2026, tras la revisión de especialistas).
 
-Verifica solo, en segundo plano y una vez por día, las reglas que, si se rompen, hacen que el costo de un cultivo
+Verifica solo, en segundo plano, una vez por día y cada vez que cambia una imputación, las reglas que, si se rompen, hacen que el costo de un cultivo
 salga mal sin que nada avise:
   1. Cada renglón aprobado del esquema nuevo reparte exactamente su importe (al TC del comprobante, más el flete
      que le corresponde) — ni más ni menos.
-  2. Ningún renglón tiene dos imputaciones vigentes (de stock y directa a la vez).
+  2. Ningún renglón tiene dos imputaciones vigentes (de stock y directa a la vez; las reemplazadas no cuentan).
   3. En el resultado de cada cultivo/campaña, ninguna factura entra por dos caminos (reparto del contratista y
      esquema nuevo; imputación manual vieja y esquema nuevo).
   4. Ninguna imputación apunta a un renglón de factura que ya no existe.
@@ -17,13 +17,14 @@ from __future__ import annotations
 import logging
 import threading
 from collections import defaultdict
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta
 
 from src.db.connection import fetch_all
 
 _log = logging.getLogger(__name__)
 _VIGENCIA = timedelta(hours=24)
-_estado: dict = {"fecha": None, "problemas": [], "controlando": False, "error": None}
+_estado: dict = {"fecha": None, "problemas": [], "controlando": False, "error": None, "huella": None}
 _lock = threading.Lock()
 
 
@@ -109,8 +110,8 @@ def _control_dos_imputaciones() -> list[dict]:
             SELECT {_DOC_SQL}, d.[Producto/Servicio] AS producto
             FROM dbo.Det_Compras d JOIN dbo.Compras c ON c.IdDeuda = d.IdCompra
             LEFT JOIN dbo.Contactos co ON co.IdContacto = c.IdContacto
-            WHERE EXISTS (SELECT 1 FROM dbo.ImputacionPropuestas p WHERE p.IdDetalleCompra = d.IdDetalleCompra AND p.Origen = 'Insumo')
-              AND EXISTS (SELECT 1 FROM dbo.ImputacionPropuestas p WHERE p.IdDetalleCompra = d.IdDetalleCompra AND p.Origen = 'Directo')
+            WHERE EXISTS (SELECT 1 FROM dbo.ImputacionPropuestas p WHERE p.IdDetalleCompra = d.IdDetalleCompra AND p.Origen = 'Insumo' AND p.Estado <> 'Reemplazada')
+              AND EXISTS (SELECT 1 FROM dbo.ImputacionPropuestas p WHERE p.IdDetalleCompra = d.IdDetalleCompra AND p.Origen = 'Directo' AND p.Estado <> 'Reemplazada')
             """
         )
     ]
@@ -136,8 +137,11 @@ def _control_resultado() -> list[dict]:
              AND p.FechaCalculo >= '2025-05-12' AND p.IdCultivo IS NOT NULL"""
     )
     dobles: dict[tuple, set] = defaultdict(set)
-    for p in pares:
-        for camino, id_ in dobles_en_resultado(costos.costo_total(p["c"], p["ca"])["lineas"]):
+    # Cada cultivo/campaña es independiente: se calculan en paralelo (cada consulta abre su propia conexión).
+    with ThreadPoolExecutor(max_workers=8) as ex:
+        resultados = list(ex.map(lambda p: costos.costo_total(p["c"], p["ca"])["lineas"], pares))
+    for p, lineas in zip(pares, resultados):
+        for camino, id_ in dobles_en_resultado(lineas):
             dobles[(camino, id_)].add(f"{p['cultivo']} {p['campania']}")
     if not dobles:
         return []
@@ -194,11 +198,24 @@ def controlar() -> list[dict]:
     return problemas
 
 
+def huella() -> tuple:
+    """Barata: cambia cuando se guarda, aprueba o reemplaza una imputación o se reclasifica un renglón."""
+    f = fetch_all(
+        "SELECT (SELECT COUNT(*) FROM dbo.ImputacionPropuestas) AS n, (SELECT MAX(IdPropuesta) FROM dbo.ImputacionPropuestas) AS mx, "
+        "(SELECT MAX(FechaAprobacion) FROM dbo.ImputacionPropuestas) AS ap, "
+        "(SELECT COUNT(*) FROM dbo.ImputacionPropuestas WHERE Estado = 'Reemplazada') AS rz, "
+        "(SELECT COUNT(*) FROM dbo.TamizRenglones) AS nt, (SELECT MAX(FechaCalculo) FROM dbo.TamizRenglones) AS ft, "
+        "(SELECT COUNT(*) FROM dbo.Det_Compras) AS nd, (SELECT MAX(IdDetalleCompra) FROM dbo.Det_Compras) AS md"
+    )[0]
+    return tuple(str(v) for v in f.values())
+
+
 def _correr() -> None:
     try:
+        antes = huella()
         problemas = controlar()
         with _lock:
-            _estado.update(fecha=datetime.now(), problemas=problemas, error=None)
+            _estado.update(fecha=datetime.now(), problemas=problemas, error=None, huella=antes)
     except Exception as exc:
         _log.exception("Control de integridad")
         with _lock:
@@ -221,7 +238,12 @@ def lanzar(forzar: bool = False) -> None:
 
 
 def estado() -> dict:
-    lanzar()
+    # Se vuelve a controlar solo si algo cambió desde el último control (una aprobación, una corrección, una factura).
+    try:
+        cambio = _estado["huella"] is not None and huella() != _estado["huella"]
+    except Exception:  # la huella es solo un atajo; si falla, rige la vigencia diaria
+        cambio = False
+    lanzar(forzar=cambio)
     with _lock:
         return {"fecha": _estado["fecha"].isoformat() if _estado["fecha"] else None, "controlando": _estado["controlando"],
                 "problemas": list(_estado["problemas"]), "error": _estado["error"]}

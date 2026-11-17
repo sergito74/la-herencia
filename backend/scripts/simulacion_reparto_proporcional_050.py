@@ -52,7 +52,9 @@ def aplicaciones() -> dict[int, list[tuple]]:
              ON t.IdDetalleOrden = od.IdDetalleOrden
         WHERE ISNULL(od.[Total Aplicado], 0) > 0
           AND NOT EXISTS (SELECT 1 FROM dbo.Ordenes_Trabajo mt
-                          WHERE mt.Observaciones = 'Migrado de Orden heredada #' + CAST(o.IdOrden AS nvarchar(20)))
+                          WHERE mt.Observaciones = 'Migrado de Orden heredada #' + CAST(o.IdOrden AS nvarchar(20))
+                             OR mt.Observaciones LIKE 'Migrado de Orden heredada #' + CAST(o.IdOrden AS nvarchar(20)) + '.%'
+                             OR mt.Observaciones LIKE 'Migrado de Orden heredada #' + CAST(o.IdOrden AS nvarchar(20)) + ' %')
         """
     ):
         if a["f"] is not None and a["q"]:

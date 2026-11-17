@@ -129,7 +129,8 @@ def migrar(apply: bool) -> None:
 
         for o in ordenes:
             id_orden = o["IdOrden"]
-            cur.execute("SELECT 1 FROM dbo.Ordenes_Trabajo WHERE Observaciones = ?", (_marker(id_orden),))
+            m = _marker(id_orden)
+            cur.execute("SELECT 1 FROM dbo.Ordenes_Trabajo WHERE Observaciones = ? OR Observaciones LIKE ? OR Observaciones LIKE ?", (m, m + ".%", m + " %"))
             if cur.fetchone():
                 ya_migradas += 1
                 continue

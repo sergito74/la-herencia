@@ -160,6 +160,12 @@ def imputar_insumo(id_detalle: int) -> dict:
     if _misma_corrida(id_detalle, fracciones, "Insumo"):
         return {"accion": "sinCambios"}
     id_corrida = repository.guardar_corrida("Insumo", id_detalle, fracciones)
+    # 17/11/2026: las NC/ND siguen el reparto de su factura; si este cambió, se recalculan en el mismo momento
+    # (antes solo se recalculaban cuando el cambio venía por un producto y quedaban con un reparto viejo).
+    fila = fetch_one("SELECT IdCompra AS c FROM dbo.Det_Compras WHERE IdDetalleCompra = ?", (id_detalle,))
+    if fila:
+        for n in notas_de_compra(fila["c"]):
+            imputar_insumo(n)
     return {"accion": "aprobada" if motivo is None else "pendiente", "idCorrida": id_corrida, "motivo": motivo}
 
 
@@ -193,9 +199,8 @@ def calcular_directo(id_detalle: int) -> dict:
     fracciones = fracciones_directo(t, total_renglon(t, 0.0), motor._id_centro_adm_general(), superficies)
     if not fracciones:
         # Financiero / No se imputa: si antes iba a un costo, esa imputación deja de valer.
-        from src.db.connection import execute_write
-        borradas = execute_write("DELETE FROM dbo.ImputacionPropuestas WHERE IdDetalleCompra = ? AND Origen = 'Directo'", (id_detalle,))
-        return {"accion": "anulada" if borradas else "sinCambios"}
+        # Se marca como reemplazada (no se borra: queda quién la aprobó y cuándo).
+        return {"accion": "anulada" if repository.marcar_reemplazada(id_detalle, "Directo") else "sinCambios"}
     if _misma_corrida(id_detalle, fracciones, "Directo"):
         return {"accion": "sinCambios"}
     return {"accion": "aprobada", "idCorrida": repository.guardar_corrida("Directo", id_detalle, fracciones)}
@@ -205,10 +210,8 @@ def imputar_renglon(id_detalle: int) -> dict:
     t = _tamiz(id_detalle)
     if t is None:
         return {"accion": "fueraDeAlcance"}
-    from src.db.connection import execute_write
-
-    otro = "Directo" if t["destino"] == "CultivoStock" else "Insumo"
-    execute_write("DELETE FROM dbo.ImputacionPropuestas WHERE IdDetalleCompra = ? AND Origen = ?", (id_detalle, otro))
+    # La imputación del otro origen deja de valer (VIGENTE_050 ya la ignora); se marca como reemplazada sin borrarla.
+    repository.marcar_reemplazada(id_detalle, "Directo" if t["destino"] == "CultivoStock" else "Insumo")
     return imputar_insumo(id_detalle) if t["destino"] == "CultivoStock" else calcular_directo(id_detalle)
 
 

@@ -372,22 +372,30 @@ def evaluar_nota_insumo(id_detalle_compra: int, total: float) -> tuple[list[dict
     stock) sobre su propio importe. Sin factura base o sin reparto: ([], motivo)."""
     from src.db.connection import fetch_one, fetch_all
     fila = fetch_one("SELECT IdCompra AS c FROM dbo.Det_Compras WHERE IdDetalleCompra = ?", (id_detalle_compra,))
+    # 17/11/2026: una nota puede ajustar renglones de varias facturas (ej. ND de diferencia de cambio de Bayá Casal con
+    # 63 renglones de 7 facturas). Cada renglón sigue a los renglones del mismo producto en sus facturas (de la misma
+    # campaña si los hay); solo si el producto no aparece, sigue el reparto de la factura relacionada.
+    ids_base = repository.renglones_base_de_nota(id_detalle_compra)
     id_factura = repository.factura_de_nota(fila["c"]) if fila else None
-    if not id_factura:
+    if not id_factura and not ids_base:
         return [], "Nota sin factura base en documentos relacionados"
+    if ids_base:
+        donde, clave = f"d.IdDetalleCompra IN ({','.join('?' * len(ids_base))})", tuple(ids_base)
+    else:
+        donde, clave = "d.IdCompra = ?", (id_factura,)
     base = fetch_all(
         """
         SELECT p.IdOrdenTrabajo AS idOrdenTrabajo, p.IdLote AS idLote, p.IdCultivo AS idCultivo, p.IdCampania AS idCampania,
                p.IdCentroCosto AS idCentroCosto, p.EsGanaderia AS esGanaderia, p.IdParte AS idParte, SUM(p.Importe) AS importe
         FROM dbo.ImputacionPropuestas p
         JOIN dbo.Det_Compras d ON d.IdDetalleCompra = p.IdDetalleCompra
-        WHERE d.IdCompra = ? AND p.Origen = 'Insumo' AND p.Estado <> 'RequiereIntervencion'
+        WHERE {donde} AND p.Origen = 'Insumo' AND p.Estado NOT IN ('RequiereIntervencion', 'Reemplazada')
           AND p.IdCorrida = (SELECT TOP 1 q.IdCorrida FROM dbo.ImputacionPropuestas q
-                             WHERE q.IdDetalleCompra = p.IdDetalleCompra AND q.Origen = 'Insumo'
+                             WHERE q.IdDetalleCompra = p.IdDetalleCompra AND q.Origen = 'Insumo' AND q.Estado <> 'Reemplazada'
                              ORDER BY q.FechaCalculo DESC, q.IdPropuesta DESC)
         GROUP BY p.IdOrdenTrabajo, p.IdLote, p.IdCultivo, p.IdCampania, p.IdCentroCosto, p.EsGanaderia, p.IdParte
-        """,
-        (id_factura,),
+        """.format(donde=donde),
+        clave,
     )
     total_base = sum(float(f["importe"] or 0) for f in base)
     if abs(total_base) <= EPS:
@@ -398,10 +406,10 @@ def evaluar_nota_insumo(id_detalle_compra: int, total: float) -> tuple[list[dict
             SELECT de.IdCultivo AS idCultivo, CASE WHEN de.IdCultivo IS NULL OR d.[IdCampaña] = 20 THEN NULL ELSE d.[IdCampaña] END AS idCampania,
                    SUM(ABS(ISNULL(d.Cantidad, 0) * ISNULL(d.[Precio Unitario], 0))) AS importe
             FROM dbo.Det_Compras d LEFT JOIN dbo.DestinoCompras de ON de.IdDestino = d.IdDestino
-            WHERE d.IdCompra = ? AND ISNULL(d.Unidad, '') NOT IN ('ARS', 'USD')
+            WHERE {donde} AND ISNULL(d.Unidad, '') NOT IN ('ARS', 'USD')
             GROUP BY de.IdCultivo, CASE WHEN de.IdCultivo IS NULL OR d.[IdCampaña] = 20 THEN NULL ELSE d.[IdCampaña] END
-            """,
-            (id_factura,),
+            """.format(donde=donde),
+            clave,
         )
         for f in base:
             if f["idCampania"] is None:

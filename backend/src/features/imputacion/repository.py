@@ -10,7 +10,7 @@ from datetime import datetime, timezone
 class CorridaNoVigente(Exception):
     """La corrida que se intenta aprobar ya no es la vigente para su renglón (409)."""
 
-from src.db.connection import execute_write_transaction, fetch_all, fetch_one
+from src.db.connection import execute_write, execute_write_transaction, fetch_all, fetch_one
 
 _COLUMNAS = (
     "p.IdPropuesta AS idPropuesta, p.IdCorrida AS idCorrida, p.Origen AS origen, "
@@ -21,6 +21,28 @@ _COLUMNAS = (
     "p.UsuarioAprobacion AS usuarioAprobacion"
     ", p.Cantidad AS cantidad, p.Unidad AS unidad"
 )
+
+
+# 050 (17/11/2026, re-auditoría): una sola regla de imputación vigente para todas las consultas — la última corrida del
+# mismo renglón y del mismo origen (no reemplazada, con desempate), y para insumos/directos solo la del origen que
+# corresponde a la clasificación del renglón (Insumo ↔ Va a stock; Directo ↔ cultivo, ganadería o gasto general).
+_VIGENTE_SQL = (
+    "p.Estado <> 'Reemplazada' AND p.IdCorrida = (SELECT TOP 1 p2.IdCorrida FROM dbo.ImputacionPropuestas p2 "
+    "WHERE p2.IdDetalleCompra = p.IdDetalleCompra AND p2.Origen = p.Origen AND p2.Estado <> 'Reemplazada' "
+    "ORDER BY p2.FechaCalculo DESC, p2.IdPropuesta DESC) "
+    "AND (p.Origen = 'Contratista' OR NOT EXISTS (SELECT 1 FROM dbo.TamizRenglones tzv WHERE tzv.IdDetalleCompra = p.IdDetalleCompra "
+    "AND tzv.Vigente = 1 AND NOT ((p.Origen = 'Insumo' AND tzv.Destino = 'CultivoStock') "
+    "OR (p.Origen = 'Directo' AND tzv.Destino IN ('Cultivo', 'Ganaderia', 'Estructura')))))"
+)
+
+
+def marcar_reemplazada(id_detalle_compra: int, origen: str) -> int:
+    """050: la imputación de un origen que ya no corresponde queda como historia (Estado 'Reemplazada'), sin borrarse:
+    se conservan la fecha y el usuario de la aprobación. Devuelve las fracciones marcadas."""
+    return execute_write(
+        "UPDATE dbo.ImputacionPropuestas SET Estado = 'Reemplazada' WHERE IdDetalleCompra = ? AND Origen = ? AND Estado <> 'Reemplazada'",
+        (id_detalle_compra, origen),
+    )
 
 
 def guardar_corrida(origen: str, id_detalle_compra: int, fracciones: list[dict]) -> str:
@@ -129,7 +151,7 @@ def aprobar_corrida(id_corrida: str, correcciones: list[dict] | None = None, usu
     origen = origen_de_corrida(id_corrida)
     sigue_vigente = (
         "AND IdCorrida = (SELECT TOP 1 q.IdCorrida FROM dbo.ImputacionPropuestas q WITH (UPDLOCK, HOLDLOCK) "
-        "WHERE q.IdDetalleCompra = ? AND q.Origen = ? ORDER BY q.FechaCalculo DESC, q.IdPropuesta DESC)"
+        "WHERE q.IdDetalleCompra = ? AND q.Origen = ? AND q.Estado <> 'Reemplazada' ORDER BY q.FechaCalculo DESC, q.IdPropuesta DESC)"
     )
     statements: list = [(
         f"UPDATE dbo.ImputacionPropuestas SET Estado = 'Aprobada', FechaAprobacion = SYSUTCDATETIME(), UsuarioAprobacion = ? "
@@ -172,9 +194,7 @@ def pendientes_intervencion(page: int = 1, page_size: int = 50) -> list[dict]:
     offset = max(page - 1, 0) * page_size
     return fetch_all(
         f"SELECT {_COLUMNAS} FROM dbo.ImputacionPropuestas p "
-        "WHERE p.Estado = 'RequiereIntervencion' AND p.IdCorrida = ("
-        "SELECT TOP 1 p2.IdCorrida FROM dbo.ImputacionPropuestas p2 "
-        "WHERE p2.IdDetalleCompra = p.IdDetalleCompra ORDER BY p2.FechaCalculo DESC, p2.IdPropuesta DESC) "
+        f"WHERE p.Estado = 'RequiereIntervencion' AND {_VIGENTE_SQL} "
         "ORDER BY p.FechaCalculo DESC "
         "OFFSET ? ROWS FETCH NEXT ? ROWS ONLY",
         (offset, page_size),
@@ -201,7 +221,7 @@ def corrida_vigente(id_detalle_compra: int, origen: str | None = None) -> str | 
     filtro, params = ("AND Origen = ?", (id_detalle_compra, origen)) if origen else ("AND Origen <> 'Contratista'", (id_detalle_compra,))
     fila = fetch_one(
         "SELECT TOP 1 IdCorrida FROM dbo.ImputacionPropuestas "
-        f"WHERE IdDetalleCompra = ? {filtro} ORDER BY FechaCalculo DESC",
+        f"WHERE IdDetalleCompra = ? {filtro} AND Estado <> 'Reemplazada' ORDER BY FechaCalculo DESC, IdPropuesta DESC",
         params,
     )
     return fila["IdCorrida"] if fila else None
@@ -215,11 +235,7 @@ def listar_propuestas(
     page_size: int = 50,
 ) -> list[dict]:
     """Lista las fracciones de la corrida vigente de cada renglón (no las corridas viejas)."""
-    where = [
-        "p.IdCorrida = ("
-        "SELECT TOP 1 p2.IdCorrida FROM dbo.ImputacionPropuestas p2 "
-        "WHERE p2.IdDetalleCompra = p.IdDetalleCompra ORDER BY p2.FechaCalculo DESC, p2.IdPropuesta DESC)"
-    ]
+    where = [_VIGENTE_SQL]
     params: list = []
     if estado:
         where.append("p.Estado = ?")
@@ -350,7 +366,7 @@ def reparto_contratista_vigente(id_compra: int) -> str | None:
     fila = fetch_one(
         "SELECT TOP 1 IdCorrida, MAX(CASE WHEN IdOrdenTrabajo IS NOT NULL THEN 1 ELSE 0 END) AS conOrden "
         "FROM dbo.ImputacionPropuestas WHERE IdDetalleCompra = ? AND Origen = 'Contratista' AND Estado = 'Aprobada' "
-        "GROUP BY IdCorrida ORDER BY MAX(FechaCalculo) DESC",
+        "GROUP BY IdCorrida ORDER BY MAX(FechaCalculo) DESC, MAX(IdPropuesta) DESC",
         (id_compra,),
     )
     return fila["IdCorrida"] if fila and fila["conOrden"] else None
@@ -374,6 +390,24 @@ def factura_de_nota(id_nc: int) -> int | None:
         (id_nc, id_nc),
     )
     return fila["id"] if fila else None
+
+
+def renglones_base_de_nota(id_detalle_nota: int) -> list[int]:
+    """17/11/2026: renglones de factura que ajusta un renglón de NC/ND — los del mismo producto (o misma descripción)
+    en sus facturas relacionadas; si alguno es de la misma campaña, solo esos. Lista vacía si no hay ninguno."""
+    n = fetch_one(
+        "SELECT IdCompra AS c, ISNULL(IdFormulado, 0) AS f, UPPER(LTRIM(RTRIM([Producto/Servicio]))) AS t, [IdCampaña] AS ca "
+        "FROM dbo.Det_Compras WHERE IdDetalleCompra = ?", (id_detalle_nota,))
+    if not n or not n["t"]:
+        return []
+    cands = fetch_all(
+        "SELECT d.IdDetalleCompra AS id, d.[IdCampaña] AS ca FROM dbo.Det_Compras d JOIN dbo.Compras c ON c.IdDeuda = d.IdCompra "
+        "WHERE c.[Tipo documento] = 'Factura' AND d.IdCompra IN (SELECT IdCompraRelacionada FROM dbo.CompraDocumentosRelacionados WHERE IdCompra = ? "
+        "UNION SELECT IdCompra FROM dbo.CompraDocumentosRelacionados WHERE IdCompraRelacionada = ?) "
+        "AND ((? <> 0 AND d.IdFormulado = ?) OR UPPER(LTRIM(RTRIM(d.[Producto/Servicio]))) = ?)",
+        (n["c"], n["c"], n["f"], n["f"], n["t"]))
+    misma = [x for x in cands if x["ca"] == n["ca"]]
+    return sorted(x["id"] for x in (misma or cands))
 
 
 def ordenes_vinculadas_a_compra(id_compra: int) -> list[int]:
@@ -414,10 +448,6 @@ def detalles_compra_con_corrida_por_producto(id_producto: int) -> list[int]:
     return [f["idDetalleCompra"] for f in filas]
 
 
-_VIGENTE_SQL = (
-    "p.IdCorrida = (SELECT TOP 1 p2.IdCorrida FROM dbo.ImputacionPropuestas p2 "
-    "WHERE p2.IdDetalleCompra = p.IdDetalleCompra ORDER BY p2.FechaCalculo DESC, p2.IdPropuesta DESC)"
-)
 
 
 # Alcance del esquema nuevo (050 R-01): cargada después del corte o renglón marcado en ImputacionAlcance.
@@ -605,8 +635,7 @@ def lineas_con_imputacion_batch(ids_compra: tuple[int, ...]) -> dict[int, list[d
         LEFT JOIN dbo.Campañas ca ON ca.IdCampaña = p.IdCampania
         LEFT JOIN dbo.[Centro de costos] cc ON cc.IdCentro = p.IdCentroCosto
         WHERE p.IdDetalleCompra IN ({marcas_linea}) AND p.Origen <> 'Contratista'
-          AND p.IdCorrida = (SELECT TOP 1 p2.IdCorrida FROM dbo.ImputacionPropuestas p2
-                              WHERE p2.IdDetalleCompra = p.IdDetalleCompra ORDER BY p2.FechaCalculo DESC, p2.IdPropuesta DESC)
+          AND {_VIGENTE_SQL}
         ORDER BY p.IdDetalleCompra, p.IdPropuesta
         """,
         ids_linea,
@@ -661,17 +690,13 @@ def costo_aprobado_por_campania(id_campania: int) -> dict:
     """Suma `Importe` de fracciones `Aprobada` de esta campaña, y cuenta cuánto
     sigue `Pendiente`/`RequiereIntervencion` (US5, FR-015)."""
     aprobado = fetch_one(
-        "SELECT SUM(Importe) AS total FROM dbo.ImputacionPropuestas "
-        "WHERE IdCampania = ? AND Estado = 'Aprobada' AND IdCorrida = ("
-        "SELECT TOP 1 p2.IdCorrida FROM dbo.ImputacionPropuestas p2 "
-        "WHERE p2.IdDetalleCompra = dbo.ImputacionPropuestas.IdDetalleCompra ORDER BY p2.FechaCalculo DESC, p2.IdPropuesta DESC)",
+        "SELECT SUM(p.Importe) AS total FROM dbo.ImputacionPropuestas p "
+        f"WHERE p.IdCampania = ? AND p.Estado = 'Aprobada' AND {_VIGENTE_SQL}",
         (id_campania,),
     )
     pendiente = fetch_one(
-        "SELECT SUM(Importe) AS total FROM dbo.ImputacionPropuestas "
-        "WHERE IdCampania = ? AND Estado IN ('Pendiente', 'RequiereIntervencion') AND IdCorrida = ("
-        "SELECT TOP 1 p2.IdCorrida FROM dbo.ImputacionPropuestas p2 "
-        "WHERE p2.IdDetalleCompra = dbo.ImputacionPropuestas.IdDetalleCompra ORDER BY p2.FechaCalculo DESC, p2.IdPropuesta DESC)",
+        "SELECT SUM(p.Importe) AS total FROM dbo.ImputacionPropuestas p "
+        f"WHERE p.IdCampania = ? AND p.Estado IN ('Pendiente', 'RequiereIntervencion') AND {_VIGENTE_SQL}",
         (id_campania,),
     )
     return {

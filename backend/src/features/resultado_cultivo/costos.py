@@ -19,7 +19,7 @@ _FUERA = ",".join("?" * len(RUBROS_FUERA_REPARTO))
 _REPARTO_VIGENTE = """(
     SELECT x.IdDetalleCompra AS idCompra, x.IdCorrida AS idCorrida FROM (
         SELECT IdDetalleCompra, IdCorrida, MAX(CASE WHEN IdOrdenTrabajo IS NOT NULL THEN 1 ELSE 0 END) AS conOrden,
-               ROW_NUMBER() OVER (PARTITION BY IdDetalleCompra ORDER BY MAX(FechaCalculo) DESC) AS rn
+               ROW_NUMBER() OVER (PARTITION BY IdDetalleCompra ORDER BY MAX(FechaCalculo) DESC, MAX(IdPropuesta) DESC) AS rn
         FROM dbo.ImputacionPropuestas WHERE Origen = 'Contratista' AND Estado = 'Aprobada'
         GROUP BY IdDetalleCompra, IdCorrida) x
     WHERE x.rn = 1 AND x.conOrden = 1)"""
@@ -29,7 +29,7 @@ _EPS = 1e-6
 # 050 (17/11/2026, revisión de especialistas): una sola imputación vigente por renglón, la del origen que corresponde
 # a su clasificación (Insumo ↔ Va a stock; Directo ↔ a cultivo, ganadería o gasto general). Desempate determinista.
 VIGENTE_050 = """p.IdCorrida = (SELECT TOP 1 p2.IdCorrida FROM dbo.ImputacionPropuestas p2
-                             WHERE p2.IdDetalleCompra = p.IdDetalleCompra AND p2.Origen = p.Origen
+                             WHERE p2.IdDetalleCompra = p.IdDetalleCompra AND p2.Origen = p.Origen AND p2.Estado <> 'Reemplazada'
                              ORDER BY p2.FechaCalculo DESC, p2.IdPropuesta DESC)
           AND ((p.Origen = 'Insumo' AND tz.Destino = 'CultivoStock')
                OR (p.Origen = 'Directo' AND tz.Destino IN ('Cultivo', 'Ganaderia', 'Estructura')))"""
@@ -48,12 +48,20 @@ def esquema_050_activo() -> bool:
 _NO_EN_ALCANCE = " AND NOT EXISTS (SELECT 1 FROM dbo.TamizRenglones tz WHERE tz.IdDetalleCompra = c.IdDetalleCompra AND tz.Vigente = 1)"
 
 
-# 050 (17/11/2026): factura anterior al corte cuya mercadería entró por remito: en las campañas del esquema nuevo su
-# costo llega por el consumo de las órdenes (FIFO), así que la imputación manual de la factura no se suma.
+# 050 (17/11/2026): factura anterior al corte cuya mercadería entró por remito: su costo llega por el consumo de las
+# órdenes (FIFO), así que la imputación manual de la factura no se suma. Rige desde las campañas 2023 (Sergio
+# 17/11/2026, re-auditoría: el doble conteo de 2023/24 y 2024/25 también se corrige). Solo cuenta un remito de hasta
+# un año antes de la factura: los vínculos heredados de Access con remitos viejos (ej. semilla de sorgo 2023 contra
+# un remito de 2019) no se consumen en la campaña de la factura y su costo se perdería.
 _PASO_POR_STOCK = """
-          AND NOT (EXISTS (SELECT 1 FROM dbo.tblRemitoCompra trc WHERE trc.IdDetalleCompra = c.IdDetalleCompra)
+          AND NOT (EXISTS (SELECT 1 FROM dbo.tblRemitoCompra trc
+                           JOIN dbo.Remitos_Detalles rdx ON rdx.IdDetalleRemito = trc.IdDetalleRemito
+                           JOIN dbo.Remitos rx ON rx.IdRemito = rdx.IdRemito
+                           JOIN dbo.Det_Compras dcx ON dcx.IdDetalleCompra = trc.IdDetalleCompra
+                           JOIN dbo.Compras cpx ON cpx.IdDeuda = dcx.IdCompra
+                           WHERE trc.IdDetalleCompra = c.IdDetalleCompra AND rx.Fecha >= DATEADD(day, -365, cpx.Fecha))
                    AND EXISTS (SELECT 1 FROM dbo.[Campañas] cx WHERE cx.[IdCampaña] = c.IdCampaña
-                               AND (cx.[Campaña] >= '2025/2026' OR (LEN(cx.[Campaña]) = 4 AND cx.[Campaña] >= '2025'))))"""
+                               AND cx.[Campaña] LIKE '[12][0-9][0-9][0-9]%' AND LEFT(cx.[Campaña], 4) >= '2023'))"""
 
 
 def costos_heredados(id_cultivo: int, id_campania: int) -> list[dict]:

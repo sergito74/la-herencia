@@ -297,7 +297,7 @@ def para_revisar() -> list[dict]:
         WHERE tz.Vigente = 1 AND (tz.Estado = 'Pendiente' OR EXISTS (
             SELECT 1 FROM dbo.ImputacionPropuestas p WHERE p.IdDetalleCompra = d.IdDetalleCompra AND p.Estado = 'Pendiente'
               AND p.IdCorrida = (SELECT TOP 1 p2.IdCorrida FROM dbo.ImputacionPropuestas p2
-                                 WHERE p2.IdDetalleCompra = p.IdDetalleCompra AND p2.Origen = p.Origen ORDER BY p2.FechaCalculo DESC, p2.IdPropuesta DESC)))
+                                 WHERE p2.IdDetalleCompra = p.IdDetalleCompra AND p2.Origen = p.Origen AND p2.Estado <> 'Reemplazada' ORDER BY p2.FechaCalculo DESC, p2.IdPropuesta DESC)))
         ORDER BY c.Fecha DESC, c.IdDeuda, d.IdDetalleCompra
         """
     )

@@ -115,7 +115,7 @@ def test_reparto_por_ordenes_se_muestra_como_linea_propia(monkeypatch):
         if "FROM dbo.Det_Compras dc" in sql:
             return [{"idCompra": 1, "idDetalleCompra": 100, "producto": "Has. Siembra", "cantidad": 10.0, "unidad": None,
                      "precioUnitario": 1.0, "campaniaManual": None, "centroCostoManual": None, "rubroManual": "Siembra"}]
-        if "p.Origen = 'Contratista'" in sql:
+        if "p.Origen = 'Contratista' AND p.IdOrdenTrabajo" in sql:
             return [{"idCompra": 1, "idPropuesta": 9, "idOrdenTrabajo": 131, "lote": "7A", "importe": 50.0, "estado": "Aprobada"}]
         return []
 
