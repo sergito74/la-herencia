@@ -40,6 +40,16 @@ def _a_pesos(importe: float, moneda: str | None, tc: float | None) -> float:
 
 def flete_por_renglon() -> dict[int, float]:
     """Flete atribuido (en pesos) a cada renglón de insumo en alcance: {IdDetalleCompra: pesos}."""
+    return _repartir_fletes()[0]
+
+
+def fletes_sin_destino() -> list[dict]:
+    """17/11/2026: renglones de flete de insumos sin ningún insumo aprobado en su factura ni en las relacionadas: su
+    importe no llega a ningún costo (ni a stock)."""
+    return _repartir_fletes()[1]
+
+
+def _repartir_fletes() -> tuple[dict[int, float], list[dict]]:
     filas = fetch_all(
         """
         SELECT d.IdDetalleCompra AS id, d.IdCompra AS idCompra, ISNULL(d.Cantidad, 0) * ISNULL(d.[Precio Unitario], 0) AS importe,
@@ -54,7 +64,7 @@ def flete_por_renglon() -> dict[int, float]:
         """
     )
     if not filas:
-        return {}
+        return {}, []
     insumos_por_compra: dict[int, dict[int, float]] = defaultdict(dict)
     fletes: list[dict] = []
     for f in filas:
@@ -64,20 +74,23 @@ def flete_por_renglon() -> dict[int, float]:
         elif f["idProducto"]:
             insumos_por_compra[f["idCompra"]][f["id"]] = pesos
     if not fletes:
-        return {}
+        return {}, []
     relacionadas: dict[int, set[int]] = defaultdict(set)
     for r in fetch_all("SELECT IdCompra AS a, IdCompraRelacionada AS b FROM dbo.CompraDocumentosRelacionados"):
         relacionadas[r["a"]].add(r["b"])
         relacionadas[r["b"]].add(r["a"])
     out: dict[int, float] = defaultdict(float)
+    sin_destino: list[dict] = []
     for fl in fletes:
         destino = dict(insumos_por_compra.get(fl["idCompra"], {}))
         if not destino:
             for otra in relacionadas.get(fl["idCompra"], ()):
                 destino.update(insumos_por_compra.get(otra, {}))
+        if not destino and abs(fl["pesos"]) > 0.005:
+            sin_destino.append(fl)
         for id_, monto in repartir_por_importe(destino, fl["pesos"]).items():
             out[id_] += monto
-    return dict(out)
+    return dict(out), sin_destino
 
 
 def renglones_sin_remito(id_producto: int | None = None) -> list[dict]:

@@ -462,6 +462,40 @@ def _control_provisorios() -> list[dict]:
     return out
 
 
+def _control_unidades() -> list[dict]:
+    """Entrada de stock (remito o factura sin remito) desde mayo de 2025 en una unidad sin equivalencia con la unidad
+    base del producto: se toma 1 y la cantidad o el costo unitario salen mal (ej. 1,5 TONELADA contada como 1,5 kg)."""
+    from src.features.remitos import capas_factura
+    from src.features.remitos.stock_datos import equivalencias, factor_a_base, unidades_base
+    from src.features.imputacion.tamiz_repository import nombre_producto
+
+    bases, equiv = unidades_base(), equivalencias()
+    entradas = [(r["idProducto"], r["unidad"], f"factura {r['nroDocumento']}") for r in capas_factura.renglones_sin_remito()]
+    entradas += [(f["p"], f["u"], f"remito {f['n']}") for f in fetch_all(
+        "SELECT rd.IdFormulado AS p, rd.[Unidad Medida] AS u, r.NroRemito AS n FROM dbo.Remitos_Detalles rd "
+        "JOIN dbo.Remitos r ON r.IdRemito = rd.IdRemito LEFT JOIN dbo.Remitos_Extra e ON e.IdRemito = r.IdRemito "
+        "WHERE ISNULL(e.Anulado, 0) = 0 AND r.Fecha >= '2025-05-12' AND rd.IdFormulado IS NOT NULL")]
+    out = []
+    for pid, unidad, doc in entradas:
+        if factor_a_base(pid, unidad, bases, equiv)[1]:
+            out.append({"tipo": "Unidad sin equivalencia en el stock", "idCompra": None, "documento": doc,
+                        "detalle": f"{nombre_producto(pid)}: viene en {unidad} y el stock se lleva en {bases.get(pid)}; se toma 1 a 1"})
+    return out
+
+
+def _control_fletes() -> list[dict]:
+    """Flete de insumos sin insumo aprobado al que sumarse: su importe no entra a ningún costo."""
+    from src.features.remitos import capas_factura
+
+    out = []
+    for fl in capas_factura.fletes_sin_destino():
+        f = fetch_all(f"SELECT {_DOC_SQL} FROM dbo.Compras c LEFT JOIN dbo.Contactos co ON co.IdContacto = c.IdContacto WHERE c.IdDeuda = ?",
+                      (fl["idCompra"],))
+        out.append({"tipo": "Flete de insumos que no llega a ningún costo", "idCompra": fl["idCompra"], "documento": _doc(f[0]) if f else "",
+                    "detalle": f"$ {fl['pesos']:,.2f}: la factura (y sus relacionadas) no tiene insumos aprobados para sumarle el flete"})
+    return out
+
+
 def _control_listado() -> list[dict]:
     from src.features.imputacion import listado_estudio as L
 
@@ -528,7 +562,7 @@ def controlar() -> list[dict]:
     for control in (_control_recalculos, _control_dos_imputaciones, _control_huerfanas, _control_renglones,
                     _control_distribucion, _control_resultado, _control_fuera_del_plan, _control_dolares,
                     _control_ingresos_en_costo, _control_rubros_faltantes, _control_costo_por_hectarea,
-                    _control_cerradas, _control_provisorios, _control_verificacion_externa, _control_listado):
+                    _control_cerradas, _control_provisorios, _control_unidades, _control_fletes, _control_verificacion_externa, _control_listado):
         try:
             problemas += control()
         except Exception as exc:  # un control que falla se informa, no tapa a los demás

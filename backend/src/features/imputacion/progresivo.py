@@ -279,11 +279,28 @@ def recalcular_detalle(id_detalle: int) -> None:
             imputar_renglon(n)
 
 
+_LOCKS: dict[int, "threading.Lock"] = {}
+_LOCKS_GUARD = __import__("threading").Lock()
+
+
+def _lock_producto(pid: int):
+    """17/11/2026: dos guardados simultáneos del mismo producto no recalculan a la vez (podían cruzar corridas)."""
+    import threading
+    with _LOCKS_GUARD:
+        return _LOCKS.setdefault(pid, threading.Lock())
+
+
 def recalcular_productos(ids_producto) -> None:
     """Cambió el stock de estos productos (orden, remito, recuento): se reimputan todos sus renglones en alcance y
     sus notas. Lo anterior a la activación no se recalcula (no se corrige la historia)."""
+    for pid in sorted({int(p) for p in ids_producto if p}):
+        with _lock_producto(pid):
+            _recalcular_producto(pid)
+
+
+def _recalcular_producto(pid: int) -> None:
     compras = set()
-    for pid in {int(p) for p in ids_producto if p}:
+    for pid in (pid,):
         en_alcance = detalles_en_alcance_por_producto(pid)
         for d in en_alcance:
             imputar_insumo(d)

@@ -31,7 +31,11 @@ def _f(v) -> float:
 # a un producto puntual (a diferencia de `Producto_Equivalencias`, que sí lo está,
 # por ejemplo un bidón de 20 litros de un producto concreto). Hoy sólo toneladas:
 # los fertilizantes a veces llegan en TN y siempre se llevan en KGS.
-_CONVERSIONES_UNIVERSALES: dict[tuple[str, str], float] = {("TN", "KGS"): 1000.0}
+# 17/11/2026: las facturas escriben la tonelada de varias formas ("TONELADA" en Guazzaroni 0037-00004338 contaba
+# 1,5 t como 1,5 kg).
+_CONVERSIONES_UNIVERSALES: dict[tuple[str, str], float] = {
+    (t, "KGS"): 1000.0 for t in ("TN", "TON", "TONS", "TNS", "TONELADA", "TONELADAS", "T")
+}
 
 
 def fecha(v):
