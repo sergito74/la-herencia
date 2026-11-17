@@ -29,7 +29,7 @@ def test_columnas_en_el_orden_actual_mas_las_dos_nuevas():
     assert L.COLUMNAS[:14] == ["Fecha", "Razon Social", "Tipo documento", "Nro Documento", "Moneda", "Tipo de Cambio",
                                "Ajusta Tipo Cambio", "Cantidad", "Producto/Servicio", "Centro de costos", "Rubro",
                                "Destino", "Campaña", "Total"]
-    assert L.COLUMNAS[14:] == ["Importe en pesos", "Parte del costo"]
+    assert L.COLUMNAS[14:] == ["Importe en pesos"]
 
 
 def test_fuera_de_alcance_una_fila_como_hoy(monkeypatch):
@@ -74,3 +74,11 @@ def test_escribe_hoja_y_formatos(tmp_path):
     ws = openpyxl.load_workbook(destino).worksheets[0]
     assert ws.title == "Cns_Imputacion_Compras" and ws.freeze_panes == "A2"
     assert ws["A2"].number_format == "d-mmm-yy" and [c.value for c in ws[1]] == L.COLUMNAS
+
+
+def test_total_en_dolares_con_formato_us(tmp_path):
+    destino = tmp_path / "listado.xlsx"
+    L.escribir([L._fila(_base(moneda="Dolares", tc=1000), 10.0, 1, "x", "y", "z", "w"),
+                L._fila(_base(), 5.0, 1, "x", "y", "z", "w")], destino)
+    ws = openpyxl.load_workbook(destino).worksheets[0]
+    assert "us$" in ws["N2"].number_format and "us$" not in ws["N3"].number_format and ws.max_column == 15

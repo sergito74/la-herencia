@@ -1,7 +1,7 @@
 """Listado de imputación para el Estudio contable (050 US8, T043).
 
 Reemplaza a pedido "Listado General Compras - Imputacion (1-9-2015 en adelante).xlsx" (carpeta Compras de Dropbox):
-- las 14 columnas de siempre, en el mismo orden y formato, más "Importe en pesos" y "Parte del costo";
+- las 14 columnas de siempre, en el mismo orden y formato, más "Importe en pesos";
 - renglón fuera del esquema nuevo: una fila, como hoy;
 - renglón en el esquema nuevo con imputación aprobada: una fila por cultivo/campaña (y "En stock" para lo que no se
   usó todavía); los totales de esas filas suman el total del renglón al centavo. El flete sigue a sus insumos.
@@ -26,11 +26,12 @@ HOJA = "Cns_Imputacion_Compras"
 
 COLUMNAS = ["Fecha", "Razon Social", "Tipo documento", "Nro Documento", "Moneda", "Tipo de Cambio",
             "Ajusta Tipo Cambio", "Cantidad", "Producto/Servicio", "Centro de costos", "Rubro", "Destino",
-            "Campaña", "Total", "Importe en pesos", "Parte del costo"]
-_ANCHOS = [10.8, 36.9, 20.1, 19.8, 12.8, 19.6, 22.9, 13.3, 52.8, 20.6, 28.6, 24.9, 13.8, 15.3, 18.0, 22.0]
+            "Campaña", "Total", "Importe en pesos"]
+_ANCHOS = [10.8, 36.9, 20.1, 19.8, 12.8, 19.6, 22.9, 13.3, 52.8, 20.6, 28.6, 24.9, 13.8, 15.3, 18.0]
 _FMT_FECHA = "d-mmm-yy"
 _FMT_TC = '"$"\\ #.##000;\\-"$"\\ #.##000'
 _FMT_TOTAL = '"$"\\ #,##0.00;"$"\\-#,##0.00'
+_FMT_TOTAL_USD = '"us$"\\ #,##0.00;"us$"\\-#,##0.00'
 
 
 class ListadoAbierto(Exception):
@@ -131,7 +132,7 @@ def _fila(base: dict, total: float, cantidad, centro, destino, campania, parte) 
     fecha = base["fecha"].date() if hasattr(base["fecha"], "date") else base["fecha"]
     return [fecha, base["razonSocial"], base["tipoDocumento"], base["nroDocumento"], base["moneda"], base["tc"],
             bool(base["ajustaTc"]), _cant(cantidad), base["producto"], centro, base["rubro"], destino, campania,
-            total, pesos, parte]
+            total, pesos]
 
 
 def armar_filas() -> list[list]:
@@ -196,10 +197,10 @@ def escribir(filas: list[list], destino: Path) -> None:
     for fila in ws.iter_rows(min_row=2):
         fila[0].number_format = _FMT_FECHA
         fila[5].number_format = _FMT_TC
-        fila[13].number_format = _FMT_TOTAL
+        fila[13].number_format = _FMT_TOTAL_USD if fila[4].value == "Dolares" else _FMT_TOTAL
         fila[14].number_format = _FMT_TOTAL
     ws.freeze_panes = "A2"
-    ws.auto_filter.ref = f"A1:P{len(filas) + 1}"
+    ws.auto_filter.ref = f"A1:O{len(filas) + 1}"
     fd, tmp = tempfile.mkstemp(suffix=".xlsx", dir=str(destino.parent), prefix="~listado-")
     os.close(fd)
     try:
