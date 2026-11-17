@@ -170,7 +170,7 @@
   - escribe primero a un archivo temporal y lo renombra sobre `C:\Users\Sergio\Dropbox\Giamigli de Bolivar SA\Compras\Listado General Compras - Imputacion (1-9-2015 en adelante).xlsx`;
   - incluye los registros desde el 01/09/2015.
 - [X] T044 [US8] Agregar el endpoint `POST /listado-estudio/generar` y el botón en frontend/src/app/imputacion. — Hecho 16/11/2026: botón 'Generar listado para el Estudio' en Costos → Automática.
-- [X] T045 [US8] Antes del primer reemplazo, comparar el resultado contra el archivo actual: las filas fuera de alcance tienen que ser idénticas. Informar las diferencias a Sergio. — Comparado 16/11/2026: comparacion-listado-estudio-20261116.xlsx. El reemplazo del archivo de Dropbox espera el OK de Sergio.
+- [X] T045 [US8] Antes del primer reemplazo, comparar el resultado contra el archivo actual: las filas fuera de alcance tienen que ser idénticas. Informar las diferencias a Sergio. — Comparado 16/11/2026: comparacion-listado-estudio-20261116.xlsx. Revisado contra los PDF; Dropbox reemplazado el 17/11/2026 con OK de Sergio (sin 'Parte del costo', Total en us$ para dólares; anterior en backups/).
 
 ## Phase 10: US10 — Control de cierre (P3)
 
