@@ -34,6 +34,10 @@ PORTAL_ARCA = 15
 NOTAS_CREDITO = {3, 8, 13, 53, 113, 203, 208, 213}
 # Comprobantes de ARCA ya revisados con Sergio que no se cargan (CUIT, punto de venta, número): no se vuelven a avisar.
 REVISADOS = {
+    # Breccia, factura C 0002-23 del 11/05/2026 ($ 120.000): factura "prestada" que mandó el electricista Mario Piccirilli
+    # para justificar el arreglo de la bomba de agua ($ 280.000, pagado por Sergio desde el ICBC). El gasto ya está como
+    # compra sin comprobante de Piccirilli: NO se carga (Sergio, 21/10 y 17/11/2026).
+    ("20218532994", 2, 23),
     ("27121593403", 2, 480),      # Cordero, Claudia Hilda, recibo C del 11/12/2024: sin copia ni dato de qué fue (17/11/2026)
 }
 
