@@ -1,7 +1,7 @@
 """Tamiz por rubro de los renglones de compra (050, research R-05/R-06).
 
 Cada renglón decide solo, sin heredar del proveedor ni de otro renglón. Prioridad:
-regla por producto > imputación manual > regla por rubro > revisión. En los insumos de stock la
+imputación manual (cultivo y campaña) > regla por producto > regla por rubro > revisión. En los insumos de stock la
 imputación manual queda solo como referencia (049 FR-002): manda lo que aplican las órdenes.
 
 `clasificar_renglon` es pura (testeable sin base); `tamizar_compra` lee, clasifica y guarda.
@@ -84,7 +84,9 @@ def clasificar_renglon(r: dict, reglas_rubro: dict, reglas_producto: list, conte
     if "REDONDEO" in normalizar(r.get("producto")):
         return _resultado(r, "NoImputa", motivo="Redondeo del comprobante")
 
-    regla = _regla_producto(r, reglas_producto)
+    # Lo cargado en la factura (cultivo y campaña) manda sobre la regla aprendida del producto: la regla se usa
+    # solo cuando la factura no trae el cultivo (Sergio 17/11/2026).
+    regla = None if (cultivo and campania) else _regla_producto(r, reglas_producto)
     if regla is not None:
         destino = regla["destino"]
         if destino == "Cultivo":
