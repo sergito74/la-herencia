@@ -538,6 +538,46 @@ def _control_dosis() -> list[dict]:
     return out
 
 
+def _remito_sin_costo_en_factura(nro_remito: str, producto: str) -> bool:
+    """El costo de ese insumo no está en ningún cultivo: la factura del remito no aparece o dejó el producto en
+    "Stock" (si la factura lo imputó a mano a un cultivo, el costo ya está ahí)."""
+    r = fetch_all("SELECT TOP 1 NroFactura AS nf, COALESCE(IdContacto, IdProveedor) AS prov FROM dbo.Remitos WHERE NroRemito = ?", (nro_remito,))
+    if not r or not r[0]["nf"]:
+        return True
+    clave = re.sub(r"[^A-Z]", "", (producto or "").upper())[:5]
+    lineas = []
+    for nf in [x.strip() for x in re.split(r"[/,;]", r[0]["nf"]) if x.strip()]:
+        lineas += fetch_all(
+            "SELECT d.[Producto/Servicio] AS t, de.Destino AS destino FROM dbo.Det_Compras d JOIN dbo.Compras c ON c.IdDeuda = d.IdCompra "
+            "LEFT JOIN dbo.DestinoCompras de ON de.IdDestino = d.IdDestino "
+            "WHERE c.IdContacto = ? AND REPLACE(c.[Nro Documento], ' ', '') = REPLACE(?, ' ', '')", (r[0]["prov"], nf))
+    mias = [l for l in lineas if clave and clave in re.sub(r"[^A-Z]", "", (l["t"] or "").upper())]
+    return not mias or any((l["destino"] or "") == "Stock" for l in mias)
+
+
+def _control_consumos_sin_costo() -> list[dict]:
+    """Orden de una campaña abierta que consumió un remito sin factura vinculada (ni precio del proveedor): ese
+    insumo vale $0 en el cultivo. Si la factura existe, hay que vincular el remito (ej. metolaclor de 2023 en "Stock").
+    La semilla propia ("SIN REMITO") no se avisa."""
+    from datetime import date
+    from src.features.resultado_cultivo import costos
+
+    out, vistos = [], set()
+    for p, _ in _datos_resultado():
+        if campania_cerrada(p["campania"], date.today()):
+            continue
+        for x in costos.consumos_sin_factura(p["c"], p["ca"]):
+            clave = (x["remito"], x["producto"])
+            if (x.get("precioProveedor") or x["remito"] in ("SIN REMITO", "sin remito") or clave in vistos
+                    or x["cantidad"] < 0.01 or not _remito_sin_costo_en_factura(x["remito"], x["producto"])):
+                continue
+            vistos.add(clave)
+            out.append({"tipo": "Insumo consumido a $ 0 (remito sin factura vinculada)", "idCompra": None,
+                        "documento": f"remito {x['remito']}",
+                        "detalle": f"{x['producto']}: {x['cantidad']:,.2f} en {p['cultivo']} {p['campania']} (orden {', '.join(map(str, x['ordenes']))}): vincular el remito a su factura"})
+    return out
+
+
 def _control_listado() -> list[dict]:
     from src.features.imputacion import listado_estudio as L
 
@@ -604,7 +644,7 @@ def controlar() -> list[dict]:
     for control in (_control_recalculos, _control_dos_imputaciones, _control_huerfanas, _control_renglones,
                     _control_distribucion, _control_resultado, _control_fuera_del_plan, _control_dolares,
                     _control_ingresos_en_costo, _control_rubros_faltantes, _control_costo_por_hectarea,
-                    _control_cerradas, _control_provisorios, _control_unidades, _control_fletes, _control_dosis, _control_verificacion_externa, _control_listado):
+                    _control_cerradas, _control_provisorios, _control_unidades, _control_fletes, _control_dosis, _control_consumos_sin_costo, _control_verificacion_externa, _control_listado):
         try:
             problemas += control()
         except Exception as exc:  # un control que falla se informa, no tapa a los demás
