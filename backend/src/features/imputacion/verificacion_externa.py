@@ -71,6 +71,11 @@ def cruzar(arca: list[dict], sistema: list[dict], en_costo: set[int]) -> list[di
         propios = [w for w in cands if w["cuit"] == a["cuit"]] or (cands if len(cands) == 1 else [])
         doc = f"{a['emisor']} · {a['pv']:04d}-{a['nro']:08d} del {a['fecha'][8:10]}/{a['fecha'][5:7]}/{a['fecha'][:4]}"
         if not propios:
+            # Sin número (pólizas, numeración propia): mismo CUIT, mismo total y fecha cercana.
+            f_a = date.fromisoformat(a["fecha"])
+            propios = [w for w in sistema if w["cuit"] == a["cuit"] and abs(abs(float(w["tot"] or 0)) - abs(a["total"])) <= 1.0
+                       and w.get("fecha") is not None and abs((w["fecha"].date() if hasattr(w["fecha"], "date") else w["fecha"]) - f_a).days <= 7]
+        if not propios:
             if abs(a["total"]) > 0.005:
                 out.append({"tipo": "Comprobante de ARCA que no está cargado", "documento": doc,
                             "detalle": f"total {a['moneda']} {a['total']:,.2f}"})
@@ -151,7 +156,7 @@ def correr() -> dict:
         hasta = date.today()
         arca = _arca(hasta - timedelta(days=120), hasta)
         sistema = fetch_all(
-            "SELECT c.IdDeuda AS idCompra, c.[Nro Documento] AS nro, c.Moneda AS moneda, v.ImporteDocumento AS tot, "
+            "SELECT c.IdDeuda AS idCompra, c.[Nro Documento] AS nro, c.Moneda AS moneda, v.ImporteDocumento AS tot, c.Fecha AS fecha, "
             "REPLACE(REPLACE(ISNULL(co.[CUIT/CUIL], ''), '-', ''), ' ', '') AS cuit FROM dbo.Compras c "
             "JOIN dbo.vw_Compras_ImporteDocumento v ON v.IdDeuda = c.IdDeuda LEFT JOIN dbo.Contactos co ON co.IdContacto = c.IdContacto "
             "WHERE c.Fecha >= ?", (hasta - timedelta(days=200),))
