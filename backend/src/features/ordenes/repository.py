@@ -56,6 +56,24 @@ def _unidad_base(id_producto: int) -> str:
     return calcular_stock(id_producto).get(id_producto, {}).get("unidadBase") or ""
 
 
+def _validar_unidades(renglones: list[dict]) -> None:
+    """17/11/2026: el consumo de la orden se descuenta del stock en la unidad base del producto, sin convertir (la
+    distribución por lote está en la misma unidad). Una orden en otra unidad (kilos de un producto que se lleva en
+    bolsas) daba un costo equivocado sin aviso: se rechaza."""
+    from src.features.remitos.stock_datos import unidades_base
+
+    bases = unidades_base()
+    errores = []
+    for i, r in enumerate(renglones, start=1):
+        base = (bases.get(r["idProducto"]) or "").strip().upper()
+        unidad = (r.get("unidad") or "").strip().upper()
+        if base and unidad and unidad != base:
+            errores.append(f"Renglón {i}: {_nombre_producto(r['idProducto'])} se lleva en {base} en el stock; "
+                           f"cargá la cantidad en {base} (no en {unidad}).")
+    if errores:
+        raise ValueError(errores)
+
+
 def _nombre_producto(id_producto: int) -> str:
     fila = fetch_one("SELECT Producto AS nombre FROM dbo.vw_ProductosBase WHERE IdProducto = ?", (id_producto,))
     return fila["nombre"] if fila else f"Producto {id_producto}"
@@ -138,6 +156,7 @@ def _repartir_y_validar(renglones: list[dict]) -> tuple[list[dict], dict[int, fl
 def crear_orden(datos: dict, confirmar: bool = False) -> dict:
     sin_cultivo = datos.get("idRubro") is not None or datos.get("idCentroCostos") is not None
     renglones, consumo = _repartir_y_validar(_sin_lotes_que_no_requieren_el_insumo(datos["renglones"]))
+    _validar_unidades(renglones)
     datos = {**datos, "renglones": renglones}
 
     negativos = []
@@ -402,6 +421,7 @@ def editar_orden(id_orden: int, datos: dict, confirmar: bool = False) -> None:
 
     sin_cultivo = datos.get("idRubro") is not None or datos.get("idCentroCostos") is not None
     renglones, consumo = _repartir_y_validar(_sin_lotes_que_no_requieren_el_insumo(datos["renglones"]))
+    _validar_unidades(renglones)
     datos = {**datos, "renglones": renglones}
     negativos = []
     for pid, total in consumo.items():

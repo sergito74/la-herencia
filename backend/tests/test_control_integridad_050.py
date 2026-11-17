@@ -83,3 +83,9 @@ def test_cruce_arca_faltantes_y_anulados():
     sistema = [{"idCompra": 1, "nro": "0020-00451190", "moneda": "Pesos", "tot": 2000.0, "cuit": "306"}]
     out = V.cruzar(arca, sistema, {1})
     assert [o["tipo"] for o in out] == ["Comprobante de ARCA que no está cargado", "Moneda distinta a la de ARCA"]
+
+
+def test_dosis_excesiva():
+    assert C.dosis_excesiva(10.7, 1.07)       # 10 veces: error de tipeo
+    assert not C.dosis_excesiva(3.6, 1.15)    # glifosato a 3,6 L/ha: posible
+    assert not C.dosis_excesiva(1.0, 0.0)

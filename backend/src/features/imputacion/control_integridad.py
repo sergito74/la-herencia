@@ -475,8 +475,16 @@ def _control_unidades() -> list[dict]:
         "SELECT rd.IdFormulado AS p, rd.[Unidad Medida] AS u, r.NroRemito AS n FROM dbo.Remitos_Detalles rd "
         "JOIN dbo.Remitos r ON r.IdRemito = rd.IdRemito LEFT JOIN dbo.Remitos_Extra e ON e.IdRemito = r.IdRemito "
         "WHERE ISNULL(e.Anulado, 0) = 0 AND r.Fecha >= '2025-05-12' AND rd.IdFormulado IS NOT NULL")]
+    entradas += [(f["p"], f["u"], f"orden {f['ot']}") for f in fetch_all(
+        "SELECT oi.IdProducto AS p, oi.Unidad AS u, oi.IdOrdenTrabajo AS ot FROM dbo.Ordenes_Trabajo_Insumos oi "
+        "JOIN dbo.Ordenes_Trabajo ot ON ot.IdOrdenTrabajo = oi.IdOrdenTrabajo "
+        "WHERE ot.Estado <> 'Anulada' AND ISNULL(ot.FechaEjecucion, ot.FechaPedido) >= '2025-05-12'")]
     out = []
     for pid, unidad, doc in entradas:
+        if doc.startswith("orden") and (unidad or "").strip().upper() not in ("", (bases.get(pid) or "").upper()):
+            out.append({"tipo": "Orden en otra unidad que el stock", "idCompra": None, "documento": doc,
+                        "detalle": f"{nombre_producto(pid)}: la orden está en {unidad} y el stock en {bases.get(pid)}; el consumo no se convierte"})
+            continue
         if factor_a_base(pid, unidad, bases, equiv)[1]:
             out.append({"tipo": "Unidad sin equivalencia en el stock", "idCompra": None, "documento": doc,
                         "detalle": f"{nombre_producto(pid)}: viene en {unidad} y el stock se lleva en {bases.get(pid)}; se toma 1 a 1"})
@@ -493,6 +501,40 @@ def _control_fletes() -> list[dict]:
                       (fl["idCompra"],))
         out.append({"tipo": "Flete de insumos que no llega a ningún costo", "idCompra": fl["idCompra"], "documento": _doc(f[0]) if f else "",
                     "detalle": f"$ {fl['pesos']:,.2f}: la factura (y sus relacionadas) no tiene insumos aprobados para sumarle el flete"})
+    return out
+
+
+def dosis_excesiva(dosis: float, habitual: float, veces: float = 5.0) -> bool:
+    """Pura: dosis por hectárea de más de `veces` la habitual del producto (un error de tipeo en la cantidad de una
+    orden pasa entero al costo del cultivo)."""
+    return habitual > 0 and dosis > veces * habitual
+
+
+def _control_dosis() -> list[dict]:
+    """Insumo de una orden (desde mayo de 2025) aplicado en un lote a más de 5 veces la dosis habitual del producto
+    (mediana de todas sus aplicaciones, con al menos 6 de referencia)."""
+    from statistics import median
+    from src.features.imputacion.tamiz_repository import nombre_producto
+
+    filas = fetch_all(
+        "SELECT oi.IdOrdenTrabajo AS ot, oi.IdProducto AS p, oi.Unidad AS u, d.CantidadAsignada AS q, d.Superficie AS ha, "
+        "ISNULL(ot.FechaEjecucion, ot.FechaPedido) AS f, l.[Numero Lote] AS lote FROM dbo.Ordenes_Trabajo_Distrib d "
+        "JOIN dbo.Ordenes_Trabajo_Insumos oi ON oi.IdOrdenInsumo = d.IdOrdenInsumo JOIN dbo.Ordenes_Trabajo ot ON ot.IdOrdenTrabajo = oi.IdOrdenTrabajo "
+        "LEFT JOIN dbo.Lotes l ON l.IdLote = d.IdLote "
+        "WHERE ot.Estado <> 'Anulada' AND d.Aplicar = 1 AND d.Superficie > 0 AND d.CantidadAsignada > 0")
+    hist: dict[int, list[float]] = defaultdict(list)
+    for f in filas:
+        f["dosis"] = float(f["q"]) / float(f["ha"])
+        hist[f["p"]].append(f["dosis"])
+    vistos, out = set(), []
+    for f in filas:
+        if str(f["f"]) < "2025-05-12" or len(hist[f["p"]]) < 6 or (f["ot"], f["p"]) in vistos:
+            continue
+        habitual = median(hist[f["p"]])
+        if dosis_excesiva(f["dosis"], habitual):
+            vistos.add((f["ot"], f["p"]))
+            out.append({"tipo": "Dosis fuera de lo normal en una orden", "idCompra": None, "documento": f"Orden {f['ot']} (lote {f['lote']})",
+                        "detalle": f"{nombre_producto(f['p'])}: {f['dosis']:,.3f} {f['u'] or ''}/ha contra {habitual:,.3f} habitual: revisar la cantidad"})
     return out
 
 
@@ -562,7 +604,7 @@ def controlar() -> list[dict]:
     for control in (_control_recalculos, _control_dos_imputaciones, _control_huerfanas, _control_renglones,
                     _control_distribucion, _control_resultado, _control_fuera_del_plan, _control_dolares,
                     _control_ingresos_en_costo, _control_rubros_faltantes, _control_costo_por_hectarea,
-                    _control_cerradas, _control_provisorios, _control_unidades, _control_fletes, _control_verificacion_externa, _control_listado):
+                    _control_cerradas, _control_provisorios, _control_unidades, _control_fletes, _control_dosis, _control_verificacion_externa, _control_listado):
         try:
             problemas += control()
         except Exception as exc:  # un control que falla se informa, no tapa a los demás
