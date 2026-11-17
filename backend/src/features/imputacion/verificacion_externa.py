@@ -34,8 +34,7 @@ PORTAL_ARCA = 15
 NOTAS_CREDITO = {3, 8, 13, 53, 113, 203, 208, 213}
 # Comprobantes de ARCA ya revisados con Sergio que no se cargan (CUIT, punto de venta, número): no se vuelven a avisar.
 REVISADOS = {
-    ("20218532994", 2, 23),       # Breccia, Domingo Sergio, factura C del 11/05/2026: sin copia ni pago identificado (17/11/2026)
-    ("27121593403", 2, 480),      # Cordero, Claudia Hilda, recibo C del 11/12/2024: ídem
+    ("27121593403", 2, 480),      # Cordero, Claudia Hilda, recibo C del 11/12/2024: sin copia ni dato de qué fue (17/11/2026)
 }
 
 
