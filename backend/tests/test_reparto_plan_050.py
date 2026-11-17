@@ -59,3 +59,10 @@ def test_lo_cargado_en_la_factura_gana_sobre_la_regla_del_producto():
     assert (c["destino"], c["idCultivo"], c["idCampania"]) == ("Cultivo", 2, 50)
     sin_cultivo = tamiz.clasificar_renglon({**r, "idCultivo": None}, reglas, regla_producto, _ctx({1: 60}))
     assert sin_cultivo["destino"] == "Ganaderia"
+
+
+def test_cultivo_no_sembrado_no_suma_si_el_lote_tiene_otro_sembrado():
+    filas = [{"idLote": 1, "idCultivo": 8, "superficie": 40, "noSembrado": True},
+             {"idLote": 1, "idCultivo": 3, "superficie": 40},
+             {"idLote": 2, "idCultivo": 5, "superficie": 20, "noSembrado": True}]
+    assert reparto_plan.superficies_de_lotes(filas) == {3: 40.0, 5: 20.0}

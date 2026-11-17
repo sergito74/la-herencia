@@ -205,6 +205,10 @@ def imputar_renglon(id_detalle: int) -> dict:
     t = _tamiz(id_detalle)
     if t is None:
         return {"accion": "fueraDeAlcance"}
+    from src.db.connection import execute_write
+
+    otro = "Directo" if t["destino"] == "CultivoStock" else "Insumo"
+    execute_write("DELETE FROM dbo.ImputacionPropuestas WHERE IdDetalleCompra = ? AND Origen = ?", (id_detalle, otro))
     return imputar_insumo(id_detalle) if t["destino"] == "CultivoStock" else calcular_directo(id_detalle)
 
 

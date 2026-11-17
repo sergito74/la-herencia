@@ -167,7 +167,7 @@ def pendientes_intervencion(page: int = 1, page_size: int = 50) -> list[dict]:
         f"SELECT {_COLUMNAS} FROM dbo.ImputacionPropuestas p "
         "WHERE p.Estado = 'RequiereIntervencion' AND p.IdCorrida = ("
         "SELECT TOP 1 p2.IdCorrida FROM dbo.ImputacionPropuestas p2 "
-        "WHERE p2.IdDetalleCompra = p.IdDetalleCompra ORDER BY p2.FechaCalculo DESC) "
+        "WHERE p2.IdDetalleCompra = p.IdDetalleCompra ORDER BY p2.FechaCalculo DESC, p2.IdPropuesta DESC) "
         "ORDER BY p.FechaCalculo DESC "
         "OFFSET ? ROWS FETCH NEXT ? ROWS ONLY",
         (offset, page_size),
@@ -211,7 +211,7 @@ def listar_propuestas(
     where = [
         "p.IdCorrida = ("
         "SELECT TOP 1 p2.IdCorrida FROM dbo.ImputacionPropuestas p2 "
-        "WHERE p2.IdDetalleCompra = p.IdDetalleCompra ORDER BY p2.FechaCalculo DESC)"
+        "WHERE p2.IdDetalleCompra = p.IdDetalleCompra ORDER BY p2.FechaCalculo DESC, p2.IdPropuesta DESC)"
     ]
     params: list = []
     if estado:
@@ -409,7 +409,7 @@ def detalles_compra_con_corrida_por_producto(id_producto: int) -> list[int]:
 
 _VIGENTE_SQL = (
     "p.IdCorrida = (SELECT TOP 1 p2.IdCorrida FROM dbo.ImputacionPropuestas p2 "
-    "WHERE p2.IdDetalleCompra = p.IdDetalleCompra ORDER BY p2.FechaCalculo DESC)"
+    "WHERE p2.IdDetalleCompra = p.IdDetalleCompra ORDER BY p2.FechaCalculo DESC, p2.IdPropuesta DESC)"
 )
 
 
@@ -599,7 +599,7 @@ def lineas_con_imputacion_batch(ids_compra: tuple[int, ...]) -> dict[int, list[d
         LEFT JOIN dbo.[Centro de costos] cc ON cc.IdCentro = p.IdCentroCosto
         WHERE p.IdDetalleCompra IN ({marcas_linea}) AND p.Origen <> 'Contratista'
           AND p.IdCorrida = (SELECT TOP 1 p2.IdCorrida FROM dbo.ImputacionPropuestas p2
-                              WHERE p2.IdDetalleCompra = p.IdDetalleCompra ORDER BY p2.FechaCalculo DESC)
+                              WHERE p2.IdDetalleCompra = p.IdDetalleCompra ORDER BY p2.FechaCalculo DESC, p2.IdPropuesta DESC)
         ORDER BY p.IdDetalleCompra, p.IdPropuesta
         """,
         ids_linea,
@@ -657,14 +657,14 @@ def costo_aprobado_por_campania(id_campania: int) -> dict:
         "SELECT SUM(Importe) AS total FROM dbo.ImputacionPropuestas "
         "WHERE IdCampania = ? AND Estado = 'Aprobada' AND IdCorrida = ("
         "SELECT TOP 1 p2.IdCorrida FROM dbo.ImputacionPropuestas p2 "
-        "WHERE p2.IdDetalleCompra = dbo.ImputacionPropuestas.IdDetalleCompra ORDER BY p2.FechaCalculo DESC)",
+        "WHERE p2.IdDetalleCompra = dbo.ImputacionPropuestas.IdDetalleCompra ORDER BY p2.FechaCalculo DESC, p2.IdPropuesta DESC)",
         (id_campania,),
     )
     pendiente = fetch_one(
         "SELECT SUM(Importe) AS total FROM dbo.ImputacionPropuestas "
         "WHERE IdCampania = ? AND Estado IN ('Pendiente', 'RequiereIntervencion') AND IdCorrida = ("
         "SELECT TOP 1 p2.IdCorrida FROM dbo.ImputacionPropuestas p2 "
-        "WHERE p2.IdDetalleCompra = dbo.ImputacionPropuestas.IdDetalleCompra ORDER BY p2.FechaCalculo DESC)",
+        "WHERE p2.IdDetalleCompra = dbo.ImputacionPropuestas.IdDetalleCompra ORDER BY p2.FechaCalculo DESC, p2.IdPropuesta DESC)",
         (id_campania,),
     )
     return {

@@ -83,6 +83,10 @@ def clasificar_renglon(r: dict, reglas_rubro: dict, reglas_producto: list, conte
 
     if "REDONDEO" in normalizar(r.get("producto")):
         return _resultado(r, "NoImputa", motivo="Redondeo del comprobante")
+    texto_n = normalizar(r.get("producto"))
+    if ("PERCEPCION" in texto_n or "PERCEPECION" in texto_n) and "IVA" in texto_n:
+        # Crédito fiscal, no costo (Sergio 17/11/2026).
+        return _resultado(r, "NoImputa", motivo="Percepción de IVA: crédito fiscal")
 
     # Lo cargado en la factura (cultivo y campaña) manda sobre la regla aprendida del producto: la regla se usa
     # solo cuando la factura no trae el cultivo (Sergio 17/11/2026).

@@ -32,6 +32,10 @@ def superficies_de_lotes(filas: list[dict]) -> dict:
     """Pura. `filas`: {idLote, idCultivo, superficie[, idCampania]} del plan; con idCampania la clave es
     (cultivo, campaña). Cada lote suma su superficie teórica al cultivo; el lote
     de doble cultivo Trigo/Soja de segunda suma la mitad a cada uno."""
+    # Un lote cuenta una sola vez: si tiene un cultivo sembrado, el planificado que no se sembró no suma su superficie
+    # (Sergio 17/11/2026: Trigo 2025/26 reemplazado por Soja 1ª o Pastura; lo ya imputado al trigo es costo hundido).
+    sembrados = {f["idLote"] for f in filas if not f.get("noSembrado")}
+    filas = [f for f in filas if not (f.get("noSembrado") and f["idLote"] in sembrados)]
     por_lote: dict = {}
     sup: dict = {}
     for f in filas:
@@ -53,7 +57,7 @@ def superficie_por_cultivo(id_campania: int) -> dict[tuple[int, int], float]:
     siembra (Avena 2025) y entran en la campaña de doble año que empieza ese año (2025/2026)."""
     filas = fetch_all(
         """
-        SELECT p.IdLote AS idLote, p.IdCultivo AS idCultivo, p.[IdCampaña] AS idCampania, l.Superficie AS superficie
+        SELECT p.IdLote AS idLote, p.IdCultivo AS idCultivo, p.[IdCampaña] AS idCampania, p.NoSembrado AS noSembrado, l.Superficie AS superficie
         FROM dbo.PlanAgricola p JOIN dbo.Lotes l ON l.IdLote = p.IdLote
         JOIN dbo.[Campañas] ca ON ca.[IdCampaña] = p.[IdCampaña]
         JOIN dbo.[Campañas] base ON base.[IdCampaña] = ?

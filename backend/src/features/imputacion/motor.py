@@ -382,8 +382,9 @@ def evaluar_nota_insumo(id_detalle_compra: int, total: float) -> tuple[list[dict
         FROM dbo.ImputacionPropuestas p
         JOIN dbo.Det_Compras d ON d.IdDetalleCompra = p.IdDetalleCompra
         WHERE d.IdCompra = ? AND p.Origen = 'Insumo' AND p.Estado <> 'RequiereIntervencion'
-          AND p.FechaCalculo = (SELECT MAX(q.FechaCalculo) FROM dbo.ImputacionPropuestas q
-                                WHERE q.IdDetalleCompra = p.IdDetalleCompra AND q.Origen = 'Insumo')
+          AND p.IdCorrida = (SELECT TOP 1 q.IdCorrida FROM dbo.ImputacionPropuestas q
+                             WHERE q.IdDetalleCompra = p.IdDetalleCompra AND q.Origen = 'Insumo'
+                             ORDER BY q.FechaCalculo DESC, q.IdPropuesta DESC)
         GROUP BY p.IdOrdenTrabajo, p.IdLote, p.IdCultivo, p.IdCampania, p.IdCentroCosto, p.EsGanaderia, p.IdParte
         """,
         (id_factura,),

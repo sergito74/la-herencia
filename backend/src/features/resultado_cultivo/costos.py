@@ -26,6 +26,14 @@ _REPARTO_VIGENTE = """(
 
 _EPS = 1e-6
 
+# 050 (17/11/2026, revisión de especialistas): una sola imputación vigente por renglón, la del origen que corresponde
+# a su clasificación (Insumo ↔ Va a stock; Directo ↔ a cultivo, ganadería o gasto general). Desempate determinista.
+VIGENTE_050 = """p.IdCorrida = (SELECT TOP 1 p2.IdCorrida FROM dbo.ImputacionPropuestas p2
+                             WHERE p2.IdDetalleCompra = p.IdDetalleCompra AND p2.Origen = p.Origen
+                             ORDER BY p2.FechaCalculo DESC, p2.IdPropuesta DESC)
+          AND ((p.Origen = 'Insumo' AND tz.Destino = 'CultivoStock')
+               OR (p.Origen = 'Directo' AND tz.Destino IN ('Cultivo', 'Ganaderia', 'Estructura')))"""
+
 
 def _f(v) -> float:
     return float(v) if v is not None else 0.0
@@ -38,6 +46,14 @@ def esquema_050_activo() -> bool:
 
 # 050: renglón en alcance = tiene clasificación vigente del tamiz; su costo entra por costos_alcance.
 _NO_EN_ALCANCE = " AND NOT EXISTS (SELECT 1 FROM dbo.TamizRenglones tz WHERE tz.IdDetalleCompra = c.IdDetalleCompra AND tz.Vigente = 1)"
+
+
+# 050 (17/11/2026): factura anterior al corte cuya mercadería entró por remito: en las campañas del esquema nuevo su
+# costo llega por el consumo de las órdenes (FIFO), así que la imputación manual de la factura no se suma.
+_PASO_POR_STOCK = """
+          AND NOT (EXISTS (SELECT 1 FROM dbo.tblRemitoCompra trc WHERE trc.IdDetalleCompra = c.IdDetalleCompra)
+                   AND EXISTS (SELECT 1 FROM dbo.[Campañas] cx WHERE cx.[IdCampaña] = c.IdCampaña
+                               AND (cx.[Campaña] >= '2025/2026' OR (LEN(cx.[Campaña]) = 4 AND cx.[Campaña] >= '2025'))))"""
 
 
 def costos_heredados(id_cultivo: int, id_campania: int) -> list[dict]:
@@ -57,8 +73,9 @@ def costos_heredados(id_cultivo: int, id_campania: int) -> list[dict]:
           AND NOT EXISTS (  -- 048: renglón ya repartido por las órdenes de trabajo (reparto de contratista vigente)
               SELECT 1 FROM dbo.Det_Compras dd LEFT JOIN dbo.Rubros rr ON rr.IdRubro = dd.IdRubro
               WHERE dd.IdDetalleCompra = c.IdDetalleCompra AND c.IdCompra IN (SELECT rv.idCompra FROM {_REPARTO_VIGENTE} rv)
-                AND (rr.Rubro IS NULL OR rr.Rubro NOT IN ({_FUERA}))){_ALCANCE}
-        """.format(_REPARTO_VIGENTE=_REPARTO_VIGENTE, _FUERA=_FUERA, _ALCANCE=_NO_EN_ALCANCE if esquema_050_activo() else ""),
+                AND (rr.Rubro IS NULL OR rr.Rubro NOT IN ({_FUERA}))){_ALCANCE}{_STOCK}
+        """.format(_REPARTO_VIGENTE=_REPARTO_VIGENTE, _FUERA=_FUERA, _ALCANCE=_NO_EN_ALCANCE if esquema_050_activo() else "",
+                   _STOCK=_PASO_POR_STOCK if esquema_050_activo() else ""),
         (id_destino, id_campania, *RUBROS_FUERA_REPARTO),
     )
     seguros = fetch_all(
@@ -193,10 +210,12 @@ def costos_alcance(id_cultivo: int, id_campania: int) -> list[dict]:
         JOIN dbo.Compras c ON c.IdDeuda = d.IdCompra
         LEFT JOIN dbo.PartesEstructuraCosto pe ON pe.IdParte = p.IdParte
         WHERE p.Origen IN ('Insumo', 'Directo') AND p.Estado = 'Aprobada' AND p.IdCultivo = ? AND p.IdCampania = ?
-          AND p.IdCorrida = (SELECT TOP 1 p2.IdCorrida FROM dbo.ImputacionPropuestas p2
-                             WHERE p2.IdDetalleCompra = p.IdDetalleCompra AND p2.Origen = p.Origen ORDER BY p2.FechaCalculo DESC)
-        """,
-        (id_cultivo, id_campania),
+          AND {vigente}
+          -- Factura de contratista con reparto por órdenes (048) vigente: manda ese reparto (no se cuenta dos veces).
+          AND NOT (p.Origen = 'Directo' AND d.IdCompra IN (SELECT rv.idCompra FROM {reparto} rv)
+                   AND NOT EXISTS (SELECT 1 FROM dbo.Rubros rr WHERE rr.IdRubro = d.IdRubro AND rr.Rubro IN ({fuera})))
+        """.format(vigente=VIGENTE_050, reparto=_REPARTO_VIGENTE, fuera=_FUERA),
+        (id_cultivo, id_campania, *RUBROS_FUERA_REPARTO),
     )
 
 

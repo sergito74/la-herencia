@@ -17,10 +17,7 @@ PARTE_LABORES, PARTE_SEGURO = 4, 7
 SIN_CLASIFICAR = "Sin clasificar"
 INSUMOS_ORDENES = "Insumos aplicados (órdenes)"
 
-_VIGENTE = (
-    "p.IdCorrida = (SELECT TOP 1 p2.IdCorrida FROM dbo.ImputacionPropuestas p2 "
-    "WHERE p2.IdDetalleCompra = p.IdDetalleCompra AND p2.Origen = p.Origen ORDER BY p2.FechaCalculo DESC)"
-)
+_VIGENTE = costos.VIGENTE_050
 _DOLARES = "SUM(p.Importe / NULLIF(CASE WHEN c.Moneda = 'Dolares' THEN c.[Tipo de Cambio] END, 0))"
 
 

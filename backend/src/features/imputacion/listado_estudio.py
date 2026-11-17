@@ -18,6 +18,7 @@ from datetime import date
 from pathlib import Path
 
 from src.db.connection import fetch_all
+from src.features.resultado_cultivo.costos import VIGENTE_050
 
 CARPETA = Path(r"C:\Users\Sergio\Dropbox\Giamigli de Bolivar SA\Compras")
 ARCHIVO = "Listado General Compras - Imputacion (1-9-2015 en adelante).xlsx"
@@ -98,10 +99,9 @@ def _fracciones() -> dict[int, list[dict]]:
         LEFT JOIN dbo.Map_CultivoResultado m ON m.IdCultivo = p.IdCultivo
         LEFT JOIN dbo.DestinoCompras de ON de.IdDestino = m.IdDestino
         WHERE p.Origen IN ('Insumo', 'Directo')
-          AND p.IdCorrida = (SELECT TOP 1 p2.IdCorrida FROM dbo.ImputacionPropuestas p2
-                             WHERE p2.IdDetalleCompra = p.IdDetalleCompra AND p2.Origen = p.Origen ORDER BY p2.FechaCalculo DESC)
+          AND {vigente}
           AND NOT EXISTS (SELECT 1 FROM dbo.ImputacionPropuestas p3 WHERE p3.IdCorrida = p.IdCorrida AND p3.Estado <> 'Aprobada')
-        """
+        """.format(vigente=VIGENTE_050)
     ):
         out[f["id"]].append(f)
     return out
