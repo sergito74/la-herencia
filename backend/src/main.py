@@ -106,6 +106,17 @@ def _arrancar_planificador_boveda() -> None:
 
         planificador.arrancar()
 
+
+@app.on_event("startup")
+def _arrancar_verificacion_externa() -> None:
+    """050 (17/11/2026): verificación externa semanal de los costos (portal de Bayá Casal y ARCA contra el sistema)."""
+    import os
+
+    if os.environ.get("LA_HERENCIA_SIN_PLANIFICADOR") != "1":
+        from src.features.imputacion import verificacion_externa
+
+        verificacion_externa.arrancar()
+
 # El frontend Next.js corre en un origen distinto (localhost:3000/3001) en
 # desarrollo. Sin esto, el navegador bloquea toda llamada a /api/* por
 # CORS aunque el backend responda 200 — nunca se detectó porque las

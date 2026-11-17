@@ -50,6 +50,9 @@ def _divisor_usd_capas() -> dict[str, float]:
         FROM dbo.TamizRenglones tz JOIN dbo.Det_Compras d ON d.IdDetalleCompra = tz.IdDetalleCompra
         JOIN dbo.Compras c ON c.IdDeuda = d.IdCompra LEFT JOIN dbo.vw_TC_BNA_PorCompra tcb ON tcb.IdDeuda = c.IdDeuda
         WHERE tz.Vigente = 1 AND tz.Destino = 'CultivoStock'
+        UNION ALL
+        SELECT 'R' + CAST(v.IdDetalleRemito AS varchar(20)), v.TipoCambio FROM dbo.RemitoValorProveedor v
+        WHERE NOT EXISTS (SELECT 1 FROM dbo.tblRemitoCompra t WHERE t.IdDetalleRemito = v.IdDetalleRemito)
         """
     ):
         if f["tc"]:
@@ -135,14 +138,15 @@ def consumos_sin_factura(id_cultivo: int, id_campania: int) -> list[dict]:
     agrupado: dict[tuple, dict] = {}
     for f in filas:
         k = (f["remito"], f["idProducto"])
-        g = agrupado.setdefault(k, {**f, "cantidad": 0.0, "ordenes": set()})
+        g = agrupado.setdefault(k, {**f, "cantidad": 0.0, "ordenes": set(), "precioProveedor": f.get("precioProveedor", False)})
         g["cantidad"] += f["cantidad"]
         g["ordenes"].add(f["idOrdenTrabajo"])
     from src.features.imputacion.tamiz_repository import nombre_producto
     out = []
     for g in agrupado.values():
         out.append({"remito": g["remito"] or "sin remito", "fecha": g["fecha"], "producto": nombre_producto(g["idProducto"]),
-                    "cantidad": round(g["cantidad"], 2), "ordenes": sorted(o for o in g["ordenes"] if o)})
+                    "cantidad": round(g["cantidad"], 2), "ordenes": sorted(o for o in g["ordenes"] if o),
+                    "precioProveedor": g["precioProveedor"]})
     return sorted(out, key=lambda x: (str(x["fecha"] or ""), x["remito"]))
 
 
@@ -194,6 +198,12 @@ def costo_ordenes_trabajo(id_cultivo: int, id_campania: int, pendientes: list | 
                                  "idRemito": m.get("idRemito"), "fecha": m.get("fecha")})
                         continue
                     pesos = it["cantidad"] * it["costo_unitario"]
+                    m = capas_meta.get(it["capa"]) or {}
+                    if m.get("estadoCosto") == "provisorio" and it["cantidad"] > 0.001:
+                        # valorizado con el precio del proveedor: la factura todavía no llegó
+                        pendiente_renglon[int(sid[2:])].append(
+                            {"idProducto": pid, "cantidad": it["cantidad"], "remito": m.get("nroRemito"),
+                             "idRemito": m.get("idRemito"), "fecha": m.get("fecha"), "precioProveedor": True})
                     if activo:
                         # 050: lo consumido de capas en alcance ya está en las fracciones aprobadas (costos_alcance).
                         en_alcance = pesos * capas_factura.parte_en_alcance(it["capa"], cant_capa.get(it["capa"], 0.0), remitos_alcance)

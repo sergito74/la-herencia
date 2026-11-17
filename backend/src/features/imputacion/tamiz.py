@@ -77,6 +77,11 @@ def clasificar_renglon(r: dict, reglas_rubro: dict, reglas_producto: list, conte
         return _resultado(r, "NoImputa", origen="Revision", estado="Pendiente",
                           motivo="Factura con parte particular y renglones de cultivo: confirmar qué parte es del campo")
 
+    if (r.get("nroDocumento") or "").strip().upper().startswith("PENDIENTE"):
+        # 17/11/2026: compra provisoria (mercadería remitida y todavía no facturada). Queda en la cuenta corriente
+        # como deuda, pero no es costo ni se vincula a remitos: el remito se valoriza con el precio del proveedor.
+        return _resultado(r, "NoImputa", motivo="Compra provisoria: el costo sale del remito valorizado con el precio del proveedor")
+
     if contexto.get("anulada"):
         # 050 (16/11/2026): factura anulada por NC (o la NC que la anula): la mercadería no se usó o se refacturó.
         return _resultado(r, "NoImputa", motivo=contexto["anulada"])

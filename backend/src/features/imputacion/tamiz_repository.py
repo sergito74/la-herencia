@@ -32,7 +32,7 @@ def renglones_de_compra(id_compra: int) -> list[dict]:
                ISNULL(d.Cantidad, 0) AS cantidad, ISNULL(d.[Precio Unitario], 0) AS precio,
                NULLIF(d.IdFormulado, 0) AS idFormulado, d.IdRubro AS idRubro, d.IdDestino AS idDestino,
                de.IdCultivo AS idCultivo, d.[IdCampaña] AS idCampania, c.Fecha AS fecha, c.IdContacto AS idContacto,
-               c.[Tipo documento] AS tipoDocumento, d.Unidad AS unidad
+               c.[Tipo documento] AS tipoDocumento, d.Unidad AS unidad, c.[Nro Documento] AS nroDocumento
         FROM dbo.Det_Compras d
         JOIN dbo.Compras c ON c.IdDeuda = d.IdCompra
         LEFT JOIN dbo.DestinoCompras de ON de.IdDestino = d.IdDestino

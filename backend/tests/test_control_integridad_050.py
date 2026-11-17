@@ -70,3 +70,16 @@ def test_clave_documento():
     assert C.clave_documento({"idDetalleCompra": 5}) == "D5"
     assert C.clave_documento({"idCompra": 7, "idOrdenTrabajo": 3}) == "C7|3"
     assert C.clave_documento({"idOrdenTrabajo": 3, "concepto": "Insumo"}) == "O3|Insumo"
+
+
+def test_cruce_arca_faltantes_y_anulados():
+    from src.features.imputacion import verificacion_externa as V
+    arca = [
+        {"fecha": "2026-08-10", "tipo": 11, "pv": 4, "nro": 122, "cuit": "30657631996", "emisor": "Lab", "moneda": "$", "total": 159000.0},
+        {"fecha": "2026-07-31", "tipo": 7, "pv": 9, "nro": 3096, "cuit": "305", "emisor": "Allianz", "moneda": "USD", "total": 8071.64},
+        {"fecha": "2026-08-19", "tipo": 8, "pv": 9, "nro": 3396, "cuit": "305", "emisor": "Allianz", "moneda": "USD", "total": -8071.64},
+        {"fecha": "2026-03-26", "tipo": 1, "pv": 20, "nro": 451190, "cuit": "306", "emisor": "Baya", "moneda": "USD", "total": 2000.0},
+    ]
+    sistema = [{"idCompra": 1, "nro": "0020-00451190", "moneda": "Pesos", "tot": 2000.0, "cuit": "306"}]
+    out = V.cruzar(arca, sistema, {1})
+    assert [o["tipo"] for o in out] == ["Comprobante de ARCA que no está cargado", "Moneda distinta a la de ARCA"]

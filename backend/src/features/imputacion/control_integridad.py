@@ -15,6 +15,7 @@ El resultado se lista por documento, en lenguaje llano. Solo lectura.
 from __future__ import annotations
 
 import logging
+import re
 import threading
 from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor
@@ -421,6 +422,46 @@ def _control_costo_por_hectarea() -> list[dict]:
     return out
 
 
+def _control_verificacion_externa() -> list[dict]:
+    """Lo que encontró la última verificación externa (portal de Bayá Casal y ARCA); si tiene más de 8 días, se avisa."""
+    from src.features.imputacion import verificacion_externa as V
+
+    u = V.ultima()
+    if u is None:
+        return [{"tipo": "Falta la verificación externa", "idCompra": None, "documento": "",
+                 "detalle": "todavía no se cruzó el sistema contra ARCA y el portal de Bayá Casal"}]
+    out = [{**x, "idCompra": x.get("idCompra")} for x in u.get("problemas", [])]
+    out += [{"tipo": "La verificación externa no pudo completarse", "idCompra": None, "documento": "", "detalle": e}
+            for e in u.get("errores", [])]
+    if datetime.now() - datetime.fromisoformat(u["fecha"]) > timedelta(days=8):
+        out.append({"tipo": "La verificación externa está atrasada", "idCompra": None, "documento": "",
+                    "detalle": f"la última fue el {u['fecha'][:10]}"})
+    return out
+
+
+def _control_provisorios() -> list[dict]:
+    """Compra provisoria ("PENDIENTE …") cuyo remito ya tiene la factura real o que el proveedor ya facturó: hay que
+    darla de baja (si no, la deuda se cuenta dos veces en la cuenta corriente)."""
+    out = []
+    for c in fetch_all(
+        f"SELECT {_DOC_SQL}, c.[Nro Documento] AS nro, c.IdContacto AS idContacto FROM dbo.Compras c LEFT JOIN dbo.Contactos co ON co.IdContacto = c.IdContacto "
+        "WHERE c.[Nro Documento] LIKE 'PENDIENTE %' AND c.[Tipo documento] = 'Factura'"):
+        num = re.sub(r"\D", "", c["nro"] or "")
+        if not num:
+            continue
+        rem = fetch_all(
+            "SELECT rd.IdDetalleRemito AS id, "
+            "(SELECT COUNT(*) FROM dbo.tblRemitoCompra t JOIN dbo.Det_Compras d ON d.IdDetalleCompra = t.IdDetalleCompra "
+            "  JOIN dbo.Compras cc ON cc.IdDeuda = d.IdCompra WHERE t.IdDetalleRemito = rd.IdDetalleRemito AND cc.[Nro Documento] NOT LIKE 'PENDIENTE%') AS facturado, "
+            "(SELECT COUNT(*) FROM dbo.RemitoValorProveedor v WHERE v.IdDetalleRemito = rd.IdDetalleRemito) AS pendiente "
+            "FROM dbo.Remitos r JOIN dbo.Remitos_Detalles rd ON rd.IdRemito = r.IdRemito WHERE r.IdProveedor = ? AND r.NroRemito LIKE ?",
+            (c["idContacto"], f"%{int(num):08d}"))
+        if rem and (any(x["facturado"] for x in rem) or not any(x["pendiente"] for x in rem)):
+            out.append({"tipo": "Dar de baja una compra provisoria", "idCompra": c["idCompra"], "documento": _doc(c),
+                        "detalle": "el remito ya tiene su factura (o el proveedor ya no lo muestra pendiente): la deuda se cuenta dos veces"})
+    return out
+
+
 def _control_listado() -> list[dict]:
     from src.features.imputacion import listado_estudio as L
 
@@ -487,7 +528,7 @@ def controlar() -> list[dict]:
     for control in (_control_recalculos, _control_dos_imputaciones, _control_huerfanas, _control_renglones,
                     _control_distribucion, _control_resultado, _control_fuera_del_plan, _control_dolares,
                     _control_ingresos_en_costo, _control_rubros_faltantes, _control_costo_por_hectarea,
-                    _control_cerradas, _control_listado):
+                    _control_cerradas, _control_provisorios, _control_verificacion_externa, _control_listado):
         try:
             problemas += control()
         except Exception as exc:  # un control que falla se informa, no tapa a los demás

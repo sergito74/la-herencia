@@ -154,6 +154,8 @@ def calcular_stock(id_producto: int | None = None, excluir_remito: int | None = 
     """Stock FIFO por producto: `{idProducto: {existencia, valor, capas, consumos, ...}}`."""
     bases, equiv = unidades_base(), equivalencias()
     vinculos = costos_de_renglones(id_producto)
+    precios_proveedor = {int(f["id"]): {"precio": float(f["p"]), "tc": float(f["tc"])} for f in fetch_all(
+        "SELECT IdDetalleRemito AS id, PrecioUSD AS p, TipoCambio AS tc FROM dbo.RemitoValorProveedor")}
     filtro, params = _filtro("rd.IdFormulado", id_producto)
     if excluir_remito is not None:
         filtro += " AND rd.IdRemito <> ?"
@@ -184,6 +186,11 @@ def calcular_stock(id_producto: int | None = None, excluir_remito: int | None = 
         costo_remito, estado, vinculada = costo_unitario_renglon(vinculos.get(e["idDetalle"], []), cantidad)
         costo_remito, estado, vinculada = _unidad_factura_a_remito(vinculos.get(e["idDetalle"], []), e["unidad"], cantidad,
                                                                    costo_remito, estado, vinculada)
+        if not vinculos.get(e["idDetalle"]) and e["idDetalle"] in precios_proveedor:
+            # 17/11/2026: remito todavía sin factura: se valoriza con el precio del proveedor (portal, US$ x TC) hasta
+            # que llegue la factura; al vincularla manda la factura. No se carga una compra provisoria.
+            pv = precios_proveedor[e["idDetalle"]]
+            costo_remito, estado, vinculada = pv["precio"] * pv["tc"], "provisorio", cantidad
         capa_id = f"R{e['idDetalle']}"
         capas[prod].append(
             Capa(
