@@ -1,5 +1,8 @@
 "use client";
 
+import { Button } from "@/components/ui/Button";
+import { campoClass, FormSection } from "@/components/ui/FormSection";
+
 import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -218,16 +221,17 @@ export function OrdenForm({ orden }: { orden?: OrdenDetalle }) {
 
   return (
     <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_18rem]">
-    <div className="space-y-3">
+    <div className="space-y-4">
+      <FormSection titulo="Datos de la orden">
       <div className="grid grid-cols-1 items-end gap-3 sm:grid-cols-[10rem_1fr_1.5fr_auto]">
         <label className="block text-sm">
           Fecha
-          <input type="date" className="mt-1 w-full rounded border border-border px-2 py-1" value={fecha} onChange={(e) => setFecha(e.target.value)} />
+          <input type="date" className={campoClass} value={fecha} onChange={(e) => setFecha(e.target.value)} />
         </label>
         <label className="block text-sm">
           Tipo de labor
           <select
-            className="mt-1 w-full rounded border border-border px-2 py-1"
+            className={campoClass}
             value={idTipoLabor ?? ""}
             onChange={(e) => setIdTipoLabor(Number(e.target.value) || null)}
           >
@@ -242,7 +246,7 @@ export function OrdenForm({ orden }: { orden?: OrdenDetalle }) {
         <label className="block text-sm">
           Contratista (opcional)
           <select
-            className="mt-1 w-full rounded border border-border px-2 py-1"
+            className={campoClass}
             value={idContratistaContacto ?? ""}
             onChange={(e) => setIdContratistaContacto(Number(e.target.value) || null)}
           >
@@ -263,7 +267,7 @@ export function OrdenForm({ orden }: { orden?: OrdenDetalle }) {
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <label className="block text-sm">
             Rubro
-            <select className="mt-1 w-full rounded border border-border px-2 py-1" value={idRubro ?? ""} onChange={(e) => setIdRubro(Number(e.target.value) || null)}>
+            <select className={campoClass} value={idRubro ?? ""} onChange={(e) => setIdRubro(Number(e.target.value) || null)}>
               <option value="">Elegí…</option>
               {opcionesBajas.rubros.map((r) => (
                 <option key={r.idRubro} value={r.idRubro}>
@@ -274,7 +278,7 @@ export function OrdenForm({ orden }: { orden?: OrdenDetalle }) {
           </label>
           <label className="block text-sm">
             Centro de costos
-            <select className="mt-1 w-full rounded border border-border px-2 py-1" value={idCentroCostos ?? ""} onChange={(e) => setIdCentroCostos(Number(e.target.value) || null)}>
+            <select className={campoClass} value={idCentroCostos ?? ""} onChange={(e) => setIdCentroCostos(Number(e.target.value) || null)}>
               <option value="">Elegí…</option>
               {opcionesBajas.centros.map((c) => (
                 <option key={c.idCentro} value={c.idCentro}>
@@ -285,10 +289,10 @@ export function OrdenForm({ orden }: { orden?: OrdenDetalle }) {
           </label>
         </div>
       )}
+      </FormSection>
 
       {!sinCultivo && (
-        <div>
-          <h2 className="mb-1 text-sm font-semibold uppercase tracking-wide text-ink-secondary">Cultivo / Campaña y lotes</h2>
+        <FormSection titulo="Cultivo, campaña y lotes" ayuda="Elegí el cultivo y la campaña, y tildá los lotes donde se aplica.">
           <CultivoCampaniaLotesSelector
             cultivos={catalogos.cultivos}
             campanias={catalogos.campanias}
@@ -296,14 +300,13 @@ export function OrdenForm({ orden }: { orden?: OrdenDetalle }) {
             grupos={grupos}
             onChange={setGrupos}
           />
-        </div>
+        </FormSection>
       )}
 
-      <div>
-        <h2 className="mb-1 text-sm font-semibold uppercase tracking-wide text-ink-secondary">Insumos</h2>
+      <FormSection titulo="Insumos" ayuda="Cada insumo con la cantidad total a retirar del depósito; se reparte entre los lotes.">
         <div className="space-y-2">
           {renglones.map((r, i) => (
-            <div key={i} className="rounded border border-border p-2">
+            <div key={i} className="rounded-md border border-border bg-surface-sunken/40 p-3">
               <div className="mb-1.5 flex flex-wrap items-center gap-3">
                 <InsumoConStockSelect
                   value={r.idProducto ? { idProducto: r.idProducto, producto: r.producto } : null}
@@ -348,17 +351,18 @@ export function OrdenForm({ orden }: { orden?: OrdenDetalle }) {
             </div>
           ))}
         </div>
-        <button type="button" onClick={agregarRenglon} className="mt-2 rounded border border-border px-3 py-1 text-sm hover:bg-surface-sunken">
-          + Agregar insumo
-        </button>
-      </div>
+        <Button size="sm" className="mt-3" onClick={agregarRenglon}>+ Agregar insumo</Button>
+      </FormSection>
 
     </div>
 
     <aside className="space-y-3 lg:sticky lg:top-3">
+      <FormSection titulo="Resumen de la orden">
+      {superficiePorGrupo.length === 0 && totalesInsumos.length === 0 && (
+        <p className="text-sm text-ink-muted">Elegí los lotes y los insumos: acá vas a ver la superficie y lo que sale del depósito.</p>
+      )}
       {(superficiePorGrupo.length > 0 || totalesInsumos.length > 0) && (
-        <div className="rounded border border-border bg-surface-sunken p-3">
-          <h2 className="mb-1 text-sm font-semibold uppercase tracking-wide text-ink-secondary">Resumen</h2>
+        <div>
           {superficiePorGrupo.length > 0 && (
             <div className="mb-3">
               <p className="text-sm font-medium">Superficie afectada: {formatCantidad(superficieTotal)} ha</p>
@@ -395,9 +399,9 @@ export function OrdenForm({ orden }: { orden?: OrdenDetalle }) {
         </div>
       )}
 
-      <label className="block text-sm">
+      <label className="mt-3 block text-sm">
         Observaciones
-        <textarea rows={2} className="mt-1 w-full rounded border border-border px-2 py-1" value={observaciones} onChange={(e) => setObservaciones(e.target.value)} />
+        <textarea rows={2} className={campoClass} value={observaciones} onChange={(e) => setObservaciones(e.target.value)} />
       </label>
 
       {error && <p className="text-status-danger">{error}</p>}
@@ -421,14 +425,10 @@ export function OrdenForm({ orden }: { orden?: OrdenDetalle }) {
         </div>
       )}
 
-      <button
-        type="button"
-        onClick={() => guardar(false)}
-        disabled={guardando}
-        className="rounded-md bg-finance font-medium text-white shadow-sm transition-colors hover:bg-finance/90 disabled:opacity-60 w-full px-4 py-2"
-      >
+      <Button variant="primary" className="mt-3 w-full" onClick={() => guardar(false)} disabled={guardando}>
         {guardando ? "Guardando…" : orden ? "Guardar cambios" : "Planificar orden"}
-      </button>
+      </Button>
+      </FormSection>
     </aside>
     </div>
   );
