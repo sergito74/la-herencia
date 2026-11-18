@@ -31,3 +31,7 @@ Decididas el 18/11/2026 por Sergio, con el criterio de los especialistas en prod
 | Girasol 2025/26 | 116,4 ha | 104 ha | 89% | US$ 35.367 | 303,8 | **340** |
 | Girasol 2026/27 (realizado al 18/11) | 78,3 ha | 70 ha | 89% | US$ 23.207 | 296,3 | **332** |
 | Trigo 2025/26 (no sembrado) | 76,4 ha no sembradas | 0 | — | US$ 3.048 costo hundido | 40 | sin valor por ha |
+
+## Campañas cerradas revisadas (18/11/2026)
+
+Sorgo 2023/24 (órdenes 26,7 ha, factura 18,2) y Avena 2024 (órdenes 40, factura 31,1): Sergio confirmó que por cuestiones operativas se sembró menos de lo que dicen las órdenes y que no quedó nada pendiente de facturar. Manda la factura, que es lo que ya usa el sistema. Avena 2022 (lote 9A2 no sembrado) y Soja 1ª 2022/23 (lote 6 sin orden pero facturado) también quedan bien. No hay nada que corregir.
