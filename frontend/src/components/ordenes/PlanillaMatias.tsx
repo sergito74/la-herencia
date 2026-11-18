@@ -29,8 +29,8 @@ export function PlanillaMatias() {
   return <section className="mb-3 space-y-2 rounded-lg border border-border bg-surface p-3 text-sm">
     <div className="flex flex-wrap items-center gap-3">
       <strong>Órdenes de Matías</strong>
-      <span className="text-ink-secondary">{data?.leida ? `Planilla leída el ${formatFecha(data.leida)} a las ${data.leida.slice(11, 16)}` : "Todavía no se leyó la planilla"} · se lee sola cuando cambia</span>
-      <SoloLectura><button className="rounded border border-border px-3 py-1 hover:bg-surface-sunken disabled:opacity-50" disabled={ocupado} onClick={leer}>{ocupado ? "Leyendo…" : "Leer ahora"}</button></SoloLectura>
+      <span className="text-ink-secondary">{data?.leida ? `Planilla leída el ${formatFecha(data.leida)} a las ${data.leida.slice(11, 16)}` : "Todavía no se leyó la planilla"}</span>
+      <SoloLectura><button className="rounded border border-border px-3 py-1 hover:bg-surface-sunken disabled:opacity-50" disabled={ocupado} onClick={leer}>{ocupado ? "Leyendo…" : "Leer la planilla de Matías"}</button></SoloLectura>
     </div>
     {creadas.map(c => <p key={c.fecha}>
       Orden del {formatFecha(c.fecha)} cargada{c.idOrden ? <> como <Link className="text-finance underline" href={`/produccion/ordenes/${c.idOrden}/editar`}>orden {c.idOrden}</Link></> : ""}.

@@ -4,6 +4,7 @@ Fuente: solapa "orden pulv LH" de la planilla de presupuesto agrícola (Dropbox)
 FECHA, SUP, PRODUCT/LABOR, DOSIS, TOT UNIDADES, Moment. Cada FECHA es una orden; "PULV" es la labor (pulverización
 terrestre), el resto son insumos con su nombre genérico.
 
+Se lee solo cuando Sergio lo pide (botón "Leer ahora", al llegar la orden por WhatsApp; nunca automático).
 Cada orden nueva se crea "Planificada" (el stock se descuenta al ejecutarla):
   - potrero → lotes del plan agrícola del cultivo y campaña (1B → 1B1, 6/6A → 6 + 6A, 6BC → 6B + 6C, 3A Loma → 3AL);
   - campaña: la del plan que tiene ese cultivo en ese lote y que todavía no se cosechó a la fecha de la orden;
@@ -372,26 +373,3 @@ def leer_y_cargar(path: Path = PLANILLA, solo_ver: bool = False) -> dict:
 def ultima_lectura() -> dict | None:
     f = fetch_one("SELECT TOP 1 Resultado AS r FROM dbo.OrdenesPlanillaMatiasLecturas ORDER BY IdLectura DESC")
     return json.loads(f["r"]) if f else None
-
-
-def arrancar() -> None:
-    """Al iniciar: cada hora, si la planilla cambió desde la última lectura, la vuelve a leer."""
-    import os
-    import sys
-
-    if "pytest" in sys.modules or os.environ.get("LA_HERENCIA_SIN_PLANIFICADOR") == "1":
-        return  # nunca crear órdenes desde los tests
-    def bucle():
-        import time
-        visto = None
-        while True:
-            try:
-                m = PLANILLA.stat().st_mtime if PLANILLA.exists() else None
-                if m and m != visto:
-                    leer_y_cargar()
-                    visto = m
-            except Exception:  # noqa: BLE001
-                _log.exception("Planilla de Matías")
-            time.sleep(3600)
-
-    threading.Thread(target=bucle, name="planilla-matias", daemon=True).start()
