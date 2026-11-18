@@ -35,7 +35,7 @@ export default function FlujoCajaRealPage() {
   });
 
   return (
-    <main className="mx-auto max-w-5xl px-6 py-3">
+    <main className="mx-auto max-w-none px-6 py-3">
       <PageHeader titulo="Flujo de caja real" ayuda="Movimientos bancarios reales (BNA + Galicia + Cajas en Efectivo) agregados por período, sin transferencias entre cuentas propias ni movimientos de inversión financiera mezclados en el neto." />
 
       <div className="flex items-center gap-2">
