@@ -269,6 +269,25 @@ def pagar_con_transferencia(id_trabajo, medio, id_movimiento, usuario):
     return obtener(id_trabajo)
 
 
+def _quitar_pago_socio(id_trabajo, id_pago, usuario):
+    """Anula de una vez el gasto y el crédito del socio; los demás trabajos del mismo pago vuelven a quedar pendientes."""
+    from src.features.cajas_efectivo import operaciones, service
+    from src.features.cajas_efectivo.schemas import AnularOperacion
+
+    p = fetch_one("SELECT IdOperacion FROM dbo.TrabajosEventualesPagos WHERE IdPagoTrabajo=?", (id_pago,))
+    if not p['IdOperacion']:
+        raise ValueError("Este pago del socio es anterior al circuito actual: se anula desde la cuenta del socio")
+    o = operaciones.get_operation(p['IdOperacion'])
+    if o['Estado'] != 'Anulada':
+        service.anular(p['IdOperacion'], AnularOperacion(versionEsperada=o['Version'], motivo="Pago de trabajo eventual quitado"), usuario)
+    otros = [r['IdTrabajo'] for r in fetch_all("SELECT DISTINCT IdTrabajo FROM dbo.TrabajosEventualesPagos WHERE IdOperacion=?", (p['IdOperacion'],))]
+    execute_write("DELETE FROM dbo.TrabajosEventualesPagos WHERE IdOperacion=?", (p['IdOperacion'],))
+    for i in otros:
+        _actualizar_estado(i)
+        auditar(i, "quitar-pago", {"idPago": id_pago, "idOperacion": p['IdOperacion']}, usuario)
+    return obtener(id_trabajo)
+
+
 def quitar_pago(id_trabajo, id_pago, usuario):
     """Solo transferencias: el pago en efectivo se anula desde la caja (así se repone el saldo)."""
     p = fetch_one("SELECT Medio FROM dbo.TrabajosEventualesPagos WHERE IdPagoTrabajo=? AND IdTrabajo=?", (id_pago, id_trabajo))
@@ -277,7 +296,7 @@ def quitar_pago(id_trabajo, id_pago, usuario):
     if p['Medio'] == 'caja':
         raise ValueError("El pago en efectivo se anula desde la caja, para que se reponga el saldo")
     if p['Medio'] == 'socio':
-        raise ValueError("El pago del socio se anula desde la cuenta del socio")
+        return _quitar_pago_socio(id_trabajo, id_pago, usuario)
     execute_write("DELETE FROM dbo.TrabajosEventualesPagos WHERE IdPagoTrabajo=?", (id_pago,))
     _actualizar_estado(id_trabajo)
     auditar(id_trabajo, "quitar-pago", {"idPago": id_pago}, usuario)
@@ -285,36 +304,8 @@ def quitar_pago(id_trabajo, id_pago, usuario):
 
 
 def pagar_por_socio(id_trabajo, datos, usuario):
-    """Transferencia desde la cuenta personal de un socio (04/11/2026): a favor del socio en su cuenta (Haber, valuado
-    en US$ y kg como los demás asientos) y vinculado al trabajador en PagosSocioProveedor, como el sueldo de Irma
-    pagado por Lucy. La cuenta de Giamigli no se toca."""
-    from src.db.connection import execute_write_transaction
-    from src.features.cuentas_socios.repository import _insert_asiento, validar_medio
-
-    validar_medio(datos.idSocio, datos.medio)
-
-    t = obtener(id_trabajo)
-    if not t:
-        return None
-    if dinero(datos.importe) > dinero(t['total']) - dinero(t['pagado']):
-        raise ValueError("El importe supera lo que falta pagar del trabajo")
-    f = _dia(t['fecha'])
-    motivo = f"{t['trabajador']} · Trabajo eventual {f:%d/%m/%Y}: {t['descripcion']}"[:250]
-    res = execute_write_transaction([
-        _insert_asiento(datos.idSocio, "haber", float(datos.importe), datos.fecha, datos.medio, motivo, usuario),
-        lambda r: ("INSERT INTO dbo.AuditoriaReflejoSocio (Accion, IdMovimiento, IdSocio, Usuario, Detalle) VALUES (?, ?, ?, ?, ?)",
-                   ("Devolucion", r[0], datos.idSocio, usuario, f"Pago de trabajo eventual #{id_trabajo}")),
-        # 18/11/2026 (Sergio): un trabajo eventual sin liquidación es gasto directo; el pago del socio NO pasa por la
-        # cuenta corriente del trabajador (no hay deuda que cancelar). Queda como en los pagos anteriores: el asiento del
-        # socio con Origen TrabajosEventuales apuntando al trabajo.
-        lambda r: ("UPDATE dbo.MovimientosCuentaSocio SET Origen = 'TrabajosEventuales', IdOrigen = ? WHERE IdMovimiento = ?",
-                   (id_trabajo, r[0])),
-        lambda r: ("INSERT INTO dbo.TrabajosEventualesPagos (IdTrabajo,Medio,IdMovimientoSocio,Fecha,Importe,Usuario) "
-                   "VALUES (?,?,?,?,?,?)", (id_trabajo, "socio", r[0], datos.fecha, datos.importe, usuario[:100])),
-    ])
-    _actualizar_estado(id_trabajo)
-    auditar(id_trabajo, "pago-socio", {"idMovimientoSocio": res[0], **datos.model_dump(mode="json")}, usuario)
-    return obtener(id_trabajo)
+    """Un socio le pagó al trabajador desde su cuenta personal (trabajo en negro, sin recibo). Ver pagar_varios_por_socio."""
+    return pagar_varios_por_socio([id_trabajo], datos, usuario)[0]
 
 
 # ---- 18/11/2026: un solo pago para varios trabajos del mismo trabajador ----
@@ -364,27 +355,41 @@ def _detalle(ts) -> str:
 
 
 def pagar_varios_por_socio(ids, datos, usuario):
+    """18/11/2026 (Sergio): el trabajo eventual es gasto de mano de obra de Giamigli, sin recibo; si lo pagó un socio desde
+    su cuenta, Giamigli se lo tiene que reponer. Todo en un solo paso: una operación de gasto sin comprobante que no mueve
+    ninguna caja, reparte el gasto por rubro (costos) y deja el importe a favor del socio en su cuenta. No pasa por la
+    cuenta corriente del trabajador. Se anula entera desde el trabajo (Quitar)."""
+    from uuid import uuid4
+
     from src.db.connection import execute_write_transaction
-    from src.features.cuentas_socios.repository import _insert_asiento, validar_medio
+    from src.features.cajas_efectivo import operaciones, service
+    from src.features.cajas_efectivo.schemas import ConfirmarOperacion, OperacionCaja, RepartoCaja
+    from src.features.cuentas_socios.repository import validar_medio
 
     validar_medio(datos.idSocio, datos.medio)
-
     ts = _trabajos_a_pagar(ids)
     partes = repartir_pago(_faltas(ts), datos.importe)
-    ops = [_insert_asiento(datos.idSocio, "haber", float(datos.importe), datos.fecha, datos.medio, _detalle(ts)[:250], usuario),
-           lambda r: ("INSERT INTO dbo.AuditoriaReflejoSocio (Accion, IdMovimiento, IdSocio, Usuario, Detalle) VALUES (?, ?, ?, ?, ?)",
-                      ("Devolucion", r[0], datos.idSocio, usuario, "Pago de trabajos eventuales " + ", ".join(f"#{i}" for i, _ in partes))),
-           # Gasto directo sin liquidación: no pasa por la cuenta del trabajador (ver pagar_por_socio).
-           lambda r: ("UPDATE dbo.MovimientosCuentaSocio SET Origen = 'TrabajosEventuales', IdOrigen = ? WHERE IdMovimiento = ?",
-                      (partes[0][0], r[0]))]
-    for id_t, parte in partes:
-        ops.append(lambda r, id_t=id_t, parte=parte: (
-            "INSERT INTO dbo.TrabajosEventualesPagos (IdTrabajo,Medio,IdMovimientoSocio,Fecha,Importe,Usuario) VALUES (?,?,?,?,?,?)",
-            (id_t, "socio", r[0], datos.fecha, parte, usuario[:100])))
-    res = execute_write_transaction(ops)
+    reparto = RepartoCaja(idRubro=datos.idRubro, idCentroCostos=datos.idCentroCostos, idDestino=datos.idDestino,
+                          idCampania=datos.idCampania, importePesos=datos.importe)
+    op = OperacionCaja(tipo="gasto_sin_comprobante", caja="giamigli-sa", fecha=datos.fecha, importe=datos.importe,
+                       concepto=_detalle(ts)[:255], cuenta="B", idSocio=datos.idSocio, medioSocio=datos.medio,
+                       repartos=[reparto])
+    vista = service.previsualizar(op)
+    hecho, _ = service.crear(ConfirmarOperacion(operacion=op, previewVersion=vista["previewVersion"],
+                                                advertenciasAceptadas=vista["advertencias"]), uuid4(), usuario)
+    id_op = hecho["idOperacion"]
+    id_mov = next(e["IdRegistro"] for e in operaciones.effects(id_op) if e["TipoEfecto"] == "MovimientoSocio")
+    ops = [("UPDATE dbo.MovimientosCuentaSocio SET Origen='TrabajosEventuales', IdOrigen=? WHERE IdMovimiento=?",
+            (partes[0][0], id_mov)),
+           ("INSERT INTO dbo.AuditoriaReflejoSocio (Accion, IdMovimiento, IdSocio, Usuario, Detalle) VALUES (?, ?, ?, ?, ?)",
+            ("Devolucion", id_mov, datos.idSocio, usuario, "Pago de trabajos eventuales " + ", ".join(f"#{i}" for i, _ in partes)))]
+    ops += [("INSERT INTO dbo.TrabajosEventualesPagos (IdTrabajo,Medio,IdOperacion,IdMovimientoSocio,Fecha,Importe,Usuario) "
+             "VALUES (?,?,?,?,?,?,?)", (id_t, "socio", id_op, id_mov, datos.fecha, parte, usuario[:100])) for id_t, parte in partes]
+    execute_write_transaction(ops)
     for id_t, parte in partes:
         _actualizar_estado(id_t)
-        auditar(id_t, "pago-socio", {"idMovimientoSocio": res[0], "importe": str(parte), "pagoConjunto": [i for i, _ in partes]}, usuario)
+        auditar(id_t, "pago-socio", {"idOperacion": id_op, "idMovimientoSocio": id_mov, "importe": str(parte),
+                                     "pagoConjunto": [i for i, _ in partes]}, usuario)
     return [obtener(i) for i, _ in partes]
 
 

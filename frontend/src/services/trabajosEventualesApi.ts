@@ -25,7 +25,7 @@ export const desvincularTrabajo = (id: number, idSalario: number) => apiDelete(`
 
 // Pagos (04/11/2026): efectivo desde una caja (gasto sin comprobante) o transferencia ya cargada del banco.
 export interface PagoTrabajoItem { idPago: number; medio: "caja" | "galicia" | "bna" | "socio"; caja: string | null; fecha: string; importe: number; socio?: string | null; banco?: string | null }
-export interface PagoSocioInput { idSocio: number; fecha: string; importe: number; medio: string }
+export interface PagoSocioInput { idSocio: number; fecha: string; importe: number; medio: string; idRubro: number; idCentroCostos: number; idCampania: number | null }
 export interface PagoCajaInput {
   caja: "giamigli-sa" | "campo-chica" | "condominio-lsc"; fecha: string; importe: number; cuenta: "A" | "B";
   idRubro: number; idCentroCostos: number; idCampania: number | null; previewVersion?: string; advertenciasAceptadas?: string[];

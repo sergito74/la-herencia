@@ -125,10 +125,15 @@ class Transferencia(BaseModel):
 
 
 class PagoSocioInput(BaseModel):
+    """18/11/2026: el pago del socio también carga el gasto de mano de obra (rubro Personal Eventual por defecto)."""
     idSocio: int = Field(gt=0)
     fecha: date
     importe: Decimal = Field(gt=0, max_digits=19, decimal_places=2)
     medio: str = Field(min_length=1, max_length=60)
+    idRubro: int = Field(default=16, gt=0)
+    idCentroCostos: int = Field(gt=0)
+    idDestino: int | None = Field(default=None, gt=0)
+    idCampania: int | None = Field(default=None, gt=0)
 
 
 class PagoVariosSocioInput(PagoSocioInput):

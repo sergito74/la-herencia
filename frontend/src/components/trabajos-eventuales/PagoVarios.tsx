@@ -5,15 +5,15 @@ import { MoneyInput } from "@/components/ui/MoneyInput";
 import { fetchFiltrosCompras } from "@/services/comprasApi";
 import { fetchSocios } from "@/services/cuentasSociosApi";
 import { formatFecha, formatMoneda } from "@/lib/format";
-import { pagarVariosCaja, pagarVariosSocio, pagarVariosTransferencia, previsualizarPagoVarios, transferenciasVarios,
+import { pagarVariosCaja, pagarVariosSocio, previsualizarPagoVarios,
   type PagoCajaInput, type PagoSocioInput, type PreviewPagoTrabajo, type Trabajo } from "@/services/trabajosEventualesApi";
 
 const input = "rounded border border-border bg-white px-2 py-1.5 text-sm";
 const boton = "rounded border border-border px-3 py-1.5 text-sm hover:bg-surface-sunken disabled:opacity-50";
 const CAJAS = [["giamigli-sa", "Giamigli SA"], ["campo-chica", "Caja chica"], ["condominio-lsc", "Condominio LSC"]] as const;
 const NOMBRE_CAJA: Record<string, string> = Object.fromEntries(CAJAS);
-const BANCO: Record<string, string> = { galicia: "Galicia", bna: "Banco Nación" };
-const MODOS = [["socio", "Lo pagó un socio"], ["banco", "Transferencia de Giamigli"], ["efectivo", "Efectivo de una caja"]] as const;
+// 18/11/2026: el trabajo eventual es en negro: se paga en efectivo de Giamigli o lo paga un socio (no por transferencia de Giamigli).
+const MODOS = [["socio", "Lo pagó un socio"], ["efectivo", "Efectivo de Giamigli"]] as const;
 const hoy = () => new Date().toLocaleDateString("sv-SE");
 
 /** 18/11/2026: un solo pago para varios trabajos del mismo trabajador. Queda un único egreso (asiento del socio,
@@ -23,14 +23,13 @@ export function PagoVarios({ trabajos, onListo, cancelar }: { trabajos: Trabajo[
   const faltaDe = (t: Trabajo) => Math.max(0, t.total - (t.pagado ?? 0));
   const falta = Math.round(trabajos.reduce((s, t) => s + faltaDe(t), 0) * 100) / 100;
   const [modo, setModo] = useState<(typeof MODOS)[number][0]>("socio");
-  const [socio, setSocio] = useState<PagoSocioInput>({ idSocio: 0, fecha: hoy(), importe: falta, medio: "" });
+  const [socio, setSocio] = useState<PagoSocioInput>({ idSocio: 0, fecha: hoy(), importe: falta, medio: "", idRubro: 16, idCentroCostos: 0, idCampania: null });
   const [datos, setDatos] = useState<PagoCajaInput>({ caja: "giamigli-sa", fecha: hoy(), importe: falta, cuenta: "B", idRubro: 0, idCentroCostos: 0, idCampania: null });
   const [vista, setVista] = useState<PreviewPagoTrabajo | null>(null);
   const [error, setError] = useState("");
   const [ocupado, setOcupado] = useState(false);
   const socios = useQuery({ queryKey: ["cuentas-socios"], queryFn: fetchSocios, enabled: modo === "socio" });
-  const catalogos = useQuery({ queryKey: ["compras-filtros"], queryFn: fetchFiltrosCompras, enabled: modo === "efectivo" });
-  const banco = useQuery({ queryKey: ["trabajos-transferencias", ids], queryFn: () => transferenciasVarios(ids), enabled: modo === "banco" });
+  const catalogos = useQuery({ queryKey: ["compras-filtros"], queryFn: fetchFiltrosCompras, enabled: modo === "efectivo" || modo === "socio" });
   const poner = (c: Partial<PagoCajaInput>) => { setDatos(d => ({ ...d, ...c })); setVista(null); };
 
   async function correr(fn: () => Promise<unknown>, terminar = true) {
@@ -54,24 +53,19 @@ export function PagoVarios({ trabajos, onListo, cancelar }: { trabajos: Trabajo[
     </div>
 
     {modo === "socio" && <div className="space-y-2">
-      <p className="text-ink-secondary">Un solo pago desde la cuenta personal del socio: queda a favor del socio en su cuenta y vinculado a todos estos trabajos.</p>
+      <p className="text-ink-secondary">Lo pagó un socio desde su cuenta: queda cargado el gasto de mano de obra de Giamigli (sin recibo) y el importe a favor del socio, para que Giamigli se lo reponga.</p>
       <div className="grid gap-2 md:grid-cols-4">
         <label>Socio<select className={`${input} block w-full`} value={socio.idSocio} onChange={e => { const id = Number(e.target.value); setSocio(s => ({ ...s, idSocio: id, medio: socios.data?.socios.find(x => x.idSocio === id)?.medios?.[0] ?? "" })); }}><option value={0}>Elegir</option>{socios.data?.socios.map(x => <option key={x.idSocio} value={x.idSocio}>{x.nombre}</option>)}</select></label>
         <label>Fecha<input type="date" className={`${input} block w-full`} value={socio.fecha} onChange={e => setSocio(s => ({ ...s, fecha: e.target.value }))} /></label>
         <label>Importe<MoneyInput className={`${input} block w-full`} moneda="Pesos" value={socio.importe} onChange={v => setSocio(s => ({ ...s, importe: v }))} /></label>
         <label>Desde<select className={`${input} block w-full`} value={socio.medio} onChange={e => setSocio(s => ({ ...s, medio: e.target.value }))}>{!socio.idSocio && <option value="">Elegí el socio</option>}{socios.data?.socios.find(x => x.idSocio === socio.idSocio)?.medios?.map(m => <option key={m}>{m}</option>)}</select></label>
+        <label>Rubro<select className={`${input} block w-full`} value={socio.idRubro} onChange={e => setSocio(s => ({ ...s, idRubro: Number(e.target.value) }))}>{catalogos.data?.rubros.map(x => <option key={x.idRubro} value={x.idRubro}>{x.rubro}</option>)}</select></label>
+        <label>Centro de costos<select className={`${input} block w-full`} value={socio.idCentroCostos} onChange={e => setSocio(s => ({ ...s, idCentroCostos: Number(e.target.value) }))}><option value={0}>Elegir</option>{catalogos.data?.centrosCosto.map(x => <option key={x.idCentroCosto} value={x.idCentroCosto}>{x.centroCosto}</option>)}</select></label>
+        <label>Campaña<select className={`${input} block w-full`} value={socio.idCampania ?? 0} onChange={e => setSocio(s => ({ ...s, idCampania: Number(e.target.value) || null }))}><option value={0}>Sin asignar</option>{catalogos.data?.campañas.map(x => <option key={x.idCampania} value={x.idCampania}>{x.campania}</option>)}</select></label>
       </div>
-      <button className={boton} disabled={ocupado || !socio.idSocio || !socio.medio || !(socio.importe > 0)} onClick={() => correr(() => pagarVariosSocio(ids, socio))}>Registrar el pago</button>
+      <button className={boton} disabled={ocupado || !socio.idSocio || !socio.medio || !socio.idCentroCostos || !(socio.importe > 0)} onClick={() => correr(() => pagarVariosSocio(ids, socio))}>Registrar el pago</button>
     </div>}
 
-    {modo === "banco" && <div className="space-y-2">
-      <p className="text-ink-secondary">Transferencias de Giamigli al trabajador ya cargadas del extracto, sin vincular. Elegí la que corresponde.</p>
-      {banco.isLoading ? <p>Buscando transferencias…</p> : !banco.data?.length ? <p>No hay transferencias al trabajador sin vincular. Aparecen cuando se carga el extracto del banco.</p> :
-        banco.data.map(m => <div key={`${m.medio}-${m.id}`} className="flex flex-wrap items-center gap-3">
-          <span>{formatFecha(m.fecha)} · {BANCO[m.medio] ?? m.medio}{m.detalle ? ` · ${m.detalle}` : ""}</span><strong>{formatMoneda(m.importe)}</strong>
-          <button className={boton} disabled={ocupado} onClick={() => correr(() => pagarVariosTransferencia(ids, m.medio, m.id))}>Vincular este pago</button>
-        </div>)}
-    </div>}
 
     {modo === "efectivo" && <div className="space-y-2">
       <div className="grid gap-2 md:grid-cols-4">

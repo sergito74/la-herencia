@@ -81,6 +81,9 @@ class OperacionCaja(Estricto):
     aplicaciones: list[AplicacionCaja] = Field(default_factory=list, max_length=100)
     repartos: list[RepartoCaja] = Field(default_factory=list, max_length=100)
     idSalario: Identificador | None = None
+    # 18/11/2026: gasto sin comprobante que pagó un socio desde su cuenta personal (trabajos eventuales en negro):
+    # no mueve ninguna caja, queda a favor del socio (Giamigli se lo repone) y el gasto se reparte por rubro igual.
+    medioSocio: str | None = Field(default=None, min_length=1, max_length=60)
 
     @model_validator(mode="after")
     def validar_combinacion(self):
@@ -96,10 +99,15 @@ class OperacionCaja(Estricto):
 
         contacto = self.tipo in ("pago", "cobro")
         socio = self.tipo in ("aporte", "retiro_a_cuenta", "retiro_ganancias", "canje_socio")
+        gasto_socio = self.tipo == "gasto_sin_comprobante" and self.idSocio is not None
+        if (self.medioSocio is not None) != gasto_socio:
+            raise ValueError("El gasto pagado por un socio requiere socio y medio.")
+        if gasto_socio and (self.caja != "giamigli-sa" or not self.repartos):
+            raise ValueError("El gasto pagado por un socio es de Giamigli y requiere rubro.")
         bancario = self.tipo in ("extraccion_banco", "deposito_banco", "retorno_sueldo_opcion_a", "canje_socio")
         if contacto != (self.idContacto is not None):
             raise ValueError("Solo pago/cobro requiere contacto.")
-        if socio != (self.idSocio is not None):
+        if socio != (self.idSocio is not None) and not gasto_socio:
             raise ValueError("Aporte/retiro requiere socio; otros tipos no admiten idSocio.")
         if self.bancoPendiente and (self.tipo != "canje_socio" or self.banco):
             raise ValueError("Elegí transferencia del extracto o banco pendiente de conciliar, no ambos.")

@@ -24,27 +24,44 @@ def _trabajo(i, contacto, fecha, total, pagado=0):
             "total": total, "pagado": pagado}
 
 
-def test_un_solo_asiento_del_socio_vinculado_a_todos(monkeypatch):
+def test_pago_del_socio_carga_gasto_y_credito_al_socio_en_un_paso(monkeypatch):
+    from src.features.cajas_efectivo import operaciones, service
+    from src.features.cuentas_socios import repository as socios
+
     base = {84: _trabajo(84, 632, "2026-11-09", 38500), 85: _trabajo(85, 632, "2026-11-10", 77000),
             86: _trabajo(86, 632, "2026-11-12", 38500)}
     monkeypatch.setattr(repo, "obtener", lambda i: base.get(i))
     monkeypatch.setattr(repo, "_actualizar_estado", lambda i: None)
     monkeypatch.setattr(repo, "auditar", lambda *a: None)
+    monkeypatch.setattr(socios, "validar_medio", lambda *a: None)
+    creadas = []
+    monkeypatch.setattr(service, "previsualizar", lambda op: {"previewVersion": "a" * 64, "advertencias": []})
+    monkeypatch.setattr(service, "crear", lambda body, key, user: creadas.append(body.operacion) or ({"idOperacion": 50}, True))
+    monkeypatch.setattr(operaciones, "effects", lambda i: [{"TipoEfecto": "GastoCaja", "IdRegistro": 7},
+                                                           {"TipoEfecto": "MovimientoSocio", "IdRegistro": 999}])
     lotes = []
     import src.db.connection as conn
-    monkeypatch.setattr(conn, "execute_write_transaction", lambda ops: lotes.append(ops) or [999])
-    datos = PagoVariosSocioInput(idSocio=1, fecha="2026-11-18", importe=Decimal("154000"), medio="ICBC", idsTrabajo=[86, 84, 85])
+    monkeypatch.setattr(conn, "execute_write_transaction", lambda ops: lotes.append(ops) or [])
+    datos = PagoVariosSocioInput(idSocio=1, fecha="2026-11-18", importe=Decimal("154000"), medio="ICBC",
+                                 idCentroCostos=2, idsTrabajo=[86, 84, 85])
     repo.pagar_varios_por_socio(datos.idsTrabajo, datos, "sergio")
-    ops = lotes[0]
-    sqls = [op if isinstance(op, tuple) else op([999]) for op in ops[1:]]
-    asientos = [o for o in ops if not callable(o) or "MovimientosCuentaSocio" in str(getattr(o, "__name__", ""))]
-    assert len(lotes) == 1  # una sola transacción
+    op = creadas[0]
+    # una sola operación: gasto de mano de obra (Personal Eventual) que no sale de ninguna caja y queda a favor del socio
+    assert len(creadas) == 1 and op.tipo == "gasto_sin_comprobante" and op.idSocio == 1 and op.medioSocio == "ICBC"
+    assert op.repartos[0].idRubro == 16 and op.repartos[0].importePesos == Decimal("154000")
+    assert service.piernas(op) == {}
+    sqls = lotes[0]
     pagos = [s for s in sqls if "TrabajosEventualesPagos" in s[0]]
-    assert [p[1][0] for p in pagos] == [84, 85, 86] and all(p[1][2] == 999 for p in pagos)
-    # sin vínculo a la cuenta del trabajador: el asiento queda con Origen TrabajosEventuales
-    assert not any("PagosSocioProveedor" in s[0] for s in sqls)
-    assert any("Origen = 'TrabajosEventuales'" in s[0] and s[1][0] == 84 for s in sqls)
-    assert asientos  # el primer statement es el único asiento del socio
+    assert [p[1][0] for p in pagos] == [84, 85, 86] and all(p[1][2] == 50 and p[1][3] == 999 for p in pagos)
+    assert not any("PagosSocioProveedor" in s[0] for s in sqls)  # no pasa por la cuenta del trabajador
+
+
+def test_gasto_de_socio_requiere_medio_y_rubro():
+    from src.features.cajas_efectivo.schemas import OperacionCaja
+
+    with pytest.raises(ValueError):
+        OperacionCaja(tipo="gasto_sin_comprobante", caja="giamigli-sa", fecha="2026-11-18", importe=1, concepto="x",
+                      cuenta="B", idSocio=1)
 
 
 def test_no_mezcla_trabajadores(monkeypatch):

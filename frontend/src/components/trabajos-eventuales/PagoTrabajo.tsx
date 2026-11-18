@@ -21,12 +21,12 @@ const hoy = () => new Date().toISOString().slice(0, 10);
 export function PagoTrabajo({ t, onCambio }: { t: Trabajo; onCambio: () => Promise<void> }) {
   const falta = Math.max(0, Math.round((t.total - (t.pagado ?? 0)) * 100) / 100);
   const [modo, setModo] = useState<"" | "efectivo" | "socio">("");
-  const [socio, setSocio] = useState<PagoSocioInput>({ idSocio: 0, fecha: hoy(), importe: falta, medio: "" });
+  const [socio, setSocio] = useState<PagoSocioInput>({ idSocio: 0, fecha: hoy(), importe: falta, medio: "", idRubro: 16, idCentroCostos: 0, idCampania: null });
   const [datos, setDatos] = useState<PagoCajaInput>({ caja: "giamigli-sa", fecha: hoy(), importe: falta, cuenta: "B", idRubro: 0, idCentroCostos: 0, idCampania: null });
   const [vista, setVista] = useState<PreviewPagoTrabajo | null>(null);
   const [error, setError] = useState("");
   const [ocupado, setOcupado] = useState(false);
-  const catalogos = useQuery({ queryKey: ["compras-filtros"], queryFn: fetchFiltrosCompras, enabled: modo === "efectivo" });
+  const catalogos = useQuery({ queryKey: ["compras-filtros"], queryFn: fetchFiltrosCompras, enabled: modo === "efectivo" || modo === "socio" });
   const socios = useQuery({ queryKey: ["cuentas-socios"], queryFn: fetchSocios, enabled: modo === "socio" });
   const poner = (c: Partial<PagoCajaInput>) => { setDatos(d => ({ ...d, ...c })); setVista(null); };
 
@@ -49,9 +49,9 @@ export function PagoTrabajo({ t, onCambio }: { t: Trabajo; onCambio: () => Promi
     {t.pagos?.length ? t.pagos.map(p => <div key={p.idPago} className="flex flex-wrap items-center gap-3 text-sm">
       <span>{formatFecha(p.fecha)} · {p.medio === "caja" ? `Efectivo, caja ${NOMBRE_CAJA[p.caja ?? ""] ?? p.caja}` : p.medio === "socio" ? `Pagado por ${p.socio ?? "un socio"}${p.banco ? ` (${p.banco})` : ""}` : `Transferencia ${BANCO[p.medio] ?? p.medio}`}</span>
       <strong>{formatMoneda(p.importe)}</strong>
-      {(p.medio === "galicia" || p.medio === "bna") && <SoloLectura><button disabled={ocupado} className={boton} onClick={() => correr(() => quitarPagoTrabajo(t.idTrabajo, p.idPago), false)}>Quitar</button></SoloLectura>}
+      {p.medio !== "caja" && <SoloLectura><button disabled={ocupado} className={boton} onClick={() => correr(() => quitarPagoTrabajo(t.idTrabajo, p.idPago), false)}>Quitar</button></SoloLectura>}
     </div>) : <p className="text-sm text-ink-secondary">Sin pagos registrados.</p>}
-    {t.pagos?.some(p => p.medio === "caja" || p.medio === "socio") && <p className="text-xs text-ink-secondary">Un pago en efectivo se anula desde la caja; el de un socio, desde la cuenta del socio.</p>}
+    {t.pagos?.some(p => p.medio === "caja") && <p className="text-xs text-ink-secondary">Un pago en efectivo se anula desde la caja, para que se reponga su saldo. Quitar el pago de un socio anula también el gasto y lo que quedó a su favor.</p>}
 
     {falta > 0 && <SoloLectura><div className="flex flex-wrap gap-2">
       <button className={boton} onClick={() => setModo(modo === "efectivo" ? "" : "efectivo")}>Pagar en efectivo</button>
@@ -78,14 +78,17 @@ export function PagoTrabajo({ t, onCambio }: { t: Trabajo; onCambio: () => Promi
     </div>}
 
     {modo === "socio" && <div className="space-y-2 rounded border border-border p-3 text-sm">
-      <p className="text-ink-secondary">Para cuando un socio le pagó al trabajador desde su cuenta personal: queda a favor del socio en su cuenta.</p>
+      <p className="text-ink-secondary">Lo pagó un socio desde su cuenta: queda cargado el gasto de mano de obra de Giamigli (sin recibo) y el importe a favor del socio, para que Giamigli se lo reponga.</p>
       <div className="grid gap-2 md:grid-cols-4">
         <label>Socio<select className={`${input} block w-full`} value={socio.idSocio} onChange={e => { const id = Number(e.target.value); setSocio(s => ({ ...s, idSocio: id, medio: socios.data?.socios.find(x => x.idSocio === id)?.medios?.[0] ?? "" })); }}><option value={0}>Elegir</option>{socios.data?.socios.map(x => <option key={x.idSocio} value={x.idSocio}>{x.nombre}</option>)}</select></label>
         <label>Fecha<input type="date" className={`${input} block w-full`} value={socio.fecha} onChange={e => setSocio(s => ({ ...s, fecha: e.target.value }))} /></label>
         <label>Importe<MoneyInput className={`${input} block w-full`} moneda="Pesos" value={socio.importe} onChange={v => setSocio(s => ({ ...s, importe: v }))} /></label>
         <label>Desde<select className={`${input} block w-full`} value={socio.medio} onChange={e => setSocio(s => ({ ...s, medio: e.target.value }))}>{!socio.idSocio && <option value="">Elegí el socio</option>}{socios.data?.socios.find(x => x.idSocio === socio.idSocio)?.medios?.map(m => <option key={m}>{m}</option>)}</select></label>
+        <label>Rubro<select className={`${input} block w-full`} value={socio.idRubro} onChange={e => setSocio(s => ({ ...s, idRubro: Number(e.target.value) }))}>{catalogos.data?.rubros.map(x => <option key={x.idRubro} value={x.idRubro}>{x.rubro}</option>)}</select></label>
+        <label>Centro de costos<select className={`${input} block w-full`} value={socio.idCentroCostos} onChange={e => setSocio(s => ({ ...s, idCentroCostos: Number(e.target.value) }))}><option value={0}>Elegir</option>{catalogos.data?.centrosCosto.map(x => <option key={x.idCentroCosto} value={x.idCentroCosto}>{x.centroCosto}</option>)}</select></label>
+        <label>Campaña<select className={`${input} block w-full`} value={socio.idCampania ?? 0} onChange={e => setSocio(s => ({ ...s, idCampania: Number(e.target.value) || null }))}><option value={0}>Sin asignar</option>{catalogos.data?.campañas.map(x => <option key={x.idCampania} value={x.idCampania}>{x.campania}</option>)}</select></label>
       </div>
-      <button className={boton} disabled={ocupado || !socio.idSocio || !socio.medio || !(socio.importe > 0)} onClick={() => correr(() => pagarTrabajoSocio(t.idTrabajo, socio))}>Registrar pago del socio</button>
+      <button className={boton} disabled={ocupado || !socio.idSocio || !socio.medio || !socio.idCentroCostos || !(socio.importe > 0)} onClick={() => correr(() => pagarTrabajoSocio(t.idTrabajo, socio))}>Registrar pago del socio</button>
     </div>}
     {error && <p role="alert" className="text-sm text-status-danger">{error}</p>}
   </div>;

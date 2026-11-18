@@ -35,6 +35,8 @@ def _caja_particular(socio):
 
 
 def piernas(op):
+    if op.tipo == "gasto_sin_comprobante" and op.idSocio is not None:
+        return {}  # lo pagó un socio desde su cuenta: no sale de ninguna caja
     positive = op.tipo in ("cobro", "aporte", "canje_socio", "extraccion_banco", "retorno_sueldo_opcion_a", "ingreso_dolares")
     result = {op.caja: op.importe if positive else -op.importe}
     target = op.cajaDestino or op.cajaContraparte
@@ -151,7 +153,7 @@ def _references(op):
     if op.idSocio:
         if not db.one("SELECT IdSocio FROM dbo.Socios WHERE IdSocio=?", (op.idSocio,)):
             raise ValueError("Socio inexistente.")
-    if op.tipo in ("aporte", "retiro_a_cuenta") or (
+    if op.tipo in ("aporte", "retiro_a_cuenta") or op.medioSocio or (
         op.tipo == "pago" and op.caja == "condominio-lsc"
     ):
         context["valuacion"] = (valuacion.dolares_a_fecha(op.importe, op.fecha)
@@ -380,6 +382,7 @@ def _socio(
     id_origin=None,
     importe=None,
     fecha=None,
+    medio=None,
 ):
     id_mov = db.insert(
         "INSERT INTO dbo.MovimientosCuentaSocio "
@@ -392,7 +395,7 @@ def _socio(
             fecha if fecha is not None else op.fecha,
             origin,
             id_origin or id_op,
-            "Efectivo USD" if op.caja == "giamigli-dolares" else "Efectivo",
+            medio or ("Efectivo USD" if op.caja == "giamigli-dolares" else "Efectivo"),
             op.concepto,
             user,
             valuation["importeUSD"],
@@ -490,6 +493,8 @@ def _aplicar(id_op, op, user, context):
             (id_op, op.fecha, op.concepto, op.importe, user),
         )
         db.effect(id_op, "GastoCaja", id_gasto)
+        if op.idSocio is not None:  # pagado por el socio: queda a su favor hasta que Giamigli se lo reponga
+            _socio(id_op, op, user, op.idSocio, "Devolucion", context["valuacion"], medio=op.medioSocio)
         for rep in op.repartos:
             db.write(
                 "INSERT INTO dbo.RepartosGastoCaja "
