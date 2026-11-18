@@ -18,6 +18,11 @@ def _f(v) -> float:
     return float(v) if v is not None else 0.0
 
 
+def _por_ha(importe: float, superficie: float | None) -> float:
+    """Importe por hectárea sembrada; 0 si el cultivo no se sembró (su costo es hundido, no tiene valor por ha)."""
+    return importe / superficie if superficie else 0.0
+
+
 def _destino(id_cultivo: int) -> tuple[int, str]:
     fila = fetch_one(
         "SELECT TOP 1 IdDestino AS id, Destino AS nombre FROM dbo.DestinoCompras "
@@ -170,28 +175,32 @@ def formulario_costos(id_cultivo: int, id_campania: int) -> dict:
     base = {"cultivo": cultivo, "campania": campania, "idCultivo": id_cultivo, "idCampania": id_campania}
     if sup <= 0:
         return {**base, "sinSuperficie": True}
-    picado = min(max(_f(r.get("SupPicado")), 0.0), sup)
-    cosechada = round(_f((fetch_one("SELECT SuperficieCosechada AS s FROM dbo.ResultadoCultivo_Cierre WHERE IdCultivo = ? AND IdCampaña = ?",
-                                    (id_cultivo, id_campania)) or {}).get("s")), 1)
-    grano = sup - picado
+    # 18/11/2026 (reglas-superficies.md): el costo por ha se divide por la superficie SEMBRADA, no por la bruta del plan.
+    from src.features.resultado_cultivo.superficies import superficies
+    S = superficies(id_cultivo, id_campania)
+    base_ha = S["sembrada"] or None  # sin sembrar: no hay costo por ha (costo hundido)
+    picado = min(max(_f(r.get("SupPicado")), 0.0), base_ha or 0.0)
+    picado = picado if base_ha else 0.0
+    grano = (base_ha or 0.0) - picado
     impl_p, impl_d = _f(r.get("TotalImplPesos")), _f(r.get("TotalImplDolares"))
     silo_p, silo_d = _f(r.get("TotalSiloPesos")), _f(r.get("TotalSiloDolares"))
     cos_p, cos_d = _f(r.get("TotalCosechaPesos")), _f(r.get("TotalCosechaDolares"))
-    impl_ha_p, impl_ha_d = impl_p / sup, impl_d / sup
+    impl_ha_p, impl_ha_d = _por_ha(impl_p, base_ha), _por_ha(impl_d, base_ha)
     grano_p = impl_p - impl_ha_p * picado + cos_p
     grano_d = impl_d - impl_ha_d * picado + cos_d
     # = dbo.sp_FrmCostos_ImplantacionAgrupado, sobre el cálculo único.
     filas = [{"IdRubroGrupo": g["idRubro"], "Concepto": g["concepto"], "Pesos": g["pesos"], "Dolares": g["dolares"],
-              "CostoHAPesos": round(g["pesos"] / sup, 2), "CostoHADolares": round(g["dolares"] / sup, 2)}
+              "CostoHAPesos": round(_por_ha(g["pesos"], base_ha), 2), "CostoHADolares": round(_por_ha(g["dolares"], base_ha), 2)}
              for g in _agrupar(impl_lineas)]
     return {
         **base,
         "sinSuperficie": False,
         "fechaInicio": _fecha_inicio(id_cultivo, id_campania, r.get("FechaInicio")),
         "superficieAfectada": round(sup, 1),
-        "superficieSembrada": max(real, cosechada) if (real := superficie_sembrada_real(id_destino, id_campania)) is not None else round(grano, 1),
-        "superficieSembradaTeorica": real is None,
-        "superficieSembradaSegunCosecha": real is not None and cosechada > real,
+        "superficieSembrada": S["sembrada"],
+        "superficieSembradaTeorica": S["teorica"],
+        "superficieSembradaSegunCosecha": S["segunCosecha"],
+        "aprovechamiento": S["aprovechamiento"], "noSembrado": S["noSembrado"],
         "superficiePicada": round(picado, 1),
         "costosDirectos": [
             {"idRubro": f["IdRubroGrupo"], "concepto": f["Concepto"], "pesos": _f(f["Pesos"]), "dolares": _f(f["Dolares"]),
@@ -261,8 +270,12 @@ def formulario_resultados(id_cultivo: int, id_campania: int) -> dict:
     rinde = round(cant_cosecha / sup_cosecha) if sup_cosecha > 0 else 0
     tot_vta_p, tot_vta_d = round(venta_p + bonif_p, 2), round(venta_d + bonif_d, 2)
 
+    # 18/11/2026 (reglas-superficies.md): costo y margen bruto por ha SEMBRADA; rinde y cosecha por ha cosechada.
+    from src.features.resultado_cultivo.superficies import superficies
+    S = superficies(id_cultivo, id_campania)
+    base_ha = S["sembrada"] or None  # sin sembrar: no hay costo por ha (costo hundido)
     lineas = _lineas(id_cultivo, id_campania)
-    costos_directos = [{**g, "haPesos": g["pesos"] / sup, "haDolares": g["dolares"] / sup}
+    costos_directos = [{**g, "haPesos": _por_ha(g["pesos"], base_ha), "haDolares": _por_ha(g["dolares"], base_ha)}
                        for g in _agrupar([l for l in lineas if l.get("clasif") == 1])]
     impl_p = sum(c["pesos"] for c in costos_directos)
     impl_d = sum(c["dolares"] for c in costos_directos)
@@ -291,8 +304,8 @@ def formulario_resultados(id_cultivo: int, id_campania: int) -> dict:
             consumo_d = round((cant_cosecha - cant_venta) / 1000 * precio_tn, 2)
             consumo_p = round(consumo_d * (tot_vta_p / tot_vta_d), 2) if tot_vta_d else 0.0
 
-    silo_p = impl_p / sup * sup_picado
-    silo_d = impl_d / sup * sup_picado
+    silo_p = _por_ha(impl_p, base_ha) * sup_picado
+    silo_d = _por_ha(impl_d, base_ha) * sup_picado
     total_p = round(impl_p - silo_p + cos_p)
     total_d = round(impl_d - silo_d + cos_d)
     neta_p = tot_vta_p - desc_p + seg_p + consumo_p
@@ -308,13 +321,14 @@ def formulario_resultados(id_cultivo: int, id_campania: int) -> dict:
         "fechaInicio": fecha_inicio, "fechaFin": fecha_fin, "ocupacionDias": duracion if duracion > 0 else None,
         "superficieAfectada": round(sup, 1), "superficieCosechada": sup_cosecha,
         # No se puede cosechar más de lo sembrado (Sergio 12/11/2026): si la cosecha supera los registros de siembra, manda la cosecha.
-        "superficieSembrada": max(real, round(sup_cosecha, 1)) if (real := superficie_sembrada_real(id_destino, id_campania)) is not None else round(sup, 1),
-        "superficieSembradaTeorica": real is None,
-        "superficieSembradaSegunCosecha": real is not None and sup_cosecha > real, "superficiePicada": sup_picado,
+        "superficieSembrada": S["sembrada"],
+        "superficieSembradaTeorica": S["teorica"],
+        "superficieSembradaSegunCosecha": S["segunCosecha"], "superficiePicada": sup_picado,
+        "aprovechamiento": S["aprovechamiento"], "noSembrado": S["noSembrado"],
         "cantidadCosechada": round(cant_cosecha), "cantidadVendida": round(cant_venta), "cantidadConsumida": round(cant_cosecha - cant_venta),
         "rinde": rinde, "rindeIndiferencia": rinde_indif, "volumenIndiferencia": round(rinde_indif * sup_cosecha),
         "margenBruto": {"pesos": mb_p, "dolares": mb_d},
-        "margenBrutoHa": {"pesos": round(mb_p / sup, 2), "dolares": round(mb_d / sup, 2)},
+        "margenBrutoHa": {"pesos": round(_por_ha(mb_p, base_ha), 2), "dolares": round(_por_ha(mb_d, base_ha), 2)},
         "rentabilidad": {"pesos": rent_p, "dolares": rent_d},
         "rentaAnual": {"pesos": round(rent_p * 365 / duracion, 4) if duracion > 0 else 0.0,
                        "dolares": round(rent_d * 365 / duracion, 4) if duracion > 0 else 0.0},

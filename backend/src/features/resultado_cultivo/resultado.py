@@ -15,6 +15,13 @@ def _f(v) -> float:
 
 
 def superficie_sembrada(id_cultivo: int, id_campania: int) -> float:
+    """18/11/2026 (reglas-superficies.md): superficie sembrada real (facturas de siembra / cosecha); sin siembra
+    registrada, la bruta del plan."""
+    from src.features.resultado_cultivo.superficies import superficies
+    return superficies(id_cultivo, id_campania)["sembrada"]
+
+
+def superficie_bruta(id_cultivo: int, id_campania: int) -> float:
     fila = fetch_one(
         """
         SELECT SUM(l.Superficie) AS total

@@ -53,7 +53,8 @@ export function FormularioResultados({ idCultivo, idCampania }: { idCultivo: num
       <div className="grid gap-3 lg:grid-cols-[1fr_1fr_1fr_1.1fr_1.1fr]">
         <Bloque className="px-3 py-2 text-sm">
           <Dato label="Superficie afectada">{formatCantidad(d.superficieAfectada ?? 0)} ha</Dato>
-          <Dato label="Superficie sembrada">{formatCantidad(d.superficieSembrada ?? 0)} ha{d.superficieSembradaTeorica && <span className="ml-1 text-xs font-normal text-status-warning" title="Sin factura de siembra: es la superficie planificada">(teórica)</span>}{d.superficieSembradaSegunCosecha && <span className="ml-1 text-xs font-normal text-status-warning" title="Se cosechó más de lo que figura sembrado: faltan registros de siembra">(según cosecha)</span>}</Dato>
+          <Dato label="Superficie sembrada">{formatCantidad(d.superficieSembrada ?? 0)} ha{d.superficieSembradaTeorica && <span className="ml-1 text-xs font-normal text-status-warning" title="Sin factura de siembra: es la superficie planificada">(teórica)</span>}{d.superficieSembradaSegunCosecha && <span className="ml-1 text-xs font-normal text-status-warning" title="Se cosechó más de lo que figura sembrado: faltan registros de siembra">(según cosecha)</span>}{d.noSembrado && <span className="ml-1 text-xs font-normal text-status-warning" title="El plan lo marca como no sembrado: su costo es hundido y no tiene valor por hectárea">(no sembrado)</span>}</Dato>
+              {d.aprovechamiento != null && <Dato label="Aprovechamiento del lote"><span title="Superficie sembrada sobre superficie de los lotes: cabeceras, bajos y caminos no se siembran. El costo por ha se calcula sobre la sembrada.">{formatCantidad(d.aprovechamiento * 100)} %</span></Dato>}
           <Dato label="Superficie cosechada">{formatCantidad(d.superficieCosechada ?? 0)} ha</Dato>
           <Dato label="Superficie picada">{formatCantidad(d.superficiePicada ?? 0)} ha</Dato>
         </Bloque>
