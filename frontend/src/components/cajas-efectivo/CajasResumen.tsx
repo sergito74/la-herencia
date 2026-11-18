@@ -33,11 +33,11 @@ function TarjetaCaja({ slug, nombre, detalle }: (typeof CAJAS)[number]) {
         </p>
       </div>
       <div className="mt-4 flex gap-2">
-        <Link href={`/finanzas/cajas-efectivo/${slug}`} className="rounded-sm border border-border px-3 py-1.5 text-sm hover:bg-surface-sunken">
+        <Link href={`/finanzas/cajas-efectivo/${slug}`} className="rounded-md border border-border px-3 py-1.5 text-sm hover:bg-surface-sunken">
           Ver movimientos
         </Link>
         <SoloLectura>
-          <Link href={`/finanzas/cajas-efectivo/${slug}?nuevo=1`} className="rounded-md bg-finance font-medium text-white shadow-sm transition-colors hover:bg-finance/90 disabled:opacity-60 px-3 py-1.5 text-sm hover:opacity-90">
+          <Link href={`/finanzas/cajas-efectivo/${slug}?nuevo=1`} className="rounded-md border border-finance/40 px-3 py-1.5 text-sm font-medium text-finance hover:bg-finance-light">
             + Movimiento
           </Link>
         </SoloLectura>
@@ -74,8 +74,8 @@ export function CajasResumen() {
               <article key={s.idSocio} className="rounded-md border border-border bg-surface p-4">
                 <Link href={`/finanzas/cuentas-socios/${s.idSocio}`} className="hover:underline">
                 <h3 className="font-semibold">{s.idSocio === 3 ? "Condominio LSC" : s.nombre}</h3></Link>
-                <p className={`font-data mt-2 text-2xl font-semibold ${deuda > 0 ? "text-status-danger" : deuda < 0 ? "text-status-success" : ""}`}>
-                  {formatMoneda(deuda)}
+                <p className="font-data mt-2 text-2xl font-semibold text-ink-primary">
+                  {formatMoneda(Math.abs(deuda))}
                 </p>
                 <p className="text-xs text-ink-secondary">{deuda > 0 ? "Le debe a la empresa" : deuda < 0 ? "A favor del socio" : "Sin saldo"}</p>
                 {a && (

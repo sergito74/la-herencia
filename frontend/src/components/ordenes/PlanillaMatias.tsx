@@ -4,6 +4,8 @@ import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { SoloLectura } from "@/components/auth/SoloLectura";
 import { StatusBadge } from "@/components/ui/StatusBadge";
+import { Button } from "@/components/ui/Button";
+import { Callout } from "@/components/ui/Callout";
 import { formatCantidad, formatFecha } from "@/lib/format";
 import { fetchPlanillaMatias, leerPlanillaMatias, type LecturaPlanillaMatias } from "@/services/ordenesApi";
 
@@ -63,26 +65,17 @@ export function PlanillaMatias() {
   }
 
   const creadas = data?.creadas ?? [], revisar = data?.paraRevisar ?? [], cambiadas = data?.cambiadas ?? [];
-  const nada = data?.leida && !creadas.length && !revisar.length && !cambiadas.length;
 
-  return <section className="mb-4 rounded-lg border border-border bg-surface-sunken/60 p-4">
-    <div className="flex flex-wrap items-start justify-between gap-3">
-      <div>
-        <h2 className="text-base font-semibold text-ink-primary">Órdenes de Matías</h2>
-        <p className="text-sm text-ink-secondary">
-          Cuando Matías mande la orden por WhatsApp, leé la planilla: la orden se carga planificada con los productos del depósito.
-          {data?.leida && <span className="text-ink-muted"> Última lectura: {formatFecha(data.leida)}, {data.leida.slice(11, 16)} h.</span>}
-        </p>
-      </div>
-      <SoloLectura>
-        <button onClick={leer} disabled={ocupado}
-          className="rounded-md bg-finance font-medium text-white shadow-sm transition-colors hover:bg-finance/90 disabled:opacity-60 px-4 py-2 text-sm">
-          {ocupado ? "Leyendo la planilla…" : "Leer la planilla de Matías"}
-        </button>
-      </SoloLectura>
-    </div>
-
-    {(creadas.length > 0 || revisar.length > 0 || cambiadas.length > 0) && <div className="mt-4 grid gap-3 lg:grid-cols-2">
+  const tono = revisar.length ? "error" : creadas.some(c => c.faltantes.length) || cambiadas.length ? "aviso" : "info";
+  const resumen = revisar.length
+    ? `${revisar.length === 1 ? "1 orden" : `${revisar.length} órdenes`} para corregir en la planilla`
+    : creadas.length ? `${creadas.length === 1 ? "1 orden cargada" : `${creadas.length} órdenes cargadas`}${creadas.some(c => c.faltantes.length) ? " · falta stock" : ""}`
+    : data?.leida ? "sin órdenes nuevas" : "todavía no se leyó la planilla";
+  const hayDetalle = creadas.length > 0 || revisar.length > 0 || cambiadas.length > 0;
+  return <Callout tono={tono} titulo="Órdenes de Matías"
+    resumen={`${resumen}${data?.leida ? ` · última lectura ${formatFecha(data.leida)} ${data.leida.slice(11, 16)} h` : ""}${error ? ` · ${error}` : ""}`}
+    accion={<SoloLectura><Button size="sm" variant="primary" disabled={ocupado} onClick={leer}>{ocupado ? "Leyendo…" : "Leer la planilla"}</Button></SoloLectura>}>
+    {hayDetalle ? <div className="grid gap-3 lg:grid-cols-2">
       {creadas.map(c => <Tarjeta key={c.fecha} fecha={c.fecha} momentos={c.momentos} estado={c.faltantes.length ? "Cargada · falta stock" : "Cargada"} tono={c.faltantes.length ? "warning" : "success"}>
         {c.idOrden && <p>Quedó como <Link className="font-medium text-finance underline" href={`/produccion/ordenes/${c.idOrden}/editar`}>orden {c.idOrden}</Link>, planificada.</p>}
         {c.faltantes.length > 0 && <div className="mt-2">
@@ -98,8 +91,6 @@ export function PlanillaMatias() {
       {cambiadas.map(c => <Tarjeta key={c.fecha} fecha={c.fecha} estado="Cambió en la planilla" tono="neutral">
         <p>Matías la modificó después de cargarla como <Link className="font-medium text-finance underline" href={`/produccion/ordenes/${c.idOrden}/editar`}>orden {c.idOrden}</Link>. Revisá si hay que ajustarla.</p>
       </Tarjeta>)}
-    </div>}
-    {nada && <p className="mt-3 text-sm text-ink-secondary">No hay órdenes nuevas en la planilla: todas ya están cargadas.</p>}
-    {error && <p role="alert" className="mt-3 rounded-md bg-status-danger-bg px-3 py-2 text-sm text-status-danger">{error}</p>}
-  </section>;
+    </div> : null}
+  </Callout>;
 }

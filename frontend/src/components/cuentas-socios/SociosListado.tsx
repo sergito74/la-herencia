@@ -1,6 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
+import { Saldo } from "@/components/ui/Saldo";
 import Link from "next/link";
 
 import { fetchSocios, type SocioConSaldo } from "@/services/cuentasSociosApi";
@@ -8,8 +9,9 @@ import { DataTable, type DataTableColumn } from "@/components/ui/DataTable";
 import { ErrorState, LoadingState } from "@/components/ui/States";
 import { formatCantidad, formatFecha, formatMoneda } from "@/lib/format";
 
-function tono(v: number) {
-  return v > 0 ? "text-status-danger" : v < 0 ? "text-status-success" : "";
+// 18/11/2026: sin rojo/verde por signo; el sentido lo da la etiqueta del saldo.
+function tono(_v: number) {
+  return "";
 }
 
 const COLUMNS: DataTableColumn<SocioConSaldo>[] = [
@@ -46,9 +48,7 @@ const COLUMNS: DataTableColumn<SocioConSaldo>[] = [
     numeric: true,
     sortValue: (s) => s.actualizada?.deudaActualizada ?? 0,
     render: (s) => (
-      <span className={`font-semibold ${tono(s.actualizada?.deudaActualizada ?? 0)}`}>
-        {formatMoneda(s.actualizada?.deudaActualizada ?? 0)}
-      </span>
+      <Saldo className="font-semibold" valor={s.actualizada?.deudaActualizada ?? 0} negativo="A favor del socio" positivo="Debe a la empresa" />
     ),
   },
   {

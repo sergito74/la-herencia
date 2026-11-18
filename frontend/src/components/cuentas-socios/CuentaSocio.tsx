@@ -149,7 +149,7 @@ export function CuentaSocio({ idSocio }: { idSocio: number }) {
   const pesos = (v: number) => formatMoneda(v);
   const dolares = (v: number) => formatMoneda(v, "Dolares");
   const kilos = (v: number) => `${formatCantidad(v)} kg`;
-  const tono = (v: number) => (v > 0 ? "text-status-danger" : v < 0 ? "text-status-success" : "");
+  const tono = (_v: number) => ""; // 18/11/2026: sin rojo/verde por signo (el rojo es solo para alertas)
   const num = { align: "right" as const, numeric: true };
 
   const columns: DataTableColumn<MovimientoCuentaSocio>[] = [

@@ -12,7 +12,7 @@ import { DataTable, type DataTableColumn } from "@/components/ui/DataTable";
 import { FilterBar, FilterSubmitButton } from "@/components/ui/FilterBar";
 import { SideDrawer } from "@/components/ui/SideDrawer";
 import { ErrorState, LoadingState } from "@/components/ui/States";
-import { formatMoneda, formatCantidad, formatFecha } from "@/lib/format";
+import { formatCantidad, formatFecha, formatMoneda } from "@/lib/format";
 
 /**
  * Listado de ventas de hacienda: consignatario a nivel de venta, comprador
@@ -101,6 +101,22 @@ export function VentasHaciendaListado() {
       render: (v) => (
         <ContactoLink idContacto={v.idConsignatario} razonSocial={v.consignatario} tipoContacto="Consignatario" />
       ),
+    },
+    // 18/11/2026: lo que importa de una venta (cabezas, kg y bruto) a la vista, sin abrirla.
+    {
+      key: "cabezas", header: "Cabezas", align: "right", numeric: true,
+      sortValue: (v) => v.lineas.reduce((s, l) => s + (l.cantidad ?? 0), 0),
+      render: (v) => formatCantidad(v.lineas.reduce((s, l) => s + (l.cantidad ?? 0), 0)),
+    },
+    {
+      key: "kg", header: "Kg", align: "right", numeric: true,
+      sortValue: (v) => v.lineas.reduce((s, l) => s + (l.pesoTotal ?? 0), 0),
+      render: (v) => { const kg = v.lineas.reduce((s, l) => s + (l.pesoTotal ?? 0), 0); return kg ? formatCantidad(kg) : "—"; },
+    },
+    {
+      key: "bruto", header: "Importe bruto", align: "right", numeric: true,
+      sortValue: (v) => v.lineas.reduce((s, l) => s + (l.importe ?? 0), 0),
+      render: (v) => formatMoneda(v.lineas.reduce((s, l) => s + (l.importe ?? 0), 0)),
     },
     {
       key: "editar",

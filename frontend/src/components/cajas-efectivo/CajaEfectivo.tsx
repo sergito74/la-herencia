@@ -45,7 +45,7 @@ const COLUMNS: DataTableColumn<MovimientoCajaEfectivo>[] = [
     numeric: true,
     sortValue: (m) => m.importe,
     render: (m) => (
-      <span className={m.importe < 0 ? "text-status-danger" : "text-status-success"}>{formatMoneda(m.importe)}</span>
+      <span>{formatMoneda(m.importe)}</span>
     ),
   },
   { key: "cuenta", header: "Cuenta", wrap: true, width: "w-[12%]", render: (m) => m.cuenta ?? "—" },

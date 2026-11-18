@@ -1,6 +1,7 @@
 "use client";
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { Saldo } from "@/components/ui/Saldo";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
@@ -53,7 +54,7 @@ function buildColumns(onReasignado: () => void): DataTableColumn<MovimientoCuent
     numeric: true,
     sortValue: (m) => m.deuda,
     render: (m) => (
-      <span className="text-status-danger">{m.deuda ? formatMoneda(m.deuda) : "—"}</span>
+      <span>{m.deuda ? formatMoneda(m.deuda) : "—"}</span>
     ),
   },
   {
@@ -63,7 +64,7 @@ function buildColumns(onReasignado: () => void): DataTableColumn<MovimientoCuent
     numeric: true,
     sortValue: (m) => m.credito,
     render: (m) => (
-      <span className="text-status-success">{m.credito ? formatMoneda(m.credito) : "—"}</span>
+      <span>{m.credito ? formatMoneda(m.credito) : "—"}</span>
     ),
   },
   {
@@ -73,9 +74,7 @@ function buildColumns(onReasignado: () => void): DataTableColumn<MovimientoCuent
     numeric: true,
     sortValue: (m) => m.saldoParcial,
     render: (m) => (
-      <span className={m.saldoParcial != null && m.saldoParcial < 0 ? "text-status-danger" : "text-status-success"}>
-        {m.saldoParcial != null ? formatMoneda(m.saldoParcial) : "—"}
-      </span>
+      <Saldo valor={m.saldoParcial} negativo="Debemos" positivo="A favor nuestro" />
     ),
   },
   {
@@ -100,9 +99,7 @@ function buildColumns(onReasignado: () => void): DataTableColumn<MovimientoCuent
     numeric: true,
     render: (m) =>
       m.saldoDolares != null ? (
-        <span className={m.saldoDolares < 0 ? "text-status-danger" : "text-status-success"}>
-          {formatMoneda(m.saldoDolares, "Dolares")}
-        </span>
+        <Saldo valor={m.saldoDolares} moneda="Dolares" negativo="Debemos" positivo="A favor nuestro" />
       ) : (
         ""
       ),

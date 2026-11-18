@@ -86,7 +86,7 @@ export function SincronizacionAutomatica({ portal }: { portal: Portal }) {
   if (portal.motivoNoSincroniza) return <span className="text-xs text-status-danger">{portal.motivoNoSincroniza}</span>;
   const p = portal.programacion;
   if (p?.suspendida) return <span className="text-xs text-status-danger">Pausada: {p.motivoSuspension}</span>;
-  if (!p || p.frecuencia === "desactivada") return <span className="text-xs text-ink-secondary">Disponible · solo manual</span>;
+  if (!p || p.frecuencia === "desactivada") return <span className="text-xs text-ink-secondary">Sin descarga automática</span>;
   return (
     <span className="text-xs text-ink-secondary">
       Activa · próxima {formatFechaHora(p.proximaCorrida)}

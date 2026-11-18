@@ -1,6 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
+import { Saldo } from "@/components/ui/Saldo";
 import { SOCIO_DE_CONTACTO } from "@/components/ui/AvisoCuentaContacto";
 import Link from "next/link";
 import { useState } from "react";
@@ -32,9 +33,7 @@ const COLUMNS: DataTableColumn<SaldoContacto>[] = [
     numeric: true,
     sortValue: (s) => s.saldoParcial,
     render: (s) => (
-      <span className={s.saldoParcial != null && s.saldoParcial < 0 ? "text-status-danger" : "text-status-success"}>
-        {s.saldoParcial != null ? formatMoneda(s.saldoParcial) : "—"}
-      </span>
+      <Saldo valor={s.saldoParcial} negativo="Debemos" positivo="A favor nuestro" />
     ),
   },
   {
@@ -45,9 +44,7 @@ const COLUMNS: DataTableColumn<SaldoContacto>[] = [
     sortValue: (s) => s.saldoDolares ?? 0,
     render: (s) =>
       s.saldoDolares != null ? (
-        <span className={s.saldoDolares < 0 ? "text-status-danger" : "text-status-success"}>
-          {formatMoneda(s.saldoDolares, "Dolares")}
-        </span>
+        <Saldo valor={s.saldoDolares} moneda="Dolares" negativo="Debemos" positivo="A favor nuestro" />
       ) : (
         ""
       ),
