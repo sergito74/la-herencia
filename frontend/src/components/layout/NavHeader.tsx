@@ -371,29 +371,13 @@ export function NavHeader() {
         <div className="flex shrink-0 items-center gap-3">
           <button
             type="button"
-            disabled
-            title="Selector de Establecimiento/Campaña — próximamente"
-            className="hidden rounded-sm border border-border px-3 py-1 text-xs text-ink-muted disabled:cursor-not-allowed 2xl:inline-flex"
-          >
-            Establecimiento: todos
-          </button>
-          <button
-            type="button"
             onClick={() => window.dispatchEvent(new Event("abrir-busqueda"))}
             title="Buscar en todo el sistema (Ctrl+K)"
             aria-label="Buscar (Ctrl+K)"
-            className="inline-flex items-center gap-2 rounded-md p-1.5 text-ink-muted hover:bg-surface-sunken hover:text-ink-secondary 2xl:border 2xl:border-border 2xl:bg-surface-sunken/60 2xl:px-2.5 2xl:py-1 2xl:text-xs"
+            className="inline-flex items-center gap-2 rounded-md p-1.5 text-ink-muted hover:bg-surface-sunken hover:text-ink-secondary min-[2200px]:border min-[2200px]:border-border min-[2200px]:bg-surface-sunken/60 min-[2200px]:px-2.5 min-[2200px]:py-1 min-[2200px]:text-xs"
           >
             <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={1.8} aria-hidden><circle cx="11" cy="11" r="6" /><path d="m20 20-4.5-4.5" /></svg>
-            <span className="hidden 2xl:inline">Buscar <kbd className="rounded border border-border bg-surface px-1 font-sans">Ctrl K</kbd></span>
-          </button>
-          <button
-            type="button"
-            disabled
-            title="Notificaciones — próximamente"
-            className="hidden rounded-full p-1.5 text-ink-muted hover:bg-surface-sunken disabled:cursor-not-allowed disabled:hover:bg-transparent 2xl:inline-flex"
-          >
-            <Icon>{ICONS.bell}</Icon>
+            <span className="hidden min-[2200px]:inline">Buscar <kbd className="rounded border border-border bg-surface px-1 font-sans">Ctrl K</kbd></span>
           </button>
           {usuario && (
             <div className="flex items-center gap-2">
