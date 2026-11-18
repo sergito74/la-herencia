@@ -244,7 +244,7 @@ function NavDropdown({ item, active, peajes, nuevos, revisar = 0 }:
     <div className="relative" onMouseEnter={() => setOpen(true)} onMouseLeave={() => setOpen(false)}>
       <button
         type="button"
-        className={`flex items-center gap-2 rounded-md px-3 py-2 text-sm transition-colors ${
+        className={`flex items-center gap-2 rounded-md shrink-0 whitespace-nowrap px-2.5 py-2 text-sm transition-colors ${
           active
             ? "bg-finance-light font-medium text-finance"
             : "text-ink-secondary hover:bg-surface-sunken hover:text-ink-primary"
@@ -317,7 +317,7 @@ export function NavHeader() {
           izquierda, selector de contexto/notificaciones/usuario a la
           derecha — todo en la misma línea para no gastar alto de más
           (pedido explícito del usuario, 2026-09-17). */}
-      <div className="flex w-full items-center justify-between gap-4 px-8 py-2">
+      <div className="flex w-full items-center justify-between gap-3 px-6 py-2">
         <div className="flex min-w-0 items-center gap-4">
           <Link href="/" className="flex shrink-0 items-center gap-2 font-semibold text-ink-primary">
             <span className="flex h-7 w-7 items-center justify-center rounded-md bg-agro text-sm text-white">
@@ -325,7 +325,8 @@ export function NavHeader() {
             </span>
             La Herencia
           </Link>
-          <div className="flex items-center gap-1">
+          {/* 18/11/2026: sin el selector "próximamente" (solo en pantallas muy anchas) y con menos relleno, la navegación no pisa el bloque derecho (Bóveda quedaba debajo del selector). */}
+          <nav className="flex min-w-0 items-center gap-0.5">
             {NAV_ITEMS.filter((item) => !item.soloAdmin || usuario?.rol === "Administrador").map((item) => {
               if (item.disabled) {
                 return (
@@ -352,7 +353,7 @@ export function NavHeader() {
                 <Link
                   key={item.href}
                   href={item.href}
-                  className={`flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors ${
+                  className={`flex shrink-0 items-center gap-2 whitespace-nowrap rounded-md px-2.5 py-2 text-sm font-medium transition-colors ${
                     active
                       ? "bg-finance-light text-finance"
                       : "text-ink-secondary hover:bg-surface-sunken hover:text-ink-primary"
@@ -364,7 +365,7 @@ export function NavHeader() {
                 </Link>
               );
             })}
-          </div>
+          </nav>
         </div>
 
         <div className="flex shrink-0 items-center gap-3">
@@ -372,7 +373,7 @@ export function NavHeader() {
             type="button"
             disabled
             title="Selector de Establecimiento/Campaña — próximamente"
-            className="rounded-sm border border-border px-3 py-1 text-xs text-ink-muted disabled:cursor-not-allowed"
+            className="hidden rounded-sm border border-border px-3 py-1 text-xs text-ink-muted disabled:cursor-not-allowed 2xl:inline-flex"
           >
             Establecimiento: todos
           </button>
