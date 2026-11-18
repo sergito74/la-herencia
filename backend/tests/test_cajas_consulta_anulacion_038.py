@@ -34,21 +34,24 @@ def test_operacion_ajena_inexistente_no_crea_historia(monkeypatch):
     assert not store.state["records"]
 
 
-def test_costo_gasto_caja_incluido_una_vez_y_usd_no_valuado(monkeypatch):
+def test_costo_gasto_caja_incluido_una_vez_y_dolarizado_al_bna(monkeypatch):
+    """17/11/2026: el gasto de caja en pesos se pasa a dólares al BNA comprador divisa del día (regla de la casa)."""
     from src.features.resultado_cultivo import costos
 
     monkeypatch.setattr(costos, "costos_heredados", lambda *a: [])
     monkeypatch.setattr(costos, "costo_ordenes_trabajo", lambda *a: [])
+    monkeypatch.setattr(costos, "costos_alcance", lambda *a: [])
     monkeypatch.setattr(costos.mapeo, "idCultivo_a_destino", lambda *a: 6)
 
     def fetch(sql, params):
         assert "g.Anulada=0 AND op.Estado='Vigente'" in sql
+        assert "Dolar BNA" in sql and "Comp_Divisa" in sql
         assert params == (6, 32)
         return [
             {
                 "concepto": "Gasto",
                 "montoPesos": 100,
-                "montoDolares": None,
+                "montoDolares": 0.07,
                 "origen": "GastoCaja",
                 "idGasto": 1,
                 "idReparto": 1,
@@ -59,7 +62,7 @@ def test_costo_gasto_caja_incluido_una_vez_y_usd_no_valuado(monkeypatch):
     monkeypatch.setattr(costos, "fetch_all", fetch)
     result = costos.costo_total(3, 32)
     assert result["pesos"] == 100 and len(result["lineas"]) == 1
-    assert result["lineas"][0]["montoDolares"] is None
+    assert result["dolares"] == 0.07
 
 
 def test_anular_entrada_pide_confirmar_saldo_negativo(monkeypatch):
