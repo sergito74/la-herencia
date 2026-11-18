@@ -51,3 +51,43 @@ def superficies(id_cultivo: int, id_campania: int) -> dict:
     cierre = fetch_one("SELECT SuperficieCosechada AS s FROM dbo.ResultadoCultivo_Cierre WHERE IdCultivo = ? AND IdCampaña = ?",
                        (id_cultivo, id_campania))
     return base_por_ha(bruta, real, cierre["s"] if cierre and cierre["s"] is not None else None, no_sembrada)
+
+
+def ordenes_de_siembra(id_cultivo: int, id_campania: int) -> dict[str, float]:
+    """Superficie de cada lote en las órdenes de siembra (vieja y nueva) del cultivo/campaña; si un lote aparece en
+    varias órdenes (resiembra, siembra en dos pasadas) se toma la mayor."""
+    from src.db.connection import fetch_all
+
+    por_lote: dict[str, float] = {}
+    for f in fetch_all(
+            "SELECT l.[Numero Lote] AS lote, ol.Superficie AS ha FROM dbo.Ordenes o JOIN dbo.Ordenes_Lotes ol ON ol.IdOrden = o.IdOrden "
+            "JOIN dbo.Lotes l ON l.IdLote = ol.IdLote WHERE o.IdTipoLabor = 3 AND ol.IdCultivo = ? AND ol.IdCampaña = ? "
+            "UNION ALL SELECT l.[Numero Lote], MAX(d.Superficie) FROM dbo.Ordenes_Trabajo o "
+            "JOIN dbo.Ordenes_Trabajo_Insumos i ON i.IdOrdenTrabajo = o.IdOrdenTrabajo JOIN dbo.Ordenes_Trabajo_Distrib d ON d.IdOrdenInsumo = i.IdOrdenInsumo "
+            "JOIN dbo.Lotes l ON l.IdLote = d.IdLote WHERE o.IdTipoLabor = 3 AND o.Estado <> 'Anulada' AND d.IdCultivo = ? AND d.IdCampania = ? "
+            "GROUP BY o.IdOrdenTrabajo, l.[Numero Lote]", (id_cultivo, id_campania, id_cultivo, id_campania)):
+        k = str(f["lote"]).strip().upper()
+        por_lote[k] = max(por_lote.get(k, 0.0), _f(f["ha"]))
+    return por_lote
+
+
+def repartir_por_lote(ordenes: dict[str, float], sembrada: float) -> dict[str, float]:
+    """Pura (regla 9): la superficie sembrada de la factura repartida entre los lotes en proporción a la orden de siembra."""
+    total = sum(ordenes.values())
+    if total <= 0 or sembrada <= 0:
+        return {}
+    reparto = {k: round(v * sembrada / total, 1) for k, v in ordenes.items()}
+    ajuste = round(sembrada - sum(reparto.values()), 1)  # el redondeo va al lote más grande
+    if ajuste and reparto:
+        mayor = max(reparto, key=reparto.get)
+        reparto[mayor] = round(reparto[mayor] + ajuste, 1)
+    return reparto
+
+
+def sembrada_por_lote(id_cultivo: int, id_campania: int) -> list[dict]:
+    S = superficies(id_cultivo, id_campania)
+    ordenes = ordenes_de_siembra(id_cultivo, id_campania)
+    if S["teorica"] or S["noSembrado"] or not ordenes:
+        return [{"lote": k, "orden": round(v, 1), "sembrada": None} for k, v in sorted(ordenes.items())]
+    reparto = repartir_por_lote(ordenes, S["sembrada"])
+    return [{"lote": k, "orden": round(v, 1), "sembrada": reparto.get(k)} for k, v in sorted(ordenes.items())]

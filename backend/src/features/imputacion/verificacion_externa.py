@@ -39,6 +39,9 @@ REVISADOS = {
     # compra sin comprobante de Piccirilli: NO se carga (Sergio, 21/10 y 17/11/2026).
     ("20218532994", 2, 23),
     ("27121593403", 2, 480),      # Cordero, Claudia Hilda, recibo C del 11/12/2024: sin copia ni dato de qué fue (17/11/2026)
+    # Cooperadora Laboratorio Regional Bolívar 0004-122 del 10/08/2026 ($ 159.000): el laboratorio nunca mandó la
+    # factura; Sergio la deja pendiente (17/11/2026) y pidió no volver a avisarla (18/11/2026).
+    ("30657631996", 4, 122),
 }
 
 

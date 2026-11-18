@@ -430,7 +430,10 @@ def _control_verificacion_externa() -> list[dict]:
     if u is None:
         return [{"tipo": "Falta la verificación externa", "idCompra": None, "documento": "",
                  "detalle": "todavía no se cruzó el sistema contra ARCA y el portal de Bayá Casal"}]
-    out = [{**x, "idCompra": x.get("idCompra")} for x in u.get("problemas", [])]
+    # Comprobantes revisados con Sergio después de la última corrida: se dejan de mostrar sin esperar la próxima.
+    revisados = [f"{pv:04d}-{nro:08d}" for _, pv, nro in V.REVISADOS]
+    out = [{**x, "idCompra": x.get("idCompra")} for x in u.get("problemas", [])
+           if not any(r in (x.get("documento") or "") for r in revisados)]
     out += [{"tipo": "La verificación externa no pudo completarse", "idCompra": None, "documento": "", "detalle": e}
             for e in u.get("errores", [])]
     if datetime.now() - datetime.fromisoformat(u["fecha"]) > timedelta(days=8):
@@ -488,6 +491,41 @@ def _control_unidades() -> list[dict]:
         if factor_a_base(pid, unidad, bases, equiv)[1]:
             out.append({"tipo": "Unidad sin equivalencia en el stock", "idCompra": None, "documento": doc,
                         "detalle": f"{nombre_producto(pid)}: viene en {unidad} y el stock se lleva en {bases.get(pid)}; se toma 1 a 1"})
+    return out
+
+
+def superficie_siembra_difiere(orden: float, factura: float, tolerancia: float = 0.03) -> bool:
+    """Pura: la orden de siembra y la factura de siembra no coinciden (más del 3%)."""
+    return orden > 0 and factura > 0 and abs(orden - factura) > tolerancia * factura
+
+
+def _control_superficie_siembra() -> list[dict]:
+    """18/11/2026 (reglas-superficies.md): en campañas abiertas, la orden de siembra y la factura de siembra tienen que
+    decir lo mismo. El costo por ha usa la factura; el aviso es para que la orden refleje lo sembrado de verdad (como el
+    Girasol 2026/27: 78,1 ha en la orden, 70 sembradas)."""
+    from datetime import date
+
+    from src.features.resultado_cultivo.superficies import ordenes_de_siembra, sembrada_por_lote, superficies
+
+    hoy, out = date.today(), []
+    for p in _pares_con_costo():
+        if campania_cerrada(p["campania"], hoy):
+            continue
+        S = superficies(p["c"], p["ca"])
+        if S["noSembrado"]:
+            continue
+        ordenes = ordenes_de_siembra(p["c"], p["ca"])
+        orden = round(sum(ordenes.values()), 1)
+        doc = f"{p['cultivo']} {p['campania']}"
+        if ordenes and not S["teorica"] and superficie_siembra_difiere(orden, S["sembrada"]):
+            ha = lambda v: f"{v:.1f}".replace(".", ",")  # noqa: E731
+            lotes = ", ".join(f"{x['lote']} {ha(x['sembrada'])}" for x in sembrada_por_lote(p["c"], p["ca"]) if x["sembrada"] is not None)
+            out.append({"tipo": "La orden de siembra no coincide con la factura de siembra", "idCompra": None, "documento": doc,
+                        "detalle": f"orden {ha(orden)} ha, factura {ha(S['sembrada'])} ha; el costo por ha usa la factura "
+                                   f"(por lote, en proporción a la orden: {lotes})"})
+        elif not ordenes and not S["teorica"]:
+            out.append({"tipo": "Hay factura de siembra pero no orden de siembra", "idCompra": None, "documento": doc,
+                        "detalle": f"factura {str(S['sembrada']).replace('.', ',')} ha: falta la orden con los lotes sembrados"})
     return out
 
 
@@ -652,7 +690,7 @@ def controlar() -> list[dict]:
     for control in (_control_recalculos, _control_dos_imputaciones, _control_huerfanas, _control_renglones,
                     _control_distribucion, _control_resultado, _control_fuera_del_plan, _control_dolares,
                     _control_ingresos_en_costo, _control_rubros_faltantes, _control_costo_por_hectarea,
-                    _control_cerradas, _control_provisorios, _control_unidades, _control_fletes, _control_dosis, _control_consumos_sin_costo, _control_verificacion_externa, _control_listado):
+                    _control_cerradas, _control_provisorios, _control_unidades, _control_fletes, _control_superficie_siembra, _control_dosis, _control_consumos_sin_costo, _control_verificacion_externa, _control_listado):
         try:
             problemas += control()
         except Exception as exc:  # un control que falla se informa, no tapa a los demás

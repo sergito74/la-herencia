@@ -176,7 +176,7 @@ def formulario_costos(id_cultivo: int, id_campania: int) -> dict:
     if sup <= 0:
         return {**base, "sinSuperficie": True}
     # 18/11/2026 (reglas-superficies.md): el costo por ha se divide por la superficie SEMBRADA, no por la bruta del plan.
-    from src.features.resultado_cultivo.superficies import superficies
+    from src.features.resultado_cultivo.superficies import sembrada_por_lote, superficies
     S = superficies(id_cultivo, id_campania)
     base_ha = S["sembrada"] or None  # sin sembrar: no hay costo por ha (costo hundido)
     picado = min(max(_f(r.get("SupPicado")), 0.0), base_ha or 0.0)
@@ -201,6 +201,8 @@ def formulario_costos(id_cultivo: int, id_campania: int) -> dict:
         "superficieSembradaTeorica": S["teorica"],
         "superficieSembradaSegunCosecha": S["segunCosecha"],
         "aprovechamiento": S["aprovechamiento"], "noSembrado": S["noSembrado"],
+        # Regla 9: la superficie sembrada repartida por lote en proporción a la orden de siembra.
+        "sembradaPorLote": sembrada_por_lote(id_cultivo, id_campania),
         "superficiePicada": round(picado, 1),
         "costosDirectos": [
             {"idRubro": f["IdRubroGrupo"], "concepto": f["Concepto"], "pesos": _f(f["Pesos"]), "dolares": _f(f["Dolares"]),
