@@ -234,7 +234,7 @@ def _control_cerradas() -> list[dict]:
     for f in fetch_all(
         "SELECT f.Fecha, f.Cambios, cu.Cultivo AS cultivo, k.[Campaña] AS campania FROM dbo.ResultadoCultivo_Fotos f "
         "JOIN dbo.Cultivos cu ON cu.IdCultivo = f.IdCultivo JOIN dbo.[Campañas] k ON k.[IdCampaña] = f.IdCampania "
-        "WHERE f.Cambios IS NOT NULL AND f.Fecha >= ? ORDER BY f.Fecha DESC", (desde,)):
+        "WHERE f.Cambios IS NOT NULL AND f.Revisado = 0 AND f.Fecha >= ? ORDER BY f.Fecha DESC", (desde,)):
         cambios = json.loads(f["Cambios"])
         total = sum(cambios.values())
         principales = sorted(cambios.items(), key=lambda kv: -abs(kv[1]))[:5]
