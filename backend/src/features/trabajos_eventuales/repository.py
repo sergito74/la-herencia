@@ -304,8 +304,11 @@ def pagar_por_socio(id_trabajo, datos, usuario):
         _insert_asiento(datos.idSocio, "haber", float(datos.importe), datos.fecha, datos.medio, motivo, usuario),
         lambda r: ("INSERT INTO dbo.AuditoriaReflejoSocio (Accion, IdMovimiento, IdSocio, Usuario, Detalle) VALUES (?, ?, ?, ?, ?)",
                    ("Devolucion", r[0], datos.idSocio, usuario, f"Pago de trabajo eventual #{id_trabajo}")),
-        lambda r: ("INSERT INTO dbo.PagosSocioProveedor (IdMovimientoSocio, IdContacto, Criterio) VALUES (?, ?, ?)",
-                   (r[0], t['idContacto'], "trabajo-eventual")),
+        # 18/11/2026 (Sergio): un trabajo eventual sin liquidación es gasto directo; el pago del socio NO pasa por la
+        # cuenta corriente del trabajador (no hay deuda que cancelar). Queda como en los pagos anteriores: el asiento del
+        # socio con Origen TrabajosEventuales apuntando al trabajo.
+        lambda r: ("UPDATE dbo.MovimientosCuentaSocio SET Origen = 'TrabajosEventuales', IdOrigen = ? WHERE IdMovimiento = ?",
+                   (id_trabajo, r[0])),
         lambda r: ("INSERT INTO dbo.TrabajosEventualesPagos (IdTrabajo,Medio,IdMovimientoSocio,Fecha,Importe,Usuario) "
                    "VALUES (?,?,?,?,?,?)", (id_trabajo, "socio", r[0], datos.fecha, datos.importe, usuario[:100])),
     ])
@@ -371,8 +374,9 @@ def pagar_varios_por_socio(ids, datos, usuario):
     ops = [_insert_asiento(datos.idSocio, "haber", float(datos.importe), datos.fecha, datos.medio, _detalle(ts)[:250], usuario),
            lambda r: ("INSERT INTO dbo.AuditoriaReflejoSocio (Accion, IdMovimiento, IdSocio, Usuario, Detalle) VALUES (?, ?, ?, ?, ?)",
                       ("Devolucion", r[0], datos.idSocio, usuario, "Pago de trabajos eventuales " + ", ".join(f"#{i}" for i, _ in partes))),
-           lambda r: ("INSERT INTO dbo.PagosSocioProveedor (IdMovimientoSocio, IdContacto, Criterio) VALUES (?, ?, ?)",
-                      (r[0], ts[0]['idContacto'], "trabajo-eventual"))]
+           # Gasto directo sin liquidación: no pasa por la cuenta del trabajador (ver pagar_por_socio).
+           lambda r: ("UPDATE dbo.MovimientosCuentaSocio SET Origen = 'TrabajosEventuales', IdOrigen = ? WHERE IdMovimiento = ?",
+                      (partes[0][0], r[0]))]
     for id_t, parte in partes:
         ops.append(lambda r, id_t=id_t, parte=parte: (
             "INSERT INTO dbo.TrabajosEventualesPagos (IdTrabajo,Medio,IdMovimientoSocio,Fecha,Importe,Usuario) VALUES (?,?,?,?,?,?)",

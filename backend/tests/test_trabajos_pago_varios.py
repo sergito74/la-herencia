@@ -41,7 +41,9 @@ def test_un_solo_asiento_del_socio_vinculado_a_todos(monkeypatch):
     assert len(lotes) == 1  # una sola transacción
     pagos = [s for s in sqls if "TrabajosEventualesPagos" in s[0]]
     assert [p[1][0] for p in pagos] == [84, 85, 86] and all(p[1][2] == 999 for p in pagos)
-    assert sum(1 for s in sqls if "PagosSocioProveedor" in s[0]) == 1
+    # sin vínculo a la cuenta del trabajador: el asiento queda con Origen TrabajosEventuales
+    assert not any("PagosSocioProveedor" in s[0] for s in sqls)
+    assert any("Origen = 'TrabajosEventuales'" in s[0] and s[1][0] == 84 for s in sqls)
     assert asientos  # el primer statement es el único asiento del socio
 
 
