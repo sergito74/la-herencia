@@ -316,8 +316,8 @@ export const urlExportarFacturasSinOrden = () => new URL("/api/ordenes/contratis
 // 18/11/2026: órdenes de pulverización desde la planilla de Matías.
 export interface LecturaPlanillaMatias {
   leida?: string;
-  creadas?: { fecha: string; idOrden: number | null; faltantes: { producto: string; falta: number }[] }[];
-  paraRevisar?: { fecha: string; problemas: string[] }[];
+  creadas?: { fecha: string; idOrden: number | null; momentos?: string[]; faltantes: { producto: string; falta: number; unidad?: string | null }[] }[];
+  paraRevisar?: { fecha: string; momentos?: string[]; problemas: string[] }[];
   cambiadas?: { fecha: string; idOrden: number; detalle: string }[];
 }
 export const fetchPlanillaMatias = () => apiGet<LecturaPlanillaMatias>("/api/ordenes/planilla-matias");

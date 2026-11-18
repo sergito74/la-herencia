@@ -103,25 +103,38 @@ def huella(filas: list[dict]) -> str:
 
 # ------------------------------------------------------------------ reglas puras
 
+def _n(v: float) -> str:
+    """Número en formato argentino, sin decimales de más (1,6 · 0,06 · 16)."""
+    s = f"{v:,.3f}".rstrip("0").rstrip(".").replace(",", "X").replace(".", ",").replace("X", ".")
+    return s
+
+
+def _prod(nombre: str) -> str:
+    return nombre.strip().capitalize()
+
+
 def problemas_de_planilla(filas: list[dict]) -> list[str]:
-    """Pura: lo que impide crear la orden tal como está la planilla."""
+    """Pura: lo que impide crear la orden tal como está la planilla, en palabras para Matías, agrupado por potrero."""
     out = []
-    vistos = defaultdict(set)
+    sups = defaultdict(set)
+    for f in filas:
+        sups[(f["potrero"], f["cultivo"])].add(f["sup"])
+    for (pot, cu), s in sups.items():
+        if len(s) > 1:
+            out.append(f"El potrero {pot} ({cultivo_de(cu, '') or cu}) figura más de una vez, con "
+                       + " y con ".join(f"{_n(x)} ha" for x in sorted(s)) + ".")
+    no_cierran = defaultdict(list)
     for f in filas:
         if f["producto"] == "PULV":
-            vistos[(f["potrero"], f["cultivo"])].add(f["sup"])
             continue
         if f["sup"] <= 0 or f["dosis"] <= 0:
-            out.append(f"fila {f['fila']}: {f['potrero']} {f['producto']} sin superficie o dosis")
+            out.append(f"En el potrero {f['potrero']}, {_prod(f['producto'])} no tiene superficie o dosis.")
             continue
         calc = f["sup"] * f["dosis"]
         if f["total"] and abs(calc - f["total"]) > TOLERANCIA_TOTAL * max(calc, f["total"]):
-            out.append(f"fila {f['fila']}: {f['potrero']} {f['producto']}: {f['sup']:g} ha × {f['dosis']:g} = {calc:g}, "
-                       f"pero la planilla dice {f['total']:g}")
-    for (pot, cu), sups in vistos.items():
-        if len(sups) > 1:
-            out.append(f"el potrero {pot} ({cu}) aparece más de una vez con superficies distintas: "
-                       + ", ".join(f"{s:g} ha" for s in sorted(sups)))
+            no_cierran[(f["potrero"], f["sup"])].append(f"{_prod(f['producto'])} dice {_n(f['total'])} y corresponde {_n(calc)}")
+    for (pot, sup), detalles in no_cierran.items():
+        out.append(f"En el potrero {pot} con {_n(sup)} ha, el total no coincide con superficie × dosis: " + "; ".join(detalles) + ".")
     return out
 
 
@@ -313,7 +326,8 @@ def armar_orden(fecha: date, filas: list[dict]) -> dict:
             if base is None:
                 problemas.append(f"producto '{generico}': no existe en el catálogo")
                 continue
-            faltantes.append({"producto": generico, "falta": falta, "idProducto": base})
+            faltantes.append({"producto": _prod(generico), "falta": falta, "idProducto": base,
+                              "unidad": (fetch_one("SELECT UnidadBase AS u FROM dbo.Producto_Unidad WHERE IdProducto = ?", (base,)) or {}).get("u")})
             partes = [(p, q + (falta if p == base else 0)) for p, q in partes] if any(p == base for p, _ in partes) \
                 else partes + [(base, falta)]
         for pid, q in partes:
@@ -331,6 +345,10 @@ def armar_orden(fecha: date, filas: list[dict]) -> dict:
 
 
 # ------------------------------------------------------------------ registro de lo importado y corrida
+
+def _momentos(filas: list[dict]) -> list[str]:
+    return sorted({f["momento"] for f in filas if f["momento"]})
+
 
 def _importadas() -> dict[date, dict]:
     return {_dia(f["Fecha"]): f for f in fetch_all("SELECT Fecha, IdOrdenTrabajo, Huella FROM dbo.OrdenesPlanillaMatias")}
@@ -354,16 +372,18 @@ def leer_y_cargar(path: Path = PLANILLA, solo_ver: bool = False) -> dict:
                 continue
             armado = armar_orden(fecha, filas)
             if armado["problemas"] or not armado["datos"]["renglones"]:
-                resultado["paraRevisar"].append({"fecha": fecha.isoformat(), "problemas": armado["problemas"] or ["sin insumos"]})
+                resultado["paraRevisar"].append({"fecha": fecha.isoformat(), "momentos": _momentos(filas),
+                                                 "problemas": armado["problemas"] or ["La orden no tiene insumos."]})
                 continue
             if solo_ver:
-                resultado["creadas"].append({"fecha": fecha.isoformat(), "idOrden": None, "faltantes": armado["faltantes"],
+                resultado["creadas"].append({"fecha": fecha.isoformat(), "idOrden": None, "momentos": _momentos(filas), "faltantes": armado["faltantes"],
                                              "renglones": len(armado["datos"]["renglones"])})
                 continue
             creada = repository.crear_orden(armado["datos"], confirmar=True)
             execute_write("INSERT INTO dbo.OrdenesPlanillaMatias (Fecha, IdOrdenTrabajo, Huella) VALUES (?, ?, ?)",
                           (fecha, creada["idOrden"], h))
-            resultado["creadas"].append({"fecha": fecha.isoformat(), "idOrden": creada["idOrden"], "faltantes": armado["faltantes"]})
+            resultado["creadas"].append({"fecha": fecha.isoformat(), "idOrden": creada["idOrden"], "momentos": _momentos(filas),
+                                         "faltantes": armado["faltantes"]})
         if not solo_ver:
             execute_write("INSERT INTO dbo.OrdenesPlanillaMatiasLecturas (Resultado) VALUES (?)",
                           (json.dumps(resultado, ensure_ascii=False, default=str),))

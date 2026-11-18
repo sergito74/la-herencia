@@ -36,7 +36,8 @@ def test_planilla_que_no_cierra_no_se_carga():
              {"fila": 2, "potrero": "1B", "cultivo": "GR", "sup": 2, "producto": "CLETODIM", "dosis": 0.8, "total": 16, "momento": "G Post"},
              {"fila": 3, "potrero": "1B", "cultivo": "GR", "sup": 3, "producto": "PULV", "dosis": 1, "total": 3, "momento": "G Post"}]
     p = P.problemas_de_planilla(filas)
-    assert any("16" in x for x in p) and any("más de una vez" in x for x in p)
+    assert "El potrero 1B (Girasol) figura más de una vez, con 2 ha y con 3 ha." in p
+    assert any("Cletodim dice 16 y corresponde 1,6" in x for x in p)
     assert P.problemas_de_planilla([filas[0], {**filas[1], "total": 1.6}]) == []
 
 
