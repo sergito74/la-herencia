@@ -4,6 +4,7 @@ import { Inter } from "next/font/google";
 import { Providers } from "@/app/providers";
 import { DocumentosEnVentanaNueva } from "@/components/layout/DocumentosEnVentanaNueva";
 import { NavHeader } from "@/components/layout/NavHeader";
+import { BusquedaGlobal } from "@/components/layout/BusquedaGlobal";
 import "./globals.css";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
@@ -21,6 +22,7 @@ export default function RootLayout({
       <body className="min-h-screen bg-background font-sans text-ink-primary">
         <Providers>
           <NavHeader />
+          <BusquedaGlobal />
           <DocumentosEnVentanaNueva />
           {children}
         </Providers>

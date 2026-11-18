@@ -213,6 +213,8 @@ app.add_middleware(AuthMiddleware)
 app.include_router(auth_router)
 from src.features.inicio.router import router as inicio_router  # noqa: E402
 app.include_router(inicio_router)
+from src.features.buscar.router import router as buscar_router  # noqa: E402
+app.include_router(buscar_router)
 app.include_router(reasignacion_contacto_router)
 app.include_router(aplicaciones_pago_router)
 app.include_router(arrendamientos_router)

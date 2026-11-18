@@ -16,5 +16,5 @@ Plan resumido: solo frontend + un endpoint de lectura (`/api/inicio`) que reúne
 - [X] T007 [US3] Panel de detalle en Compras, Ventas de hacienda, Trabajos eventuales, Saldos y Órdenes, con Esc y acceso a pantalla completa (FR-010, FR-011)
 
 ## US4 — Búsqueda global Ctrl+K (P4)
-- [ ] T008 [US4] Endpoint de búsqueda de lectura (contactos, compras por número, productos, lotes, órdenes) (FR-013)
-- [ ] T009 [US4] Paleta de búsqueda con teclado, pantallas y acciones, montada en el layout (FR-013, FR-014)
+- [X] T008 [US4] Endpoint de búsqueda de lectura (contactos, compras por número, productos, lotes, órdenes) (FR-013)
+- [X] T009 [US4] Paleta de búsqueda con teclado, pantallas y acciones, montada en el layout (FR-013, FR-014)
