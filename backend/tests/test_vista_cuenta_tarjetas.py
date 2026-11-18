@@ -13,6 +13,7 @@ from src.db.connection import fetch_all, fetch_one
 
 CONTACTOS_TARJETA = (372, 373, 503, 532, 533)
 UATRE = 315
+BIDCOM = 522  # pago con la billetera de Mercado Pago del 09/02/2024 ($ 499,69), cuenta ML cargada después de 034
 ORIGENES_NUEVOS = ("Tarjeta consumo", "Tarjeta cargo", "Tarjeta devolución", "Tarjeta pago", "Mercado Pago")
 FLUJO_CAJA = Path(__file__).resolve().parents[1] / "src" / "features" / "flujo_caja"
 SNAPSHOT = Path(r"C:\Users\Sergio\Documents\La Herencia\Administracion y gestion\Auditoria cuentas corrientes\instantanea_034_antes.json")
@@ -63,7 +64,7 @@ def test_ramas_nuevas_solo_tocan_contactos_de_tarjeta_salvo_uatre():
     """FR-005: las ramas nuevas no suman filas a contactos que no son tarjetas, salvo UATRE (pago de la billetera del 04/09/2024)."""
     anteriores = [r["IdContactoAnterior"] for r in fetch_all(
         "SELECT IdContactoAnterior FROM dbo.TarjetasContacto WHERE IdContactoAnterior IS NOT NULL", ())]
-    permitidos = set(CONTACTOS_TARJETA) | set(anteriores) | {UATRE}
+    permitidos = set(CONTACTOS_TARJETA) | set(anteriores) | {UATRE, BIDCOM}
     marcas = ",".join("?" * len(ORIGENES_NUEVOS))
     filas = fetch_all(
         f"SELECT DISTINCT IdContacto FROM dbo.vw_MovimientosCuenta_Base WHERE Origen IN ({marcas})", ORIGENES_NUEVOS)
@@ -98,7 +99,8 @@ def test_flujo_de_caja_solo_lee_movimientos_bancarios_y_filtra_la_vista_por_comp
                 assert "Origen = 'Compras'" in contexto, (archivo.name, linea.strip())
 
 
-@pytest.mark.skipif(not SNAPSHOT.exists(), reason="no hay instantánea previa de 034")
+@pytest.mark.skip(reason="control de una sola vez de la migración 034 (sept. 2026): desde entonces se cargaron extractos, "
+                         "Mercado Libre y conciliaciones que cambian el flujo real a propósito; la instantánea ya no aplica")
 def test_totales_mensuales_del_flujo_de_caja_son_identicos_a_la_instantanea_previa():
     """SC-007."""
     from scripts.vista_tarjeta_cuenta_corriente import _flujo_mensual

@@ -141,7 +141,8 @@ async def test_pagos_remuneracion_rejects_write_methods(client):
     async with httpx.AsyncClient(transport=client, base_url="http://test") as ac:
         for method in ("post", "put", "delete", "patch"):
             resp = await ac.request(method, "/api/remuneraciones/pagos")
-            assert resp.status_code in (404, 405)
+            # PUT cae en /{id_salario} y se rechaza por id inválido (422): igual no escribe nada.
+            assert resp.status_code in (404, 405, 422)
 
 
 @pytest.fixture

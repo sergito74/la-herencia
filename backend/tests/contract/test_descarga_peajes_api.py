@@ -1,5 +1,7 @@
-"""Contract tests de /api/descarga-peajes (037). Servicio, repositorio y
-configuración simulados: no escribe en WC ni entra a portales."""
+"""Contract tests de /api/descarga-peajes (037, desde 042 sobre la Bóveda de portales).
+
+Todo simulado: la bóveda (portales, corridas, documentos) y el servicio que dispara las corridas. Nunca entra a un
+portal ni escribe en WC (18/11/2026: la versión anterior no simulaba el servicio y disparaba una corrida real)."""
 
 from __future__ import annotations
 
@@ -8,24 +10,30 @@ import pytest
 
 from src.auth.tokens import crear_token
 from src.features.auth.router import COOKIE_NAME
-from src.features.descarga_peajes import configuracion, repository, router, servicio
+from src.features.descarga_peajes import router
 from src.main import app
 
-EJECUCION = {"idEjecucion": 13, "origen": "manual", "usuario": "sergio", "inicio": "2026-10-16T10:00:00",
-             "fin": None, "estado": "en_curso", "mensaje": None,
-             "portales": [{"portal": "TelePASE", "estado": "ok", "nuevos": 1, "existentes": 23, "cargados": 1,
-                           "pendientes": 0, "error": None}]}
-DOCUMENTO = {"idDocumento": 101, "portal": "TelePASE", "proveedor": "AutopistasDelSol", "idContacto": 276,
-             "fechaDocumento": "2026-10-16", "numeroDocumento": "0840-00811111", "totalImpreso": 4120.55,
-             "ruta": r"C:\Users\x\Compras\04 2026 - 03 2027\20261016_AutopistasDelSol.pdf",
-             "estadoCarga": "pendiente", "motivo": "No cierra", "idCompra": None, "idEjecucion": 13}
+PORTALES = [
+    {"idPortal": 1, "nombre": "TelePASE", "codigoConector": "telepase", "claveConfigurada": True, "credencialRechazada": False,
+     "autFecha": "2026-10-16", "suspendida": False, "proximaCorrida": None, "ucId": 7, "ucEstado": "ok", "ucInicio": None},
+    {"idPortal": 2, "nombre": "AUBASA", "codigoConector": "aubasa", "claveConfigurada": True, "credencialRechazada": True,
+     "autFecha": None, "suspendida": True, "proximaCorrida": None, "ucId": None, "ucEstado": None, "ucInicio": None},
+    {"idPortal": 9, "nombre": "Bayá Casal", "codigoConector": "baya", "claveConfigurada": True, "credencialRechazada": False,
+     "autFecha": "2026-10-20", "suspendida": False, "proximaCorrida": None, "ucId": None, "ucEstado": None, "ucInicio": None},
+]
 
 
 @pytest.fixture
 def transport(monkeypatch):
-    monkeypatch.setattr(router, "get_usuario_por_id", lambda i: {"NombreUsuario": "sergio"})
-    monkeypatch.setattr(repository, "revalidar_pendientes", lambda: 0)
-    return httpx.ASGITransport(app=app)
+    llamadas = []
+    monkeypatch.setattr(router.boveda, "listar_portales", lambda: [dict(p) for p in PORTALES])
+    monkeypatch.setattr(router.boveda, "revalidar_pendientes", lambda: 0)
+    monkeypatch.setattr(router.servicio, "en_cola", lambda: set())
+    monkeypatch.setattr(router.servicio, "correr_varios_en_segundo_plano", lambda ids, u: llamadas.append((ids, u)))
+    monkeypatch.setattr(router, "usuario_actual", lambda request: "sergio")
+    t = httpx.ASGITransport(app=app)
+    t.llamadas = llamadas
+    return t
 
 
 async def _req(transport, method, url, cookies=None):
@@ -34,90 +42,47 @@ async def _req(transport, method, url, cookies=None):
         return await ac.request(method, url)
 
 
-# --- US1 ----------------------------------------------------------------------
+@pytest.mark.anyio
+async def test_estado_solo_portales_de_peaje_y_sin_credenciales(transport):
+    r = await _req(transport, "GET", "/api/descarga-peajes/estado")
+    assert r.status_code == 200
+    body = r.json()
+    assert [p["portal"] for p in body["portales"]] == ["TelePASE", "AUBASA"]
+    assert body["portales"][1]["credenciales"] is False and body["enCurso"] is False
+    assert "clave" not in r.text.lower()
+
 
 @pytest.mark.anyio
-async def test_iniciar_devuelve_202(transport, monkeypatch):
-    monkeypatch.setattr(servicio, "iniciar_en_segundo_plano", lambda u: (13, None))
+async def test_iniciar_corre_solo_los_autorizados(transport):
     r = await _req(transport, "POST", "/api/descarga-peajes/ejecuciones")
-    assert r.status_code == 202 and r.json() == {"idEjecucion": 13}
+    assert r.status_code == 202 and r.json() == {"portales": [1]}
+    assert transport.llamadas == [([1], "sergio")]
 
 
 @pytest.mark.anyio
 async def test_iniciar_con_otra_en_curso_devuelve_409(transport, monkeypatch):
-    monkeypatch.setattr(servicio, "iniciar_en_segundo_plano", lambda u: (None, 12))
+    monkeypatch.setattr(router.boveda, "listar_portales", lambda: [{**PORTALES[0], "ucEstado": "en_curso"}])
     r = await _req(transport, "POST", "/api/descarga-peajes/ejecuciones")
-    assert r.status_code == 409 and r.json()["idEjecucion"] == 12
+    assert r.status_code == 409 and not transport.llamadas
 
 
 @pytest.mark.anyio
-async def test_iniciar_con_rol_lectura_devuelve_403(transport, monkeypatch):
-    llamado = []
-    monkeypatch.setattr(servicio, "iniciar_en_segundo_plano", lambda u: llamado.append(u) or (1, None))
+async def test_iniciar_con_rol_lectura_devuelve_403(transport):
     cookies = {COOKIE_NAME: crear_token(id_usuario=5, rol="Lectura")}
     r = await _req(transport, "POST", "/api/descarga-peajes/ejecuciones", cookies=cookies)
-    assert r.status_code == 403 and not llamado
+    assert r.status_code == 403 and not transport.llamadas
 
 
 @pytest.mark.anyio
-async def test_detalle_ejecucion(transport, monkeypatch):
-    monkeypatch.setattr(repository, "obtener_ejecucion", lambda i: {**EJECUCION, "documentos": [DOCUMENTO]})
-    r = await _req(transport, "GET", "/api/descarga-peajes/ejecuciones/13")
-    assert r.status_code == 200
-    body = r.json()
-    assert body["portales"][0]["existentes"] == 23
-    assert body["documentos"][0]["nombreArchivo"] == "20261016_AutopistasDelSol.pdf"
-
-
-@pytest.mark.anyio
-async def test_detalle_inexistente_404(transport, monkeypatch):
-    monkeypatch.setattr(repository, "obtener_ejecucion", lambda i: None)
-    assert (await _req(transport, "GET", "/api/descarga-peajes/ejecuciones/999")).status_code == 404
-
-
-# --- US2 ----------------------------------------------------------------------
-
-@pytest.mark.anyio
-async def test_documentos_filtra_y_valida_estado(transport, monkeypatch):
-    monkeypatch.setattr(repository, "listar_documentos", lambda e, l, d: ([DOCUMENTO], 1))
-    r = await _req(transport, "GET", "/api/descarga-peajes/documentos?estado=pendiente")
-    assert r.status_code == 200 and r.json()["total"] == 1
+async def test_documentos_valida_estado(transport, monkeypatch):
+    monkeypatch.setattr(router.boveda, "listar_documentos", lambda *a, **k: ([], 0))
     assert (await _req(transport, "GET", "/api/descarga-peajes/documentos?estado=otro")).status_code == 400
-
-
-# --- US3 ----------------------------------------------------------------------
-
-@pytest.mark.anyio
-async def test_historial_paginado(transport, monkeypatch):
-    recibido = {}
-
-    def listar(limite, desde):
-        recibido.update(limite=limite, desde=desde)
-        return [EJECUCION], 40
-    monkeypatch.setattr(repository, "listar_ejecuciones", listar)
-    r = await _req(transport, "GET", "/api/descarga-peajes/ejecuciones?limite=20&desde=20")
-    assert r.status_code == 200 and r.json()["total"] == 40 and recibido == {"limite": 20, "desde": 20}
-    assert (await _req(transport, "GET", "/api/descarga-peajes/ejecuciones?limite=500")).status_code == 422
-
-
-# --- US4 ----------------------------------------------------------------------
-
-@pytest.mark.anyio
-async def test_estado_solo_expone_booleanos(transport, monkeypatch):
-    monkeypatch.setattr(configuracion, "credencial", lambda p: ("usuario-secreto", "clave-secreta"))
-    monkeypatch.setattr(configuracion, "estado_tarea",
-                        lambda: {"instalada": True, "proximaCorrida": "2026-10-19T09:00:00", "ultimoResultado": "0"})
-    monkeypatch.setattr(repository, "ejecucion_en_curso", lambda: None)
-    r = await _req(transport, "GET", "/api/descarga-peajes/estado")
-    assert r.status_code == 200
-    assert "secreto" not in r.text and "secreta" not in r.text
-    body = r.json()
-    assert [p["credenciales"] for p in body["portales"]] == [True] * 4
-    assert body["tarea"]["proximaCorrida"] == "2026-10-19T09:00:00" and body["enCurso"] is None
+    r = await _req(transport, "GET", "/api/descarga-peajes/documentos?estado=pendiente")
+    assert r.status_code == 200 and r.json() == {"items": [], "total": 0}
 
 
 @pytest.mark.anyio
 async def test_resumen_contador(transport, monkeypatch):
-    monkeypatch.setattr(repository, "resumen", lambda: {"pendientes": 2, "portalesConError": 1})
+    monkeypatch.setattr(router.boveda, "resumen", lambda ids: {"pendientesCarga": 3, "conError": 1, "requiereIntervencion": 1})
     r = await _req(transport, "GET", "/api/descarga-peajes/resumen")
-    assert r.json() == {"pendientes": 2, "portalesConError": 1}
+    assert r.status_code == 200 and r.json() == {"pendientes": 3, "portalesConError": 2}
