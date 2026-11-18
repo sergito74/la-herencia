@@ -128,7 +128,7 @@ class PagoSocioInput(BaseModel):
     idSocio: int = Field(gt=0)
     fecha: date
     importe: Decimal = Field(gt=0, max_digits=19, decimal_places=2)
-    medio: Literal["Banco Galicia", "Banco Nación", "Otro banco", "Efectivo del socio"]
+    medio: str = Field(min_length=1, max_length=60)
 
 
 class PagoVariosSocioInput(PagoSocioInput):

@@ -222,12 +222,28 @@ def deuda_actualizada(id_socio: int, cot: dict | None = None) -> dict:
     }
 
 
+# 18/11/2026: cuentas propias de cada socio desde las que paga gastos de Giamigli (de su historial de movimientos).
+# Sergio: Galicia, ICBC y Mercado Pago (no tiene cuenta en el Banco Nación); Lucy: Galicia y Supervielle.
+MEDIOS_SOCIO = {1: ["Galicia", "ICBC", "Mercado Pago"], 2: ["Galicia", "Supervielle"], 3: ["Banco Galicia"], 4: []}
+EFECTIVO_SOCIO = "Efectivo del socio"
+
+
+def medios_de(id_socio: int) -> list[str]:
+    return MEDIOS_SOCIO.get(id_socio, []) + [EFECTIVO_SOCIO]
+
+
+def validar_medio(id_socio: int, medio: str) -> None:
+    if medio not in medios_de(id_socio):
+        raise ValueError(f"Ese socio no paga desde {medio}. Opciones: {', '.join(medios_de(id_socio))}")
+
+
 def listar_socios_con_saldo() -> list[dict]:
     """Listado general (GET /api/cuentas-socios): saldo en pesos históricos
     y deuda actualizada (kg × novillo + US$ × dólar de hoy, mutuo aparte)."""
     socios = fetch_all("SELECT IdSocio AS idSocio, Nombre AS nombre FROM dbo.Socios ORDER BY IdSocio")
     cot = cotizaciones_actuales()
-    return [{**s, "saldo": calcular_saldo(s["idSocio"])["saldoPesos"], "actualizada": deuda_actualizada(s["idSocio"], cot)} for s in socios]
+    return [{**s, "saldo": calcular_saldo(s["idSocio"])["saldoPesos"], "actualizada": deuda_actualizada(s["idSocio"], cot),
+             "medios": medios_de(s["idSocio"])} for s in socios]
 
 
 def listar_movimientos(id_socio: int) -> list[dict]:

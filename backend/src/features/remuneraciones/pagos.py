@@ -76,7 +76,9 @@ def _filas_pago(partes, medio, fecha, usuario, socio=None, banco=None, operacion
 
 
 def pagar_por_socio(ids, datos, usuario):
-    from src.features.cuentas_socios.repository import _insert_asiento
+    from src.features.cuentas_socios.repository import _insert_asiento, validar_medio
+
+    validar_medio(datos.idSocio, datos.medio)
 
     ls = liquidaciones(ids)
     partes = repartir_pago([(l["idSalario"], l["falta"]) for l in ls], datos.importe)

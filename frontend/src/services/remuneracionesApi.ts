@@ -189,7 +189,7 @@ export function registrarPagoAdicionalCaja(
 
 
 // 18/11/2026: un solo pago para una o varias liquidaciones del mismo empleado.
-export interface PagoSocioLiquidacion { idSocio: number; fecha: string; importe: number; medio: "Banco Galicia" | "Banco Nación" | "Otro banco" | "Efectivo del socio" }
+export interface PagoSocioLiquidacion { idSocio: number; fecha: string; importe: number; medio: string }
 export interface PagoCajaLiquidacion { caja: "giamigli-sa" | "campo-chica"; fecha: string; importe: number; cuenta: "A" | "B"; previewVersion?: string; advertenciasAceptadas?: string[] }
 export interface TransferenciaLiquidacion { medio: "galicia" | "bna"; id: number; fecha: string; importe: number; detalle: string | null }
 export interface PreviewPagoLiquidacion { previewVersion: string; advertencias: string[]; efectosPrevistos: { caja: string; importe: string; saldoResultante: string }[] }

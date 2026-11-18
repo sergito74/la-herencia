@@ -58,6 +58,8 @@ export interface SocioConSaldo {
   nombre: string;
   saldo: number;
   actualizada: DeudaActualizada | null;
+  /** 18/11/2026: cuentas propias del socio desde las que paga gastos de Giamigli (más "Efectivo del socio"). */
+  medios?: string[];
 }
 
 export interface DetalleSocio {

@@ -33,7 +33,7 @@ def test_un_solo_asiento_del_socio_vinculado_a_todos(monkeypatch):
     lotes = []
     import src.db.connection as conn
     monkeypatch.setattr(conn, "execute_write_transaction", lambda ops: lotes.append(ops) or [999])
-    datos = PagoVariosSocioInput(idSocio=1, fecha="2026-11-18", importe=Decimal("154000"), medio="Banco Galicia", idsTrabajo=[86, 84, 85])
+    datos = PagoVariosSocioInput(idSocio=1, fecha="2026-11-18", importe=Decimal("154000"), medio="ICBC", idsTrabajo=[86, 84, 85])
     repo.pagar_varios_por_socio(datos.idsTrabajo, datos, "sergio")
     ops = lotes[0]
     sqls = [op if isinstance(op, tuple) else op([999]) for op in ops[1:]]

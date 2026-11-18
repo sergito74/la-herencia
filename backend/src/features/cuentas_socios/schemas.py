@@ -59,6 +59,7 @@ class SocioConSaldo(BaseModel):
     nombre: str
     saldo: float
     actualizada: DeudaActualizada | None = None
+    medios: list[str] = []
 
 
 class ListaSociosResponse(BaseModel):

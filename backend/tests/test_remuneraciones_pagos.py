@@ -37,8 +37,17 @@ def test_un_solo_asiento_del_socio(monkeypatch):
         {**_liq(1, 374, "2026-09-30", 100), "falta": Decimal("100")}, {**_liq(2, 374, "2026-10-31", 50), "falta": Decimal("50")}])
     lotes = []
     monkeypatch.setattr(pagos, "execute_write_transaction", lambda ops: lotes.append(ops) or [7])
-    datos = SimpleNamespace(idSocio=1, fecha="2026-11-18", importe=Decimal("150"), medio="Banco Galicia")
+    datos = SimpleNamespace(idSocio=1, fecha="2026-11-18", importe=Decimal("150"), medio="ICBC")
     assert pagos.pagar_por_socio([1, 2], datos, "sergio") == {"pagadas": [1, 2]}
     resueltos = [op([7]) if callable(op) else op for op in lotes[0][1:]]
     filas = [r for r in resueltos if "RemuneracionesPagos" in r[0]]
     assert len(lotes) == 1 and [f[1][0] for f in filas] == [1, 2] and all(f[1][2] == 7 for f in filas)
+
+
+def test_medios_propios_de_cada_socio():
+    from src.features.cuentas_socios.repository import medios_de, validar_medio
+
+    assert medios_de(1) == ["Galicia", "ICBC", "Mercado Pago", "Efectivo del socio"]
+    assert "Supervielle" in medios_de(2)
+    with pytest.raises(ValueError):
+        validar_medio(1, "Banco Nación")

@@ -289,7 +289,9 @@ def pagar_por_socio(id_trabajo, datos, usuario):
     en US$ y kg como los demás asientos) y vinculado al trabajador en PagosSocioProveedor, como el sueldo de Irma
     pagado por Lucy. La cuenta de Giamigli no se toca."""
     from src.db.connection import execute_write_transaction
-    from src.features.cuentas_socios.repository import _insert_asiento
+    from src.features.cuentas_socios.repository import _insert_asiento, validar_medio
+
+    validar_medio(datos.idSocio, datos.medio)
 
     t = obtener(id_trabajo)
     if not t:
@@ -360,7 +362,9 @@ def _detalle(ts) -> str:
 
 def pagar_varios_por_socio(ids, datos, usuario):
     from src.db.connection import execute_write_transaction
-    from src.features.cuentas_socios.repository import _insert_asiento
+    from src.features.cuentas_socios.repository import _insert_asiento, validar_medio
+
+    validar_medio(datos.idSocio, datos.medio)
 
     ts = _trabajos_a_pagar(ids)
     partes = repartir_pago(_faltas(ts), datos.importe)

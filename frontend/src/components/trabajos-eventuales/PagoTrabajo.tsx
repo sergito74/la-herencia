@@ -21,7 +21,7 @@ const hoy = () => new Date().toISOString().slice(0, 10);
 export function PagoTrabajo({ t, onCambio }: { t: Trabajo; onCambio: () => Promise<void> }) {
   const falta = Math.max(0, Math.round((t.total - (t.pagado ?? 0)) * 100) / 100);
   const [modo, setModo] = useState<"" | "efectivo" | "socio">("");
-  const [socio, setSocio] = useState<PagoSocioInput>({ idSocio: 0, fecha: hoy(), importe: falta, medio: "Banco Galicia" });
+  const [socio, setSocio] = useState<PagoSocioInput>({ idSocio: 0, fecha: hoy(), importe: falta, medio: "" });
   const [datos, setDatos] = useState<PagoCajaInput>({ caja: "giamigli-sa", fecha: hoy(), importe: falta, cuenta: "B", idRubro: 0, idCentroCostos: 0, idCampania: null });
   const [vista, setVista] = useState<PreviewPagoTrabajo | null>(null);
   const [error, setError] = useState("");
@@ -80,12 +80,12 @@ export function PagoTrabajo({ t, onCambio }: { t: Trabajo; onCambio: () => Promi
     {modo === "socio" && <div className="space-y-2 rounded border border-border p-3 text-sm">
       <p className="text-ink-secondary">Para cuando un socio le pagó al trabajador desde su cuenta personal: queda a favor del socio en su cuenta.</p>
       <div className="grid gap-2 md:grid-cols-4">
-        <label>Socio<select className={`${input} block w-full`} value={socio.idSocio} onChange={e => setSocio(s => ({ ...s, idSocio: Number(e.target.value) }))}><option value={0}>Elegir</option>{socios.data?.socios.map(x => <option key={x.idSocio} value={x.idSocio}>{x.nombre}</option>)}</select></label>
+        <label>Socio<select className={`${input} block w-full`} value={socio.idSocio} onChange={e => { const id = Number(e.target.value); setSocio(s => ({ ...s, idSocio: id, medio: socios.data?.socios.find(x => x.idSocio === id)?.medios?.[0] ?? "" })); }}><option value={0}>Elegir</option>{socios.data?.socios.map(x => <option key={x.idSocio} value={x.idSocio}>{x.nombre}</option>)}</select></label>
         <label>Fecha<input type="date" className={`${input} block w-full`} value={socio.fecha} onChange={e => setSocio(s => ({ ...s, fecha: e.target.value }))} /></label>
         <label>Importe<MoneyInput className={`${input} block w-full`} moneda="Pesos" value={socio.importe} onChange={v => setSocio(s => ({ ...s, importe: v }))} /></label>
-        <label>Desde<select className={`${input} block w-full`} value={socio.medio} onChange={e => setSocio(s => ({ ...s, medio: e.target.value as PagoSocioInput["medio"] }))}>{["Banco Galicia", "Banco Nación", "Otro banco", "Efectivo del socio"].map(m => <option key={m}>{m}</option>)}</select></label>
+        <label>Desde<select className={`${input} block w-full`} value={socio.medio} onChange={e => setSocio(s => ({ ...s, medio: e.target.value }))}>{!socio.idSocio && <option value="">Elegí el socio</option>}{socios.data?.socios.find(x => x.idSocio === socio.idSocio)?.medios?.map(m => <option key={m}>{m}</option>)}</select></label>
       </div>
-      <button className={boton} disabled={ocupado || !socio.idSocio || !(socio.importe > 0)} onClick={() => correr(() => pagarTrabajoSocio(t.idTrabajo, socio))}>Registrar pago del socio</button>
+      <button className={boton} disabled={ocupado || !socio.idSocio || !socio.medio || !(socio.importe > 0)} onClick={() => correr(() => pagarTrabajoSocio(t.idTrabajo, socio))}>Registrar pago del socio</button>
     </div>}
     {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
   </div>;
