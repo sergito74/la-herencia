@@ -289,7 +289,7 @@ export function BandejaConciliacion() {
           columns={columnas}
           rows={data.items}
           keyField={(r) => r.idLineaConsumo}
-          emptyMessage="No hay líneas pendientes con estos filtros."
+          emptyMessage="No hay consumos pendientes de conciliar con estos filtros ✓"
           page={data.page}
           pageSize={data.pageSize}
           total={data.total}

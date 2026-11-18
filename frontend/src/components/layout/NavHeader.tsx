@@ -320,7 +320,7 @@ export function NavHeader() {
       <div className="flex w-full items-center justify-between gap-3 px-6 py-2">
         <div className="flex min-w-0 items-center gap-4">
           <Link href="/" className="flex shrink-0 items-center gap-2 font-semibold text-ink-primary">
-            <span className="rounded-md bg-finance font-medium text-white shadow-sm transition-colors hover:bg-finance/90 disabled:opacity-60 flex h-7 w-7 items-center justify-center text-sm">
+            <span className="flex h-7 w-7 items-center justify-center rounded-md bg-agro text-sm text-white">
               LH
             </span>
             La Herencia

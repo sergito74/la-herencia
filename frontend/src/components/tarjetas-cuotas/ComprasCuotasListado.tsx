@@ -126,7 +126,7 @@ export function ComprasCuotasListado() {
         <FilterSubmitButton className="ml-auto" />
       </FilterBar>
 
-      {!hayFiltro && <EmptyState message="Aplicá al menos un filtro (contacto o fecha) para ver compras en cuotas." />}
+      {!hayFiltro && <EmptyState icono="buscar" message="Buscá compras en cuotas" detalle="Elegí un proveedor o un rango de fechas para ver las compras y el estado de sus cuotas." />}
       {hayFiltro && isLoading && <LoadingState />}
       {hayFiltro && isError && <ErrorState message="Ocurrió un error al buscar compras en cuotas." onRetry={() => refetch()} />}
 

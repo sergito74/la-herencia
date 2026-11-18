@@ -26,10 +26,10 @@ export default function ResultadoCultivoPage() {
   return (
     <main className="mx-auto max-w-none px-6 py-3">
       <PageHeader titulo="Resultado de cultivo" ayuda="Igual que el formulario Resultados de Access: superficies, rindes, costos directos, ventas, deducciones, margen bruto y rentabilidad, en pesos y dólares.">
-        <div role="tablist" className="flex rounded-md border border-border p-0.5 text-sm">
+        <div role="tablist" className="flex rounded-lg border border-border bg-surface-sunken/70 p-1 text-sm">
           {(["cultivo", "campania"] as const).map((v) => (
             <button key={v} type="button" role="tab" aria-selected={vista === v} onClick={() => setVista(v)}
-              className={`rounded px-3 py-1 ${vista === v ? "bg-agro text-white" : "text-ink-secondary hover:text-ink-primary"}`}>
+              className={`rounded px-3 py-1 ${vista === v ? "bg-surface font-medium text-finance shadow-sm ring-1 ring-border" : "text-ink-secondary hover:text-ink-primary"}`}>
               {v === "cultivo" ? "Por cultivo" : "Toda la campaña"}
             </button>
           ))}

@@ -31,7 +31,7 @@ export function CajasNav() {
                 key={x.href}
                 href={x.href}
                 aria-current={activo ? "page" : undefined}
-                className={`rounded-sm px-3 py-1 text-sm ${activo ? "bg-agro text-white" : "text-ink-primary hover:bg-surface-sunken"}`}
+                className={`rounded-sm px-3 py-1 text-sm ${activo ? "bg-surface font-medium text-finance shadow-sm ring-1 ring-border" : "text-ink-primary hover:bg-surface-sunken"}`}
               >
                 {x.label}
               </Link>
@@ -41,7 +41,7 @@ export function CajasNav() {
       ))}
     </nav>
     {esCondominio && <nav aria-label="Secciones del Condominio LSC" className="mt-3 flex flex-wrap gap-3 text-sm">
-      {[{href:"/finanzas/cuentas-socios/3",label:"Cuenta con Giamigli"},{href:"/finanzas/cajas-efectivo/condominio-lsc",label:"Movimientos vinculados"}].map(item => <Link key={item.href} href={item.href} aria-current={path === item.href ? "page" : undefined} className={`rounded border border-border px-3 py-2 ${path === item.href ? "bg-agro text-white" : "bg-surface"}`}>{item.label}</Link>)}
+      {[{href:"/finanzas/cuentas-socios/3",label:"Cuenta con Giamigli"},{href:"/finanzas/cajas-efectivo/condominio-lsc",label:"Movimientos vinculados"}].map(item => <Link key={item.href} href={item.href} aria-current={path === item.href ? "page" : undefined} className={`rounded border border-border px-3 py-2 ${path === item.href ? "bg-surface font-medium text-finance shadow-sm ring-1 ring-border" : "bg-surface"}`}>{item.label}</Link>)}
     </nav>}</>
   );
 }

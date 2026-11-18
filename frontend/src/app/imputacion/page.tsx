@@ -1,5 +1,7 @@
 "use client";
 
+import { EmptyState } from "@/components/ui/States";
+
 import { PageHeader } from "@/components/ui/PageHeader";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
@@ -182,7 +184,7 @@ export default function ImputacionPage() {
             type="button"
             onClick={() => setFiltro(f)}
             className={`rounded-md px-3 py-1.5 text-sm ${
-              filtro === f ? "bg-agro text-white" : "border border-border text-ink-secondary"
+              filtro === f ? "bg-surface font-medium text-finance shadow-sm ring-1 ring-border" : "border border-border bg-surface text-ink-secondary hover:bg-surface-sunken"
             }`}
           >
             {f === "todas" ? "Todas" : f === "pendiente" ? "Pendientes" : "Requiere intervención"}
@@ -250,7 +252,7 @@ export default function ImputacionPage() {
               </div>
             );
           })}
-          {porFactura.size === 0 && <p className="text-sm text-ink-secondary">No hay propuestas para mostrar.</p>}
+          {porFactura.size === 0 && <EmptyState icono="ok" message="No hay imputaciones para revisar" detalle="Todo lo que entró está imputado. Cuando llegue una factura nueva que necesite tu revisión, aparece acá." />}
         </div>
       )}
     </main>

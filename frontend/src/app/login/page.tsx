@@ -49,7 +49,7 @@ export default function LoginPage() {
         className="w-full max-w-sm rounded-lg border border-border bg-surface p-8 shadow-sm"
       >
         <div className="mb-6 flex items-center gap-2 text-ink-primary">
-          <span className="rounded-md bg-finance font-medium text-white shadow-sm transition-colors hover:bg-finance/90 disabled:opacity-60 flex h-8 w-8 items-center justify-center text-sm">
+          <span className="flex h-8 w-8 items-center justify-center rounded-md bg-agro text-sm text-white">
             LH
           </span>
           <span className="text-lg font-semibold">La Herencia</span>

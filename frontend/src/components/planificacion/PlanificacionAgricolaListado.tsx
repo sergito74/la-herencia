@@ -132,10 +132,10 @@ export function PlanificacionAgricolaListado({
         <span className="ml-2 text-ink-secondary">{vista === "grilla"
           ? "En cada celda: arriba la campaña fina, abajo la gruesa. Clic para asignar o quitar."
           : "Fina y gruesa del mismo año juntas. Clic en un lote para ver su rotación."}</span>
-        <div role="tablist" aria-label="Vista" className="ml-auto flex rounded-md border border-border p-0.5">
+        <div role="tablist" aria-label="Vista" className="ml-auto flex rounded-lg border border-border bg-surface-sunken/70 p-1">
           {(["grilla", "plano"] as const).map((v) => (
             <button key={v} type="button" role="tab" aria-selected={vista === v} onClick={() => setVista(v)}
-              className={`rounded px-3 py-1 ${vista === v ? "bg-agro text-white" : "text-ink-secondary hover:text-ink-primary"}`}>
+              className={`rounded px-3 py-1 ${vista === v ? "bg-surface font-medium text-finance shadow-sm ring-1 ring-border" : "text-ink-secondary hover:text-ink-primary"}`}>
               {v === "grilla" ? "Grilla" : "Plano"}
             </button>
           ))}

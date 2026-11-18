@@ -254,7 +254,7 @@ export function RemuneracionesListado({
       )}
 
       {appliedEmpleado === "" && (
-        <EmptyState message="Elegí un empleado para ver sus liquidaciones." />
+        <EmptyState icono="buscar" message="Elegí un empleado para ver sus liquidaciones" detalle="Vas a ver sus recibos, lo que se pagó de cada uno y podés registrar un pago (desde Giamigli o desde la cuenta de un socio)." />
       )}
       {appliedEmpleado !== "" && isLoading && <LoadingState />}
       {appliedEmpleado !== "" && isError && (

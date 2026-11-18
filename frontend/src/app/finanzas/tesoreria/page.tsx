@@ -8,6 +8,7 @@ import { MEDIO_LABELS, MovimientosPorMedio } from "@/components/tesoreria/Movimi
 import { CargaExcel } from "@/components/tesoreria/CargaExcel";
 import { CargaExtractoPdf } from "@/components/tesoreria/CargaExtractoPdf";
 import { ListadosEstudio } from "@/components/tesoreria/ListadosEstudio";
+import { Segmentos } from "@/components/ui/Segmentos";
 import { NuevosParaRevisar } from "@/components/documentos-nuevos/NuevosParaRevisar";
 import type { Medio } from "@/services/tesoreriaApi";
 
@@ -39,21 +40,7 @@ export default function TesoreriaPage() {
       <PageHeader titulo="Tesorería" ayuda="Consulta y conciliación de movimientos por banco, caja, valores y tarjetas." />
       <ListadosEstudio />
 
-      <div className="flex flex-wrap gap-2">
-        {MEDIOS.map((m) => (
-          <button
-            key={m}
-            className={`rounded px-3 py-1.5 text-sm ${
-              m === medio
-                ? "bg-finance text-white"
-                : "border border-border text-ink-primary hover:bg-surface-sunken"
-            }`}
-            onClick={() => setMedio(m)}
-          >
-            {MEDIO_LABELS[m]}
-          </button>
-        ))}
-      </div>
+      <Segmentos etiqueta="Medio" valor={medio} onChange={setMedio} opciones={MEDIOS.map((m) => ({ id: m, label: MEDIO_LABELS[m] }))} />
 
       <div className="mt-3">
         <MovimientosPorMedio medio={medio} highlightKey={highlight ? Number(highlight) : undefined} />

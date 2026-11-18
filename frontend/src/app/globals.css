@@ -44,3 +44,9 @@ body {
     transform: translateX(300%);
   }
 }
+
+/* 18/11/2026: una fecha no necesita media pantalla. Los filtros y formularios que estiraban los campos de fecha a
+   todo el ancho de la grilla quedan con un ancho natural. */
+input[type="date"] {
+  max-width: 11.5rem;
+}

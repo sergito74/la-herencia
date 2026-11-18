@@ -20,7 +20,8 @@ import { DataTable, type DataTableColumn, type SortState } from "@/components/ui
 import { FilterBar, FilterField, FilterSubmitButton, filterInputClass } from "@/components/ui/FilterBar";
 import { KpiCard } from "@/components/ui/KpiCard";
 import { AvisoCuentaContacto, SOCIO_DE_CONTACTO } from "@/components/ui/AvisoCuentaContacto";
-import { ErrorState, LoadingState } from "@/components/ui/States";
+import { EmptyState, ErrorState, LoadingState } from "@/components/ui/States";
+import { ButtonLink } from "@/components/ui/Button";
 import { formatMoneda, formatFecha, formatMonto } from "@/lib/format";
 
 // Valores confirmados de `Tipo Contacto` contra datos reales (data-model.md).
@@ -276,12 +277,16 @@ export function CuentaCorriente() {
       {loadingContactos && <LoadingState rows={3} />}
       {errorContactos && <ErrorState message="Ocurrió un error al buscar contactos." />}
 
+      {!selected && q.trim().length < 2 && (
+        <EmptyState icono="buscar" message="Buscá un proveedor, cliente o contacto"
+          detalle="Escribí parte del nombre para ver su saldo, sus movimientos y qué documentos cancela cada pago."
+          accion={<ButtonLink href="/finanzas/cuentas-corrientes/saldos" variant="secondary">Ver saldos de todos los proveedores</ButtonLink>} />
+      )}
+
       {contactosData && !selected && (
         <>
           {contactosData.items.length === 0 && (
-            <div className="rounded-md border border-border bg-surface p-6 text-center text-sm text-ink-secondary">
-              Sin resultados para esta búsqueda.
-            </div>
+            <EmptyState icono="buscar" message="No hay contactos con ese nombre" detalle="Probá con otra parte del nombre o cambiá el tipo de contacto." />
           )}
           {contactosData.items.length > 0 && (
             <ul className="divide-y divide-border rounded-md border border-border bg-surface">

@@ -202,7 +202,7 @@ export function ResumenesListado() {
         />
       </div>
 
-      {!hayFiltro && <EmptyState message="Aplicá al menos un filtro (tarjeta o fecha de cierre) para ver resúmenes." />}
+      {!hayFiltro && <EmptyState icono="buscar" message="Buscá resúmenes de tarjeta" detalle="Elegí una tarjeta o un período de cierre para ver sus resúmenes y su conciliación." />}
       {hayFiltro && isLoading && <LoadingState />}
       {hayFiltro && isError && <ErrorState message="Ocurrió un error al buscar resúmenes." onRetry={() => refetch()} />}
 

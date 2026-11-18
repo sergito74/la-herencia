@@ -41,7 +41,7 @@ export function FormularioRetiroDocumento({ orden }: { orden: OrdenDetalle }) {
       {/* Encabezado: membrete · título · número de formulario */}
       <header className="grid grid-cols-[1fr_auto_1fr] items-center gap-4 border-b-2 border-ink-primary pb-3">
         <div className="flex items-center gap-3">
-          <span className="rounded-md bg-finance font-medium text-white shadow-sm transition-colors hover:bg-finance/90 disabled:opacity-60 flex h-11 w-11 items-center justify-center text-lg print:[-webkit-print-color-adjust:exact] print:[print-color-adjust:exact]">
+          <span className="flex h-11 w-11 items-center justify-center rounded-md bg-agro text-lg font-semibold text-white print:[-webkit-print-color-adjust:exact] print:[print-color-adjust:exact]">
             LH
           </span>
           <div className="leading-tight">
