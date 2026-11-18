@@ -183,11 +183,11 @@ def _actualizar_listados_en_segundo_plano() -> None:
     import logging
     import threading
 
-    from src.features.tesoreria import listado_estudio
+    from src.features.tesoreria import informes_tarjetas
 
     def correr():
         try:
-            listado_estudio.actualizar_dropbox()
+            informes_tarjetas.actualizar_si_cambio()
         except Exception:  # noqa: BLE001
             logging.getLogger(__name__).exception("Listados de conciliación para el Estudio")
 
@@ -196,16 +196,16 @@ def _actualizar_listados_en_segundo_plano() -> None:
 
 @router.get("/listados-estudio")
 async def listados_estudio_estado() -> list[dict]:
-    from src.features.tesoreria import listado_estudio
+    from src.features.tesoreria import informes_tarjetas
 
-    return await run_in_threadpool(listado_estudio.estado)
+    return await run_in_threadpool(informes_tarjetas.estado)
 
 
 @router.post("/listados-estudio/actualizar")
 async def listados_estudio_actualizar() -> list[dict]:
-    from src.features.tesoreria import listado_estudio
+    from src.features.tesoreria import informes_tarjetas
 
-    return await run_in_threadpool(listado_estudio.actualizar_dropbox)
+    return await run_in_threadpool(informes_tarjetas.actualizar_todo)
 
 
 @router.get("/valores-propios/exportar")

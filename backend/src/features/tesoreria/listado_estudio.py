@@ -221,23 +221,24 @@ def planilla(medio: str) -> bytes:
     return buf.getvalue()
 
 
-def actualizar_dropbox(medios: tuple[str, ...] = ("galicia", "bna", "mercado-libre")) -> list[dict]:
-    """Regenera las planillas del Estudio en Dropbox (copia de la anterior en backups)."""
-    hecho = []
+def _guardar(destino: Path, contenido: bytes, nombre: str) -> dict:
+    """Guarda la planilla en Dropbox; la anterior queda copiada en backups (una copia por día)."""
     COPIAS.mkdir(parents=True, exist_ok=True)
-    for medio in medios:
-        destino = DESTINOS[medio]
-        contenido = planilla(medio)
-        if destino.exists():
-            shutil.copy2(destino, COPIAS / f"{destino.stem}_{date.today():%Y%m%d}{destino.suffix}")
-        destino.parent.mkdir(parents=True, exist_ok=True)
-        try:
-            destino.write_bytes(contenido)
-            hecho.append({"banco": NOMBRE[medio], "archivo": str(destino), "ok": True})
-        except PermissionError:
-            hecho.append({"banco": NOMBRE[medio], "archivo": str(destino), "ok": False,
-                          "detalle": "la planilla está abierta; cerrala y volvé a actualizar"})
-    return hecho
+    if destino.exists():
+        copia = COPIAS / f"{destino.stem}_{date.today():%Y%m%d}{destino.suffix}"
+        if not copia.exists():
+            shutil.copy2(destino, copia)
+    destino.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        destino.write_bytes(contenido)
+        return {"banco": nombre, "archivo": str(destino), "ok": True}
+    except PermissionError:
+        return {"banco": nombre, "archivo": str(destino), "ok": False, "detalle": "la planilla está abierta; cerrala y volvé a actualizar"}
+
+
+def actualizar_dropbox(medios: tuple[str, ...] = ("galicia", "bna", "mercado-libre")) -> list[dict]:
+    """Regenera las planillas de bancos del Estudio en Dropbox."""
+    return [_guardar(DESTINOS[m], planilla(m), NOMBRE[m]) for m in medios]
 
 
 def estado() -> list[dict]:

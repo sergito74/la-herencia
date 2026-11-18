@@ -117,6 +117,18 @@ def _arrancar_verificacion_externa() -> None:
 
         verificacion_externa.arrancar()
 
+
+@app.on_event("startup")
+def _arrancar_informes_estudio() -> None:
+    """18/11/2026: el sistema mantiene solos los informes de bancos y tarjetas del Estudio en Dropbox (regenera los que
+    cambiaron, cada 3 horas mientras está abierto)."""
+    import os
+
+    if os.environ.get("LA_HERENCIA_SIN_PLANIFICADOR") != "1":
+        from src.features.tesoreria import informes_tarjetas
+
+        informes_tarjetas.arrancar()
+
 # El frontend Next.js corre en un origen distinto (localhost:3000/3001) en
 # desarrollo. Sin esto, el navegador bloquea toda llamada a /api/* por
 # CORS aunque el backend responda 200 — nunca se detectó porque las
