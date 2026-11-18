@@ -90,15 +90,15 @@ export function CostoPorParte({ idCultivo, idCampania }: { idCultivo: number; id
       {d.sinFactura && d.sinFactura.length > 0 && (
         <div className="border-t border-status-warning bg-status-warning-bg px-3 py-2 text-xs text-status-warning">
           <p className="font-medium">
-            Costo provisorio: las órdenes usaron insumos que todavía no tienen factura (valen $ 0, o el precio del
-            proveedor si figura en su portal, hasta que llegue la factura).
+            Insumos usados que todavía no tienen factura: los del pedido de Bayá Casal están valuados al precio del
+            pedido (US$ firme; al llegar la factura solo cambia el tipo de cambio a pesos); los demás valen $ 0.
           </p>
           <ul className="mt-1 list-disc pl-4">
             {d.sinFactura.map((x, i) => (
               <li key={i}>
                 {x.producto}: {formatNumero(x.cantidad)} — {x.remito === "sin remito" ? "sin remito" : `remito ${x.remito}`}
                 {x.ordenes.length > 0 && ` (orden ${x.ordenes.join(", ")})`}
-                {x.precioProveedor ? " — valorizado con el precio del proveedor" : " — a $ 0"}
+                {x.precioProveedor ? " — precio del pedido" : " — a $ 0"}
               </li>
             ))}
           </ul>

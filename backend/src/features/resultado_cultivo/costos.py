@@ -199,8 +199,8 @@ def costo_ordenes_trabajo(id_cultivo: int, id_campania: int, pendientes: list | 
                         continue
                     pesos = it["cantidad"] * it["costo_unitario"]
                     m = capas_meta.get(it["capa"]) or {}
-                    if m.get("estadoCosto") == "provisorio" and it["cantidad"] > 0.001:
-                        # valorizado con el precio del proveedor: la factura todavía no llegó
+                    if m.get("estadoCosto") == "pedido" and it["cantidad"] > 0.001:
+                        # valorizado con el precio del pedido (US$ firme): la factura todavía no llegó
                         pendiente_renglon[int(sid[2:])].append(
                             {"idProducto": pid, "cantidad": it["cantidad"], "remito": m.get("nroRemito"),
                              "idRemito": m.get("idRemito"), "fecha": m.get("fecha"), "precioProveedor": True})

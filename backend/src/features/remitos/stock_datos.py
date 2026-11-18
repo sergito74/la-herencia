@@ -191,10 +191,10 @@ def calcular_stock(id_producto: int | None = None, excluir_remito: int | None = 
         costo_remito, estado, vinculada = _unidad_factura_a_remito(vinculos.get(e["idDetalle"], []), e["unidad"], cantidad,
                                                                    costo_remito, estado, vinculada)
         if not vinculos.get(e["idDetalle"]) and e["idDetalle"] in precios_proveedor:
-            # 17/11/2026: remito todavía sin factura: se valoriza con el precio del proveedor (portal, US$ x TC) hasta
-            # que llegue la factura; al vincularla manda la factura. No se carga una compra provisoria.
+            # 17/11/2026: remito todavía sin factura: se valoriza con el precio del pedido que muestra el portal del
+            # proveedor (US$ firme, confirmado con el pedido; Sergio 18/11). Al llegar la factura solo cambia el TC a pesos.
             pv = precios_proveedor[e["idDetalle"]]
-            costo_remito, estado, vinculada = pv["precio"] * pv["tc"], "provisorio", cantidad
+            costo_remito, estado, vinculada = pv["precio"] * pv["tc"], "pedido", cantidad
         capa_id = f"R{e['idDetalle']}"
         capas[prod].append(
             Capa(
