@@ -75,6 +75,7 @@ def test_clave_documento():
 def test_cruce_arca_faltantes_y_anulados():
     from src.features.imputacion import verificacion_externa as V
     arca = [
+        {"fecha": "2026-08-10", "tipo": 11, "pv": 4, "nro": 123, "cuit": "30657631996", "emisor": "Lab", "moneda": "$", "total": 159000.0},
         {"fecha": "2026-08-10", "tipo": 11, "pv": 4, "nro": 122, "cuit": "30657631996", "emisor": "Lab", "moneda": "$", "total": 159000.0},
         {"fecha": "2026-07-31", "tipo": 7, "pv": 9, "nro": 3096, "cuit": "305", "emisor": "Allianz", "moneda": "USD", "total": 8071.64},
         {"fecha": "2026-08-19", "tipo": 8, "pv": 9, "nro": 3396, "cuit": "305", "emisor": "Allianz", "moneda": "USD", "total": -8071.64},
@@ -82,7 +83,9 @@ def test_cruce_arca_faltantes_y_anulados():
     ]
     sistema = [{"idCompra": 1, "nro": "0020-00451190", "moneda": "Pesos", "tot": 2000.0, "cuit": "306"}]
     out = V.cruzar(arca, sistema, {1})
+    # el 0004-122 está revisado con Sergio (18/11/2026): no se avisa
     assert [o["tipo"] for o in out] == ["Comprobante de ARCA que no está cargado", "Moneda distinta a la de ARCA"]
+    assert "0004-00000123" in out[0]["documento"]
 
 
 def test_dosis_excesiva():
