@@ -28,28 +28,31 @@ RUBRO = 16  # Personal Eventual
 PAGOS = {
     2058: ([83], GANADERIA), 2082: ([8, 10, 12], GANADERIA), 2119: ([35], GANADERIA), 2197: ([61], GANADERIA),
     2210: ([64], GANADERIA), 2220: ([67], GANADERIA), 2270: ([75], GANADERIA), 3261: ([84, 85, 86], GANADERIA),
+    # 18/11 Sergio: poda y techo de Pardo son Mantenimiento Construcciones (Adm. General). El techo se pagó en dos veces.
+    2248: ([81], ADM, 5), 2761: ([82], ADM, 5), 2770: ([82], ADM, 5),
 }
 CAMPANIAS = {2021: 15, 2022: 17, 2023: 19, 2024: 22, 2025: 24, 2026: 32}
 USUARIO = "Sergio (vía Claude)"
 
 
 def campania(f):
-    return CAMPANIAS[f.year if f.month >= 7 else f.year - 1]
+    return None  # 18/11 Sergio: ganadería y gastos generales no llevan campaña (solo los de un cultivo)
 
 
 @atomic_reconciliation
-def cargar(id_mov, ids, centro):
+def cargar(id_mov, ids, centro, rubro=RUBRO):
     m = fetch_one("SELECT IdSocio,CAST(Fecha AS date) Fecha,Importe,Medio,Motivo,Anulada FROM dbo.MovimientosCuentaSocio "
                   "WHERE IdMovimiento=?", (id_mov,))
     assert m and not m["Anulada"]
     ts = fetch_all("SELECT IdTrabajo,Total FROM dbo.TrabajosEventuales WHERE IdTrabajo IN (%s) ORDER BY Fecha,IdTrabajo"
                    % ",".join("?" * len(ids)), tuple(ids))
     importe = Decimal(str(m["Importe"])).quantize(Decimal("0.01"))
-    assert sum(Decimal(str(t["Total"])) for t in ts) == importe, f"{id_mov}: el importe no coincide con los trabajos"
+    parcial = len(ts) == 1 and importe < Decimal(str(ts[0]["Total"]))  # pago parcial de un solo trabajo
+    assert parcial or sum(Decimal(str(t["Total"])) for t in ts) == importe, f"{id_mov}: el importe no coincide con los trabajos"
     fecha = m["Fecha"] if not isinstance(m["Fecha"], str) else __import__("datetime").date.fromisoformat(m["Fecha"][:10])
     op = OperacionCaja(tipo="gasto_sin_comprobante", caja="giamigli-sa", fecha=fecha, importe=importe,
                        concepto=m["Motivo"][:255], cuenta="B", idSocio=m["IdSocio"], medioSocio=m["Medio"],
-                       repartos=[RepartoCaja(idRubro=RUBRO, idCentroCostos=centro, idCampania=campania(fecha),
+                       repartos=[RepartoCaja(idRubro=rubro, idCentroCostos=centro, idCampania=campania(fecha),
                                              importePesos=importe)])
     id_op = db.create_operation(uuid4(), service.huella(op.model_dump(mode="json")), op,
                                 {"historico": "gasto de trabajo eventual pagado por socio, cargado 18/11/2026"}, USUARIO)
@@ -57,7 +60,7 @@ def cargar(id_mov, ids, centro):
                          "OUTPUT INSERTED.IdGasto VALUES (?,?,?,?,?)", (id_op, fecha, op.concepto, importe, USUARIO))
     db.effect(id_op, "GastoCaja", id_gasto)
     db.write("INSERT INTO dbo.RepartosGastoCaja (IdGasto,IdRubro,IdCentroCostos,IdDestino,IdCampania,IdLote,ImportePesos) "
-             "VALUES (?,?,?,NULL,?,NULL,?)", (id_gasto, RUBRO, centro, campania(fecha), importe))
+             "VALUES (?,?,?,NULL,?,NULL,?)", (id_gasto, rubro, centro, campania(fecha), importe))
     db.effect(id_op, "MovimientoSocio", id_mov, False)  # el asiento ya existía: no se duplica ni se anula con la operación
     for t in ts:
         existe = fetch_one("SELECT IdPagoTrabajo FROM dbo.TrabajosEventualesPagos WHERE IdTrabajo=? AND IdMovimientoSocio=?",
@@ -66,7 +69,7 @@ def cargar(id_mov, ids, centro):
             db.write("UPDATE dbo.TrabajosEventualesPagos SET IdOperacion=? WHERE IdPagoTrabajo=?", (id_op, existe["IdPagoTrabajo"]))
         else:
             db.write("INSERT INTO dbo.TrabajosEventualesPagos (IdTrabajo,Medio,IdOperacion,IdMovimientoSocio,Fecha,Importe,Usuario) "
-                     "VALUES (?,?,?,?,?,?,?)", (t["IdTrabajo"], "socio", id_op, id_mov, fecha, t["Total"], USUARIO))
+                     "VALUES (?,?,?,?,?,?,?)", (t["IdTrabajo"], "socio", id_op, id_mov, fecha, importe if parcial else t["Total"], USUARIO))
     return id_op
 
 
@@ -76,15 +79,18 @@ def main():
     if aplicar:
         from src.features.vinculos.backup import backup_verificado
         print(f"Respaldo verificado: {backup_verificado('gasto-trabajos-socio')}")
-    for id_mov, (ids, centro) in PAGOS.items():
+    for id_mov, (ids, centro, *rubro) in PAGOS.items():
         hecho = fetch_one("SELECT TOP 1 p.IdOperacion FROM dbo.TrabajosEventualesPagos p JOIN dbo.GastoCajaEfectivo g "
                           "ON g.IdOperacion=p.IdOperacion WHERE p.IdMovimientoSocio=?", (id_mov,))
+        if hecho and aplicar:  # sin campaña en ganadería y gastos generales (corrección del 18/11)
+            db.write("UPDATE r SET IdCampania=NULL FROM dbo.RepartosGastoCaja r JOIN dbo.GastoCajaEfectivo g ON g.IdGasto=r.IdGasto "
+                     "WHERE g.IdOperacion=? AND r.IdDestino IS NULL", (hecho["IdOperacion"],))
         if hecho:
             print(f"{id_mov}: ya cargado (operación {hecho['IdOperacion']})")
             continue
         print(f"{id_mov}: trabajos {ids}, centro {centro}" + ("" if aplicar else " (simulación)"))
         if aplicar:
-            print(f"   operación {cargar(id_mov, ids, centro)}")
+            print(f"   operación {cargar(id_mov, ids, centro, *rubro)}")
 
 
 if __name__ == "__main__":
