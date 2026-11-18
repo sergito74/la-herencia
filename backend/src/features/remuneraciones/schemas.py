@@ -30,6 +30,9 @@ class Remuneracion(BaseModel):
     # cuando es NULL o "SIN RECIBO"/"SIN COPIA", cae al matching por
     # nombre de archivo de `GET /api/remuneraciones/{id}/recibo`.
     recibo: str | None = None
+    # 18/11/2026: pagos vinculados a la liquidación (socio, banco de Giamigli o caja).
+    pagado: float = 0
+    pagos: list[dict] = []
 
 
 class RemuneracionesListResponse(BaseModel):

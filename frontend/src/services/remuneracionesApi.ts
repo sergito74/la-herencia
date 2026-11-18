@@ -20,6 +20,9 @@ export interface Remuneracion {
   /** Valor crudo de `dbo.Remuneraciones.Recibo` — ver `documentoLocal.ts`
    * (`BASE_DOCUMENTOS_RECIBOS`, `esReciboAusente`) para cómo se resuelve. */
   recibo: string | null;
+  /** 18/11/2026: pagos vinculados (socio, banco de Giamigli o caja) y su total. */
+  pagado?: number;
+  pagos?: { idPago: number; medio: "socio" | "galicia" | "bna" | "caja"; fecha: string; importe: number; socio?: string | null }[];
 }
 
 export interface RemuneracionesListResponse {
@@ -183,3 +186,16 @@ export function registrarPagoAdicionalCaja(
 ): Promise<any> {
   return apiPost(`/api/remuneraciones/${idSalario}/adicional/pago-caja`, data);
 }
+
+
+// 18/11/2026: un solo pago para una o varias liquidaciones del mismo empleado.
+export interface PagoSocioLiquidacion { idSocio: number; fecha: string; importe: number; medio: "Banco Galicia" | "Banco Nación" | "Otro banco" | "Efectivo del socio" }
+export interface PagoCajaLiquidacion { caja: "giamigli-sa" | "campo-chica"; fecha: string; importe: number; cuenta: "A" | "B"; previewVersion?: string; advertenciasAceptadas?: string[] }
+export interface TransferenciaLiquidacion { medio: "galicia" | "bna"; id: number; fecha: string; importe: number; detalle: string | null }
+export interface PreviewPagoLiquidacion { previewVersion: string; advertencias: string[]; efectosPrevistos: { caja: string; importe: string; saldoResultante: string }[] }
+const pagosBase = "/api/remuneraciones/pagos-varios";
+export const transferenciasLiquidaciones = (ids: number[]) => apiGet<TransferenciaLiquidacion[]>(`${pagosBase}/transferencias`, { ids: ids.map(String) });
+export const pagarLiquidacionesSocio = (ids: number[], d: PagoSocioLiquidacion) => apiPost(`${pagosBase}/socio`, { ...d, idsSalario: ids });
+export const pagarLiquidacionesTransferencia = (ids: number[], medio: string, idMovimiento: number) => apiPost(`${pagosBase}/transferencia`, { medio, idMovimiento, idsSalario: ids });
+export const previsualizarPagoLiquidaciones = (ids: number[], d: PagoCajaLiquidacion) => apiPost<PreviewPagoLiquidacion>(`${pagosBase}/caja/previsualizar`, { ...d, idsSalario: ids });
+export const pagarLiquidacionesCaja = (ids: number[], d: PagoCajaLiquidacion) => apiPost(`${pagosBase}/caja`, { ...d, idsSalario: ids });

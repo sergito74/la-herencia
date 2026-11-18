@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import mimetypes
 from datetime import date
+from decimal import Decimal
 from pydantic import BaseModel
 
 from fastapi import APIRouter, HTTPException, Query, UploadFile
@@ -16,6 +17,7 @@ from fastapi.responses import FileResponse
 from starlette.concurrency import run_in_threadpool
 
 from src.db.pagination import normalize_pagination
+from src.features.remuneraciones import pagos as pagos_liq
 from src.features.remuneraciones import repository
 from src.features.remuneraciones.schemas import (
     AdjuntarReciboResponse,
@@ -46,6 +48,10 @@ async def list_remuneraciones(
         norm_page,
         norm_page_size,
     )
+    vinculados = await run_in_threadpool(pagos_liq.pagos_de, [r["idSalario"] for r in rows]) if rows else {}
+    for r in rows:
+        r["pagos"] = vinculados.get(r["idSalario"], [])
+        r["pagado"] = float(sum(float(p["importe"]) for p in r["pagos"]))
     return RemuneracionesListResponse(
         items=[Remuneracion(**row) for row in rows],
         page=norm_page,
@@ -210,3 +216,76 @@ async def pagar_adicional_caja(id_salario: int, body: PagoCajaAdicionalRequest, 
     except ValueError as exc:
         raise HTTPException(400, str(exc)) from exc
     return dato
+
+
+# ---- 18/11/2026: un solo pago para una o varias liquidaciones del mismo empleado ----
+from typing import Literal  # noqa: E402
+
+from fastapi import Request  # noqa: E402
+from pydantic import Field  # noqa: E402
+
+
+
+class _Ids(BaseModel):
+    idsSalario: list[int] = Field(min_length=1)
+
+
+class PagoSocioLiq(_Ids):
+    idSocio: int = Field(gt=0)
+    fecha: date
+    importe: Decimal = Field(gt=0, max_digits=19, decimal_places=2)
+    medio: Literal["Banco Galicia", "Banco Nación", "Otro banco", "Efectivo del socio"]
+
+
+class PagoBancoLiq(_Ids):
+    medio: Literal["galicia", "bna"]
+    idMovimiento: int
+
+
+class PagoCajaLiq(_Ids):
+    caja: Literal["giamigli-sa", "campo-chica"]
+    fecha: date
+    importe: Decimal = Field(gt=0, max_digits=19, decimal_places=2)
+    cuenta: Literal["A", "B"]
+    previewVersion: str | None = None
+    advertenciasAceptadas: list[Literal["SALDO_NEGATIVO", "PERIODO_ARQUEADO"]] = Field(default_factory=list)
+
+
+def _usuario(request: Request) -> str:
+    return str(getattr(request.state, "usuario", {}).get("idUsuario", "sistema"))
+
+
+async def _correr(fn, *args):
+    from src.features.cajas_efectivo.service import ConflictoCaja
+
+    try:
+        return await run_in_threadpool(fn, *args)
+    except ConflictoCaja as exc:
+        raise HTTPException(409, str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(409, str(exc)) from exc
+
+
+@router.get("/pagos-varios/transferencias")
+async def transferencias_liquidaciones(ids: list[int] = Query(...)):
+    return await _correr(pagos_liq.transferencias_candidatas, ids)
+
+
+@router.post("/pagos-varios/socio", status_code=201)
+async def pagar_liquidaciones_socio(body: PagoSocioLiq, request: Request):
+    return await _correr(pagos_liq.pagar_por_socio, body.idsSalario, body, _usuario(request))
+
+
+@router.post("/pagos-varios/transferencia", status_code=201)
+async def pagar_liquidaciones_transferencia(body: PagoBancoLiq, request: Request):
+    return await _correr(pagos_liq.pagar_con_transferencia, body.idsSalario, body.medio, body.idMovimiento, _usuario(request))
+
+
+@router.post("/pagos-varios/caja/previsualizar")
+async def previsualizar_pago_liquidaciones(body: PagoCajaLiq):
+    return await _correr(pagos_liq.previsualizar_caja, body.idsSalario, body)
+
+
+@router.post("/pagos-varios/caja", status_code=201)
+async def pagar_liquidaciones_caja(body: PagoCajaLiq, request: Request):
+    return await _correr(pagos_liq.pagar_con_caja, body.idsSalario, body, _usuario(request))

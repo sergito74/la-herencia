@@ -52,12 +52,15 @@ async def test_list_remuneraciones_by_empleado(client, monkeypatch):
         return [FIXTURE_REMUNERACION], 1
 
     monkeypatch.setattr(repository, "search_remuneraciones", fake_search)
+    from src.features.remuneraciones import pagos
+    monkeypatch.setattr(pagos, "pagos_de", lambda ids: {})
 
     response = await _get(client, "/api/remuneraciones?empleado=Juan")
     assert response.status_code == 200
     body = response.json()
     assert body["items"][0]["empleado"] == "Juan Pérez"
-    assert "pagos" not in body["items"][0]
+    # 18/11/2026: el listado trae los pagos vinculados a cada liquidación (socio, banco de Giamigli o caja).
+    assert body["items"][0]["pagos"] == [] and body["items"][0]["pagado"] == 0
 
 
 @pytest.mark.anyio

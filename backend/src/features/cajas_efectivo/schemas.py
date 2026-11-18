@@ -122,14 +122,19 @@ class OperacionCaja(Estricto):
                 raise ValueError("Elegir caja de Giamigli y contraparte Condominio.")
         if self.aplicaciones and not contacto:
             raise ValueError("Solo pago/cobro admite aplicaciones.")
-        if contacto and not self.aplicaciones:
+        # 18/11/2026: pago de sueldo (con su liquidación): sale de caja como pago al empleado y cancela la liquidación,
+        # que no es una compra; no lleva aplicaciones a documentos.
+        sueldo = self.tipo == "pago" and self.idSalario is not None
+        if contacto and not self.aplicaciones and not sueldo:
             raise ValueError("Elegir los documentos que se pagan/cobran.")
+        if sueldo and (self.aplicaciones or self.caja == "condominio-lsc" or self.compraParticular):
+            raise ValueError("El pago de sueldo no se aplica a facturas ni sale de la caja del Condominio.")
         keys = [(a.tipoDocumento, a.idDocumento) for a in self.aplicaciones]
         if len(set(keys)) != len(keys):
             raise ValueError("Un documento no puede repetirse en aplicaciones.")
         if sum((a.importeAplicado for a in self.aplicaciones), Decimal(0)) > self.importe:
             raise ValueError("Las aplicaciones exceden el importe.")
-        if contacto and sum((a.importeAplicado for a in self.aplicaciones), Decimal(0)) != self.importe:
+        if contacto and not sueldo and sum((a.importeAplicado for a in self.aplicaciones), Decimal(0)) != self.importe:
             raise ValueError('La suma aplicada a documentos debe coincidir con el pago o cobro.')
         if self.tipo == "pago" and any(a.tipoDocumento != "CompraDeuda" for a in self.aplicaciones):
             raise ValueError("Un pago solo se aplica a compras.")
@@ -154,7 +159,7 @@ class OperacionCaja(Estricto):
             raise ValueError("Solo gasto sin comprobante requiere repartos.")
         if gasto and sum((r.importePesos for r in self.repartos), Decimal(0)) != self.importe:
             raise ValueError("Los repartos deben sumar el importe exacto.")
-        if (self.tipo == "retorno_sueldo_opcion_a") != (self.idSalario is not None):
+        if (self.tipo == "retorno_sueldo_opcion_a") != (self.idSalario is not None) and not sueldo:
             raise ValueError("Solo retorno de sueldo requiere idSalario.")
         if self.tipo == "retorno_sueldo_opcion_a" and not self.evidencia:
             raise ValueError("El retorno de sueldo requiere evidencia.")

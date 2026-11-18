@@ -17,6 +17,7 @@ import { EmptyState, ErrorState, LoadingState } from "@/components/ui/States";
 import { useToast } from "@/components/ui/Toast";
 import { formatMoneda, formatFecha } from "@/lib/format";
 import { LiquidacionForm } from "@/components/remuneraciones/NuevaLiquidacionForm";
+import { PagoLiquidaciones, faltaLiquidacion } from "@/components/remuneraciones/PagoLiquidaciones";
 import {
   BASE_DOCUMENTOS_RECIBOS,
   esReciboAusente,
@@ -58,11 +59,28 @@ function AdjuntarReciboAccion({ idSalario, onSubido }: { idSalario: number; onSu
   );
 }
 
+const MEDIO_PAGO: Record<string, string> = { socio: "socio", galicia: "Galicia", bna: "Banco Nación", caja: "caja" };
+
 function buildColumns(
   onReciboSubido: () => Promise<void> | void,
-  onEditar: (idSalario: number) => void
+  onEditar: (idSalario: number) => void,
+  elegidos: Remuneracion[],
+  alternar: (r: Remuneracion, si: boolean) => void
 ): DataTableColumn<Remuneracion>[] {
   return [
+    {
+      key: "elegir",
+      header: "Pagar",
+      render: (r) =>
+        faltaLiquidacion(r) > 0 ? (
+          <SoloLectura>
+            <input type="checkbox" aria-label={`Elegir ${r.periodoLiquidado ?? "la liquidación"} para pagar`}
+              disabled={elegidos.length > 0 && elegidos[0].idContacto !== r.idContacto}
+              checked={elegidos.some((e) => e.idSalario === r.idSalario)}
+              onChange={(e) => alternar(r, e.target.checked)} />
+          </SoloLectura>
+        ) : null,
+    },
     {
       key: "acciones",
       header: "Acción",
@@ -126,6 +144,18 @@ function buildColumns(
       render: (r) => (r.importe != null ? formatMoneda(r.importe) : "—"),
     },
     {
+      key: "pago",
+      header: "Pago vinculado",
+      render: (r) =>
+        r.pagos?.length ? (
+          <span title={r.pagos.map((p) => `${formatFecha(p.fecha)} ${p.medio === "socio" ? `pagó ${p.socio ?? "un socio"}` : MEDIO_PAGO[p.medio]} ${formatMoneda(p.importe)}`).join(" · ")}>
+            {formatMoneda(r.pagado ?? 0)} · {[...new Set(r.pagos.map((p) => (p.medio === "socio" ? p.socio ?? "socio" : MEDIO_PAGO[p.medio])))].join(", ")}
+          </span>
+        ) : (
+          <span className="text-ink-muted">—</span>
+        ),
+    },
+    {
       key: "recibo",
       header: "Recibo",
       render: (r) => (
@@ -157,6 +187,8 @@ export function RemuneracionesListado({
   const [page, setPage] = useState(1);
   const [mostrarAlta, setMostrarAlta] = useState(false);
   const [editandoId, setEditandoId] = useState<number | null>(null);
+  const [elegidos, setElegidos] = useState<Remuneracion[]>([]);
+  const [pagando, setPagando] = useState(false);
   const pageSize = 50;
 
   const { data, isLoading, isError, refetch } = useQuery({
@@ -229,6 +261,33 @@ export function RemuneracionesListado({
         <ErrorState message="Ocurrió un error al buscar liquidaciones." onRetry={() => refetch()} />
       )}
 
+      {elegidos.length > 0 && !pagando && (
+        <SoloLectura>
+          <div className="flex flex-wrap items-center gap-3 rounded border border-border bg-surface-sunken p-3 text-sm">
+            <span>
+              {elegidos.length} {elegidos.length === 1 ? "liquidación elegida" : "liquidaciones elegidas"} de {elegidos[0].empleado} · falta pagar{" "}
+              {formatMoneda(elegidos.reduce((s, e) => s + faltaLiquidacion(e), 0))}
+            </span>
+            <button type="button" className="rounded border border-border px-3 py-1.5 hover:bg-surface" onClick={() => setPagando(true)}>Pagar con un solo pago</button>
+            <button type="button" className="text-finance underline" onClick={() => setElegidos([])}>Quitar selección</button>
+          </div>
+        </SoloLectura>
+      )}
+      {pagando && elegidos.length > 0 && (
+        <SoloLectura>
+          <PagoLiquidaciones
+            key={elegidos.map((e) => e.idSalario).join("-")}
+            liquidaciones={[...elegidos].sort((a, b) => (a.fechaPago ?? "").localeCompare(b.fechaPago ?? ""))}
+            cancelar={() => setPagando(false)}
+            onListo={async () => {
+              setPagando(false);
+              setElegidos([]);
+              await refetch();
+            }}
+          />
+        </SoloLectura>
+      )}
+
       {appliedEmpleado !== "" && data && (
         <DataTable
           columns={buildColumns(
@@ -239,6 +298,11 @@ export function RemuneracionesListado({
               setMostrarAlta(false);
               setEditandoId(id);
               window.scrollTo({ top: 0, behavior: "smooth" });
+            },
+            elegidos,
+            (r, si) => {
+              setPagando(false);
+              setElegidos((l) => (si ? [...l, r] : l.filter((x) => x.idSalario !== r.idSalario)));
             }
           )}
           rows={data.items}
