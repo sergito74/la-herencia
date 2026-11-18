@@ -326,11 +326,12 @@ export function ComprasGrid({
   }) {
     return (
       <select
-        className={selectClass}
+        // 18/11/2026: vacío se ve tenue y sin flecha (la grilla no queda llena de "—"); al pasar el mouse o entrar, normal.
+        className={`${selectClass} ${value ? "" : "appearance-none text-ink-muted/50 hover:appearance-auto hover:text-ink-primary focus:appearance-auto focus:text-ink-primary"}`}
         value={value}
         onChange={(e) => handleCatalogoChange(rowIndex, columna, e.target.value)}
       >
-        <option value="">{placeholderDefault ?? "—"}</option>
+        <option value="">{placeholderDefault ?? ""}</option>
         {opciones.map((o) => (
           <option key={o} value={o}>
             {o}

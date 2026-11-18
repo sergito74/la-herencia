@@ -1,5 +1,5 @@
 import { CompraForm } from "@/components/compras/CompraForm";
-import { BackLink } from "@/components/ui/BackLink";
+import { PageHeader } from "@/components/ui/PageHeader";
 
 export const metadata = {
   title: "Nueva compra",
@@ -27,8 +27,8 @@ export default function NuevaCompraPage({ searchParams }: { searchParams: Params
   };
   return (
     <main className="mx-auto max-w-none px-6 py-3">
-      <BackLink href="/compras">Volver a Compras</BackLink>
-      <div className="mt-2">
+      <PageHeader titulo="Nueva compra" volver="/compras" ayuda="Factura, nota de crédito o débito de un proveedor: cabecera, renglones con su imputación y forma de pago." />
+      <div>
         <CompraForm mode="alta" prefill={prefill} />
       </div>
     </main>

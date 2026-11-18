@@ -18,6 +18,7 @@ import { useToast } from "@/components/ui/Toast";
 import { formatMoneda, formatFecha } from "@/lib/format";
 import { LiquidacionForm } from "@/components/remuneraciones/NuevaLiquidacionForm";
 import { PagoLiquidaciones, faltaLiquidacion } from "@/components/remuneraciones/PagoLiquidaciones";
+import { Button } from "@/components/ui/Button";
 import {
   BASE_DOCUMENTOS_RECIBOS,
   esReciboAusente,
@@ -219,16 +220,13 @@ export function RemuneracionesListado({
 
       <div className="flex items-center gap-3">
         <SoloLectura>
-          <button
-            type="button"
+          <Button variant={mostrarAlta ? "secondary" : "primary"}
             onClick={() => {
               setEditandoId(null);
               setMostrarAlta((v) => !v);
-            }}
-            className="rounded border border-border px-3 py-1.5 text-sm font-medium hover:bg-surface-sunken"
-          >
-            {mostrarAlta ? "Cancelar alta" : "Nueva liquidación…"}
-          </button>
+            }}>
+            {mostrarAlta ? "Cancelar" : "+ Nueva liquidación"}
+          </Button>
         </SoloLectura>
       </div>
 
