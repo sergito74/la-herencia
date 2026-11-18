@@ -126,7 +126,7 @@ export function RemitosListado() {
         </div>
         <div className="flex gap-2">
           <BotonExcel href={urlExportarRemitos(filtros)} />
-          <Link href="/produccion/remitos/nuevo" className="rounded-sm bg-finance px-4 py-2 text-sm text-white hover:opacity-90">
+          <Link href="/produccion/remitos/nuevo" className="rounded-md bg-finance font-medium text-white shadow-sm transition-colors hover:bg-finance/90 disabled:opacity-60 px-4 py-2 text-sm hover:opacity-90">
             + Nuevo remito
           </Link>
         </div>

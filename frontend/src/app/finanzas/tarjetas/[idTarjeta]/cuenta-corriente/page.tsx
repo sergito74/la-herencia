@@ -1,5 +1,7 @@
 "use client";
 
+import { PageHeader } from "@/components/ui/PageHeader";
+
 import { useParams, useRouter } from "next/navigation";
 
 import { TarjetaCuentaTabla } from "@/components/tarjetas-cuenta/TarjetaCuentaTabla";
@@ -11,14 +13,7 @@ export default function TarjetaCuentaCorrientePage() {
 
   return (
     <main className="mx-auto max-w-none px-6 py-3">
-      <button
-        type="button"
-        onClick={() => router.push("/finanzas/tarjetas")}
-        className="text-sm text-finance underline"
-      >
-        ← Volver a Tarjetas
-      </button>
-      <h1 className="mt-1 text-base font-semibold">Cuenta corriente de tarjeta</h1>
+      <PageHeader titulo={<>Cuenta corriente de tarjeta</>} onVolver={() => router.push("/finanzas/tarjetas")} />
       <div className="mt-2">
         <TarjetaCuentaTabla idTarjeta={idTarjeta} />
       </div>

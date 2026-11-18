@@ -51,7 +51,7 @@ function Resumen({ alcance, u }: { alcance: AlcanceRutina; u: CorridaRutina | nu
       {u.alcance === alcance && (
         <> · {u.documentosNuevos} documentos nuevos ({u.cargadosSolos} cargados solos, {u.paraCargarAMano} para cargar a mano)</>
       )}
-      {u.mensaje && <span className="block text-amber-900">{u.mensaje}</span>}
+      {u.mensaje && <span className="block text-status-warning">{u.mensaje}</span>}
     </p>
   );
 }
@@ -84,7 +84,7 @@ function Rutina({ alcance, u, enCola, otraCorriendo }: {
         <p className="text-ink-secondary">Arranca cuando termine la otra búsqueda.</p>
       )}
       {pedida && enCola && !otraCorriendo && <p className="text-ink-secondary">Pedido recibido: arranca enseguida.</p>}
-      {ejecutar.isError && <p className="text-amber-900">No se pudo iniciar: {ejecutar.error.message}</p>}
+      {ejecutar.isError && <p className="text-status-warning">No se pudo iniciar: {ejecutar.error.message}</p>}
       <Resumen alcance={alcance} u={u} />
       {u && !enCurso && u.alcance === alcance && u.paraCargarAMano + u.cargadosSolos > 0 && (
         <Link href="/compras?nuevos=1" className="text-xs text-finance underline">Ver los documentos para revisar</Link>

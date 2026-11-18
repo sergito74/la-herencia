@@ -97,7 +97,7 @@ export function AsignarGastoForm({ idSocio, onAsignado }: { idSocio: number; onA
                       type="button"
                       disabled={asignando === c.idCompra}
                       onClick={() => asignar(c.idCompra)}
-                      className="shrink-0 rounded bg-finance px-2 py-1 text-xs text-white disabled:opacity-50"
+                      className="rounded-md bg-finance font-medium text-white shadow-sm transition-colors hover:bg-finance/90 disabled:opacity-60 shrink-0 px-2 py-1 text-xs"
                     >
                       {asignando === c.idCompra ? "…" : "Asignar"}
                     </button>

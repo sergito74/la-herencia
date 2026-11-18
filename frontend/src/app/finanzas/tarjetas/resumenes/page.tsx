@@ -12,7 +12,7 @@ export default function ResumenesPage() {
     <main className="mx-auto max-w-none px-6 py-3">
       <PageHeader titulo="Resúmenes de tarjeta" volver="/finanzas/tarjetas">
         <SoloLectura>
-          <Link href="/finanzas/tarjetas/resumenes/nuevo" className="rounded-sm bg-finance px-3 py-1 text-sm text-white hover:opacity-90">
+          <Link href="/finanzas/tarjetas/resumenes/nuevo" className="rounded-md bg-finance font-medium text-white shadow-sm transition-colors hover:bg-finance/90 disabled:opacity-60 px-3 py-1 text-sm hover:opacity-90">
             + Nuevo resumen
           </Link>
         </SoloLectura>

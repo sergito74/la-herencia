@@ -48,7 +48,7 @@ export function DevolucionPanel({ idOrden, renglon, onGuardada }: { idOrden: num
         <div className="inline-flex items-center gap-2 rounded border border-border p-1.5 text-sm">
           <input type="date" className="rounded border border-border px-2 py-1" value={fecha} onChange={(e) => setFecha(e.target.value)} />
           <NumberInput className="w-24 rounded border border-border px-2 py-1 text-right" value={cantidad} onChange={setCantidad} maxDecimales={4} placeholder="Cantidad" />
-          <button type="button" onClick={confirmar} disabled={guardando || !cantidad} className="rounded bg-finance px-2 py-1 text-white disabled:opacity-50">
+          <button type="button" onClick={confirmar} disabled={guardando || !cantidad} className="rounded-md bg-finance font-medium text-white shadow-sm transition-colors hover:bg-finance/90 disabled:opacity-60 px-2 py-1">
             Confirmar
           </button>
           <button type="button" onClick={() => setAbierto(false)} className="rounded border border-border px-2 py-1">

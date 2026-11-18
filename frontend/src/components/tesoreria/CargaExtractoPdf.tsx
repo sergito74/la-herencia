@@ -69,7 +69,7 @@ export function CargaExtractoPdf() {
           <p className="text-sm">
             <strong>{vista.banco}</strong>: {formatCantidad(vista.nuevos.length)} movimientos nuevos
             {vista.yaCargados > 0 && `, ${formatCantidad(vista.yaCargados)} ya estaban cargados`}
-            {sinContacto > 0 && <span className="text-amber-900"> · {formatCantidad(sinContacto)} sin contacto (asignalo después en el movimiento)</span>}
+            {sinContacto > 0 && <span className="text-status-warning"> · {formatCantidad(sinContacto)} sin contacto (asignalo después en el movimiento)</span>}
           </p>
 
           {hecho ? (
@@ -78,7 +78,7 @@ export function CargaExtractoPdf() {
             </p>
           ) : (
             <button type="button" onClick={confirmar} disabled={vista.nuevos.length === 0}
-              className="rounded-md bg-finance px-3 py-1.5 text-sm font-medium text-white disabled:opacity-50">
+              className="rounded-md bg-finance font-medium text-white shadow-sm transition-colors hover:bg-finance/90 disabled:opacity-60 px-3 py-1.5 text-sm">
               Confirmar carga
             </button>
           )}
@@ -97,7 +97,7 @@ export function CargaExtractoPdf() {
                 </thead>
                 <tbody className="divide-y divide-border">
                   {vista.nuevos.map((m, i) => (
-                    <tr key={i} className={m.sinContacto ? "bg-amber-50" : ""}>
+                    <tr key={i} className={m.sinContacto ? "bg-status-warning-bg" : ""}>
                       <td className="whitespace-nowrap px-2 py-1">{formatFecha(m.fecha)}</td>
                       <td className="px-2 py-1">{m.descripcion}</td>
                       <td className={`whitespace-nowrap px-2 py-1 text-right ${m.importe < 0 ? "text-status-danger" : ""}`}>

@@ -137,7 +137,7 @@ export function ConciliacionDocumentos({medio,idMovimiento,estado,onSaved}: {
       <label className="block">Motivo <select className="rounded border border-border p-1" value={motivo} onChange={e=>setMotivo(e.target.value)}>{motivos.map(m=><option key={m}>{m}</option>)}</select></label>
       <label className="block">Detalle {motivo==="Otro" && "(obligatorio)"}<textarea className="block w-full rounded border border-border p-2" value={detalle} maxLength={255} onChange={e=>setDetalle(e.target.value)}/></label>
     </div>}
-    <button type="button" className="rounded bg-finance px-3 py-2 text-white disabled:opacity-50"
+    <button type="button" className="rounded-md bg-finance font-medium text-white shadow-sm transition-colors hover:bg-finance/90 disabled:opacity-60 px-3 py-2"
       disabled={guardando || !pendiente || (!sinDocumento && (!seleccion.length || !preview.data || !!preview.error || preview.isFetching)) || ((aceptar || sinDocumento) && motivo==="Otro" && !detalle.trim())}
       onClick={()=>guardar()}>{guardando ? "Guardando…" : sinDocumento ? "Confirmar sin documento" : "Confirmar conciliación"}</button>
   </div>;

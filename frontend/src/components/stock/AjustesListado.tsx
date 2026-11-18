@@ -123,7 +123,7 @@ function AjusteForm({ abierto, onClose, onCreado }: { abierto: boolean; onClose:
             ))}
           </ul>
           <div className="mt-2 flex gap-2">
-            <button type="button" className="rounded-sm bg-finance px-3 py-1 text-white" onClick={() => guardar(true)} disabled={guardando}>
+            <button type="button" className="rounded-md bg-finance font-medium text-white shadow-sm transition-colors hover:bg-finance/90 disabled:opacity-60 px-3 py-1" onClick={() => guardar(true)} disabled={guardando}>
               Registrar igual
             </button>
             <button type="button" className="rounded-sm border border-border px-3 py-1" onClick={() => setConfirmacion(null)}>
@@ -134,7 +134,7 @@ function AjusteForm({ abierto, onClose, onCreado }: { abierto: boolean; onClose:
       )}
       {error && <p className="mt-3 text-sm text-status-danger">{error}</p>}
       <div className="mt-4 flex gap-2">
-        <button type="button" disabled={guardando} onClick={() => guardar(false)} className="rounded-sm bg-finance px-5 py-2 text-sm text-white hover:opacity-90 disabled:opacity-40">
+        <button type="button" disabled={guardando} onClick={() => guardar(false)} className="rounded-md bg-finance font-medium text-white shadow-sm transition-colors hover:bg-finance/90 disabled:opacity-60 px-5 py-2 text-sm hover:opacity-90">
           {guardando ? "Guardando…" : "Registrar ajuste"}
         </button>
         <button type="button" onClick={onClose} className="rounded-sm border border-border px-5 py-2 text-sm text-ink-secondary">
@@ -235,7 +235,7 @@ export function AjustesListado() {
         <button type="button" onClick={() => setRecuento(true)} className="rounded-sm border border-finance px-4 py-2 text-sm text-finance hover:bg-finance-light">
           Subir recuento
         </button>
-        <button type="button" onClick={() => setNuevo(true)} className="rounded-sm bg-finance px-4 py-2 text-sm text-white hover:opacity-90">
+        <button type="button" onClick={() => setNuevo(true)} className="rounded-md bg-finance font-medium text-white shadow-sm transition-colors hover:bg-finance/90 disabled:opacity-60 px-4 py-2 text-sm hover:opacity-90">
           + Nuevo ajuste
         </button>
       </div>

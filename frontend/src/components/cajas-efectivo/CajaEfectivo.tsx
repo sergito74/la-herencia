@@ -108,7 +108,7 @@ export function CajaEfectivo({ caja }: { caja: CajaSlug }) {
       {!esCondominio && ultimo.isError && <p role="alert">No se pudo consultar el último arqueo. <button onClick={() => ultimo.refetch()}>Reintentar</button></p>}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-sm text-ink-secondary">{esCondominio ? "Pagos de gastos de Giamigli realizados por el Condominio. Los aportes y devoluciones se registran desde Cuenta con Giamigli." : moneda === "Dolares" ? "Tenencias, entradas y salidas de dólares billete, aportes y retiros de socios." : "Pagos, cobros, aportes y retiros de socios, traspasos, banco y gastos."} Un movimiento mal cargado se anula (queda en el historial) y se vuelve a cargar con «Corregir».</p>
-        <SoloLectura><button className="rounded-sm bg-agro px-4 py-2 text-sm text-white hover:opacity-90" onClick={() => setNuevo(true)}>+ Nuevo movimiento</button></SoloLectura>
+        <SoloLectura><button className="rounded-md bg-finance font-medium text-white shadow-sm transition-colors hover:bg-finance/90 disabled:opacity-60 px-4 py-2 text-sm hover:opacity-90" onClick={() => setNuevo(true)}>+ Nuevo movimiento</button></SoloLectura>
       </div>
       <SideDrawer open={nuevo} onClose={() => setNuevo(false)} title={`Nuevo movimiento — ${NOMBRES[caja]}`} maxWidthClass="max-w-3xl">
         <SoloLectura><OperacionCajaForm key={caja} caja={caja} onSaved={id => { setNuevo(false); setDetalle(id); }} /></SoloLectura>

@@ -76,7 +76,7 @@ export function PlanillaMatias() {
       </div>
       <SoloLectura>
         <button onClick={leer} disabled={ocupado}
-          className="rounded-md bg-agro px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-agro/90 disabled:opacity-60">
+          className="rounded-md bg-finance font-medium text-white shadow-sm transition-colors hover:bg-finance/90 disabled:opacity-60 px-4 py-2 text-sm">
           {ocupado ? "Leyendo la planilla…" : "Leer la planilla de Matías"}
         </button>
       </SoloLectura>

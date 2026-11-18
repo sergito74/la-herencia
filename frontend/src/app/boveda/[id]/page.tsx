@@ -69,7 +69,7 @@ export default function PortalPage() {
 
   return (
     <main className="mx-auto max-w-none space-y-3 px-6 py-3">
-      {portal.isError && <p className="text-sm text-red-700">{portal.error.message}</p>}
+      {portal.isError && <p className="text-sm text-status-danger">{portal.error.message}</p>}
       {p && (
         <>
           <PageHeader titulo={p.nombre} volver="/boveda">

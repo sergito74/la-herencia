@@ -53,7 +53,7 @@ export function EstadoSincronizacion({ portal }: { portal: Portal }) {
   }
   if (portal.recordatorio) {
     return (
-      <span className="text-xs font-medium text-amber-800">
+      <span className="text-xs font-medium text-status-warning">
         {portal.recordatorio}{" "}
         <a href={portal.url} target="_blank" rel="noreferrer" className="text-finance underline">
           Abrir la página
@@ -68,7 +68,7 @@ export function EstadoSincronizacion({ portal }: { portal: Portal }) {
   const ok = c.estado === "ok";
   return (
     <div className="space-y-0.5 text-xs">
-      <div className={ok ? "text-agro" : c.estado === "incompleta" ? "text-ink-muted" : "text-red-700"}>
+      <div className={ok ? "text-agro" : c.estado === "incompleta" ? "text-ink-muted" : "text-status-danger"}>
         {ok ? "✓ Sincronizada" : ETIQUETA_CORRIDA[c.estado] ?? c.estado} · {formatFechaHora(c.fin ?? c.inicio)}
       </div>
       {ok ? <div className="text-ink-secondary">{resumenCorrida(portal)}</div>
@@ -83,9 +83,9 @@ export function SincronizacionAutomatica({ portal }: { portal: Portal }) {
   if (portal.motivoNoSincroniza === "Próximamente" || portal.motivoNoSincroniza?.startsWith("No se puede automatizar")) {
     return <span className="text-xs text-ink-muted">{portal.motivoNoSincroniza}</span>;
   }
-  if (portal.motivoNoSincroniza) return <span className="text-xs text-red-700">{portal.motivoNoSincroniza}</span>;
+  if (portal.motivoNoSincroniza) return <span className="text-xs text-status-danger">{portal.motivoNoSincroniza}</span>;
   const p = portal.programacion;
-  if (p?.suspendida) return <span className="text-xs text-red-700">Pausada: {p.motivoSuspension}</span>;
+  if (p?.suspendida) return <span className="text-xs text-status-danger">Pausada: {p.motivoSuspension}</span>;
   if (!p || p.frecuencia === "desactivada") return <span className="text-xs text-ink-secondary">Disponible · solo manual</span>;
   return (
     <span className="text-xs text-ink-secondary">

@@ -48,7 +48,7 @@ function Detalle({ d, admin }: { d: DocumentoNuevo; admin: boolean }) {
       </div>
 
       {d.estado === "para_cargar" && (
-        <p className="rounded-sm bg-amber-50 px-2 py-1 text-xs text-amber-900">
+        <p className="rounded-sm bg-status-warning-bg px-2 py-1 text-xs text-status-warning">
           Para cargar a mano{d.motivo ? `: ${d.motivo}` : ""}
           {d.idRegistro ? " · ya se cargó; falta marcarlo como revisado" : ""}
         </p>
@@ -108,13 +108,13 @@ function Detalle({ d, admin }: { d: DocumentoNuevo; admin: boolean }) {
         )}
         {admin && (
           <button type="button" disabled={revisar.isPending} onClick={() => revisar.mutate()}
-            className="ml-auto rounded-md bg-finance px-3 py-1 text-xs font-medium text-white disabled:opacity-40">
+            className="rounded-md bg-finance font-medium text-white shadow-sm transition-colors hover:bg-finance/90 disabled:opacity-60 ml-auto px-3 py-1 text-xs">
             Revisado
           </button>
         )}
       </div>
       {(revisar.isError || mover.isError) && (
-        <p className="text-sm text-red-700">{(revisar.error ?? mover.error)?.message}</p>
+        <p className="text-sm text-status-danger">{(revisar.error ?? mover.error)?.message}</p>
       )}
     </div>
   );
@@ -125,7 +125,7 @@ function Lista({ modulo, titulo }: { modulo: ModuloAviso; titulo: string }) {
   const [abierto, setAbierto] = useState<number | null>(null);
   const q = useQuery({ queryKey: ["documentos-nuevos", "lista", modulo], queryFn: () => getNuevos(modulo) });
   const items = q.data?.items ?? [];
-  if (q.isError) return <p className="text-sm text-red-700">No se pudieron leer los documentos nuevos: {q.error.message}</p>;
+  if (q.isError) return <p className="text-sm text-status-danger">No se pudieron leer los documentos nuevos: {q.error.message}</p>;
   if (items.length === 0) return null;
   const actual = items.find((d) => d.idDocumentoNuevo === abierto) ?? items[0];
 

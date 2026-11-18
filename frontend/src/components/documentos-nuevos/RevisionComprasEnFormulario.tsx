@@ -49,7 +49,7 @@ export function RevisionComprasEnFormulario() {
     mutationFn: ({ id, modulo }: { id: number; modulo: ModuloAviso }) => moverNuevo(id, modulo), onSuccess: listo,
   });
   const items = q.data?.items ?? [];
-  if (q.isError) return <p className="text-sm text-red-700">No se pudieron leer las compras nuevas: {q.error.message}</p>;
+  if (q.isError) return <p className="text-sm text-status-danger">No se pudieron leer las compras nuevas: {q.error.message}</p>;
   if (q.isLoading) return <LoadingState />;
   if (items.length === 0) return <p className="text-sm text-ink-secondary">No hay compras nuevas para revisar.</p>;
   const d = items.find((x) => x.idDocumentoNuevo === abierto) ?? items[0];
@@ -79,7 +79,7 @@ export function RevisionComprasEnFormulario() {
         {d.ruta && <a href={urlDocumentoLocal(d.ruta)} target="_blank" rel="noreferrer" className="text-finance hover:underline">
           Ver archivo
         </a>}
-        {d.motivo && <span className="text-xs text-amber-900">{d.motivo}</span>}
+        {d.motivo && <span className="text-xs text-status-warning">{d.motivo}</span>}
         {admin && d.idRegistro != null && (
           <button type="button" disabled={revisar.isPending} onClick={() => revisar.mutate(d.idDocumentoNuevo)}
             title="Marcarla como revisada sin cambios"
@@ -108,11 +108,11 @@ export function RevisionComprasEnFormulario() {
           </span>
         )}
         {(descartar.isError || mover.isError) && (
-          <span className="text-xs text-red-700">{(descartar.error ?? mover.error)?.message}</span>
+          <span className="text-xs text-status-danger">{(descartar.error ?? mover.error)?.message}</span>
         )}
       </div>
       {!d.contacto && (
-        <p className="rounded-sm bg-amber-50 px-2 py-1 text-xs text-amber-900">
+        <p className="rounded-sm bg-status-warning-bg px-2 py-1 text-xs text-status-warning">
           No reconocimos quién emite este documento: elegí el proveedor en el formulario y revisá el número.
         </p>
       )}

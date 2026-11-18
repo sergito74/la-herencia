@@ -127,7 +127,7 @@ function ModalExactas({ onClose, onApplied }: { onClose: () => void; onApplied: 
             type="button"
             disabled={elegidas.length === 0 || aplicar.isPending}
             onClick={() => aplicar.mutate(elegidas.map((p) => p.idLineaConsumo))}
-            className="rounded-sm bg-finance px-3 py-1 text-sm text-white hover:opacity-90 disabled:opacity-40"
+            className="rounded-md bg-finance font-medium text-white shadow-sm transition-colors hover:bg-finance/90 disabled:opacity-60 px-3 py-1 text-sm hover:opacity-90"
           >
             {aplicar.isPending ? "Aplicando…" : `Aplicar ${elegidas.length}`}
           </button>
@@ -242,7 +242,7 @@ export function BandejaConciliacion() {
           <button
             type="button"
             onClick={() => setVerExactas(true)}
-            className="rounded-sm bg-finance px-4 py-2 text-sm text-white hover:opacity-90"
+            className="rounded-md bg-finance font-medium text-white shadow-sm transition-colors hover:bg-finance/90 disabled:opacity-60 px-4 py-2 text-sm hover:opacity-90"
           >
             Aceptar sugerencias exactas…
           </button>

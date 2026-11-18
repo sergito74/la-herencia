@@ -1,5 +1,7 @@
 "use client";
 
+import { PageHeader } from "@/components/ui/PageHeader";
+
 import { useParams, useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 
@@ -19,17 +21,7 @@ export default function EditarVentaGranosPage() {
 
   return (
     <main className="mx-auto max-w-none px-6 py-3">
-      <div className="flex items-center gap-2">
-        <button
-          type="button"
-          onClick={() => router.back()}
-          title="Volver al listado de Ventas de Granos, con la búsqueda y el orden que tenía antes de entrar acá."
-          className="text-sm text-finance underline"
-        >
-          ← Volver a Ventas de Granos
-        </button>
-      </div>
-      <h1 className="mt-1 text-base font-semibold">Editar venta de granos</h1>
+      <PageHeader titulo={<>Editar venta de granos</>} onVolver={() => router.back()} />
 
       {isLoading && <LoadingState />}
       {isError && (

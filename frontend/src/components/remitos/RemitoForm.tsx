@@ -400,7 +400,7 @@ export function RemitoForm({ idRemito }: { idRemito?: number }) {
               ))}
             </ul>
             <div className="mt-1 flex gap-2">
-              <button type="button" className="rounded-sm bg-finance px-3 py-1 text-white" disabled={guardando} onClick={() => { setConfirmacionServidor(null); guardar(true); }}>
+              <button type="button" className="rounded-md bg-finance font-medium text-white shadow-sm transition-colors hover:bg-finance/90 disabled:opacity-60 px-3 py-1" disabled={guardando} onClick={() => { setConfirmacionServidor(null); guardar(true); }}>
                 Confirmar y guardar
               </button>
               <button type="button" className="rounded-sm border border-border px-3 py-1" onClick={() => setConfirmacionServidor(null)}>
@@ -421,7 +421,7 @@ export function RemitoForm({ idRemito }: { idRemito?: number }) {
             <button type="button" onClick={() => router.back()} className="rounded-sm border border-border px-3 py-1.5 text-xs text-ink-secondary hover:text-ink-primary">
               Cancelar
             </button>
-            <button type="submit" disabled={guardando} className="rounded-sm bg-finance px-3 py-1.5 text-xs text-white hover:opacity-90 disabled:opacity-40">
+            <button type="submit" disabled={guardando} className="rounded-md bg-finance font-medium text-white shadow-sm transition-colors hover:bg-finance/90 disabled:opacity-60 px-3 py-1.5 text-xs hover:opacity-90">
               {guardando ? "Guardando…" : edicion ? "Guardar cambios" : "Guardar remito"}
             </button>
           </div>

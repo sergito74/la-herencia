@@ -149,10 +149,10 @@ export function PortalForm({
         {modo === "nueva" && <CredencialForm value={nueva} onChange={setNueva} />}
       </fieldset>
 
-      {error && <p className="text-sm text-red-700">{error}</p>}
+      {error && <p className="text-sm text-status-danger">{error}</p>}
       <div className="flex gap-2">
         <button type="submit" disabled={enviando}
-          className="rounded-md bg-finance px-4 py-1.5 text-sm font-medium text-white disabled:opacity-50">
+          className="rounded-md bg-finance font-medium text-white shadow-sm transition-colors hover:bg-finance/90 disabled:opacity-60 px-4 py-1.5 text-sm">
           {enviando ? "Guardando…" : "Guardar"}
         </button>
         <button type="button" onClick={onCancel} className="rounded-md border border-border px-4 py-1.5 text-sm">

@@ -47,13 +47,13 @@ export default function DescargaPeajesPage() {
         )}
         {puedeDescargar && (
           <button type="button" disabled={enCurso || descargar.isPending} onClick={() => descargar.mutate()}
-            className="shrink-0 rounded-md bg-finance px-3 py-1 text-sm font-medium text-white disabled:opacity-50">
+            className="rounded-md bg-finance font-medium text-white shadow-sm transition-colors hover:bg-finance/90 disabled:opacity-60 shrink-0 px-3 py-1 text-sm">
             {enCurso ? "Descargando…" : "Descargar ahora"}
           </button>
         )}
       </PageHeader>
-      {descargar.isError && <p className="text-sm text-red-700">{descargar.error.message}</p>}
-      {estado.isError && <p className="text-sm text-red-700">No se pudo leer el estado de la descarga.</p>}
+      {descargar.isError && <p className="text-sm text-status-danger">{descargar.error.message}</p>}
+      {estado.isError && <p className="text-sm text-status-danger">No se pudo leer el estado de la descarga.</p>}
 
       <section className="rounded-md border border-border bg-surface p-4">
         <table className="w-full text-sm">
@@ -70,8 +70,8 @@ export default function DescargaPeajesPage() {
               <tr key={p.idPortal} className="border-b border-border/60">
                 <td className="py-2 pr-3">{p.portal}</td>
                 <td className="py-2 pr-3">
-                  {!p.autorizado ? <span className="text-red-700">Sin autorización</span>
-                    : !p.credenciales ? <span className="text-red-700">Faltan o fueron rechazadas las credenciales</span>
+                  {!p.autorizado ? <span className="text-status-danger">Sin autorización</span>
+                    : !p.credenciales ? <span className="text-status-danger">Faltan o fueron rechazadas las credenciales</span>
                     : "Lista"}
                 </td>
                 <td className="py-2 pr-3">

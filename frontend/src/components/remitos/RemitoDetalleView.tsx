@@ -104,7 +104,7 @@ export function RemitoDetalleView({ idRemito }: { idRemito: number }) {
         </div>
         {!data.anulado && (
           <div className="flex flex-wrap gap-2">
-            <button type="button" onClick={() => setVinculando(true)} className="rounded-sm bg-finance px-4 py-2 text-sm text-white hover:opacity-90">
+            <button type="button" onClick={() => setVinculando(true)} className="rounded-md bg-finance font-medium text-white shadow-sm transition-colors hover:bg-finance/90 disabled:opacity-60 px-4 py-2 text-sm hover:opacity-90">
               Vincular con facturas
             </button>
             <Link href={`/produccion/remitos/${idRemito}/editar`} className="rounded-sm border border-finance px-4 py-2 text-sm text-finance hover:bg-finance-light">

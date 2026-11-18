@@ -265,7 +265,7 @@ export function ConciliarMovimiento({
                     type="button"
                     disabled={!idContacto || importe <= 0}
                     onClick={() => setConfirmando(true)}
-                    className="rounded bg-finance px-2 py-1 text-xs text-white disabled:opacity-50"
+                    className="rounded-md bg-finance font-medium text-white shadow-sm transition-colors hover:bg-finance/90 disabled:opacity-60 px-2 py-1 text-xs"
                   >
                     Continuar
                   </button>
@@ -292,7 +292,7 @@ export function ConciliarMovimiento({
                     type="button"
                     disabled={guardando}
                     onClick={confirmar}
-                    className="rounded bg-finance px-2 py-1 text-white disabled:opacity-50"
+                    className="rounded-md bg-finance font-medium text-white shadow-sm transition-colors hover:bg-finance/90 disabled:opacity-60 px-2 py-1"
                   >
                     {guardando ? "Guardando…" : "Confirmar"}
                   </button>

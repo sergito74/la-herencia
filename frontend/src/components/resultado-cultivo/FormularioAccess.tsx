@@ -79,7 +79,7 @@ export function TablaCostosDirectos({ filas, totales, seleccionado, onConcepto }
         <tbody>
           {filas.map((f) => (
             <tr key={f.idRubro} onClick={onConcepto ? () => onConcepto(f) : undefined}
-              className={`border-b border-border ${onConcepto ? "cursor-pointer hover:bg-surface-sunken" : ""} ${seleccionado === f.idRubro ? "bg-amber-50" : ""}`}>
+              className={`border-b border-border ${onConcepto ? "cursor-pointer hover:bg-surface-sunken" : ""} ${seleccionado === f.idRubro ? "bg-status-warning-bg" : ""}`}>
               <td className="px-2 py-1">{f.concepto}</td>
               <td className={celdaNum}>{ar(f.pesos)}</td>
               <td className={celdaNum}>{us(f.dolares)}</td>

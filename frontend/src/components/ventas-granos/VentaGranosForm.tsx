@@ -497,7 +497,7 @@ export function VentaGranosForm({
           <button
             type="submit"
             disabled={isSaving || eliminando || lockError != null}
-            className="rounded-sm bg-finance px-3 py-1.5 text-xs text-white hover:opacity-90 disabled:opacity-40"
+            className="rounded-md bg-finance font-medium text-white shadow-sm transition-colors hover:bg-finance/90 disabled:opacity-60 px-3 py-1.5 text-xs hover:opacity-90"
           >
             {isSaving ? "Guardando…" : "Guardar"}
           </button>

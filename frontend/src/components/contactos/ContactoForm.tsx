@@ -100,7 +100,7 @@ export function ContactoForm({
         <button
           type="submit"
           disabled={isSaving || razonSocial.trim().length === 0}
-          className="rounded-sm bg-finance px-4 py-2 text-sm text-white hover:opacity-90 disabled:opacity-40"
+          className="rounded-md bg-finance font-medium text-white shadow-sm transition-colors hover:bg-finance/90 disabled:opacity-60 px-4 py-2 text-sm hover:opacity-90"
         >
           {isSaving ? "Guardando…" : "Guardar"}
         </button>

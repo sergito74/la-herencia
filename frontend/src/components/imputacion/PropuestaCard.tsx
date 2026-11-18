@@ -70,7 +70,7 @@ export function PropuestaCard({ idDetalleCompra, onAprobada }: { idDetalleCompra
   const [correcciones, setCorrecciones] = useState<Record<number, { idCultivo?: number; idCampania?: number }>>({});
   const { showToast } = useToast();
 
-  if (propuesta.isError) return <p role="alert" className="text-sm text-red-700">No se pudo cargar la propuesta. <button onClick={() => propuesta.refetch()} className="underline">Reintentar</button></p>;
+  if (propuesta.isError) return <p role="alert" className="text-sm text-status-danger">No se pudo cargar la propuesta. <button onClick={() => propuesta.refetch()} className="underline">Reintentar</button></p>;
   if (!fracciones) return <p className="text-sm text-ink-secondary">Cargando propuesta…</p>;
   if (fracciones.length === 0) return <p className="text-sm text-ink-secondary">Sin propuesta para este renglón.</p>;
 
@@ -180,7 +180,7 @@ export function PropuestaCard({ idDetalleCompra, onAprobada }: { idDetalleCompra
             type="button"
             onClick={aprobar}
             disabled={enviando}
-            className="rounded-md bg-agro px-3 py-1.5 text-sm text-white disabled:opacity-60"
+            className="rounded-md bg-finance font-medium text-white shadow-sm transition-colors hover:bg-finance/90 disabled:opacity-60 px-3 py-1.5 text-sm"
           >
             {enviando ? "Aprobando…" : editando ? "Aprobar con correcciones" : "Aprobar"}
           </button>

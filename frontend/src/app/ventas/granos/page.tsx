@@ -21,7 +21,7 @@ export default function VentasGranosPage() {
         <SoloLectura>
           <Link
             href="/ventas/granos/nueva"
-            className="rounded-sm bg-agro px-3 py-1 text-sm text-white hover:opacity-90"
+            className="rounded-md bg-finance font-medium text-white shadow-sm transition-colors hover:bg-finance/90 disabled:opacity-60 px-3 py-1 text-sm hover:opacity-90"
           >
             + Nueva venta de granos
           </Link>

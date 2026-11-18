@@ -7,7 +7,7 @@ export function CuotasInfo({ f }: { f: FacturaOP }) {
   const actual = f.cuotas.find(c => c.numero === f.cuotaActual) ?? f.cuotas[f.cuotas.length - 1];
   const detalle = f.cuotas.map(c => `Cuota ${c.numero}: ${formatFecha(c.fecha)} · ${formatMoneda(c.importe)}`
     + (c.saldo <= 0 ? ' (pagada)' : c.saldo < c.importe ? ` (resta ${formatMoneda(c.saldo)})` : '')).join(String.fromCharCode(10));
-  return <span className="block cursor-help text-[11px] text-slate-700" title={detalle}>Cuota {actual.numero} de {actual.de}: {formatMoneda(actual.saldo)}</span>;
+  return <span className="block cursor-help text-[11px] text-ink-secondary" title={detalle}>Cuota {actual.numero} de {actual.de}: {formatMoneda(actual.saldo)}</span>;
 }
 
 /** Cuotas que faltan pagar de una factura (para armar un medio de pago por cuota). */

@@ -43,7 +43,7 @@ export function ProgramacionPanel({ portal }: { portal: Portal }) {
     <div className="space-y-3 text-sm">
       <p className="text-ink-secondary">
         {p?.suspendida ? (
-          <span className="text-red-700">Suspendida: {p.motivoSuspension}</span>
+          <span className="text-status-danger">Suspendida: {p.motivoSuspension}</span>
         ) : p?.proximaCorrida ? (
           <>Próxima corrida: <strong>{formatFechaHora(p.proximaCorrida)}</strong> (con la aplicación abierta).</>
         ) : (
@@ -78,7 +78,7 @@ export function ProgramacionPanel({ portal }: { portal: Portal }) {
             <input type="time" required className={`${inputCls} block`} value={hora} onChange={(e) => setHora(e.target.value)} />
           </label>
         )}
-        <button type="submit" disabled={guardar.isPending} className="rounded-md bg-finance px-3 py-1.5 text-xs font-medium text-white disabled:opacity-50">
+        <button type="submit" disabled={guardar.isPending} className="rounded-md bg-finance font-medium text-white shadow-sm transition-colors hover:bg-finance/90 disabled:opacity-60 px-3 py-1.5 text-xs">
           Guardar programación
         </button>
         <button type="button" disabled={correr.isPending || portal.enCurso || portal.enCola || !!portal.motivoNoSincroniza}
@@ -89,8 +89,8 @@ export function ProgramacionPanel({ portal }: { portal: Portal }) {
         </button>
       </form>
       <div className="rounded-md border border-border p-2"><EstadoSincronizacion portal={portal} /></div>
-      {guardar.isError && <p className="text-xs text-red-700">{guardar.error.message}</p>}
-      {correr.isError && <p className="text-xs text-red-700">{correr.error.message}</p>}
+      {guardar.isError && <p className="text-xs text-status-danger">{guardar.error.message}</p>}
+      {correr.isError && <p className="text-xs text-status-danger">{correr.error.message}</p>}
     </div>
   );
 }

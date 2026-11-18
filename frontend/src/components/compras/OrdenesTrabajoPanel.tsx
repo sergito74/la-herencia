@@ -180,7 +180,7 @@ export function OrdenesTrabajoPanel({ idCompra }: { idCompra: number }) {
                   type="button"
                   onClick={() => guardar.mutate()}
                   disabled={!cambio || guardar.isPending}
-                  className="rounded bg-finance px-3 py-1 text-xs font-medium text-white disabled:opacity-40"
+                  className="rounded-md bg-finance font-medium text-white shadow-sm transition-colors hover:bg-finance/90 disabled:opacity-60 px-3 py-1 text-xs"
                 >
                   {guardar.isPending ? "Guardando…" : "Guardar órdenes"}
                 </button>

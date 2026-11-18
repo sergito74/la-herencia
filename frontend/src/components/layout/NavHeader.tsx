@@ -226,7 +226,7 @@ function Contador({ valor, titulo = "Pendientes de carga manual o portales con e
   { valor: number; titulo?: string; azul?: boolean }) {
   if (!valor) return null;
   return (
-    <span className={`ml-1 rounded-full px-1.5 text-[10px] font-semibold leading-4 text-white ${azul ? "bg-finance" : "bg-amber-500"}`} title={titulo}>
+    <span className={`ml-1 rounded-full px-1.5 text-[10px] font-semibold leading-4 text-white ${azul ? "bg-finance" : "bg-status-warning"}`} title={titulo}>
       {valor}
     </span>
   );
@@ -320,7 +320,7 @@ export function NavHeader() {
       <div className="flex w-full items-center justify-between gap-3 px-6 py-2">
         <div className="flex min-w-0 items-center gap-4">
           <Link href="/" className="flex shrink-0 items-center gap-2 font-semibold text-ink-primary">
-            <span className="flex h-7 w-7 items-center justify-center rounded-md bg-agro text-sm text-white">
+            <span className="rounded-md bg-finance font-medium text-white shadow-sm transition-colors hover:bg-finance/90 disabled:opacity-60 flex h-7 w-7 items-center justify-center text-sm">
               LH
             </span>
             La Herencia

@@ -257,8 +257,8 @@ export function CuentaSocio({ idSocio }: { idSocio: number }) {
 
           <div className="flex flex-wrap gap-3">
             <SoloLectura>
-              <button type="button" onClick={() => setDrawer("pago")} className="rounded-sm bg-finance px-4 py-2 text-sm text-white hover:opacity-90">Pagó un gasto de Giamigli…</button>
-              <button type="button" onClick={() => setDrawer("asiento")} className="rounded-sm bg-agro px-4 py-2 text-sm text-white hover:opacity-90">+ Nuevo asiento</button>
+              <button type="button" onClick={() => setDrawer("pago")} className="rounded-md bg-finance font-medium text-white shadow-sm transition-colors hover:bg-finance/90 disabled:opacity-60 px-4 py-2 text-sm hover:opacity-90">Pagó un gasto de Giamigli…</button>
+              <button type="button" onClick={() => setDrawer("asiento")} className="rounded-md bg-finance font-medium text-white shadow-sm transition-colors hover:bg-finance/90 disabled:opacity-60 px-4 py-2 text-sm hover:opacity-90">+ Nuevo asiento</button>
               <button type="button" onClick={() => setDrawer("efectivo")} className="rounded-sm border border-border px-3 py-2 text-sm hover:bg-surface-sunken">Aporte / retiro en efectivo…</button>
             </SoloLectura>
             <AsignarGastoForm idSocio={idSocio} onAsignado={recargar} />
@@ -315,7 +315,7 @@ export function CuentaSocio({ idSocio }: { idSocio: number }) {
                   type="button"
                   disabled={guardando}
                   onClick={confirmarDevolucion}
-                  className="rounded bg-finance px-3 py-1.5 text-sm text-white disabled:opacity-50"
+                  className="rounded-md bg-finance font-medium text-white shadow-sm transition-colors hover:bg-finance/90 disabled:opacity-60 px-3 py-1.5 text-sm"
                 >
                   {guardando ? "Guardando…" : "Confirmar"}
                 </button>

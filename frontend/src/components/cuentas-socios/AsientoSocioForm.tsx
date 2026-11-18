@@ -45,7 +45,7 @@ export function AsientoSocioForm({ idSocio, movimiento, onListo }: { idSocio: nu
         {movimiento && " Editar anula el asiento anterior y crea el corregido: los dos quedan en el historial."}
       </p>
       {guardar.error && <p role="alert" className="text-sm text-status-danger">{(guardar.error as Error).message}</p>}
-      <button className="rounded-sm bg-agro px-4 py-2 text-sm text-white disabled:opacity-50" disabled={!importe || !motivo.trim() || guardar.isPending}>
+      <button className="rounded-md bg-finance font-medium text-white shadow-sm transition-colors hover:bg-finance/90 disabled:opacity-60 px-4 py-2 text-sm" disabled={!importe || !motivo.trim() || guardar.isPending}>
         {guardar.isPending ? "Guardando…" : movimiento ? "Guardar corrección" : "Registrar asiento"}
       </button>
     </form>

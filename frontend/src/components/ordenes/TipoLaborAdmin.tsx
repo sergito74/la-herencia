@@ -40,7 +40,7 @@ export function TipoLaborAdmin({ tiposLabor, onCreado }: { tiposLabor: TipoLabor
           Nuevo tipo de labor
           <input className="mt-1 block rounded border border-border px-2 py-1.5" value={nombre} onChange={(e) => setNombre(e.target.value)} placeholder="ej. Cosecha" />
         </label>
-        <button type="button" onClick={agregar} disabled={guardando || !nombre.trim()} className="rounded bg-finance px-3 py-1.5 text-sm text-white disabled:opacity-50">
+        <button type="button" onClick={agregar} disabled={guardando || !nombre.trim()} className="rounded-md bg-finance font-medium text-white shadow-sm transition-colors hover:bg-finance/90 disabled:opacity-60 px-3 py-1.5 text-sm">
           Agregar
         </button>
       </div>

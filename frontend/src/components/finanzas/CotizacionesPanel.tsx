@@ -59,7 +59,7 @@ export function CotizacionesPanel() {
               type="button"
               disabled={act.isPending}
               onClick={() => act.mutate()}
-              className="rounded-sm bg-agro px-3 py-1.5 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50"
+              className="rounded-md bg-finance font-medium text-white shadow-sm transition-colors hover:bg-finance/90 disabled:opacity-60 px-3 py-1.5 text-sm hover:opacity-90"
             >
               {act.isPending ? "Sincronizando…" : "Actualizar ahora"}
             </button>

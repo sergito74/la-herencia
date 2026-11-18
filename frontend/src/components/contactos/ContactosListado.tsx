@@ -139,7 +139,7 @@ export function ContactosListado() {
         <button
           type="button"
           onClick={() => setEditing("new")}
-          className="ml-auto rounded-sm bg-agro px-4 py-2 text-sm text-white hover:opacity-90"
+          className="rounded-md bg-finance font-medium text-white shadow-sm transition-colors hover:bg-finance/90 disabled:opacity-60 ml-auto px-4 py-2 text-sm hover:opacity-90"
         >
           + Nuevo contacto
         </button>

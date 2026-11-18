@@ -160,7 +160,7 @@ export function VincularTraspasoInterno({
                   type="button"
                   disabled={guardando || !busquedaId.trim()}
                   onClick={() => vincularCon(busquedaMedio, Number(busquedaId))}
-                  className="rounded bg-finance px-2 py-1 text-white disabled:opacity-50"
+                  className="rounded-md bg-finance font-medium text-white shadow-sm transition-colors hover:bg-finance/90 disabled:opacity-60 px-2 py-1"
                 >
                   Vincular
                 </button>

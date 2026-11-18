@@ -258,7 +258,7 @@ export function LiquidacionForm({
 
       {/* Recuadro especial para Adicional de Marcelo Sierra y Asiento de Caja */}
       {idSalario && esSierra && (
-        <div className="rounded border border-finance/30 bg-blue-50/50 p-4">
+        <div className="rounded border border-finance/30 bg-finance-light/50 p-4">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
               <h3 className="text-sm font-semibold text-finance">
@@ -372,7 +372,7 @@ export function LiquidacionForm({
           type="button"
           disabled={guardando}
           onClick={() => guardar(false)}
-          className="rounded bg-finance px-5 py-2 text-sm font-medium text-white hover:bg-finance/90 disabled:opacity-50"
+          className="rounded-md bg-finance font-medium text-white shadow-sm transition-colors hover:bg-finance/90 disabled:opacity-60 px-5 py-2 text-sm"
         >
           {guardando ? "Guardando…" : idSalario ? "Guardar cambios" : "Guardar liquidación"}
         </button>

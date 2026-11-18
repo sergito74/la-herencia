@@ -106,7 +106,7 @@ export default function DetalleOrdenPage() {
             </Link>
           )}
           {orden.estado === "Planificada" && (
-            <button type="button" onClick={() => setEjecutando(true)} className="rounded bg-finance px-3 py-1.5 text-sm text-white">
+            <button type="button" onClick={() => setEjecutando(true)} className="rounded-md bg-finance font-medium text-white shadow-sm transition-colors hover:bg-finance/90 disabled:opacity-60 px-3 py-1.5 text-sm">
               Marcar ejecutada
             </button>
           )}
@@ -165,7 +165,7 @@ export default function DetalleOrdenPage() {
             <input type="date" className="mt-1 block w-full rounded border border-border px-2 py-1" value={fechaEjecucionCorregida} onChange={(e) => setFechaEjecucionCorregida(e.target.value)} />
           </label>
           <div className="flex gap-2">
-            <button type="button" onClick={confirmarCorreccionFecha} disabled={!fechaEjecucionCorregida} className="rounded bg-finance px-3 py-1.5 text-sm text-white disabled:opacity-50">
+            <button type="button" onClick={confirmarCorreccionFecha} disabled={!fechaEjecucionCorregida} className="rounded-md bg-finance font-medium text-white shadow-sm transition-colors hover:bg-finance/90 disabled:opacity-60 px-3 py-1.5 text-sm">
               Guardar corrección
             </button>
             <button type="button" onClick={() => setCorrigiendoFecha(false)} className="rounded border border-border px-3 py-1.5 text-sm">
@@ -182,7 +182,7 @@ export default function DetalleOrdenPage() {
             <input type="date" className="mt-1 block w-full rounded border border-border px-2 py-1" value={fechaEjecucion} onChange={(e) => setFechaEjecucion(e.target.value)} />
           </label>
           <div className="flex gap-2">
-            <button type="button" onClick={confirmarEjecucion} disabled={!fechaEjecucion} className="rounded bg-finance px-3 py-1.5 text-sm text-white disabled:opacity-50">
+            <button type="button" onClick={confirmarEjecucion} disabled={!fechaEjecucion} className="rounded-md bg-finance font-medium text-white shadow-sm transition-colors hover:bg-finance/90 disabled:opacity-60 px-3 py-1.5 text-sm">
               Confirmar ejecución
             </button>
             <button type="button" onClick={() => setEjecutando(false)} className="rounded border border-border px-3 py-1.5 text-sm">
@@ -278,7 +278,7 @@ export default function DetalleOrdenPage() {
               Costo por hectárea
               <NumberInput className="mt-1 block w-28 rounded border border-border px-2 py-1 text-right" value={costoMaquinaria} onChange={setCostoMaquinaria} />
             </label>
-            <button type="button" onClick={guardarMaquinaria} disabled={!costoMaquinaria || !descMaquinaria.trim()} className="rounded bg-finance px-3 py-1.5 text-sm text-white disabled:opacity-50">
+            <button type="button" onClick={guardarMaquinaria} disabled={!costoMaquinaria || !descMaquinaria.trim()} className="rounded-md bg-finance font-medium text-white shadow-sm transition-colors hover:bg-finance/90 disabled:opacity-60 px-3 py-1.5 text-sm">
               Agregar
             </button>
           </div>

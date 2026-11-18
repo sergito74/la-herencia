@@ -15,11 +15,11 @@ import {
 
 function Acceso({ portal }: { portal: Portal }) {
   const c = portal.credencial;
-  if (!c) return <span className="text-xs text-red-700">Sin usuario ni contraseña</span>;
+  if (!c) return <span className="text-xs text-status-danger">Sin usuario ni contraseña</span>;
   return (
     <div className="text-xs">
       <div className="text-ink-primary">{c.usuario ?? c.nombre}</div>
-      <div className={c.estado === "ok" ? "text-ink-muted" : "text-red-700"}>
+      <div className={c.estado === "ok" ? "text-ink-muted" : "text-status-danger"}>
         {c.estado === "ok" ? "Contraseña guardada" : c.estado === "rechazada" ? "Contraseña rechazada por el portal" : "Falta la contraseña"}
       </div>
     </div>
@@ -111,7 +111,7 @@ export default function BovedaPage() {
       )}
 
       {resumen.data && resumen.data.total > 0 && (
-        <p className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+        <p className="rounded-md border border-status-warning/40 bg-status-warning-bg px-3 py-2 text-sm text-status-warning">
           {resumen.data.total > resumen.data.recordatorios.length && `Para revisar: ${[
             resumen.data.conError && `${resumen.data.conError} cuentas con error`,
             resumen.data.requiereIntervencion && `${resumen.data.requiereIntervencion} cuentas que piden intervención`,
@@ -131,7 +131,7 @@ export default function BovedaPage() {
         <div className="flex flex-wrap items-center gap-2">
           <button type="button" disabled={seleccion.size === 0 || lanzar.isPending}
             onClick={() => lanzar.mutate([...seleccion])}
-            className="rounded-md bg-finance px-4 py-1.5 text-sm font-medium text-white disabled:opacity-40">
+            className="rounded-md bg-finance font-medium text-white shadow-sm transition-colors hover:bg-finance/90 disabled:opacity-60 px-4 py-1.5 text-sm">
             Sincronizar seleccionadas{seleccion.size ? ` (${seleccion.size})` : ""}
           </button>
           <button type="button" disabled={sincronizables.length === 0 || lanzar.isPending}
@@ -174,12 +174,12 @@ export default function BovedaPage() {
             </ul>
           </details>
         )}
-        {lanzar.isError && <p className="text-sm text-red-700">{lanzar.error.message}</p>}
+        {lanzar.isError && <p className="text-sm text-status-danger">{lanzar.error.message}</p>}
       </section>
 
       <RutinaPanel />
 
-      {portales.isError && <p className="text-sm text-red-700">No se pudo leer la bóveda: {portales.error.message}</p>}
+      {portales.isError && <p className="text-sm text-status-danger">No se pudo leer la bóveda: {portales.error.message}</p>}
       <div className="overflow-x-auto rounded-md border border-border bg-surface">
         <table className="min-w-full text-sm">
           <thead className="bg-surface-sunken text-left text-xs text-ink-secondary">

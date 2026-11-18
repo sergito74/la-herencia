@@ -160,7 +160,7 @@ export function AdicionalSierra({
                   <button
                     type="button"
                     disabled={ocupado || total <= 0}
-                    className="rounded bg-finance px-3 py-1.5 text-white disabled:opacity-50"
+                    className="rounded-md bg-finance font-medium text-white shadow-sm transition-colors hover:bg-finance/90 disabled:opacity-60 px-3 py-1.5"
                     onClick={guardar}
                   >
                     {ocupado ? "Guardando…" : "Guardar adicional en liquidación"}
@@ -174,10 +174,10 @@ export function AdicionalSierra({
                   Pago en efectivo · Caja Giamigli SA (Cuenta B)
                 </div>
                 {d.pagoCaja ? (
-                  <div className="mt-1 rounded bg-green-50 p-2 text-green-900 border border-green-200 space-y-1">
+                  <div className="mt-1 rounded bg-status-success-bg p-2 text-status-success border border-status-success/40 space-y-1">
                     <p className="font-medium">✓ Pago registrado en Caja Efectivo</p>
                     <p>Fecha: {formatFecha(d.pagoCaja.Fecha)} · Importe: {formatMoneda(Math.abs(d.pagoCaja.Importe))}</p>
-                    <p className="text-[11px] text-green-700">{d.pagoCaja.Concepto}</p>
+                    <p className="text-[11px] text-status-success">{d.pagoCaja.Concepto}</p>
                     <Link
                       className="inline-block text-finance underline text-xs mt-1"
                       href={`/finanzas/cajas-efectivo/giamigli-sa?highlight=${d.pagoCaja.IdMovimiento}`}
@@ -186,7 +186,7 @@ export function AdicionalSierra({
                     </Link>
                   </div>
                 ) : (
-                  <div className="mt-1 space-y-2 rounded bg-amber-50 p-2 border border-amber-200 text-amber-900">
+                  <div className="mt-1 space-y-2 rounded bg-status-warning-bg p-2 border border-status-warning/40 text-status-warning">
                     <p className="text-xs">
                       Pendiente de preparar y asentar en la caja de efectivo.
                     </p>
@@ -203,7 +203,7 @@ export function AdicionalSierra({
                       <button
                         type="button"
                         disabled={ocupado || total <= 0}
-                        className="w-full rounded bg-amber-700 px-3 py-1.5 font-medium text-white hover:bg-amber-800 disabled:opacity-50"
+                        className="w-full rounded bg-status-warning px-3 py-1.5 font-medium text-white hover:bg-status-warning disabled:opacity-50"
                         onClick={pagarCaja}
                       >
                         {ocupado ? "Asentando en caja…" : `Hacer asiento de caja por ${formatMoneda(total)}`}
@@ -215,7 +215,7 @@ export function AdicionalSierra({
             </>
           )}
           {error && (
-            <p role="alert" className="text-red-700 font-medium">
+            <p role="alert" className="text-status-danger font-medium">
               {error}
             </p>
           )}

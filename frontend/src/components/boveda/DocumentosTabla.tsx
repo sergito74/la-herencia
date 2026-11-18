@@ -9,7 +9,7 @@ import { ETIQUETA_CARGA, urlCargarEnCompras, type Documento } from "@/services/b
 const COLOR_CARGA: Record<string, string> = {
   cargado_auto: "bg-agro-light text-agro",
   ya_cargado: "bg-surface-sunken text-ink-secondary",
-  pendiente: "bg-amber-100 text-amber-800",
+  pendiente: "bg-status-warning-bg text-status-warning",
   historico: "bg-surface-sunken text-ink-muted",
   no_aplica: "bg-surface-sunken text-ink-secondary",
 };

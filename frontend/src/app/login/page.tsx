@@ -49,7 +49,7 @@ export default function LoginPage() {
         className="w-full max-w-sm rounded-lg border border-border bg-surface p-8 shadow-sm"
       >
         <div className="mb-6 flex items-center gap-2 text-ink-primary">
-          <span className="flex h-8 w-8 items-center justify-center rounded-md bg-agro text-sm text-white">
+          <span className="rounded-md bg-finance font-medium text-white shadow-sm transition-colors hover:bg-finance/90 disabled:opacity-60 flex h-8 w-8 items-center justify-center text-sm">
             LH
           </span>
           <span className="text-lg font-semibold">La Herencia</span>
@@ -81,12 +81,12 @@ export default function LoginPage() {
           className="mb-4 w-full rounded-sm border border-border px-3 py-2 text-sm text-ink-primary"
         />
 
-        {error && <p className="mb-4 text-sm text-red-600">{error}</p>}
+        {error && <p className="mb-4 text-sm text-status-danger">{error}</p>}
 
         <button
           type="submit"
           disabled={enviando}
-          className="w-full rounded-md bg-agro px-3 py-2 text-sm font-medium text-white disabled:opacity-60"
+          className="rounded-md bg-finance font-medium text-white shadow-sm transition-colors hover:bg-finance/90 disabled:opacity-60 w-full px-3 py-2 text-sm"
         >
           {enviando ? "Ingresando..." : "Ingresar"}
         </button>

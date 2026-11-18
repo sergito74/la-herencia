@@ -35,7 +35,7 @@ export function AutorizacionPanel({ portal }: { portal: Portal }) {
           {a.fuente && <span className="text-ink-secondary"> Fuente: {a.fuente}</span>}
         </p>
       ) : (
-        <p className="text-red-700">Sin autorización: el sistema no entra a este portal.</p>
+        <p className="text-status-danger">Sin autorización: el sistema no entra a este portal.</p>
       )}
       {abierto ? (
         <form className="flex flex-wrap items-end gap-2" onSubmit={(e) => { e.preventDefault(); alta.mutate(); }}>
@@ -45,9 +45,9 @@ export function AutorizacionPanel({ portal }: { portal: Portal }) {
             className="block rounded-md border border-border px-2 py-1 text-sm" /></label>
           <label className="flex-1 text-xs">Fuente (opcional)<input maxLength={300} value={fuente} onChange={(e) => setFuente(e.target.value)}
             className="block w-full rounded-md border border-border px-2 py-1 text-sm" /></label>
-          <button type="submit" disabled={alta.isPending} className="rounded-md bg-finance px-3 py-1 text-xs font-medium text-white">Registrar</button>
+          <button type="submit" disabled={alta.isPending} className="rounded-md bg-finance font-medium text-white shadow-sm transition-colors hover:bg-finance/90 disabled:opacity-60 px-3 py-1 text-xs">Registrar</button>
           <button type="button" className="text-xs underline" onClick={() => setAbierto(false)}>Cancelar</button>
-          {alta.isError && <span className="text-xs text-red-700">{alta.error.message}</span>}
+          {alta.isError && <span className="text-xs text-status-danger">{alta.error.message}</span>}
         </form>
       ) : (
         <div className="flex gap-3">
@@ -55,7 +55,7 @@ export function AutorizacionPanel({ portal }: { portal: Portal }) {
             {a.vigente ? "Registrar nueva autorización" : "Autorizar"}
           </button>
           {a.vigente && (
-            <button type="button" disabled={baja.isPending} className="text-xs text-red-700 underline"
+            <button type="button" disabled={baja.isPending} className="text-xs text-status-danger underline"
               onClick={() => { if (confirm("¿Revocar la autorización? El sistema dejará de entrar a este portal.")) baja.mutate(); }}>
               Revocar
             </button>

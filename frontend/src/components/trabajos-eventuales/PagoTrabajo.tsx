@@ -71,8 +71,8 @@ export function PagoTrabajo({ t, onCambio }: { t: Trabajo; onCambio: () => Promi
       </div>
       {!vista ? <button className={boton} disabled={ocupado || !datos.idRubro || !datos.idCentroCostos || !(datos.importe > 0)} onClick={previsualizar}>Ver cómo queda la caja</button> : <div className="space-y-2 text-sm">
         {vista.efectosPrevistos.map(e => <p key={e.caja}>Caja {NOMBRE_CAJA[e.caja] ?? e.caja}: sale {formatMoneda(-Number(e.importe))}, queda {formatMoneda(Number(e.saldoResultante))}.</p>)}
-        {vista.advertencias.includes("SALDO_NEGATIVO") && <p className="text-amber-800">La caja queda en negativo.</p>}
-        {vista.advertencias.includes("PERIODO_ARQUEADO") && <p className="text-amber-800">La fecha cae en un período con arqueo: el arqueo queda para rehacer.</p>}
+        {vista.advertencias.includes("SALDO_NEGATIVO") && <p className="text-status-warning">La caja queda en negativo.</p>}
+        {vista.advertencias.includes("PERIODO_ARQUEADO") && <p className="text-status-warning">La fecha cae en un período con arqueo: el arqueo queda para rehacer.</p>}
         <button className={boton} disabled={ocupado} onClick={() => correr(() => pagarTrabajoCaja(t.idTrabajo, { ...datos, previewVersion: vista.previewVersion, advertenciasAceptadas: vista.advertencias }))}>Confirmar pago</button>
       </div>}
     </div>}
@@ -87,6 +87,6 @@ export function PagoTrabajo({ t, onCambio }: { t: Trabajo; onCambio: () => Promi
       </div>
       <button className={boton} disabled={ocupado || !socio.idSocio || !socio.medio || !(socio.importe > 0)} onClick={() => correr(() => pagarTrabajoSocio(t.idTrabajo, socio))}>Registrar pago del socio</button>
     </div>}
-    {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
+    {error && <p role="alert" className="text-sm text-status-danger">{error}</p>}
   </div>;
 }

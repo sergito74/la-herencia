@@ -106,7 +106,7 @@ function MotivoForm({
           type="button"
           disabled={ocupado || falta}
           onClick={() => onConfirm(motivo, detalle)}
-          className="rounded-sm bg-finance px-2 py-0.5 text-xs text-white hover:opacity-90 disabled:opacity-40"
+          className="rounded-md bg-finance font-medium text-white shadow-sm transition-colors hover:bg-finance/90 disabled:opacity-60 px-2 py-0.5 text-xs hover:opacity-90"
         >
           {ocupado ? "Guardando…" : confirmar}
         </button>
@@ -651,7 +651,7 @@ function ContenidoPanel({
                           "Documentos vinculados."
                         )
                       }
-                      className="rounded-sm bg-finance px-3 py-1 text-xs text-white hover:opacity-90 disabled:opacity-40"
+                      className="rounded-md bg-finance font-medium text-white shadow-sm transition-colors hover:bg-finance/90 disabled:opacity-60 px-3 py-1 text-xs hover:opacity-90"
                     >
                       {preview.pagoParcial
                         ? "Vincular como pago parcial"
@@ -661,7 +661,7 @@ function ContenidoPanel({
                     </button>
                   )}
                   {preview.estado === "parcial" && !preview.pagoParcial && !preview.permiteParcial && (
-                    <button type="button" onClick={() => setDialogo("diferencia")} className="rounded-sm bg-finance px-3 py-1 text-xs text-white hover:opacity-90">
+                    <button type="button" onClick={() => setDialogo("diferencia")} className="rounded-md bg-finance font-medium text-white shadow-sm transition-colors hover:bg-finance/90 disabled:opacity-60 px-3 py-1 text-xs hover:opacity-90">
                       Aceptar diferencia con motivo…
                     </button>
                   )}
@@ -730,13 +730,13 @@ function ContenidoPanel({
                       type="button"
                       disabled={guardando}
                       onClick={() => ejecutar(() => conciliarReparto(repartoEdit), "Reparto guardado.")}
-                      className="rounded-sm bg-finance px-3 py-1 text-xs text-white hover:opacity-90 disabled:opacity-40"
+                      className="rounded-md bg-finance font-medium text-white shadow-sm transition-colors hover:bg-finance/90 disabled:opacity-60 px-3 py-1 text-xs hover:opacity-90"
                     >
                       Guardar reparto
                     </button>
                   )}
                   {repartoNoCierra && (
-                    <button type="button" onClick={() => setDialogo("diferencia")} className="rounded-sm bg-finance px-3 py-1 text-xs text-white hover:opacity-90">
+                    <button type="button" onClick={() => setDialogo("diferencia")} className="rounded-md bg-finance font-medium text-white shadow-sm transition-colors hover:bg-finance/90 disabled:opacity-60 px-3 py-1 text-xs hover:opacity-90">
                       Aceptar diferencia con motivo…
                     </button>
                   )}

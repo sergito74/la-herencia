@@ -121,7 +121,7 @@ export function CargaExcel() {
               type="button"
               onClick={handleConfirmar}
               disabled={confirmando || resultado.resumen.nuevos === 0}
-              className="rounded-md bg-finance px-3 py-1.5 text-sm font-medium text-white disabled:opacity-50"
+              className="rounded-md bg-finance font-medium text-white shadow-sm transition-colors hover:bg-finance/90 disabled:opacity-60 px-3 py-1.5 text-sm"
             >
               {confirmando ? "Confirmando..." : "Confirmar carga"}
             </button>

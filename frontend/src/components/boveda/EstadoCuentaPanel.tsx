@@ -50,7 +50,7 @@ export function EstadoCuentaPanel({ idPortal }: { idPortal: number }) {
                 </td>
                 <td className="py-2 pr-3 text-right">{formatMoneda(f.saldoPortal, moneda(f))}</td>
                 <td className="py-2 pr-3 text-right">{f.saldoSistema === null ? "—" : formatMoneda(f.saldoSistema, moneda(f))}</td>
-                <td className={`py-2 pr-3 text-right ${hayDif ? "font-medium text-red-700" : ""}`}>
+                <td className={`py-2 pr-3 text-right ${hayDif ? "font-medium text-status-danger" : ""}`}>
                   {f.diferencia === null ? "—" : formatMoneda(f.diferencia, moneda(f))}
                 </td>
                 <td className="py-2 pr-3 text-right text-xs">

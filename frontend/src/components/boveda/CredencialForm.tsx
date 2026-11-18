@@ -76,7 +76,7 @@ export function CredencialForm({
               <input type="checkbox" checked={d.secreto} onChange={(e) => setDato(i, { secreto: e.target.checked })} />
               Secreto
             </label>
-            <button type="button" className="text-xs text-red-700 underline"
+            <button type="button" className="text-xs text-status-danger underline"
               onClick={() => set({ datos: value.datos.filter((_, j) => j !== i) })}>
               Quitar
             </button>

@@ -29,7 +29,7 @@ function Contenido() {
     <>
       <div className="print:hidden">
         <PageHeader titulo={`Formulario de retiro · Orden N° ${id}`} volver={`/produccion/ordenes/${id}`}>
-          <button type="button" onClick={() => window.print()} className="rounded bg-finance px-3 py-1.5 text-sm text-white hover:opacity-90">
+          <button type="button" onClick={() => window.print()} className="rounded-md bg-finance font-medium text-white shadow-sm transition-colors hover:bg-finance/90 disabled:opacity-60 px-3 py-1.5 text-sm hover:opacity-90">
             Imprimir
           </button>
           <a href={urlPdfFormularioRetiro(id)} className="rounded border border-border px-3 py-1.5 text-sm hover:bg-surface-sunken">

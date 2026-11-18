@@ -188,7 +188,7 @@ export function HectareasAplicadasPanel({ orden, onGuardada }: { orden: OrdenDet
       )}
       {editando && (
         <div className="mt-2 flex gap-2">
-          <button type="button" onClick={guardar} disabled={guardando} className="rounded bg-finance px-3 py-1 text-sm text-white disabled:opacity-50">
+          <button type="button" onClick={guardar} disabled={guardando} className="rounded-md bg-finance font-medium text-white shadow-sm transition-colors hover:bg-finance/90 disabled:opacity-60 px-3 py-1 text-sm">
             Guardar
           </button>
           <button type="button" onClick={() => { setEditando(false); setValores({}); setTotales({}); }} className="rounded border border-border px-3 py-1 text-sm">

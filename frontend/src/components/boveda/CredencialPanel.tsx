@@ -37,8 +37,8 @@ export function CredencialPanel({ portal }: { portal: Portal }) {
         <span>{c.usuario ?? "—"}</span>
         <span className="text-ink-secondary">Contraseña</span>
         <span>
-          {c.claveConfigurada ? <Revelar idCredencial={c.idCredencial} campo="clave" /> : <span className="text-red-700">Falta cargarla</span>}
-          {c.estado === "rechazada" && <span className="ml-2 text-xs text-red-700">El portal la rechazó: actualizarla</span>}
+          {c.claveConfigurada ? <Revelar idCredencial={c.idCredencial} campo="clave" /> : <span className="text-status-danger">Falta cargarla</span>}
+          {c.estado === "rechazada" && <span className="ml-2 text-xs text-status-danger">El portal la rechazó: actualizarla</span>}
         </span>
         {detalle?.datos.map((d) => (
           <div key={d.nombre} className="contents">
@@ -53,9 +53,9 @@ export function CredencialPanel({ portal }: { portal: Portal }) {
           <input type="password" autoComplete="new-password" maxLength={200} value={nueva} placeholder="Nueva contraseña"
             onChange={(e) => setNueva(e.target.value)} className="rounded-md border border-border px-2 py-1 text-sm" />
           <button type="submit" disabled={!nueva || cambio.isPending}
-            className="rounded-md bg-finance px-3 py-1 text-xs font-medium text-white disabled:opacity-50">Guardar</button>
+            className="rounded-md bg-finance font-medium text-white shadow-sm transition-colors hover:bg-finance/90 disabled:opacity-60 px-3 py-1 text-xs">Guardar</button>
           <button type="button" className="text-xs underline" onClick={() => { setAbierto(false); setNueva(""); }}>Cancelar</button>
-          {cambio.isError && <span className="text-xs text-red-700">{cambio.error.message}</span>}
+          {cambio.isError && <span className="text-xs text-status-danger">{cambio.error.message}</span>}
         </form>
       ) : (
         <button type="button" className="text-xs text-finance underline" onClick={() => setAbierto(true)}>

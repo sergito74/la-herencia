@@ -250,7 +250,7 @@ export function VinculacionPanel({
           type="button"
           disabled={seleccionadas.length === 0 || guardando}
           onClick={vincular}
-          className="rounded-sm bg-finance px-4 py-2 text-sm text-white hover:opacity-90 disabled:opacity-40"
+          className="rounded-md bg-finance font-medium text-white shadow-sm transition-colors hover:bg-finance/90 disabled:opacity-60 px-4 py-2 text-sm hover:opacity-90"
         >
           {guardando ? "Vinculando…" : `Vincular ${seleccionadas.length}`}
         </button>

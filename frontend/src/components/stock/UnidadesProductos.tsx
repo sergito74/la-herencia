@@ -59,7 +59,7 @@ export function UnidadesProductos() {
         infirieron por tipo (porque solo se remitaron en bolsas o packs) conviene revisarlas.
       </p>
       <div className="flex gap-2">
-        <button type="button" disabled={elegidos.length === 0} onClick={() => confirmar(elegidos)} className="rounded-sm bg-finance px-4 py-2 text-sm text-white hover:opacity-90 disabled:opacity-40">
+        <button type="button" disabled={elegidos.length === 0} onClick={() => confirmar(elegidos)} className="rounded-md bg-finance font-medium text-white shadow-sm transition-colors hover:bg-finance/90 disabled:opacity-60 px-4 py-2 text-sm hover:opacity-90">
           Confirmar seleccionados ({elegidos.length})
         </button>
         <button type="button" onClick={() => confirmar(data.filter((p) => !p.origen?.startsWith("inferida")).map((p) => p.idProducto))} className="rounded-sm border border-finance px-4 py-2 text-sm text-finance hover:bg-finance-light">

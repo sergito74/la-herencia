@@ -22,7 +22,7 @@ export default function OrdenesPage() {
         <button type="button" onClick={() => setMostrarLabores(true)} className="rounded border border-border px-3 py-1.5 text-sm hover:bg-surface-sunken">
           Tipos de labor
         </button>
-        <Link href="/produccion/ordenes/nuevo" className="rounded bg-finance px-3 py-1.5 text-sm text-white">
+        <Link href="/produccion/ordenes/nuevo" className="rounded-md bg-finance font-medium text-white shadow-sm transition-colors hover:bg-finance/90 disabled:opacity-60 px-3 py-1.5 text-sm">
           + Nueva orden
         </Link>
       </PageHeader>

@@ -74,7 +74,7 @@ function badgeEstado(estado: Fraccion["estado"]) {
   const clases: Record<Fraccion["estado"], string> = {
     Aprobada: "bg-agro-light text-agro",
     Pendiente: "bg-finance-light text-finance",
-    RequiereIntervencion: "bg-red-100 text-red-700",
+    RequiereIntervencion: "bg-status-danger-bg text-status-danger",
   };
   return <span className={`rounded-full px-2 py-0.5 text-xs ${clases[estado]}`}>{estado}</span>;
 }

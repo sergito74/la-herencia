@@ -21,7 +21,7 @@ export function FormularioRetiroView({ orden }: { orden: OrdenDetalle }) {
         <Link
           href={`/produccion/ordenes/${orden.idOrden}/retiro?imprimir=1`}
           target="_blank"
-          className="rounded bg-finance px-2.5 py-1 text-xs text-white hover:opacity-90"
+          className="rounded-md bg-finance font-medium text-white shadow-sm transition-colors hover:bg-finance/90 disabled:opacity-60 px-2.5 py-1 text-xs hover:opacity-90"
         >
           Imprimir
         </Link>

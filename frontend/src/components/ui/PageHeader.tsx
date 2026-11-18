@@ -4,14 +4,22 @@ import Link from "next/link";
  * Encabezado compacto de pantalla (12/11/2026): una sola línea con volver (flecha), título, ayuda opcional (ícono "?"
  * con la explicación al pasar el mouse) y acciones a la derecha. Reemplaza BackLink + h1 grande + párrafo explicativo.
  */
-export function PageHeader({ titulo, volver, ayuda, children }: {
+export function PageHeader({ titulo, volver, onVolver, ayuda, children }: {
   titulo: React.ReactNode;
   volver?: string;
+  /** Volver a la pantalla anterior conservando su búsqueda (router.back). */
+  onVolver?: () => void;
   ayuda?: string;
   children?: React.ReactNode;
 }) {
   return (
     <header className="mb-3 flex min-h-[2.25rem] flex-wrap items-center gap-x-3 gap-y-2">
+      {onVolver && !volver && (
+        <button type="button" onClick={onVolver} aria-label="Volver" title="Volver"
+          className="flex h-7 w-7 items-center justify-center rounded-md text-ink-secondary hover:bg-surface-sunken hover:text-ink-primary">
+          ←
+        </button>
+      )}
       {volver && (
         <Link href={volver} aria-label="Volver" title="Volver"
           className="flex h-7 w-7 items-center justify-center rounded-md text-ink-secondary hover:bg-surface-sunken hover:text-ink-primary">

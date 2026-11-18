@@ -67,7 +67,7 @@ export function PagoProveedorSocioForm({ idSocio, onListo }: { idSocio: number; 
 
   return (
     <form className="space-y-3" onSubmit={(e) => { e.preventDefault(); guardar.mutate(); }}>
-      <p className="text-sm text-slate-600">Queda a favor del socio y descuenta lo que Giamigli le debe a quien se le pagó.</p>
+      <p className="text-sm text-ink-secondary">Queda a favor del socio y descuenta lo que Giamigli le debe a quien se le pagó.</p>
       <ContactoSelect label="A quién se le pagó" value={idContacto} razonSocial={proveedor}
         onChange={(id, r) => { setIdContacto(id); setProveedor(r); setElegidos({}); if (!importeManual) setImporte(0); }}
         placeholder="Buscar proveedor u organismo…" />
@@ -75,13 +75,13 @@ export function PagoProveedorSocioForm({ idSocio, onListo }: { idSocio: number; 
       {idContacto !== null && (
         <section className="rounded-sm border border-border">
           <h3 className="border-b border-border bg-surface-sunken px-3 py-2 text-sm font-medium">Qué comprobantes se pagan</h3>
-          {pendientes.isLoading && <p className="p-3 text-sm text-slate-600">Buscando comprobantes…</p>}
+          {pendientes.isLoading && <p className="p-3 text-sm text-ink-secondary">Buscando comprobantes…</p>}
           {pendientes.isError && <p role="alert" className="p-3 text-sm text-status-danger">No se pudieron traer los comprobantes.</p>}
-          {pendientes.data?.length === 0 && <p className="p-3 text-sm text-slate-600">No tiene comprobantes impagos. Podés guardar el pago igual: queda a cuenta.</p>}
+          {pendientes.data?.length === 0 && <p className="p-3 text-sm text-ink-secondary">No tiene comprobantes impagos. Podés guardar el pago igual: queda a cuenta.</p>}
           {!!pendientes.data?.length && (
             <div className="max-h-72 overflow-y-auto">
               <table className="w-full text-sm">
-                <thead className="sticky top-0 bg-surface text-left text-xs text-slate-600">
+                <thead className="sticky top-0 bg-surface text-left text-xs text-ink-secondary">
                   <tr><th className="p-2" /><th className="p-2">Fecha</th><th className="p-2">Comprobante</th><th className="p-2 text-right">Total</th><th className="p-2 text-right">Saldo</th><th className="p-2 text-right">Aplicar</th></tr>
                 </thead>
                 <tbody>
@@ -89,11 +89,11 @@ export function PagoProveedorSocioForm({ idSocio, onListo }: { idSocio: number; 
                     const k = clave(c);
                     const tildado = k in elegidos;
                     return (
-                      <tr key={k} className={`border-t border-border ${tildado ? "bg-amber-50" : ""}`}>
+                      <tr key={k} className={`border-t border-border ${tildado ? "bg-status-warning-bg" : ""}`}>
                         <td className="p-2"><input type="checkbox" aria-label={`Pagar ${c.descripcion} ${c.numero}`} checked={tildado} onChange={(e) => tildar(c, e.target.checked)} /></td>
                         <td className="whitespace-nowrap p-2">{formatFecha(c.fecha)}</td>
                         <td className="p-2">{c.descripcion} {c.numero}
-                          {c.posiblePagoSocio && <span className="block text-[11px] text-amber-800">Hay un pago de socio por este mismo importe sin comprobante: puede que ya esté pagado.</span>}</td>
+                          {c.posiblePagoSocio && <span className="block text-[11px] text-status-warning">Hay un pago de socio por este mismo importe sin comprobante: puede que ya esté pagado.</span>}</td>
                         <td className="whitespace-nowrap p-2 text-right">{formatMoneda(c.total)}</td>
                         <td className="whitespace-nowrap p-2 text-right">{formatMoneda(c.saldo)}</td>
                         <td className="p-2 text-right">{tildado && (
@@ -120,7 +120,7 @@ export function PagoProveedorSocioForm({ idSocio, onListo }: { idSocio: number; 
         {MEDIOS.map((m) => <option key={m} value={m}>{m}</option>)}</select></label>
       {guardar.error && <p role="alert" className="text-sm text-status-danger">{guardar.error.message || "No se pudo guardar."}</p>}
       <div className="flex justify-end">
-        <button type="submit" disabled={guardar.isPending} className="rounded-sm bg-agro px-4 py-2 text-sm text-white disabled:opacity-50">{guardar.isPending ? "Guardando…" : "Guardar pago"}</button>
+        <button type="submit" disabled={guardar.isPending} className="rounded-md bg-finance font-medium text-white shadow-sm transition-colors hover:bg-finance/90 disabled:opacity-60 px-4 py-2 text-sm">{guardar.isPending ? "Guardando…" : "Guardar pago"}</button>
       </div>
     </form>
   );

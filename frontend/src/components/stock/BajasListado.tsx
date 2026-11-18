@@ -194,7 +194,7 @@ function BajaForm({ abierto, onClose, onCreada }: { abierto: boolean; onClose: (
             ))}
           </ul>
           <div className="mt-2 flex gap-2">
-            <button type="button" className="rounded-sm bg-finance px-3 py-1 text-white" disabled={guardando} onClick={() => guardar(true)}>
+            <button type="button" className="rounded-md bg-finance font-medium text-white shadow-sm transition-colors hover:bg-finance/90 disabled:opacity-60 px-3 py-1" disabled={guardando} onClick={() => guardar(true)}>
               Dar de baja igual
             </button>
             <button type="button" className="rounded-sm border border-border px-3 py-1" onClick={() => setConfirmacion(null)}>
@@ -205,7 +205,7 @@ function BajaForm({ abierto, onClose, onCreada }: { abierto: boolean; onClose: (
       )}
       {error && <p className="mt-3 text-sm text-status-danger">{error}</p>}
       <div className="mt-4 flex gap-2">
-        <button type="button" disabled={guardando} onClick={() => guardar(false)} className="rounded-sm bg-finance px-5 py-2 text-sm text-white hover:opacity-90 disabled:opacity-40">
+        <button type="button" disabled={guardando} onClick={() => guardar(false)} className="rounded-md bg-finance font-medium text-white shadow-sm transition-colors hover:bg-finance/90 disabled:opacity-60 px-5 py-2 text-sm hover:opacity-90">
           {guardando ? "Guardando…" : "Registrar baja"}
         </button>
         <button type="button" onClick={onClose} className="rounded-sm border border-border px-5 py-2 text-sm text-ink-secondary">
@@ -314,7 +314,7 @@ export function BajasListado() {
       )}
       <div className="flex justify-end gap-2">
         <BotonExcel href={urlExportarBajas(filtros)} />
-        <button type="button" onClick={() => setNueva(true)} className="rounded-sm bg-finance px-4 py-2 text-sm text-white hover:opacity-90">
+        <button type="button" onClick={() => setNueva(true)} className="rounded-md bg-finance font-medium text-white shadow-sm transition-colors hover:bg-finance/90 disabled:opacity-60 px-4 py-2 text-sm hover:opacity-90">
           + Nueva baja
         </button>
       </div>

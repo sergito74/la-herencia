@@ -241,7 +241,7 @@ function DetalleRapido({ idOrden }: { idOrden: number }) {
       )}
       {o.observaciones && <p className="rounded bg-surface-sunken p-2 text-xs">{o.observaciones}</p>}
       <div className="flex gap-2 pt-1">
-        <Link href={`/produccion/ordenes/${o.idOrden}`} className="rounded bg-finance px-3 py-1.5 text-white">Ver orden completa</Link>
+        <Link href={`/produccion/ordenes/${o.idOrden}`} className="rounded-md bg-finance font-medium text-white shadow-sm transition-colors hover:bg-finance/90 disabled:opacity-60 px-3 py-1.5">Ver orden completa</Link>
         {o.editable && <Link href={`/produccion/ordenes/${o.idOrden}/editar`} className="rounded border border-border px-3 py-1.5 hover:bg-surface-sunken">Editar</Link>}
       </div>
     </div>

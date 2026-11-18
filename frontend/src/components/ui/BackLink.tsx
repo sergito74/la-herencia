@@ -1,11 +1,10 @@
 import Link from "next/link";
 
-/** Link de "volver atrás" consistente en toda la app — mismo estilo que ya
- * usaban Compras/Ventas, ahora en cada pantalla que no lo tenía. */
+/** Volver atrás (18/11/2026): mismo aspecto que la flecha de PageHeader, con el destino escrito al lado. */
 export function BackLink({ href, children }: { href: string; children: React.ReactNode }) {
   return (
-    <Link href={href} className="text-sm text-finance underline">
-      ← {children}
+    <Link href={href} className="mb-2 inline-flex items-center gap-1.5 rounded-md px-1.5 py-1 text-sm text-ink-secondary hover:bg-surface-sunken hover:text-ink-primary">
+      <span aria-hidden>←</span> {children}
     </Link>
   );
 }

@@ -112,7 +112,7 @@ export function ArcaSubcuentas({fechaDesde, fechaHasta}: {fechaDesde: string; fe
         <label className="my-4 block text-sm">Motivo / respaldo<textarea aria-label="Motivo de clasificación" value={motivo} maxLength={500} onChange={e => setMotivo(e.target.value)} className="mt-1 w-full rounded border border-border bg-surface p-2" /></label>
         {guardar.isError && <p role="alert" className="mb-3 text-status-danger">{guardar.error.message}</p>}
         <div className="flex flex-wrap gap-4">
-          <button type="button" disabled={guardar.isPending || motivo.trim().length < 3} onClick={() => guardar.mutate(false)} className="rounded bg-finance px-3 py-2 text-white disabled:opacity-40">{guardar.isPending ? 'Guardando…' : 'Guardar clasificación'}</button>
+          <button type="button" disabled={guardar.isPending || motivo.trim().length < 3} onClick={() => guardar.mutate(false)} className="rounded-md bg-finance font-medium text-white shadow-sm transition-colors hover:bg-finance/90 disabled:opacity-60 px-3 py-2">{guardar.isPending ? 'Guardando…' : 'Guardar clasificación'}</button>
           <button type="button" disabled={guardar.isPending || motivo.trim().length < 3} onClick={() => guardar.mutate(true)} className="text-finance underline">Volver al criterio automático</button>
           <button type="button" disabled={guardar.isPending} onClick={() => setEditando(null)}>Cerrar</button>
         </div>

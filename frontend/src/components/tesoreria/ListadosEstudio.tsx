@@ -33,7 +33,7 @@ export function ListadosEstudio() {
       </div>
       <SoloLectura>
         <button onClick={actualizar} disabled={ocupado}
-          className="rounded-md bg-finance px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-finance/90 disabled:opacity-60">
+          className="rounded-md bg-finance font-medium text-white shadow-sm transition-colors hover:bg-finance/90 disabled:opacity-60 px-4 py-2 text-sm">
           {ocupado ? "Actualizando…" : "Actualizar ahora"}
         </button>
       </SoloLectura>

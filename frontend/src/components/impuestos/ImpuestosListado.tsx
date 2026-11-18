@@ -53,7 +53,7 @@ const COLUMNS: DataTableColumn<Impuesto>[] = [
         <span title={i.pendienteNominal ? `Pendiente $${i.pendienteNominal}` : undefined}>
           {i.aCargoDe.map((a) => a.socio).join(", ")}
           {i.estadoDevolucion && (
-            <span className={`ml-1 rounded px-1 text-xs ${i.estadoDevolucion === "devuelto" ? "bg-green-100" : "bg-amber-100"}`}>
+            <span className={`ml-1 rounded px-1 text-xs ${i.estadoDevolucion === "devuelto" ? "bg-status-success-bg" : "bg-status-warning-bg"}`}>
               {i.estadoDevolucion === "devuelto" ? "devuelto" : i.estadoDevolucion === "parcial" ? "devuelto parcial" : "pendiente"}
             </span>
           )}
@@ -107,7 +107,7 @@ export function ImpuestosListado({ highlightKey }: { highlightKey?: number }) {
         <SoloLectura>
           <Link
             href="/finanzas/impuestos/nueva"
-            className="ml-auto self-end rounded bg-finance px-3 py-1.5 text-sm text-white"
+            className="rounded-md bg-finance font-medium text-white shadow-sm transition-colors hover:bg-finance/90 disabled:opacity-60 ml-auto self-end px-3 py-1.5 text-sm"
           >
             Nueva boleta
           </Link>

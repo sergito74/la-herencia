@@ -281,7 +281,7 @@ export function RecuentoUpload({ abierto, onClose, onAplicado }: { abierto: bool
               type="button"
               disabled={trabajando || bloqueantes > 0 || !motivo.trim()}
               onClick={confirmar}
-              className="rounded-sm bg-finance px-3 py-1.5 text-xs text-white hover:opacity-90 disabled:opacity-40"
+              className="rounded-md bg-finance font-medium text-white shadow-sm transition-colors hover:bg-finance/90 disabled:opacity-60 px-3 py-1.5 text-xs hover:opacity-90"
             >
               {trabajando ? "Grabando…" : conDiferencia ? `Confirmar recuento (${conDiferencia} con diferencia)` : "Confirmar recuento"}
             </button>

@@ -37,7 +37,7 @@ function TarjetaCaja({ slug, nombre, detalle }: (typeof CAJAS)[number]) {
           Ver movimientos
         </Link>
         <SoloLectura>
-          <Link href={`/finanzas/cajas-efectivo/${slug}?nuevo=1`} className="rounded-sm bg-agro px-3 py-1.5 text-sm text-white hover:opacity-90">
+          <Link href={`/finanzas/cajas-efectivo/${slug}?nuevo=1`} className="rounded-md bg-finance font-medium text-white shadow-sm transition-colors hover:bg-finance/90 disabled:opacity-60 px-3 py-1.5 text-sm hover:opacity-90">
             + Movimiento
           </Link>
         </SoloLectura>

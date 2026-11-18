@@ -44,7 +44,7 @@ export function CorridasTabla({ corridas, conPortal = false, vacio = "Todavía n
             {conPortal && <td className="py-2 pr-3">{c.portal}</td>}
             <td className="py-2 pr-3">{ORIGEN[c.origen]}{c.usuario && c.origen === "manual" ? ` (${c.usuario})` : ""}</td>
             <td className="py-2 pr-3">
-              <span className={COLOR[c.estado] ?? "text-red-700"}>{ETIQUETA_CORRIDA[c.estado] ?? c.estado}</span>
+              <span className={COLOR[c.estado] ?? "text-status-danger"}>{ETIQUETA_CORRIDA[c.estado] ?? c.estado}</span>
               {c.mensaje && <div className="mt-1 max-w-md text-xs text-ink-secondary">{c.mensaje}</div>}
             </td>
             <td className="py-2 pr-3 text-right">{c.nuevos}</td>

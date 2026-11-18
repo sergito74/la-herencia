@@ -411,7 +411,7 @@ export function OrdenForm({ orden }: { orden?: OrdenDetalle }) {
             ))}
           </ul>
           <div className="mt-2 flex gap-2">
-            <button type="button" onClick={() => guardar(true)} className="rounded bg-finance px-3 py-1.5 text-sm text-white">
+            <button type="button" onClick={() => guardar(true)} className="rounded-md bg-finance font-medium text-white shadow-sm transition-colors hover:bg-finance/90 disabled:opacity-60 px-3 py-1.5 text-sm">
               Confirmar igual
             </button>
             <button type="button" onClick={() => setAdvertencias(null)} className="rounded border border-border px-3 py-1.5 text-sm">
@@ -425,7 +425,7 @@ export function OrdenForm({ orden }: { orden?: OrdenDetalle }) {
         type="button"
         onClick={() => guardar(false)}
         disabled={guardando}
-        className="w-full rounded bg-finance px-4 py-2 text-white disabled:opacity-50"
+        className="rounded-md bg-finance font-medium text-white shadow-sm transition-colors hover:bg-finance/90 disabled:opacity-60 w-full px-4 py-2"
       >
         {guardando ? "Guardando…" : orden ? "Guardar cambios" : "Planificar orden"}
       </button>

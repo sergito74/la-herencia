@@ -140,7 +140,7 @@ export function VinculosPropuestosListado() {
           </button>
           <button
             type="button"
-            className="rounded bg-finance px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
+            className="rounded-md bg-finance font-medium text-white shadow-sm transition-colors hover:bg-finance/90 disabled:opacity-60 px-4 py-2 text-sm"
             disabled={trabajando || elegidos.size === 0}
             onClick={grabar}
           >

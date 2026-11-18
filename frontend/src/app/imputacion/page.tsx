@@ -151,7 +151,7 @@ export default function ImputacionPage() {
             type="button"
             onClick={calcularPendientes}
             disabled={calculando}
-            className="rounded-md bg-agro px-3 py-1.5 text-sm text-white disabled:opacity-60"
+            className="rounded-md bg-finance font-medium text-white shadow-sm transition-colors hover:bg-finance/90 disabled:opacity-60 px-3 py-1.5 text-sm"
           >
             {calculando ? "Calculando…" : "Calcular pendientes"}
           </button>
@@ -195,7 +195,7 @@ export default function ImputacionPage() {
           {pendientesIntervencion.map((p) => {
             const info = MOTIVO[p.motivo];
             return (
-              <div key={p.idCorrida} className="rounded-md border border-red-200 bg-red-50 p-3 text-sm">
+              <div key={p.idCorrida} className="rounded-md border border-status-danger/40 bg-status-danger-bg p-3 text-sm">
                 <EncabezadoPropuesta contexto={p} />
                 <p className="mt-1 text-ink-secondary">{info?.titulo ?? p.motivo}</p>
                 {info && <p className="mt-0.5 text-xs text-ink-secondary">→ {info.accion}</p>}
@@ -223,7 +223,7 @@ export default function ImputacionPage() {
                   type="button"
                   onClick={aprobarSeleccionadas}
                   disabled={aprobandoLote}
-                  className="rounded-md bg-agro px-3 py-1.5 text-sm text-white disabled:opacity-60"
+                  className="rounded-md bg-finance font-medium text-white shadow-sm transition-colors hover:bg-finance/90 disabled:opacity-60 px-3 py-1.5 text-sm"
                 >
                   {aprobandoLote ? "Aprobando…" : "Aprobar seleccionadas"}
                 </button>

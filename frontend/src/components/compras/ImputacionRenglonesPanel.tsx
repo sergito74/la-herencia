@@ -173,7 +173,7 @@ function RenglonFila({ r, idCompra }: { r: RenglonTamiz; idCompra: number }) {
             type="button"
             disabled={guardar.isPending || (destino === "Cultivo" && (!idCultivo || !idCampania))}
             onClick={() => guardar.mutate()}
-            className="rounded bg-agro px-2 py-0.5 text-white disabled:opacity-60"
+            className="rounded-md bg-finance font-medium text-white shadow-sm transition-colors hover:bg-finance/90 disabled:opacity-60 px-2 py-0.5"
           >
             Guardar
           </button>

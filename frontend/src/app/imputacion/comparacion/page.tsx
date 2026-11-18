@@ -41,7 +41,7 @@ export default function ComparacionPage() {
           type="button"
           onClick={buscar}
           disabled={!idCampania || cargando}
-          className="rounded-md bg-agro px-3 py-1.5 text-sm text-white disabled:opacity-60"
+          className="rounded-md bg-finance font-medium text-white shadow-sm transition-colors hover:bg-finance/90 disabled:opacity-60 px-3 py-1.5 text-sm"
         >
           {cargando ? "Comparando…" : "Comparar"}
         </button>

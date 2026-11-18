@@ -1,5 +1,7 @@
 "use client";
 
+import { PageHeader } from "@/components/ui/PageHeader";
+
 import { retornoResumenes } from "@/lib/tarjetasNavigation";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
@@ -22,10 +24,7 @@ export default function EditarResumenPage() {
 
   return (
     <main className="mx-auto max-w-none px-6 py-3">
-      <button type="button" onClick={() => returnParam ? router.push(retorno) : router.back()} className="text-sm text-finance underline">
-        ← Volver a Resúmenes
-      </button>
-      <h1 className="mt-1 text-base font-semibold">Editar resumen</h1>
+      <PageHeader titulo={<>Editar resumen</>} onVolver={() => returnParam ? router.push(retorno) : router.back()} />
 
       {isLoading && <LoadingState />}
       {isError && <ErrorState message="Ocurrió un error al cargar el resumen." onRetry={() => refetch()} />}

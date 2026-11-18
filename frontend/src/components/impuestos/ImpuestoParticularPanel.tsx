@@ -88,7 +88,7 @@ export function ImpuestoParticularPanel({ idImpuesto, soloLectura = false }: { i
     onError: (e) => setErr(mensaje(e)),
   });
 
-  if (error) return <p className="text-sm text-red-600">No se pudo cargar «A cargo de socio».</p>;
+  if (error) return <p className="text-sm text-status-danger">No se pudo cargar «A cargo de socio».</p>;
   if (!data) return null;
 
   const pedirMotivo = (titulo: string) => window.prompt(titulo)?.trim() || null;
@@ -96,12 +96,12 @@ export function ImpuestoParticularPanel({ idImpuesto, soloLectura = false }: { i
   return (
     <section className="mt-8 rounded border p-4">
       <h2 className="mb-2 text-lg font-semibold">A cargo de socio</h2>
-      <p className="mb-3 text-sm text-gray-600">
+      <p className="mb-3 text-sm text-ink-secondary">
         Importe ${formatMonto(Number(data.importe))} · a cargo de socios ${formatMonto(Number(data.aCargoDeSocios))} · parte empresa $
         {formatMonto(Number(data.parteEmpresa))}
       </p>
       {data.avisos.map((a, i) => (
-        <p key={i} className="mb-2 text-sm text-amber-700">
+        <p key={i} className="mb-2 text-sm text-status-warning">
           Partida {a.partida}: {a.estado === "ambigua" ? "cargada a varios socios" : `habitualmente a cargo de ${a.socio ?? "—"}`}
           {a.titularOscar ? " (titular Oscar → Condominio)" : ""}
         </p>
@@ -112,7 +112,7 @@ export function ImpuestoParticularPanel({ idImpuesto, soloLectura = false }: { i
           <thead><tr className="text-left"><th>Socio</th><th className="text-right">Importe</th><th>Motivo</th><th>Partida</th><th>Estado</th><th className="text-right">Devuelto</th><th /></tr></thead>
           <tbody>
             {data.cargas.map((c) => (
-              <tr key={c.idCarga} className={c.estado === "anulada" ? "text-gray-400 line-through" : ""}>
+              <tr key={c.idCarga} className={c.estado === "anulada" ? "text-ink-muted line-through" : ""}>
                 <td>{c.socio}</td>
                 <td className="text-right">${formatMonto(Number(c.importe))}</td>
                 <td>{c.motivo}</td>
@@ -121,7 +121,7 @@ export function ImpuestoParticularPanel({ idImpuesto, soloLectura = false }: { i
                 <td className="text-right">
                   ${formatMonto(Number(c.devuelto))}
                   {c.devoluciones.filter((v) => v.estado === "vigente").map((v) => (
-                    <div key={v.idVinculo} className="text-xs text-gray-500">
+                    <div key={v.idVinculo} className="text-xs text-ink-muted">
                       mov. {v.idMovimientoSocio} ${formatMonto(Number(v.importe))}{" "}
                       {!soloLectura && (
                         <button type="button" className="underline" onClick={() => {
@@ -151,7 +151,7 @@ export function ImpuestoParticularPanel({ idImpuesto, soloLectura = false }: { i
                     }}>devolución</button>
                   )}
                   {!soloLectura && c.estado === "vigente" && (
-                    <button type="button" className="text-red-600 underline" onClick={() => {
+                    <button type="button" className="text-status-danger underline" onClick={() => {
                       const m = pedirMotivo("Motivo de la anulación");
                       if (m) accion.mutate(() => anularCargaParticular(c.idCarga, m));
                     }}>anular</button>
@@ -187,19 +187,19 @@ export function ImpuestoParticularPanel({ idImpuesto, soloLectura = false }: { i
           <label className="flex flex-col">Partida (opcional)
             <input className="w-36 rounded border px-2 py-1" value={partida} onChange={(e) => setPartida(e.target.value)} />
           </label>
-          <button type="submit" disabled={crear.isPending} className="rounded bg-blue-600 px-3 py-1 text-white disabled:opacity-50">
+          <button type="submit" disabled={crear.isPending} className="rounded-md bg-finance font-medium text-white shadow-sm transition-colors hover:bg-finance/90 disabled:opacity-60 px-3 py-1">
             Cargar a socio
           </button>
         </form>
       )}
       {aviso && (
-        <div className="mt-3 rounded border border-amber-400 bg-amber-50 p-2 text-sm">
+        <div className="mt-3 rounded border border-status-warning/40 bg-status-warning-bg p-2 text-sm">
           {aviso.texto}{" "}
           <button type="button" className="ml-2 underline" onClick={() => crear.mutate(aviso.confirmar)}>Confirmar y cargar</button>
           <button type="button" className="ml-2 underline" onClick={() => setAviso(null)}>Cancelar</button>
         </div>
       )}
-      {err && <p className="mt-2 text-sm text-red-600">{err}</p>}
+      {err && <p className="mt-2 text-sm text-status-danger">{err}</p>}
     </section>
   );
 }

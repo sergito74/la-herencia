@@ -163,7 +163,7 @@ export function ImpuestoForm({ inicial }: { inicial?: ImpuestoDetalle }) {
         <button
           type="submit"
           disabled={guardar.isPending}
-          className="rounded bg-finance px-4 py-1.5 text-sm text-white disabled:opacity-60"
+          className="rounded-md bg-finance font-medium text-white shadow-sm transition-colors hover:bg-finance/90 disabled:opacity-60 px-4 py-1.5 text-sm"
         >
           {guardar.isPending ? "Guardando…" : inicial ? "Guardar cambios" : "Cargar boleta"}
         </button>

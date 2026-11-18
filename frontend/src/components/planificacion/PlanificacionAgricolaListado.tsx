@@ -252,7 +252,7 @@ function PanelCelda({ celda, lotes, cultivos, campanias, items, onClose, onCrear
           {delAnio.length === 0 && <p className="mt-2 text-status-warning">Esta campaña no existe todavía en el sistema.</p>}
           <div className="mt-3 flex justify-end">
             <button type="button" disabled={guardando || !idLote || !idCampania || !idCultivo}
-              className="rounded-sm bg-agro px-3 py-1.5 text-white disabled:opacity-50"
+              className="rounded-md bg-finance font-medium text-white shadow-sm transition-colors hover:bg-finance/90 disabled:opacity-60 px-3 py-1.5"
               onClick={async () => { setGuardando(true); await onCrear({ idLote: idLote!, idCultivo: idCultivo!, idCampania: idCampania! }); setIdCultivo(null); setGuardando(false); }}>
               Asignar
             </button>

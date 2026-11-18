@@ -82,7 +82,7 @@ export function FlujoCajaRubro() {
         <FilterField label="Hasta">
           <input type="date" className={filterInputClass} value={hasta} onChange={(e) => setHasta(e.target.value)} />
         </FilterField>
-        <button type="submit" className="rounded bg-finance px-3 py-2 text-sm text-white">
+        <button type="submit" className="rounded-md bg-finance font-medium text-white shadow-sm transition-colors hover:bg-finance/90 disabled:opacity-60 px-3 py-2 text-sm">
           Aplicar rango
         </button>
       </FilterBar>

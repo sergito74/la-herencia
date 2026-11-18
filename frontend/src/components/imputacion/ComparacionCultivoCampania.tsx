@@ -7,7 +7,7 @@ export function ComparacionCultivoCampania({ comparacion }: { comparacion: Compa
     <div className="rounded-md border border-border p-4">
       <h2 className="text-lg font-medium">{comparacion.campania ?? `Campaña ${comparacion.idCampania}`}</h2>
       {comparacion.comparacionParcial && (
-        <p className="mt-1 text-sm text-amber-600">
+        <p className="mt-1 text-sm text-status-warning">
           Comparación parcial — todavía hay ${comparacion.costoNuevo.totalPendiente.toLocaleString("es-AR")} en propuestas
           pendientes de aprobar.
         </p>

@@ -76,7 +76,7 @@ function Sugerencias({ tipo }: { tipo: TipoCruce }) {
           </p>
           <SoloLectura>
             <div className="mt-2 flex gap-2">
-              <button type="button" onClick={() => setConfirmar(s)} className="rounded bg-finance px-3 py-1 text-xs text-white">
+              <button type="button" onClick={() => setConfirmar(s)} className="rounded-md bg-finance font-medium text-white shadow-sm transition-colors hover:bg-finance/90 disabled:opacity-60 px-3 py-1 text-xs">
                 Revisar y aprobar
               </button>
             </div>
@@ -94,7 +94,7 @@ function Sugerencias({ tipo }: { tipo: TipoCruce }) {
           {error && <p role="alert" className="mt-1 text-xs text-status-danger">{error}</p>}
           <div className="mt-2 flex gap-2">
             <button type="button" disabled={aprobar.isPending} onClick={() => aprobar.mutate(confirmar)}
-              className="rounded bg-finance px-3 py-1 text-xs text-white">
+              className="rounded-md bg-finance font-medium text-white shadow-sm transition-colors hover:bg-finance/90 disabled:opacity-60 px-3 py-1 text-xs">
               Aprobar cruce
             </button>
             <button type="button" onClick={() => { setConfirmar(null); setError(null); }}
