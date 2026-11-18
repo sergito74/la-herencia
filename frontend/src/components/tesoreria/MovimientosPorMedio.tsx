@@ -46,18 +46,17 @@ function urlResumenMercadoLibre(fecha: string | null | undefined): string | null
   return urlExtractoMensual(fecha, BASE_RESUMENES_MERCADO_LIBRE, (anio, mes) => `${anio} ${mes}.pdf`);
 }
 
-// Debe (rojo) para negativos, Haber (verde) para positivos — mismo
-// criterio que Cuentas Corrientes (débito/crédito).
+// Debe y Haber en el color de texto normal (18/11/2026: el rojo queda solo para alertas).
 function celdaDebe(importe: number | null | undefined) {
   return importe != null && importe < 0 ? (
-    <span className="text-status-danger">{formatMoneda(Math.abs(importe))}</span>
+    <span>{formatMoneda(Math.abs(importe))}</span>
   ) : (
     "—"
   );
 }
 function celdaHaber(importe: number | null | undefined) {
   return importe != null && importe > 0 ? (
-    <span className="text-status-success">{formatMoneda(importe)}</span>
+    <span>{formatMoneda(importe)}</span>
   ) : (
     "—"
   );
@@ -94,20 +93,6 @@ function columnsFor(medio: Medio): ColumnDef[] {
         { key: "haber", header: "Haber", numeric: true, render: (m: any) => celdaHaber(m.importe) },
         { key: "saldo", header: "Saldo", numeric: true, render: (m: any) => celdaMoneda(m.saldo) },
         { key: "contacto", header: "Contacto", render: (m: any) => m.contacto ?? "—" },
-        {
-          key: "extracto",
-          header: "Extracto",
-          render: (m: any) => {
-            const url = urlExtractoBna(m.fechaHora);
-            return url ? (
-              <a href={url} target="_blank" rel="noopener noreferrer" className="text-finance underline">
-                Ver PDF
-              </a>
-            ) : (
-              "—"
-            );
-          },
-        },
       ];
     case "galicia":
       return [
@@ -137,20 +122,6 @@ function columnsFor(medio: Medio): ColumnDef[] {
         { key: "haber", header: "Haber", numeric: true, render: (m: any) => celdaHaber(m.importe) },
         { key: "saldo", header: "Saldo", numeric: true, render: (m: any) => celdaMoneda(m.saldo) },
         { key: "contacto", header: "Contacto", render: (m: any) => m.contacto ?? "—" },
-        {
-          key: "extracto",
-          header: "Resumen",
-          render: (m: any) => {
-            const url = urlResumenMercadoLibre(m.fecha);
-            return url ? (
-              <a href={url} target="_blank" rel="noopener noreferrer" className="text-finance underline">
-                Ver PDF
-              </a>
-            ) : (
-              "—"
-            );
-          },
-        },
       ];
     case "efectivo":
       return [
@@ -243,21 +214,6 @@ export function MovimientosPorMedio({
       wrap: col.wrap,
       render: col.render,
     })),
-    {
-      key: "referencia",
-      header: "Referencia de origen",
-      wrap: true,
-      render: (item: any) => {
-        const id = item[idField] as number;
-        return expandedId === id ? (
-          <ReferenciaOrigen medio={medio} idMovimiento={id} />
-        ) : (
-          <button className="text-finance underline" onClick={() => setExpandedId(id)}>
-            Ver referencia
-          </button>
-        );
-      },
-    },
     // Tarjetas se concilia exclusivamente desde su propio flujo (008/009,
     // FR-002) — no se ofrecen estas dos columnas para ese medio (024
     // tampoco soporta Tarjetas, mismo criterio).
@@ -266,21 +222,31 @@ export function MovimientosPorMedio({
           {
             key: "conciliacion",
             header: "Conciliación",
-            wrap: true,
             render: (item: any) => (
               <ConciliarMovimiento medio={medio} idMovimiento={item[idField] as number} estadoExterno={item.estadoConciliacion} />
             ),
           },
-          {
-            key: "traspasoInterno",
-            header: "Traspaso interno",
-            wrap: true,
-            render: (item: any) => (
-              <VincularTraspasoInterno medio={medio} idMovimiento={item[idField] as number} estadoExterno={item.estadoConciliacion} />
-            ),
-          },
         ]
       : []),
+    {
+      key: "acciones",
+      header: "",
+      render: (item: any) => {
+        const id = item[idField] as number;
+        const pdf = medio === "bna" ? urlExtractoBna(item.fechaHora) : medio === "mercado-libre" ? urlResumenMercadoLibre(item.fecha) : null;
+        return (
+          <div className="space-y-2">
+            <div className="flex items-center gap-3 whitespace-nowrap text-xs">
+              {pdf && <a href={pdf} target="_blank" rel="noopener noreferrer" className="text-finance hover:underline" title="Abrir el extracto del mes">Extracto</a>}
+              <button type="button" className="text-finance hover:underline" title="Ver de dónde viene este movimiento"
+                onClick={() => setExpandedId(expandedId === id ? null : id)}>{expandedId === id ? "Ocultar origen" : "Origen"}</button>
+              {medio !== "tarjetas" && <VincularTraspasoInterno medio={medio} idMovimiento={id} estadoExterno={item.estadoConciliacion} />}
+            </div>
+            {expandedId === id && <div className="whitespace-normal"><ReferenciaOrigen medio={medio} idMovimiento={id} /></div>}
+          </div>
+        );
+      },
+    },
   ];
 
   return (

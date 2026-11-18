@@ -16,7 +16,7 @@ export type BadgeTone = keyof typeof TONE_CLASSES;
 export function StatusBadge({ label, tone }: { label: string; tone: BadgeTone }) {
   return (
     <span
-      className={`inline-flex items-center rounded-sm px-2 py-0.5 text-xs font-medium ${TONE_CLASSES[tone]}`}
+      className={`inline-flex items-center whitespace-nowrap rounded-sm px-2 py-0.5 text-xs font-medium ${TONE_CLASSES[tone]}`}
     >
       {label}
     </span>

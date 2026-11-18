@@ -112,8 +112,8 @@ export function VincularTraspasoInterno({
   return (
     <SoloLectura>
       <div className="relative">
-        <button type="button" onClick={() => setAbierto((v) => !v)} className="text-xs text-finance underline">
-          {abierto ? "Cancelar" : "Traspaso interno…"}
+        <button type="button" onClick={() => setAbierto((v) => !v)} className="text-xs text-finance hover:underline" title="Vincular con el movimiento de la otra cuenta (pase entre bancos o cajas)">
+          {abierto ? "Cancelar" : "Traspaso"}
         </button>
 
         {abierto && (

@@ -185,9 +185,9 @@ export function ConciliarMovimiento({
           <Link
             href={`/finanzas/cuentas-corrientes?idContacto=${estado.idContactoReconocido}&razonSocial=${encodeURIComponent(estado.contactoReconocido ?? "")}`}
             className="text-xs text-finance underline"
-            title="Este movimiento ya tiene un contacto reconocido por su origen habitual — para corregirlo, usar la reasignación de contacto desde su cuenta corriente."
+            title={`Cuenta de ${estado.contactoReconocido ?? "—"}. El contacto se reconoce por el origen habitual del movimiento; para corregirlo, reasignalo desde su cuenta corriente.`}
           >
-            Ver cuenta de {estado.contactoReconocido ?? "—"}
+            Ver cuenta
           </Link>
         )}
       </div>
