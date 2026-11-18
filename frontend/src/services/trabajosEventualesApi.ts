@@ -38,3 +38,11 @@ export const transferenciasTrabajo = (id: number) => apiGet<TransferenciaTrabajo
 export const pagarTrabajoTransferencia = (id: number, medio: string, idMovimiento: number) => apiPost<Trabajo>(`${base}/${id}/pagos/transferencia`, { medio, idMovimiento });
 export const quitarPagoTrabajo = (id: number, idPago: number) => apiDelete(`${base}/${id}/pagos/${idPago}`);
 export const pagarTrabajoSocio = (id: number, d: PagoSocioInput) => apiPost<Trabajo>(`${base}/${id}/pagos/socio`, d);
+
+// 18/11/2026: un solo pago para varios trabajos del mismo trabajador (se reparte del más viejo al más nuevo).
+export const transferenciasVarios = (ids: number[]) => apiGet<TransferenciaTrabajo[]>(`${base}/pagos-varios/transferencias`, { ids: ids.map(String) });
+export const pagarVariosSocio = (ids: number[], d: PagoSocioInput) => apiPost<Trabajo[]>(`${base}/pagos-varios/socio`, { ...d, idsTrabajo: ids });
+export const pagarVariosTransferencia = (ids: number[], medio: string, idMovimiento: number) =>
+  apiPost<Trabajo[]>(`${base}/pagos-varios/transferencia`, { medio, idMovimiento, idsTrabajo: ids });
+export const previsualizarPagoVarios = (ids: number[], d: PagoCajaInput) => apiPost<PreviewPagoTrabajo>(`${base}/pagos-varios/caja/previsualizar`, { ...d, idsTrabajo: ids });
+export const pagarVariosCaja = (ids: number[], d: PagoCajaInput) => apiPost<Trabajo[]>(`${base}/pagos-varios/caja`, { ...d, idsTrabajo: ids });

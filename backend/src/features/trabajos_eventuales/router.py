@@ -6,6 +6,7 @@ from starlette.concurrency import run_in_threadpool
 
 from src.features.trabajos_eventuales import repository as repo
 from src.features.trabajos_eventuales.schemas import (Liquidacion, Lista, PagoCajaInput, PagoSocioInput, PagoTransferenciaInput, Trabajo,
+    PagoVariosCajaInput, PagoVariosSocioInput, PagoVariosTransferenciaInput,
                                                      TrabajoInput, Transferencia, VinculoInput)
 
 router = APIRouter(prefix="/api/trabajos-eventuales", tags=["trabajos-eventuales"])
@@ -38,6 +39,32 @@ async def listar(idContacto: int | None = Query(None, gt=0), desde: date | None 
 @router.post("", status_code=201, response_model=Trabajo)
 async def crear(body: TrabajoInput, request: Request):
     return await ejecutar(repo.guardar, body, usuario(request))
+
+
+# 18/11/2026: un solo pago para varios trabajos del mismo trabajador (socio, transferencia de Giamigli o caja).
+@router.get("/pagos-varios/transferencias", response_model=list[Transferencia])
+async def transferencias_varios(ids: list[int] = Query(...)):
+    return await ejecutar(repo.transferencias_candidatas_varios, ids)
+
+
+@router.post("/pagos-varios/socio", status_code=201, response_model=list[Trabajo])
+async def pagar_varios_por_socio(body: PagoVariosSocioInput, request: Request):
+    return await ejecutar(repo.pagar_varios_por_socio, body.idsTrabajo, body, usuario(request))
+
+
+@router.post("/pagos-varios/transferencia", status_code=201, response_model=list[Trabajo])
+async def pagar_varios_con_transferencia(body: PagoVariosTransferenciaInput, request: Request):
+    return await ejecutar(repo.pagar_varios_con_transferencia, body.idsTrabajo, body.medio, body.idMovimiento, usuario(request))
+
+
+@router.post("/pagos-varios/caja/previsualizar")
+async def previsualizar_pago_caja_varios(body: PagoVariosCajaInput):
+    return await ejecutar_pago(repo.previsualizar_pago_caja_varios, body.idsTrabajo, body)
+
+
+@router.post("/pagos-varios/caja", status_code=201, response_model=list[Trabajo])
+async def pagar_varios_con_caja(body: PagoVariosCajaInput, request: Request):
+    return await ejecutar_pago(repo.pagar_varios_con_caja, body.idsTrabajo, body, usuario(request))
 
 
 @router.get("/{id_trabajo}", response_model=Trabajo)

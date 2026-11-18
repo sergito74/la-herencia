@@ -34,7 +34,7 @@ OUTER APPLY (SELECT COUNT(*) AS Hay, SUM(CASE WHEN (p.Medio<>'caja' OR o.Estado<
 COLS = """t.IdTrabajo AS idTrabajo,t.IdContacto AS idContacto,c.[Razon Social] AS trabajador,t.Fecha AS fecha,
 t.Descripcion AS descripcion,t.Dias AS dias,t.Jornal AS jornal,t.Viaticos AS viaticos,t.Redondeo AS redondeo,
 t.Total AS total,CASE WHEN pg.Hay=0 THEN t.EstadoPago WHEN ISNULL(pg.Pagado,0)>=t.Total THEN 'Pagado' ELSE 'Pendiente' END AS estadoPago,t.NumeroRecibo AS numeroRecibo,t.Observaciones AS observaciones,
-ISNULL(s.Vinculado,0) AS vinculado,t.Total-ISNULL(s.Vinculado,0) AS sinVincular,t.OrigenClave AS origen"""
+ISNULL(s.Vinculado,0) AS vinculado,t.Total-ISNULL(s.Vinculado,0) AS sinVincular,t.OrigenClave AS origen,ISNULL(pg.Pagado,0) AS pagado"""
 
 
 def listar(id_contacto=None, desde=None, hasta=None, estado=None, vinculacion=None, id_salario=None, page=1, page_size=50):
@@ -310,3 +310,131 @@ def pagar_por_socio(id_trabajo, datos, usuario):
     _actualizar_estado(id_trabajo)
     auditar(id_trabajo, "pago-socio", {"idMovimientoSocio": res[0], **datos.model_dump(mode="json")}, usuario)
     return obtener(id_trabajo)
+
+
+# ---- 18/11/2026: un solo pago para varios trabajos del mismo trabajador ----
+# Sergio: "con el pago quiero que quede vinculado el egreso de una sola vez", sin doble carga. Un solo egreso (asiento del
+# socio, débito del banco u operación de caja) se reparte entre los trabajos tildados, del más viejo al más nuevo. Si se
+# anula el egreso (desde la cuenta del socio o la caja), todos los trabajos vuelven a quedar pendientes.
+
+def repartir_pago(faltas: list[tuple[int, Decimal]], importe: Decimal) -> list[tuple[int, Decimal]]:
+    """Pura: reparte el importe entre los trabajos (ya ordenados por fecha) hasta cubrir lo que falta de cada uno."""
+    importe = dinero(importe)
+    total = sum((f for _, f in faltas), Decimal(0))
+    if importe <= 0:
+        raise ValueError("El importe debe ser mayor que cero")
+    if importe > total:
+        raise ValueError(f"El importe supera lo que falta pagar de los trabajos elegidos ($ {total:,.2f})")
+    out, resto = [], importe
+    for id_t, falta in faltas:
+        if resto <= 0:
+            break
+        parte = min(falta, resto)
+        if parte > 0:
+            out.append((id_t, parte))
+            resto -= parte
+    return out
+
+
+def _trabajos_a_pagar(ids: list[int]) -> list[dict]:
+    if not ids:
+        raise ValueError("Elegí al menos un trabajo")
+    ts = [obtener(i) for i in dict.fromkeys(ids)]
+    if any(t is None for t in ts):
+        raise ValueError("Algún trabajo no existe")
+    if len({t['idContacto'] for t in ts}) > 1:
+        raise ValueError("Los trabajos tienen que ser del mismo trabajador")
+    ts = [t for t in ts if dinero(t['total']) - dinero(t['pagado']) > 0]
+    if not ts:
+        raise ValueError("Los trabajos elegidos ya están pagados")
+    return sorted(ts, key=lambda t: (_dia(t['fecha']), t['idTrabajo']))
+
+
+def _faltas(ts):
+    return [(t['idTrabajo'], dinero(t['total']) - dinero(t['pagado'])) for t in ts]
+
+
+def _detalle(ts) -> str:
+    return f"{ts[0]['trabajador']} · Trabajos eventuales " + ", ".join(f"{_dia(t['fecha']):%d/%m}" for t in ts)
+
+
+def pagar_varios_por_socio(ids, datos, usuario):
+    from src.db.connection import execute_write_transaction
+    from src.features.cuentas_socios.repository import _insert_asiento
+
+    ts = _trabajos_a_pagar(ids)
+    partes = repartir_pago(_faltas(ts), datos.importe)
+    ops = [_insert_asiento(datos.idSocio, "haber", float(datos.importe), datos.fecha, datos.medio, _detalle(ts)[:250], usuario),
+           lambda r: ("INSERT INTO dbo.AuditoriaReflejoSocio (Accion, IdMovimiento, IdSocio, Usuario, Detalle) VALUES (?, ?, ?, ?, ?)",
+                      ("Devolucion", r[0], datos.idSocio, usuario, "Pago de trabajos eventuales " + ", ".join(f"#{i}" for i, _ in partes))),
+           lambda r: ("INSERT INTO dbo.PagosSocioProveedor (IdMovimientoSocio, IdContacto, Criterio) VALUES (?, ?, ?)",
+                      (r[0], ts[0]['idContacto'], "trabajo-eventual"))]
+    for id_t, parte in partes:
+        ops.append(lambda r, id_t=id_t, parte=parte: (
+            "INSERT INTO dbo.TrabajosEventualesPagos (IdTrabajo,Medio,IdMovimientoSocio,Fecha,Importe,Usuario) VALUES (?,?,?,?,?,?)",
+            (id_t, "socio", r[0], datos.fecha, parte, usuario[:100])))
+    res = execute_write_transaction(ops)
+    for id_t, parte in partes:
+        _actualizar_estado(id_t)
+        auditar(id_t, "pago-socio", {"idMovimientoSocio": res[0], "importe": str(parte), "pagoConjunto": [i for i, _ in partes]}, usuario)
+    return [obtener(i) for i, _ in partes]
+
+
+def transferencias_candidatas_varios(ids) -> list[dict]:
+    ts = _trabajos_a_pagar(ids)
+    return transferencias_candidatas(ts[0]['idTrabajo'])
+
+
+def pagar_varios_con_transferencia(ids, medio, id_movimiento, usuario):
+    ts = _trabajos_a_pagar(ids)
+    m = next((f for f in transferencias_candidatas(ts[0]['idTrabajo']) if f['medio'] == medio and f['id'] == id_movimiento), None)
+    if not m:
+        raise ValueError("Ese movimiento del banco no es del trabajador o ya está vinculado a otro trabajo")
+    faltas = _faltas(ts)
+    partes = repartir_pago(faltas, min(dinero(m['importe']), sum((f for _, f in faltas), Decimal(0))))
+    fecha = _dia(m['fecha'])
+    from src.db.connection import execute_write_transaction
+    execute_write_transaction([("INSERT INTO dbo.TrabajosEventualesPagos (IdTrabajo,Medio,IdMovimientoBanco,Fecha,Importe,Usuario) "
+                                "VALUES (?,?,?,?,?,?)", (id_t, medio, id_movimiento, fecha, parte, usuario[:100])) for id_t, parte in partes])
+    for id_t, parte in partes:
+        _actualizar_estado(id_t)
+        auditar(id_t, "pago-transferencia", {"medio": medio, "idMovimiento": id_movimiento, "importe": str(parte),
+                                             "pagoConjunto": [i for i, _ in partes]}, usuario)
+    return [obtener(i) for i, _ in partes]
+
+
+def _operacion_caja_varios(ts, datos):
+    from src.features.cajas_efectivo.schemas import OperacionCaja, RepartoCaja
+
+    reparto = RepartoCaja(idRubro=datos.idRubro, idCentroCostos=datos.idCentroCostos, idDestino=datos.idDestino,
+                          idCampania=datos.idCampania, importePesos=datos.importe)
+    return OperacionCaja(tipo="gasto_sin_comprobante", caja=datos.caja, fecha=datos.fecha, importe=datos.importe,
+                         concepto=_detalle(ts)[:255], cuenta=datos.cuenta, repartos=[reparto])
+
+
+def previsualizar_pago_caja_varios(ids, datos):
+    from src.features.cajas_efectivo import operaciones, service
+
+    ts = _trabajos_a_pagar(ids)
+    repartir_pago(_faltas(ts), datos.importe)
+    return json.loads(operaciones.dumps(service.previsualizar(_operacion_caja_varios(ts, datos))))
+
+
+def pagar_varios_con_caja(ids, datos, usuario):
+    from uuid import uuid4
+
+    from src.features.cajas_efectivo import service
+    from src.features.cajas_efectivo.schemas import ConfirmarOperacion
+
+    ts = _trabajos_a_pagar(ids)
+    partes = repartir_pago(_faltas(ts), datos.importe)
+    hecho, _ = service.crear(ConfirmarOperacion(operacion=_operacion_caja_varios(ts, datos), previewVersion=datos.previewVersion,
+                                                advertenciasAceptadas=datos.advertenciasAceptadas), uuid4(), usuario)
+    from src.db.connection import execute_write_transaction
+    execute_write_transaction([("INSERT INTO dbo.TrabajosEventualesPagos (IdTrabajo,Medio,IdOperacion,Caja,Fecha,Importe,Usuario) "
+                                "VALUES (?,?,?,?,?,?,?)", (id_t, 'caja', hecho['idOperacion'], datos.caja, datos.fecha, parte, usuario[:100]))
+                               for id_t, parte in partes])
+    for id_t, parte in partes:
+        _actualizar_estado(id_t)
+        auditar(id_t, "pago-caja", {"idOperacion": hecho['idOperacion'], "importe": str(parte), "pagoConjunto": [i for i, _ in partes]}, usuario)
+    return [obtener(i) for i, _ in partes]

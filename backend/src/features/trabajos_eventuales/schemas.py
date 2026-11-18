@@ -57,6 +57,9 @@ class Trabajo(BaseModel):
     sinVincular: float
     origen: str | None = None
     vinculos: list[Vinculo] = Field(default_factory=list)
+    # 18/11/2026: los pagos no llegaban a la pantalla (el modelo los descartaba) y sin lo pagado no se sabe cuánto falta.
+    pagos: list["PagoTrabajo"] = Field(default_factory=list)
+    pagado: float = 0
 
 
 class Resumen(BaseModel):
@@ -126,6 +129,18 @@ class PagoSocioInput(BaseModel):
     fecha: date
     importe: Decimal = Field(gt=0, max_digits=19, decimal_places=2)
     medio: Literal["Banco Galicia", "Banco Nación", "Otro banco", "Efectivo del socio"]
+
+
+class PagoVariosSocioInput(PagoSocioInput):
+    idsTrabajo: list[int] = Field(min_length=1)
+
+
+class PagoVariosCajaInput(PagoCajaInput):
+    idsTrabajo: list[int] = Field(min_length=1)
+
+
+class PagoVariosTransferenciaInput(PagoTransferenciaInput):
+    idsTrabajo: list[int] = Field(min_length=1)
 
 
 Trabajo.model_rebuild()
