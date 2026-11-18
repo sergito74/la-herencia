@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useState } from "react";
 
 import { OrdenesListado } from "@/components/ordenes/OrdenesListado";
+import { PlanillaMatias } from "@/components/ordenes/PlanillaMatias";
 import { TipoLaborAdmin } from "@/components/ordenes/TipoLaborAdmin";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { SideDrawer } from "@/components/ui/SideDrawer";
@@ -37,6 +38,7 @@ export default function OrdenesPage() {
           />
         )}
       </SideDrawer>
+      <PlanillaMatias />
       <OrdenesListado />
     </main>
   );

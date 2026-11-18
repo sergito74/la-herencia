@@ -312,3 +312,13 @@ export interface RenglonSinOrden {
 
 export const fetchFacturasSinOrden = () => apiGet<RenglonSinOrden[]>("/api/ordenes/contratistas/sin-orden");
 export const urlExportarFacturasSinOrden = () => new URL("/api/ordenes/contratistas/sin-orden/exportar", API_BASE_URL).toString();
+
+// 18/11/2026: órdenes de pulverización desde la planilla de Matías.
+export interface LecturaPlanillaMatias {
+  leida?: string;
+  creadas?: { fecha: string; idOrden: number | null; faltantes: { producto: string; falta: number }[] }[];
+  paraRevisar?: { fecha: string; problemas: string[] }[];
+  cambiadas?: { fecha: string; idOrden: number; detalle: string }[];
+}
+export const fetchPlanillaMatias = () => apiGet<LecturaPlanillaMatias>("/api/ordenes/planilla-matias");
+export const leerPlanillaMatias = () => apiPost<LecturaPlanillaMatias>("/api/ordenes/planilla-matias/leer", {});

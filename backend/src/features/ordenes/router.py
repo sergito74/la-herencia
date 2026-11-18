@@ -64,6 +64,24 @@ async def listar_ordenes(
     )
 
 
+# 18/11/2026: órdenes de pulverización desde la planilla de Matías (solapa "orden pulv LH").
+@router.get("/planilla-matias")
+async def planilla_matias_ultima():
+    from src.features.ordenes import planilla_matias
+
+    return await run_in_threadpool(planilla_matias.ultima_lectura) or {}
+
+
+@router.post("/planilla-matias/leer")
+async def planilla_matias_leer():
+    from src.features.ordenes import planilla_matias
+
+    try:
+        return await run_in_threadpool(planilla_matias.leer_y_cargar)
+    except FileNotFoundError as exc:
+        raise HTTPException(404, "No se encontró la planilla de presupuesto en Dropbox") from exc
+
+
 @router.get("/exportar")
 async def exportar_ordenes(
     idContratista: int | None = None, idLote: int | None = None, idCultivo: int | None = None, idCampania: int | None = None,

@@ -117,6 +117,17 @@ def _arrancar_verificacion_externa() -> None:
 
         verificacion_externa.arrancar()
 
+
+@app.on_event("startup")
+def _arrancar_planilla_matias() -> None:
+    """18/11/2026: lee la planilla de órdenes de pulverización de Matías cuando cambia (cada hora)."""
+    import os
+
+    if os.environ.get("LA_HERENCIA_SIN_PLANIFICADOR") != "1":
+        from src.features.ordenes import planilla_matias
+
+        planilla_matias.arrancar()
+
 # El frontend Next.js corre en un origen distinto (localhost:3000/3001) en
 # desarrollo. Sin esto, el navegador bloquea toda llamada a /api/* por
 # CORS aunque el backend responda 200 — nunca se detectó porque las
