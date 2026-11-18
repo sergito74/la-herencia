@@ -1,5 +1,8 @@
 "use client";
 
+import { CompraPanel } from "@/components/compras/CompraPanel";
+import { SideDrawer } from "@/components/ui/SideDrawer";
+
 import { useQuery } from "@tanstack/react-query";
 import { RangoFechas } from "@/components/ui/RangoFechas";
 import Link from "next/link";
@@ -27,17 +30,8 @@ function buildColumns(mostrarProveedor: boolean): DataTableColumn<Compra>[] {
       header: "Fecha",
       numeric: true,
       sortValue: (c) => c.fecha,
-      render: (c) => (
-        // Clic en la fecha abre el mismo formulario de carga/edición (no el
-        // PDF original) — pedido explícito del usuario (2026-09-17).
-        <Link
-          className="text-finance underline"
-          href={`/compras/${c.idCompra}/editar`}
-          title="Ver/editar esta compra."
-        >
-          {formatFecha(c.fecha)}
-        </Link>
-      ),
+      // Spec 051: el clic en la fila abre el resumen en el panel; "Editar" queda en el menú de la fila.
+      render: (c) => formatFecha(c.fecha),
     },
   ];
   if (mostrarProveedor) {
@@ -78,15 +72,6 @@ function buildColumns(mostrarProveedor: boolean): DataTableColumn<Compra>[] {
           ? formatMoneda(c.importeDocumento, c.moneda === "Dolares" ? "Dolares" : "Pesos")
           : "—",
     },
-    {
-      key: "editar",
-      header: "",
-      render: (c) => (
-        <Link className="text-finance underline" href={`/compras/${c.idCompra}/editar`}>
-          Editar
-        </Link>
-      ),
-    }
   );
   return columnas;
 }
@@ -129,6 +114,7 @@ const CAMPOS_FILTRO: (keyof FiltrosState)[] = [
  */
 export function ComprasListado() {
   const router = useRouter();
+  const [abierta, setAbierta] = useState<number | null>(null);
   const searchParams = useSearchParams();
 
   function leerFiltrosDeUrl(): FiltrosState {
@@ -367,8 +353,15 @@ export function ComprasListado() {
           onPageChange={handlePageChange}
           sort={sort}
           onSortChange={handleSortChange}
+          onRowClick={(c) => setAbierta(c.idCompra)}
+          selectedKey={abierta}
+          rowActions={(c) => [{ label: "Ver resumen", onClick: () => setAbierta(c.idCompra) }, { label: "Editar compra", href: `/compras/${c.idCompra}/editar` }]}
         />
       )}
+      <SideDrawer open={abierta != null} onClose={() => setAbierta(null)} title="Compra" maxWidthClass="max-w-xl"
+        verCompleto={abierta != null ? `/compras/${abierta}/editar` : undefined}>
+        {abierta != null && <CompraPanel idCompra={abierta} />}
+      </SideDrawer>
     </div>
   );
 }

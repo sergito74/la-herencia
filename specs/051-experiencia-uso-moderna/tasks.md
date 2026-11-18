@@ -12,8 +12,8 @@ Plan resumido: solo frontend + un endpoint de lectura (`/api/inicio`) que reúne
 - [X] T005 [US2] Reemplazar pares de fechas en Tesorería, Cuentas corrientes, Compras, Flujo de caja y Trabajos eventuales (FR-009)
 
 ## US3 — Panel lateral de detalle (P3)
-- [ ] T006 [US3] DataTable con onRowClick y acciones de fila en menú (FR-010, FR-012)
-- [ ] T007 [US3] Panel de detalle en Compras, Ventas de hacienda, Trabajos eventuales, Saldos y Órdenes, con Esc y acceso a pantalla completa (FR-010, FR-011)
+- [X] T006 [US3] DataTable con onRowClick y acciones de fila en menú (FR-010, FR-012)
+- [X] T007 [US3] Panel de detalle en Compras, Ventas de hacienda, Trabajos eventuales, Saldos y Órdenes, con Esc y acceso a pantalla completa (FR-010, FR-011)
 
 ## US4 — Búsqueda global Ctrl+K (P4)
 - [ ] T008 [US4] Endpoint de búsqueda de lectura (contactos, compras por número, productos, lotes, órdenes) (FR-013)

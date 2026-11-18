@@ -57,6 +57,44 @@ interface DataTableProps<T> {
   stickyHeader?: boolean;
   /** Clase extra por fila (ej. anulados tachados). */
   rowClassName?: (row: T) => string | undefined;
+  /** Spec 051: clic en la fila (fuera de links, botones y campos) abre el detalle, típicamente en un panel lateral. */
+  onRowClick?: (row: T) => void;
+  /** Spec 051: acciones de la fila en un menú "⋯" al final, en lugar de links sueltos. */
+  rowActions?: (row: T) => FilaAccion[];
+  /** Fila marcada como abierta (la que se ve en el panel). */
+  selectedKey?: React.Key | null;
+}
+
+export type FilaAccion = { label: string; href?: string; onClick?: () => void; peligro?: boolean };
+
+const INTERACTIVO = "a,button,input,select,textarea,label,[role=button]";
+
+/** Menú "⋯" de acciones de una fila. */
+function MenuFila({ acciones }: { acciones: FilaAccion[] }) {
+  const [abierto, setAbierto] = useState(false);
+  const caja = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!abierto) return;
+    const fuera = (e: MouseEvent) => { if (caja.current && !caja.current.contains(e.target as Node)) setAbierto(false); };
+    const esc = (e: KeyboardEvent) => { if (e.key === "Escape") setAbierto(false); };
+    document.addEventListener("mousedown", fuera); document.addEventListener("keydown", esc);
+    return () => { document.removeEventListener("mousedown", fuera); document.removeEventListener("keydown", esc); };
+  }, [abierto]);
+  if (!acciones.length) return null;
+  return (
+    <div className="relative inline-block text-left" ref={caja}>
+      <button type="button" aria-label="Acciones" aria-haspopup="menu" aria-expanded={abierto} onClick={() => setAbierto((v) => !v)}
+        className="flex h-7 w-7 items-center justify-center rounded-md text-ink-secondary hover:bg-surface-sunken hover:text-ink-primary">⋯</button>
+      {abierto && (
+        <div role="menu" className="absolute right-0 z-30 mt-1 min-w-[11rem] rounded-md border border-border bg-surface py-1 shadow-lg">
+          {acciones.map((a) => a.href
+            ? <a key={a.label} role="menuitem" href={a.href} className={`block px-3 py-1.5 text-sm hover:bg-surface-sunken ${a.peligro ? "text-status-danger" : "text-ink-primary"}`}>{a.label}</a>
+            : <button key={a.label} type="button" role="menuitem" onClick={() => { setAbierto(false); a.onClick?.(); }}
+                className={`block w-full px-3 py-1.5 text-left text-sm hover:bg-surface-sunken ${a.peligro ? "text-status-danger" : "text-ink-primary"}`}>{a.label}</button>)}
+        </div>
+      )}
+    </div>
+  );
 }
 
 /**
@@ -78,6 +116,9 @@ export function DataTable<T>({
   layout = "auto",
   stickyHeader = false,
   rowClassName,
+  onRowClick,
+  rowActions,
+  selectedKey,
 }: DataTableProps<T>) {
   const fijo = layout === "fixed";
   const [internalSort, setInternalSort] = useState<SortState>(null);
@@ -155,6 +196,7 @@ export function DataTable<T>({
                   </th>
                 );
               })}
+              {rowActions && <th className="w-10" aria-label="Acciones" />}
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
@@ -165,7 +207,8 @@ export function DataTable<T>({
                 <tr
                   key={key}
                   ref={isHighlighted ? highlightRef : undefined}
-                  className={`${isHighlighted ? "bg-status-warning-bg" : "hover:bg-surface-sunken"} ${rowClassName?.(row) ?? ""}`}
+                  onClick={onRowClick ? (e) => { if (!(e.target as HTMLElement).closest(INTERACTIVO)) onRowClick(row); } : undefined}
+                  className={`${isHighlighted ? "bg-status-warning-bg" : selectedKey != null && String(key) === String(selectedKey) ? "bg-finance-light" : "hover:bg-surface-sunken"} ${onRowClick ? "cursor-pointer" : ""} ${rowClassName?.(row) ?? ""}`}
                 >
                   {columns.map((col) => (
                     <td
@@ -177,6 +220,7 @@ export function DataTable<T>({
                       {col.render(row)}
                     </td>
                   ))}
+                  {rowActions && <td className="px-1 py-1 text-right"><MenuFila acciones={rowActions(row)} /></td>}
                 </tr>
               );
             })}

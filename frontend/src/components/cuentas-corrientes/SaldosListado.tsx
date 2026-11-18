@@ -6,10 +6,45 @@ import { SOCIO_DE_CONTACTO } from "@/components/ui/AvisoCuentaContacto";
 import Link from "next/link";
 import { useState } from "react";
 
-import { fetchSaldos, urlExportarSaldos, type SaldoContacto } from "@/services/cuentasCorrientesApi";
+import { fetchMovimientos, fetchSaldos, urlExportarSaldos, type SaldoContacto } from "@/services/cuentasCorrientesApi";
+import { SideDrawer } from "@/components/ui/SideDrawer";
+import { formatFecha } from "@/lib/format";
 import { DataTable, type DataTableColumn } from "@/components/ui/DataTable";
 import { ErrorState, LoadingState } from "@/components/ui/States";
 import { formatMoneda } from "@/lib/format";
+
+const cuentaUrl = (s: SaldoContacto) =>
+  `/finanzas/cuentas-corrientes?idContacto=${s.idContacto}&razonSocial=${encodeURIComponent(s.razonSocial ?? "")}`;
+
+/** Spec 051: resumen de la cuenta en el panel lateral (saldo y últimos movimientos), sin salir del listado. */
+function ResumenCuenta({ s }: { s: SaldoContacto }) {
+  const { data, isLoading } = useQuery({
+    queryKey: ["saldos-panel", s.idContacto],
+    queryFn: () => fetchMovimientos(s.idContacto, { page: 1, pageSize: 12, sortBy: "fecha", sortDir: "desc" }),
+  });
+  return (
+    <div className="space-y-4">
+      <div className="rounded-lg bg-surface-sunken/60 p-3">
+        <p className="text-xs text-ink-secondary">Saldo</p>
+        <p className="text-lg font-semibold"><Saldo valor={s.saldoParcial} negativo="Debemos" positivo="A favor nuestro" /></p>
+        {s.saldoDolares != null && <p className="text-sm"><Saldo valor={s.saldoDolares} moneda="Dolares" negativo="Debemos" positivo="A favor nuestro" /></p>}
+      </div>
+      <div>
+        <h3 className="mb-2 text-sm font-semibold text-ink-primary">Últimos movimientos</h3>
+        {isLoading ? <LoadingState rows={5} /> : (
+          <ul className="divide-y divide-border rounded-md border border-border text-sm">
+            {(data?.items ?? []).map((m, i) => (
+              <li key={i} className="flex items-baseline justify-between gap-3 px-3 py-1.5">
+                <span className="min-w-0"><span className="text-ink-secondary">{formatFecha(m.fecha)}</span> · <span className="truncate">{m.documento ?? "—"} {m.numeroDocumento ?? ""}</span></span>
+                <span className="font-data whitespace-nowrap">{m.deuda ? formatMoneda(m.deuda) : m.credito ? `− ${formatMoneda(m.credito)}` : "—"}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </div>
+  );
+}
 
 const COLUMNS: DataTableColumn<SaldoContacto>[] = [
   {
@@ -17,10 +52,7 @@ const COLUMNS: DataTableColumn<SaldoContacto>[] = [
     header: "Razón social",
     sortValue: (s) => s.razonSocial ?? "",
     render: (s) => (
-      <Link
-        href={`/finanzas/cuentas-corrientes?idContacto=${s.idContacto}&razonSocial=${encodeURIComponent(s.razonSocial ?? "")}`}
-        className="text-finance underline"
-      >
+      <Link href={cuentaUrl(s)} className="font-medium text-ink-primary hover:text-finance hover:underline">
         {s.razonSocial ?? "—"}
         {SOCIO_DE_CONTACTO[s.idContacto] && <span className="ml-2 rounded-sm bg-surface-sunken px-1.5 text-xs text-ink-secondary" title="Su saldo en pesos no es deuda: ver la cuenta de socio">socio</span>}
       </Link>
@@ -67,6 +99,7 @@ const TOLERANCIA_SALDADA = 500;
  * cuentas en $0, sigue disponible destildando el filtro. */
 export function SaldosListado() {
   const [soloNoSaldadas, setSoloNoSaldadas] = useState(true);
+  const [abierto, setAbierto] = useState<SaldoContacto | null>(null);
 
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ["cc-saldos"],
@@ -115,8 +148,15 @@ export function SaldosListado() {
           pageSize={Math.max(filas.length, 1)}
           total={filas.length}
           onPageChange={() => {}}
+          onRowClick={setAbierto}
+          selectedKey={abierto?.idContacto}
+          rowActions={(s) => [{ label: "Ver resumen", onClick: () => setAbierto(s) }, { label: "Abrir cuenta corriente", href: cuentaUrl(s) }]}
         />
       )}
+      <SideDrawer open={abierto != null} onClose={() => setAbierto(null)} title={abierto?.razonSocial ?? ""} maxWidthClass="max-w-lg"
+        verCompleto={abierto ? cuentaUrl(abierto) : undefined}>
+        {abierto && <ResumenCuenta s={abierto} />}
+      </SideDrawer>
     </div>
   );
 }

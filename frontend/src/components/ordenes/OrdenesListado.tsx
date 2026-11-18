@@ -140,7 +140,7 @@ export function OrdenesListado() {
         </>
       )}
 
-      <SideDrawer open={abierta != null} onClose={() => setAbierta(null)} title={abierta != null ? `Orden N° ${abierta}` : ""} maxWidthClass="max-w-xl">
+      <SideDrawer open={abierta != null} onClose={() => setAbierta(null)} title={abierta != null ? `Orden N° ${abierta}` : ""} maxWidthClass="max-w-xl" verCompleto={abierta != null ? `/produccion/ordenes/${abierta}/editar` : undefined}>
         {abierta != null && <DetalleRapido idOrden={abierta} />}
       </SideDrawer>
     </div>

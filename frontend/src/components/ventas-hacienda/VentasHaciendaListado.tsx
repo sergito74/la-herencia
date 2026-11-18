@@ -79,20 +79,12 @@ export function VentasHaciendaListado() {
       header: "Fecha",
       numeric: true,
       sortValue: (v) => v.fecha,
-      render: (v) => (
-        <Link className="text-finance underline" href={`/ventas/hacienda/${v.idVenta}/editar`}>
-          {formatFecha(v.fecha)}
-        </Link>
-      ),
+      render: (v) => formatFecha(v.fecha),
     },
     {
       key: "numeroDocumento",
       header: "Documento",
-      render: (v) => (
-        <button className="text-finance underline" onClick={() => setSelected(v)}>
-          {v.numeroDocumento ?? "—"}
-        </button>
-      ),
+      render: (v) => v.numeroDocumento ?? "—",
     },
     {
       key: "consignatario",
@@ -118,15 +110,7 @@ export function VentasHaciendaListado() {
       sortValue: (v) => v.lineas.reduce((s, l) => s + (l.importe ?? 0), 0),
       render: (v) => formatMoneda(v.lineas.reduce((s, l) => s + (l.importe ?? 0), 0)),
     },
-    {
-      key: "editar",
-      header: "",
-      render: (v) => (
-        <Link className="text-finance underline" href={`/ventas/hacienda/${v.idVenta}/editar`}>
-          Editar
-        </Link>
-      ),
-    },
+
   ];
 
   return (
@@ -158,6 +142,9 @@ export function VentasHaciendaListado() {
           pageSize={data.pageSize}
           total={data.total}
           onPageChange={handlePageChange}
+          onRowClick={setSelected}
+          selectedKey={selected?.idVenta}
+          rowActions={(v) => [{ label: "Ver detalle", onClick: () => setSelected(v) }, { label: "Editar venta", href: `/ventas/hacienda/${v.idVenta}/editar` }]}
         />
       )}
 
@@ -165,6 +152,7 @@ export function VentasHaciendaListado() {
         open={selected !== null}
         onClose={() => setSelected(null)}
         title={`Venta ${selected?.numeroDocumento ?? "—"}`}
+        verCompleto={selected ? `/ventas/hacienda/${selected.idVenta}/editar` : undefined}
       >
         {selected && (
           <div className="space-y-3">
