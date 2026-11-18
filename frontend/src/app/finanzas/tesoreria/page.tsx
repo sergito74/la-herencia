@@ -7,6 +7,7 @@ import { Suspense, useState } from "react";
 import { MEDIO_LABELS, MovimientosPorMedio } from "@/components/tesoreria/MovimientosPorMedio";
 import { CargaExcel } from "@/components/tesoreria/CargaExcel";
 import { CargaExtractoPdf } from "@/components/tesoreria/CargaExtractoPdf";
+import { ListadosEstudio } from "@/components/tesoreria/ListadosEstudio";
 import { NuevosParaRevisar } from "@/components/documentos-nuevos/NuevosParaRevisar";
 import type { Medio } from "@/services/tesoreriaApi";
 
@@ -36,6 +37,7 @@ export default function TesoreriaPage() {
         <NuevosParaRevisar modulo="tesoreria" />
       </Suspense>
       <PageHeader titulo="Tesorería" ayuda="Consulta y conciliación de movimientos por banco, caja, valores y tarjetas." />
+      <ListadosEstudio />
 
       <div className="flex flex-wrap gap-2">
         {MEDIOS.map((m) => (

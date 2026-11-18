@@ -7,7 +7,7 @@
  * `apiClient`'s GET-only helper instead of weakening that invariant.
  */
 
-import { API_BASE_URL, apiGet, ApiError, apiPostForm } from "@/services/apiClient";
+import { API_BASE_URL, apiGet, ApiError, apiPost, apiPostForm } from "@/services/apiClient";
 
 /** 023-conciliacion-tesoreria + 024-traspasos-internos-tesoreria: estado
  * unificado de un movimiento (nunca se guarda, se recalcula siempre —
@@ -299,3 +299,8 @@ export const previsualizarExtractoPdf = (archivo: File) =>
 
 export const confirmarExtractoPdf = (archivo: File) =>
   apiPostForm<ExtractoPdfResultado>("/api/tesoreria/extractos-pdf/confirmar", formExtracto(archivo));
+
+// 18/11/2026: listados de conciliación para el Estudio (Dropbox/Giamigli de Bolivar SA/Bancos).
+export interface ListadoEstudio { banco: string; archivo: string; carpeta?: string; actualizada?: string | null; ok?: boolean; detalle?: string }
+export const fetchListadosEstudio = () => apiGet<ListadoEstudio[]>("/api/tesoreria/listados-estudio");
+export const actualizarListadosEstudio = () => apiPost<ListadoEstudio[]>("/api/tesoreria/listados-estudio/actualizar", {});

@@ -150,6 +150,7 @@ async def confirmar_excel(archivo: UploadFile) -> ExcelConfirmacionResponse:
     )
     if not resultado["valido"]:
         raise HTTPException(status_code=422, detail=resultado["errores"])
+    _actualizar_listados_en_segundo_plano()
     return ExcelConfirmacionResponse(**resultado)
 
 
@@ -171,7 +172,40 @@ async def previsualizar_extracto_pdf(archivo: UploadFile) -> dict:
 
 @router.post("/extractos-pdf/confirmar")
 async def confirmar_extracto_pdf(archivo: UploadFile) -> dict:
-    return await _extracto_pdf(extractos_pdf.confirmar, archivo)
+    resultado = await _extracto_pdf(extractos_pdf.confirmar, archivo)
+    _actualizar_listados_en_segundo_plano()
+    return resultado
+
+
+# 18/11/2026: listados de conciliación para el Estudio (Dropbox/Giamigli de Bolivar SA/Bancos). Se regeneran solos
+# después de cargar un extracto y se pueden actualizar a mano.
+def _actualizar_listados_en_segundo_plano() -> None:
+    import logging
+    import threading
+
+    from src.features.tesoreria import listado_estudio
+
+    def correr():
+        try:
+            listado_estudio.actualizar_dropbox()
+        except Exception:  # noqa: BLE001
+            logging.getLogger(__name__).exception("Listados de conciliación para el Estudio")
+
+    threading.Thread(target=correr, name="listados-estudio", daemon=True).start()
+
+
+@router.get("/listados-estudio")
+async def listados_estudio_estado() -> list[dict]:
+    from src.features.tesoreria import listado_estudio
+
+    return await run_in_threadpool(listado_estudio.estado)
+
+
+@router.post("/listados-estudio/actualizar")
+async def listados_estudio_actualizar() -> list[dict]:
+    from src.features.tesoreria import listado_estudio
+
+    return await run_in_threadpool(listado_estudio.actualizar_dropbox)
 
 
 @router.get("/valores-propios/exportar")
