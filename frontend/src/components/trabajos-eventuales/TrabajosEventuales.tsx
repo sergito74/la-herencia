@@ -1,5 +1,6 @@
 "use client";
 import { PageHeader } from "@/components/ui/PageHeader";
+import { RangoFechas } from "@/components/ui/RangoFechas";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -84,7 +85,7 @@ export function TrabajosEventuales() {
     {filtros.idSalario && <div className="flex flex-wrap items-center gap-3 rounded border border-border p-3 text-sm"><span>Trabajos vinculados a la liquidación seleccionada.</span><button className="text-finance underline" onClick={()=>setFiltros(f=>({...f,idSalario:undefined,page:1}))}>Ver todos los trabajos del trabajador</button></div>}
     <form className="flex flex-wrap items-end gap-3" onSubmit={e=>{e.preventDefault();setId(null);setFiltros({idContacto:contacto??undefined,desde,hasta,estadoPago:estado,vinculacion,page:1});}}>
       <ContactoSelect label="Trabajador" tipoContacto="Empleado" value={contacto} razonSocial={nombre} onChange={(i,n)=>{setContacto(i);setNombre(n??"");}} />
-      <label className="text-sm">Desde<input type="date" className={`${input} block`} value={desde} onChange={e=>setDesde(e.target.value)}/></label><label className="text-sm">Hasta<input type="date" className={`${input} block`} value={hasta} onChange={e=>setHasta(e.target.value)}/></label>
+      <RangoFechas valor={{desde,hasta}} onChange={r=>{setDesde(r.desde);setHasta(r.hasta);}} />
       <label className="text-sm">Pago<select className={`${input} block`} value={estado} onChange={e=>setEstado(e.target.value)}><option value="">Todos</option><option>Pendiente</option><option>Pagado</option></select></label>
       <label className="text-sm">Liquidación<select className={`${input} block`} value={vinculacion} onChange={e=>setVinculacion(e.target.value)}><option value="">Todas</option><option value="sin">Sin vincular</option><option value="parcial">Parcial</option><option value="completo">Vinculado</option></select></label><button className={boton}>Buscar</button>
     </form>

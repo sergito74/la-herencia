@@ -6,17 +6,22 @@ import { useState } from "react";
 
 import { AplicarPagoPanel } from "@/components/aplicaciones-pago/AplicarPagoPanel";
 import { TablaFlujoCaja } from "@/components/flujo-caja/TablaFlujoCaja";
+import { RangoFechas, type Rango } from "@/components/ui/RangoFechas";
+import { Segmentos } from "@/components/ui/Segmentos";
+import { LoadingState } from "@/components/ui/States";
 import { SideDrawer } from "@/components/ui/SideDrawer";
 import { formatFecha, formatMonto } from "@/lib/format";
 import { fetchDetalle, fetchResumen, type Granularidad } from "@/services/flujoCajaApi";
 
 export default function FlujoCajaRealPage() {
   const [granularidad, setGranularidad] = useState<Granularidad>("mensual");
+  // Sin rango elegido, el servidor muestra los últimos 2 años (como antes).
+  const [rango, setRango] = useState<Rango>({ desde: "", hasta: "" });
   const [detalle, setDetalle] = useState<{ periodo: string; banco?: string; numeroCuenta?: string } | null>(null);
 
   const resumen = useQuery({
-    queryKey: ["flujo-caja-resumen", granularidad],
-    queryFn: () => fetchResumen({ granularidad }),
+    queryKey: ["flujo-caja-resumen", granularidad, rango],
+    queryFn: () => fetchResumen({ granularidad, fechaDesde: rango.desde || undefined, fechaHasta: rango.hasta || undefined }),
   });
 
   const rangoDetalle = detalle ? rangoDelPeriodo(detalle.periodo, granularidad) : null;
@@ -38,26 +43,17 @@ export default function FlujoCajaRealPage() {
     <main className="mx-auto max-w-none px-6 py-3">
       <PageHeader titulo="Flujo de caja real" ayuda="Movimientos bancarios reales (BNA + Galicia + Cajas en Efectivo) agregados por período, sin transferencias entre cuentas propias ni movimientos de inversión financiera mezclados en el neto." />
 
-      <div className="flex items-center gap-2">
-        <span className="text-sm text-ink-secondary">Ver por:</span>
-        <div className="inline-flex rounded-md border border-border">
-          {(["mensual", "semanal"] as const).map((g) => (
-            <button
-              key={g}
-              type="button"
-              onClick={() => setGranularidad(g)}
-              className={`px-3 py-1 text-sm capitalize ${
-                granularidad === g ? "bg-finance-light text-finance" : "text-ink-secondary"
-              }`}
-            >
-              {g}
-            </button>
-          ))}
+      <div className="flex flex-wrap items-end gap-4">
+        <RangoFechas etiqueta="Período" valor={rango} onChange={setRango} />
+        <div>
+          <span className="mb-1 block text-xs font-medium text-ink-secondary">Ver por</span>
+          <Segmentos etiqueta="Agrupar por" valor={granularidad} onChange={setGranularidad}
+            opciones={[{ id: "mensual", label: "Mes" }, { id: "semanal", label: "Semana" }]} />
         </div>
       </div>
 
       <div className="mt-3">
-        {resumen.isLoading && <p className="text-sm text-ink-secondary">Cargando…</p>}
+        {resumen.isLoading && <LoadingState rows={6} />}
         {resumen.isError && <p className="text-sm text-status-danger">No se pudo cargar el flujo de caja.</p>}
         {resumen.data && (
           <TablaFlujoCaja

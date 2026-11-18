@@ -1,6 +1,7 @@
 "use client";
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { RangoFechas } from "@/components/ui/RangoFechas";
 import { Saldo } from "@/components/ui/Saldo";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
@@ -352,25 +353,8 @@ export function CuentaCorriente() {
             </button>
           </div>
 
-          <FilterBar onSubmit={handleDateFilterSubmit}>
-            <FilterField label="Fecha desde">
-              <input
-                type="date"
-                className={filterInputClass}
-                value={fechaDesde}
-                onChange={(e) => setFechaDesde(e.target.value)}
-              />
-            </FilterField>
-            <FilterField label="Fecha hasta">
-              <input
-                type="date"
-                className={filterInputClass}
-                value={fechaHasta}
-                onChange={(e) => setFechaHasta(e.target.value)}
-              />
-            </FilterField>
-            <FilterSubmitButton>Filtrar</FilterSubmitButton>
-          </FilterBar>
+          <RangoFechas etiqueta="Movimientos" valor={{ desde: fechaDesde, hasta: fechaHasta }}
+            onChange={(r) => { setFechaDesde(r.desde); setFechaHasta(r.hasta); setPage(1); setAppliedDates({ fechaDesde: r.desde, fechaHasta: r.hasta }); }} />
 
           {selected.idContacto === 119 && <ArcaSubcuentas key={`${selected.idContacto}-${appliedDates.fechaDesde}-${appliedDates.fechaHasta}`} fechaDesde={appliedDates.fechaDesde} fechaHasta={appliedDates.fechaHasta} />}
           {selected.idContacto !== 119 && loadingMovimientos && <LoadingState />}

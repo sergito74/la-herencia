@@ -1,6 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
+import { RangoFechas } from "@/components/ui/RangoFechas";
 import { useState } from "react";
 
 import {
@@ -252,28 +253,7 @@ export function MovimientosPorMedio({
   return (
     <div className="space-y-4">
       <FilterBar onSubmit={(e) => e.preventDefault()}>
-        <FilterField label="Fecha desde">
-          <input
-            type="date"
-            className={filterInputClass}
-            value={fechaDesde}
-            onChange={(e) => {
-              setPage(1);
-              setFechaDesde(e.target.value);
-            }}
-          />
-        </FilterField>
-        <FilterField label="Fecha hasta">
-          <input
-            type="date"
-            className={filterInputClass}
-            value={fechaHasta}
-            onChange={(e) => {
-              setPage(1);
-              setFechaHasta(e.target.value);
-            }}
-          />
-        </FilterField>
+        <RangoFechas valor={{ desde: fechaDesde, hasta: fechaHasta }} onChange={(r) => { setPage(1); setFechaDesde(r.desde); setFechaHasta(r.hasta); }} />
         {medio === "valores-propios" && (
           <a
             href={urlExportarValoresPropios({

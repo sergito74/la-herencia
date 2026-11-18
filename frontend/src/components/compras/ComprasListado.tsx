@@ -1,6 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
+import { RangoFechas } from "@/components/ui/RangoFechas";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
@@ -291,22 +292,7 @@ export function ComprasListado() {
             placeholder="0001-00012345"
           />
         </FilterField>
-        <FilterField label="Fecha desde">
-          <input
-            type="date"
-            className={filterInputClass}
-            value={fechaDesde}
-            onChange={(e) => setFechaDesde(e.target.value)}
-          />
-        </FilterField>
-        <FilterField label="Fecha hasta">
-          <input
-            type="date"
-            className={filterInputClass}
-            value={fechaHasta}
-            onChange={(e) => setFechaHasta(e.target.value)}
-          />
-        </FilterField>
+        <RangoFechas valor={{ desde: fechaDesde, hasta: fechaHasta }} onChange={(r) => { setFechaDesde(r.desde); setFechaHasta(r.hasta); }} />
         <FilterField label="Centro de costos">
           <select
             className={filterInputClass}

@@ -8,8 +8,8 @@ Plan resumido: solo frontend + un endpoint de lectura (`/api/inicio`) que reúne
 - [X] T003 [US1] Pantalla de Inicio (pendientes, indicadores, flujo, campaña, accesos; esqueletos mientras calcula) en frontend/src/app/page.tsx (FR-001…007)
 
 ## US2 — Fechas con atajos de campaña (P2)
-- [ ] T004 [US2] Componente RangoFechas con atajos en frontend/src/components/ui/RangoFechas.tsx (FR-008)
-- [ ] T005 [US2] Reemplazar pares de fechas en Tesorería, Cuentas corrientes, Compras, Flujo de caja y Trabajos eventuales (FR-009)
+- [X] T004 [US2] Componente RangoFechas con atajos en frontend/src/components/ui/RangoFechas.tsx (FR-008)
+- [X] T005 [US2] Reemplazar pares de fechas en Tesorería, Cuentas corrientes, Compras, Flujo de caja y Trabajos eventuales (FR-009)
 
 ## US3 — Panel lateral de detalle (P3)
 - [ ] T006 [US3] DataTable con onRowClick y acciones de fila en menú (FR-010, FR-012)
