@@ -20,8 +20,7 @@ const GRUPOS: Record<"remitos" | "existencias" | "costos", Tab[]> = {
     { href: "/produccion/stock/control", label: "Pendientes de carga" },
   ],
   costos: [
-    // 18/11/2026 (auditoría de diseño): "Automática" y "Por documento" son una sola pantalla con filtros de estado.
-    { href: "/imputacion/documentos", label: "Documentos" },
+    // 18/11/2026: la imputación de compras pasó al menú Compras; acá quedan los costos de los cultivos.
     { href: "/produccion/ordenes/resultado-cultivo", label: "Costo por cultivo" },
     { href: "/produccion/contratistas/sin-orden", label: "Contratistas sin orden" },
   ],

@@ -9,7 +9,6 @@ import { ChipDestino, ChipsDestino } from "@/components/imputacion/ChipsDestino"
 import { ControlDrawer, useControlCostos } from "@/components/imputacion/ControlDrawer";
 import { DocumentoDrawer } from "@/components/imputacion/DocumentoDrawer";
 import { TONO_ESTADO } from "@/components/imputacion/estadoDocumento";
-import { RemitosSubNav } from "@/components/remitos/RemitosSubNav";
 import { Button } from "@/components/ui/Button";
 import { ContactoSelect } from "@/components/ui/ContactoSelect";
 import { DataTable, type DataTableColumn } from "@/components/ui/DataTable";
@@ -129,10 +128,9 @@ function Pagina() {
 
   return (
     <main className="mx-auto max-w-none space-y-3 px-6 py-3">
-      <PageHeader titulo="Imputación de costos" ayuda="A dónde fue el costo de cada compra: un cultivo y campaña, ganadería, un centro de costos o el stock. Hacé clic en una fila para ver el detalle.">
+      <PageHeader titulo="Imputación de compras" ayuda="A dónde fue cada compra: Adm. General u otro centro de costos, ganadería, un cultivo y campaña, o el stock. Hacé clic en una fila para ver el detalle. El costo de los cultivos está en Producción › Costo por cultivo.">
         <div className="ml-auto"><MasAcciones exportar={exportar} /></div>
       </PageHeader>
-      <RemitosSubNav grupo="costos" />
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <Kpi titulo="Imputado" valor={d ? formatMoneda(d.importe) : "…"} pie={d ? `${formatCantidad(d.total)} documentos con estos filtros` : undefined} />

@@ -100,6 +100,8 @@ const NAV_ITEMS: NavItem[] = [
     submenu: [
       { href: "/compras", label: "Compras", exact: true, nuevos: "compras" },
       { href: "/compras/descarga-peajes", label: "Descarga de peajes", badge: "peajes" },
+      // 18/11/2026 (Sergio): la imputación abarca todas las compras, no solo los cultivos.
+      { href: "/imputacion/documentos", label: "Imputación de compras", badge: "revisar", otras: ["/imputacion"] },
     ],
   },
   {
@@ -147,7 +149,7 @@ const NAV_ITEMS: NavItem[] = [
       { href: "/produccion/resultado-cultivo", label: "Resultado de cultivo" },
       { href: "/produccion/remitos", label: "Remitos", grupo: "Insumos" },
       { href: "/produccion/stock", label: "Existencias de insumos" },
-      { href: "/imputacion/documentos", label: "Imputación de costos", grupo: "Costos", badge: "revisar", otras: ["/imputacion", "/produccion/contratistas", "/produccion/ordenes/resultado-cultivo"] },
+      { href: "/produccion/ordenes/resultado-cultivo", label: "Costo por cultivo", grupo: "Costos", otras: ["/produccion/contratistas"] },
     ],
   },
   {
