@@ -188,6 +188,32 @@ def fracciones_directo(t: dict, total: float, id_centro_adm: int | None, superfi
     return []  # Financiero / NoImputa: no van a costo de cultivo
 
 
+_PARTICULAR = "d.[Producto/Servicio] LIKE '%particular%' AND d.Cantidad * d.[Precio Unitario] < 0"
+
+
+def factor_particular(id_detalle: int) -> float | None:
+    """18/11/2026: compras con parte particular (auto de Sergio, compras personales). La línea negativa "particular"
+    está con IVA y los renglones de la empresa sin IVA: restarla tal cual dejaba costo negativo (pólizas Allianz) o de
+    más (Coto). Devuelve None si el renglón ES la parte particular (no se imputa); si no, la proporción de la empresa
+    (1 si la compra no tiene parte particular, 0 si es toda particular)."""
+    f = fetch_one(
+        f"""
+        SELECT CASE WHEN {_PARTICULAR} THEN 1 ELSE 0 END AS esParticular,
+               (SELECT SUM(-d.Cantidad * d.[Precio Unitario]) FROM dbo.Det_Compras d WHERE d.IdCompra = r.IdCompra AND {_PARTICULAR}) AS particular,
+               (SELECT SUM(d.Cantidad * d.[Precio Unitario] * (1 + ISNULL(d.IVA, 0) / 100.0)) FROM dbo.Det_Compras d
+                WHERE d.IdCompra = r.IdCompra AND NOT ({_PARTICULAR})) AS bruto
+        FROM dbo.Det_Compras d JOIN dbo.Det_Compras r ON r.IdDetalleCompra = d.IdDetalleCompra
+        WHERE d.IdDetalleCompra = ?
+        """, (id_detalle,))
+    if not f:
+        return 1.0
+    if f["esParticular"]:
+        return None
+    if not f["particular"] or not f["bruto"]:
+        return 1.0
+    return max(0.0, 1.0 - float(f["particular"]) / float(f["bruto"]))
+
+
 def calcular_directo(id_detalle: int) -> dict:
     t = _tamiz(id_detalle)
     if t is None or t["destino"] in ("CultivoStock", "Depende", None):
@@ -199,7 +225,9 @@ def calcular_directo(id_detalle: int) -> dict:
         return {"accion": "anulada" if repository.marcar_reemplazada(id_detalle, "Directo") else "porOrdenes"}
     superficies = (reparto_plan.superficie_por_cultivo(t["idCampania"])
                    if t["destino"] == "Cultivo" and t.get("idCultivo") is None and t.get("idCampania") else None)
-    fracciones = fracciones_directo(t, total_renglon(t, 0.0), motor._id_centro_adm_general(), superficies)
+    factor = factor_particular(id_detalle)
+    total = round(total_renglon(t, 0.0) * factor, 2) if factor is not None else 0.0
+    fracciones = fracciones_directo(t, total, motor._id_centro_adm_general(), superficies) if abs(total) >= 0.01 else []
     if not fracciones:
         # Financiero / No se imputa: si antes iba a un costo, esa imputación deja de valer.
         # Se marca como reemplazada (no se borra: queda quién la aprobó y cuándo).
