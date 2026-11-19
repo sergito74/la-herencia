@@ -21,6 +21,13 @@ import openpyxl
 import xlrd
 
 BNA_HEADER = ("Fecha", "Comprobante", "Concepto", "Importe", "Saldo")
+# 19/11/2026: el Nación (BNA + Empresas) pasó a llamar "Monto" a la columna del importe. Se aceptan los dos nombres.
+_BNA_SINONIMOS = {"monto": "importe"}
+
+
+def _es_encabezado_bna(valores: list[str]) -> bool:
+    norm = [_BNA_SINONIMOS.get(v.strip().lower(), v.strip().lower()) for v in valores[: len(BNA_HEADER)]]
+    return norm == [h.lower() for h in BNA_HEADER]
 GALICIA_REQUIRED_HEADER = ("Fecha", "Descripción", "Débitos", "Créditos", "Saldo")
 GALICIA_SHEET_NAME = "Movimientos"
 
@@ -53,14 +60,14 @@ def _procesar_bna(contenido: bytes) -> dict:
     header_row_index = None
     for row_idx in range(min(10, sheet.nrows)):
         values = [str(sheet.cell_value(row_idx, col)).strip() for col in range(sheet.ncols)]
-        if values[: len(BNA_HEADER)] == list(BNA_HEADER):
+        if _es_encabezado_bna(values):
             header_row_index = row_idx
             break
 
     if header_row_index is None:
         return _invalido(
             "No se encontró la fila de encabezado esperada "
-            "('Fecha, Comprobante, Concepto, Importe, Saldo' para BNA, "
+            "('Fecha, Comprobante, Concepto, Importe o Monto, Saldo' para BNA, "
             "o 'Fecha, Descripción, ...' para Galicia) en las primeras 10 filas"
         )
 
@@ -90,6 +97,12 @@ def _procesar_bna(contenido: bytes) -> dict:
 
 def _xldate_to_date(value: float | str, datemode: int) -> date | None:
     if isinstance(value, str):
+        # 19/11/2026: el Nación ahora manda la fecha como texto "dd/mm/aaaa".
+        for formato in ("%d/%m/%Y", "%d/%m/%y", "%Y-%m-%d"):
+            try:
+                return datetime.strptime(value.strip(), formato).date()
+            except ValueError:
+                continue
         return None
     try:
         return xlrd.xldate_as_datetime(value, datemode).date()
@@ -118,7 +131,7 @@ def _procesar_galicia(contenido: bytes) -> dict:
     if not all(col in header for col in GALICIA_REQUIRED_HEADER):
         return _invalido(
             "No se encontró la fila de encabezado esperada "
-            "('Fecha, Comprobante, Concepto, Importe, Saldo' para BNA, "
+            "('Fecha, Comprobante, Concepto, Importe o Monto, Saldo' para BNA, "
             "o 'Fecha, Descripción, ...' para Galicia) en las primeras 10 filas"
         )
 
