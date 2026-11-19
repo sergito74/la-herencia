@@ -45,7 +45,7 @@ export function RangoFechas({ valor, onChange, etiqueta = "Fechas" }: { valor: R
 
   return (
     <div className="relative" ref={caja}>
-      <span className="mb-1 block text-xs font-medium text-ink-secondary">{etiqueta}</span>
+      {etiqueta && <span className="mb-1 block text-xs font-medium text-ink-secondary">{etiqueta}</span>}
       <button type="button" onClick={() => { setLibre(valor); setAbierto((v) => !v); }} aria-haspopup="dialog" aria-expanded={abierto}
         className={`inline-flex items-center gap-2 rounded-md border px-3 py-1.5 text-sm transition-colors ${activo ? "border-finance/40 bg-finance-light text-finance" : "border-border bg-surface text-ink-primary hover:bg-surface-sunken"}`}>
         <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={1.8} aria-hidden><rect x="3.5" y="5" width="17" height="15" rx="2" /><path d="M3.5 9.5h17M8 3v4M16 3v4" /></svg>

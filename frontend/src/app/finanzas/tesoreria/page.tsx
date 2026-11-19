@@ -38,15 +38,15 @@ export default function TesoreriaPage() {
       <Suspense fallback={null}>
         <NuevosParaRevisar modulo="tesoreria" />
       </Suspense>
-      <PageHeader titulo="Tesorería" ayuda="Consulta y conciliación de movimientos por banco, caja, valores y tarjetas.">
-        <div className="ml-auto"><CargaExtracto /></div>
+      <PageHeader titulo="Tesorería" ayuda="Consulta y conciliación de movimientos por banco, caja, valores y tarjetas."
+        pestanas={<Segmentos<Medio | "inversiones"> size="sm" etiqueta="Medio" valor={medio} onChange={setMedio}
+          opciones={[...MEDIOS.map((m) => ({ id: m as Medio | "inversiones", label: MEDIO_LABELS[m] })), { id: "inversiones", label: "Inversiones" }]} />}
+        estado={<ListadosEstudio modo="chip" />}>
+        <CargaExtracto />
       </PageHeader>
-      <ListadosEstudio />
 
-      <Segmentos<Medio | "inversiones"> etiqueta="Medio" valor={medio} onChange={setMedio}
-        opciones={[...MEDIOS.map((m) => ({ id: m as Medio | "inversiones", label: MEDIO_LABELS[m] })), { id: "inversiones", label: "Inversiones" }]} />
 
-      <div className="mt-3">
+      <div>
         {medio === "inversiones" ? <Inversiones /> : <MovimientosPorMedio medio={medio} highlightKey={highlight ? Number(highlight) : undefined} />}
       </div>
 

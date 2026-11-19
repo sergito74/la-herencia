@@ -2,7 +2,6 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { RangoFechas } from "@/components/ui/RangoFechas";
-import { Segmentos } from "@/components/ui/Segmentos";
 import { TiraIndicadores } from "@/components/ui/TiraIndicadores";
 import { SideDrawer } from "@/components/ui/SideDrawer";
 import { useEffect, useState } from "react";
@@ -18,7 +17,6 @@ import { ConciliarMovimiento } from "@/components/tesoreria/ConciliarMovimiento"
 import { ReferenciaOrigen } from "@/components/tesoreria/ReferenciaOrigen";
 import { VincularTraspasoInterno } from "@/components/tesoreria/VincularTraspasoInterno";
 import { DataTable, type DataTableColumn } from "@/components/ui/DataTable";
-import { FilterBar, FilterField, filterInputClass } from "@/components/ui/FilterBar";
 import { ErrorState, LoadingState } from "@/components/ui/States";
 import { formatCantidad, formatFecha, formatMoneda } from "@/lib/format";
 import { urlDocumentoLocal } from "@/services/comprasApi";
@@ -218,11 +216,6 @@ export function MovimientosPorMedio({
         q: q || undefined,
       }),
   });
-  const pendientes = useQuery({
-    queryKey: ["tesoreria-movimientos", medio, fechaDesde, fechaHasta, "contador-pendientes"],
-    queryFn: () => fetchMovimientos(medio, { fechaDesde: fechaDesde || undefined, fechaHasta: fechaHasta || undefined, page: 1, pageSize: 1, estado: "pendientes" }),
-    enabled: conciliable,
-  });
 
   const idField = idFieldFor(medio);
 
@@ -255,44 +248,28 @@ export function MovimientosPorMedio({
   const r = resumen.data;
   return (
     <div className="space-y-2">
-      {r && (
-        <TiraIndicadores items={[
-          { titulo: "Saldo", valor: r.saldo != null ? formatMoneda(r.saldo) : "—", pie: r.ultimoMovimiento ? `al ${formatFecha(String(r.ultimoMovimiento))}` : undefined },
-          ...(conciliable && r.pendientes != null ? [{
-            titulo: "Sin conciliar", valor: formatCantidad(r.pendientes), aviso: !!r.pendientes, activo: soloPendientes,
-            pie: r.pendientes ? `${formatMoneda(r.importePendiente ?? 0)}${r.pendienteMasViejo ? ` · desde ${formatFecha(String(r.pendienteMasViejo))}` : ""}` : "todo conciliado",
-            onClick: () => { setPage(1); setSoloPendientes(!soloPendientes); },
-          }] : []),
-          ...(r.ultimaCarga !== undefined ? [{ titulo: "Último extracto", valor: r.ultimaCarga ? formatFecha(String(r.ultimaCarga)) : "—" }] : []),
-        ]} />
-      )}
-      <FilterBar onSubmit={(e) => e.preventDefault()}>
-        <RangoFechas valor={{ desde: fechaDesde, hasta: fechaHasta }} onChange={(r) => { setPage(1); setFechaDesde(r.desde); setFechaHasta(r.hasta); }} />
-        <div className="w-64">
-          <span className="mb-1 block text-xs font-medium text-ink-secondary">Buscar</span>
-          <input value={buscar} onChange={(e) => setBuscar(e.target.value)} placeholder="Concepto, contacto o importe"
-            className="w-full rounded-md border border-border bg-surface px-3 py-1.5 text-sm" aria-label="Buscar movimientos" />
-        </div>
-        {conciliable && (
-          <div>
-            <span className="mb-1 block text-xs font-medium text-ink-secondary">Conciliación</span>
-            <Segmentos<"todos" | "pendientes"> etiqueta="Conciliación" valor={soloPendientes ? "pendientes" : "todos"}
-              onChange={(v) => { setPage(1); setSoloPendientes(v === "pendientes"); }}
-              opciones={[{ id: "todos", label: "Todos" }, { id: "pendientes", label: "Pendientes de conciliar", aviso: pendientes.data?.total }]} />
-          </div>
+      <div className="flex flex-wrap items-center gap-2">
+        {r && (
+          <TiraIndicadores compacta items={[
+            { titulo: "Saldo", valor: r.saldo != null ? formatMoneda(r.saldo) : "—", pie: r.ultimoMovimiento ? `al ${formatFecha(String(r.ultimoMovimiento))}` : undefined },
+            ...(conciliable && r.pendientes != null ? [{
+              titulo: "Sin conciliar", valor: formatCantidad(r.pendientes), aviso: !!r.pendientes, activo: soloPendientes,
+              pie: `${r.pendientes ? `${formatMoneda(r.importePendiente ?? 0)}${r.pendienteMasViejo ? ` · desde ${formatFecha(String(r.pendienteMasViejo))}` : ""} · ` : ""}clic para ${soloPendientes ? "ver todos" : "ver solo los pendientes"}`,
+              onClick: () => { setPage(1); setSoloPendientes(!soloPendientes); },
+            }] : []),
+            ...(r.ultimaCarga !== undefined ? [{ titulo: "Último extracto", valor: r.ultimaCarga ? formatFecha(String(r.ultimaCarga)) : "—" }] : []),
+          ]} />
         )}
+        <RangoFechas etiqueta="" valor={{ desde: fechaDesde, hasta: fechaHasta }} onChange={(x) => { setPage(1); setFechaDesde(x.desde); setFechaHasta(x.hasta); }} />
+        <input value={buscar} onChange={(e) => setBuscar(e.target.value)} placeholder="Buscar concepto, contacto o importe"
+          className="h-8 w-72 rounded-md border border-border bg-surface px-3 text-sm" aria-label="Buscar movimientos" />
+        {soloPendientes && <button type="button" onClick={() => { setPage(1); setSoloPendientes(false); }}
+          className="h-7 rounded-full bg-finance-light px-2.5 text-xs font-medium text-finance">Solo pendientes ✕</button>}
         {medio === "valores-propios" && (
-          <a
-            href={urlExportarValoresPropios({
-              fechaDesde: fechaDesde || undefined,
-              fechaHasta: fechaHasta || undefined,
-            })}
-            className="self-end rounded border border-border px-3 py-1.5 text-sm hover:bg-surface-sunken"
-          >
-            Exportar a Excel
-          </a>
+          <a href={urlExportarValoresPropios({ fechaDesde: fechaDesde || undefined, fechaHasta: fechaHasta || undefined })}
+            className="ml-auto h-8 rounded-md border border-border px-3 py-1.5 text-sm hover:bg-surface-sunken">Exportar a Excel</a>
         )}
-      </FilterBar>
+      </div>
 
       {isLoading && <LoadingState />}
       {isError && (

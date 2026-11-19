@@ -81,3 +81,17 @@ Pedido: "los encabezados consumen demasiado lugar; al scrollear se pierden los e
 - **Un solo scroll:** evitar contenedores con scroll anidados (`max-h-[...] overflow-auto`) dentro de la página; si la tabla es el trabajo principal, que ocupe el alto restante (`h-[calc(100vh-…)]`) con el thead fijo.
 - **Formularios largos:** encabezado del documento (proveedor, número, fecha, total) compacto y fijo arriba; barra de acciones Guardar/Cancelar fija abajo (`sticky bottom-0 border-t bg-surface py-2 flex justify-end gap-2`) siempre visible; grillas de renglones con thead fijo. Campos en grillas de 3-4 columnas, `h-8`, etiquetas `text-xs` encima.
 - **Verificación:** captura a 1600×900 y a 1366×768 de cada pantalla tocada: medir el y de la primera fila y scrollear para confirmar que el thead queda visible bajo la barra de navegación.
+
+## Anatomía de hoja (Sergio, 19/11/2026)
+
+Estándar obligatorio para todas las hojas y menús. Detalle, API y bocetos: `specs/051-experiencia-uso-moderna/estandar-encabezados-20261119.md`. Reemplaza el presupuesto de 220 px de la sección anterior.
+
+- **Presupuesto:** a lo sumo 2 filas de 40 px bajo una navegación de 48 px. Primera fila de datos ≤ 180 px a 1600×900 y sin segundas líneas a 1366×768.
+- **Fila 1** (`PageHeader`, `h-10`, sticky): título `text-base` · pestañas de sección (`Segmentos size="sm" variante="subrayado"`, nunca en una fila propia) · chips de estado (`ChipEstado`: punto + ≤ 3 palabras, detalle en tooltip/popover) · acciones a la derecha (1 primaria + menú "⋯").
+- **Fila 2** (children de PageHeader, `h-10`): `TiraIndicadores compacta` (≤ 3, sin caja, pie en tooltip; el indicador que filtra es un chip-toggle y reemplaza segmentos Todos/Pendientes) + separador + `FilterBar variante="inline"` (sin caja ni etiquetas arriba, controles `h-8`, `RangoFechas compacto`, búsqueda al tipear, resto en "Más filtros" con contador).
+- **Prohibido:** banners/Callout fijos sobre la tabla, etiquetas encima de filtros en listados, filas propias para pestañas o indicadores.
+- **Plegado a 1366:** pies de indicadores → texto del chip de estado → filtros secundarios a "Más filtros" → pestañas a "Más ▾" → acciones a "⋯". Siempre visibles: título, pestaña activa, búsqueda, fechas, indicador que filtra, acción primaria.
+- **Menús:** NavHeader `h-12`, ítems `h-8 px-2.5 text-sm`, módulo activo resaltado, desplegables `h-8` por ítem con grupos, máximo 2 niveles, Escape/flechas. Sub-navegaciones de sección (RemitosSubNav, etc.) = `pestanas` del PageHeader.
+- **Formularios:** encabezado de documento en una fila (← tipo + número + contacto · estado · total), campos en grilla de 4 columnas `h-8` con etiqueta `text-xs`, barra fija abajo con totales y Cancelar/Guardar.
+- **Detalle/cuenta corriente:** la entidad es el título, sus vistas son pestañas, sus saldos son indicadores, sus avisos son ChipEstado; datos de ficha en el popover del título.
+- **Verificar** con capturas a 1600×900 y 1366×768: medir y de la primera fila y que Fila 1 + Fila 2 + thead queden fijos al scrollear.
