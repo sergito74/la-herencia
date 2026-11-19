@@ -249,10 +249,20 @@ async def calcular_pendientes() -> dict:
     """Corre el motor sobre todas las facturas en alcance (insumo/contratista)
     que todavía no tienen ninguna corrida — botón de "activación" masiva en
     vez de tener que pedir cada propuesta una por una."""
-    insumos_calculados = 0
-    for id_detalle_compra in await run_in_threadpool(repository.candidatos_insumo_sin_corrida):
-        await _asegurar_corrida(id_detalle_compra, "Insumo")
-        insumos_calculados += 1
+    # 19/11/2026: los insumos pasan por el motor 050 (tamiz por rubro, cierre al centavo, motivo si no cierra) y solo
+    # dentro del alcance; el cálculo viejo dejaba propuestas "Pendiente" sin motivo en facturas fuera de alcance.
+    from src.features.imputacion import progresivo
+
+    def _insumos() -> int:
+        n = 0
+        for r in progresivo.renglones_en_alcance():
+            if repository.corrida_vigente(r["id"], None) is None:
+                progresivo.imputar_renglon(r["id"])
+                n += 1
+        return n
+
+    async with _lock_corridas:
+        insumos_calculados = await run_in_threadpool(_insumos)
 
     contratistas_calculados = 0
     for id_compra in await run_in_threadpool(repository.candidatos_contratista_sin_corrida):
