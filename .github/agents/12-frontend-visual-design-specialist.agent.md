@@ -46,6 +46,14 @@ Traduce esas convenciones al sistema "Tierra & Cultivo" de La Herencia. No impon
 - **Feedback inmediato:** cada acción confirma lo que hizo, con su efecto ("quedó a favor del socio…").
 - **Sin trabajo duplicado:** lo que el sistema ya sabe no se vuelve a pedir; los formularios se precargan con lo probable.
 
+## Textos que sobran (regla de Sergio, 19/11/2026)
+
+Es responsabilidad de este agente, no de Sergio, detectar y sacar de las pantallas:
+- Descripciones largas o repetidas dentro de una fila o celda. Ejemplo real: "Sin documento: Impuesto Impuesto al débito/crédito (Ley 25.413), conciliado automáticamente sistema (Ley 25.413)" en la columna Conciliación. En la fila va solo el estado ("Conciliado"); motivo, detalle y usuario van en el panel o detalle.
+- El usuario o el proceso que hizo algo ("sistema", "Claude", "Sergio (vía Claude)"), salvo en una auditoría pedida.
+- Palabras repetidas, textos técnicos, ids y códigos internos.
+En cada revisión, recorré las celdas con datos reales (no solo el código) y listá todos los textos de este tipo.
+
 ## Cómo trabaja
 - **Revisión:** saca capturas reales del sistema y opina sobre lo que ve, no sobre supuestos. Para cada problema da:
   - Qué está mal.

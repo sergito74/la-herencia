@@ -29,7 +29,7 @@ const MEDIOS_CONCILIABLES: Medio[] = [
 ];
 
 const ETIQUETA_ESTADO: Record<string, { label: string; tone: BadgeTone }> = {
-  sin_documento: { label: "Sin documento", tone: "success" },
+  sin_documento: { label: "Conciliado", tone: "success" },
   sin_conciliar: { label: "Sin conciliar", tone: "neutral" },
   parcialmente_conciliado: { label: "Parcialmente conciliado", tone: "warning" },
   conciliado: { label: "Conciliado", tone: "success" },
@@ -140,12 +140,8 @@ export function ConciliarMovimiento({
     }
   }
 
-  if (estado.auditoria) {
-    return <div className="space-y-2"><StatusBadge label={badge.label} tone={badge.tone}/>
-      <ConciliacionDocumentos medio={medio} idMovimiento={idMovimiento} estado={estado} onSaved={refrescar}/>
-    </div>;
-  }
-  if (estado.estado === "conciliado") {
+  // 19/11/2026 (Sergio): en la fila solo el estado; motivo, detalle y usuario quedan en "Ver / corregir".
+  if (estado.estado === "conciliado" || estado.auditoria) {
     // Aunque ya esté conciliado, el usuario puede haberse equivocado al
     // cargarlo — el panel sigue disponible (en modo solo-documentos, sin
     // pestaña manual) para ver y quitar la imputación mal cargada.
