@@ -393,3 +393,23 @@ def leer_y_cargar(path: Path = PLANILLA, solo_ver: bool = False) -> dict:
 def ultima_lectura() -> dict | None:
     f = fetch_one("SELECT TOP 1 Resultado AS r FROM dbo.OrdenesPlanillaMatiasLecturas ORDER BY IdLectura DESC")
     return json.loads(f["r"]) if f else None
+
+
+def marcar_resuelta(fecha_iso: str, path: Path = PLANILLA) -> dict:
+    """19/11/2026 (Sergio): un aviso de la planilla que ya se resolvió a mano (orden cargada en el sistema, o el cambio
+    ya revisado) se deja de mostrar. Se registra con la huella actual: si Matías la vuelve a cambiar, avisa de nuevo."""
+    fecha = date.fromisoformat(fecha_iso[:10])
+    with _lock:
+        filas = leer_planilla(path).get(fecha)
+        h = huella(filas) if filas else None
+        if _importadas().get(fecha):
+            execute_write("UPDATE dbo.OrdenesPlanillaMatias SET Huella = ? WHERE Fecha = ?", (h, fecha))
+        else:
+            execute_write("INSERT INTO dbo.OrdenesPlanillaMatias (Fecha, IdOrdenTrabajo, Huella) VALUES (?, NULL, ?)", (fecha, h))
+        u = ultima_lectura() or {}
+        if u:
+            for k in ("paraRevisar", "cambiadas"):
+                u[k] = [x for x in u.get(k, []) if x.get("fecha", "")[:10] != fecha.isoformat()]
+            execute_write("INSERT INTO dbo.OrdenesPlanillaMatiasLecturas (Resultado) VALUES (?)",
+                          (json.dumps(u, ensure_ascii=False, default=str),))
+        return u

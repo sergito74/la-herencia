@@ -82,6 +82,16 @@ async def planilla_matias_leer():
         raise HTTPException(404, "No se encontró la planilla de presupuesto en Dropbox") from exc
 
 
+@router.post("/planilla-matias/resuelta/{fecha}")
+async def planilla_matias_resuelta(fecha: str):
+    from src.features.ordenes import planilla_matias
+
+    try:
+        return await run_in_threadpool(planilla_matias.marcar_resuelta, fecha)
+    except FileNotFoundError as exc:
+        raise HTTPException(404, "No se encontró la planilla de presupuesto en Dropbox") from exc
+
+
 @router.get("/exportar")
 async def exportar_ordenes(
     idContratista: int | None = None, idLote: int | None = None, idCultivo: int | None = None, idCampania: int | None = None,

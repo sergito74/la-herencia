@@ -322,3 +322,4 @@ export interface LecturaPlanillaMatias {
 }
 export const fetchPlanillaMatias = () => apiGet<LecturaPlanillaMatias>("/api/ordenes/planilla-matias");
 export const leerPlanillaMatias = () => apiPost<LecturaPlanillaMatias>("/api/ordenes/planilla-matias/leer", {});
+export const resolverAvisoMatias = (fecha: string) => apiPost<LecturaPlanillaMatias>(`/api/ordenes/planilla-matias/resuelta/${fecha.slice(0, 10)}`, {});

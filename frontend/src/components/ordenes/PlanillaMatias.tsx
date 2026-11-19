@@ -7,7 +7,7 @@ import { StatusBadge } from "@/components/ui/StatusBadge";
 import { Button } from "@/components/ui/Button";
 import { Callout } from "@/components/ui/Callout";
 import { formatCantidad, formatFecha } from "@/lib/format";
-import { fetchPlanillaMatias, leerPlanillaMatias, type LecturaPlanillaMatias } from "@/services/ordenesApi";
+import { fetchPlanillaMatias, leerPlanillaMatias, resolverAvisoMatias, type LecturaPlanillaMatias } from "@/services/ordenesApi";
 
 const CULTIVO: Record<string, string> = {
   G: "Girasol", GR: "Girasol", T: "Trigo", S1: "Soja 1ª", S2: "Soja 2ª", M: "Maíz", M1: "Maíz", MZDIF: "Maíz diferido",
@@ -64,6 +64,15 @@ export function PlanillaMatias() {
     finally { setOcupado(false); }
   }
 
+  async function resuelta(fecha: string) {
+    setOcupado(true); setError("");
+    try { qc.setQueryData<LecturaPlanillaMatias>(["planilla-matias"], await resolverAvisoMatias(fecha)); await qc.invalidateQueries({ queryKey: ["inicio"] }); }
+    catch (e) { setError(e instanceof Error ? e.message : "No se pudo marcar como resuelta"); }
+    finally { setOcupado(false); }
+  }
+  const BotonResuelta = ({ fecha }: { fecha: string }) => <SoloLectura><Button size="sm" variant="secondary" className="mt-3" disabled={ocupado}
+    onClick={() => resuelta(fecha)}>Ya está resuelta</Button></SoloLectura>;
+
   const creadas = data?.creadas ?? [], revisar = data?.paraRevisar ?? [], cambiadas = data?.cambiadas ?? [];
 
   const tono = revisar.length ? "error" : creadas.some(c => c.faltantes.length) || cambiadas.length ? "aviso" : "info";
@@ -87,9 +96,12 @@ export function PlanillaMatias() {
       {revisar.map(r => <Tarjeta key={r.fecha} fecha={r.fecha} momentos={r.momentos} estado="Para corregir en la planilla" tono="danger">
         <p className="mb-2">No se cargó: la planilla tiene datos que no cierran. Cuando Matías los corrija, volvé a leerla.</p>
         <ul className="space-y-1.5">{r.problemas.map(p => <li key={p} className="flex gap-2"><span aria-hidden className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-status-danger" /><span>{p}</span></li>)}</ul>
+        <BotonResuelta fecha={r.fecha} />
       </Tarjeta>)}
       {cambiadas.map(c => <Tarjeta key={c.fecha} fecha={c.fecha} estado="Cambió en la planilla" tono="neutral">
-        <p>Matías la modificó después de cargarla como <Link className="font-medium text-finance underline" href={`/produccion/ordenes/${c.idOrden}/editar`}>orden {c.idOrden}</Link>. Revisá si hay que ajustarla.</p>
+        {c.idOrden ? <p>Matías la modificó después de cargarla como <Link className="font-medium text-finance underline" href={`/produccion/ordenes/${c.idOrden}/editar`}>orden {c.idOrden}</Link>. Revisá si hay que ajustarla.</p>
+          : <p>Matías la modificó después de que la diste por resuelta. Revisá si hay que ajustar la orden.</p>}
+        <BotonResuelta fecha={c.fecha} />
       </Tarjeta>)}
     </div> : null}
   </Callout>;
