@@ -64,6 +64,13 @@ async def listar_ordenes(
     )
 
 
+def _refrescar_inicio() -> None:
+    """El Inicio guarda su resumen 10 minutos: un aviso resuelto no debe seguir apareciendo ahí (19/11/2026)."""
+    from src.features.inicio import service as inicio
+
+    inicio.resumen(forzar=True)
+
+
 # 18/11/2026: órdenes de pulverización desde la planilla de Matías (solapa "orden pulv LH").
 @router.get("/planilla-matias")
 async def planilla_matias_ultima():
@@ -77,7 +84,9 @@ async def planilla_matias_leer():
     from src.features.ordenes import planilla_matias
 
     try:
-        return await run_in_threadpool(planilla_matias.leer_y_cargar)
+        r = await run_in_threadpool(planilla_matias.leer_y_cargar)
+        _refrescar_inicio()
+        return r
     except FileNotFoundError as exc:
         raise HTTPException(404, "No se encontró la planilla de presupuesto en Dropbox") from exc
 
@@ -87,7 +96,9 @@ async def planilla_matias_resuelta(fecha: str):
     from src.features.ordenes import planilla_matias
 
     try:
-        return await run_in_threadpool(planilla_matias.marcar_resuelta, fecha)
+        r = await run_in_threadpool(planilla_matias.marcar_resuelta, fecha)
+        _refrescar_inicio()
+        return r
     except FileNotFoundError as exc:
         raise HTTPException(404, "No se encontró la planilla de presupuesto en Dropbox") from exc
 
