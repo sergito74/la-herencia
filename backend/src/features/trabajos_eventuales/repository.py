@@ -25,7 +25,8 @@ def total_trabajo(dias, jornal, viaticos=0, redondeo=0):
 
 
 BASE = """FROM dbo.TrabajosEventuales t JOIN dbo.Contactos c ON c.IdContacto=t.IdContacto
-OUTER APPLY (SELECT SUM(v.Importe) AS Vinculado FROM dbo.TrabajosEventualesVinculos v WHERE v.IdTrabajo=t.IdTrabajo) s
+-- 19/11/2026: pagado por banco = vinculado a una liquidación que se concilió con Tesorería (Mori, octubre 2026)
+OUTER APPLY (SELECT SUM(v.Importe) AS Vinculado, SUM(CASE WHEN cz.IdOrigenDocumento IS NOT NULL THEN v.Importe END) AS Liquidado FROM dbo.TrabajosEventualesVinculos v LEFT JOIN (SELECT DISTINCT IdOrigenDocumento FROM dbo.ConciliacionesTesoreria WHERE TipoOrigenDocumento='Remuneraciones') cz ON cz.IdOrigenDocumento=v.IdSalario WHERE v.IdTrabajo=t.IdTrabajo) s
 OUTER APPLY (SELECT COUNT(*) AS Hay, SUM(CASE WHEN (p.Medio<>'caja' OR o.Estado<>'Anulada')
                     AND (p.Medio<>'socio' OR ms.Anulada=0) THEN p.Importe END) AS Pagado
              FROM dbo.TrabajosEventualesPagos p LEFT JOIN dbo.OperacionesCajaEfectivo o ON o.IdOperacion=p.IdOperacion
@@ -33,14 +34,14 @@ OUTER APPLY (SELECT COUNT(*) AS Hay, SUM(CASE WHEN (p.Medio<>'caja' OR o.Estado<
              WHERE p.IdTrabajo=t.IdTrabajo) pg"""
 COLS = """t.IdTrabajo AS idTrabajo,t.IdContacto AS idContacto,c.[Razon Social] AS trabajador,t.Fecha AS fecha,
 t.Descripcion AS descripcion,t.Dias AS dias,t.Jornal AS jornal,t.Viaticos AS viaticos,t.Redondeo AS redondeo,
-t.Total AS total,CASE WHEN pg.Hay=0 THEN t.EstadoPago WHEN ISNULL(pg.Pagado,0)>=t.Total THEN 'Pagado' ELSE 'Pendiente' END AS estadoPago,t.NumeroRecibo AS numeroRecibo,t.Observaciones AS observaciones,
+t.Total AS total,CASE WHEN pg.Hay=0 AND ISNULL(s.Liquidado,0)>=t.Total THEN 'Pagado' WHEN pg.Hay=0 THEN t.EstadoPago WHEN ISNULL(pg.Pagado,0)>=t.Total THEN 'Pagado' ELSE 'Pendiente' END AS estadoPago,t.NumeroRecibo AS numeroRecibo,t.Observaciones AS observaciones,
 ISNULL(s.Vinculado,0) AS vinculado,t.Total-ISNULL(s.Vinculado,0) AS sinVincular,t.OrigenClave AS origen,ISNULL(pg.Pagado,0) AS pagado"""
 
 
 def listar(id_contacto=None, desde=None, hasta=None, estado=None, vinculacion=None, id_salario=None, page=1, page_size=50):
     where, params = [], []
     for condicion, valor in (("t.IdContacto=?", id_contacto), ("t.Fecha>=?", desde), ("t.Fecha<=?", hasta),
-                              ("(CASE WHEN pg.Hay=0 THEN t.EstadoPago WHEN ISNULL(pg.Pagado,0)>=t.Total THEN 'Pagado' ELSE 'Pendiente' END)=?", estado)):
+                              ("(CASE WHEN pg.Hay=0 AND ISNULL(s.Liquidado,0)>=t.Total THEN 'Pagado' WHEN pg.Hay=0 THEN t.EstadoPago WHEN ISNULL(pg.Pagado,0)>=t.Total THEN 'Pagado' ELSE 'Pendiente' END)=?", estado)):
         if valor is not None:
             where.append(condicion)
             params.append(valor)
