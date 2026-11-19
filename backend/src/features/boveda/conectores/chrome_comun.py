@@ -21,11 +21,14 @@ import os
 import re
 import socket
 import subprocess
+import logging
 import time
 from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta
 from decimal import Decimal
 from pathlib import Path
+
+_log = logging.getLogger(__name__)
 
 from src.features.boveda.conectores import (
     Credencial, CredencialesRechazadas, DatosCompra, DocumentoPortal, PortalCambio, RequiereIntervencion, registrar,
@@ -407,7 +410,27 @@ class ConectorMovistar(_ChromeComun):
     nombre = "Movistar Empresas"
     id_portal = 19
 
+    # 18/11/2026: el ingreso falló varias veces sin motivo real (la clave guardada era la correcta). Antes, si a los 60 s
+    # seguía el formulario, se daba la clave por rechazada y la bóveda la marcaba. Ahora: hasta 3 intentos completos
+    # (Chrome nuevo cada vez, con espera creciente), y "clave rechazada" solo si el portal lo dice con todas las letras.
+    INTENTOS = 3
+    RECHAZO = re.compile(r"(usuario|contrase[ñn]a|clave|datos)[^.]{0,40}(incorrect|inv[aá]lid|no coincid|err[oó]ne)"
+                         r"|(incorrect|inv[aá]lid)[^.]{0,40}(usuario|contrase[ñn]a|clave)|bloquead", re.I)
+
     def ingresar(self, pw, credencial: Credencial) -> _Sesion:
+        ultimo: Exception | None = None
+        for intento in range(1, self.INTENTOS + 1):
+            try:
+                return self._ingresar_una_vez(pw, credencial)
+            except CredencialesRechazadas:
+                raise  # el portal lo dijo explícitamente: no insistir (podría bloquear el usuario)
+            except (RequiereIntervencion, PortalCambio) as e:
+                ultimo = e
+                _log.warning("Movistar: intento %s de ingreso fallido: %s", intento, e)
+                time.sleep(20 * intento)
+        raise ultimo
+
+    def _ingresar_una_vez(self, pw, credencial: Credencial) -> _Sesion:
         s = _abrir_chrome(pw, PERFILES / str(self.id_portal), MOVISTAR_LOGIN)
         try:
             p = s.pagina
@@ -415,20 +438,29 @@ class ConectorMovistar(_ChromeComun):
             _esperar(p, lambda: MOVISTAR in p.url or formulario(), 90, "No apareció el ingreso de Movistar")
             if MOVISTAR not in p.url:
                 _completar_ingreso(p, credencial)
-                for _ in range(60):
+                reenviado = False
+                for i in range(120):
                     if MOVISTAR in p.url:
                         break
-                    if re.search(r"ERROR\s*777", p.inner_text("body")):
+                    try:
+                        cuerpo = p.inner_text("body")
+                    except Exception:
+                        cuerpo = ""  # la página está cambiando
+                    if re.search(r"ERROR\s*777", cuerpo):
                         raise RequiereIntervencion("Movistar rechazó el ingreso automático (ERROR 777)")
+                    if self.RECHAZO.search(cuerpo):
+                        raise CredencialesRechazadas("Movistar rechazó usuario o contraseña")
                     # Elección de "Movistar Empresas" después del ingreso, cuando el portal la pide.
                     opcion = p.get_by_text("Movistar Empresas", exact=True)
                     if opcion.count() and opcion.first.is_visible():
                         opcion.first.click()
+                    # Si a los 40 s sigue el formulario sin mensaje, se vuelve a completar una vez (clic perdido).
+                    if i == 40 and not reenviado and formulario():
+                        reenviado = True
+                        _completar_ingreso(p, credencial)
                     p.wait_for_timeout(1000)
                 else:
-                    if formulario():
-                        raise CredencialesRechazadas("Movistar rechazó usuario o contraseña")
-                    raise PortalCambio("Movistar no completó el ingreso")
+                    _esperar(p, lambda: False, 0, "Movistar no completó el ingreso")  # deja captura y diagnostica
             return s
         except Exception:
             self.cerrar(s)
