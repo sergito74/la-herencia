@@ -14,7 +14,7 @@ export function FilterBar({
   return (
     <form
       onSubmit={onSubmit}
-      className="flex flex-wrap items-end gap-3 rounded-md border border-border bg-surface p-4"
+      className="flex flex-wrap items-end gap-x-3 gap-y-2 rounded-md border border-border bg-surface px-3 py-2"
     >
       {children}
     </form>

@@ -20,7 +20,7 @@ export function Callout({ tono = "info", titulo, resumen, accion, defaultAbierto
   }[tono];
   const punto = { info: "bg-finance", ok: "bg-status-success", aviso: "bg-status-warning", error: "bg-status-danger" }[tono];
   return (
-    <section className={`mb-3 rounded-lg border ${colores} px-4 py-2.5 text-sm`}>
+    <section className={`mb-2 rounded-lg border ${colores} px-3 py-1.5 text-sm`}>
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
         <span aria-hidden className={`h-2 w-2 shrink-0 rounded-full ${punto}`} />
         <strong className="font-semibold text-ink-primary">{titulo}</strong>

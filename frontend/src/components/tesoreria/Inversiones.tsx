@@ -7,6 +7,7 @@ import { Segmentos } from "@/components/ui/Segmentos";
 import { SideDrawer } from "@/components/ui/SideDrawer";
 import { EmptyState, ErrorState, LoadingState } from "@/components/ui/States";
 import { StatusBadge } from "@/components/ui/StatusBadge";
+import { TiraIndicadores } from "@/components/ui/TiraIndicadores";
 import { formatCantidad, formatFecha, formatMoneda } from "@/lib/format";
 import { apiGet } from "@/services/apiClient";
 
@@ -24,13 +25,6 @@ type Vista = "rendimiento" | "plazos" | "fima" | "revisar";
 const MESES = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
 const mesTexto = (p: string) => `${MESES[Number(p.slice(5, 7)) - 1]} ${p.slice(0, 4)}`;
 
-function Indicador({ titulo, valor, pie, aviso, onClick }: { titulo: string; valor: string; pie?: string; aviso?: boolean; onClick?: () => void }) {
-  const cls = `h-full rounded-lg border p-3 text-left shadow-sm ${aviso ? "border-status-warning/40 bg-status-warning-bg/40" : "border-border bg-surface"}`;
-  const c = <><p className="text-xs font-medium uppercase tracking-wide text-ink-muted">{titulo}</p>
-    <p className="mt-0.5 font-data text-lg font-semibold text-ink-primary">{valor}</p>{pie && <p className="text-xs text-ink-secondary">{pie}</p>}</>;
-  return onClick ? <button type="button" onClick={onClick} className={cls}>{c}</button> : <div className={cls}>{c}</div>;
-}
-
 function Barras({ ejercicios }: { ejercicios: Ejercicio[] }) {
   const max = Math.max(1, ...ejercicios.map((e) => e.total));
   const partes: [keyof Ejercicio, string, string][] = [["plazoFijoNacion", "Plazo fijo Nación", "bg-finance/70"], ["plazoFijoGalicia", "Plazo fijo Galicia", "bg-agro/60"], ["fima", "Fondo Fima", "bg-amber-400/80"]];
@@ -39,11 +33,11 @@ function Barras({ ejercicios }: { ejercicios: Ejercicio[] }) {
       <div className="mb-3 flex flex-wrap gap-4 text-xs text-ink-secondary">
         {partes.map(([, n, c]) => <span key={n} className="inline-flex items-center gap-1.5"><span className={`h-2.5 w-2.5 rounded-sm ${c}`} />{n}</span>)}
       </div>
-      <div className="flex h-48 items-end gap-3">
+      <div className="flex h-40 items-end gap-3">
         {ejercicios.map((e) => (
           <div key={e.ejercicio} className="flex flex-1 flex-col items-center gap-1" title={`${e.ejercicio}: ${formatMoneda(e.total)}`}>
             <span className="font-data text-[11px] text-ink-secondary">{formatMoneda(e.total).replace(/,\d\d$/, "")}</span>
-            <div className="flex w-full max-w-[3rem] flex-col-reverse overflow-hidden rounded-t" style={{ height: `${Math.max(2, (e.total / max) * 150)}px` }}>
+            <div className="flex w-full max-w-[3rem] flex-col-reverse overflow-hidden rounded-t" style={{ height: `${Math.max(2, (e.total / max) * 120)}px` }}>
               {partes.map(([k, n, c]) => { const v = e[k] as number; return v > 0 ? <div key={n} className={c} style={{ height: `${(v / e.total) * 100}%` }} /> : null; })}
             </div>
             <span className="text-[11px] text-ink-secondary">{e.ejercicio}</span>
@@ -81,15 +75,13 @@ export function Inversiones() {
   ];
 
   return (
-    <div className="space-y-4">
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <Indicador titulo="Invertido hoy" valor={formatMoneda(d.invertido)} pie={d.fimaFecha ? `Fondo Fima al ${formatFecha(d.fimaFecha)}` : undefined} />
-        <Indicador titulo={`Rendimiento ${d.ejercicioActual}`} valor={formatMoneda(d.rendimientoEjercicio)} pie="ejercicio del 01/04 al 31/03" />
-        <Indicador titulo="Plazos fijos vigentes" valor={formatCantidad(d.plazosFijosVigentes.length)}
-          pie={d.plazosFijosVigentes.length ? formatMoneda(d.plazosFijosVigentes.reduce((s, p) => s + p.capital, 0)) : "ninguno"} />
-        <Indicador titulo="Para revisar" valor={formatCantidad(d.revisar.length)} pie={d.revisar.length ? "inversiones sin su vuelta" : "todo cierra"}
-          aviso={d.revisar.length > 0} onClick={d.revisar.length ? () => setVista("revisar") : undefined} />
-      </div>
+    <div className="space-y-3">
+      <TiraIndicadores items={[
+        { titulo: "Invertido hoy", valor: formatMoneda(d.invertido), pie: d.fimaFecha ? `Fima al ${formatFecha(d.fimaFecha)}` : undefined },
+        { titulo: `Rendimiento ${d.ejercicioActual}`, valor: formatMoneda(d.rendimientoEjercicio), pie: "01/04 al 31/03" },
+        { titulo: "Plazos fijos vigentes", valor: formatCantidad(d.plazosFijosVigentes.length) },
+        { titulo: "Para revisar", valor: formatCantidad(d.revisar.length), aviso: d.revisar.length > 0, onClick: d.revisar.length ? () => setVista("revisar") : undefined },
+      ]} />
 
       <Segmentos<Vista> etiqueta="Vista" valor={vista} onChange={setVista} opciones={[
         { id: "rendimiento", label: "Rendimiento por ejercicio" }, { id: "plazos", label: "Plazos fijos" }, { id: "fima", label: "Fondo Fima" },

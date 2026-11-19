@@ -114,7 +114,7 @@ export function DataTable<T>({
   sort: controlledSort,
   onSortChange,
   layout = "auto",
-  stickyHeader = false,
+  stickyHeader = true,
   rowClassName,
   onRowClick,
   rowActions,
@@ -169,10 +169,12 @@ export function DataTable<T>({
 
   return (
     <div className="space-y-3">
-      <div className={`${fijo ? "" : "overflow-x-auto "}rounded-md border border-border bg-surface`}>
+      {/* 19/11/2026 (Sergio): los títulos de columna no se pierden al bajar. Con ancho fijo quedan bajo la barra de
+          navegación; si la tabla es más ancha que la pantalla, la tabla scrollea dentro de su marco con los títulos fijos. */}
+      <div className={`${fijo ? "" : `overflow-auto ${stickyHeader ? "max-h-[calc(100vh-7rem)] " : ""}`}rounded-md border border-border bg-surface`}>
         <table className={`${fijo ? "w-full table-fixed" : "min-w-full"} divide-y divide-border text-sm`}>
           {fijo && <colgroup>{columns.map((c) => <col key={c.key} className={c.width} />)}</colgroup>}
-          <thead className={`bg-surface-sunken text-left ${fijo && stickyHeader ? "sticky top-[53px] z-10 shadow-[0_1px_0_var(--color-border,#e5e5e5)]" : ""}`}>
+          <thead className={`bg-surface-sunken text-left ${stickyHeader ? `sticky ${fijo ? "top-[53px]" : "top-0"} z-10 shadow-[0_1px_0_var(--color-border,#e5e5e5)]` : ""}`}>
             <tr>
               {columns.map((col) => {
                 const active = sort?.key === col.key;

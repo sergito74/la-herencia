@@ -66,3 +66,18 @@ En cada revisión, recorré las celdas con datos reales (no solo el código) y l
   - Con `08-agro-erp-frontend-specialist`, para la terminología del agro.
   - Con `02-web-frontend-engineer`, que implementa.
 - **Límites:** no modifica archivos ni datos. Entrega recomendaciones priorizadas y verificables.
+
+## Densidad y encabezados fijos (Sergio, 19/11/2026)
+
+Pedido: "los encabezados consumen demasiado lugar; al scrollear se pierden los encabezados de columnas". Aplica a TODAS las hojas.
+
+- **Presupuesto de zona fija:** título + pestañas + indicadores + filtros ≤ 220 px a 1600×900 (la primera fila de datos arranca antes de y=284 contando la barra de navegación de 64 px). Medirlo en captura en cada revisión.
+- **Título de página:** `text-lg font-semibold leading-tight` (no text-2xl), subtítulo solo si aporta, `text-xs text-muted` en la misma línea; acciones primarias a la derecha del título (`flex items-center justify-between gap-3 py-2`). Sin descripciones de párrafo.
+- **Pestañas / Segmentos:** `h-8 text-sm px-3`, subrayado activo; en la misma fila que el título cuando entra; nunca una fila propia con márgenes > `mb-2`.
+- **Indicadores:** tira de stats en una sola línea (`flex flex-wrap items-baseline gap-x-6 gap-y-1 text-sm py-1`): etiqueta `text-xs text-muted`, valor `font-semibold tabular-nums`, pie `text-xs` en la misma fila. Alto ≤ 36 px. Nada de tarjetas de 110 px; tarjeta grande solo en tableros de resumen sin tabla.
+- **Filtros:** una sola fila sin caja, borde ni fondo propio (`flex flex-wrap items-center gap-2 py-1`), controles `h-8 text-sm`; búsqueda primero; filtros avanzados en un popover "Más filtros"; chips de filtros activos en la misma fila.
+- **Bloques informativos** (ej. "Informes del Estudio", alertas de estado): colapsados a una línea `text-xs` o a un ícono/chip de estado junto al título con detalle en popover/panel. Nunca un banner fijo de varias líneas sobre la tabla.
+- **Encabezados de columnas fijos:** toda tabla de datos usa DataTable (thead `sticky top-16 z-10` con fondo opaco y borde inferior, compensando la barra de 64 px), o, si la tabla vive en un contenedor con scroll propio, `sticky top-0` dentro de él. Prohibido `<table>` a mano en listados: si hace falta, migrar a DataTable o copiar el mismo patrón. Filas `h-8`/`py-1.5`, `text-sm`. Totales en `tfoot` sticky abajo cuando existan.
+- **Un solo scroll:** evitar contenedores con scroll anidados (`max-h-[...] overflow-auto`) dentro de la página; si la tabla es el trabajo principal, que ocupe el alto restante (`h-[calc(100vh-…)]`) con el thead fijo.
+- **Formularios largos:** encabezado del documento (proveedor, número, fecha, total) compacto y fijo arriba; barra de acciones Guardar/Cancelar fija abajo (`sticky bottom-0 border-t bg-surface py-2 flex justify-end gap-2`) siempre visible; grillas de renglones con thead fijo. Campos en grillas de 3-4 columnas, `h-8`, etiquetas `text-xs` encima.
+- **Verificación:** captura a 1600×900 y a 1366×768 de cada pantalla tocada: medir el y de la primera fila y scrollear para confirmar que el thead queda visible bajo la barra de navegación.

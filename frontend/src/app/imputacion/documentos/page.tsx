@@ -17,6 +17,7 @@ import { RangoFechas, type Rango } from "@/components/ui/RangoFechas";
 import { Segmentos } from "@/components/ui/Segmentos";
 import { ErrorState, LoadingState } from "@/components/ui/States";
 import { StatusBadge } from "@/components/ui/StatusBadge";
+import { TiraIndicadores } from "@/components/ui/TiraIndicadores";
 import { useToast } from "@/components/ui/Toast";
 import { formatCantidad, formatFecha, formatMoneda } from "@/lib/format";
 import { API_BASE_URL, ApiError, apiPost } from "@/services/apiClient";
@@ -25,16 +26,6 @@ import { aprobarCorridas, fetchResumenDocumentos, type DocumentoFila, type Estad
 const TAM = 50;
 const ABREV: Record<string, string> = { Factura: "FC", "Nota de Credito": "NC", "Nota de Crédito": "NC", "Nota de Debito": "ND", "Nota de Débito": "ND" };
 type Agrupar = "documento" | "destino" | "proveedor";
-
-function Kpi({ titulo, valor, pie, onClick, activo, aviso }: { titulo: string; valor: string; pie?: string; onClick?: () => void; activo?: boolean; aviso?: boolean }) {
-  const cls = `rounded-lg border p-3 text-left shadow-sm transition ${activo ? "border-finance/50 ring-1 ring-finance/30" : "border-border"} ${aviso ? "bg-status-warning-bg/50" : "bg-surface"} ${onClick ? "hover:border-border-strong hover:shadow" : ""}`;
-  const contenido = <>
-    <p className="text-xs font-medium uppercase tracking-wide text-ink-muted">{titulo}</p>
-    <p className="mt-0.5 font-data text-lg font-semibold text-ink-primary">{valor}</p>
-    {pie && <p className="text-xs text-ink-secondary">{pie}</p>}
-  </>;
-  return onClick ? <button type="button" onClick={onClick} className={cls}>{contenido}</button> : <div className={cls}>{contenido}</div>;
-}
 
 function MasAcciones({ exportar }: { exportar: string }) {
   const [abierto, setAbierto] = useState(false);
@@ -127,25 +118,24 @@ function Pagina() {
   ];
 
   return (
-    <main className="mx-auto max-w-none space-y-3 px-6 py-3">
+    <main className="mx-auto max-w-none space-y-2 px-6 py-3">
       <PageHeader titulo="Imputación de compras" ayuda="A dónde fue cada compra: Adm. General u otro centro de costos, ganadería, un cultivo y campaña, o el stock. Hacé clic en una fila para ver el detalle. El costo de los cultivos está en Producción › Costo por cultivo.">
         <div className="ml-auto"><MasAcciones exportar={exportar} /></div>
       </PageHeader>
 
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <Kpi titulo="Imputado" valor={d ? formatMoneda(d.importe) : "…"} pie={d ? `${formatCantidad(d.total)} documentos con estos filtros` : undefined} />
-        <Kpi titulo="Para revisar" valor={formatCantidad((cuenta("revisar")?.cantidad ?? 0) + (cuenta("decision")?.cantidad ?? 0))}
-          pie="esperan tu decisión" aviso={!!((cuenta("revisar")?.cantidad ?? 0) + (cuenta("decision")?.cantidad ?? 0))}
-          activo={estado === "revisar"} onClick={() => setEstado(estado === "revisar" ? "" : "revisar")} />
-        <Kpi titulo="Pendientes de aprobar" valor={formatCantidad(cuenta("pendiente")?.cantidad ?? 0)}
-          pie={cuenta("pendiente")?.importe ? formatMoneda(cuenta("pendiente")!.importe) : "nada para aprobar"}
-          activo={estado === "pendiente"} onClick={() => setEstado(estado === "pendiente" ? "" : "pendiente")} />
-        <Kpi titulo="Control de costos" valor={ctrl.data ? (avisos ? `${avisos} aviso${avisos === 1 ? "" : "s"}` : "Todo cierra") : "…"}
-          pie={ctrl.data?.fecha ? `controlado ${formatFecha(ctrl.data.fecha)} ${ctrl.data.fecha.slice(11, 16)} h` : undefined}
-          aviso={avisos > 0} onClick={() => setControl(true)} />
-      </div>
+      <TiraIndicadores items={[
+        { titulo: "Imputado", valor: d ? formatMoneda(d.importe) : "…", pie: d ? `${formatCantidad(d.total)} documentos` : undefined },
+        { titulo: "Para revisar", valor: formatCantidad((cuenta("revisar")?.cantidad ?? 0) + (cuenta("decision")?.cantidad ?? 0)),
+          aviso: !!((cuenta("revisar")?.cantidad ?? 0) + (cuenta("decision")?.cantidad ?? 0)), activo: estado === "revisar",
+          onClick: () => setEstado(estado === "revisar" ? "" : "revisar") },
+        { titulo: "Pendientes de aprobar", valor: formatCantidad(cuenta("pendiente")?.cantidad ?? 0),
+          pie: cuenta("pendiente")?.importe ? formatMoneda(cuenta("pendiente")!.importe) : undefined, activo: estado === "pendiente",
+          onClick: () => setEstado(estado === "pendiente" ? "" : "pendiente") },
+        { titulo: "Control de costos", valor: ctrl.data ? (avisos ? `${avisos} aviso${avisos === 1 ? "" : "s"}` : "Todo cierra") : "…",
+          aviso: avisos > 0, onClick: () => setControl(true) },
+      ]} />
 
-      <section className="space-y-3 rounded-lg border border-border bg-surface p-3">
+      <section className="space-y-2 rounded-lg border border-border bg-surface px-3 py-2">
         <div className="flex flex-wrap items-end gap-3">
           <RangoFechas valor={rango} onChange={setRango} etiqueta="Período" />
           <div className="w-64">

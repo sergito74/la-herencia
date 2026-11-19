@@ -3,6 +3,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { RangoFechas } from "@/components/ui/RangoFechas";
 import { Segmentos } from "@/components/ui/Segmentos";
+import { TiraIndicadores } from "@/components/ui/TiraIndicadores";
 import { SideDrawer } from "@/components/ui/SideDrawer";
 import { useEffect, useState } from "react";
 
@@ -253,19 +254,17 @@ export function MovimientosPorMedio({
 
   const r = resumen.data;
   return (
-    <div className="space-y-4">
+    <div className="space-y-2">
       {r && (
-        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-          <Indicador titulo="Saldo" valor={r.saldo != null ? formatMoneda(r.saldo) : "—"} pie={r.ultimoMovimiento ? `al ${formatFecha(String(r.ultimoMovimiento))}` : undefined} />
-          {conciliable && r.pendientes != null && (
-            <button type="button" onClick={() => { setPage(1); setSoloPendientes(true); }} className="text-left">
-              <Indicador titulo="Sin conciliar" valor={`${formatCantidad(r.pendientes)} movimientos`}
-                pie={r.pendientes ? `${formatMoneda(r.importePendiente ?? 0)}${r.pendienteMasViejo ? ` · el más viejo del ${formatFecha(String(r.pendienteMasViejo))}` : ""}` : "todo conciliado"}
-                aviso={!!r.pendientes} />
-            </button>
-          )}
-          {r.ultimaCarga !== undefined && <Indicador titulo="Último extracto cargado" valor={r.ultimaCarga ? formatFecha(String(r.ultimaCarga)) : "—"} pie="desde Excel o PDF" />}
-        </div>
+        <TiraIndicadores items={[
+          { titulo: "Saldo", valor: r.saldo != null ? formatMoneda(r.saldo) : "—", pie: r.ultimoMovimiento ? `al ${formatFecha(String(r.ultimoMovimiento))}` : undefined },
+          ...(conciliable && r.pendientes != null ? [{
+            titulo: "Sin conciliar", valor: formatCantidad(r.pendientes), aviso: !!r.pendientes, activo: soloPendientes,
+            pie: r.pendientes ? `${formatMoneda(r.importePendiente ?? 0)}${r.pendienteMasViejo ? ` · desde ${formatFecha(String(r.pendienteMasViejo))}` : ""}` : "todo conciliado",
+            onClick: () => { setPage(1); setSoloPendientes(!soloPendientes); },
+          }] : []),
+          ...(r.ultimaCarga !== undefined ? [{ titulo: "Último extracto", valor: r.ultimaCarga ? formatFecha(String(r.ultimaCarga)) : "—" }] : []),
+        ]} />
       )}
       <FilterBar onSubmit={(e) => e.preventDefault()}>
         <RangoFechas valor={{ desde: fechaDesde, hasta: fechaHasta }} onChange={(r) => { setPage(1); setFechaDesde(r.desde); setFechaHasta(r.hasta); }} />
@@ -354,12 +353,3 @@ export function MovimientosPorMedio({
 
 export { MEDIO_LABELS };
 
-function Indicador({ titulo, valor, pie, aviso }: { titulo: string; valor: string; pie?: string; aviso?: boolean }) {
-  return (
-    <div className={`h-full rounded-lg border p-3 shadow-sm ${aviso ? "border-status-warning/40 bg-status-warning-bg/40" : "border-border bg-surface"}`}>
-      <p className="text-xs font-medium uppercase tracking-wide text-ink-muted">{titulo}</p>
-      <p className="mt-0.5 font-data text-lg font-semibold text-ink-primary">{valor}</p>
-      {pie && <p className="text-xs text-ink-secondary">{pie}</p>}
-    </div>
-  );
-}
