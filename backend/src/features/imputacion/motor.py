@@ -246,6 +246,22 @@ def calcular_propuesta_contratista(id_compra: int) -> list[dict]:
     return fracciones
 
 
+# 18/11/2026 (Sergio: "es un error grave, no puede ocurrir"): un renglón de labor va SOLO a las órdenes de esa labor.
+# Antes, la siembra y la fertilización del maíz de una misma factura se repartían entre la orden de siembra y la de
+# fertilización por superficie (mitad y mitad), y el costo por concepto quedaba cruzado.
+_LABOR_DE_RUBRO = {"siembra": ("siembra",), "fertilizacion": ("fertiliz",), "fumigacion": ("pulveriz", "fumig")}
+
+
+def _norm(t: str | None) -> str:
+    import unicodedata
+    return unicodedata.normalize("NFKD", t or "").encode("ascii", "ignore").decode().lower()
+
+
+def misma_labor(rubro: str | None, labor: str | None) -> bool:
+    claves = _LABOR_DE_RUBRO.get(_norm(rubro))
+    return bool(claves) and any(k in _norm(labor) for k in claves)
+
+
 def evaluar_contratista(id_compra: int) -> tuple[list[dict], str | None]:
     """Reparto propuesto para una factura de contratista/maquinaria, según las
     Órdenes de Trabajo vinculadas en `OrdenesContratistaFacturas` (N a N,
@@ -273,7 +289,8 @@ def evaluar_contratista(id_compra: int) -> tuple[list[dict], str | None]:
             sin_cultivo.append({"idOrdenTrabajo": id_orden, "idCentroCosto": _id_centro_adm_general()})
         else:
             for fila in repository.distribucion_de_orden(id_orden):
-                con_cultivo.append({"idOrdenTrabajo": id_orden, **fila, "superficie": float(fila["superficie"] or 0)})
+                con_cultivo.append({"idOrdenTrabajo": id_orden, **fila, "superficie": float(fila["superficie"] or 0),
+                                    "_labor": orden.get("labor")})
 
     superficie_total = sum(f["superficie"] for f in con_cultivo)
     peso_total = superficie_total + len(sin_cultivo)  # cada Orden sin cultivo pesa como 1 unidad
@@ -295,8 +312,14 @@ def evaluar_contratista(id_compra: int) -> tuple[list[dict], str | None]:
             monto = monto_total * float(r["neto"] or 0) / neto_renglones
             destino = [i for i, f in enumerate(con_cultivo)
                        if r["idCultivo"] and f["idCultivo"] == r["idCultivo"] and f["idCampania"] == r["idCampania"]]
-            sup = sum(con_cultivo[i]["superficie"] for i in destino)
             otra_campania = [i for i, f in enumerate(con_cultivo) if r["idCultivo"] and f["idCultivo"] == r["idCultivo"]]
+            # Si alguna de esas órdenes es de la labor del renglón, van solo a esas.
+            # Si el renglón es de una labor (siembra, fertilización, pulverización) y ninguna orden de ese cultivo es de esa
+            # labor, NO se carga a la orden de otra labor: queda en su cultivo y campaña, sin lote.
+            es_labor = _norm(r.get("rubro")) in _LABOR_DE_RUBRO
+            destino = [i for i in destino if not es_labor or misma_labor(r.get("rubro"), con_cultivo[i]["_labor"])]
+            otra_campania = [i for i in otra_campania if not es_labor or misma_labor(r.get("rubro"), con_cultivo[i]["_labor"])]
+            sup = sum(con_cultivo[i]["superficie"] for i in destino)
             sup_otra = sum(con_cultivo[i]["superficie"] for i in otra_campania)
             if destino and sup > EPS:
                 for i in destino:
@@ -320,13 +343,13 @@ def evaluar_contratista(id_compra: int) -> tuple[list[dict], str | None]:
     for i, f in enumerate(con_cultivo):
         importe = round(importes[i], 2)
         total_repartido += importe
-        fracciones.append({**f, "importe": importe})
+        fracciones.append({**{k: v for k, v in f.items() if k != "_labor"}, "importe": importe})
     for f in sin_cultivo:
         importe = round(importe_sin_cultivo, 2)
         total_repartido += importe
         fracciones.append({**f, "importe": importe})
     for (i, id_campania), monto in cambio_campania.items():
-        fracciones.append({**con_cultivo[i], "idCampania": id_campania, "importe": round(monto, 2)})
+        fracciones.append({**{k: v for k, v in con_cultivo[i].items() if k != "_labor"}, "idCampania": id_campania, "importe": round(monto, 2)})
     for (id_cultivo, id_campania), monto in sin_lote.items():
         fracciones.append({"idOrdenTrabajo": ordenes[0], "idLote": None, "idCultivo": id_cultivo,
                            "idCampania": id_campania, "superficie": 0.0, "importe": round(monto, 2)})

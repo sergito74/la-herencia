@@ -289,9 +289,9 @@ def nombres_campanias() -> dict[int, str]:
 
 def orden_trabajo_info(id_orden_trabajo: int) -> dict | None:
     return fetch_one(
-        "SELECT IdOrdenTrabajo AS idOrdenTrabajo, IdRubro AS idRubro, IdCentroCostos AS idCentroCostos, "
-        "COALESCE(FechaEjecucion, FechaPedido) AS fecha "
-        "FROM dbo.Ordenes_Trabajo WHERE IdOrdenTrabajo = ?",
+        "SELECT o.IdOrdenTrabajo AS idOrdenTrabajo, o.IdRubro AS idRubro, o.IdCentroCostos AS idCentroCostos, "
+        "COALESCE(o.FechaEjecucion, o.FechaPedido) AS fecha, tl.Labor AS labor "
+        "FROM dbo.Ordenes_Trabajo o LEFT JOIN dbo.[Tipo Labores] tl ON tl.IdLabor = o.IdTipoLabor WHERE o.IdOrdenTrabajo = ?",
         (id_orden_trabajo,),
     )
 
@@ -350,7 +350,7 @@ def renglones_repartibles(id_compra: int) -> list[dict]:
     marcas = ",".join("?" * len(RUBROS_FUERA_REPARTO))
     return fetch_all(
         "SELECT ISNULL(d.Cantidad, 0) * ISNULL(d.[Precio Unitario], 0) AS neto, cu.IdCultivo AS idCultivo, "
-        "d.IdCampaña AS idCampania FROM dbo.Det_Compras d "
+        "d.IdCampaña AS idCampania, r.Rubro AS rubro FROM dbo.Det_Compras d "
         "LEFT JOIN dbo.Rubros r ON r.IdRubro = d.IdRubro "
         "LEFT JOIN dbo.DestinoCompras de ON de.IdDestino = d.IdDestino "
         "LEFT JOIN dbo.Cultivos cu ON cu.Cultivo = de.Destino "
