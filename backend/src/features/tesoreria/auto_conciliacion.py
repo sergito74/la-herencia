@@ -86,8 +86,44 @@ def asignar_contacto_recurrente() -> int:
     return total
 
 
+# 19/11/2026 (modelo C de Inversiones, aprobado por Sergio): constituciones, cobros, suscripciones y rescates son pases
+# entre el banco y la inversión; se concilian como "Inversión". El rendimiento lo calcula `tesoreria.inversiones`.
+# Reemplaza los "sin documento / otro" que la conciliación masiva del 29/09 les había puesto a movimientos del Fima.
+_INVERSIONES = {
+    "bna": ("Movimientos BNA", "IdMovimientoBNA",
+            "(Concepto LIKE '%P.FIJO%' OR Concepto = 'PLAZO FIJO' OR IdMovimientoBNA IN (12178, 12263))", "Plazo fijo Nación"),
+    "galicia": ("Movimientos Galicia", "IdMovimiento", "([Descripción] LIKE '%Fima%' OR [Descripción] LIKE '%Plazo Fijo%')", None),
+}
+
+
+def conciliar_inversiones() -> int:
+    from src.features.conciliacion_tesoreria.repository import _stmt_estado
+
+    total = 0
+    for medio, (tabla, col_id, cond, detalle_fijo) in _INVERSIONES.items():
+        texto = "Concepto" if medio == "bna" else "[Descripción]"
+        filas = fetch_all(f"""
+            SELECT m.{col_id} AS id, m.{texto} AS concepto FROM dbo.[{tabla}] m
+            WHERE {cond}
+              AND NOT EXISTS (SELECT 1 FROM dbo.ConciliacionesTesoreria c WHERE c.Medio = ? AND c.IdMovimiento = m.{col_id})
+              AND NOT EXISTS (SELECT 1 FROM dbo.ConciliacionesTesoreriaEstado e WHERE e.Medio = ? AND e.IdMovimiento = m.{col_id}
+                    AND e.IdEstado = (SELECT MAX(e2.IdEstado) FROM dbo.ConciliacionesTesoreriaEstado e2 WHERE e2.Medio = e.Medio
+                                      AND e2.IdMovimiento = e.IdMovimiento)
+                    AND (e.Motivo = 'Inversion' OR e.Estado = 'EstadoQuitado'))""", (medio, medio))
+        stmts = [_stmt_estado(medio, f["id"], "SinDocumento", "Inversion",
+                              detalle_fijo or ("Fondo Fima" if "fima" in (f["concepto"] or "").lower() else "Plazo fijo Galicia"),
+                              None, "sistema (inversiones)") for f in filas]
+        for k in range(0, len(stmts), 500):
+            execute_write_transaction(stmts[k:k + 500])
+        total += len(stmts)
+    if total:
+        _log.info("Inversiones: %s movimientos conciliados como pase a la inversión", total)
+    return total
+
+
 def correr_reglas() -> None:
     conciliar_ley_25413()
+    conciliar_inversiones()
     asignar_contacto_recurrente()
 
 

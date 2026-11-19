@@ -37,6 +37,7 @@ def datos(monkeypatch):
         mov("Galicia", (2, 8), 50.0, 6),
     ]
     monkeypatch.setattr(repository, "get_movimientos_normalizados", lambda d, h: [dict(m) for m in movimientos])
+    monkeypatch.setattr(repository, "_rendimientos_inversiones", lambda movs: [])
     monkeypatch.setattr(atribucion, "construir_indice_ingresos", lambda d, h: {})
     monkeypatch.setattr(atribucion, "_rubro_de_venta", lambda t, i: "Venta Soja")
     monkeypatch.setattr(atribucion, "atribuir_egreso", lambda *a: {"rubro": atribucion.SIN_RUBRO, "centroCosto": None})

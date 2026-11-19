@@ -30,6 +30,7 @@ const MEDIOS_CONCILIABLES: Medio[] = [
 
 const ETIQUETA_ESTADO: Record<string, { label: string; tone: BadgeTone }> = {
   sin_documento: { label: "Conciliado", tone: "success" },
+  inversion: { label: "Inversión", tone: "neutral" },
   sin_conciliar: { label: "Sin conciliar", tone: "neutral" },
   parcialmente_conciliado: { label: "Parcialmente conciliado", tone: "warning" },
   conciliado: { label: "Conciliado", tone: "success" },
@@ -118,7 +119,7 @@ export function ConciliarMovimiento({
         </div>
       );
     }
-    const conciliado = estadoExterno === "conciliado" || estadoExterno === "sin_documento";
+    const conciliado = estadoExterno === "conciliado" || estadoExterno === "sin_documento" || estadoExterno === "inversion";
     return (
       <SoloLectura>
         <div className="flex items-center gap-2">

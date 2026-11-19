@@ -197,7 +197,9 @@ def calcular_estado(medio: str, id_movimiento: int) -> dict:
 
     auditoria = _estado_vigente(medio, id_movimiento)
     if estado != "ya_reconocido" and auditoria:
-        estado = "sin_documento" if auditoria["estado"] == "SinDocumento" else "conciliado"
+        # 19/11/2026: movimiento de una inversión (plazo fijo o Fondo Fima): pase entre el banco y la inversión.
+        estado = ("inversion" if auditoria.get("motivo") == "Inversion" else "sin_documento") \
+            if auditoria["estado"] == "SinDocumento" else "conciliado"
         saldo_pendiente = 0.0
     return {
         "estado": estado,
@@ -257,7 +259,7 @@ def aplicar_conciliacion(
             "para corregirlo, usar la reasignación de contacto desde su cuenta corriente."
         )
     saldo_pendiente = estado["saldoPendiente"]
-    if estado["estado"] in ("sin_documento", "conciliado"):
+    if estado["estado"] in ("sin_documento", "conciliado", "inversion"):
         raise ValueError("El movimiento ya está resuelto; no admite nuevas imputaciones.")
     if importe > saldo_pendiente + TOLERANCIA_REDONDEO:
         raise ValueError(
@@ -354,7 +356,7 @@ def _stmt_estado(
     usuario: str,
 ) -> tuple:
     motivos = {
-        "SinDocumento": ("Impuesto", "Interes", "CompraNoCargada", "Otro"),
+        "SinDocumento": ("Impuesto", "Interes", "CompraNoCargada", "Otro", "Inversion"),
         "DiferenciaAceptada": ("AjusteTipoCambioSinNota", "Redondeo", "Impuesto", "Otro"),
         "EstadoQuitado": ("Revocacion",),
     }

@@ -57,7 +57,7 @@ def plazos_fijos() -> list[dict]:
         usados.add(m["id"])
         if vuelta:
             usados.add(vuelta["id"])
-        salida.append(_par("Plazo fijo Nación", m, vuelta))
+        salida.append(_par("Plazo fijo Nación", m, vuelta, "bna"))
     gal = fetch_all(
         "SELECT IdMovimiento AS id, Fecha AS fecha, [Descripción] AS concepto, ISNULL([Créditos],0) - ISNULL([Débitos],0) AS importe "
         "FROM dbo.[Movimientos Galicia] WHERE [Descripción] LIKE '%Plazo Fijo%' ORDER BY Fecha, IdMovimiento")
@@ -69,13 +69,13 @@ def plazos_fijos() -> list[dict]:
                        and _d(x["fecha"]) > _d(m["fecha"])), None)
         if vuelta:
             usados.add(vuelta["id"])
-        salida.append(_par("Plazo fijo Galicia", m, vuelta))
+        salida.append(_par("Plazo fijo Galicia", m, vuelta, "galicia"))
     return sorted(salida, key=lambda p: p["constitucion"], reverse=True)
 
 
-def _par(cuenta: str, ida: dict, vuelta: dict | None) -> dict:
+def _par(cuenta: str, ida: dict, vuelta: dict | None, medio: str = "") -> dict:
     capital = round(abs(float(ida["importe"])), 2)
-    p = {"cuenta": cuenta, "constitucion": _d(ida["fecha"]).isoformat(), "capital": capital,
+    p = {"cuenta": cuenta, "medio": medio, "idIda": ida["id"], "idVuelta": vuelta["id"] if vuelta else None, "constitucion": _d(ida["fecha"]).isoformat(), "capital": capital,
          "vencimiento": None, "cobrado": None, "rendimiento": None, "dias": None, "tna": None, "estado": "vigente"}
     if vuelta:
         cobrado = round(float(vuelta["importe"]), 2)

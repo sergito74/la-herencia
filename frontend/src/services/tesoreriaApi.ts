@@ -14,6 +14,7 @@ import { API_BASE_URL, apiGet, ApiError, apiPost, apiPostForm } from "@/services
  * `traspaso_interno` es el 5.º valor que suma 024). */
 export type EstadoConciliacion =
   | "sin_documento"
+  | "inversion"
   | "sin_conciliar"
   | "parcialmente_conciliado"
   | "conciliado"

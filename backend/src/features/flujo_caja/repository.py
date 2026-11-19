@@ -19,7 +19,7 @@ from src.features.flujo_caja import atribucion
 from src.features.flujo_caja import cotizacion as cot
 import json
 from pathlib import Path
-from src.features.flujo_caja.clasificacion import TIPOS_INTERNOS, emparejar_traspasos, es_interno, tipo_interno
+from src.features.flujo_caja.clasificacion import TIPOS_INTERNOS, VENCIMIENTO_PLAZO_FIJO, emparejar_traspasos, es_interno, tipo_interno
 
 def _posiciones_fima_oficiales() -> dict[str, float]:
     json_path = Path(__file__).resolve().parent / "fima_posiciones.json"
@@ -638,8 +638,45 @@ def atribuir_movimientos(movimientos: list[dict]) -> list[dict]:
     return movimientos
 
 
+RUBRO_RESULTADOS_FINANCIEROS = "Resultados financieros"
+
+
+def _rendimientos_inversiones(movimientos: list[dict]) -> list[dict]:
+    """19/11/2026 (modelo C de Inversiones): el cobro de un plazo fijo se parte en capital (pase interno) e interés
+    (ingreso "Resultados financieros"); el rendimiento mensual del Fondo Fima entra como ingreso de la cuenta Fima."""
+    from src.features.tesoreria import inversiones
+
+    extra: list[dict] = []
+    interes = {(p["medio"], p["idVuelta"]): p for p in inversiones.plazos_fijos() if p["idVuelta"] and p["rendimiento"]}
+    for m in movimientos:
+        p = interes.get((m.get("origenMovimiento"), m.get("idMovimientoOrigen")))
+        if not p:
+            continue
+        cap, rend = p["capital"], p["rendimiento"]
+        base = {k: v for k, v in m["partes"][0].items() if k not in ("seccion", "rubro", "centroCosto", "importeArs", "documentoAplicado")}
+        m["partes"] = [
+            {**base, "seccion": "internos", "rubro": VENCIMIENTO_PLAZO_FIJO, "centroCosto": None, "importeArs": round(cap, 2),
+             "documentoAplicado": None},
+            {**base, "seccion": "ingresos", "rubro": RUBRO_RESULTADOS_FINANCIEROS, "centroCosto": None, "importeArs": round(rend, 2),
+             "documentoAplicado": None},
+        ]
+    if movimientos:
+        desde, hasta = min(_dia(m["fecha"]) for m in movimientos), max(_dia(m["fecha"]) for m in movimientos)
+        for mes in inversiones.fima():
+            f = date.fromisoformat(mes["fecha"])
+            if desde <= f <= hasta and mes["rendimiento"]:
+                extra.append({"seccion": "ingresos", "rubro": RUBRO_RESULTADOS_FINANCIEROS, "centroCosto": None,
+                              "importeArs": round(mes["rendimiento"], 2), "documentoAplicado": None, "fecha": f,
+                              "cuenta": CUENTA_FIMA, "concepto": f"Rendimiento Fondo Fima {mes['periodo']}", "contacto": None,
+                              "origenMovimiento": None, "idMovimiento": None, "importeMovimiento": round(mes["rendimiento"], 2),
+                              "sinContraparte": False, "esFima": False})
+    return extra
+
+
 def partes_de_movimientos(movimientos: list[dict]) -> list[dict]:
-    return [p for m in atribuir_movimientos(movimientos) for p in m["partes"]]
+    atribuidos = atribuir_movimientos(movimientos)
+    extra = _rendimientos_inversiones(atribuidos)
+    return [p for m in atribuidos for p in m["partes"]] + extra
 
 
 def convertir_partes_a_usd(partes: list[dict], serie: dict) -> None:

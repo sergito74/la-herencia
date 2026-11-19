@@ -34,7 +34,7 @@ NOMBRE = {"galicia": "Banco Galicia", "bna": "Banco Nación", "mercado-libre": "
 COPIAS = Path(r"c:\dev\LaHerencia\backups\conciliaciones-estudio")
 
 ESTADOS = {"conciliado": "Conciliado", "parcialmente_conciliado": "Parcial", "traspaso_interno": "Traspaso entre cuentas",
-           "sin_documento": "Sin documento", "ya_reconocido": "Reconocido", "sin_conciliar": "Pendiente"}
+           "sin_documento": "Sin documento", "inversion": "Inversión", "ya_reconocido": "Reconocido", "sin_conciliar": "Pendiente"}
 
 _PESOS = '#,##0.00;[Red]-#,##0.00'
 _VERDE = "1F3D2B"
