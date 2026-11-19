@@ -27,7 +27,7 @@ export interface EstadoConciliacionResponse {
   auditoria: AuditoriaConciliacion | null;
 }
 
-export type OrigenDocumento = "Compras" | "Impuestos" | "Remuneraciones" | "Alquileres";
+export type OrigenDocumento = "Compras" | "Impuestos" | "Remuneraciones" | "Alquileres" | "Venta Hacienda" | "Venta Granos" | "Pastaje" | "Resumen tarjeta";
 export interface ReferenciaDocumento { origen: OrigenDocumento; idOrigen: number }
 export interface DocumentoConciliable extends ReferenciaDocumento {
   fecha: string | null;

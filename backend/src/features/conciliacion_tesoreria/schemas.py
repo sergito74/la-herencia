@@ -8,7 +8,8 @@ from typing import Literal
 
 from pydantic import BaseModel, Field, ConfigDict, model_validator
 
-OrigenDocumento = Literal["Compras", "Impuestos", "Remuneraciones", "Alquileres"]
+OrigenDocumento = Literal["Compras", "Impuestos", "Remuneraciones", "Alquileres", "Venta Hacienda", "Venta Granos", "Pastaje",
+                          "Resumen tarjeta"]
 
 
 class ReferenciaDocumento(BaseModel):

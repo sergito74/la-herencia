@@ -43,7 +43,7 @@ export function ConciliacionDocumentos({medio,idMovimiento,estado,onSaved}: {
   const cargando = busqueda.length>=2 ? buscar.isFetching : candidatos.isFetching;
   const motivos = sinDocumento ? ["Impuesto","Interes","CompraNoCargada","PaseCaja","Otro"] : ["Impuesto","Redondeo","AjusteTipoCambioSinNota","Otro"];
   const paseCaja = useQuery({queryKey:["pase-caja-candidatos",medio,idMovimiento],
-    queryFn:() => apiGet<{id:number;caja:string;fecha:string;importe:number;concepto:string;detalle:string}[]>(`/api/conciliacion-tesoreria/${medio}/movimientos/${idMovimiento}/pase-caja-candidatos`),
+    queryFn:() => apiGet<{id:number;caja:string;fecha:string;importe:number;concepto:string;detalle:string}[]>(`/api/tesoreria/${medio}/movimientos/${idMovimiento}/pase-caja-candidatos`),
     enabled:sinDocumento && motivo==="PaseCaja"});
   const NOMBRE_CAJA: Record<string,string> = {GiamigliSA:"Giamigli",CondominioLSC:"Condominio LSC"};
   function refrescar() {
