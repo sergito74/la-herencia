@@ -9,7 +9,22 @@ import {
   type ExcelPrevisualizacionConfirmacionResponse,
 } from "@/services/tesoreriaApi";
 import { ErrorState, LoadingState } from "@/components/ui/States";
-import { formatCantidad } from "@/lib/format";
+import { formatCantidad, formatFecha, formatMoneda } from "@/lib/format";
+
+const TITULO: Record<string, string> = {
+  fecha: "Fecha", comprobante: "Comprobante", concepto: "Concepto", importe: "Importe", saldo: "Saldo", descripcion: "Descripción",
+  debitos: "Débitos", creditos: "Créditos", numeroComprobante: "Comprobante", estado: "Estado",
+};
+const MONTOS = new Set(["importe", "saldo", "debitos", "creditos"]);
+const BANCO: Record<string, string> = { bna: "Banco Nación", galicia: "Galicia" };
+
+function celda(key: string, value: unknown): string {
+  if (value == null || value === "") return "—";
+  if (key === "estado") return ESTADO_LABEL[value as string] ?? String(value);
+  if (key === "fecha") return formatFecha(String(value));
+  if (MONTOS.has(key) && typeof value === "number") return formatMoneda(value);
+  return Array.isArray(value) ? value.join(", ") : String(value);
+}
 
 const ESTADO_LABEL: Record<string, string> = {
   nuevo: "Nuevo",
@@ -107,7 +122,7 @@ export function CargaExcel() {
       {resultado && resultado.valido && resultado.resumen && (
         <div className="mt-3 space-y-3">
           <p className="text-sm text-status-success">
-            Medio detectado: <strong>{resultado.medioDetectado}</strong> —{" "}
+            Banco: <strong>{BANCO[resultado.medioDetectado ?? ""] ?? resultado.medioDetectado}</strong> —{" "}
             {formatCantidad(resultado.resumen.nuevos)} nuevos,{" "}
             {formatCantidad(resultado.resumen.omitidosDuplicado)} ya existentes
             {resultado.resumen.omitidosIncompletos > 0
@@ -142,7 +157,7 @@ export function CargaExcel() {
                   {resultado.movimientosPrevisualizados[0] &&
                     Object.keys(resultado.movimientosPrevisualizados[0]).map((key) => (
                       <th key={key} className="px-2 py-1">
-                        {key === "estado" ? "Estado" : key}
+                        {TITULO[key] ?? key}
                       </th>
                     ))}
                 </tr>
@@ -151,13 +166,7 @@ export function CargaExcel() {
                 {resultado.movimientosPrevisualizados.map((mov, i) => (
                   <tr key={i}>
                     {Object.entries(mov).map(([key, value]) => (
-                      <td key={key} className="px-2 py-1">
-                        {key === "estado"
-                          ? ESTADO_LABEL[value as string] ?? String(value)
-                          : Array.isArray(value)
-                            ? value.join(", ")
-                            : String(value ?? "—")}
-                      </td>
+                      <td key={key} className={`px-2 py-1 ${MONTOS.has(key) ? "text-right font-data" : ""}`}>{celda(key, value)}</td>
                     ))}
                   </tr>
                 ))}
