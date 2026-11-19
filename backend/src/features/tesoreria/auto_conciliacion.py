@@ -122,6 +122,12 @@ def conciliar_inversiones() -> int:
 
 
 def correr_reglas() -> None:
+    try:
+        from src.features.tesoreria import lector_fima
+
+        lector_fima.actualizar()  # extracto mensual del Fondo Fima, desde Dropbox
+    except Exception:
+        _log.exception("Lectura del extracto del Fondo Fima")
     conciliar_ley_25413()
     conciliar_inversiones()
     asignar_contacto_recurrente()

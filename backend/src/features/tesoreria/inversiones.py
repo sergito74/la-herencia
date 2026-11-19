@@ -97,8 +97,11 @@ def fima() -> list[dict]:
     salida, anterior, desde = [], 0.0, date(2000, 1, 1)
     for x in pos:
         hasta = date.fromisoformat(x["fecha"])
-        susc = sum(float(m["susc"]) for m in movs if desde < _d(m["fecha"]) <= hasta)
-        resc = sum(float(m["resc"]) for m in movs if desde < _d(m["fecha"]) <= hasta)
+        if "rescates" in x:  # movimientos según el extracto del fondo (más exacto que las fechas del banco)
+            susc, resc = float(x["suscripciones"]), float(x["rescates"])
+        else:
+            susc = sum(float(m["susc"]) for m in movs if desde < _d(m["fecha"]) <= hasta)
+            resc = sum(float(m["resc"]) for m in movs if desde < _d(m["fecha"]) <= hasta)
         saldo = float(x["saldo"])
         salida.append({"periodo": x["periodo"], "fecha": x["fecha"], "saldoAnterior": round(anterior, 2),
                        "suscripciones": round(susc, 2), "rescates": round(resc, 2), "saldo": round(saldo, 2),

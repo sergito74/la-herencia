@@ -8,6 +8,7 @@ import { ButtonLink } from "@/components/ui/Button";
 import { CultivoChip } from "@/components/cultivos/CultivoChip";
 import { formatCantidad, formatFecha, formatMoneda } from "@/lib/format";
 import { fetchInicio, type Pendiente, type ResumenInicio } from "@/services/inicioApi";
+import { apiGet } from "@/services/apiClient";
 
 const MESES = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
 const mes = (p: string) => { const m = p.match(/^(\d{4})-(\d{2})/); return m ? MESES[Number(m[2]) - 1] : p; };
@@ -71,16 +72,20 @@ function Indicador({ titulo, valor, pie, href, error }: { titulo: string; valor:
 }
 
 function Indicadores({ d }: { d: ResumenInicio }) {
+  // 19/11/2026: inversiones (plazos fijos y Fondo Fima), con el rendimiento del ejercicio.
+  const inv = useQuery({ queryKey: ["tesoreria-inversiones"], queryFn: () => apiGet<{ invertido: number; rendimientoEjercicio: number; ejercicioActual: string }>("/api/tesoreria/inversiones") });
   const i = d.indicadores ?? {};
   const b = i.bancos, de = i.deuda, s = i.stock, c = i.cajas;
   const fecha = b?.cuentas ? Object.values(b.cuentas).map((x) => x.fecha).sort().at(-1) : undefined;
   return (
-    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-5">
       <Indicador titulo="Disponible en bancos" href="/finanzas/tesoreria" error={b?.error} valor={formatMoneda(b?.total ?? 0)}
         pie={fecha ? `Nación + Galicia, al ${formatFecha(fecha)}` : "Nación + Galicia"} />
       <Indicador titulo="Deuda con proveedores" href="/finanzas/cuentas-corrientes/saldos" error={de?.error} valor={formatMoneda(de?.pesos ?? 0)}
         pie={`${de?.dolares ? `${formatMoneda(de.dolares, "Dolares")} · ` : ""}${de?.proveedores ?? 0} proveedores`} />
       <Indicador titulo="Stock valuado" href="/produccion/stock" error={s?.error} valor={formatMoneda(s?.valor ?? 0)} pie={`${s?.productos ?? 0} productos en depósito`} />
+      <Indicador titulo="Inversiones" href="/finanzas/tesoreria?medio=inversiones" error={inv.isError} valor={formatMoneda(inv.data?.invertido ?? 0)}
+        pie={inv.data ? `rendimiento ${inv.data.ejercicioActual}: ${formatMoneda(inv.data.rendimientoEjercicio)}` : "…"} />
       <Indicador titulo="Cajas" href="/finanzas/cajas" error={c?.error} valor={formatMoneda(c?.pesos ?? 0)} pie={c?.dolares ? `y ${formatMoneda(c.dolares, "Dolares")}` : "Giamigli y caja chica"} />
     </div>
   );
