@@ -3,7 +3,7 @@
 import { ConciliacionDocumentos } from "./ConciliacionDocumentos";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 
 import {
@@ -49,6 +49,8 @@ export function ConciliarMovimiento({
   medio,
   idMovimiento,
   estadoExterno,
+  idContacto: idContactoFila,
+  contacto: contactoFila,
 }: {
   medio: Medio;
   idMovimiento: number;
@@ -57,6 +59,9 @@ export function ConciliarMovimiento({
   // traspaso interno, este componente no ofrece conciliar (FR-006, misma
   // guarda simétrica que 023 aplica para `ya_reconocido`).
   estadoExterno?: string | null;
+  /** 19/11/2026: contacto que ya trae la fila, para "Ver cuenta" sin consultar el estado. */
+  idContacto?: number | null;
+  contacto?: string | null;
 }) {
   const { showToast } = useToast();
   const queryClient = useQueryClient();
@@ -68,11 +73,22 @@ export function ConciliarMovimiento({
   const [confirmando, setConfirmando] = useState(false);
   const [guardando, setGuardando] = useState(false);
 
+  // 19/11/2026 (auditoría de Tesorería, mejora 1): el listado ya trae el estado de cada fila; el detalle se pide recién
+  // cuando se abre un movimiento (antes eran 51 pedidos por página y la columna mostraba "…").
+  const [activo, setActivo] = useState(!estadoExterno);
+  const [abrirAlCargar, setAbrirAlCargar] = useState(false);
   const estadoQuery = useQuery({
     queryKey: ["conciliacion-estado", medio, idMovimiento],
     queryFn: () => fetchEstadoConciliacion(medio, idMovimiento),
-    enabled: MEDIOS_CONCILIABLES.includes(medio),
+    enabled: MEDIOS_CONCILIABLES.includes(medio) && activo,
   });
+  useEffect(() => {
+    if (abrirAlCargar && estadoQuery.data) {
+      setAbrirAlCargar(false);
+      setImporte(estadoQuery.data.saldoPendiente);
+      setAbierto(true);
+    }
+  }, [abrirAlCargar, estadoQuery.data]);
 
   const referenciaQuery = useQuery({
     queryKey: ["conciliacion-referencia", medio, idMovimiento],
@@ -85,6 +101,32 @@ export function ConciliarMovimiento({
   }
   if (estadoExterno === "traspaso_interno") {
     return <span className="text-xs text-ink-secondary">—</span>;
+  }
+  if (!activo && estadoExterno) {
+    const b = ETIQUETA_ESTADO[estadoExterno] ?? { label: estadoExterno, tone: "neutral" as BadgeTone };
+    const abrir = () => { setActivo(true); setAbrirAlCargar(true); };
+    if (estadoExterno === "ya_reconocido") {
+      return (
+        <div className="flex items-center gap-2">
+          <StatusBadge label={b.label} tone={b.tone} />
+          {idContactoFila ? (
+            <Link href={`/finanzas/cuentas-corrientes?idContacto=${idContactoFila}&razonSocial=${encodeURIComponent(contactoFila ?? "")}`}
+              className="text-xs text-finance underline" title={contactoFila ? `Cuenta de ${contactoFila}` : undefined}>Ver cuenta</Link>
+          ) : (
+            <button type="button" className="text-xs text-finance underline" onClick={() => setActivo(true)}>Ver cuenta</button>
+          )}
+        </div>
+      );
+    }
+    const conciliado = estadoExterno === "conciliado" || estadoExterno === "sin_documento";
+    return (
+      <SoloLectura>
+        <div className="flex items-center gap-2">
+          <StatusBadge label={b.label} tone={b.tone} />
+          <button type="button" className="text-xs text-finance underline" onClick={abrir}>{conciliado ? "Ver / corregir" : "Conciliar"}</button>
+        </div>
+      </SoloLectura>
+    );
   }
   if (estadoQuery.isError) {
     return <button type="button" className="text-xs text-status-danger underline" onClick={() => estadoQuery.refetch()}>No se pudo leer la conciliación. Reintentar</button>;

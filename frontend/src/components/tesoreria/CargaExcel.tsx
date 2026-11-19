@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import {
   confirmarCargaExcel,
@@ -38,7 +38,7 @@ const ESTADO_LABEL: Record<string, string> = {
  * (FR-004); solo "Confirmar carga" escribe en `WC`, reprocesando el mismo
  * archivo (FR-002) en vez de reusar la vista previa en memoria.
  */
-export function CargaExcel() {
+export function CargaExcel({ archivoExterno }: { archivoExterno?: File | null } = {}) {
   const [archivo, setArchivo] = useState<File | null>(null);
   const [resultado, setResultado] = useState<ExcelPrevisualizacionConfirmacionResponse | null>(null);
   const [confirmacion, setConfirmacion] = useState<ExcelConfirmacionResponse | null>(null);
@@ -46,9 +46,15 @@ export function CargaExcel() {
   const [confirmando, setConfirmando] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  useEffect(() => { if (archivoExterno) void procesar(archivoExterno); }, [archivoExterno]); // eslint-disable-line react-hooks/exhaustive-deps
+
   async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const seleccionado = e.target.files?.[0];
     if (!seleccionado) return;
+    await procesar(seleccionado);
+  }
+
+  async function procesar(seleccionado: File) {
 
     setArchivo(seleccionado);
     setCargando(true);
@@ -81,6 +87,7 @@ export function CargaExcel() {
 
   return (
     <section className="rounded-md border border-border bg-surface p-4">
+      {!archivoExterno && <>
       <h3 className="text-sm font-semibold text-ink-primary">
         Cargar resumen bancario (BNA / Galicia, Excel)
       </h3>
@@ -95,6 +102,7 @@ export function CargaExcel() {
         className="mt-3 text-sm"
         onChange={handleFileChange}
       />
+      </>}
 
       {cargando && (
         <div className="mt-3">

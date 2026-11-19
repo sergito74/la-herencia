@@ -3,10 +3,12 @@
 import { useQuery } from "@tanstack/react-query";
 import { RangoFechas } from "@/components/ui/RangoFechas";
 import { Segmentos } from "@/components/ui/Segmentos";
-import { useState } from "react";
+import { SideDrawer } from "@/components/ui/SideDrawer";
+import { useEffect, useState } from "react";
 
 import {
   fetchMovimientos,
+  fetchResumenMedio,
   urlExportarValoresPropios,
   type Medio,
   type MovimientoPorMedio,
@@ -17,7 +19,7 @@ import { VincularTraspasoInterno } from "@/components/tesoreria/VincularTraspaso
 import { DataTable, type DataTableColumn } from "@/components/ui/DataTable";
 import { FilterBar, FilterField, filterInputClass } from "@/components/ui/FilterBar";
 import { ErrorState, LoadingState } from "@/components/ui/States";
-import { formatFecha, formatMoneda } from "@/lib/format";
+import { formatCantidad, formatFecha, formatMoneda } from "@/lib/format";
 import { urlDocumentoLocal } from "@/services/comprasApi";
 
 // Carpetas reales donde viven los resúmenes/extractos originales en esta
@@ -195,11 +197,16 @@ export function MovimientosPorMedio({
   // 19/11/2026: ver solo lo que falta conciliar (Tarjetas se concilia en su propia pantalla).
   const conciliable = medio !== "tarjetas";
   const [soloPendientes, setSoloPendientes] = useState(false);
-  const [expandedId, setExpandedId] = useState<number | null>(highlightKey ?? null);
+  const [buscar, setBuscar] = useState("");
+  const [q, setQ] = useState("");
+  useEffect(() => { const t = setTimeout(() => { setPage(1); setQ(buscar.trim()); }, 350); return () => clearTimeout(t); }, [buscar]);
+  const resumen = useQuery({ queryKey: ["tesoreria-resumen", medio], queryFn: () => fetchResumenMedio(medio) });
+  // 19/11/2026 (auditoría de Tesorería, mejora 3): el detalle del movimiento se abre en un panel lateral.
+  const [abierto, setAbierto] = useState<any | null>(null);
   const pageSize = 50;
 
   const { data, isLoading, isError, refetch } = useQuery({
-    queryKey: ["tesoreria-movimientos", medio, fechaDesde, fechaHasta, page, pageSize, soloPendientes],
+    queryKey: ["tesoreria-movimientos", medio, fechaDesde, fechaHasta, page, pageSize, soloPendientes, q],
     queryFn: () =>
       fetchMovimientos(medio, {
         fechaDesde: fechaDesde || undefined,
@@ -207,6 +214,7 @@ export function MovimientosPorMedio({
         page,
         pageSize,
         estado: soloPendientes ? "pendientes" : undefined,
+        q: q || undefined,
       }),
   });
   const pendientes = useQuery({
@@ -222,6 +230,7 @@ export function MovimientosPorMedio({
       key: col.key,
       header: col.header,
       numeric: col.numeric,
+      align: (col.numeric && !/fecha/i.test(col.key) ? "right" : undefined) as "right" | undefined,
       wrap: col.wrap,
       render: col.render,
     })),
@@ -234,36 +243,37 @@ export function MovimientosPorMedio({
             key: "conciliacion",
             header: "Conciliación",
             render: (item: any) => (
-              <ConciliarMovimiento medio={medio} idMovimiento={item[idField] as number} estadoExterno={item.estadoConciliacion} />
+              <ConciliarMovimiento medio={medio} idMovimiento={item[idField] as number} estadoExterno={item.estadoConciliacion}
+                idContacto={item.idContacto ?? null} contacto={item.contacto ?? null} />
             ),
           },
         ]
       : []),
-    {
-      key: "acciones",
-      header: "",
-      render: (item: any) => {
-        const id = item[idField] as number;
-        const pdf = medio === "bna" ? urlExtractoBna(item.fechaHora) : medio === "mercado-libre" ? urlResumenMercadoLibre(item.fecha) : null;
-        return (
-          <div className="space-y-2">
-            <div className="flex items-center gap-3 whitespace-nowrap text-xs">
-              {pdf && <a href={pdf} target="_blank" rel="noopener noreferrer" className="text-finance hover:underline" title="Abrir el extracto del mes">Extracto</a>}
-              <button type="button" className="text-finance hover:underline" title="Ver de dónde viene este movimiento"
-                onClick={() => setExpandedId(expandedId === id ? null : id)}>{expandedId === id ? "Ocultar origen" : "Origen"}</button>
-              {medio !== "tarjetas" && <VincularTraspasoInterno medio={medio} idMovimiento={id} estadoExterno={item.estadoConciliacion} />}
-            </div>
-            {expandedId === id && <div className="whitespace-normal"><ReferenciaOrigen medio={medio} idMovimiento={id} /></div>}
-          </div>
-        );
-      },
-    },
   ];
 
+  const r = resumen.data;
   return (
     <div className="space-y-4">
+      {r && (
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+          <Indicador titulo="Saldo" valor={r.saldo != null ? formatMoneda(r.saldo) : "—"} pie={r.ultimoMovimiento ? `al ${formatFecha(String(r.ultimoMovimiento))}` : undefined} />
+          {conciliable && r.pendientes != null && (
+            <button type="button" onClick={() => { setPage(1); setSoloPendientes(true); }} className="text-left">
+              <Indicador titulo="Sin conciliar" valor={`${formatCantidad(r.pendientes)} movimientos`}
+                pie={r.pendientes ? `${formatMoneda(r.importePendiente ?? 0)}${r.pendienteMasViejo ? ` · el más viejo del ${formatFecha(String(r.pendienteMasViejo))}` : ""}` : "todo conciliado"}
+                aviso={!!r.pendientes} />
+            </button>
+          )}
+          {r.ultimaCarga !== undefined && <Indicador titulo="Último extracto cargado" valor={r.ultimaCarga ? formatFecha(String(r.ultimaCarga)) : "—"} pie="desde Excel o PDF" />}
+        </div>
+      )}
       <FilterBar onSubmit={(e) => e.preventDefault()}>
         <RangoFechas valor={{ desde: fechaDesde, hasta: fechaHasta }} onChange={(r) => { setPage(1); setFechaDesde(r.desde); setFechaHasta(r.hasta); }} />
+        <div className="w-64">
+          <span className="mb-1 block text-xs font-medium text-ink-secondary">Buscar</span>
+          <input value={buscar} onChange={(e) => setBuscar(e.target.value)} placeholder="Concepto, contacto o importe"
+            className="w-full rounded-md border border-border bg-surface px-3 py-1.5 text-sm" aria-label="Buscar movimientos" />
+        </div>
         {conciliable && (
           <div>
             <span className="mb-1 block text-xs font-medium text-ink-secondary">Conciliación</span>
@@ -290,6 +300,32 @@ export function MovimientosPorMedio({
         <ErrorState message="Ocurrió un error al buscar movimientos." onRetry={() => refetch()} />
       )}
 
+      {abierto && (
+        <SideDrawer open onClose={() => setAbierto(null)} maxWidthClass="max-w-2xl"
+          title={String(abierto.concepto ?? abierto.descripcion ?? abierto.detalle ?? "Movimiento")}
+          subtitulo={`${formatFecha(abierto.fechaHora ?? abierto.fecha)}${abierto.contacto ? ` · ${abierto.contacto}` : ""}`}>
+          <div className="space-y-5 text-sm">
+            <p className="font-data text-2xl font-semibold">{formatMoneda(Number(abierto.importe ?? (abierto.creditos || -(abierto.debitos ?? 0)) ?? 0))}</p>
+            {medio !== "tarjetas" && (
+              <section className="space-y-2">
+                <h3 className="text-xs font-semibold uppercase tracking-wide text-ink-muted">Conciliación</h3>
+                <ConciliarMovimiento medio={medio} idMovimiento={abierto[idField] as number} />
+              </section>
+            )}
+            <section className="space-y-2">
+              <h3 className="text-xs font-semibold uppercase tracking-wide text-ink-muted">De dónde viene</h3>
+              <ReferenciaOrigen medio={medio} idMovimiento={abierto[idField] as number} />
+            </section>
+            {medio !== "tarjetas" && (
+              <section className="space-y-2">
+                <h3 className="text-xs font-semibold uppercase tracking-wide text-ink-muted">Pase entre cuentas propias</h3>
+                <VincularTraspasoInterno medio={medio} idMovimiento={abierto[idField] as number} estadoExterno={abierto.estadoConciliacion} />
+              </section>
+            )}
+          </div>
+        </SideDrawer>
+      )}
+
       {data && (
         <DataTable
           columns={columns}
@@ -301,6 +337,15 @@ export function MovimientosPorMedio({
           total={data.total}
           onPageChange={setPage}
           highlightKey={highlightKey}
+          onRowClick={(item: any) => setAbierto(item)}
+          selectedKey={abierto ? abierto[idField] : null}
+          rowActions={(item: any) => {
+            const pdf = medio === "bna" ? urlExtractoBna(item.fechaHora) : medio === "mercado-libre" ? urlResumenMercadoLibre(item.fecha) : null;
+            return [
+              { label: "Ver detalle", onClick: () => setAbierto(item) },
+              ...(pdf ? [{ label: "Abrir el extracto del mes", href: pdf }] : []),
+            ];
+          }}
         />
       )}
     </div>
@@ -308,3 +353,13 @@ export function MovimientosPorMedio({
 }
 
 export { MEDIO_LABELS };
+
+function Indicador({ titulo, valor, pie, aviso }: { titulo: string; valor: string; pie?: string; aviso?: boolean }) {
+  return (
+    <div className={`h-full rounded-lg border p-3 shadow-sm ${aviso ? "border-status-warning/40 bg-status-warning-bg/40" : "border-border bg-surface"}`}>
+      <p className="text-xs font-medium uppercase tracking-wide text-ink-muted">{titulo}</p>
+      <p className="mt-0.5 font-data text-lg font-semibold text-ink-primary">{valor}</p>
+      {pie && <p className="text-xs text-ink-secondary">{pie}</p>}
+    </div>
+  );
+}

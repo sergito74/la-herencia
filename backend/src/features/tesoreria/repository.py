@@ -49,7 +49,7 @@ MEDIOS_CONFIG: dict[str, MedioConfig] = {
             "concepto": "Concepto",
             "importe": "Importe",
             "idContacto": "IdContacto",
-            "contacto": "Contacto",
+            "contacto": "COALESCE((SELECT _cx.[Razon Social] FROM dbo.Contactos _cx WHERE _cx.IdContacto = NULLIF([Movimientos BNA].IdContacto, 0)), [Movimientos BNA].Contacto)",
             "idCarga": "_crm_bna.IdCarga",
             # El BNA cambio de numero de cuenta 3 veces con el tiempo; hasta
             # 2026-09 todo se cargaba como si fuera una sola cuenta
@@ -94,7 +94,7 @@ MEDIOS_CONFIG: dict[str, MedioConfig] = {
             "creditos": "[Créditos]",
             "saldo": "Saldo",
             "idContacto": "IdContacto",
-            "contacto": "Contacto",
+            "contacto": "COALESCE((SELECT _cx.[Razon Social] FROM dbo.Contactos _cx WHERE _cx.IdContacto = NULLIF([Movimientos Galicia].IdContacto, 0)), [Movimientos Galicia].Contacto)",
             "idCarga": "_crm_gal.IdCarga",
         },
         extra_join=(
@@ -201,17 +201,35 @@ def _select_sql(config: MedioConfig) -> str:
     return ", ".join(f"{sql} AS [{field}]" for field, sql in config.select_columns.items())
 
 
+def _filtro_busqueda(config: MedioConfig, q: str | None) -> tuple[list[str], list]:
+    """19/11/2026: búsqueda por texto (concepto/descripción/contacto) o por importe exacto en formato argentino."""
+    if not q or not q.strip():
+        return [], []
+    q = q.strip()
+    textos = [config.select_columns[k] for k in ("concepto", "descripcion", "contacto", "detalle") if k in config.select_columns]
+    conds, params = [f"{t} LIKE ?" for t in textos], [f"%{q}%"] * len(textos)
+    import re
+    limpio = q.replace("$", "").replace(" ", "")
+    if re.fullmatch(r"-?[\d.]*,?\d+", limpio):
+        valor = float(limpio.replace(".", "").replace(",", ".")) if "," in limpio else float(limpio.replace(".", ""))
+        for k in ("importe", "debitos", "creditos"):
+            if k in config.select_columns:
+                conds.append(f"ABS({config.select_columns[k]}) = ?")
+                params.append(abs(valor))
+    return ([f"({' OR '.join(conds)})"] if conds else []), params
+
+
 def get_movimientos(
     medio: str,
     fecha_desde: date | None,
     fecha_hasta: date | None,
     page: int,
     page_size: int,
+    q: str | None = None,
 ) -> tuple[list[dict], int]:
     config = MEDIOS_CONFIG[medio]
 
-    where_clauses: list[str] = []
-    params: list = []
+    where_clauses, params = _filtro_busqueda(config, q)
     if fecha_desde:
         where_clauses.append(f"{config.date_column} >= ?")
         params.append(as_sql_datetime(fecha_desde))
@@ -275,7 +293,7 @@ def listar_cargas(banco: str) -> list[dict]:
     return rows
 
 
-def ids_pendientes(medio: str, fecha_desde: date | None, fecha_hasta: date | None) -> list[int]:
+def ids_pendientes(medio: str, fecha_desde: date | None, fecha_hasta: date | None, q: str | None = None) -> list[int]:
     """19/11/2026: movimientos sin conciliar (o conciliados en parte), del más nuevo al más viejo.
 
     Una consulta descarta lo resuelto seguro (contacto reconocido o estado vigente) y el estado exacto se calcula
@@ -298,6 +316,12 @@ def ids_pendientes(medio: str, fecha_desde: date | None, fecha_hasta: date | Non
     if fecha_hasta:
         cond.append(f"m.{info.fecha_col} <= ?")
         params.append(as_sql_datetime(fecha_hasta))
+    if q:  # misma búsqueda que el listado, sobre la tabla del medio
+        config = MEDIOS_CONFIG[medio]
+        bq, bp = _filtro_busqueda(config, q)
+        if bq:
+            cond.append(f"m.{info.id_col} IN (SELECT {config.id_column} FROM {config.table} {config.extra_join or ''} WHERE {bq[0]})")
+            params += bp
     filas = fetch_all(f"SELECT m.{info.id_col} AS id FROM {info.tabla} m WHERE {' AND '.join(cond)} "
                       f"ORDER BY m.{info.fecha_col} DESC, m.{info.id_col} DESC", tuple(params))
     return [f["id"] for f in filas if esta_resuelto(medio, f["id"]) in ("sin_conciliar", "parcialmente_conciliado")]
@@ -315,3 +339,30 @@ def get_movimientos_por_ids(medio: str, ids: list[int]) -> list[dict]:
         if "saldo" in f:
             f["saldo"] = None  # el saldo acumulado no aplica a una lista filtrada
     return sorted(filas, key=lambda f: orden.get(f[config.id_field], 0))
+
+
+def resumen(medio: str) -> dict:
+    """19/11/2026 (auditoría de Tesorería, mejora 2): saldo, lo que falta conciliar y el último extracto cargado."""
+    from src.features.conciliacion_tesoreria.repository import MEDIOS_SOPORTADOS, _info
+
+    config = MEDIOS_CONFIG[medio]
+    ultimo, _ = get_movimientos(medio, None, None, 1, 1)
+    salida: dict = {"saldo": (ultimo[0].get("saldo") if ultimo else None),
+                    "ultimoMovimiento": (ultimo[0].get(next((k for k in ("fechaHora", "fecha") if k in config.select_columns), "fecha")) if ultimo else None)}
+    if medio in MEDIOS_SOPORTADOS:
+        ids = ids_pendientes(medio, None, None)
+        info = _info(medio)
+        total, viejo = 0.0, None
+        for k in range(0, len(ids), 900):
+            chunk = ids[k:k + 900]
+            f = fetch_one(f"SELECT SUM(ABS({info.importe_expr})) AS t, MIN({info.fecha_col}) AS v FROM {info.tabla} "
+                          f"WHERE {info.id_col} IN ({','.join('?' * len(chunk))})", tuple(chunk))
+            total += float(f["t"] or 0)
+            viejo = min(x for x in (viejo, f["v"]) if x is not None) if f["v"] is not None or viejo is not None else None
+        salida.update({"pendientes": len(ids), "importePendiente": round(total, 2), "pendienteMasViejo": viejo})
+    banco = {"bna": "BNA", "galicia": "Galicia"}.get(medio)
+    if banco:
+        c = fetch_one("SELECT TOP 1 FechaHoraCarga AS f, NombreArchivo AS n FROM dbo.CargasResumenBancario WHERE Banco = ? "
+                      "ORDER BY FechaHoraCarga DESC", (banco,))
+        salida["ultimaCarga"] = c["f"] if c else None
+    return salida

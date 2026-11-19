@@ -55,6 +55,13 @@ async def list_medios() -> MediosResponse:
     return MediosResponse(medios=list(MEDIOS))
 
 
+@router.get("/{medio}/resumen")
+async def resumen_medio(medio: str) -> dict:
+    """Saldo, pendientes de conciliar y último extracto del medio (19/11/2026)."""
+    _validate_medio(medio)
+    return await run_in_threadpool(repository.resumen, medio)
+
+
 @router.get("/{medio}/movimientos", response_model=MovimientosResponse)
 async def list_movimientos(
     medio: str,
@@ -63,18 +70,19 @@ async def list_movimientos(
     page: int = Query(default=1, ge=1),
     pageSize: int = Query(default=50, ge=1, le=200),
     estado: str | None = Query(default=None, pattern="^pendientes$"),
+    q: str | None = Query(default=None, max_length=80),
 ) -> MovimientosResponse:
     _validate_medio(medio)
     norm_page, norm_page_size = normalize_pagination(page, pageSize)
     if estado == "pendientes" and medio in conciliacion_repository.MEDIOS_SOPORTADOS:
         # 19/11/2026: solo lo que falta conciliar.
-        ids = await run_in_threadpool(repository.ids_pendientes, medio, fechaDesde, fechaHasta)
+        ids = await run_in_threadpool(repository.ids_pendientes, medio, fechaDesde, fechaHasta, q)
         total = len(ids)
         inicio = (norm_page - 1) * norm_page_size
         rows = await run_in_threadpool(repository.get_movimientos_por_ids, medio, ids[inicio:inicio + norm_page_size])
     else:
         rows, total = await run_in_threadpool(
-            repository.get_movimientos, medio, fechaDesde, fechaHasta, norm_page, norm_page_size
+            repository.get_movimientos, medio, fechaDesde, fechaHasta, norm_page, norm_page_size, q
         )
     if medio in conciliacion_repository.MEDIOS_SOPORTADOS:
         id_field = repository.MEDIOS_CONFIG[medio].id_field

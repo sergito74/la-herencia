@@ -47,10 +47,53 @@ def conciliar_ley_25413() -> int:
     return total
 
 
+# 19/11/2026 (auditoría de Tesorería, mejora 4): lo que se repite cada mes (comisión del paquete, IVA base, retención
+# RG 2408…) se asigna solo al contacto de siempre. Regla: el mismo concepto exacto tuvo, en el último año, al menos 3
+# movimientos asignados y TODOS al mismo contacto. Si hubo dos contactos distintos, no se toca (queda para Sergio).
+_CONCEPTO = {"bna": ("Movimientos BNA", "IdMovimientoBNA", "Concepto", "[Fecha / Hora Mov#]"),
+             "galicia": ("Movimientos Galicia", "IdMovimiento", "[Descripción]", "Fecha")}
+
+
+# Nunca por esta regla: inversiones (son pases internos, no gastos) y canales por los que pagan varios clientes.
+import re as _re
+_EXCLUIDO = _re.compile(r"fima|plazo fijo|p\.fijo|cash proveedores|dep\.?efectivo|transf|bca\.e\.tr|cheq|echeq", _re.I)
+
+
+def asignar_contacto_recurrente() -> int:
+    from src.features.tesoreria.repository import ids_pendientes
+
+    total = 0
+    for medio, (tabla, col_id, texto, fecha) in _CONCEPTO.items():
+        historia = fetch_all(f"""
+            SELECT {texto} AS concepto, MIN(IdContacto) AS contacto, COUNT(DISTINCT IdContacto) AS distintos, COUNT(*) AS n
+            FROM dbo.[{tabla}] WHERE ISNULL(IdContacto, 0) <> 0 AND {fecha} >= DATEADD(year, -1, GETDATE())
+            GROUP BY {texto}""")
+        regla = {h["concepto"]: h["contacto"] for h in historia
+                 if h["distintos"] == 1 and h["n"] >= 3 and not _EXCLUIDO.search(h["concepto"] or "")}
+        pendientes = set(ids_pendientes(medio, None, None))
+        if not pendientes or not regla:
+            continue
+        filas = fetch_all(f"SELECT {col_id} AS id, {texto} AS concepto FROM dbo.[{tabla}] WHERE ISNULL(IdContacto, 0) = 0 "
+                          f"AND {fecha} >= DATEADD(year, -1, GETDATE())")
+        cambios = [(regla[f["concepto"]], f["id"]) for f in filas if f["id"] in pendientes and f["concepto"] in regla]
+        for k in range(0, len(cambios), 500):
+            execute_write_transaction([(f"UPDATE dbo.[{tabla}] SET IdContacto = ? WHERE {col_id} = ? AND ISNULL(IdContacto, 0) = 0", c)
+                                       for c in cambios[k:k + 500]])
+        total += len(cambios)
+    if total:
+        _log.info("Contacto recurrente asignado a %s movimientos", total)
+    return total
+
+
+def correr_reglas() -> None:
+    conciliar_ley_25413()
+    asignar_contacto_recurrente()
+
+
 def conciliar_en_segundo_plano() -> None:
     def correr():
         try:
-            conciliar_ley_25413()
+            correr_reglas()
         except Exception:  # nunca frena la carga del extracto
             _log.exception("Conciliación automática Ley 25.413")
     threading.Thread(target=correr, daemon=True).start()
@@ -61,7 +104,7 @@ def arrancar() -> None:
     def bucle():
         while True:
             try:
-                conciliar_ley_25413()
+                correr_reglas()
             except Exception:
                 _log.exception("Conciliación automática Ley 25.413")
             time.sleep(24 * 3600)

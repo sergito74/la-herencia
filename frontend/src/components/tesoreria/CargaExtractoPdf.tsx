@@ -1,7 +1,7 @@
 "use client";
 
 import { useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { confirmarExtractoPdf, previsualizarExtractoPdf, type ExtractoPdfResultado } from "@/services/tesoreriaApi";
 import { LoadingState } from "@/components/ui/States";
@@ -9,7 +9,7 @@ import { formatCantidad, formatFecha, formatMoneda } from "@/lib/format";
 
 /** Resumen bancario en PDF (Galicia o Banco Nación), 04/11/2026. La vista previa no escribe nada: muestra los
  * movimientos nuevos con el contacto que se les asigna; "Confirmar carga" los graba y guarda el PDF con los demás. */
-export function CargaExtractoPdf() {
+export function CargaExtractoPdf({ archivoExterno }: { archivoExterno?: File | null } = {}) {
   const qc = useQueryClient();
   const [archivo, setArchivo] = useState<File | null>(null);
   const [vista, setVista] = useState<ExtractoPdfResultado | null>(null);
@@ -17,9 +17,15 @@ export function CargaExtractoPdf() {
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  useEffect(() => { if (archivoExterno) void procesar(archivoExterno); }, [archivoExterno]); // eslint-disable-line react-hooks/exhaustive-deps
+
   async function elegir(e: React.ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0];
     if (!f) return;
+    await procesar(f);
+  }
+
+  async function procesar(f: File) {
     setArchivo(f);
     setVista(null);
     setHecho(null);
@@ -52,12 +58,14 @@ export function CargaExtractoPdf() {
 
   return (
     <section className="rounded-md border border-border bg-surface p-4">
+      {!archivoExterno && <>
       <h3 className="text-sm font-semibold text-ink-primary">Cargar resumen bancario en PDF (Galicia / Banco Nación)</h3>
       <p className="mt-1 text-xs text-ink-secondary">
         Elegí el PDF del resumen: primero se muestra lo que se va a cargar, sin grabar nada. Lo que ya estaba cargado
         no se repite.
       </p>
       <input type="file" accept=".pdf,application/pdf" className="mt-3 text-sm" onChange={elegir} />
+      </>}
 
       {cargando && <div className="mt-3"><LoadingState rows={2} /></div>}
       {error && (

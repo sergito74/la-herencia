@@ -142,6 +142,8 @@ export interface MovimientosResponse<M extends Medio> {
 export interface MovimientosParams {
   /** 19/11/2026: "pendientes" = solo lo que falta conciliar. */
   estado?: "pendientes";
+  /** Texto (concepto/contacto) o importe exacto. */
+  q?: string;
   fechaDesde?: string;
   fechaHasta?: string;
   page?: number;
@@ -310,3 +312,6 @@ export const confirmarExtractoPdf = (archivo: File) =>
 export interface ListadoEstudio { banco: string; archivo: string; carpeta?: string; actualizada?: string | null; ok?: boolean; detalle?: string }
 export const fetchListadosEstudio = () => apiGet<ListadoEstudio[]>("/api/tesoreria/listados-estudio");
 export const actualizarListadosEstudio = () => apiPost<ListadoEstudio[]>("/api/tesoreria/listados-estudio/actualizar", {});
+
+export interface ResumenMedio { saldo: number | null; ultimoMovimiento: string | null; pendientes?: number; importePendiente?: number; pendienteMasViejo?: string | null; ultimaCarga?: string | null }
+export const fetchResumenMedio = (medio: Medio) => apiGet<ResumenMedio>(`/api/tesoreria/${medio}/resumen`);

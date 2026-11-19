@@ -5,8 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
 
 import { MEDIO_LABELS, MovimientosPorMedio } from "@/components/tesoreria/MovimientosPorMedio";
-import { CargaExcel } from "@/components/tesoreria/CargaExcel";
-import { CargaExtractoPdf } from "@/components/tesoreria/CargaExtractoPdf";
+import { CargaExtracto } from "@/components/tesoreria/CargaExtracto";
 import { ListadosEstudio } from "@/components/tesoreria/ListadosEstudio";
 import { Segmentos } from "@/components/ui/Segmentos";
 import { NuevosParaRevisar } from "@/components/documentos-nuevos/NuevosParaRevisar";
@@ -37,7 +36,9 @@ export default function TesoreriaPage() {
       <Suspense fallback={null}>
         <NuevosParaRevisar modulo="tesoreria" />
       </Suspense>
-      <PageHeader titulo="Tesorería" ayuda="Consulta y conciliación de movimientos por banco, caja, valores y tarjetas." />
+      <PageHeader titulo="Tesorería" ayuda="Consulta y conciliación de movimientos por banco, caja, valores y tarjetas.">
+        <div className="ml-auto"><CargaExtracto /></div>
+      </PageHeader>
       <ListadosEstudio />
 
       <Segmentos etiqueta="Medio" valor={medio} onChange={setMedio} opciones={MEDIOS.map((m) => ({ id: m, label: MEDIO_LABELS[m] }))} />
@@ -46,13 +47,6 @@ export default function TesoreriaPage() {
         <MovimientosPorMedio medio={medio} highlightKey={highlight ? Number(highlight) : undefined} />
       </div>
 
-      <div className="mt-8">
-        <CargaExtractoPdf />
-      </div>
-
-      <div className="mt-4">
-        <CargaExcel />
-      </div>
     </main>
   );
 }
