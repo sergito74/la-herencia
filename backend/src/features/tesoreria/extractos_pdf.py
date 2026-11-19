@@ -446,6 +446,9 @@ def confirmar(nombre: str, contenido: bytes) -> dict:
         grabar(nuevos, [], "extracto-pdf-bna")
     vinculados = _vincular_canjes(banco, nuevos)
     _guardar_copia(banco, nombre, contenido)
+    from src.features.tesoreria import auto_conciliacion  # 19/11/2026: Ley 25.413 se concilia sola
+
+    auto_conciliacion.conciliar_en_segundo_plano()
     return {**_salida(banco, nuevos, ya), "grabados": len(nuevos), "canjesVinculados": vinculados}
 
 

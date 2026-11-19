@@ -119,6 +119,17 @@ def _arrancar_verificacion_externa() -> None:
 
 
 @app.on_event("startup")
+def _arrancar_conciliacion_ley_25413() -> None:
+    """19/11/2026: los movimientos Ley 25.413 se concilian solos (al abrir y una vez por día; también tras cada extracto)."""
+    import os
+
+    if os.environ.get("LA_HERENCIA_SIN_PLANIFICADOR") != "1":
+        from src.features.tesoreria import auto_conciliacion
+
+        auto_conciliacion.arrancar()
+
+
+@app.on_event("startup")
 def _arrancar_informes_estudio() -> None:
     """18/11/2026: el sistema mantiene solos los informes de bancos y tarjetas del Estudio en Dropbox (regenera los que
     cambiaron, cada 3 horas mientras está abierto)."""

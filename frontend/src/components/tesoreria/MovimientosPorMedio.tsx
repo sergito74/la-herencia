@@ -2,6 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { RangoFechas } from "@/components/ui/RangoFechas";
+import { Segmentos } from "@/components/ui/Segmentos";
 import { useState } from "react";
 
 import {
@@ -191,18 +192,27 @@ export function MovimientosPorMedio({
   const [fechaDesde, setFechaDesde] = useState("");
   const [fechaHasta, setFechaHasta] = useState("");
   const [page, setPage] = useState(1);
+  // 19/11/2026: ver solo lo que falta conciliar (Tarjetas se concilia en su propia pantalla).
+  const conciliable = medio !== "tarjetas";
+  const [soloPendientes, setSoloPendientes] = useState(false);
   const [expandedId, setExpandedId] = useState<number | null>(highlightKey ?? null);
   const pageSize = 50;
 
   const { data, isLoading, isError, refetch } = useQuery({
-    queryKey: ["tesoreria-movimientos", medio, fechaDesde, fechaHasta, page, pageSize],
+    queryKey: ["tesoreria-movimientos", medio, fechaDesde, fechaHasta, page, pageSize, soloPendientes],
     queryFn: () =>
       fetchMovimientos(medio, {
         fechaDesde: fechaDesde || undefined,
         fechaHasta: fechaHasta || undefined,
         page,
         pageSize,
+        estado: soloPendientes ? "pendientes" : undefined,
       }),
+  });
+  const pendientes = useQuery({
+    queryKey: ["tesoreria-movimientos", medio, fechaDesde, fechaHasta, "contador-pendientes"],
+    queryFn: () => fetchMovimientos(medio, { fechaDesde: fechaDesde || undefined, fechaHasta: fechaHasta || undefined, page: 1, pageSize: 1, estado: "pendientes" }),
+    enabled: conciliable,
   });
 
   const idField = idFieldFor(medio);
@@ -254,6 +264,14 @@ export function MovimientosPorMedio({
     <div className="space-y-4">
       <FilterBar onSubmit={(e) => e.preventDefault()}>
         <RangoFechas valor={{ desde: fechaDesde, hasta: fechaHasta }} onChange={(r) => { setPage(1); setFechaDesde(r.desde); setFechaHasta(r.hasta); }} />
+        {conciliable && (
+          <div>
+            <span className="mb-1 block text-xs font-medium text-ink-secondary">Conciliación</span>
+            <Segmentos<"todos" | "pendientes"> etiqueta="Conciliación" valor={soloPendientes ? "pendientes" : "todos"}
+              onChange={(v) => { setPage(1); setSoloPendientes(v === "pendientes"); }}
+              opciones={[{ id: "todos", label: "Todos" }, { id: "pendientes", label: "Pendientes de conciliar", aviso: pendientes.data?.total }]} />
+          </div>
+        )}
         {medio === "valores-propios" && (
           <a
             href={urlExportarValoresPropios({
@@ -277,7 +295,7 @@ export function MovimientosPorMedio({
           columns={columns}
           rows={data.items}
           keyField={(item: any) => item[idField]}
-          emptyMessage={`Sin movimientos para ${MEDIO_LABELS[medio]} en este rango.`}
+          emptyMessage={soloPendientes ? `No queda nada por conciliar en ${MEDIO_LABELS[medio]} en este rango.` : `Sin movimientos para ${MEDIO_LABELS[medio]} en este rango.`}
           page={data.page}
           pageSize={data.pageSize}
           total={data.total}

@@ -298,6 +298,9 @@ def confirmar_carga(banco: str, filename: str, contenido: bytes) -> dict:
     resultados = execute_write_transaction(statements)
     id_carga = resultados[n]
 
+    from src.features.tesoreria import auto_conciliacion  # 19/11/2026: Ley 25.413 se concilia sola
+
+    auto_conciliacion.conciliar_en_segundo_plano()
     return {
         "valido": True,
         "banco": banco,

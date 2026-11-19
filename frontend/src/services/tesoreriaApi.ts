@@ -140,6 +140,8 @@ export interface MovimientosResponse<M extends Medio> {
 }
 
 export interface MovimientosParams {
+  /** 19/11/2026: "pendientes" = solo lo que falta conciliar. */
+  estado?: "pendientes";
   fechaDesde?: string;
   fechaHasta?: string;
   page?: number;

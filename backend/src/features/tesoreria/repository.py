@@ -273,3 +273,45 @@ def listar_cargas(banco: str) -> list[dict]:
     for row in rows:
         row["insertados"] = row.pop("cargados")
     return rows
+
+
+def ids_pendientes(medio: str, fecha_desde: date | None, fecha_hasta: date | None) -> list[int]:
+    """19/11/2026: movimientos sin conciliar (o conciliados en parte), del más nuevo al más viejo.
+
+    Una consulta descarta lo resuelto seguro (contacto reconocido o estado vigente) y el estado exacto se calcula
+    con la misma regla que la pantalla (`esta_resuelto`) solo para lo que queda."""
+    from src.features.conciliacion_tesoreria.repository import _info
+    from src.features.tesoreria.estado_resolucion import esta_resuelto
+
+    info = _info(medio)
+    cond = ["NOT EXISTS (SELECT 1 FROM dbo.ConciliacionesTesoreriaEstado e WHERE e.Medio = ? AND e.IdMovimiento = m.{id} "
+            "AND e.IdEstado = (SELECT MAX(e2.IdEstado) FROM dbo.ConciliacionesTesoreriaEstado e2 WHERE e2.Medio = e.Medio "
+            "AND e2.IdMovimiento = e.IdMovimiento) AND e.Estado <> 'EstadoQuitado')".format(id=info.id_col)]
+    params: list = [medio]
+    if info.contacto_col:
+        cond.append(f"(ISNULL(m.{info.contacto_col}, 0) = 0 OR EXISTS (SELECT 1 FROM dbo.BancoOperacionCaja bc "
+                    f"WHERE bc.Medio = ? AND bc.IdMovimiento = m.{info.id_col}))")
+        params.append(medio)
+    if fecha_desde:
+        cond.append(f"m.{info.fecha_col} >= ?")
+        params.append(as_sql_datetime(fecha_desde))
+    if fecha_hasta:
+        cond.append(f"m.{info.fecha_col} <= ?")
+        params.append(as_sql_datetime(fecha_hasta))
+    filas = fetch_all(f"SELECT m.{info.id_col} AS id FROM {info.tabla} m WHERE {' AND '.join(cond)} "
+                      f"ORDER BY m.{info.fecha_col} DESC, m.{info.id_col} DESC", tuple(params))
+    return [f["id"] for f in filas if esta_resuelto(medio, f["id"]) in ("sin_conciliar", "parcialmente_conciliado")]
+
+
+def get_movimientos_por_ids(medio: str, ids: list[int]) -> list[dict]:
+    if not ids:
+        return []
+    config = MEDIOS_CONFIG[medio]
+    marcas = ",".join("?" * len(ids))
+    filas = fetch_all(f"SELECT {_select_sql(config)} FROM {config.table} {config.extra_join or ''} "
+                      f"WHERE {config.id_column} IN ({marcas})", tuple(ids))
+    orden = {i: k for k, i in enumerate(ids)}
+    for f in filas:
+        if "saldo" in f:
+            f["saldo"] = None  # el saldo acumulado no aplica a una lista filtrada
+    return sorted(filas, key=lambda f: orden.get(f[config.id_field], 0))
