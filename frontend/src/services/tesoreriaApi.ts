@@ -191,14 +191,18 @@ async function postArchivo<T>(path: string, archivo: File): Promise<T> {
   const formData = new FormData();
   formData.append("archivo", archivo);
 
+  // 19/11/2026: sin `credentials` no viajaba la sesión y el servidor respondía "Sesión inválida o expirada".
   const response = await fetch(new URL(path, API_BASE_URL), {
     method: "POST",
     body: formData,
+    credentials: "include",
   });
 
   if (!response.ok) {
-    const detail = await response.text().catch(() => "");
-    throw new ApiError(response.status, detail || response.statusText);
+    const texto = await response.text().catch(() => "");
+    let detalle = texto;
+    try { const j = JSON.parse(texto); detalle = typeof j.detail === "string" ? j.detail : texto; } catch { /* texto plano */ }
+    throw new ApiError(response.status, detalle || response.statusText);
   }
 
   return (await response.json()) as T;

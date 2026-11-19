@@ -89,7 +89,7 @@ export function CargaExcel() {
 
       {error && (
         <div className="mt-3">
-          <ErrorState message={`Error: ${error}`} />
+          <ErrorState message={error} />
         </div>
       )}
 
