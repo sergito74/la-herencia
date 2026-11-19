@@ -125,7 +125,10 @@ export function ConsolidadoCampaniaView({
                   <th className="px-3 py-2 text-right">Costo · $</th>
                   <th className="px-3 py-2 text-right">Costo · us$</th>
                   <th className="px-3 py-2 text-right">Venta neta · $</th>
+                  <th className="px-3 py-2 text-right">Venta neta · us$</th>
                   <th className="px-3 py-2 text-right">Margen · $</th>
+                  <th className="px-3 py-2 text-right">Margen · us$</th>
+                  <th className="px-3 py-2 text-right">Rentab. · us$</th>
                   <th className="px-3 py-2">Observación</th>
                 </tr>
               </thead>
@@ -144,7 +147,10 @@ export function ConsolidadoCampaniaView({
                     <td className="px-3 py-2 text-right font-data">{formatMoneda(cultivo.costoTotalPesos)}</td>
                     <td className="px-3 py-2 text-right font-data">{formatMoneda(cultivo.costoTotalDolares, "Dolares")}</td>
                     <td className="px-3 py-2 text-right font-data">{formatMoneda(cultivo.ventaNetaPesos)}</td>
+                    <td className="px-3 py-2 text-right font-data">{formatMoneda(cultivo.ventaNetaDolares, "Dolares")}</td>
                     <td className="px-3 py-2 text-right font-data">{formatMoneda(cultivo.margenBrutoPesos)}</td>
+                    <td className="px-3 py-2 text-right font-data font-medium">{formatMoneda(cultivo.margenBrutoDolares, "Dolares")}</td>
+                    <td className="px-3 py-2 text-right font-data">{cultivo.rentabilidadDolares == null ? "—" : formatPorcentaje(cultivo.rentabilidadDolares)}</td>
                     <td className="px-3 py-2">
                       <div className="flex flex-wrap gap-1">
                         {cultivo.supCosechaEstimada && (
@@ -162,7 +168,7 @@ export function ConsolidadoCampaniaView({
                   </tr>
                 ))}
                 {cultivos.length === 0 && (
-                  <tr><td colSpan={7} className="px-3 py-6 text-center text-ink-secondary">No hay resultados para ese cultivo.</td></tr>
+                  <tr><td colSpan={10} className="px-3 py-6 text-center text-ink-secondary">No hay resultados para ese cultivo.</td></tr>
                 )}
               </tbody>
             </table>
