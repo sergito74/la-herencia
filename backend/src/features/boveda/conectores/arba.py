@@ -76,7 +76,40 @@ class ConectorArba:
             raise
 
     def listar_documentos(self, sesion: _Sesion) -> list[DocumentoPortal]:
+        """19/11/2026 (Sergio): la boleta de cada cuota hay que bajarla antes de pagarla, porque una vez pagada desaparece
+        del portal. ARBA no pide captcha entrando con CUIT y clave. Acá se abre "Pagá" (liquidación integrada, solo
+        lectura) y, si algún objeto tiene cuota a vencer o deuda vencida, la corrida avisa para bajar la boleta ya."""
+        pendientes = self._cuotas_pendientes(sesion)
+        if pendientes:
+            raise RequiereIntervencion("Hay boletas de ARBA para bajar antes de pagar: " + "; ".join(pendientes))
         return []
+
+    def _cuotas_pendientes(self, sesion: _Sesion) -> list[str]:
+        import re
+
+        p = sesion.pagina
+        try:
+            botones = [b for b in p.locator("button").all() if b.is_visible() and "Pag" in (b.inner_text() or "")]
+            if not botones:
+                return []
+            botones[-1].click()
+            p.wait_for_timeout(8000)
+            q = p.context.pages[-1]
+            texto = q.inner_text("body")
+        except Exception:
+            return []  # sin la pantalla de liquidación no se avisa nada (la deuda igual se lee en estado_cuenta)
+        salida = []
+        for m in re.finditer(r"(Automotores|Inmobiliario[^\t\n$]*|Ingresos Brutos[^\t\n$]*|Embarcaciones)\s*\((\d+)\)\s*"
+                             r"\$\s*([\d.,]+)\s*\$\s*([\d.,]+)", texto):
+            vencida, a_vencer = (Decimal(x.replace(".", "").replace(",", ".")) for x in (m.group(3), m.group(4)))
+            if vencida > 0 or a_vencer > 0:
+                partes = []
+                if a_vencer > 0:
+                    partes.append(f"cuota a vencer $ {m.group(4)}")
+                if vencida > 0:
+                    partes.append(f"deuda vencida $ {m.group(3)}")
+                salida.append(f"{m.group(1).strip()}: {', '.join(partes)}")
+        return salida
 
     def _json(self, sesion: _Sesion, url: str) -> dict:
         r = sesion.pagina.context.request.get(url, timeout=90000)
