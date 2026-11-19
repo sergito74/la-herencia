@@ -24,6 +24,11 @@ _CENT = 0.005
 PRECISION_BASE = 2e-5  # error relativo máximo por la precisión de las cantidades guardadas (7 dígitos) y del TC
 
 
+
+def _ar(v) -> str:
+    """Número con formato argentino (miles '.', decimales ',')."""
+    return f"{float(v or 0):,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+
 def _tamiz(id_detalle: int) -> dict | None:
     return fetch_one(
         """
@@ -113,7 +118,7 @@ def decidir_estado(fracciones: list[dict], total: float, motivo: str | None) -> 
         mayor["importe"] = round(float(mayor["importe"]) + diferencia, 2)
         suma = round(sum(float(f["importe"]) for f in fracciones), 2)
     if motivo is None and abs(suma - total) > _CENT:
-        motivo = f"Usos + stock ({suma:,.2f}) no igualan el total del renglón ({total:,.2f})"
+        motivo = f"Usos + stock ({_ar(suma)}) no igualan el total del renglón ({_ar(total)})"
     if motivo is None:
         ahora = datetime.now(timezone.utc)
         return [{**f, "estado": "Aprobada", "fechaAprobacion": ahora} for f in fracciones], None

@@ -7,7 +7,7 @@ import { useMemo, useState } from "react";
 
 import { RemitosSubNav } from "@/components/remitos/RemitosSubNav";
 import { filterInputClass } from "@/components/ui/FilterBar";
-import { ErrorState, LoadingState } from "@/components/ui/States";
+import { EmptyState, ErrorState, LoadingState } from "@/components/ui/States";
 import { formatCantidad, formatFecha, formatMoneda } from "@/lib/format";
 import { fetchFacturasSinOrden, urlExportarFacturasSinOrden, type RenglonSinOrden } from "@/services/ordenesApi";
 
@@ -29,7 +29,7 @@ export default function FacturasSinOrdenPage() {
 
   return (
     <main className="mx-auto max-w-none space-y-3 px-6 py-3">
-      <PageHeader titulo="Imputación de costos · contratistas sin orden" ayuda="Su costo cuenta por el cultivo y la campaña cargados a mano en cada renglón. Para que se impute solo por la superficie de la orden, abrí la factura y tildá sus órdenes de trabajo." />
+      <PageHeader titulo="Contratistas sin orden" ayuda="Su costo cuenta por el cultivo y la campaña cargados a mano en cada renglón. Para que se impute solo por la superficie de la orden, abrí la factura y tildá sus órdenes de trabajo." />
       <RemitosSubNav grupo="costos" />
       <div className="flex flex-wrap items-end gap-3">
         <label className="text-sm">
@@ -48,7 +48,7 @@ export default function FacturasSinOrdenPage() {
       </div>
       {isLoading && <LoadingState />}
       {isError && <ErrorState message="No se pudieron cargar las facturas." onRetry={() => refetch()} />}
-      {data && facturas.length === 0 && <p className="text-sm text-ink-secondary">No hay facturas de contratistas sin orden.</p>}
+      {data && facturas.length === 0 && <EmptyState icono="ok" message="Todas las facturas de contratistas están vinculadas a sus órdenes." />}
       {facturas.length > 0 && (
         <table className="w-full text-sm">
           <thead>

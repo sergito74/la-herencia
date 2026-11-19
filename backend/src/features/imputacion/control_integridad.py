@@ -29,6 +29,11 @@ _estado: dict = {"fecha": None, "problemas": [], "controlando": False, "error": 
 _lock = threading.Lock()
 
 
+
+def _ar(v) -> str:
+    """Número con formato argentino (miles '.', decimales ',')."""
+    return f"{float(v or 0):,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+
 def _doc(f: dict) -> str:
     fecha = f.get("fecha")
     fecha = fecha.strftime("%d/%m/%Y") if hasattr(fecha, "strftime") else (str(fecha)[:10] if fecha else "")
@@ -97,7 +102,7 @@ def _control_renglones() -> list[dict]:
     }
     return [
         {"tipo": "El reparto no suma el importe del renglón", "idCompra": r["idCompra"], "documento": _doc(r),
-         "detalle": f"{r['producto']}: el renglón vale $ {r['esperado']:,.2f} y lo imputado suma $ {r['imputado']:,.2f}"}
+         "detalle": f"{r['producto']}: el renglón vale $ {_ar(r['esperado'])} y lo imputado suma $ {_ar(r['imputado'])}"}
         for r in renglones_que_no_cierran(renglones, fracciones, capas_factura.flete_por_renglon())
     ]
 
@@ -240,8 +245,8 @@ def _control_cerradas() -> list[dict]:
         principales = sorted(cambios.items(), key=lambda kv: -abs(kv[1]))[:5]
         out.append({"tipo": "Cambió el costo de una campaña cerrada", "idCompra": None,
                     "documento": f"{f['cultivo']} {f['campania']} ({str(f['Fecha'])[8:10]}/{str(f['Fecha'])[5:7]}/{str(f['Fecha'])[:4]})",
-                    "detalle": f"{'+' if total >= 0 else ''}$ {total:,.2f}: " + "; ".join(
-                        f"{_nombre_documento(k)} {'+' if v >= 0 else ''}$ {v:,.2f}" for k, v in principales)})
+                    "detalle": f"{'+' if total >= 0 else ''}$ {_ar(total)}: " + "; ".join(
+                        f"{_nombre_documento(k)} {'+' if v >= 0 else ''}$ {_ar(v)}" for k, v in principales)})
     return out
 
 
@@ -335,7 +340,7 @@ def _control_fuera_del_plan() -> list[dict]:
             docs = sorted({l.get("idCompra") for l in lineas if l.get("idCompra")})
             out.append({"tipo": "Costo en un cultivo que no está en el plan agrícola", "idCompra": docs[0] if len(docs) == 1 else None,
                         "documento": f"{p['cultivo']} {p['campania']}",
-                        "detalle": f"$ {total:,.2f} en {len(docs)} comprobante(s): revisar si el cultivo o la campaña son otros"})
+                        "detalle": f"$ {_ar(total)} en {len(docs)} comprobante(s): revisar si el cultivo o la campaña son otros"})
     return out
 
 
@@ -348,7 +353,7 @@ def _control_dolares() -> list[dict]:
                and l.get("idCompra") not in ajustes]
         if sin:
             out.append({"tipo": "Costo sin dólares", "idCompra": None, "documento": f"{p['cultivo']} {p['campania']}",
-                        "detalle": f"{len(sin)} línea(s) por $ {_pesos(sin):,.2f} no suman US$: el costo en dólares queda bajo"})
+                        "detalle": f"{len(sin)} línea(s) por $ {_ar(_pesos(sin))} no suman US$: el costo en dólares queda bajo"})
     return out
 
 
@@ -361,7 +366,7 @@ def _control_ingresos_en_costo() -> list[dict]:
         malas = [l for l in lineas if l.get("origen") == "Seguro" or patron.search(f"{l.get('concepto') or ''} {l.get('rubro') or ''}")]
         if malas:
             out.append({"tipo": "Un ingreso está sumado como costo", "idCompra": None, "documento": f"{p['cultivo']} {p['campania']}",
-                        "detalle": f"$ {_pesos(malas):,.2f} ({', '.join(sorted({str(l.get('concepto')) for l in malas}))})"})
+                        "detalle": f"$ {_ar(_pesos(malas))} ({', '.join(sorted({str(l.get('concepto')) for l in malas}))})"})
     return out
 
 
@@ -538,7 +543,7 @@ def _control_fletes() -> list[dict]:
         f = fetch_all(f"SELECT {_DOC_SQL} FROM dbo.Compras c LEFT JOIN dbo.Contactos co ON co.IdContacto = c.IdContacto WHERE c.IdDeuda = ?",
                       (fl["idCompra"],))
         out.append({"tipo": "Flete de insumos que no llega a ningún costo", "idCompra": fl["idCompra"], "documento": _doc(f[0]) if f else "",
-                    "detalle": f"$ {fl['pesos']:,.2f}: la factura (y sus relacionadas) no tiene insumos aprobados para sumarle el flete"})
+                    "detalle": f"$ {_ar(fl['pesos'])}: la factura (y sus relacionadas) no tiene insumos aprobados para sumarle el flete"})
     return out
 
 
@@ -620,7 +625,7 @@ def _control_consumos_sin_costo() -> list[dict]:
             vistos.add(clave)
             out.append({"tipo": "Insumo consumido a $ 0 (remito sin factura vinculada)", "idCompra": None,
                         "documento": f"remito {x['remito']}",
-                        "detalle": f"{x['producto']}: {x['cantidad']:,.2f} en {p['cultivo']} {p['campania']} (orden {', '.join(map(str, x['ordenes']))}): vincular el remito a su factura"})
+                        "detalle": f"{x['producto']}: {_ar(x['cantidad'])} en {p['cultivo']} {p['campania']} (orden {', '.join(map(str, x['ordenes']))}): vincular el remito a su factura"})
     return out
 
 
@@ -638,7 +643,7 @@ def _control_listado() -> list[dict]:
     return [
         {"tipo": "El listado para el Estudio no suma igual que el sistema", "idCompra": None,
          "documento": f"{k[2] or ''} · {k[1] or ''} del {k[0].strftime('%d/%m/%Y') if hasattr(k[0], 'strftime') else k[0]}",
-         "detalle": f"sistema $ {sistema[k]:,.2f}, listado $ {listado.get(k, 0):,.2f}"}
+         "detalle": f"sistema $ {_ar(sistema[k])}, listado $ {_ar(listado.get(k, 0))}"}
         for k in sistema if abs(sistema[k] - listado.get(k, 0.0)) > 0.005
     ]
 
@@ -667,7 +672,7 @@ def _control_distribucion() -> list[dict]:
     (o llega de más)."""
     return [
         {"tipo": "La distribución de una orden no suma lo usado", "idCompra": None, "documento": f"Orden {f['ot']}",
-         "detalle": f"{f['producto']}: usado {f['total']:,.2f}, distribuido a los lotes {f['asignado']:,.2f}"}
+         "detalle": f"{f['producto']}: usado {_ar(f['total'])}, distribuido a los lotes {_ar(f['asignado'])}"}
         for f in fetch_all(
             """
             SELECT oi.IdOrdenTrabajo AS ot, p.Producto AS producto, MAX(oi.CantidadTotal) AS total,

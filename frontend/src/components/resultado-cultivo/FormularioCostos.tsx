@@ -1,12 +1,13 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { ErrorState, LoadingState } from "@/components/ui/States";
 import { formatCantidad, formatFecha } from "@/lib/format";
 import { fetchDetalleRubro, fetchFormularioCostos } from "@/services/resultadoCultivoApi";
 
+import { ResumenCampaniaCostos } from "./ResumenCampaniaCostos";
 import { ar, celdaNum, Dato, SelectorCultivoCampania, TablaCostosDirectos, Titulo, us } from "./FormularioAccess";
 
 /** Costos por cultivo / campaña con el diseño y los cálculos del formulario FrmCostos de Access. */
@@ -15,6 +16,11 @@ export function FormularioCostos() {
   const [idCampania, setIdCampania] = useState<number | null>(null);
   const [rubro, setRubro] = useState<{ id: number; concepto: string } | null>(null);
   const listo = idCultivo !== null && idCampania !== null;
+  // Recuerda la última elección (por navegador).
+  useEffect(() => {
+    try { const g = JSON.parse(localStorage.getItem("costo-cultivo") ?? "null"); if (g?.idCampania) { setIdCampania(g.idCampania); setIdCultivo(g.idCultivo ?? null); } } catch { /* sin almacenamiento */ }
+  }, []);
+  useEffect(() => { try { localStorage.setItem("costo-cultivo", JSON.stringify({ idCultivo, idCampania })); } catch { /* sin almacenamiento */ } }, [idCultivo, idCampania]);
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ["access-costos", idCultivo, idCampania],
     queryFn: () => fetchFormularioCostos(idCultivo as number, idCampania as number), enabled: listo,
@@ -31,7 +37,9 @@ export function FormularioCostos() {
         {data && !data.sinSuperficie && <span className="ml-auto">Inicio cultivo: <strong>{formatFecha(data.fechaInicio ?? null)}</strong></span>}
       </SelectorCultivoCampania>
 
-      {!listo && <p className="text-sm text-ink-secondary">Elegí cultivo y campaña.</p>}
+      {!listo && <ResumenCampaniaCostos idCampania={idCampania} onCampania={(id) => { setIdCultivo(null); setIdCampania(id); }}
+        onCultivo={(c, k) => { setIdCultivo(c); setIdCampania(k); setRubro(null); }} />}
+      {listo && <button type="button" className="text-xs font-medium text-finance hover:underline" onClick={() => setIdCultivo(null)}>← Todos los cultivos de la campaña</button>}
       {listo && isLoading && <LoadingState />}
       {isError && <ErrorState message="No se pudieron calcular los costos." onRetry={refetch} />}
       {data?.sinSuperficie && <p className="text-sm text-status-warning">No se encontró superficie sembrada para {data.cultivo} {data.campania}.</p>}

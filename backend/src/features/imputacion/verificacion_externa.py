@@ -89,7 +89,7 @@ def cruzar(arca: list[dict], sistema: list[dict], en_costo: set[int]) -> list[di
         if not propios:
             if abs(a["total"]) > 0.005:
                 out.append({"tipo": "Comprobante de ARCA que no está cargado", "documento": doc,
-                            "detalle": f"total {a['moneda']} {a['total']:,.2f}"})
+                            "detalle": f"total {_m(a['moneda'], a['total'])}", "importe": a["total"]})
             continue
         w = propios[0]
         if w["idCompra"] not in en_costo:
@@ -99,8 +99,14 @@ def cruzar(arca: list[dict], sistema: list[dict], en_costo: set[int]) -> list[di
                         "detalle": f"ARCA {a['moneda']}, sistema {w['moneda']}", "idCompra": w["idCompra"]})
         elif abs(abs(float(w["tot"] or 0)) - abs(a["total"])) > 1.0:
             out.append({"tipo": "Total distinto al de ARCA", "documento": doc, "idCompra": w["idCompra"],
-                        "detalle": f"ARCA {a['total']:,.2f}, sistema {float(w['tot'] or 0):,.2f}"})
+                        "detalle": f"ARCA {_m(a['moneda'], a['total'])}, sistema {_m(a['moneda'], float(w['tot'] or 0))}"})
     return out
+
+
+def _m(moneda: str, v: float) -> str:
+    """Formato argentino (18/11/2026: se mostraba "$ 114,950.00")."""
+    txt = f"{abs(v):,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+    return f"{'-' if v < 0 else ''}{'$' if moneda in ('$', 'PES') else 'us$' if moneda in ('DOL', 'USD') else moneda} {txt}"
 
 
 def _arca(desde: date, hasta: date) -> list[dict]:

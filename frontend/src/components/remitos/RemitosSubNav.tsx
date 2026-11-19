@@ -20,10 +20,10 @@ const GRUPOS: Record<"remitos" | "existencias" | "costos", Tab[]> = {
     { href: "/produccion/stock/control", label: "Pendientes de carga" },
   ],
   costos: [
-    { href: "/imputacion", label: "Automática", exacto: true },
-    { href: "/imputacion/documentos", label: "Por documento" },
-    { href: "/produccion/ordenes/resultado-cultivo", label: "Costo por cultivo / campaña" },
-    { href: "/produccion/contratistas/sin-orden", label: "Facturas de contratistas sin orden" },
+    // 18/11/2026 (auditoría de diseño): "Automática" y "Por documento" son una sola pantalla con filtros de estado.
+    { href: "/imputacion/documentos", label: "Documentos" },
+    { href: "/produccion/ordenes/resultado-cultivo", label: "Costo por cultivo" },
+    { href: "/produccion/contratistas/sin-orden", label: "Contratistas sin orden" },
   ],
 };
 

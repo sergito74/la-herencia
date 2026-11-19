@@ -1,371 +1,255 @@
 "use client";
 
-import { PageHeader } from "@/components/ui/PageHeader";
-import { useEffect, useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useRef, useState } from "react";
 
-import { API_BASE_URL, ApiError, apiGet, apiPost } from "@/services/apiClient";
-import { formatFecha } from "@/lib/format";
-import { ContactoSelect } from "@/components/ui/ContactoSelect";
-import { FilterBar, FilterField, FilterSubmitButton, filterInputClass } from "@/components/ui/FilterBar";
 import { SoloLectura } from "@/components/auth/SoloLectura";
+import { ChipDestino, ChipsDestino } from "@/components/imputacion/ChipsDestino";
+import { ControlDrawer, useControlCostos } from "@/components/imputacion/ControlDrawer";
+import { DocumentoDrawer } from "@/components/imputacion/DocumentoDrawer";
+import { TONO_ESTADO } from "@/components/imputacion/estadoDocumento";
 import { RemitosSubNav } from "@/components/remitos/RemitosSubNav";
+import { Button } from "@/components/ui/Button";
+import { ContactoSelect } from "@/components/ui/ContactoSelect";
+import { DataTable, type DataTableColumn } from "@/components/ui/DataTable";
+import { PageHeader } from "@/components/ui/PageHeader";
+import { RangoFechas, type Rango } from "@/components/ui/RangoFechas";
+import { Segmentos } from "@/components/ui/Segmentos";
+import { ErrorState, LoadingState } from "@/components/ui/States";
+import { StatusBadge } from "@/components/ui/StatusBadge";
 import { useToast } from "@/components/ui/Toast";
-import { ResumenImputacion } from "@/components/imputacion/ResumenImputacion";
-import { ParaRevisar } from "@/components/imputacion/ParaRevisar";
-import { ControlCostos } from "@/components/imputacion/ControlCostos";
+import { formatCantidad, formatFecha, formatMoneda } from "@/lib/format";
+import { API_BASE_URL, ApiError, apiPost } from "@/services/apiClient";
+import { aprobarCorridas, fetchResumenDocumentos, type DocumentoFila, type EstadoDoc } from "@/services/imputacionDocumentosApi";
 
-interface Fraccion {
-  idPropuesta: number;
-  idCorrida: string;
-  origen: "Insumo" | "Contratista";
-  idLote: number | null;
-  lote: string | null;
-  idCultivo: number | null;
-  cultivo: string | null;
-  idCampania: number | null;
-  campania: string | null;
-  idCentroCosto: number | null;
-  centroCosto: string | null;
-  esGanaderia: boolean | null;
-  importe: number;
-  cantidad: number | null;
-  unidad: string | null;
-  idOrdenTrabajo: number | null;
-  estado: "Pendiente" | "Aprobada" | "RequiereIntervencion";
+const TAM = 50;
+const ABREV: Record<string, string> = { Factura: "FC", "Nota de Credito": "NC", "Nota de Crédito": "NC", "Nota de Debito": "ND", "Nota de Débito": "ND" };
+type Agrupar = "documento" | "destino" | "proveedor";
+
+function Kpi({ titulo, valor, pie, onClick, activo, aviso }: { titulo: string; valor: string; pie?: string; onClick?: () => void; activo?: boolean; aviso?: boolean }) {
+  const cls = `rounded-lg border p-3 text-left shadow-sm transition ${activo ? "border-finance/50 ring-1 ring-finance/30" : "border-border"} ${aviso ? "bg-status-warning-bg/50" : "bg-surface"} ${onClick ? "hover:border-border-strong hover:shadow" : ""}`;
+  const contenido = <>
+    <p className="text-xs font-medium uppercase tracking-wide text-ink-muted">{titulo}</p>
+    <p className="mt-0.5 font-data text-lg font-semibold text-ink-primary">{valor}</p>
+    {pie && <p className="text-xs text-ink-secondary">{pie}</p>}
+  </>;
+  return onClick ? <button type="button" onClick={onClick} className={cls}>{contenido}</button> : <div className={cls}>{contenido}</div>;
 }
 
-interface Linea {
-  idDetalleCompra: number;
-  producto: string;
-  cantidad: number;
-  unidad: string | null;
-  precioUnitario: number;
-  campaniaManual: string | null;
-  centroCostoManual: string | null;
-  rubroManual: string | null;
-  fracciones: Fraccion[];
-  totalFracciones: number;
-  enRepartoOrdenes?: boolean;
-}
-
-interface Documento {
-  idCompra: number;
-  fecha: string;
-  idContacto: number | null;
-  proveedor: string | null;
-  tipoDocumento: string | null;
-  numeroDocumento: string | null;
-  moneda: string;
-  lineas: Linea[];
-  totalDocumento: number;
-}
-
-type Estado = "Pendiente" | "Aprobada" | "RequiereIntervencion";
-
-function etiquetaDestino(f: Fraccion): string {
-  if (f.estado === "RequiereIntervencion") return "Requiere intervención";
-  if (f.cultivo) return `${f.cultivo} / ${f.campania ?? "—"}`;
-  if (f.centroCosto) return f.centroCosto;
-  if (f.esGanaderia) return "Ganadería";
-  return "En stock sin consumir";
-}
-
-function badgeEstado(estado: Fraccion["estado"]) {
-  const clases: Record<Fraccion["estado"], string> = {
-    Aprobada: "bg-agro-light text-agro",
-    Pendiente: "bg-finance-light text-finance",
-    RequiereIntervencion: "bg-status-danger-bg text-status-danger",
-  };
-  return <span className={`rounded-full px-2 py-0.5 text-xs ${clases[estado]}`}>{estado}</span>;
-}
-
-function LineaRow({ linea, onAprobada }: { linea: Linea; onAprobada: (idCorrida: string) => void }) {
-  const [abierta, setAbierta] = useState(false);
-  const [aprobando, setAprobando] = useState<string | null>(null);
-  const tiene = linea.fracciones.length > 0;
+function MasAcciones({ exportar }: { exportar: string }) {
+  const [abierto, setAbierto] = useState(false);
   const { showToast } = useToast();
+  const qc = useQueryClient();
+  const caja = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!abierto) return;
+    const fuera = (e: MouseEvent) => { if (caja.current && !caja.current.contains(e.target as Node)) setAbierto(false); };
+    document.addEventListener("mousedown", fuera);
+    return () => document.removeEventListener("mousedown", fuera);
+  }, [abierto]);
+  const correr = async (fn: () => Promise<string>) => {
+    setAbierto(false);
+    try { showToast(await fn(), "success"); qc.invalidateQueries({ queryKey: ["imputacion-docs"] }); }
+    catch (e) { showToast(e instanceof ApiError ? e.message : "No se pudo completar.", "danger"); }
+  };
+  return (
+    <div className="relative" ref={caja}>
+      <Button onClick={() => setAbierto((v) => !v)} aria-haspopup="menu" aria-expanded={abierto}>Más acciones ▾</Button>
+      {abierto && (
+        <div role="menu" className="absolute right-0 z-30 mt-1 w-72 rounded-lg border border-border bg-surface p-1 text-sm shadow-lg">
+          <a role="menuitem" href={exportar} className="block rounded-md px-3 py-2 hover:bg-surface-sunken">Exportar a Excel (con estos filtros)</a>
+          <SoloLectura>
+            <button role="menuitem" type="button" className="block w-full rounded-md px-3 py-2 text-left hover:bg-surface-sunken"
+              onClick={() => correr(async () => { const r = await apiPost<{ insumosCalculados: number; contratistasCalculados: number }>("/api/imputacion/calcular-pendientes", {});
+                return `Calculado: ${r.insumosCalculados} renglones de insumos y ${r.contratistasCalculados} de contratistas.`; })}>Calcular lo pendiente ahora</button>
+            <button role="menuitem" type="button" className="block w-full rounded-md px-3 py-2 text-left hover:bg-surface-sunken"
+              onClick={() => correr(async () => { const r = await apiPost<{ filas: number }>("/api/imputacion/listado-estudio/generar", {});
+                return `Listado para el Estudio actualizado (${formatCantidad(r.filas)} filas).`; })}>Actualizar el listado para el Estudio</button>
+          </SoloLectura>
+        </div>
+      )}
+    </div>
+  );
+}
 
-  async function aprobar(idCorrida: string) {
-    setAprobando(idCorrida);
-    try {
-      await apiPost(`/api/imputacion/propuestas/${idCorrida}/aprobar`, {});
-      onAprobada(idCorrida);
-      showToast("Propuesta aprobada.", "success");
-    } catch (e) {
-      showToast(e instanceof ApiError ? e.message : "No se pudo aprobar la propuesta.", "danger");
-    } finally {
-      setAprobando(null);
-    }
-  }
+function Pagina() {
+  const params = useSearchParams();
+  const qc = useQueryClient();
+  const { showToast } = useToast();
+  const [rango, setRango] = useState<Rango>({ desde: "", hasta: "" });
+  const [idContacto, setIdContacto] = useState<number | null>(null);
+  const [proveedor, setProveedor] = useState<string | null>(null);
+  const [estado, setEstado] = useState<EstadoDoc | "">((params.get("estado") as EstadoDoc) || "");
+  const [destino, setDestino] = useState(params.get("destino") ?? "");
+  const [agrupar, setAgrupar] = useState<Agrupar>("documento");
+  const [page, setPage] = useState(1);
+  const [abierto, setAbierto] = useState<DocumentoFila | null>(null);
+  const [control, setControl] = useState(false);
+  const [elegidos, setElegidos] = useState<Set<number>>(new Set());
+  useEffect(() => { setPage(1); setElegidos(new Set()); }, [rango, idContacto, estado, destino]);
+
+  const filtros = { idContacto, fechaDesde: rango.desde, fechaHasta: rango.hasta, estado, destino, page, pageSize: TAM };
+  const q = useQuery({ queryKey: ["imputacion-docs", filtros], queryFn: () => fetchResumenDocumentos(filtros), placeholderData: (p) => p });
+  const ctrl = useControlCostos();
+  const aprobar = useMutation({
+    mutationFn: (ids: string[]) => aprobarCorridas(ids),
+    onSuccess: (r) => { showToast(`Aprobados: ${r.aprobadas}${r.fallidas ? ` · ${r.fallidas} cambiaron y hay que revisarlos` : ""}.`, r.fallidas ? "neutral" : "success");
+      setElegidos(new Set()); qc.invalidateQueries({ queryKey: ["imputacion-docs"] }); },
+    onError: () => showToast("No se pudo aprobar.", "danger"),
+  });
+
+  const d = q.data;
+  const cuenta = (k: EstadoDoc) => d?.porEstado.find((x) => x.clave === k);
+  const avisos = ctrl.data?.problemas.length ?? 0;
+  const exportar = (() => {
+    const u = new URL("/api/imputacion/documentos/exportar", API_BASE_URL);
+    if (idContacto) u.searchParams.set("idContacto", String(idContacto));
+    if (rango.desde) u.searchParams.set("fechaDesde", rango.desde);
+    if (rango.hasta) u.searchParams.set("fechaHasta", rango.hasta);
+    return u.toString();
+  })();
+  const seleccionables = (d?.items ?? []).filter((r) => r.corridasPendientes.length);
+  const corridasElegidas = (d?.items ?? []).filter((r) => elegidos.has(r.idCompra)).flatMap((r) => r.corridasPendientes);
+
+  const columnas: DataTableColumn<DocumentoFila>[] = [
+    ...(seleccionables.length ? [{
+      key: "sel", header: "", width: "2.25rem",
+      render: (r: DocumentoFila) => r.corridasPendientes.length ? (
+        <input type="checkbox" aria-label="Elegir para aprobar" checked={elegidos.has(r.idCompra)}
+          onChange={(e) => setElegidos((s) => { const n = new Set(s); if (e.target.checked) n.add(r.idCompra); else n.delete(r.idCompra); return n; })} />) : null,
+    }] : []),
+    { key: "fecha", header: "Fecha", width: "6.5rem", render: (r) => formatFecha(r.fecha) },
+    { key: "proveedor", header: "Proveedor", width: "16rem", render: (r) => <span className="block truncate" title={r.proveedor ?? ""}>{r.proveedor ?? "—"}</span> },
+    { key: "doc", header: "Documento", width: "11rem", render: (r) => <span className="font-data text-ink-secondary">{ABREV[r.tipoDocumento ?? ""] ?? r.tipoDocumento} {r.numeroDocumento}</span> },
+    { key: "destinos", header: "A dónde fue", wrap: true, render: (r) => <ChipsDestino destinos={r.destinos} /> },
+    { key: "importe", header: "Importe", align: "right", numeric: true, width: "9.5rem", render: (r) => formatMoneda(r.importe) },
+    { key: "estado", header: "Estado", width: "10rem", render: (r) => <StatusBadge label={r.estadoTexto} tone={TONO_ESTADO[r.estado]} /> },
+  ];
 
   return (
-    <>
-      <tr className="border-t border-border text-sm">
-        <td className="py-1.5 pl-6">
-          {tiene && (
-            <button
-              type="button"
-              onClick={() => setAbierta((v) => !v)}
-              className="mr-2 inline-flex h-5 w-5 items-center justify-center rounded border border-border text-xs text-ink-secondary"
-              aria-label={abierta ? "Contraer" : "Desplegar"}
-            >
-              {abierta ? "−" : "+"}
-            </button>
-          )}
-          {linea.producto}
-        </td>
-        <td className="py-1.5">{linea.cantidad?.toLocaleString("es-AR")} {linea.unidad}</td>
-        <td className="py-1.5">{linea.campaniaManual ?? "—"}</td>
-        <td className="py-1.5">{linea.centroCostoManual ?? linea.rubroManual ?? "—"}</td>
-        <td className="py-1.5 text-ink-secondary">
-          {tiene ? (
-            <>
-              {linea.totalFracciones.toLocaleString("es-AR")} ({linea.fracciones.length} fracción
-              {linea.fracciones.length > 1 ? "es" : ""})
-            </>
-          ) : linea.enRepartoOrdenes ? (
-            "en el reparto por órdenes"
-          ) : (
-            "sin propuesta"
-          )}
-        </td>
-      </tr>
-      {abierta &&
-        linea.fracciones.map((f) => (
-          <tr key={f.idPropuesta} className="border-t border-border bg-surface-sunken text-xs">
-            <td className="py-1 pl-14 text-ink-secondary">↳ {etiquetaDestino(f)}</td>
-            <td className="py-1">{f.origen === "Contratista" ? "No aplica" : f.cantidad == null ? "No registrada" : `${f.cantidad.toLocaleString("es-AR", { maximumFractionDigits: 4 })} ${f.unidad || "(unidad no informada)"}`}</td>
-            <td className="py-1">{f.campania ?? "—"}</td>
-            <td className="py-1">{f.lote ? `Lote ${f.lote}` : f.origen}{f.idOrdenTrabajo ? ` · OT ${f.idOrdenTrabajo}` : ""}</td>
-            <td className="py-1">
-              <span className="mr-2">{f.importe.toLocaleString("es-AR")} ARS</span>
-              {badgeEstado(f.estado)}
-              {f.estado === "Pendiente" && (
-                <SoloLectura>
-                  <button
-                    type="button"
-                    onClick={() => aprobar(f.idCorrida)}
-                    disabled={aprobando === f.idCorrida}
-                    className="ml-2 rounded border border-agro px-1.5 py-0.5 text-xs text-agro disabled:opacity-60"
-                  >
-                    {aprobando === f.idCorrida ? "Aprobando…" : "Aprobar"}
-                  </button>
-                </SoloLectura>
-              )}
-              {f.estado !== "Aprobada" && (
-                <a
-                  href={`/imputacion?idDetalleCompra=${linea.idDetalleCompra}`}
-                  className="ml-2 text-ink-secondary underline"
-                >
-                  Revisar
-                </a>
-              )}
-            </td>
-          </tr>
-        ))}
-    </>
+    <main className="mx-auto max-w-none space-y-3 px-6 py-3">
+      <PageHeader titulo="Imputación de costos" ayuda="A dónde fue el costo de cada compra: un cultivo y campaña, ganadería, un centro de costos o el stock. Hacé clic en una fila para ver el detalle.">
+        <div className="ml-auto"><MasAcciones exportar={exportar} /></div>
+      </PageHeader>
+      <RemitosSubNav grupo="costos" />
+
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <Kpi titulo="Imputado" valor={d ? formatMoneda(d.importe) : "…"} pie={d ? `${formatCantidad(d.total)} documentos con estos filtros` : undefined} />
+        <Kpi titulo="Para revisar" valor={formatCantidad((cuenta("revisar")?.cantidad ?? 0) + (cuenta("decision")?.cantidad ?? 0))}
+          pie="esperan tu decisión" aviso={!!((cuenta("revisar")?.cantidad ?? 0) + (cuenta("decision")?.cantidad ?? 0))}
+          activo={estado === "revisar"} onClick={() => setEstado(estado === "revisar" ? "" : "revisar")} />
+        <Kpi titulo="Pendientes de aprobar" valor={formatCantidad(cuenta("pendiente")?.cantidad ?? 0)}
+          pie={cuenta("pendiente")?.importe ? formatMoneda(cuenta("pendiente")!.importe) : "nada para aprobar"}
+          activo={estado === "pendiente"} onClick={() => setEstado(estado === "pendiente" ? "" : "pendiente")} />
+        <Kpi titulo="Control de costos" valor={ctrl.data ? (avisos ? `${avisos} aviso${avisos === 1 ? "" : "s"}` : "Todo cierra") : "…"}
+          pie={ctrl.data?.fecha ? `controlado ${formatFecha(ctrl.data.fecha)} ${ctrl.data.fecha.slice(11, 16)} h` : undefined}
+          aviso={avisos > 0} onClick={() => setControl(true)} />
+      </div>
+
+      <section className="space-y-3 rounded-lg border border-border bg-surface p-3">
+        <div className="flex flex-wrap items-end gap-3">
+          <RangoFechas valor={rango} onChange={setRango} etiqueta="Período" />
+          <div className="w-64">
+            <span className="mb-1 block text-xs font-medium text-ink-secondary">Proveedor</span>
+            <ContactoSelect value={idContacto} razonSocial={proveedor} onChange={(id, n) => { setIdContacto(id); setProveedor(n); }} placeholder="Todos" />
+          </div>
+          <div>
+            <span className="mb-1 block text-xs font-medium text-ink-secondary">Estado</span>
+            <Segmentos<EstadoDoc | "todos"> etiqueta="Estado" valor={estado || "todos"} onChange={(v) => setEstado(v === "todos" ? "" : v)}
+              opciones={[{ id: "todos", label: "Todos" },
+                ...(["decision", "revisar", "pendiente", "aprobado"] as EstadoDoc[])
+                  .filter((k) => k === "aprobado" || (cuenta(k)?.cantidad ?? 0) > 0 || estado === k)
+                  .map((k) => ({ id: k, label: cuenta(k)?.etiqueta ?? k, aviso: k === "aprobado" ? undefined : cuenta(k)?.cantidad }))]} />
+          </div>
+          <div className="ml-auto">
+            <span className="mb-1 block text-xs font-medium text-ink-secondary">Ver por</span>
+            <Segmentos<Agrupar> etiqueta="Agrupar" valor={agrupar} onChange={setAgrupar}
+              opciones={[{ id: "documento", label: "Documento" }, { id: "destino", label: "Destino" }, { id: "proveedor", label: "Proveedor" }]} />
+          </div>
+        </div>
+        {!!d?.porDestino.length && (
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span className="mr-1 text-xs font-medium text-ink-secondary">Destino</span>
+            <button type="button" onClick={() => setDestino("")}
+              className={`rounded-full border px-2 py-0.5 text-xs ${!destino ? "border-finance bg-finance-light text-finance" : "border-border text-ink-secondary hover:bg-surface-sunken"}`}>Todos</button>
+            {d.porDestino.slice(0, 10).map((x) => (
+              <button key={x.clave} type="button" onClick={() => setDestino(destino === x.clave ? "" : x.clave)}
+                className={`rounded-full ${destino === x.clave ? "ring-2 ring-finance/50" : "opacity-90 hover:opacity-100"}`} title={`${x.cantidad} documentos · ${formatMoneda(x.importe)}`}>
+                <ChipDestino d={{ ...x, porcentaje: null }} />
+              </button>
+            ))}
+            {d.porDestino.length > 10 && (
+              <select aria-label="Más destinos" className="rounded-full border border-border bg-surface px-2 py-0.5 text-xs text-ink-secondary"
+                value={d.porDestino.slice(10).some((x) => x.clave === destino) ? destino : ""} onChange={(e) => setDestino(e.target.value)}>
+                <option value="">+{d.porDestino.length - 10} más…</option>
+                {d.porDestino.slice(10).map((x) => <option key={x.clave} value={x.clave}>{x.etiqueta}</option>)}
+              </select>
+            )}
+          </div>
+        )}
+      </section>
+
+      {corridasElegidas.length > 0 && (
+        <div className="sticky top-16 z-10 flex items-center justify-between rounded-lg border border-finance/40 bg-finance-light px-4 py-2 text-sm shadow">
+          <span>{elegidos.size} documento{elegidos.size === 1 ? "" : "s"} elegido{elegidos.size === 1 ? "" : "s"}</span>
+          <span className="flex gap-2">
+            <Button size="sm" variant="ghost" onClick={() => setElegidos(new Set())}>Cancelar</Button>
+            <Button size="sm" variant="primary" disabled={aprobar.isPending} onClick={() => aprobar.mutate(corridasElegidas)}>{aprobar.isPending ? "Aprobando…" : "Aprobar elegidos"}</Button>
+          </span>
+        </div>
+      )}
+      {seleccionables.length > 0 && !corridasElegidas.length && (
+        <button type="button" className="text-xs font-medium text-finance hover:underline" onClick={() => setElegidos(new Set(seleccionables.map((r) => r.idCompra)))}>
+          Elegir los {seleccionables.length} pendientes de esta página</button>
+      )}
+
+      {q.isLoading ? <LoadingState rows={8} /> : q.isError ? <ErrorState message="No se pudo leer la imputación." onRetry={() => q.refetch()} /> : agrupar === "documento" ? (
+        <>
+          <DataTable columns={columnas} rows={d?.items ?? []} keyField={(r) => r.idCompra} layout="fixed" stickyHeader
+            emptyMessage="No hay documentos con estos filtros." page={page} pageSize={TAM} total={d?.total ?? 0} onPageChange={setPage}
+            onRowClick={setAbierto} selectedKey={abierto?.idCompra ?? null}
+            rowActions={(r) => [{ label: "Ver detalle", onClick: () => setAbierto(r) }, { label: "Abrir la compra", href: `/compras/${r.idCompra}/editar` }]} />
+          {!!d?.total && <p className="text-right text-sm text-ink-secondary">{formatCantidad(d.total)} documentos · total con estos filtros <strong className="font-data text-ink-primary">{formatMoneda(d.importe)}</strong></p>}
+        </>
+      ) : agrupar === "destino" ? (
+        <TablaGrupo filas={(d?.porDestino ?? []).map((x) => ({ k: x.clave, nombre: <ChipDestino d={{ ...x, porcentaje: null }} />, cantidad: x.cantidad, importe: x.importe }))}
+          total={d?.importe ?? 0} titulo="Destino" onElegir={(k) => { setDestino(k); setAgrupar("documento"); }} />
+      ) : (
+        <TablaGrupo filas={(d?.porProveedor ?? []).map((x) => ({ k: String(x.idContacto), nombre: x.proveedor, cantidad: x.cantidad, importe: x.importe, id: x.idContacto, prov: x.proveedor }))}
+          total={d?.importe ?? 0} titulo="Proveedor" onElegir={(k) => { const p = d?.porProveedor.find((x) => String(x.idContacto) === k);
+            if (p?.idContacto) { setIdContacto(p.idContacto); setProveedor(p.proveedor); } setAgrupar("documento"); }} />
+      )}
+
+      <DocumentoDrawer fila={abierto} onClose={() => setAbierto(null)} />
+      <ControlDrawer open={control} onClose={() => setControl(false)} />
+    </main>
+  );
+}
+
+function TablaGrupo({ filas, total, titulo, onElegir }: { filas: { k: string; nombre: React.ReactNode; cantidad: number; importe: number }[]; total: number; titulo: string; onElegir: (k: string) => void }) {
+  return (
+    <div className="overflow-hidden rounded-lg border border-border bg-surface">
+      <table className="w-full text-sm">
+        <thead className="bg-surface-sunken text-left text-xs text-ink-secondary">
+          <tr><th className="px-3 py-2">{titulo}</th><th className="px-3 py-2 text-right">Documentos</th><th className="px-3 py-2 text-right">Importe</th><th className="px-3 py-2 text-right">%</th></tr>
+        </thead>
+        <tbody className="divide-y divide-border">
+          {filas.map((f) => (
+            <tr key={f.k} className="cursor-pointer hover:bg-surface-sunken/60" onClick={() => onElegir(f.k)} title="Ver sus documentos">
+              <td className="px-3 py-1.5">{f.nombre}</td>
+              <td className="px-3 py-1.5 text-right font-data">{formatCantidad(f.cantidad)}</td>
+              <td className="px-3 py-1.5 text-right font-data">{formatMoneda(f.importe)}</td>
+              <td className="px-3 py-1.5 text-right font-data text-ink-secondary">{total ? `${formatCantidad(Math.round((f.importe / total) * 1000) / 10)}%` : ""}</td>
+            </tr>
+          ))}
+        </tbody>
+        <tfoot className="border-t border-border font-medium"><tr><td className="px-3 py-2">Total</td><td /><td className="px-3 py-2 text-right font-data">{formatMoneda(total)}</td><td /></tr></tfoot>
+      </table>
+    </div>
   );
 }
 
 export default function DocumentosImputacionPage() {
-  const [documentos, setDocumentos] = useState<Documento[]>([]);
-  const [page, setPage] = useState(1);
-  const [total, setTotal] = useState(0);
-
-  const [totalGeneral, setTotalGeneral] = useState(0);
-
-  const [idContacto, setIdContacto] = useState<number | null>(null);
-  const [proveedorNombre, setProveedorNombre] = useState<string | null>(null);
-  const [fechaDesde, setFechaDesde] = useState("");
-  const [fechaHasta, setFechaHasta] = useState("");
-  const [estado, setEstado] = useState<Estado | "">("");
-  // Regla de carga automática (050): revisar lo que el motor aprobó solo, desde una fecha.
-  const [automatico, setAutomatico] = useState(false);
-  const [aprobadoDesde, setAprobadoDesde] = useState("");
-  const [filtrosAplicados, setFiltrosAplicados] = useState<{ idContacto: number | null; fechaDesde: string; fechaHasta: string; estado: Estado | ""; automatico: boolean; aprobadoDesde: string }>({
-    idContacto: null,
-    fechaDesde: "",
-    fechaHasta: "",
-    estado: "",
-    automatico: false,
-    aprobadoDesde: "",
-  });
-
-  useEffect(() => {
-    apiGet<{ items: Documento[]; total: number; totalGeneral: number }>("/api/imputacion/documentos", {
-      page,
-      pageSize: 20,
-      idContacto: filtrosAplicados.idContacto ?? undefined,
-      fechaDesde: filtrosAplicados.fechaDesde || undefined,
-      fechaHasta: filtrosAplicados.fechaHasta || undefined,
-      estado: filtrosAplicados.estado || undefined,
-      automatico: filtrosAplicados.automatico ? "true" : undefined,
-      aprobadoDesde: filtrosAplicados.aprobadoDesde || undefined,
-    }).then((r) => {
-      setDocumentos(r.items);
-      setTotal(r.total);
-      setTotalGeneral(r.totalGeneral);
-    });
-  }, [page, filtrosAplicados]);
-
-  function aplicarFiltros(e: React.FormEvent) {
-    e.preventDefault();
-    setPage(1);
-    setFiltrosAplicados({ idContacto, fechaDesde, fechaHasta, estado, automatico, aprobadoDesde });
-  }
-
-  function marcarCorridaAprobada(idCorrida: string) {
-    setDocumentos((prev) =>
-      prev.map((doc) => ({
-        ...doc,
-        lineas: doc.lineas.map((linea) => ({
-          ...linea,
-          fracciones: linea.fracciones.map((f) =>
-            f.idCorrida === idCorrida ? { ...f, estado: "Aprobada" as const } : f
-          ),
-        })),
-      }))
-    );
-  }
-
-  function urlExportar() {
-    const url = new URL("/api/imputacion/documentos/exportar", API_BASE_URL);
-    if (filtrosAplicados.idContacto) url.searchParams.set("idContacto", String(filtrosAplicados.idContacto));
-    if (filtrosAplicados.fechaDesde) url.searchParams.set("fechaDesde", filtrosAplicados.fechaDesde);
-    if (filtrosAplicados.fechaHasta) url.searchParams.set("fechaHasta", filtrosAplicados.fechaHasta);
-    if (filtrosAplicados.estado) url.searchParams.set("estado", filtrosAplicados.estado);
-    if (filtrosAplicados.automatico) url.searchParams.set("automatico", "true");
-    if (filtrosAplicados.aprobadoDesde) url.searchParams.set("aprobadoDesde", filtrosAplicados.aprobadoDesde);
-    return url.toString();
-  }
-
-  return (
-    <main className="mx-auto max-w-none px-6 py-3">
-      <PageHeader titulo="Imputación de costos · por documento" ayuda="Cada línea de factura/NC/ND con su clasificación manual y la propuesta del motor desplegable debajo." />
-      <RemitosSubNav grupo="costos" />
-      <ControlCostos />
-      <ParaRevisar />
-
-      <div className="mt-3">
-        <FilterBar onSubmit={aplicarFiltros}>
-          <FilterField label="Proveedor">
-            <ContactoSelect
-              value={idContacto}
-              razonSocial={proveedorNombre}
-              onChange={(id, nombre) => {
-                setIdContacto(id);
-                setProveedorNombre(nombre);
-              }}
-              placeholder="Buscar proveedor…"
-            />
-          </FilterField>
-          <FilterField label="Fecha desde">
-            <input type="date" className={filterInputClass} value={fechaDesde} onChange={(e) => setFechaDesde(e.target.value)} />
-          </FilterField>
-          <FilterField label="Fecha hasta">
-            <input type="date" className={filterInputClass} value={fechaHasta} onChange={(e) => setFechaHasta(e.target.value)} />
-          </FilterField>
-          <FilterField label="Estado">
-            <select className={filterInputClass} value={estado} onChange={(e) => setEstado(e.target.value as Estado | "")}>
-              <option value="">Todos</option>
-              <option value="Pendiente">Pendiente</option>
-              <option value="Aprobada">Aprobada</option>
-              <option value="RequiereIntervencion">Requiere intervención</option>
-            </select>
-          </FilterField>
-          <FilterField label="Para revisar">
-            <label className="flex items-center gap-2 text-sm">
-              <input type="checkbox" checked={automatico} onChange={(e) => setAutomatico(e.target.checked)} />
-              Solo lo aprobado automáticamente
-            </label>
-          </FilterField>
-          <FilterField label="Aprobado desde">
-            <input type="date" className={filterInputClass} value={aprobadoDesde} onChange={(e) => setAprobadoDesde(e.target.value)} />
-          </FilterField>
-          <FilterSubmitButton />
-        </FilterBar>
-        <a
-          href={urlExportar()}
-          className="mt-3 inline-block rounded-md border border-border px-3 py-1.5 text-sm text-ink-secondary hover:bg-surface-sunken"
-        >
-          Exportar a Excel {filtrosAplicados.idContacto || filtrosAplicados.fechaDesde || filtrosAplicados.fechaHasta ? "(con estos filtros)" : ""}
-        </a>
-      </div>
-
-      <div className="mt-6 space-y-6">
-        {documentos.map((doc) => (
-          <div key={doc.idCompra} className="rounded-md border border-border">
-            <div className="flex items-center justify-between border-b border-border bg-surface-sunken px-4 py-2">
-              <span className="text-sm font-medium">
-                {doc.tipoDocumento} {doc.numeroDocumento} — {doc.proveedor ?? "—"}
-              </span>
-              <span className="text-xs text-ink-secondary">
-                {formatFecha(doc.fecha)} · {doc.moneda}
-              </span>
-            </div>
-            <div className="px-4 py-3">
-              <ResumenImputacion filas={doc.lineas.flatMap((linea) => linea.fracciones.map((f) => ({
-                ...f, producto: linea.producto, idDetalleCompra: linea.idDetalleCompra,
-              })))} />
-            </div>
-            <details className="px-4 pb-3">
-            <summary className="cursor-pointer py-2 text-sm font-medium">Detalle por insumo y clasificación manual</summary>
-            <table className="w-full">
-              <thead>
-                <tr className="text-left text-xs text-ink-secondary">
-                  <th className="py-1.5 pl-6">Producto/Servicio</th>
-                  <th className="py-1.5">Cantidad</th>
-                  <th className="py-1.5">Campaña manual</th>
-                  <th className="py-1.5">Centro/Rubro manual</th>
-                  <th className="py-1.5">Motor (ARS)</th>
-                </tr>
-              </thead>
-              <tbody>
-                {doc.lineas.map((linea) => (
-                  <LineaRow key={linea.idDetalleCompra} linea={linea} onAprobada={marcarCorridaAprobada} />
-                ))}
-              </tbody>
-              <tfoot>
-                <tr className="border-t border-border text-sm font-medium">
-                  <td colSpan={4} className="py-1.5 pl-6 text-right">
-                    Total documento
-                  </td>
-                  <td className="py-1.5">{doc.totalDocumento.toLocaleString("es-AR")}</td>
-                </tr>
-              </tfoot>
-            </table>
-            </details>
-          </div>
-        ))}
-        {documentos.length === 0 && <p className="text-sm text-ink-secondary">No hay documentos con imputación todavía.</p>}
-        {documentos.length > 0 && (
-          <div className="flex items-center justify-end gap-2 rounded-md border border-border bg-surface-sunken px-4 py-2 text-sm font-medium">
-            Total general (con estos filtros): {totalGeneral.toLocaleString("es-AR")}
-          </div>
-        )}
-      </div>
-
-      <div className="mt-4 flex items-center gap-2 text-sm">
-        <button
-          type="button"
-          disabled={page <= 1}
-          onClick={() => setPage((p) => p - 1)}
-          className="rounded-md border border-border px-2 py-1 disabled:opacity-40"
-        >
-          ← Anterior
-        </button>
-        <span className="text-ink-secondary">
-          Página {page} de {Math.max(1, Math.ceil(total / 20))} ({total} documentos)
-        </span>
-        <button
-          type="button"
-          disabled={page * 20 >= total}
-          onClick={() => setPage((p) => p + 1)}
-          className="rounded-md border border-border px-2 py-1 disabled:opacity-40"
-        >
-          Siguiente →
-        </button>
-      </div>
-    </main>
-  );
+  return <Suspense><Pagina /></Suspense>;
 }

@@ -18,7 +18,7 @@ const PANTALLAS: Resultado[] = [
   ["Tarjetas", "/finanzas/tarjetas"], ["Impuestos", "/finanzas/impuestos"], ["Compras", "/compras"], ["Ventas de hacienda", "/ventas/hacienda"],
   ["Ventas de granos", "/ventas/granos"], ["Pastaje", "/ventas/pastaje"], ["Órdenes de trabajo", "/produccion/ordenes"],
   ["Planificación agrícola", "/produccion/planificacion"], ["Remitos", "/produccion/remitos"], ["Stock de insumos", "/produccion/stock"],
-  ["Resultado de cultivo", "/produccion/resultado-cultivo"], ["Imputación de costos", "/imputacion"], ["Remuneraciones", "/personal/remuneraciones"],
+  ["Resultado de cultivo", "/produccion/resultado-cultivo"], ["Imputación de costos", "/imputacion/documentos"], ["Remuneraciones", "/personal/remuneraciones"],
   ["Trabajos eventuales", "/personal/trabajos-eventuales"], ["Contactos", "/contactos"], ["Bóveda de portales", "/boveda"],
 ].map(([titulo, href]) => ({ tipo: "Pantallas", titulo, href }));
 

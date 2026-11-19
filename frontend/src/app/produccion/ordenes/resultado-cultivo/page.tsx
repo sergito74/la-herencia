@@ -8,7 +8,7 @@ import { PageHeader } from "@/components/ui/PageHeader";
 export default function CostoCultivoPage() {
   return (
     <main className="mx-auto max-w-none px-6 py-3">
-      <PageHeader titulo="Imputación de costos · costo por cultivo / campaña"
+      <PageHeader titulo="Costo por cultivo"
         ayuda="Igual que el formulario Costos de Access: costos directos por concepto, en pesos y dólares, totales y por hectárea. Clic en un concepto para ver sus comprobantes." />
       <RemitosSubNav grupo="costos" />
       <div className="mt-3"><FormularioCostos /></div>

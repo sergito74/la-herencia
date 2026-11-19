@@ -195,6 +195,32 @@ async def exportar_documentos(
     )
 
 
+@router.get("/documentos-resumen")
+async def documentos_resumen(
+    idContacto: int | None = Query(default=None),
+    fechaDesde: str | None = Query(default=None),
+    fechaHasta: str | None = Query(default=None),
+    estado: str | None = Query(default=None, pattern="^(decision|revisar|pendiente|aprobado)$"),
+    destino: str | None = Query(default=None, max_length=40),
+    page: int = Query(default=1, ge=1),
+    pageSize: int = Query(default=50, ge=1, le=200),
+) -> dict:
+    """Una fila por documento con destinos sumados y estado llano, y totales por estado y destino (051, 18/11/2026)."""
+    from src.features.imputacion import documentos_resumen as dr
+
+    return await run_in_threadpool(dr.resumen, idContacto, fechaDesde, fechaHasta, estado, destino, page, pageSize)
+
+
+@router.get("/documentos-resumen/{idCompra}")
+async def documento_detalle(idCompra: int) -> dict:
+    from src.features.imputacion import documentos_resumen as dr
+
+    d = await run_in_threadpool(dr.detalle, idCompra)
+    if d is None:
+        raise HTTPException(status_code=404, detail="Documento inexistente")
+    return d
+
+
 @router.get("/comparacion", response_model=ComparacionCampaniaOut)
 async def comparacion(idCampania: int = Query(...)) -> ComparacionCampaniaOut:
     heredado = await run_in_threadpool(ordenes_resultado.resumen_campania_heredado, idCampania)
