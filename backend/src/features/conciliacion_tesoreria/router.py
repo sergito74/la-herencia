@@ -158,3 +158,25 @@ async def post_conciliacion(
     except ValueError as e:
         raise HTTPException(status_code=_status_code_para(str(e)), detail=str(e)) from e
     return Conciliacion(**resultado)
+
+
+@router.get("/{medio}/movimientos/{id_movimiento}/pase-caja-candidatos")
+async def pase_caja_candidatos(medio: str, id_movimiento: int) -> list[dict]:
+    """Movimientos de caja (±5 días, mismo importe con signo opuesto) para conciliar una extracción o un depósito como
+    pase a/desde caja (19/11/2026: 'COBRADO POR CAJA' del BNA del 09/10/2019 → caja Giamigli)."""
+    from src.db.connection import fetch_all
+    from src.features.tesoreria.repository import get_movimientos_por_ids
+
+    def correr():
+        m = (get_movimientos_por_ids(medio, [id_movimiento]) or [None])[0]
+        if not m:
+            return []
+        fecha = m.get("fechaHora") or m.get("fecha")
+        importe = m["importe"] if "importe" in m else float(m.get("creditos") or 0) - float(m.get("debitos") or 0)
+        usados = {r["d"] for r in fetch_all("SELECT Detalle AS d FROM dbo.ConciliacionesTesoreriaEstado WHERE Motivo = 'PaseCaja'")}
+        filas = fetch_all("SELECT IdMovimiento AS id, Caja AS caja, CAST(Fecha AS date) AS fecha, Importe AS importe, Concepto AS concepto "
+                          "FROM dbo.MovimientosCajaEfectivo WHERE ABS(DATEDIFF(day, Fecha, ?)) <= 5 AND ROUND(Importe, 2) = ROUND(?, 2) "
+                          "ORDER BY ABS(DATEDIFF(day, Fecha, ?)), IdMovimiento", (fecha, -float(importe), fecha))
+        return [{**f, "detalle": f"Pase a caja {f['caja']} (movimiento de caja {f['id']})"} for f in filas
+                if f"Pase a caja {f['caja']} (movimiento de caja {f['id']})" not in usados]
+    return await run_in_threadpool(correr)

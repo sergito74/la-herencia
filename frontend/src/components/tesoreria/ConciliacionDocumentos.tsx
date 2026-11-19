@@ -2,7 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ApiError } from "@/services/apiClient";
+import { ApiError, apiGet } from "@/services/apiClient";
+
+const ETIQUETA_MOTIVO: Record<string,string> = {Impuesto:"Impuesto",Interes:"Interés",CompraNoCargada:"Compra no cargada",PaseCaja:"Pase a caja",Otro:"Otro",Redondeo:"Redondeo",AjusteTipoCambioSinNota:"Ajuste de tipo de cambio sin nota"};
 import {
   buscarDocumentos, fetchCandidatosDocumentos, fetchPreviewDocumentos,
   postConciliacionLote, postSinDocumento, quitarEstadoConciliacion, quitarConciliacion,
@@ -39,7 +41,11 @@ export function ConciliacionDocumentos({medio,idMovimiento,estado,onSaved}: {
   const docs = busqueda.length>=2 ? buscar.data : candidatos.data?.documentos;
   const error = busqueda.length>=2 ? buscar.error : candidatos.error;
   const cargando = busqueda.length>=2 ? buscar.isFetching : candidatos.isFetching;
-  const motivos = sinDocumento ? ["Impuesto","Interes","CompraNoCargada","Otro"] : ["Impuesto","Redondeo","AjusteTipoCambioSinNota","Otro"];
+  const motivos = sinDocumento ? ["Impuesto","Interes","CompraNoCargada","PaseCaja","Otro"] : ["Impuesto","Redondeo","AjusteTipoCambioSinNota","Otro"];
+  const paseCaja = useQuery({queryKey:["pase-caja-candidatos",medio,idMovimiento],
+    queryFn:() => apiGet<{id:number;caja:string;fecha:string;importe:number;concepto:string;detalle:string}[]>(`/api/conciliacion-tesoreria/${medio}/movimientos/${idMovimiento}/pase-caja-candidatos`),
+    enabled:sinDocumento && motivo==="PaseCaja"});
+  const NOMBRE_CAJA: Record<string,string> = {GiamigliSA:"Giamigli",CondominioLSC:"Condominio LSC"};
   function refrescar() {
     ["conciliacion-documentos-candidatos","conciliacion-documentos-buscar","conciliacion-documentos-preview",
      "tarjetas-conciliacion","tarjetas-resumenes","conciliacion-candidatos","traspaso-interno-estado"].forEach(key => cache.invalidateQueries({queryKey:[key]}));
@@ -134,11 +140,18 @@ export function ConciliacionDocumentos({medio,idMovimiento,estado,onSaved}: {
     </div>}
     {estado.conciliaciones.length===0 && <label className="flex gap-2"><input type="checkbox" checked={sinDocumento} onChange={e=>{setSinDocumento(e.target.checked);setAceptar(false);setMotivo("Impuesto");}}/>Este movimiento no tiene documento</label>}
     {(aceptar || sinDocumento) && <div className="space-y-2">
-      <label className="block">Motivo <select className="rounded border border-border p-1" value={motivo} onChange={e=>setMotivo(e.target.value)}>{motivos.map(m=><option key={m}>{m}</option>)}</select></label>
-      <label className="block">Detalle {motivo==="Otro" && "(obligatorio)"}<textarea className="block w-full rounded border border-border p-2" value={detalle} maxLength={255} onChange={e=>setDetalle(e.target.value)}/></label>
+      <label className="block">Motivo <select className="rounded border border-border p-1" value={motivo} onChange={e=>{setMotivo(e.target.value);setDetalle("");}}>{motivos.map(m=><option key={m} value={m}>{ETIQUETA_MOTIVO[m] ?? m}</option>)}</select></label>
+      {motivo==="PaseCaja" && <div className="space-y-1">
+        <p>Movimiento de la caja</p>
+        {paseCaja.isFetching && <p className="text-muted">Buscando…</p>}
+        {paseCaja.data?.length===0 && <p className="text-muted">No hay en las cajas un movimiento por el mismo importe en ±5 días.</p>}
+        {paseCaja.data?.map(c=><label key={c.id} className="flex gap-2"><input type="radio" name="pase-caja" checked={detalle===c.detalle} onChange={()=>setDetalle(c.detalle)}/>
+          {formatFecha(c.fecha)} · Caja {NOMBRE_CAJA[c.caja] ?? c.caja} · {c.concepto} · {formatMoneda(c.importe)}</label>)}
+      </div>}
+      {motivo!=="PaseCaja" && <label className="block">Detalle {motivo==="Otro" && "(obligatorio)"}<textarea className="block w-full rounded border border-border p-2" value={detalle} maxLength={255} onChange={e=>setDetalle(e.target.value)}/></label>}
     </div>}
     <button type="button" className="rounded-md bg-finance font-medium text-white shadow-sm transition-colors hover:bg-finance/90 disabled:opacity-60 px-3 py-2"
-      disabled={guardando || !pendiente || (!sinDocumento && (!seleccion.length || !preview.data || !!preview.error || preview.isFetching)) || ((aceptar || sinDocumento) && motivo==="Otro" && !detalle.trim())}
+      disabled={guardando || !pendiente || (!sinDocumento && (!seleccion.length || !preview.data || !!preview.error || preview.isFetching)) || ((aceptar || sinDocumento) && (motivo==="Otro" || motivo==="PaseCaja") && !detalle.trim())}
       onClick={()=>guardar()}>{guardando ? "Guardando…" : sinDocumento ? "Confirmar sin documento" : "Confirmar conciliación"}</button>
   </div>;
 }

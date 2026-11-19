@@ -124,7 +124,7 @@ def conciliar_inversiones() -> int:
 # 19/11/2026 (Sergio, punto 4): una extracción de efectivo del banco que fondea una caja es un pase entre cuentas
 # propias. Si en una caja hay un ingreso del mismo día y el mismo importe que dice "retiro"/"extracción", el movimiento
 # del banco queda conciliado como "Pase a caja" (sin asientos manuales). Cada ingreso de caja se usa una sola vez.
-_EXTRACCIONES = {"bna": ("Movimientos BNA", "IdMovimientoBNA", "[Fecha / Hora Mov#]", "-Importe", "Concepto LIKE 'EXTR%'"),
+_EXTRACCIONES = {"bna": ("Movimientos BNA", "IdMovimientoBNA", "[Fecha / Hora Mov#]", "-Importe", "(Concepto LIKE 'EXTR%' OR Concepto LIKE 'COBRADO POR CAJA%')"),
                  "galicia": ("Movimientos Galicia", "IdMovimiento", "Fecha", "ISNULL([Débitos],0)",
                              "([Descripción] LIKE 'Extraccion%' OR [Descripción] LIKE 'Extracción%')")}
 
