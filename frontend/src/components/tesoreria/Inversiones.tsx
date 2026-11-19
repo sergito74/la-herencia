@@ -14,9 +14,9 @@ import { apiGet } from "@/services/apiClient";
 /** Inversiones (plazos fijos y FCI Fima), 19/11/2026 — diseño specs/051-experiencia-uso-moderna/diseno-inversiones-20261119.md.
  * Solo lectura: el capital es un pase entre el banco y la inversión; solo el rendimiento es resultado ("Resultados
  * financieros", Adm. General), por ejercicio del 01/04 al 31/03. */
-interface PlazoFijo { cuenta: string; constitucion: string; capital: number; vencimiento: string | null; cobrado: number | null; rendimiento: number | null; dias: number | null; tna: number | null; estado: "vigente" | "cobrado" | "revisar" }
+interface PlazoFijo { cuenta: string; constitucion: string; capital: number; vencimiento: string | null; cobrado: number | null; rendimiento: number | null; dias: number | null; tna: number | null; estado: "vigente" | "cobrado" | "revisar"; retencion?: number; rendimientoBruto?: number | null; retencionIncompleta?: boolean }
 interface MesFima { periodo: string; fecha: string; saldoAnterior: number; suscripciones: number; rescates: number; saldo: number; rendimiento: number }
-interface Ejercicio { ejercicio: string; plazoFijoNacion: number; plazoFijoGalicia: number; fima: number; total: number }
+interface Ejercicio { ejercicio: string; plazoFijoNacion: number; plazoFijoGalicia: number; fima: number; total: number; retenciones?: number }
 interface Resumen {
   invertido: number; fimaSaldo: number; fimaFecha: string | null; rendimientoEjercicio: number; ejercicioActual: string;
   plazosFijosVigentes: PlazoFijo[]; revisar: PlazoFijo[]; plazosFijos: PlazoFijo[]; fima: MesFima[]; ejercicios: Ejercicio[];
@@ -93,7 +93,7 @@ export function Inversiones() {
           <div className="overflow-hidden rounded-lg border border-border bg-surface">
             <table className="w-full text-sm">
               <thead className="bg-surface-sunken text-xs text-ink-secondary">
-                <tr><th className="px-3 py-2 text-left">Ejercicio</th><th className="px-3 py-2 text-right">Plazo fijo Nación</th><th className="px-3 py-2 text-right">Plazo fijo Galicia</th><th className="px-3 py-2 text-right">Fondo Fima</th><th className="px-3 py-2 text-right">Total</th></tr>
+                <tr><th className="px-3 py-2 text-left">Ejercicio</th><th className="px-3 py-2 text-right">Plazo fijo Nación</th><th className="px-3 py-2 text-right">Plazo fijo Galicia</th><th className="px-3 py-2 text-right">Fondo Fima</th><th className="px-3 py-2 text-right">Total cobrado</th><th className="px-3 py-2 text-right" title="Retenciones de Ganancias que el banco descontó del interés: son pago a cuenta del impuesto">Ret. Ganancias</th></tr>
               </thead>
               <tbody className="divide-y divide-border">
                 {[...d.ejercicios].reverse().map((e) => (
@@ -103,12 +103,14 @@ export function Inversiones() {
                     <td className="px-3 py-1.5 text-right font-data">{e.plazoFijoGalicia ? formatMoneda(e.plazoFijoGalicia) : "—"}</td>
                     <td className="px-3 py-1.5 text-right font-data">{e.fima ? formatMoneda(e.fima) : "—"}</td>
                     <td className="px-3 py-1.5 text-right font-data font-semibold">{formatMoneda(e.total)}</td>
+                    <td className="px-3 py-1.5 text-right font-data text-ink-secondary">{e.retenciones ? formatMoneda(e.retenciones) : "—"}</td>
                   </tr>
                 ))}
               </tbody>
               <tfoot className="border-t border-border font-medium">
                 <tr><td className="px-3 py-2">Total</td><td /><td /><td />
-                  <td className="px-3 py-2 text-right font-data">{formatMoneda(d.ejercicios.reduce((s, e) => s + e.total, 0))}</td></tr>
+                  <td className="px-3 py-2 text-right font-data">{formatMoneda(d.ejercicios.reduce((s, e) => s + e.total, 0))}</td>
+                  <td className="px-3 py-2 text-right font-data">{formatMoneda(d.ejercicios.reduce((s, e) => s + (e.retenciones ?? 0), 0))}</td></tr>
               </tfoot>
             </table>
           </div>
@@ -128,7 +130,9 @@ export function Inversiones() {
           <dl className="grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
             <dt className="text-ink-secondary">Capital (pase desde el banco)</dt><dd className="text-right font-data">{formatMoneda(pf.capital)}</dd>
             <dt className="text-ink-secondary">Cobrado</dt><dd className="text-right font-data">{pf.cobrado != null ? `${formatMoneda(pf.cobrado)} el ${formatFecha(pf.vencimiento)}` : "todavía no"}</dd>
-            <dt className="text-ink-secondary">Rendimiento</dt><dd className="text-right font-data font-semibold">{pf.rendimiento != null ? formatMoneda(pf.rendimiento) : "—"}</dd>
+            <dt className="text-ink-secondary">Rendimiento cobrado</dt><dd className="text-right font-data font-semibold">{pf.rendimiento != null ? formatMoneda(pf.rendimiento) : "—"}</dd>
+            <dt className="text-ink-secondary">Retención de Ganancias</dt><dd className="text-right font-data">{pf.retencion ? formatMoneda(pf.retencion) : "—"}{pf.retencionIncompleta ? " (falta la de las renovaciones)" : ""}</dd>
+            <dt className="text-ink-secondary">Rendimiento bruto</dt><dd className="text-right font-data">{pf.rendimientoBruto != null ? formatMoneda(pf.rendimientoBruto) : "—"}</dd>
             <dt className="text-ink-secondary">Plazo</dt><dd className="text-right font-data">{pf.dias != null ? `${formatCantidad(pf.dias)} días` : "—"}</dd>
             <dt className="text-ink-secondary">Tasa anual equivalente</dt><dd className="text-right font-data">{pf.tna != null ? `${formatCantidad(pf.tna)} %` : "—"}</dd>
           </dl>

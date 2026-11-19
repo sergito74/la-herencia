@@ -110,16 +110,34 @@ def fima() -> list[dict]:
     return salida
 
 
+def _retenciones() -> dict[tuple[str, int], float]:
+    try:
+        filas = fetch_all("SELECT Medio AS m, IdMovimiento AS i, SUM(Importe) AS t FROM dbo.InversionesRetenciones GROUP BY Medio, IdMovimiento")
+    except Exception:  # tabla todavía no creada
+        return {}
+    return {(f["m"], f["i"]): float(f["t"]) for f in filas}
+
+
 def resumen() -> dict:
     pfs, meses = plazos_fijos(), fima()
+    # Retención de Ganancias: el banco la descuenta del interés; es pago a cuenta. Bruto = cobrado − capital + retención.
+    ret = _retenciones()
+    for p in pfs:
+        p["retencion"] = round(ret.get((p["medio"], p["idVuelta"]), 0.0), 2)
+        p["rendimientoBruto"] = round(p["rendimiento"] + p["retencion"], 2) if p["rendimiento"] is not None else None
+        # Galicia retiene en cada renovación; si se renovó y solo consta la primera retención, queda incompleta.
+        p["retencionIncompleta"] = p["medio"] == "galicia" and (p["dias"] or 0) > 45
     por_ejercicio: dict[str, dict] = defaultdict(lambda: {"plazoFijoNacion": 0.0, "plazoFijoGalicia": 0.0, "fima": 0.0})
+    retenidas: dict[str, float] = defaultdict(float)
     for p in pfs:
         if p["rendimiento"] is not None:
             clave = "plazoFijoNacion" if "Nación" in p["cuenta"] else "plazoFijoGalicia"
             por_ejercicio[ejercicio(date.fromisoformat(p["vencimiento"]))][clave] += p["rendimiento"]
+            retenidas[ejercicio(date.fromisoformat(p["vencimiento"]))] += p["retencion"]
     for m in meses:
         por_ejercicio[ejercicio(date.fromisoformat(m["fecha"]))]["fima"] += m["rendimiento"]
-    ejercicios = [{"ejercicio": k, **{a: round(b, 2) for a, b in v.items()}, "total": round(sum(v.values()), 2)}
+    ejercicios = [{"ejercicio": k, **{a: round(b, 2) for a, b in v.items()}, "total": round(sum(v.values()), 2),
+                   "retenciones": round(retenidas.get(k, 0.0), 2)}
                   for k, v in sorted(por_ejercicio.items())]
     vigentes = [p for p in pfs if p["estado"] == "vigente"]
     saldo_fima = meses[-1]["saldo"] if meses else 0.0
@@ -133,4 +151,5 @@ def resumen() -> dict:
         "plazosFijosVigentes": vigentes,
         "revisar": [p for p in pfs if p["estado"] == "revisar"],
         "plazosFijos": pfs, "fima": meses, "ejercicios": ejercicios,
+        "retencionesIncompletas": [p for p in pfs if p.get("retencionIncompleta")],
     }
