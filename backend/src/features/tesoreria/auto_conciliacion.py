@@ -54,9 +54,10 @@ _CONCEPTO = {"bna": ("Movimientos BNA", "IdMovimientoBNA", "Concepto", "[Fecha /
              "galicia": ("Movimientos Galicia", "IdMovimiento", "[Descripción]", "Fecha")}
 
 
-# Nunca por esta regla: inversiones (son pases internos, no gastos) y canales por los que pagan varios clientes.
+# Nunca por esta regla: inversiones (son pases internos, no gastos), canales por los que pagan varios clientes y pagos de
+# tarjeta (se vinculan al resumen en el módulo de Tarjetas, que es el que pone el contacto).
 import re as _re
-_EXCLUIDO = _re.compile(r"fima|plazo fijo|p\.fijo|cash proveedores|dep\.?efectivo|transf|bca\.e\.tr|cheq|echeq", _re.I)
+_EXCLUIDO = _re.compile(r"fima|plazo fijo|p\.fijo|cash proveedores|dep\.?efectivo|transf|bca\.e\.tr|cheq|echeq|visa|master|tarjeta|amex|cabal", _re.I)
 
 
 def asignar_contacto_recurrente() -> int:

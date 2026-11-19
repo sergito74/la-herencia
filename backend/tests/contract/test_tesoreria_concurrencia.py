@@ -32,7 +32,7 @@ def anyio_backend():
 
 @pytest.mark.anyio
 async def test_concurrent_movimientos_across_medios_do_not_serialize(client, monkeypatch):
-    def slow_get_movimientos(medio, fecha_desde, fecha_hasta, page, page_size):
+    def slow_get_movimientos(medio, fecha_desde, fecha_hasta, page, page_size, q=None):
         time.sleep(DELAY_SECONDS)
         return [], 0
 
