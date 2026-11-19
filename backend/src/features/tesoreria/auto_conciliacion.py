@@ -163,6 +163,14 @@ def correr_reglas() -> None:
         lector_fima.actualizar()  # extracto mensual del Fondo Fima, desde Dropbox
     except Exception:
         _log.exception("Lectura del extracto del Fondo Fima")
+    try:
+        # 19/11/2026: los certificados de retención de Ganancias (SICORE) entran solos a la cuenta del proveedor; sin
+        # esto la parte retenida de cada orden de pago seguía figurando impaga en Facturas a pagar.
+        from scripts.cargar_retenciones_certificados import main as cargar_retenciones
+
+        cargar_retenciones(aplicar=True)
+    except Exception:
+        _log.exception("Carga de certificados de retención")
     conciliar_ley_25413()
     conciliar_inversiones()
     conciliar_extracciones_a_caja()
