@@ -29,7 +29,7 @@ export function FilterField({
   children: React.ReactNode;
 }) {
   return (
-    <label className="flex flex-1 min-w-[10rem] flex-col gap-1 text-sm text-ink-secondary">
+    <label className="flex flex-1 min-w-[10rem] flex-col gap-0.5 text-xs text-ink-secondary">
       {label}
       {children}
     </label>
@@ -37,7 +37,7 @@ export function FilterField({
 }
 
 export const filterInputClass =
-  "rounded-sm border border-border px-2 py-1 text-ink-primary focus:border-border-strong focus:outline-none";
+  "h-8 rounded-sm border border-border px-2 py-1 text-sm text-ink-primary focus:border-border-strong focus:outline-none";
 
 export function FilterSubmitButton({
   children = "Buscar",

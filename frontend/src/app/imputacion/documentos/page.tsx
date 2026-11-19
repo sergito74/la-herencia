@@ -136,23 +136,21 @@ function Pagina() {
       ]} />
 
       <section className="space-y-2 rounded-lg border border-border bg-surface px-3 py-2">
-        <div className="flex flex-wrap items-end gap-3">
-          <RangoFechas valor={rango} onChange={setRango} etiqueta="Período" />
-          <div className="w-64">
-            <span className="mb-1 block text-xs font-medium text-ink-secondary">Proveedor</span>
-            <ContactoSelect value={idContacto} razonSocial={proveedor} onChange={(id, n) => { setIdContacto(id); setProveedor(n); }} placeholder="Todos" />
+        <div className="flex flex-wrap items-center gap-2">
+          <RangoFechas valor={rango} onChange={setRango} etiqueta="" />
+          <div className="w-56">
+            <ContactoSelect value={idContacto} razonSocial={proveedor} onChange={(id, n) => { setIdContacto(id); setProveedor(n); }} placeholder="Proveedor…" ariaLabel="Proveedor" />
           </div>
           <div>
-            <span className="mb-1 block text-xs font-medium text-ink-secondary">Estado</span>
-            <Segmentos<EstadoDoc | "todos"> etiqueta="Estado" valor={estado || "todos"} onChange={(v) => setEstado(v === "todos" ? "" : v)}
+            <Segmentos<EstadoDoc | "todos"> size="sm" etiqueta="Estado" valor={estado || "todos"} onChange={(v) => setEstado(v === "todos" ? "" : v)}
               opciones={[{ id: "todos", label: "Todos" },
                 ...(["decision", "revisar", "pendiente", "aprobado"] as EstadoDoc[])
                   .filter((k) => k === "aprobado" || (cuenta(k)?.cantidad ?? 0) > 0 || estado === k)
                   .map((k) => ({ id: k, label: cuenta(k)?.etiqueta ?? k, aviso: k === "aprobado" ? undefined : cuenta(k)?.cantidad }))]} />
           </div>
-          <div className="ml-auto">
-            <span className="mb-1 block text-xs font-medium text-ink-secondary">Ver por</span>
-            <Segmentos<Agrupar> etiqueta="Agrupar" valor={agrupar} onChange={setAgrupar}
+          <div className="ml-auto flex items-center gap-2">
+            <span className="text-xs text-ink-secondary">Ver por</span>
+            <Segmentos<Agrupar> size="sm" etiqueta="Agrupar" valor={agrupar} onChange={setAgrupar}
               opciones={[{ id: "documento", label: "Documento" }, { id: "destino", label: "Destino" }, { id: "proveedor", label: "Proveedor" }]} />
           </div>
         </div>

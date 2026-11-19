@@ -7,11 +7,8 @@ import { RemitosSubNav } from "@/components/remitos/RemitosSubNav";
 export default function RemitosPage() {
   return (
     <main className="mx-auto max-w-none px-6 py-3">
-      <PageHeader titulo="Remitos" />
+      <PageHeader titulo="Remitos" pestanas={<RemitosSubNav grupo="remitos" />} />
       <div>
-        <RemitosSubNav grupo="remitos" />
-      </div>
-      <div className="mt-3">
         <RemitosListado />
       </div>
     </main>

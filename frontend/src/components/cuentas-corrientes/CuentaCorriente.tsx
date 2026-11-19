@@ -17,7 +17,6 @@ import {
 import { OrigenMovimiento } from "@/components/cuentas-corrientes/OrigenMovimiento";
 import { ArcaSubcuentas } from "@/components/cuentas-corrientes/ArcaSubcuentas";
 import { ReasignarMovimientoButton } from "@/components/cuentas-corrientes/ReasignarMovimientoButton";
-import { Breadcrumb } from "@/components/ui/Breadcrumb";
 import { DataTable, type DataTableColumn, type SortState } from "@/components/ui/DataTable";
 import { FilterBar, FilterField, FilterSubmitButton, filterInputClass } from "@/components/ui/FilterBar";
 import { KpiCard } from "@/components/ui/KpiCard";
@@ -231,17 +230,9 @@ export function CuentaCorriente() {
   }
 
   return (
-    <div className="space-y-6">
-      {selected && (
-        <Breadcrumb
-          items={[
-            { label: "Cuentas corrientes", href: undefined },
-            { label: selected.razonSocial ?? "—" },
-          ]}
-        />
-      )}
-
-      <FilterBar onSubmit={(e) => e.preventDefault()}>
+    <div className="space-y-2">
+      {/* 19/11/2026 (anatomía de hoja): con un contacto elegido, la búsqueda se oculta y todo va en una fila. */}
+      {!selected && <FilterBar onSubmit={(e) => e.preventDefault()}>
         <FilterField label="Contacto">
           <input
             className={filterInputClass}
@@ -270,7 +261,7 @@ export function CuentaCorriente() {
             ))}
           </select>
         </FilterField>
-      </FilterBar>
+      </FilterBar>}
 
       {loadingContactos && <LoadingState rows={3} />}
       {errorContactos && <ErrorState message="Ocurrió un error al buscar contactos." />}
@@ -306,14 +297,14 @@ export function CuentaCorriente() {
       )}
 
       {selected && (
-        <div className="space-y-4">
+        <div className="space-y-2">
           <AvisoCuentaContacto idContacto={selected.idContacto} />
-          <div className="flex items-center justify-between gap-4 rounded-md border border-border bg-surface p-4">
-            <div>
-              <h2 className="text-lg font-semibold text-ink-primary">
+          <div className="flex flex-wrap items-center gap-2 rounded-md border border-border bg-surface px-3 py-1.5">
+            <div className="mr-2 flex items-baseline gap-2">
+              <h2 className="text-base font-semibold text-ink-primary">
                 {selected.razonSocial ?? "—"}
               </h2>
-              <p className="text-sm text-ink-secondary">{selected.tipoContacto ?? "sin tipo"}</p>
+              <span className="text-xs text-ink-secondary">{selected.tipoContacto ?? "sin tipo"}</span>
             </div>
             <KpiCard
               label={selected.idContacto === 119 ? "Saldo contable total histórico" : SOCIO_DE_CONTACTO[selected.idContacto] ? "Saldo nominal (no es deuda del socio)" : "Saldo"}
@@ -335,12 +326,14 @@ export function CuentaCorriente() {
                 tone={saldo.saldoDolares < 0 ? "danger" : saldo.saldoDolares > 0 ? "success" : "neutral"}
               />
             )}
+            <RangoFechas etiqueta="" valor={{ desde: fechaDesde, hasta: fechaHasta }}
+              onChange={(r) => { setFechaDesde(r.desde); setFechaHasta(r.hasta); setPage(1); setAppliedDates({ fechaDesde: r.desde, fechaHasta: r.hasta }); }} />
             <a
               href={urlExportarCuenta(selected.idContacto, {
                 fechaDesde: appliedDates.fechaDesde || undefined,
                 fechaHasta: appliedDates.fechaHasta || undefined,
               })}
-              className="rounded border border-border px-3 py-1.5 text-sm hover:bg-surface-sunken"
+              className="ml-auto h-8 rounded border border-border px-3 py-1.5 text-sm hover:bg-surface-sunken"
             >
               {selected.idContacto === 119 ? "Exportar cuenta completa a Excel" : "Exportar a Excel"}
             </a>
@@ -353,8 +346,6 @@ export function CuentaCorriente() {
             </button>
           </div>
 
-          <RangoFechas etiqueta="Movimientos" valor={{ desde: fechaDesde, hasta: fechaHasta }}
-            onChange={(r) => { setFechaDesde(r.desde); setFechaHasta(r.hasta); setPage(1); setAppliedDates({ fechaDesde: r.desde, fechaHasta: r.hasta }); }} />
 
           {selected.idContacto === 119 && <ArcaSubcuentas key={`${selected.idContacto}-${appliedDates.fechaDesde}-${appliedDates.fechaHasta}`} fechaDesde={appliedDates.fechaDesde} fechaHasta={appliedDates.fechaHasta} />}
           {selected.idContacto !== 119 && loadingMovimientos && <LoadingState />}

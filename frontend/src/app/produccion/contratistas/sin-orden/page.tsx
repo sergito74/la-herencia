@@ -29,8 +29,8 @@ export default function FacturasSinOrdenPage() {
 
   return (
     <main className="mx-auto max-w-none space-y-3 px-6 py-3">
-      <PageHeader titulo="Contratistas sin orden" ayuda="Su costo cuenta por el cultivo y la campaña cargados a mano en cada renglón. Para que se impute solo por la superficie de la orden, abrí la factura y tildá sus órdenes de trabajo." />
-      <RemitosSubNav grupo="costos" />
+      <PageHeader titulo="Contratistas sin orden" ayuda="Su costo cuenta por el cultivo y la campaña cargados a mano en cada renglón. Para que se impute solo por la superficie de la orden, abrí la factura y tildá sus órdenes de trabajo."
+        pestanas={<RemitosSubNav grupo="costos" />} />
       <div className="flex flex-wrap items-end gap-3">
         <label className="text-sm">
           Contratista

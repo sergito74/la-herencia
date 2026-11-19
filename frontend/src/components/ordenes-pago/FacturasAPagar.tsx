@@ -40,10 +40,10 @@ export function FacturasAPagar({ idContacto, crearOrden }: { idContacto: number 
   }
 
   return <section className="space-y-3" aria-label="Facturas a pagar">
-    <div className="rounded border bg-white p-4 flex flex-wrap items-end gap-4">
-      <label className="text-sm">Buscar<input className={`${campo} block w-64`} value={buscar} placeholder="Proveedor o número" onChange={e => setBuscar(e.target.value)} /></label>
+    <div className="rounded border bg-white px-3 py-2 flex flex-wrap items-center gap-3">
+      <input aria-label="Buscar" className={`${campo} h-8 w-64 py-0`} value={buscar} placeholder="Buscar proveedor o número" onChange={e => setBuscar(e.target.value)} />
       <label className="text-sm"><input type="checkbox" checked={soloVencidas} onChange={e => setSoloVencidas(e.target.checked)} /> Solo vencidas</label>
-      <label className="text-sm"><input type="checkbox" checked={verTodas} onChange={e => setVerTodas(e.target.checked)} /> Ver también lo que no se paga en plata (tarjeta, débitos del banco y canjes de granos)</label>
+      <label className="text-sm"><input type="checkbox" checked={verTodas} onChange={e => setVerTodas(e.target.checked)} /> <span title="Ver también lo que no se paga en plata: tarjeta, débitos del banco y canjes de granos">Incluir tarjeta, débitos y canjes</span></label>
       <button className={campo} disabled={q.isFetching} onClick={recalcular}>{q.isFetching ? 'Calculando…' : 'Recalcular'}</button>
       <p className="ml-auto text-sm"><strong>{filas.length}</strong> facturas · Total {formatMoneda(total)} · <span className="text-status-danger">Vencido {formatMoneda(vencido)}</span></p>
     </div>

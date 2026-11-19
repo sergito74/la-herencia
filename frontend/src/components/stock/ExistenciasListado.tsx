@@ -6,8 +6,8 @@ import { useState } from "react";
 import { fetchExistencias, fetchKardex, fetchTiposProducto, urlExportarExistencias, urlRecuentoFisico, type Existencia } from "@/services/remitosApi";
 import { formatCantidad, formatMoneda, formatFecha } from "@/lib/format";
 import { DataTable, type DataTableColumn } from "@/components/ui/DataTable";
-import { FilterBar, FilterField, FilterSubmitButton, filterInputClass } from "@/components/ui/FilterBar";
-import { KpiCard } from "@/components/ui/KpiCard";
+import { filterInputClass } from "@/components/ui/FilterBar";
+import { TiraIndicadores } from "@/components/ui/TiraIndicadores";
 import { SideDrawer } from "@/components/ui/SideDrawer";
 import { ErrorState, LoadingState } from "@/components/ui/States";
 import { StatusBadge } from "@/components/ui/StatusBadge";
@@ -109,55 +109,34 @@ export function ExistenciasListado() {
   ];
 
   return (
-    <div className="space-y-4">
-      {data && (
-        <div className="grid gap-3 sm:grid-cols-4">
-          <KpiCard label="Productos" value={formatCantidad(data.totales.productos)} />
-          <KpiCard label="Valor del stock (FIFO)" value={formatMoneda(data.totales.valor)} />
-          <KpiCard label="Con costo pendiente" value={formatCantidad(data.totales.conCostoPendiente)} tone={data.totales.conCostoPendiente ? "warning" : "neutral"} />
-          <KpiCard label="Stock negativo" value={formatCantidad(data.totales.negativos)} tone={data.totales.negativos ? "danger" : "neutral"} />
+    <div className="space-y-2">
+      {/* 19/11/2026 (anatomía de hoja): indicadores, filtros y acciones en una fila. */}
+      <div className="flex flex-wrap items-center gap-2">
+        {data && (
+          <TiraIndicadores compacta items={[
+            { titulo: "Productos", valor: formatCantidad(data.totales.productos) },
+            { titulo: "Valor (FIFO)", valor: formatMoneda(data.totales.valor) },
+            { titulo: "Costo pendiente", valor: formatCantidad(data.totales.conCostoPendiente), aviso: !!data.totales.conCostoPendiente },
+            { titulo: "Negativos", valor: formatCantidad(data.totales.negativos), aviso: !!data.totales.negativos },
+          ]} />
+        )}
+        <form className="flex flex-wrap items-center gap-2" onSubmit={(e) => { e.preventDefault(); setAplicados(form); }}>
+          <input className={`${filterInputClass} w-48`} aria-label="Producto" value={form.q} onChange={(e) => setForm({ ...form, q: e.target.value })} placeholder="Buscar producto…" />
+          <select className={filterInputClass} aria-label="Tipo" value={form.tipo} onChange={(e) => setForm({ ...form, tipo: e.target.value })}>
+            <option value="">Todos los tipos</option>
+            {tipos?.map((t) => <option key={t} value={t}>{t}</option>)}
+          </select>
+          <select className={filterInputClass} aria-label="Mostrar" value={form.estado} onChange={(e) => setForm({ ...form, estado: e.target.value })}>
+            {ESTADOS.map((e) => <option key={e.value} value={e.value}>{e.label}</option>)}
+          </select>
+          <button type="submit" className="h-8 rounded-sm bg-finance px-3 text-sm font-medium text-white hover:bg-finance/90">Buscar</button>
+        </form>
+        <div className="ml-auto flex gap-2">
+          <a href={urlRecuentoFisico(filtros)} title="Planilla imprimible para contar el stock en el campo, con los filtros aplicados."
+            className="h-8 rounded-sm border border-finance px-3 py-1.5 text-sm text-finance hover:bg-finance-light">Planilla de recuento</a>
+          <BotonExcel href={urlExportarExistencias(filtros)} />
         </div>
-      )}
-      <div className="flex justify-end gap-2">
-        <a
-          href={urlRecuentoFisico(filtros)}
-          title="Descarga una planilla imprimible para contar el stock en el campo, con los filtros aplicados."
-          className="rounded-sm border border-finance px-4 py-2 text-sm text-finance hover:bg-finance-light"
-        >
-          Planilla de recuento físico
-        </a>
-        <BotonExcel href={urlExportarExistencias(filtros)} />
       </div>
-      <FilterBar
-        onSubmit={(e) => {
-          e.preventDefault();
-          setAplicados(form);
-        }}
-      >
-        <FilterField label="Producto">
-          <input className={filterInputClass} value={form.q} onChange={(e) => setForm({ ...form, q: e.target.value })} placeholder="Nombre…" />
-        </FilterField>
-        <FilterField label="Tipo">
-          <select className={filterInputClass} value={form.tipo} onChange={(e) => setForm({ ...form, tipo: e.target.value })}>
-            <option value="">Todos</option>
-            {tipos?.map((t) => (
-              <option key={t} value={t}>
-                {t}
-              </option>
-            ))}
-          </select>
-        </FilterField>
-        <FilterField label="Mostrar">
-          <select className={filterInputClass} value={form.estado} onChange={(e) => setForm({ ...form, estado: e.target.value })}>
-            {ESTADOS.map((e) => (
-              <option key={e.value} value={e.value}>
-                {e.label}
-              </option>
-            ))}
-          </select>
-        </FilterField>
-        <FilterSubmitButton />
-      </FilterBar>
       {isLoading && <LoadingState />}
       {isError && <ErrorState message="No se pudieron cargar las existencias." onRetry={() => refetch()} />}
       {data && (

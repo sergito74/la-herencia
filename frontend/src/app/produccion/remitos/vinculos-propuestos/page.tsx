@@ -7,11 +7,8 @@ import { VinculosPropuestosListado } from "@/components/remitos/VinculosPropuest
 export default function Page() {
   return (
     <main className="mx-auto max-w-none px-6 py-3">
-      <PageHeader titulo="Vínculos remito ↔ factura propuestos" volver="/produccion/remitos" />
+      <PageHeader titulo="Vínculos remito ↔ factura propuestos" volver="/produccion/remitos" pestanas={<RemitosSubNav grupo="remitos" />} />
       <div>
-        <RemitosSubNav grupo="remitos" />
-      </div>
-      <div className="mt-3">
         <VinculosPropuestosListado />
       </div>
     </main>

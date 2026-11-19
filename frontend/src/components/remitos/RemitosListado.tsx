@@ -8,7 +8,8 @@ import { useState } from "react";
 import { fetchRemitos, urlExportarRemitos, type FiltrosRemitos, type RemitoListItem } from "@/services/remitosApi";
 import { DataTable, type DataTableColumn } from "@/components/ui/DataTable";
 import { ContactoSelect } from "@/components/ui/ContactoSelect";
-import { FilterBar, FilterField, FilterSubmitButton, filterInputClass } from "@/components/ui/FilterBar";
+import { filterInputClass } from "@/components/ui/FilterBar";
+import { RangoFechas } from "@/components/ui/RangoFechas";
 import { ErrorState, LoadingState } from "@/components/ui/States";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { BadgeFactura, BadgeRenglones, BotonExcel } from "@/components/remitos/EstadosRemito";
@@ -108,7 +109,7 @@ export function RemitosListado() {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-2">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex flex-wrap gap-1">
           {ESTADOS.map((e) => (
@@ -126,41 +127,24 @@ export function RemitosListado() {
         </div>
         <div className="flex gap-2">
           <BotonExcel href={urlExportarRemitos(filtros)} />
-          <Link href="/produccion/remitos/nuevo" className="rounded-md bg-finance font-medium text-white shadow-sm transition-colors hover:bg-finance/90 disabled:opacity-60 px-4 py-2 text-sm hover:opacity-90">
+          <Link href="/produccion/remitos/nuevo" className="rounded-md bg-finance font-medium text-white shadow-sm transition-colors hover:bg-finance/90 disabled:opacity-60 h-8 px-3 py-1.5 text-sm hover:opacity-90">
             + Nuevo remito
           </Link>
         </div>
       </div>
 
-      <FilterBar
-        onSubmit={(e) => {
-          e.preventDefault();
-          aplicar(form);
-        }}
-      >
-        <FilterField label="Proveedor">
-          <ContactoSelect
-            value={form.idProveedor}
-            razonSocial={form.proveedor}
-            tipoContacto={["Proveedor", "Multiple"]}
-            onChange={(id, nombre) => setForm({ ...form, idProveedor: id, proveedor: nombre })}
-            placeholder="Todos"
-          />
-        </FilterField>
-        <FilterField label="Producto">
-          <input className={filterInputClass} value={form.producto} onChange={(e) => setForm({ ...form, producto: e.target.value })} placeholder="Nombre o principio activo…" />
-        </FilterField>
-        <FilterField label="N° de remito">
-          <input className={filterInputClass} value={form.nroRemito} onChange={(e) => setForm({ ...form, nroRemito: e.target.value })} />
-        </FilterField>
-        <FilterField label="Desde">
-          <input type="date" className={filterInputClass} value={form.fechaDesde} onChange={(e) => setForm({ ...form, fechaDesde: e.target.value })} />
-        </FilterField>
-        <FilterField label="Hasta">
-          <input type="date" className={filterInputClass} value={form.fechaHasta} onChange={(e) => setForm({ ...form, fechaHasta: e.target.value })} />
-        </FilterField>
-        <FilterSubmitButton />
-      </FilterBar>
+      {/* 19/11/2026 (anatomía de hoja): filtros en una fila, sin etiquetas arriba. */}
+      <form className="flex flex-wrap items-center gap-2" onSubmit={(e) => { e.preventDefault(); aplicar(form); }}>
+        <div className="w-56">
+          <ContactoSelect value={form.idProveedor} razonSocial={form.proveedor} tipoContacto={["Proveedor", "Multiple"]} ariaLabel="Proveedor"
+            onChange={(id, nombre) => setForm({ ...form, idProveedor: id, proveedor: nombre })} placeholder="Proveedor…" />
+        </div>
+        <input className={`${filterInputClass} w-56`} aria-label="Producto" value={form.producto} onChange={(e) => setForm({ ...form, producto: e.target.value })} placeholder="Producto o principio activo…" />
+        <input className={`${filterInputClass} w-36`} aria-label="Número de remito" value={form.nroRemito} onChange={(e) => setForm({ ...form, nroRemito: e.target.value })} placeholder="N° de remito" />
+        <RangoFechas etiqueta="" valor={{ desde: form.fechaDesde, hasta: form.fechaHasta }}
+          onChange={(r) => aplicar({ ...form, fechaDesde: r.desde, fechaHasta: r.hasta })} />
+        <button type="submit" className="h-8 rounded-sm bg-finance px-3 text-sm font-medium text-white hover:bg-finance/90">Buscar</button>
+      </form>
 
       {isLoading && <LoadingState />}
       {isError && <ErrorState message="No se pudieron cargar los remitos." onRetry={() => refetch()} />}

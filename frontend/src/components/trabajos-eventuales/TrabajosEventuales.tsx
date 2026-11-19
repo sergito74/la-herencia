@@ -2,6 +2,7 @@
 import { PageHeader } from "@/components/ui/PageHeader";
 import { SideDrawer } from "@/components/ui/SideDrawer";
 import { RangoFechas } from "@/components/ui/RangoFechas";
+import { TiraIndicadores } from "@/components/ui/TiraIndicadores";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useState } from "react";
@@ -83,14 +84,16 @@ export function TrabajosEventuales() {
   return <main className="mx-auto max-w-none space-y-3 px-6 py-3">
     <PageHeader titulo="Trabajos eventuales" ayuda="Labores, jornales, viáticos y su relación con las liquidaciones del personal."><Link className={boton} href={`/personal/remuneraciones${nombre?`?empleado=${encodeURIComponent(nombre)}`:""}`}>Remuneraciones</Link><SoloLectura><button className={boton} onClick={()=>setForm("nuevo")}>Nuevo trabajo</button></SoloLectura></PageHeader>
     {filtros.idSalario && <div className="flex flex-wrap items-center gap-3 rounded border border-border p-3 text-sm"><span>Trabajos vinculados a la liquidación seleccionada.</span><button className="text-finance underline" onClick={()=>setFiltros(f=>({...f,idSalario:undefined,page:1}))}>Ver todos los trabajos del trabajador</button></div>}
-    <form className="flex flex-wrap items-end gap-3" onSubmit={e=>{e.preventDefault();setId(null);setFiltros({idContacto:contacto??undefined,desde,hasta,estadoPago:estado,vinculacion,page:1});}}>
-      <ContactoSelect label="Trabajador" tipoContacto="Empleado" value={contacto} razonSocial={nombre} onChange={(i,n)=>{setContacto(i);setNombre(n??"");}} />
-      <RangoFechas valor={{desde,hasta}} onChange={r=>{setDesde(r.desde);setHasta(r.hasta);}} />
-      <label className="text-sm">Pago<select className={`${input} block`} value={estado} onChange={e=>setEstado(e.target.value)}><option value="">Todos</option><option>Pendiente</option><option>Pagado</option></select></label>
-      <label className="text-sm">Liquidación<select className={`${input} block`} value={vinculacion} onChange={e=>setVinculacion(e.target.value)}><option value="">Todas</option><option value="sin">Sin vincular</option><option value="parcial">Parcial</option><option value="completo">Vinculado</option></select></label><button className={boton}>Buscar</button>
+    <form className="flex flex-wrap items-center gap-2" onSubmit={e=>{e.preventDefault();setId(null);setFiltros({idContacto:contacto??undefined,desde,hasta,estadoPago:estado,vinculacion,page:1});}}>
+      <div className="w-56"><ContactoSelect ariaLabel="Trabajador" placeholder="Trabajador…" tipoContacto="Empleado" value={contacto} razonSocial={nombre} onChange={(i,n)=>{setContacto(i);setNombre(n??"");}} /></div>
+      <RangoFechas etiqueta="" valor={{desde,hasta}} onChange={r=>{setDesde(r.desde);setHasta(r.hasta);}} />
+      <select aria-label="Pago" className={`${input} h-8 py-0`} value={estado} onChange={e=>setEstado(e.target.value)}><option value="">Pago: todos</option><option>Pendiente</option><option>Pagado</option></select>
+      <select aria-label="Liquidación" className={`${input} h-8 py-0`} value={vinculacion} onChange={e=>setVinculacion(e.target.value)}><option value="">Liquidación: todas</option><option value="sin">Sin vincular</option><option value="parcial">Parcial</option><option value="completo">Vinculado</option></select><button className={boton}>Buscar</button>
+      {data && <TiraIndicadores compacta items={[{ titulo: "Total", valor: formatMoneda(data.resumen.totalTrabajos) },
+        { titulo: "En liquidaciones", valor: formatMoneda(data.resumen.totalVinculado) },
+        { titulo: "Sin vincular", valor: formatMoneda(data.resumen.sinVincular) }]} />}
     </form>
     {form && <SoloLectura><Formulario key={form==="nuevo"?"nuevo":form.idTrabajo} trabajo={form==="nuevo"?undefined:form} cerrar={()=>setForm(null)} onGuardado={t=>{setForm(null);setId(t.idTrabajo);refrescar();}} /></SoloLectura>}
-    {data && <div className="grid gap-3 sm:grid-cols-3">{([["Total trabajos",data.resumen.totalTrabajos],["Incluido en liquidaciones",data.resumen.totalVinculado],["Sin vincular",data.resumen.sinVincular]] as const).map(([titulo,valor])=><div key={titulo} className="rounded-lg border border-border p-4"><p className="text-xs text-ink-secondary">{titulo}</p><strong className="text-xl">{formatMoneda(valor)}</strong></div>)}</div>}
     <SideDrawer open={id!=null} onClose={()=>setId(null)} title="Trabajo eventual" maxWidthClass="max-w-2xl">{id && <Detalle key={id} id={id} onEditar={(x)=>{setId(null);setForm(x);}} onCambio={refrescar} salarioInicial={Number(qs.get("idSalario"))||undefined}/>}</SideDrawer>
     {elegidos.length>0 && !pagando && <SoloLectura><div className="flex flex-wrap items-center gap-3 rounded border border-border bg-surface-sunken p-3 text-sm"><span>{elegidos.length} {elegidos.length===1?"trabajo elegido":"trabajos elegidos"} de {elegidos[0].trabajador} · falta pagar {formatMoneda(elegidos.reduce((s,e)=>s+Math.max(0,e.total-(e.pagado??0)),0))}</span><button className={boton} onClick={()=>setPagando(true)}>Pagar con un solo pago</button><button className="text-finance underline" onClick={()=>setElegidos([])}>Quitar selección</button></div></SoloLectura>}
     {pagando && elegidos.length>0 && <SoloLectura><PagoVarios key={elegidos.map(e=>e.idTrabajo).join("-")} trabajos={[...elegidos].sort((a,b)=>a.fecha.localeCompare(b.fecha))} cancelar={()=>setPagando(false)} onListo={()=>{setPagando(false);setElegidos([]);refrescar();}} /></SoloLectura>}

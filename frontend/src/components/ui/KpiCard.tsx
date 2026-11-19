@@ -22,9 +22,9 @@ export function KpiCard({
   tone?: BadgeTone;
 }) {
   return (
-    <div className="rounded-md border border-border bg-surface p-4">
-      <p className="text-xs uppercase tracking-wide text-ink-secondary">{label}</p>
-      <p className={`font-data mt-1 text-2xl font-semibold ${VALUE_TONE_CLASSES[tone]}`}>
+    <div className="flex items-baseline gap-2 rounded-md border border-border bg-surface px-3 py-2">
+      <p className="text-[11px] font-medium uppercase tracking-wide text-ink-muted">{label}</p>
+      <p className={`font-data text-base font-semibold ${VALUE_TONE_CLASSES[tone]}`}>
         {value}
       </p>
     </div>

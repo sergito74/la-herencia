@@ -32,13 +32,14 @@ export function RemitosSubNav({ grupo }: { grupo?: GrupoProduccion }) {
   const pathname = usePathname() ?? "";
   if (!grupo) return null;
   return (
-    <nav aria-label="Secciones" className="flex flex-wrap gap-1 border-b border-border">
+    // 19/11/2026 (anatomía de hoja): pestañas compactas en la fila del título (PageHeader `pestanas`), no en una fila propia.
+    <nav aria-label="Secciones" className="inline-flex flex-wrap gap-0.5 rounded-lg border border-border bg-surface-sunken/70 p-0.5">
       {GRUPOS[grupo].map((t) => {
         const activo = t.exacto ? pathname === t.href : pathname.startsWith(t.href);
         return (
           <Link key={t.href} href={t.href} aria-current={activo ? "page" : undefined}
-            className={`-mb-px border-b-2 px-4 py-2 text-sm ${
-              activo ? "border-agro font-semibold text-ink-primary" : "border-transparent text-ink-secondary hover:text-ink-primary"
+            className={`rounded-md px-2 py-0.5 text-[13px] font-medium transition-colors ${
+              activo ? "bg-surface text-finance shadow-sm ring-1 ring-border" : "text-ink-secondary hover:bg-surface/70 hover:text-ink-primary"
             }`}>
             {t.label}
           </Link>
