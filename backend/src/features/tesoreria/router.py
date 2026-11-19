@@ -55,6 +55,14 @@ async def list_medios() -> MediosResponse:
     return MediosResponse(medios=list(MEDIOS))
 
 
+@router.get("/inversiones")
+async def inversiones() -> dict:
+    """Plazos fijos y FCI Fima: cartera, rendimiento por ejercicio (01/04–31/03) y excepciones (19/11/2026, solo lectura)."""
+    from src.features.tesoreria import inversiones as iv
+
+    return await run_in_threadpool(iv.resumen)
+
+
 @router.get("/{medio}/resumen")
 async def resumen_medio(medio: str) -> dict:
     """Saldo, pendientes de conciliar y último extracto del medio (19/11/2026)."""
