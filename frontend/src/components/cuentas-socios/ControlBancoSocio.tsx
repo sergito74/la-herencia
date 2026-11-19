@@ -28,7 +28,7 @@ export function ControlBancoSocio({ idSocio }: { idSocio: number }) {
       </div>
       {abierto && (
         <table className="mt-2 min-w-full">
-          <thead className="text-left text-xs uppercase text-ink-secondary">
+          <thead className="sticky top-[53px] z-10 text-left text-xs uppercase text-ink-secondary bg-surface">
             <tr><th className="py-1">Fecha</th><th>Banco</th><th>Sentido</th><th className="text-right">Importe</th><th /></tr>
           </thead>
           <tbody className="divide-y divide-border">

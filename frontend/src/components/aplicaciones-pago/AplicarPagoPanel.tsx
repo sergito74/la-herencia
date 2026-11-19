@@ -84,7 +84,7 @@ export function AplicarPagoPanel({
   return (
     <div className="space-y-3">
       <table className="w-full text-sm">
-        <thead>
+        <thead className="sticky top-0 z-10 bg-surface">
           <tr className="text-left text-xs text-ink-secondary">
             <th className="py-1.5 pr-2">Documento</th>
             <th className="px-2 py-1.5 text-right">Importe a aplicar</th>

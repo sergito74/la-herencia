@@ -80,7 +80,7 @@ export function TarjetaCuentaTabla({ idTarjeta }: { idTarjeta: number }) {
       )}
 
       <table className="w-full text-sm">
-        <thead>
+        <thead className="sticky top-[53px] z-10 bg-surface">
           <tr className="text-left text-xs text-ink-secondary">
             <th className="py-1">Fecha</th>
             <th>Tipo</th>

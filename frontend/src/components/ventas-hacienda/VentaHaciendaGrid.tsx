@@ -112,9 +112,9 @@ export function VentaHaciendaGrid({
 
   return (
     <div className="space-y-1">
-      <div className="overflow-x-auto rounded-md border border-border">
+      <div className="overflow-auto max-h-[calc(100vh-7rem)] rounded-md border border-border">
         <table className="min-w-full divide-y divide-border text-xs">
-          <thead className="sticky top-0 bg-surface-sunken text-left">
+          <thead className="sticky top-0 z-10 bg-surface-sunken text-left">
             <tr>
               {[
                 "Comprador",

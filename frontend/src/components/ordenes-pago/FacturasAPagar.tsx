@@ -55,10 +55,10 @@ export function FacturasAPagar({ idContacto, crearOrden }: { idContacto: number 
     </div>}
     {q.isLoading && <p>Calculando las facturas a pagar de todas las cuentas…</p>}
     {q.isError && <p role="alert" className="text-status-danger">{q.error.message}</p>}
-    <section className="overflow-auto rounded border bg-white">
+    <section className="overflow-auto max-h-[calc(100vh-7rem)] rounded border bg-white">
       <table className="w-full table-fixed text-xs leading-tight">
         <colgroup><col className="w-7" /><col className="w-28" /><col className="w-44" /><col /><col className="w-20" /><col className="w-28" /><col className="w-24" /><col className="w-28" /></colgroup>
-        <thead className="bg-surface-sunken"><tr>
+        <thead className="sticky top-0 z-10 bg-surface-sunken"><tr>
           <th className="p-1"></th><th className="p-1 text-left">Vencimiento</th><th className="p-1 text-left">Proveedor</th><th className="p-1 text-left">Documento</th>
           <th className="p-1 text-left">Fecha</th><th className="p-1 text-right">Saldo</th><th className="p-1 text-right">En otras órdenes</th><th className="p-1 text-right">Disponible</th>
         </tr></thead>
@@ -90,7 +90,7 @@ export function FacturasAPagar({ idContacto, crearOrden }: { idContacto: number 
     </section>
     {!!camino.data?.length && <section className="rounded border bg-white" aria-label="Pagos hechos que esperan el banco">
       <h3 className="p-3 font-medium">Pagados, esperando el resumen del banco</h3>
-      <table className="w-full text-xs leading-tight"><thead className="bg-surface-sunken"><tr>
+      <table className="w-full text-xs leading-tight"><thead className="sticky top-[53px] z-10 bg-surface-sunken"><tr>
         <th className="p-2 text-left">Proveedor</th><th className="text-left">Pago</th><th className="text-left">Fecha</th><th className="text-left">Débito previsto</th><th className="text-left">Concepto</th><th className="p-2 text-right">Importe</th>
       </tr></thead><tbody>
         {camino.data.map((c, i) => <tr key={i} className="border-t">

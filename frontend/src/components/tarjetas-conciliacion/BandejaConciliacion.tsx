@@ -81,7 +81,7 @@ function ModalExactas({ onClose, onApplied }: { onClose: () => void; onApplied: 
           {data && data.length === 0 && <EmptyState message="No hay sugerencias exactas seguras para aplicar en bloque." />}
           {data && data.length > 0 && (
             <table className="w-full text-xs">
-              <thead className="text-left text-ink-secondary">
+              <thead className="sticky top-0 z-10 text-left text-ink-secondary bg-surface">
                 <tr>
                   <th className="w-6" />
                   <th className="py-1 pr-2">Tarjeta · resumen</th>

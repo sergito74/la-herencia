@@ -180,9 +180,9 @@ export default function BovedaPage() {
       <RutinaPanel />
 
       {portales.isError && <p className="text-sm text-status-danger">No se pudo leer la bóveda: {portales.error.message}</p>}
-      <div className="overflow-x-auto rounded-md border border-border bg-surface">
+      <div className="overflow-auto max-h-[calc(100vh-7rem)] rounded-md border border-border bg-surface">
         <table className="min-w-full text-sm">
-          <thead className="bg-surface-sunken text-left text-xs text-ink-secondary">
+          <thead className="sticky top-0 z-10 bg-surface-sunken text-left text-xs text-ink-secondary">
             <tr>
               <th className="w-8 px-3 py-2">
                 <input type="checkbox" aria-label="Seleccionar todas las sincronizables" checked={todasMarcadas}

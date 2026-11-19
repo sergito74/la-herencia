@@ -511,7 +511,7 @@ function ContenidoPanel({
             {documentos.length > 0 && (
               <div className="mt-1 max-h-72 overflow-auto rounded-sm border border-border">
                 <table className="w-full text-xs">
-                  <thead className="sticky top-0 bg-surface text-left text-ink-secondary">
+                  <thead className="sticky top-0 z-10 bg-surface text-left text-ink-secondary">
                     <tr>
                       <th className="w-6" />
                       <th className="py-0.5 pr-2">Fecha</th>
@@ -687,9 +687,9 @@ function ContenidoPanel({
             {modoReparto && seleccion.length > 0 && propuesta && (
               <>
                 <p className="text-xs font-medium text-ink-secondary">Reparto propuesto (editable) — {lineasReparto.length} líneas contra {seleccion.length} documentos</p>
-                <div className="mt-1 overflow-auto">
+                <div className="overflow-auto max-h-[calc(100vh-7rem)] mt-1">
                   <table className="w-full text-xs">
-                    <thead className="text-left text-ink-secondary">
+                    <thead className="sticky top-0 z-10 text-left text-ink-secondary bg-surface">
                       <tr>
                         <th className="py-0.5 pr-2">Línea</th>
                         <th className="pr-2">Documento</th>

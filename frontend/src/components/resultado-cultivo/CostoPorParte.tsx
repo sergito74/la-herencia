@@ -30,7 +30,7 @@ export function CostoPorParte({ idCultivo, idCampania }: { idCultivo: number; id
         <span className="ml-2 font-normal text-ink-muted">{ha ? `${formatNumero(ha, { max: 2 })} ha sembradas` : "sin superficie sembrada"}</span>
       </h3>
       <table className="w-full text-sm">
-        <thead>
+        <thead className="sticky top-[53px] z-10 bg-surface">
           <tr className="border-b border-border text-ink-muted">
             <th className="px-2 py-1 text-left font-medium">Parte</th>
             <th className="px-2 py-1 text-right font-medium">Pesos</th>

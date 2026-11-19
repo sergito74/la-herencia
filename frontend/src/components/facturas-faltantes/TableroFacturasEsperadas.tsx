@@ -76,7 +76,7 @@ export function TableroFacturasEsperadas() {
     <p className="text-sm">Llegaron {t.resumen.llego} · pendientes {t.resumen.pendiente} · atrasadas {t.resumen.atrasada} · ¿baja? {t.resumen.baja}.
       Son alarmas para verificar con el comprobante, no errores confirmados.</p>
     {t.items.length === 0 ? <p>No hay proveedores que facturen con regularidad.</p> :
-      <table className="w-full text-sm"><thead><tr className="text-left text-ink-secondary">
+      <table className="w-full text-sm"><thead className="sticky top-[53px] z-10 bg-surface"><tr className="text-left text-ink-secondary">
         <th className="p-2">Proveedor</th><th className="p-2">Estado</th><th className="p-2">Esperada</th><th className="p-2 text-right">Monto esperado</th>
         <th className="p-2">Última factura</th><th className="p-2" /></tr></thead>
         <tbody>{t.items.map(f => <Fila key={f.idContacto} f={f} />)}</tbody></table>}

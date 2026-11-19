@@ -136,7 +136,7 @@ export function RemitoDetalleView({ idRemito }: { idRemito: number }) {
       <div className="rounded-md border border-border bg-surface p-4">
         <h2 className="text-sm font-medium">Renglones</h2>
         <table className="mt-2 w-full text-xs">
-          <thead className="text-left text-ink-secondary">
+          <thead className="sticky top-[53px] z-10 text-left text-ink-secondary bg-surface">
             <tr>
               <th className="py-1 pr-2">Producto</th>
               <th className="pr-2 text-right">Cantidad</th>

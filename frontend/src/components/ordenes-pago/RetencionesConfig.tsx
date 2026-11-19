@@ -43,7 +43,7 @@ export function RetencionesConfig() {
   <section className="rounded border bg-white p-4 space-y-2"><h2 className="font-semibold">Concepto de retención por rubro</h2>
    <p className="text-sm text-ink-secondary">Borrador armado por el sistema: lo valida el contador y lo ratifica el estudio contable. {pendientes>0&&`${pendientes} rubros en borrador.`}</p>
    {(rubros.isFetching||regimenes.isFetching)&&<p>Cargando…</p>}{[rubros.error,regimenes.error].filter(Boolean).map((e,i)=><p key={i} role="alert" className="text-status-danger">{e?.message}</p>)}
-   <div className="overflow-auto max-h-[600px]"><table className="w-full text-sm"><thead className="bg-surface-sunken"><tr><th className="p-2 text-left">Rubro</th><th className="text-left">Concepto de ARCA</th><th>Estado</th><th className="text-left">Observaciones</th><th></th></tr></thead><tbody>
+   <div className="overflow-auto max-h-[calc(100vh-7rem)]"><table className="w-full text-sm"><thead className="sticky top-0 z-10 bg-surface-sunken"><tr><th className="p-2 text-left">Rubro</th><th className="text-left">Concepto de ARCA</th><th>Estado</th><th className="text-left">Observaciones</th><th></th></tr></thead><tbody>
     {rubros.data?.map(r=><FilaRubro key={r.idRubro} r={r} regimenes={regimenes.data??[]}/>)}
    </tbody></table></div>
   </section>

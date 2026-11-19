@@ -30,7 +30,7 @@ export function EstadoCuentaPanel({ idPortal }: { idPortal: number }) {
   return (
     <div className="space-y-3">
       <table className="w-full text-sm">
-        <thead>
+        <thead className="sticky top-[53px] z-10 bg-surface">
           <tr className="border-b border-border text-left text-xs uppercase tracking-wide text-ink-muted">
             <th className="py-2 pr-3">Corte</th>
             <th className="py-2 pr-3 text-right">Saldo portal</th>
@@ -72,7 +72,7 @@ export function EstadoCuentaPanel({ idPortal }: { idPortal: number }) {
       </table>
       {abierta !== null && detalle.data?.movimientos && (
         <table className="w-full text-xs">
-          <thead>
+          <thead className="sticky top-[53px] z-10 bg-surface">
             <tr className="border-b border-border text-left text-ink-muted">
               <th className="py-1 pr-3">Fecha</th><th className="py-1 pr-3">Comprobante</th><th className="py-1 pr-3">Detalle</th>
               <th className="py-1 pr-3 text-right">Debe</th><th className="py-1 pr-3 text-right">Haber</th><th className="py-1 pr-3 text-right">Saldo</th>

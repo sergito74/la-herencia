@@ -77,7 +77,7 @@ export function PanelControl() {
       </ul>
 
       <table className="w-full text-sm">
-        <thead>
+        <thead className="sticky top-[53px] z-10 bg-surface">
           <tr className="text-left text-xs text-ink-secondary">
             <th className="py-1">Categoría</th><th>Tarjeta</th><th>Fecha</th><th className="text-right">Importe</th><th>Motivo</th>
           </tr>

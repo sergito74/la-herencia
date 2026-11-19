@@ -57,7 +57,7 @@ export default function DescargaPeajesPage() {
 
       <section className="rounded-md border border-border bg-surface p-4">
         <table className="w-full text-sm">
-          <thead>
+          <thead className="sticky top-[53px] z-10 bg-surface">
             <tr className="border-b border-border text-left text-xs uppercase tracking-wide text-ink-muted">
               <th className="py-2 pr-3">Portal</th>
               <th className="py-2 pr-3">Configuración</th>

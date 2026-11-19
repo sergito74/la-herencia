@@ -39,7 +39,7 @@ export default function CompraCuotasDetallePage() {
           </p>
           <div className="rounded-md border border-border bg-surface p-2">
             <table className="w-full text-xs">
-              <thead>
+              <thead className="sticky top-[53px] z-10 bg-surface">
                 <tr className="text-left text-ink-secondary">
                   <th className="py-1">Cuota</th>
                   <th className="py-1">Vencimiento</th>

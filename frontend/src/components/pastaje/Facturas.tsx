@@ -68,9 +68,9 @@ export function Facturas({ contrato }: { contrato: ContratoFicha }) {
       {lista.length === 0 ? (
         <EmptyState message="Todavía no hay comprobantes cargados." />
       ) : (
-        <div className="overflow-x-auto rounded-md border border-border">
+        <div className="overflow-auto max-h-[calc(100vh-7rem)] rounded-md border border-border">
           <table className="min-w-full text-sm">
-            <thead className="bg-surface-muted text-left text-xs uppercase text-ink-secondary">
+            <thead className="sticky top-0 z-10 bg-surface-muted text-left text-xs uppercase text-ink-secondary">
               <tr>
                 <th className="px-3 py-2">Mes</th><th className="px-3 py-2">Comprobante</th><th className="px-3 py-2">Fecha</th>
                 <th className="px-3 py-2 text-right">Neto</th><th className="px-3 py-2 text-right">Total</th>

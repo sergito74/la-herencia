@@ -45,9 +45,9 @@ export function TrazabilidadCompra({ idCompra }: { idCompra: number }) {
       )}
 
       {data && data.movimientos.length > 0 && (
-        <div className="mt-2 overflow-x-auto">
+        <div className="overflow-auto max-h-[calc(100vh-7rem)] mt-2">
           <table className="min-w-full divide-y divide-border text-sm">
-            <thead className="bg-surface-sunken text-left">
+            <thead className="sticky top-0 z-10 bg-surface-sunken text-left">
               <tr>
                 <th className="px-3 py-1.5 font-medium text-ink-secondary">Fecha</th>
                 <th className="px-3 py-1.5 font-medium text-ink-secondary">Origen</th>

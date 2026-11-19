@@ -116,9 +116,9 @@ export function ConsolidadoCampaniaView({
 
 
 
-          <div className="mt-6 overflow-x-auto rounded border border-border bg-surface">
+          <div className="overflow-auto max-h-[calc(100vh-7rem)] mt-6 rounded border border-border bg-surface">
             <table className="w-full min-w-[760px] border-collapse text-left text-sm">
-              <thead className="bg-surface-sunken text-xs uppercase text-ink-secondary">
+              <thead className="sticky top-0 z-10 bg-surface-sunken text-xs uppercase text-ink-secondary">
                 <tr>
                   <th className="px-3 py-2">Cultivo</th>
                   <th className="px-3 py-2 text-right">Sembrado</th>

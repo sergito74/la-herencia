@@ -165,7 +165,7 @@ export function VentasHaciendaListado() {
               />
             </p>
             <table className="min-w-full divide-y divide-border text-sm">
-              <thead className="text-left text-ink-secondary">
+              <thead className="sticky top-0 z-10 text-left text-ink-secondary bg-surface">
                 <tr>
                   <th className="py-1">Comprador</th>
                   <th className="py-1">Tipo</th>

@@ -119,7 +119,7 @@ export function Liquidaciones({ contrato, periodoInicial }: { contrato: Contrato
         <h3 className="mb-2 font-semibold">Historial de liquidaciones</h3>
         {lista.data?.length ? (
           <table className="min-w-full text-sm">
-            <thead className="text-left text-xs uppercase text-ink-secondary">
+            <thead className="sticky top-[53px] z-10 text-left text-xs uppercase text-ink-secondary bg-surface">
               <tr>
                 <th className="py-1">Mes</th><th>Tipo</th><th>Estado</th><th className="text-right">Neto</th><th className="text-right">Total</th><th>PDF</th>
               </tr>
@@ -165,7 +165,7 @@ function Detalle({ p, liq }: { p: Preview; liq: Liquidacion | null }) {
       <section className="rounded-md border border-border bg-surface p-4">
         <h3 className="font-semibold">Proporción temporal {fijada ? "(fijada al confirmar)" : "(cálculo vigente)"}</h3>
         <table className="mt-2 min-w-full text-sm">
-          <thead className="text-left text-xs uppercase text-ink-secondary">
+          <thead className="sticky top-[53px] z-10 text-left text-xs uppercase text-ink-secondary bg-surface">
             <tr><th className="py-1">Tramo</th><th className="text-right">Cabezas</th><th className="text-right">Días</th><th className="text-right">Kg / importe</th></tr>
           </thead>
           <tbody className="divide-y divide-border">

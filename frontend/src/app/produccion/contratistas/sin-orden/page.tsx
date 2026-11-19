@@ -51,7 +51,7 @@ export default function FacturasSinOrdenPage() {
       {data && facturas.length === 0 && <EmptyState icono="ok" message="Todas las facturas de contratistas están vinculadas a sus órdenes." />}
       {facturas.length > 0 && (
         <table className="w-full text-sm">
-          <thead>
+          <thead className="sticky top-[53px] z-10 bg-surface">
             <tr className="text-left text-ink-secondary">
               <th className="py-1">Factura</th>
               <th className="py-1">Rubro</th>

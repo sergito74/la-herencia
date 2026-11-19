@@ -73,9 +73,9 @@ export function TablaFlujoCaja({
         })}
       </div>
 
-      <div className="overflow-x-auto rounded-lg border border-border bg-surface shadow-sm">
+      <div className="overflow-auto max-h-[calc(100vh-7rem)] rounded-lg border border-border bg-surface shadow-sm">
         <table className="w-full text-sm">
-          <thead className="bg-surface-sunken">
+          <thead className="sticky top-0 z-10 bg-surface-sunken">
             <tr className="text-left text-xs text-ink-secondary">
               <th className="px-3 py-2">Período</th>
               {cuentas.map((c) => (
@@ -132,7 +132,7 @@ export function TablaFlujoCaja({
           confundir un movimiento de plata propia con un ingreso o egreso real del negocio.
         </p>
         <table className="mt-2 w-full text-sm">
-          <thead>
+          <thead className="sticky top-[53px] z-10 bg-surface">
             <tr className="text-left text-xs text-ink-secondary">
               <th className="py-1 pr-4">Período</th>
               <th className="px-2 py-1 text-right">Total interno</th>

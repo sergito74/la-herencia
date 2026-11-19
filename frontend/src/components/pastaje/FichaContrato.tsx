@@ -158,9 +158,9 @@ function Condiciones({ c, irLiquidar }: { c: ContratoFicha; irLiquidar: (p: stri
 
       <section className="space-y-3">
         <h2 className="text-lg font-semibold">Devengado, liquidado, facturado y cobrado por mes</h2>
-        <div className="overflow-x-auto rounded-md border border-border">
+        <div className="overflow-auto max-h-[calc(100vh-7rem)] rounded-md border border-border">
           <table className="min-w-full text-sm">
-            <thead className="bg-surface-muted text-left text-xs uppercase text-ink-secondary">
+            <thead className="sticky top-0 z-10 bg-surface-muted text-left text-xs uppercase text-ink-secondary">
               <tr>
                 <th className="px-3 py-2">Mes</th>
                 <th className="px-3 py-2 text-right">Devengado</th>

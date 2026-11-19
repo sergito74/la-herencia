@@ -64,7 +64,7 @@ export function IndicePanel({ periodoInicial }: { periodoInicial?: string }) {
       {q.isError && <ErrorState message={(q.error as Error).message} onRetry={() => q.refetch()} />}
       {q.isSuccess && (
         <table className="min-w-full max-w-xl text-sm">
-          <thead className="text-left text-xs uppercase text-ink-secondary">
+          <thead className="sticky top-[53px] z-10 text-left text-xs uppercase text-ink-secondary bg-surface">
             <tr><th className="py-1">Día</th><th className="text-right">INMAG $/kg</th><th className="text-right">Cabezas ingresadas</th><th>Origen</th><th /></tr>
           </thead>
           <tbody className="divide-y divide-border">

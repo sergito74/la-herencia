@@ -16,9 +16,9 @@ export function DetalleCostosPanel({ costos }: { costos: DetalleCostoItem[] }) {
   }
 
   return (
-    <div className="overflow-x-auto rounded border border-border bg-surface">
+    <div className="overflow-auto max-h-[calc(100vh-7rem)] rounded border border-border bg-surface">
       <table className="w-full min-w-[760px] border-collapse text-left text-sm">
-        <thead className="bg-surface-sunken text-xs uppercase text-ink-secondary">
+        <thead className="sticky top-0 z-10 bg-surface-sunken text-xs uppercase text-ink-secondary">
           <tr><th className="px-3 py-2">Concepto / rubro</th><th className="px-3 py-2 text-right">Pesos</th><th className="px-3 py-2 text-right">Dólares</th><th className="px-3 py-2">Origen</th><th className="px-3 py-2">Referencia</th></tr>
         </thead>
         {[...grupos.entries()].map(([clave, items]) => {

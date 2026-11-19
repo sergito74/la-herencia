@@ -106,9 +106,9 @@ export function CotizacionesPanel() {
       {isError && <ErrorState message={(error as Error).message} onRetry={() => refetch()} />}
 
       {data && (
-        <div className="overflow-x-auto rounded-md border border-border bg-surface">
+        <div className="overflow-auto max-h-[calc(100vh-7rem)] rounded-md border border-border bg-surface">
           <table className="w-full text-left text-sm">
-            <thead className="border-b border-border bg-surface-sunken text-xs font-semibold uppercase text-ink-secondary">
+            <thead className="sticky top-0 z-10 border-b border-border bg-surface-sunken text-xs font-semibold uppercase text-ink-secondary">
               <tr>
                 <th className="px-3 py-2">Fecha</th>
                 <th className="px-3 py-2 text-right">Dólar Billete (Compra)</th>

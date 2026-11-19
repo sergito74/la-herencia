@@ -296,7 +296,7 @@ export function RemitoForm({ idRemito }: { idRemito?: number }) {
       </div>
 
       {/* Cuerpo: única sección que scrollea. */}
-      <div className="min-h-0 flex-1 overflow-y-auto">
+      <div className="overflow-auto max-h-[calc(100vh-7rem)] min-h-0 flex-1">
         <div className="rounded-md border border-border">
         <table className="min-w-full divide-y divide-border text-xs">
           <thead className="sticky top-0 z-10 bg-surface-sunken text-left">

@@ -67,7 +67,7 @@ export function TablaCostosDirectos({ filas, totales, seleccionado, onConcepto }
     <section className="rounded-md border border-border bg-surface">
       <h3 className="border-b border-border bg-surface-sunken px-3 py-1.5 text-sm font-semibold">Costos Directos</h3>
       <table className="w-full text-sm">
-        <thead className="text-xs text-ink-secondary">
+        <thead className="sticky top-[53px] z-10 text-xs text-ink-secondary bg-surface">
           <tr className="border-b border-border">
             <th className="px-2 py-1 text-left font-medium">Concepto</th>
             <th className="px-2 py-1 text-right font-medium">AR$</th>

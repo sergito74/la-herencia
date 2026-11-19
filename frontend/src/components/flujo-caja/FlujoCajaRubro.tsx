@@ -343,9 +343,9 @@ function TablaRubros({
   );
 
   return (
-    <div className="overflow-x-auto rounded-md border border-border">
+    <div className="overflow-auto max-h-[calc(100vh-7rem)] rounded-md border border-border">
       <table className="min-w-full text-sm">
-        <thead>
+        <thead className="sticky top-0 z-10 bg-surface">
           <tr className="bg-surface-sunken">
             <th className={`${primera} bg-surface-sunken`}>Rubro</th>
             {per.map((p) => (

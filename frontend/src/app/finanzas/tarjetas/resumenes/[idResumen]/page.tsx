@@ -288,7 +288,7 @@ export default function ResumenDetallePage() {
             </h2>
             {data.lineas.length > 0 && (
               <table className="mt-1 w-full text-xs">
-                <thead>
+                <thead className="sticky top-[53px] z-10 bg-surface">
                   <tr className="text-left text-ink-secondary">
                     <th className="py-1">Fecha</th>
                     <th className="py-1">Detalle</th>

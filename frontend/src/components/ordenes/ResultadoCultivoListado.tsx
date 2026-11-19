@@ -62,7 +62,7 @@ export function ResultadoCultivoListado() {
       {data && data.porCultivoCampania.length === 0 && <EmptyState message="No hay costo de órdenes de trabajo con estos filtros." />}
       {data && data.porCultivoCampania.length > 0 && (
         <table className="w-full text-sm">
-          <thead>
+          <thead className="sticky top-[53px] z-10 bg-surface">
             <tr className="border-b border-border text-left text-ink-secondary">
               <th className="py-1">Cultivo</th>
               <th className="py-1">Campaña</th>
@@ -93,7 +93,7 @@ export function ResultadoCultivoListado() {
         <div className="mt-6">
           <h2 className="mb-2 text-lg font-medium">Costo total de la campaña (motor de costeo heredado)</h2>
           <table className="w-full text-sm">
-            <thead>
+            <thead className="sticky top-[53px] z-10 bg-surface">
               <tr className="border-b border-border text-left text-ink-secondary">
                 <th className="py-1">Campaña</th>
                 <th className="py-1 text-right">Costo total ($)</th>

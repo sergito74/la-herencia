@@ -66,7 +66,7 @@ export function AlarmasFaltantes() {
     {q.isError && <p role="alert">No se pudieron cargar las alarmas. <button className="underline" onClick={() => q.refetch()}>Reintentar</button></p>}
     {q.data && (q.data.total === 0 ? <p>No hay alarmas para verificar.</p> : <>
       <p className="text-sm">{q.data.total} alarmas para verificar con el comprobante; no son errores confirmados.</p>
-      <table className="w-full text-sm"><thead><tr className="text-left text-ink-secondary"><th className="p-2">Fecha</th><th className="p-2">Proveedor</th>
+      <table className="w-full text-sm"><thead className="sticky top-[53px] z-10 bg-surface"><tr className="text-left text-ink-secondary"><th className="p-2">Fecha</th><th className="p-2">Proveedor</th>
         <th className="p-2">Señal</th><th className="p-2 text-right">Importe</th><th className="p-2" /></tr></thead>
         <tbody>{q.data.items.map(a => <FilaAlarma key={a.clave} a={a} />)}</tbody></table>
       <div className="flex gap-3 text-sm"><button disabled={page <= 1} onClick={() => setPage(p => p - 1)}>Anterior</button><span>Página {page}</span>

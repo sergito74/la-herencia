@@ -73,7 +73,7 @@ export function FormularioCostos() {
             {rubro && detalle.data && (
               <div className="max-h-[calc(100vh-16rem)] overflow-auto">
                 <table className="w-full text-sm">
-                  <thead className="sticky top-0 bg-surface text-xs text-ink-secondary">
+                  <thead className="sticky top-0 z-10 bg-surface text-xs text-ink-secondary">
                     <tr className="border-b border-border">
                       <th className="px-2 py-1 text-right font-medium">Cantidad</th>
                       <th className="px-2 py-1 text-left font-medium">Producto / Servicio</th>

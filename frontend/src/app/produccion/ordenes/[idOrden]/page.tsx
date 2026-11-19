@@ -223,7 +223,7 @@ export default function DetalleOrdenPage() {
               )}
             </div>
             <table className="w-full text-sm">
-              <thead>
+              <thead className="sticky top-[53px] z-10 bg-surface">
                 <tr className="text-left text-xs text-ink-secondary">
                   <th className="px-3 py-1">Lote</th>
                   <th className="py-1 pr-3">Cultivo</th>
@@ -292,7 +292,7 @@ export default function DetalleOrdenPage() {
           <p className="py-1 text-sm text-ink-secondary" title="Se vinculan desde la factura, en Compras">Sin facturas vinculadas (se vinculan desde Compras).</p>
         ) : (
           <table className="w-full text-sm">
-            <thead>
+            <thead className="sticky top-[53px] z-10 bg-surface">
               <tr className="text-left text-xs text-ink-secondary">
                 <th className="py-1">Documento</th>
                 <th className="py-1">Fecha</th>

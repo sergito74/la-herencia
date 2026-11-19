@@ -42,7 +42,7 @@ export function ArcaFiscal() {
       {d.conceptos.map((c, index) => <details key={`${c.concepto}-${index}`} open={index === 0} className="rounded border border-border p-3">
         <summary className="cursor-pointer text-sm font-semibold">{c.concepto} · Saldo publicado {monto(c.saldoDeudorPublicado)} · {c.verificado ? 'Suma verificada' : c.incompleto ? 'Faltan páginas' : 'Diferencia por revisar'}</summary>
         <p className="my-2 text-xs text-ink-secondary">Signo del SCT: positivo = deuda; negativo = saldo a favor. {c.movimientos.length} movimientos conservados.{!c.verificado && ` Diferencia entre suma visible y saldo publicado: ${monto(c.diferencia)}.`}</p>
-        <div className="overflow-x-auto"><table className="w-full text-sm"><thead><tr>{['Operación', 'Registración', 'Movimiento', 'Debe', 'Haber', 'Referencia al mayor'].map(h => <th key={h} className="p-2 text-left">{h}</th>)}</tr></thead>
+        <div className="overflow-auto max-h-[calc(100vh-7rem)]"><table className="w-full text-sm"><thead className="sticky top-0 z-10 bg-surface"><tr>{['Operación', 'Registración', 'Movimiento', 'Debe', 'Haber', 'Referencia al mayor'].map(h => <th key={h} className="p-2 text-left">{h}</th>)}</tr></thead>
           <tbody>{c.movimientos.map((m, i) => <tr key={i} className="border-t border-border align-top">
             <td className="whitespace-nowrap p-2">{formatFecha(m.fechaOperacion)}</td><td className="whitespace-nowrap p-2">{formatFecha(m.fechaRegistracion)}</td><td className="p-2">{m.detalle}</td>
             <td className="whitespace-nowrap p-2 text-right">{monto(m.debe)}</td><td className="whitespace-nowrap p-2 text-right">{monto(m.haber)}</td>

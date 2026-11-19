@@ -158,7 +158,7 @@ export function ArrendamientosListado() {
                     <EmptyState message="Sin cobros registrados todavía." />
                   ) : (
                     <table className="mt-3 min-w-full divide-y divide-border text-sm">
-                      <thead className="text-left text-ink-secondary">
+                      <thead className="sticky top-[53px] z-10 text-left text-ink-secondary bg-surface">
                         <tr>
                           <th className="px-2 py-1">Cuota</th>
                           <th className="px-2 py-1">Vencimiento</th>

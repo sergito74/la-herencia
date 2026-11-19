@@ -199,10 +199,10 @@ export function HectareasAplicadasPanel({ orden, onGuardada }: { orden: OrdenDet
 
       </div>
       {filas.length > 0 && (
-        <div className="overflow-x-auto">
+        <div className="overflow-auto max-h-[calc(100vh-7rem)]">
           <h3 className="text-sm font-medium">Insumo usado por cultivo (incluye el ajuste del recuento)</h3>
           <table className="mt-1 text-sm">
-            <thead>
+            <thead className="sticky top-0 z-10 bg-surface">
               <tr className="text-left text-ink-secondary">
                 <th className="pr-6 font-normal">Insumo</th>
                 {cultivos.map((c) => <th key={c} className="pr-4 text-right font-normal"><CultivoChip cultivo={c} /></th>)}

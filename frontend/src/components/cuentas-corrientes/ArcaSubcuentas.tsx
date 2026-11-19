@@ -76,8 +76,8 @@ export function ArcaSubcuentas({fechaDesde, fechaHasta}: {fechaDesde: string; fe
         <span>Saldo al corte: {monto(d.saldoSeleccion)}</span>
         <span>{d.total} movimientos del período</span>
       </div>
-      <div className="overflow-x-auto rounded border border-border">
-        <table className="w-full text-sm"><thead className="bg-surface-sunken"><tr>
+      <div className="overflow-auto max-h-[calc(100vh-7rem)] rounded border border-border">
+        <table className="w-full text-sm"><thead className="sticky top-0 z-10 bg-surface-sunken"><tr>
           {['Fecha','Concepto / documento','Subcuenta','Débitos','Créditos','Saldo','Origen',''].map((h,i) => <th key={i} className="p-2 text-left">{h}</th>)}
         </tr></thead><tbody>{d.items.map(m => <tr key={`${m.origen}-${m.idOrigen}`} className="border-t border-border align-top">
           <td className="whitespace-nowrap p-2">{formatFecha(m.fecha)}</td>

@@ -83,7 +83,7 @@ export function FormularioRetiroDocumento({ orden }: { orden: OrdenDetalle }) {
 
       {/* Detalle: mismo formato que la planilla de retiro del campo */}
       <table className="mt-4 w-full border-collapse text-sm">
-        <thead>
+        <thead className="sticky top-[53px] z-10 bg-surface">
           <tr className="border-y border-ink-primary text-left">
             <th className="w-8 py-1 print:py-0.5 pr-2 text-right font-semibold">#</th>
             <th className="py-1 print:py-0.5 pr-4 font-semibold">Ing. Activo</th>

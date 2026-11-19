@@ -101,7 +101,7 @@ export function FormularioResultados({ idCultivo, idCampania }: { idCultivo: num
             <span className="text-ink-secondary">Precio Neto (Tn)</span><strong className="tabular-nums">{us(d.precioNetoTn)}</strong>
           </p>
           <table className="w-full text-sm">
-            <thead className="text-xs text-ink-secondary">
+            <thead className="sticky top-[53px] z-10 text-xs text-ink-secondary bg-surface">
               <tr className="border-b border-border"><th /><th className="px-2 py-1 text-right font-medium">AR$</th><th className="px-2 py-1 text-right font-medium">US$</th></tr>
             </thead>
             <tbody>

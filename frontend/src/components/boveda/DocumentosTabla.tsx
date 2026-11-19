@@ -27,7 +27,7 @@ export function DocumentosTabla({ documentos, vacio, conPortal = false }: { docu
   }
   return (
     <table className="w-full text-sm">
-      <thead>
+      <thead className="sticky top-[53px] z-10 bg-surface">
         <tr className="border-b border-border text-left text-xs uppercase tracking-wide text-ink-muted">
           <th className="py-2 pr-3">Fecha</th>
           {conPortal && <th className="py-2 pr-3">Portal</th>}

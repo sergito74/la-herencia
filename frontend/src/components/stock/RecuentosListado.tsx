@@ -35,9 +35,9 @@ export function RecuentosListado({ onAnulado }: { onAnulado: () => void }) {
   return (
     <div className="space-y-2">
       <h2 className="text-sm font-medium">Recuentos físicos</h2>
-      <div className="overflow-x-auto rounded-md border border-border">
+      <div className="overflow-auto max-h-[calc(100vh-7rem)] rounded-md border border-border">
         <table className="min-w-full divide-y divide-border text-xs">
-          <thead className="bg-surface-sunken text-left">
+          <thead className="sticky top-0 z-10 bg-surface-sunken text-left">
             <tr>
               {["Fecha", "Motivo", "Productos contados", "Con diferencia", "Ajustes en órdenes", "Sin imputar", ""].map((h) => (
                 <th key={h} className="whitespace-nowrap px-1.5 py-1 font-medium text-ink-secondary">

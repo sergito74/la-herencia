@@ -109,7 +109,7 @@ export function ImpuestoParticularPanel({ idImpuesto, soloLectura = false }: { i
 
       {data.cargas.length > 0 && (
         <table className="mb-4 w-full text-sm">
-          <thead><tr className="text-left"><th>Socio</th><th className="text-right">Importe</th><th>Motivo</th><th>Partida</th><th>Estado</th><th className="text-right">Devuelto</th><th /></tr></thead>
+          <thead className="sticky top-[53px] z-10 bg-surface"><tr className="text-left"><th>Socio</th><th className="text-right">Importe</th><th>Motivo</th><th>Partida</th><th>Estado</th><th className="text-right">Devuelto</th><th /></tr></thead>
           <tbody>
             {data.cargas.map((c) => (
               <tr key={c.idCarga} className={c.estado === "anulada" ? "text-ink-muted line-through" : ""}>

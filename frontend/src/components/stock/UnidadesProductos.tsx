@@ -67,7 +67,7 @@ export function UnidadesProductos() {
         </button>
       </div>
       <table className="w-full text-sm">
-        <thead className="text-left text-xs text-ink-secondary">
+        <thead className="sticky top-[53px] z-10 text-left text-xs text-ink-secondary bg-surface">
           <tr>
             <th className="w-8" />
             <th className="py-1 pr-2">Producto</th>

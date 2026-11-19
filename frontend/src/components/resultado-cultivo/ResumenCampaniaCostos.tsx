@@ -24,9 +24,9 @@ export function ResumenCampaniaCostos({ idCampania, onCampania, onCultivo }: {
           opciones={recientes.map((c) => ({ id: String(c.idCampania), label: c.campania }))} />
       )}
       {res.isLoading ? <LoadingState rows={5} /> : res.isError ? <ErrorState message="No se pudo calcular la campaña." onRetry={() => res.refetch()} /> : res.data && (
-        <div className="overflow-hidden rounded-lg border border-border bg-surface">
+        <div className="overflow-auto max-h-[calc(100vh-7rem)] rounded-lg border border-border bg-surface">
           <table className="w-full text-sm">
-            <thead className="bg-surface-sunken text-xs text-ink-secondary">
+            <thead className="sticky top-0 z-10 bg-surface-sunken text-xs text-ink-secondary">
               <tr>
                 <th className="px-3 py-2 text-left">Cultivo</th><th className="px-3 py-2 text-right">Ha sembradas</th>
                 <th className="px-3 py-2 text-right">Costo $</th><th className="px-3 py-2 text-right">Costo us$</th>

@@ -25,7 +25,7 @@ export function CorridasTabla({ corridas, conPortal = false, vacio = "Todavía n
   if (corridas.length === 0) return <p className="py-4 text-sm text-ink-muted">{vacio}</p>;
   return (
     <table className="w-full text-sm">
-      <thead>
+      <thead className="sticky top-[53px] z-10 bg-surface">
         <tr className="border-b border-border text-left text-xs uppercase tracking-wide text-ink-muted">
           <th className="py-2 pr-3">Inicio</th>
           {conPortal && <th className="py-2 pr-3">Portal</th>}

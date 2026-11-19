@@ -37,7 +37,7 @@ function Kardex({ idProducto, onClose }: { idProducto: number | null; onClose: (
             antiguas; las marcadas «costo pendiente» se recalculan solas al vincular la factura.
           </p>
           <table className="w-full text-xs">
-            <thead className="text-left text-ink-secondary">
+            <thead className="sticky top-[53px] z-10 text-left text-ink-secondary bg-surface">
               <tr>
                 <th className="py-1 pr-2">Fecha</th>
                 <th className="pr-2">Movimiento</th>
