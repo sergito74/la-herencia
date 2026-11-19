@@ -217,7 +217,8 @@ def validar(datos: dict) -> list[str]:
     return errores
 
 
-def buscar_duplicado(id_organismo: int, numero: str | None, excluir_id: int | None = None) -> dict | None:
+def buscar_duplicado(id_organismo: int, numero: str | None, excluir_id: int | None = None,
+                     periodo: str | None = None) -> dict | None:
     """FR-004: mismo organismo y mismo número, solo si el número tiene algún
     dígito ("SIN COPIA", "S/D" se repiten a propósito; igual que Compras)."""
     numero = (numero or "").strip()
@@ -229,6 +230,11 @@ def buscar_duplicado(id_organismo: int, numero: str | None, excluir_id: int | No
     if excluir_id is not None:
         sql += " AND IdImpuesto <> ?"
         params.append(excluir_id)
+    if periodo and periodo.strip():
+        # 19/11/2026: en Inmobiliario/Automotor el número es la partida o el dominio y se repite en cada cuota;
+        # solo es duplicado si además coincide el período liquidado.
+        sql += " AND LTRIM(RTRIM(ISNULL([Periodo liquidado], ''))) = ?"
+        params.append(periodo.strip())
     return fetch_one(sql, tuple(params))
 
 

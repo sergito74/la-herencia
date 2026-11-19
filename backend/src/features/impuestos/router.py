@@ -87,7 +87,8 @@ async def _validar_o_400(body: ImpuestoInput, excluir_id: int | None = None) -> 
     errores = await run_in_threadpool(repository.validar, datos)
     if errores:
         raise HTTPException(status_code=400, detail=errores)
-    dup = await run_in_threadpool(repository.buscar_duplicado, body.idOrganismo, body.numeroDocumento, excluir_id)
+    dup = await run_in_threadpool(repository.buscar_duplicado, body.idOrganismo, body.numeroDocumento, excluir_id,
+                                  body.periodoLiquidado)
     if dup:
         raise HTTPException(
             status_code=400,

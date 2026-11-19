@@ -50,3 +50,11 @@ def test_vinculos_bloquean_la_baja(monkeypatch):
     monkeypatch.setattr(R, "fetch_one", lambda sql, params: next(respuestas))
     usos = R.vinculos(5)
     assert usos == ["1 consumo(s) de tarjeta", "2 vínculo(s) de pago del backfill"]
+
+
+def test_duplicado_considera_periodo(monkeypatch):
+    # Inmobiliario: la partida se repite en cada cuota; solo es duplicado con el mismo período (19/11/2026).
+    llamadas = []
+    monkeypatch.setattr(R, "fetch_one", lambda sql, params: llamadas.append((sql, params)) or None)
+    R.buscar_duplicado(12, "011-007957-5", excluir_id=4220, periodo="01 2026")
+    assert "Periodo liquidado" in llamadas[0][0] and llamadas[0][1] == (12, "011-007957-5", 4220, "01 2026")
