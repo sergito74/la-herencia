@@ -86,6 +86,12 @@ def resolver(c: Clasificacion, texto: str, contenido: bytes, ruta: str) -> tuple
         id_registro = boveda.compra_existente(c.id_contacto, c.numero, ruta)
         if id_registro:
             estado, motivo = "ya_estaba", None
+    if estado == "para_cargar" and c.modulo == "compras" and c.id_contacto and c.total and c.fecha:
+        # La póliza/endoso que llega por mail (Allianz, 19/11/2026) trae el número de póliza, no el de la factura que ya
+        # se bajó del portal: es el mismo comprobante si hay UNA compra del proveedor por el mismo total en ±20 días.
+        id_registro = repository.compra_por_total(c.id_contacto, c.total, c.fecha)
+        if id_registro:
+            estado, motivo = "ya_estaba", None
     if c.modulo == "impuestos" and c.tipo == "boleta" and c.id_contacto:
         id_registro = repository.impuesto_existente(c.id_contacto, c.total, c.fecha)
         if id_registro:

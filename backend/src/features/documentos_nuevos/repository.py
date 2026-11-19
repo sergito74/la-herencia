@@ -222,3 +222,15 @@ def portales_sincronizables() -> list[dict]:
         "WHERE p.Activo = 1 AND p.CodigoConector IS NOT NULL AND c.ClaveCifrada IS NOT NULL AND c.Rechazada = 0 "
         "AND EXISTS (SELECT 1 FROM dbo.Portales_Autorizaciones a WHERE a.IdPortal = p.IdPortal AND a.Revocada IS NULL) "
         "ORDER BY p.IdPortal")
+
+
+def compra_por_total(id_contacto: int, total, fecha) -> int | None:
+    """Única compra del proveedor ya registrada por la rutina con el mismo total (al centavo) en ±20 días."""
+    filas = fetch_all(
+        "SELECT DISTINCT c.IdDeuda AS id FROM dbo.Compras c JOIN dbo.DocumentosNuevos d ON d.IdRegistro = c.IdDeuda "
+        "AND d.Modulo = 'compras' WHERE c.IdContacto = ? AND ABS(DATEDIFF(day, c.Fecha, ?)) <= 20 AND (d.Total = ? "
+        # factura particular (total $0): el renglón que la anula lleva el total en negativo
+        "OR EXISTS (SELECT 1 FROM dbo.Det_Compras x WHERE x.IdCompra = c.IdDeuda "
+        "AND ROUND(x.Cantidad * x.[Precio Unitario], 2) = -?))",
+        (id_contacto, fecha, float(total), float(total)))
+    return filas[0]["id"] if len(filas) == 1 else None

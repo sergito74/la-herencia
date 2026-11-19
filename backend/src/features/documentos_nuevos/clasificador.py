@@ -228,6 +228,16 @@ def banco_y_producto(texto: str) -> tuple[str | None, str | None]:
 
 def fecha_de(texto: str) -> date | None:
     """Fecha de emisión rotulada si está (no el vencimiento, 03/11/2026); si no, la primera fecha del texto."""
+    # Pólizas (Allianz, 19/11/2026): "Lugar y Fecha de Emisión Buenos Aires, 15 de noviembre de 2026"; sin esto se
+    # tomaba la primera fecha del texto, que es el inicio de la vigencia anual.
+    meses = ("enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre",
+             "noviembre", "diciembre")
+    r = re.search(r"Fecha de Emisi\w*n[^\n]*?(\d{1,2}) de (" + "|".join(meses) + r") de (\d{4})", texto, re.I)
+    if r:
+        try:
+            return date(int(r.group(3)), meses.index(r.group(2).lower()) + 1, int(r.group(1)))
+        except ValueError:
+            pass
     r = re.search(r"Fecha(?: de)?(?: Emisi[oó]n)?\s*:?\s*(\d{1,2})/(\d{1,2})/(\d{4}|\d{2})\b", texto, re.I)
     if r:
         anio = int(r.group(3)) + (2000 if len(r.group(3)) == 2 else 0)
