@@ -95,12 +95,10 @@ export function VincularTraspasoInterno({
     return (
       <SoloLectura>
         <div className="flex items-center gap-2">
-          <StatusBadge label="Traspaso interno" tone="success" />
-          {contraparte && (
-            <span className="text-xs text-ink-secondary">
-              {MEDIO_LABELS[contraparte.medio]} #{contraparte.idMovimiento} — {formatMoneda(contraparte.importe)}
-            </span>
-          )}
+          {/* 19/11/2026: la contraparte va en el título (al pasar el mouse); en la celda no entraba y sin números internos. */}
+          <span title={contraparte ? `Con ${MEDIO_LABELS[contraparte.medio]}: ${formatMoneda(contraparte.importe)}` : undefined}>
+            <StatusBadge label={contraparte ? `Traspaso con ${MEDIO_LABELS[contraparte.medio]}` : "Traspaso interno"} tone="success" />
+          </span>
           <button type="button" disabled={guardando} onClick={deshacer} className="text-xs text-finance underline disabled:opacity-50">
             {guardando ? "Deshaciendo…" : "Deshacer"}
           </button>
@@ -129,7 +127,7 @@ export function VincularTraspasoInterno({
                     onClick={() => vincularCon(c.medio, c.idMovimiento)}
                     className="block w-full rounded border border-border px-2 py-1 text-left hover:bg-surface-sunken disabled:opacity-50"
                   >
-                    {MEDIO_LABELS[c.medio]} #{c.idMovimiento} — {formatFecha(c.fecha)} — {formatMoneda(c.importe)}
+                    {MEDIO_LABELS[c.medio]} — {formatFecha(c.fecha)} — {formatMoneda(c.importe)}
                     {c.descripcion ? ` — ${c.descripcion}` : ""}
                   </button>
                 ))}
