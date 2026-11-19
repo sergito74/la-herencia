@@ -12,7 +12,11 @@ from src.features.vinculos.cadenas import TIPO_TESORERIA, TOLERANCIA
 from src.features.compras.particular import APLICA_PARTICULAR_JOIN
 from src.features.remuneraciones.repository import _IMPORTE_SQL
 
-ORIGENES = ("Compras", "Impuestos", "Remuneraciones", "Alquileres")
+ORIGENES = ("Compras", "Impuestos", "Remuneraciones", "Alquileres", "Venta Hacienda", "Venta Granos", "Pastaje", "Resumen tarjeta")
+RESUMEN_TARJETA = "Resumen tarjeta"
+_CARGOS_SQL = " + ".join(f"ISNULL(r.{c},0)" for c in (
+    "ImpuestoSellos", "GastosAdmin", "MantCuenta", "RenovAnual", "PromocionBNA", "CreditoContingente", "IntFinanc",
+    "IntCompens", "IVA105", "PercepIVA105", "IVA21", "PercepIVA21", "PercepIIBB", "AjusteResAnterior"))
 
 SQL = f"""
 WITH documentos AS (
@@ -37,6 +41,22 @@ WITH documentos AS (
         CONCAT(a.IdAlquiler, '/', d.[Numero Cuota]), 'Pesos', NULL,
         d.[Importe Cuota], a.IdContacto
     FROM dbo.[Detalle Cobro Alquiler] d JOIN dbo.Alquileres a ON a.IdAlquiler=d.IdAlquiler
+    -- 19/11/2026 (Sergio): los créditos del banco se concilian contra las ventas (cobros) de los últimos 2 años.
+    UNION ALL
+    SELECT v.Origen, v.IdOrigen, MIN(v.Fecha), MIN(v.Documento), CAST(MIN(v.[Nro Documento]) AS nvarchar(255)), 'Pesos', NULL,
+        SUM(ISNULL(v.Credito,0) - ISNULL(v.Deuda,0)), MIN(v.IdContacto)
+    FROM dbo.vw_MovimientosCuenta_Base v
+    WHERE v.Origen IN ('Venta Hacienda', 'Venta Granos', 'Pastaje') AND v.Fecha >= DATEADD(year, -2, GETDATE())
+    GROUP BY v.Origen, v.IdOrigen
+    -- 19/11/2026 (Sergio): el pago de un resumen de tarjeta se vincula desde el banco o desde el resumen, no los dos.
+    UNION ALL
+    SELECT 'Resumen tarjeta', r.IdResumen, r.FechaVencimiento, 'Resumen de tarjeta',
+        CAST(CONCAT(t.TarjetaNombre, ' ', r.ResumenCodigo) AS nvarchar(255)), 'Pesos', NULL,
+        (SELECT ISNULL(SUM(l.Importe),0) FROM dbo.Tarjetas_Resumenes_Lineas l WHERE l.IdResumen=r.IdResumen) + {_CARGOS_SQL},
+        tc.IdContacto
+    FROM dbo.Tarjetas_Resumenes r JOIN dbo.TarjetasContacto tc ON tc.IdTarjeta=r.IdTarjeta
+    LEFT JOIN dbo.Tarjetas t ON t.IdTarjeta=r.IdTarjeta
+    WHERE r.FechaVencimiento >= DATEADD(month, -6, GETDATE())
 ), pagos AS (
     SELECT TipoOrigenDocumento AS origen, IdOrigenDocumento AS idOrigen, Importe AS importe
     FROM dbo.ConciliacionesTesoreria WHERE TipoOrigenDocumento IS NOT NULL
@@ -44,6 +64,8 @@ WITH documentos AS (
     SELECT CASE WHEN IdCompra IS NOT NULL THEN 'Compras' ELSE 'Impuestos' END,
         COALESCE(IdCompra,IdImpuesto), ImporteImputado
     FROM dbo.Tarjetas_Resumenes_Lineas_Compras
+    UNION ALL
+    SELECT 'Resumen tarjeta', IdResumen, Importe FROM dbo.Tarjetas_Resumenes_Pagos
 ), totales AS (
     SELECT origen,idOrigen,SUM(importe) AS imputado,COUNT(*) AS vinculosPrevios
     FROM pagos GROUP BY origen,idOrigen
@@ -97,8 +119,10 @@ def buscar(texto: str, *, importe: float | None = None, fecha=None) -> list[dict
         ))
     return _unificar(fetch_all(
         base
-        + " ORDER BY CASE WHEN ABS(saldoPendiente-?)<=0.10 THEN 0 ELSE 1 END, ABS(DATEDIFF(day,fecha,?)),ABS(saldoPendiente-?),origen,idOrigen",
-        (60, importe, fecha, importe),
+        # 19/11/2026: primero el importe exacto, después los que difieren hasta 3 % (retenciones, gastos), y recién ahí la fecha.
+        + " ORDER BY CASE WHEN ABS(saldoPendiente-?)<=0.10 THEN 0 WHEN ABS(ABS(saldoPendiente)-?)<=0.03*? THEN 1 ELSE 2 END,"
+        " ABS(DATEDIFF(day,fecha,?)),ABS(saldoPendiente-?),origen,idOrigen",
+        (60, importe, importe, importe, fecha, importe),
     ))
 
 

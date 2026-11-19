@@ -121,6 +121,41 @@ def conciliar_inversiones() -> int:
     return total
 
 
+# 19/11/2026 (Sergio, punto 4): una extracción de efectivo del banco que fondea una caja es un pase entre cuentas
+# propias. Si en una caja hay un ingreso del mismo día y el mismo importe que dice "retiro"/"extracción", el movimiento
+# del banco queda conciliado como "Pase a caja" (sin asientos manuales). Cada ingreso de caja se usa una sola vez.
+_EXTRACCIONES = {"bna": ("Movimientos BNA", "IdMovimientoBNA", "[Fecha / Hora Mov#]", "-Importe", "Concepto LIKE 'EXTR%'"),
+                 "galicia": ("Movimientos Galicia", "IdMovimiento", "Fecha", "ISNULL([Débitos],0)",
+                             "([Descripción] LIKE 'Extraccion%' OR [Descripción] LIKE 'Extracción%')")}
+
+
+def conciliar_extracciones_a_caja() -> int:
+    from src.features.conciliacion_tesoreria.repository import _stmt_estado
+    from src.features.tesoreria.repository import ids_pendientes
+
+    usados = {r["d"] for r in fetch_all("SELECT Detalle AS d FROM dbo.ConciliacionesTesoreriaEstado WHERE Motivo = 'PaseCaja'")}
+    total = 0
+    for medio, (tabla, col, fecha, importe, cond) in _EXTRACCIONES.items():
+        pendientes = set(ids_pendientes(medio, None, None))
+        filas = fetch_all(f"SELECT {col} AS id, CAST({fecha} AS date) AS f, {importe} AS imp FROM dbo.[{tabla}] WHERE {cond}")
+        stmts = []
+        for m in filas:
+            if m["id"] not in pendientes or not m["imp"]:
+                continue
+            caja = fetch_all("SELECT IdMovimiento AS id, Caja AS caja FROM dbo.MovimientosCajaEfectivo WHERE CAST(Fecha AS date) = ? "
+                             "AND Importe = ? AND (Concepto LIKE '%Retiro%' OR Concepto LIKE '%Extrac%') ORDER BY IdMovimiento",
+                             (m["f"], float(m["imp"])))
+            libre = next((c for c in caja if f"Pase a caja {c['caja']} (movimiento de caja {c['id']})" not in usados), None)
+            if libre:
+                det = f"Pase a caja {libre['caja']} (movimiento de caja {libre['id']})"
+                usados.add(det)
+                stmts.append(_stmt_estado(medio, m["id"], "SinDocumento", "PaseCaja", det, None, "sistema (pase a caja)"))
+        if stmts:
+            execute_write_transaction(stmts)
+        total += len(stmts)
+    return total
+
+
 def correr_reglas() -> None:
     try:
         from src.features.tesoreria import lector_fima
@@ -130,6 +165,7 @@ def correr_reglas() -> None:
         _log.exception("Lectura del extracto del Fondo Fima")
     conciliar_ley_25413()
     conciliar_inversiones()
+    conciliar_extracciones_a_caja()
     asignar_contacto_recurrente()
 
 

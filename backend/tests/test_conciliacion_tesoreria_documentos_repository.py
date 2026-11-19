@@ -280,7 +280,7 @@ def test_corpus_sugerencias_seis_medios_cuatro_origenes(negocio):
             encontrados += any(
                 s["documentos"] == [dict(origen=origen, idOrigen=1)] for s in result["sugerencias"]
             )
-    assert encontrados == 24  # corpus controlado; no estima el porcentaje real de producción
+    assert encontrados == len(repo.MEDIOS_SOPORTADOS) * len(documentos.ORIGENES)  # corpus controlado (19/11: + ventas, pastaje y resumen de tarjeta)
 
 
 class FakeConnection:

@@ -1104,6 +1104,13 @@ def get_pagos(id_resumen: int) -> list[dict]:
 
 
 def registrar_pago(id_resumen: int, fecha, importe: float, origen: str | None, id_movimiento_origen: int | None) -> int:
+    # 19/11/2026 (Sergio): vinculado desde el resumen, el movimiento del banco queda resuelto con el contacto de la tarjeta
+    # (sin tener que conciliarlo otra vez desde Tesorería).
+    tabla = {"BNA": ("dbo.[Movimientos BNA]", "IdMovimientoBNA"), "Galicia": ("dbo.[Movimientos Galicia]", "IdMovimiento")}.get(origen or "")
+    if tabla and id_movimiento_origen:
+        execute_write(f"UPDATE {tabla[0]} SET IdContacto = (SELECT tc.IdContacto FROM dbo.Tarjetas_Resumenes r "
+                      f"JOIN dbo.TarjetasContacto tc ON tc.IdTarjeta = r.IdTarjeta WHERE r.IdResumen = ?) "
+                      f"WHERE {tabla[1]} = ? AND ISNULL(IdContacto, 0) = 0", (id_resumen, id_movimiento_origen))
     return execute_insert_returning_id(
         "INSERT INTO dbo.Tarjetas_Resumenes_Pagos (IdResumen, Fecha, Importe, Origen, IdMovimientoOrigen) "
         "OUTPUT INSERTED.IdPago VALUES (?, ?, ?, ?, ?)",

@@ -15,6 +15,7 @@ import { API_BASE_URL, apiGet, ApiError, apiPost, apiPostForm } from "@/services
 export type EstadoConciliacion =
   | "sin_documento"
   | "inversion"
+  | "pase_caja"
   | "sin_conciliar"
   | "parcialmente_conciliado"
   | "conciliado"

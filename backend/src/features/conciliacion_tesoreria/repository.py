@@ -198,7 +198,7 @@ def calcular_estado(medio: str, id_movimiento: int) -> dict:
     auditoria = _estado_vigente(medio, id_movimiento)
     if estado != "ya_reconocido" and auditoria:
         # 19/11/2026: movimiento de una inversión (plazo fijo o Fondo Fima): pase entre el banco y la inversión.
-        estado = ("inversion" if auditoria.get("motivo") == "Inversion" else "sin_documento") \
+        estado = ({"Inversion": "inversion", "PaseCaja": "pase_caja"}.get(auditoria.get("motivo"), "sin_documento")) \
             if auditoria["estado"] == "SinDocumento" else "conciliado"
         saldo_pendiente = 0.0
     return {
@@ -259,7 +259,7 @@ def aplicar_conciliacion(
             "para corregirlo, usar la reasignación de contacto desde su cuenta corriente."
         )
     saldo_pendiente = estado["saldoPendiente"]
-    if estado["estado"] in ("sin_documento", "conciliado", "inversion"):
+    if estado["estado"] in ("sin_documento", "conciliado", "inversion", "pase_caja"):
         raise ValueError("El movimiento ya está resuelto; no admite nuevas imputaciones.")
     if importe > saldo_pendiente + TOLERANCIA_REDONDEO:
         raise ValueError(
@@ -356,7 +356,7 @@ def _stmt_estado(
     usuario: str,
 ) -> tuple:
     motivos = {
-        "SinDocumento": ("Impuesto", "Interes", "CompraNoCargada", "Otro", "Inversion"),
+        "SinDocumento": ("Impuesto", "Interes", "CompraNoCargada", "Otro", "Inversion", "PaseCaja"),
         "DiferenciaAceptada": ("AjusteTipoCambioSinNota", "Redondeo", "Impuesto", "Otro"),
         "EstadoQuitado": ("Revocacion",),
     }
@@ -378,6 +378,9 @@ def vincular_lote(
     medio: str, id_movimiento: int, refs: list[dict], aceptar_diferencia: dict | None, usuario: str
 ) -> list[dict]:
     result, docs = _calcular(medio, id_movimiento, refs)
+    tarjetas = [d for d in docs if d["origen"] == "Resumen tarjeta"]
+    if tarjetas:
+        return _pagar_resumen_tarjeta(medio, id_movimiento, tarjetas, usuario)
     statements = []
     for d, item in zip(docs, result["imputados"], strict=True):
         if item["importeImputado"] == 0:
@@ -413,6 +416,22 @@ def vincular_lote(
         )
     ids = execute_write_transaction(statements)[:count]
     return [c for c in listar_conciliaciones(medio, id_movimiento) if c["idConciliacion"] in ids]
+
+
+def _pagar_resumen_tarjeta(medio: str, id_movimiento: int, tarjetas: list[dict], usuario: str) -> list[dict]:
+    """19/11/2026 (Sergio): el pago de un resumen se vincula desde el banco o desde el resumen, con el mismo resultado
+    que siempre: el pago queda registrado en el resumen y el movimiento del banco con el contacto de la tarjeta."""
+    if medio not in ("bna", "galicia") or len(tarjetas) != 1:
+        raise ValueError("Elegí un solo resumen de tarjeta para este pago del banco.")
+    t = tarjetas[0]
+    mov = _movimiento_original(medio, id_movimiento)
+    tabla, col = ("dbo.[Movimientos BNA]", "IdMovimientoBNA") if medio == "bna" else ("dbo.[Movimientos Galicia]", "IdMovimiento")
+    execute_write_transaction([
+        ("INSERT INTO dbo.Tarjetas_Resumenes_Pagos (IdResumen, Fecha, Importe, Origen, IdMovimientoOrigen) VALUES (?, ?, ?, ?, ?)",
+         (t["idOrigen"], mov["fecha"], round(abs(_f(mov["importe"])), 2), "BNA" if medio == "bna" else "Galicia", id_movimiento)),
+        (f"UPDATE {tabla} SET IdContacto = ? WHERE {col} = ? AND ISNULL(IdContacto, 0) = 0", (t["idContacto"], id_movimiento)),
+    ])
+    return []
 
 
 @atomic_reconciliation

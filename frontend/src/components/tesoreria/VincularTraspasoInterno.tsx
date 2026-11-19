@@ -47,7 +47,7 @@ export function VincularTraspasoInterno({
 
   const habilitado = MEDIOS_VINCULABLES.includes(medio);
   const resueltoPorConciliacion =
-    estadoExterno === "sin_documento" || estadoExterno === "inversion" || estadoExterno === "ya_reconocido" || estadoExterno === "conciliado" || estadoExterno === "parcialmente_conciliado";
+    estadoExterno === "sin_documento" || estadoExterno === "inversion" || estadoExterno === "pase_caja" || estadoExterno === "ya_reconocido" || estadoExterno === "conciliado" || estadoExterno === "parcialmente_conciliado";
 
   const estadoQuery = useQuery({
     queryKey: ["traspaso-interno-estado", medio, idMovimiento],
