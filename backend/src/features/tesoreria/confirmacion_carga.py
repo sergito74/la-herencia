@@ -120,10 +120,24 @@ def _existentes_del_rango(banco: str, movimientos: list[dict]) -> list[dict]:
 
 
 def detectar_duplicados(banco: str, movimientos: list[dict]) -> list[bool]:
-    """Return, per index of `movimientos`, whether it already exists in `WC`."""
-    existentes = _existentes_del_rango(banco, movimientos)
-    claves_existentes = {_clave_movimiento(banco, fila) for fila in existentes}
-    return [_clave_movimiento(banco, fila) in claves_existentes for fila in movimientos]
+    """Return, per index of `movimientos`, whether it already exists in `WC`.
+
+    19/11/2026: sin el número de comprobante. El mismo movimiento cargado desde el PDF trae otro número (el Excel del
+    Nación muestra "1699", el PDF "26103001") y se marcaba como nuevo: se duplicaba. Se compara fecha + importe +
+    concepto, contando repeticiones (dos gravámenes iguales el mismo día son dos movimientos)."""
+    from collections import Counter
+
+    sin_comprobante = lambda fila: _clave_movimiento(banco, fila)[:-1]
+    disponibles = Counter(sin_comprobante(fila) for fila in _existentes_del_rango(banco, movimientos))
+    salida = []
+    for fila in movimientos:
+        k = sin_comprobante(fila)
+        if disponibles[k] > 0:
+            disponibles[k] -= 1
+            salida.append(True)
+        else:
+            salida.append(False)
+    return salida
 
 
 def previsualizar_confirmacion(banco: str, filename: str, contenido: bytes) -> dict:
