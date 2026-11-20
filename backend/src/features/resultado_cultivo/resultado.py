@@ -114,6 +114,10 @@ def resultado_cultivo(id_cultivo: int, id_campania: int) -> dict:
     lineas_costo = detalle_costos(id_cultivo, id_campania)
     costo_pesos = round(sum(_f(l["montoPesos"]) for l in lineas_costo), 2)
     costo_dolares = round(sum(_f(l["montoDolares"]) for l in lineas_costo), 2)
+    # 20/11/2026 (Sergio): lo picado para silo (implantación de las ha picadas + confección) es costo de ganadería.
+    silo = _costo_silo(id_cultivo, id_campania)
+    costo_pesos = round(costo_pesos - silo["pesos"], 2)
+    costo_dolares = round(costo_dolares - silo["dolares"], 2)
 
     sup_sembrada = superficie_sembrada(id_cultivo, id_campania)
     cosecha = superficie_cosechada(id_cultivo, id_campania)
@@ -131,6 +135,11 @@ def resultado_cultivo(id_cultivo: int, id_campania: int) -> dict:
     nl = _no_liquidado(id_cultivo, id_campania)
     econ_pesos = round(margen_pesos + nl["pesos"], 2)
     econ_dolares = round(margen_dolares + nl["dolares"], 2)
+    if nl.get("margen"):  # misma cifra que Por cultivo, al centavo (los gastos se redondean distinto en cada armado)
+        margen_pesos, margen_dolares = nl["margenRealizado"]["pesos"], nl["margenRealizado"]["dolares"]
+        econ_pesos, econ_dolares = nl["margen"]["pesos"], nl["margen"]["dolares"]
+        rentabilidad_pesos = round(margen_pesos / costo_pesos, 4) if costo_pesos else None
+        rentabilidad_dolares = round(margen_dolares / costo_dolares, 4) if costo_dolares else None
 
     return {
         "idCultivo": id_cultivo,
@@ -159,12 +168,23 @@ def resultado_cultivo(id_cultivo: int, id_campania: int) -> dict:
         "supCosechaEstimada": cosecha["estimada"],
         "advertenciaMargenNoRepresentativo": venta["pesos"] > 0 and costo_pesos < UMBRAL_ADVERTENCIA * venta["pesos"],
         # 20/11/2026: lo cosechado y no liquidado (silo fusible de la hacienda). margenBruto* = realizado.
+        "costoSiloGanaderiaPesos": silo["pesos"], "costoSiloGanaderiaDolares": silo["dolares"],
         "noLiquidadoKg": nl["kg"], "noLiquidadoPorcentaje": nl["porcentaje"], "noLiquidadoEstado": nl["estado"],
         "noLiquidadoPesos": nl["pesos"], "noLiquidadoDolares": nl["dolares"],
         "margenEconomicoPesos": econ_pesos, "margenEconomicoDolares": econ_dolares,
         "rentabilidadEconomicaPesos": round(econ_pesos / costo_pesos, 4) if costo_pesos else None,
         "rentabilidadEconomicaDolares": round(econ_dolares / costo_dolares, 4) if costo_dolares else None,
     }
+
+
+def _costo_silo(id_cultivo: int, id_campania: int) -> dict:
+    """Mismo cálculo que FrmCostos de Access: implantación/ha × ha picadas + Confección Silo."""
+    from src.features.resultado_cultivo.formularios_access import formulario_costos
+    try:
+        s = formulario_costos(id_cultivo, id_campania).get("silo") or {}
+    except ValueError:
+        s = {}
+    return {"pesos": round(_f(s.get("pesos")), 2), "dolares": round(_f(s.get("dolares")), 2)}
 
 
 def _no_liquidado(id_cultivo: int, id_campania: int) -> dict:
@@ -176,9 +196,12 @@ def _no_liquidado(id_cultivo: int, id_campania: int) -> dict:
     except ValueError:
         return vacio
     n = f.get("noLiquidado")
-    if not n or not n["kg"]:
+    if not n:
         return vacio
-    return {"kg": n["kg"], "porcentaje": n["porcentaje"], "estado": n["estado"], "pesos": n["pesos"], "dolares": n["dolares"]}
+    margenes = {"margen": f["margenBruto"], "margenRealizado": f["margenRealizado"]}
+    if not n["kg"]:
+        return {**vacio, **margenes}
+    return {"kg": n["kg"], "porcentaje": n["porcentaje"], "estado": n["estado"], "pesos": n["pesos"], "dolares": n["dolares"], **margenes}
 
 
 def _cultivos_con_datos(id_campania: int) -> list[int]:

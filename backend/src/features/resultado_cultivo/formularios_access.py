@@ -210,7 +210,7 @@ def formulario_costos(id_cultivo: int, id_campania: int) -> dict:
             for f in filas
         ],
         "implantacion": {"pesos": round(impl_p), "dolares": round(impl_d), "haPesos": round(impl_ha_p), "haDolares": round(impl_ha_d)},
-        "silo": {"pesos": round(impl_ha_p * picado + silo_p), "dolares": round(impl_ha_d * picado + silo_d)},
+        "silo": {"pesos": round(impl_ha_p * picado + silo_p, 2), "dolares": round(impl_ha_d * picado + silo_d, 2)},
         "total": {"pesos": round(grano_p), "dolares": round(grano_d),
                   "haPesos": round(grano_p / grano) if grano > 0 else 0, "haDolares": round(grano_d / grano) if grano > 0 else 0},
     }
