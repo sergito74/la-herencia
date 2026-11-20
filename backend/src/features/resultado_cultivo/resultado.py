@@ -237,7 +237,9 @@ def costo_sin_clasificar(id_campania: int) -> dict | None:
         "SUM(CASE WHEN g.ImporteUSD IS NULL THEN 1 ELSE 0 END) noValuados "
         "FROM dbo.RepartosGastoCaja d JOIN dbo.GastoCajaEfectivo g ON g.IdGasto=d.IdGasto "
         "JOIN dbo.OperacionesCajaEfectivo op ON op.IdOperacion=g.IdOperacion "
-        "WHERE g.Anulada=0 AND op.Estado='Vigente' AND (d.IdCampania IS NULL OR (d.IdCampania=? "
+        "WHERE g.Anulada=0 AND op.Estado='Vigente' "
+        # 20/11/2026 (Sergio): solo Agricultura. Ganadería/Adm. general no llevan campaña salvo que vayan a un cultivo.
+        "AND d.IdCentroCostos = 1 AND (d.IdCampania IS NULL OR (d.IdCampania=? "
         "AND NOT EXISTS (SELECT 1 FROM dbo.Map_CultivoResultado m WHERE m.IdDestino=d.IdDestino AND m.Activo=1)))",
         (id_campania,),
     )

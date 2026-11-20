@@ -21,6 +21,14 @@ class NoExisteCaja(ValueError):
     pass
 
 
+# 20/11/2026: gastos de caja en US$ al BNA comprador divisa del día hábil anterior (regla de liquidaciones).
+SQL_VALUAR_GASTO_CAJA = (
+    "UPDATE g SET TipoCambio = b.tc, ImporteUSD = ROUND(g.ImportePesos / b.tc, 2), FuenteCotizacion = 'BNA comprador divisa', "
+    "FechaCotizacion = b.Fecha FROM dbo.GastoCajaEfectivo g CROSS APPLY (SELECT TOP 1 Fecha, Comp_Divisa AS tc FROM dbo.[Dolar BNA] "
+    "WHERE Fecha < g.Fecha AND Comp_Divisa > 0 ORDER BY Fecha DESC) b"
+)
+
+
 def huella(value):
     return hashlib.sha256(db.dumps(value).encode("utf-8")).hexdigest()
 
@@ -492,6 +500,8 @@ def _aplicar(id_op, op, user, context):
             "(IdOperacion,Fecha,Concepto,ImportePesos,Usuario) OUTPUT INSERTED.IdGasto VALUES (?,?,?,?,?)",
             (id_op, op.fecha, op.concepto, op.importe, user),
         )
+        # 20/11/2026: valuación en US$ al BNA comprador divisa del día hábil anterior.
+        db.write(SQL_VALUAR_GASTO_CAJA + " WHERE g.IdGasto = ?", (id_gasto,))
         db.effect(id_op, "GastoCaja", id_gasto)
         if op.idSocio is not None:  # pagado por el socio: queda a su favor hasta que Giamigli se lo reponga
             _socio(id_op, op, user, op.idSocio, "Devolucion", context["valuacion"], medio=op.medioSocio)
