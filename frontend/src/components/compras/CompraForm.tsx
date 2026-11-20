@@ -1,5 +1,6 @@
 "use client";
 
+import { seleccionarArchivo } from "@/services/documentosApi";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
@@ -610,6 +611,23 @@ export function CompraForm({
                 onChange={(e) => setDocumentoOriginalLink(e.target.value)}
                 placeholder="Link o ruta al PDF escaneado…"
               />
+              <button
+                type="button"
+                className="whitespace-nowrap rounded border border-border bg-surface px-2 py-0.5 text-xs font-medium hover:bg-surface-sunken"
+                title="Elegir el PDF en esta PC"
+                onClick={async () => {
+                  try {
+                    const actual = documentoOriginalLink ? limpiarRutaCopiada(documentoOriginalLink) : "";
+                    const carpeta = actual.includes("\\") ? actual.slice(0, actual.lastIndexOf("\\")) : null;
+                    const ruta = await seleccionarArchivo("Documento original de la compra", carpeta);
+                    if (ruta) setDocumentoOriginalLink(ruta);
+                  } catch {
+                    showToast("No se pudo abrir el selector de archivos.", "danger");
+                  }
+                }}
+              >
+                Buscar…
+              </button>
               {documentoOriginalLink && (
                 <a
                   href={urlParaAbrirDocumento(documentoOriginalLink, BASE_DOCUMENTOS_COMPRAS, urlDocumentoLocal)}
