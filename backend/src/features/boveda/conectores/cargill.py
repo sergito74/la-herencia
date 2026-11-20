@@ -11,6 +11,9 @@ acepte documentos. Relevamiento: specs/042-boveda-portales/relevamientos/cargill
 
 from __future__ import annotations
 
+import logging
+import time
+
 from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta
 from decimal import Decimal
@@ -22,6 +25,7 @@ from src.features.boveda.conectores import (
 from src.features.boveda.conectores.espera import cargada, ir
 
 LOGIN = "https://www.mycargill.com/cascsa/v2/login"
+log = logging.getLogger(__name__)
 API = "https://api.cglcloud.com/api/dxo/gps/v1"
 PARAMS = "source=JDEAR&role=DXP_GPS_Role_Client"
 CUSTOMER_ID = "35192801"
@@ -163,10 +167,19 @@ class ConectorCargill:
         hoy = date.today()
         data: dict = {}
         for desde, hasta in reversed(list(_trimestres(_inicio_ejercicio(hoy) - timedelta(days=365), hoy))):
-            r = sesion.ctx.request.post(
-                f"{API}/accountbalance/currency?{PARAMS}&customerId={CUSTOMER_ID}&fromDate={desde:%m/%d/%Y}"
-                f"&toDate={hasta:%m/%d/%Y}&isBlnCmpReq=false&sortBy=documentDate&sort=asc",
-                headers={"authorization": sesion.token, "content-type": "application/json"}, data={}, timeout=120000)
+            # 20/11/2026: el libro a veces responde 500 (error del servidor de Cargill, de un rato): se reintenta y,
+            # si sigue, se omite la foto (es informativa) sin hacer fallar la corrida, que ya bajó los documentos.
+            for intento in range(3):
+                r = sesion.ctx.request.post(
+                    f"{API}/accountbalance/currency?{PARAMS}&customerId={CUSTOMER_ID}&fromDate={desde:%m/%d/%Y}"
+                    f"&toDate={hasta:%m/%d/%Y}&isBlnCmpReq=false&sortBy=documentDate&sort=asc",
+                    headers={"authorization": sesion.token, "content-type": "application/json"}, data={}, timeout=120000)
+                if r.status < 500:
+                    break
+                time.sleep(10 * (intento + 1))
+            if r.status >= 500:
+                log.warning("Cargill respondió %s al leer la cuenta corriente; se omite la foto del saldo", r.status)
+                return []
             if r.status != 200:
                 raise PortalCambio(f"Cargill respondió {r.status} al leer la cuenta corriente")
             data = r.json().get("data") or {}

@@ -263,7 +263,23 @@ class ConectorAllianz(_ChromeComun):
     nombre = "Allianz"
     id_portal = 11
 
+    # 20/11/2026: Allianz respondió "usuario o contraseña inválidos" con la clave correcta (Sergio entra bien con la
+    # misma; la corrida siguiente entró sola). Valida con reCAPTCHA y a veces desconfía del ingreso: antes de marcar la
+    # clave como rechazada (y frenar el portal) se reintenta con un Chrome nuevo, como haría una persona.
+    INTENTOS = 3
+
     def ingresar(self, pw, credencial: Credencial) -> _Sesion:
+        for intento in range(1, self.INTENTOS + 1):
+            try:
+                return self._ingresar_una_vez(pw, credencial)
+            except (CredencialesRechazadas, PortalCambio) as e:
+                if intento == self.INTENTOS:
+                    raise
+                _log.warning("Allianz: intento %s de ingreso fallido: %s", intento, e)
+                time.sleep(30 * intento)
+        raise AssertionError("inalcanzable")
+
+    def _ingresar_una_vez(self, pw, credencial: Credencial) -> _Sesion:
         from src.features.boveda.mails import esperar_codigo
 
         s = _abrir_chrome(pw, PERFILES / str(self.id_portal), ALLIANZ)
