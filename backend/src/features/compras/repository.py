@@ -699,7 +699,27 @@ def resolver_defaults_lineas(lineas: list[dict]) -> list[dict]:
     """Versión pública de `_resolver_defaults_linea` para que el router pueda
     construir la respuesta con los mismos valores que `create_compra`/
     `update_compra` efectivamente persisten (FR-011)."""
-    return [_resolver_defaults_linea(linea) for linea in lineas]
+    return [_resolver_defaults_linea(linea) for linea in heredar_imputacion_redondeos(lineas)]
+
+
+def _es_redondeo(linea: dict) -> bool:
+    return str(linea.get("productoServicio") or "").strip().lower().startswith("redondeo")
+
+
+def heredar_imputacion_redondeos(lineas: list[dict]) -> list[dict]:
+    """20/11/2026 (agentes contable y financiero): un renglón de redondeo sin destino hereda destino, centro y
+    campaña del renglón de mayor importe de la misma factura (empate: el primero). El rubro y el importe no cambian."""
+    imputadas = [l for l in lineas if not _es_redondeo(l) and l.get("idDestino") is not None]
+    if not imputadas:
+        return lineas
+    mayor = max(imputadas, key=lambda l: abs(float(l.get("cantidad") or 0) * float(l.get("precioUnitario") or 0)))
+    salida = []
+    for l in lineas:
+        if _es_redondeo(l) and l.get("idDestino") is None:
+            l = {**l, "idDestino": mayor["idDestino"], "idCentroCosto": mayor.get("idCentroCosto"),
+                 "idCampania": mayor.get("idCampania"), "campaña": mayor.get("campaña")}
+        salida.append(l)
+    return salida
 
 
 def _resolver_defaults_linea(linea: dict) -> dict:
@@ -841,7 +861,7 @@ def create_compra(cabecera: dict, lineas: list[dict], vencimientos: list[dict]) 
     if errores:
         raise ValueError(errores)
 
-    lineas_con_defaults = [_resolver_defaults_linea(linea) for linea in lineas]
+    lineas_con_defaults = resolver_defaults_lineas(lineas)
 
     statements = [_cabecera_insert_statement(cabecera)]
     for linea in lineas_con_defaults:
@@ -862,7 +882,7 @@ def update_compra(id_compra: int, cabecera: dict, lineas: list[dict], vencimient
     if errores:
         raise ValueError(errores)
 
-    lineas_con_defaults = [_resolver_defaults_linea(linea) for linea in lineas]
+    lineas_con_defaults = resolver_defaults_lineas(lineas)
 
     statements = [
         ("DELETE FROM dbo.Det_Compras WHERE IdCompra = ?", (id_compra,)),
