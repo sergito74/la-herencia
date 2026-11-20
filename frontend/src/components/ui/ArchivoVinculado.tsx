@@ -1,5 +1,6 @@
 "use client";
 
+import { Flotante } from "@/components/ui/Flotante";
 import { useEffect, useRef, useState } from "react";
 
 import { esRutaLocalWindows, limpiarRutaCopiada, urlParaAbrirDocumento } from "@/lib/documentoLocal";
@@ -134,10 +135,10 @@ export function ArchivoVinculado({ label, value, onChange, inputClassName, class
             >
               Archivo ▾
             </button>
-            {menuAbierto && (
-              <div
+            <Flotante ancla={menuRef} abierto={!!(menuAbierto)} alinear="derecha" className="w-52 overflow-hidden rounded-md border border-border bg-surface shadow-lg">
+<div
                 role="menu"
-                className="absolute right-0 z-20 mt-1 w-52 overflow-hidden rounded-md border border-border bg-surface shadow-lg"
+                
               >
                 <button type="button" role="menuitem" className={itemMenu} onClick={buscarEnPc}>
                   Buscar en esta PC…
@@ -169,7 +170,7 @@ export function ArchivoVinculado({ label, value, onChange, inputClassName, class
                   </>
                 )}
               </div>
-            )}
+</Flotante>
           </div>
         </div>
       </div>

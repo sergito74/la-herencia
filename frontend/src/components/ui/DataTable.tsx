@@ -1,5 +1,6 @@
 "use client";
 
+import { Flotante } from "@/components/ui/Flotante";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { EmptyState } from "@/components/ui/States";
@@ -85,14 +86,14 @@ function MenuFila({ acciones }: { acciones: FilaAccion[] }) {
     <div className="relative inline-block text-left" ref={caja}>
       <button type="button" aria-label="Acciones" aria-haspopup="menu" aria-expanded={abierto} onClick={() => setAbierto((v) => !v)}
         className="flex h-7 w-7 items-center justify-center rounded-md text-ink-secondary hover:bg-surface-sunken hover:text-ink-primary">⋯</button>
-      {abierto && (
-        <div role="menu" className="absolute right-0 z-30 mt-1 min-w-[11rem] rounded-md border border-border bg-surface py-1 shadow-lg">
+      <Flotante ancla={caja} abierto={!!(abierto)} alinear="derecha" className="min-w-[11rem] rounded-md border border-border bg-surface py-1 shadow-lg">
+<div role="menu" >
           {acciones.map((a) => a.href
             ? <a key={a.label} role="menuitem" href={a.href} className={`block px-3 py-1.5 text-sm hover:bg-surface-sunken ${a.peligro ? "text-status-danger" : "text-ink-primary"}`}>{a.label}</a>
             : <button key={a.label} type="button" role="menuitem" onClick={() => { setAbierto(false); a.onClick?.(); }}
                 className={`block w-full px-3 py-1.5 text-left text-sm hover:bg-surface-sunken ${a.peligro ? "text-status-danger" : "text-ink-primary"}`}>{a.label}</button>)}
         </div>
-      )}
+</Flotante>
     </div>
   );
 }

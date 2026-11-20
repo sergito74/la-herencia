@@ -1,4 +1,5 @@
 "use client";
+import { Flotante } from "@/components/ui/Flotante";
 import { useEffect, useRef, useState } from "react";
 
 /** Rango de fechas con atajos (spec 051 FR-008): este mes, mes pasado, últimos 90 días, campaña actual (1/7–30/6),
@@ -52,8 +53,8 @@ export function RangoFechas({ valor, onChange, etiqueta = "Fechas" }: { valor: R
         {etiquetaRango(valor)}
         <span aria-hidden className="text-ink-muted">▾</span>
       </button>
-      {abierto && (
-        <div role="dialog" aria-label="Elegir fechas" className="absolute left-0 z-30 mt-1 w-[22rem] rounded-lg border border-border bg-surface p-2 shadow-lg">
+      <Flotante ancla={caja} abierto={!!(abierto)} className="w-[22rem] rounded-lg border border-border bg-surface p-2 shadow-lg">
+<div role="dialog" aria-label="Elegir fechas" >
           <ul className="space-y-0.5">
             {atajos().map((a) => (
               <li key={a.id}>
@@ -77,7 +78,7 @@ export function RangoFechas({ valor, onChange, etiqueta = "Fechas" }: { valor: R
             </div>
           </div>
         </div>
-      )}
+</Flotante>
     </div>
   );
 }

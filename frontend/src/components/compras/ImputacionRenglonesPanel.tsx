@@ -1,5 +1,6 @@
 "use client";
 
+import { Flotante } from "@/components/ui/Flotante";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
 
@@ -78,15 +79,15 @@ export function ImputacionRenglonesPanel({ idCompra }: { idCompra: number }) {
           {abierto ? "Cerrar" : "Ver renglones"}
         </button>
       </section>
-      {abierto && (
-        <div className="absolute left-0 right-0 z-20 mt-1 max-h-96 overflow-y-auto rounded border border-border bg-white p-2 shadow-lg">
+      <Flotante ancla={cajaRef} abierto={!!(abierto)} maxAlto={384} className="rounded border border-border bg-white p-2 shadow-lg">
+<div>
           <ul className="divide-y text-xs">
             {renglones.map((r) => (
               <RenglonFila key={r.idDetalleCompra} r={r} idCompra={idCompra} />
             ))}
           </ul>
         </div>
-      )}
+</Flotante>
     </div>
   );
 }

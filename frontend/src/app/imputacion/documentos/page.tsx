@@ -1,5 +1,6 @@
 "use client";
 
+import { Flotante } from "@/components/ui/Flotante";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useRef, useState } from "react";
@@ -46,8 +47,8 @@ function MasAcciones({ exportar }: { exportar: string }) {
   return (
     <div className="relative" ref={caja}>
       <Button onClick={() => setAbierto((v) => !v)} aria-haspopup="menu" aria-expanded={abierto}>Más acciones ▾</Button>
-      {abierto && (
-        <div role="menu" className="absolute right-0 z-30 mt-1 w-72 rounded-lg border border-border bg-surface p-1 text-sm shadow-lg">
+      <Flotante ancla={caja} abierto={!!(abierto)} alinear="derecha" className="w-72 rounded-lg border border-border bg-surface p-1 text-sm shadow-lg">
+<div role="menu" >
           <a role="menuitem" href={exportar} className="block rounded-md px-3 py-2 hover:bg-surface-sunken">Exportar a Excel (con estos filtros)</a>
           <SoloLectura>
             <button role="menuitem" type="button" className="block w-full rounded-md px-3 py-2 text-left hover:bg-surface-sunken"
@@ -58,7 +59,7 @@ function MasAcciones({ exportar }: { exportar: string }) {
                 return `Listado para el Estudio actualizado (${formatCantidad(r.filas)} filas).`; })}>Actualizar el listado para el Estudio</button>
           </SoloLectura>
         </div>
-      )}
+</Flotante>
     </div>
   );
 }

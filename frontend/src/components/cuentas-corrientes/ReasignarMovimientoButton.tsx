@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { Flotante } from "@/components/ui/Flotante";
+import { useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 
 import { fetchContactos, type Contacto } from "@/services/cuentasCorrientesApi";
@@ -33,6 +34,7 @@ export function ReasignarMovimientoButton({
   const [buscado, setBuscado] = useState("");
   const [seleccionado, setSeleccionado] = useState<Contacto | null>(null);
   const [confirmando, setConfirmando] = useState(false);
+  const anclaPopover = useRef<HTMLDivElement>(null);
   const [guardando, setGuardando] = useState(false);
 
   const { data, isLoading } = useQuery({
@@ -70,7 +72,7 @@ export function ReasignarMovimientoButton({
 
   return (
     <SoloLectura>
-      <div className="relative">
+      <div className="relative" ref={anclaPopover}>
         <button
           type="button"
           onClick={() => setAbierto((v) => !v)}
@@ -79,8 +81,8 @@ export function ReasignarMovimientoButton({
           {abierto ? "Cancelar" : "Reasignar"}
         </button>
 
-        {abierto && (
-          <div className="absolute right-0 z-10 mt-1 w-80 space-y-2 rounded-md border border-border bg-surface p-3 text-left shadow-lg">
+        <Flotante ancla={anclaPopover} abierto={!!(abierto)} alinear="derecha" className="w-80 space-y-2 rounded-md border border-border bg-surface p-3 text-left shadow-lg">
+<div>
             {!confirmando && (
               <>
                 <input
@@ -142,7 +144,7 @@ export function ReasignarMovimientoButton({
               </div>
             )}
           </div>
-        )}
+</Flotante>
       </div>
     </SoloLectura>
   );

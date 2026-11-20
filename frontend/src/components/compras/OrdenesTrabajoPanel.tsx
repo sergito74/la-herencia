@@ -1,5 +1,6 @@
 "use client";
 
+import { Flotante } from "@/components/ui/Flotante";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useRef, useState } from "react";
 
@@ -166,8 +167,8 @@ export function OrdenesTrabajoPanel({ idCompra }: { idCompra: number }) {
         {!sinVincular && <Reparto filas={data.reparto} />}
       </Franja>
 
-      {abierto && (
-        <div className="absolute left-0 right-0 top-full z-20 mt-1 rounded border border-border-strong bg-surface p-2 text-xs shadow-lg">
+      <Flotante ancla={cajaRef} abierto={!!(abierto)} className="rounded border border-border-strong bg-surface p-2 text-xs shadow-lg">
+<div>
           <div className="mb-1 flex items-center justify-between gap-3">
             <span className="font-medium text-ink-primary">Órdenes que cobra esta factura</span>
             <span className="flex items-center gap-3">
@@ -205,7 +206,7 @@ export function OrdenesTrabajoPanel({ idCompra }: { idCompra: number }) {
               ))}
           </div>
         </div>
-      )}
+</Flotante>
     </div>
   );
 }

@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { Flotante } from "@/components/ui/Flotante";
+import { useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 
 import { asignarGasto, fetchComprasParticularesCandidatas } from "@/services/cuentasSociosApi";
@@ -22,6 +23,7 @@ export function AsignarGastoForm({ idSocio, onAsignado }: { idSocio: number; onA
   const [buscado, setBuscado] = useState("");
   const [motivo, setMotivo] = useState("");
   const [asignando, setAsignando] = useState<number | null>(null);
+  const anclaPopover = useRef<HTMLDivElement>(null);
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ["compras-particulares-candidatas", buscado],
@@ -46,7 +48,7 @@ export function AsignarGastoForm({ idSocio, onAsignado }: { idSocio: number; onA
 
   return (
     <SoloLectura>
-      <div className="relative">
+      <div className="relative" ref={anclaPopover}>
         <button
           type="button"
           onClick={() => setAbierto((v) => !v)}
@@ -55,8 +57,8 @@ export function AsignarGastoForm({ idSocio, onAsignado }: { idSocio: number; onA
           {abierto ? "Cancelar" : "Asignar a un socio…"}
         </button>
 
-        {abierto && (
-          <div className="absolute z-10 mt-2 w-[28rem] space-y-3 rounded-md border border-border bg-surface p-4 shadow-lg">
+        <Flotante ancla={anclaPopover} abierto={!!(abierto)} className="w-[28rem] space-y-3 rounded-md border border-border bg-surface p-4 shadow-lg">
+<div>
             <p className="text-sm text-ink-secondary">
               Compras particulares (gastos personales pagados por la empresa, total o parcial) sin asignar todavía.
             </p>
@@ -106,7 +108,7 @@ export function AsignarGastoForm({ idSocio, onAsignado }: { idSocio: number; onA
               </ul>
             )}
           </div>
-        )}
+</Flotante>
       </div>
     </SoloLectura>
   );

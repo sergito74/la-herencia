@@ -1,5 +1,6 @@
 "use client";
 
+import { Flotante } from "@/components/ui/Flotante";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useId, useRef, useState } from "react";
 
@@ -107,8 +108,8 @@ export function InsumoConStockSelect({
         aria-controls={listaId}
         aria-autocomplete="list"
       />
-      {abierto && texto !== value?.producto && (
-        <ul id={listaId} className="absolute z-30 mt-1 max-h-64 w-[26rem] max-w-[90vw] overflow-auto rounded-md border border-border bg-surface text-xs shadow-lg" role="listbox">
+      <Flotante ancla={contenedor} abierto={!!(abierto && texto !== value?.producto)} maxAlto={256} className="w-[26rem] max-w-[90vw] rounded-md border border-border bg-surface text-xs shadow-lg">
+<ul id={listaId}  role="listbox">
           {isFetching && <li className="px-2 py-1 text-ink-secondary">Buscando…</li>}
           {!isFetching && items.length === 0 && <li className="px-2 py-1 text-ink-secondary">Sin insumos con stock que coincidan.</li>}
           {items.map((p, i) => (
@@ -135,7 +136,7 @@ export function InsumoConStockSelect({
             </li>
           ))}
         </ul>
-      )}
+</Flotante>
       {value && elegido && (
         <span className="mt-0.5 block text-[11px] text-ink-secondary">
           {elegido.ingredienteActivo ?? elegido.tipo ?? "—"} · Stock disponible:{" "}

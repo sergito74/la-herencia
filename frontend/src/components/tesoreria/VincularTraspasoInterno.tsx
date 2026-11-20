@@ -1,7 +1,8 @@
 "use client";
 
+import { Flotante } from "@/components/ui/Flotante";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 import {
   deleteTraspasoInterno,
@@ -43,6 +44,7 @@ export function VincularTraspasoInterno({
   const [abierto, setAbierto] = useState(false);
   const [guardando, setGuardando] = useState(false);
   const [busquedaMedio, setBusquedaMedio] = useState<Medio>("galicia");
+  const anclaPopover = useRef<HTMLDivElement>(null);
   const [busquedaId, setBusquedaId] = useState("");
 
   const habilitado = MEDIOS_VINCULABLES.includes(medio);
@@ -109,13 +111,13 @@ export function VincularTraspasoInterno({
 
   return (
     <SoloLectura>
-      <div className="relative">
+      <div className="relative" ref={anclaPopover}>
         <button type="button" onClick={() => setAbierto((v) => !v)} className="text-xs text-finance hover:underline" title="Vincular con el movimiento de la otra cuenta (pase entre bancos o cajas)">
           {abierto ? "Cancelar" : "Traspaso"}
         </button>
 
-        {abierto && (
-          <div className="absolute right-0 z-10 mt-1 w-96 space-y-2 rounded-md border border-border bg-surface p-3 text-left text-xs shadow-lg">
+        <Flotante ancla={anclaPopover} abierto={!!(abierto)} alinear="derecha" className="w-96 space-y-2 rounded-md border border-border bg-surface p-3 text-left text-xs shadow-lg">
+<div>
             {estadoQuery.data && estadoQuery.data.candidatas.length > 0 && (
               <div className="space-y-1">
                 <p className="font-medium text-ink-primary">Candidatas sugeridas:</p>
@@ -165,7 +167,7 @@ export function VincularTraspasoInterno({
               </div>
             </div>
           </div>
-        )}
+</Flotante>
       </div>
     </SoloLectura>
   );

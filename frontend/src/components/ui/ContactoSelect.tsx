@@ -1,5 +1,6 @@
 "use client";
 
+import { Flotante } from "@/components/ui/Flotante";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useId, useRef, useState } from "react";
 
@@ -154,12 +155,9 @@ export function ContactoSelect({
         )}
       </div>
 
-      {isOpen && query.length >= 2 && (
-        <div
-          id={listboxId}
-          role="listbox"
-          className="absolute top-full z-10 mt-1 max-h-64 w-full min-w-[16rem] overflow-y-auto rounded-md border border-border bg-surface shadow-lg"
-        >
+      <Flotante ancla={containerRef} abierto={isOpen && query.length >= 2} anchoDelAncla maxAlto={256}
+        className="min-w-[16rem] rounded-md border border-border bg-surface shadow-lg">
+        <div id={listboxId} role="listbox">
           {isFetching && (
             <p className="px-3 py-2 text-sm text-ink-muted">Buscando…</p>
           )}
@@ -185,7 +183,7 @@ export function ContactoSelect({
               </button>
             ))}
         </div>
-      )}
+      </Flotante>
     </div>
   );
 }

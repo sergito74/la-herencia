@@ -1,5 +1,6 @@
 "use client";
 
+import { Flotante } from "@/components/ui/Flotante";
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
@@ -98,8 +99,8 @@ export function DocumentosRelacionadosPanel({
           {abierto ? "Cerrar" : `Relacionar ${tipos.join("/")}`}
         </button>
       )}
-      {abierto && (
-        <div className="absolute right-0 top-full z-20 mt-1 w-[30rem] max-w-full rounded border border-border-strong bg-surface p-2 shadow-lg">
+      <Flotante ancla={ref} abierto={!!(abierto)} alinear="derecha" className="w-[30rem] max-w-full rounded border border-border-strong bg-surface p-2 shadow-lg">
+<div>
           {isFetching && <p className="text-ink-muted">Cargando…</p>}
           {!isFetching && candidatos.length === 0 && (
             <p className="text-ink-muted">Este proveedor no tiene otros documentos de tipo {tipos.join("/")}.</p>
@@ -125,7 +126,7 @@ export function DocumentosRelacionadosPanel({
             </div>
           )}
         </div>
-      )}
+</Flotante>
     </div>
   );
 }
