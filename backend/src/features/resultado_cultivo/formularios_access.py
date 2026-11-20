@@ -306,7 +306,7 @@ def formulario_resultados(id_cultivo: int, id_campania: int) -> dict:
         if cant_cosecha - cant_venta > 0:
             consumo_d = round((cant_cosecha - cant_venta) / 1000 * precio_tn, 2)
             consumo_p = round(consumo_d * (tot_vta_p / tot_vta_d), 2) if tot_vta_d else 0.0
-    elif cant_cosecha > 0:
+    elif cant_cosecha > 0 and cultivo not in VERDEOS:
         # 20/11/2026 (Sergio): sin ventas propias en la campaña, precio de mercado menos gastos de comercialización.
         from src.features.resultado_cultivo.precio_mercado import precio_neto_mercado
         mercado = precio_neto_mercado(cultivo, fecha_fin or date.today())
@@ -365,8 +365,12 @@ def formulario_resultados(id_cultivo: int, id_campania: int) -> dict:
         # Criterio de valorización de lo no liquidado: ventas propias de la campaña o mercado (pizarra Rosario − gastos).
         "valorizacionNoLiquidado": ({"criterio": "mercado", **mercado} if mercado
                                     else {"criterio": "ventasPropias"} if cant_venta > 0
-                                    else {"criterio": "sinPrecio"} if cant_cosecha > 0 else None),
+                                    else {"criterio": "sinPrecio"} if cant_cosecha > 0 and cultivo not in VERDEOS else None),
     }
+
+
+# 20/11/2026 (Sergio): verdeos, no se comercializan; los come la hacienda en el campo. No se valoriza grano.
+VERDEOS = ("Avena", "Pastura")
 
 
 def liquidacion_terminada(id_cultivo: int, id_campania: int, id_destino: int | None = None) -> dict:
