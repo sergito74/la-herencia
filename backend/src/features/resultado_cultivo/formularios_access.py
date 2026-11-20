@@ -308,10 +308,11 @@ def formulario_resultados(id_cultivo: int, id_campania: int) -> dict:
 
     silo_p = _por_ha(impl_p, base_ha) * sup_picado
     silo_d = _por_ha(impl_d, base_ha) * sup_picado
-    total_p = round(impl_p - silo_p + cos_p)
-    total_d = round(impl_d - silo_d + cos_d)
-    neta_p = tot_vta_p - desc_p + seg_p + consumo_p
-    neta_d = tot_vta_d - desc_d + seg_d + consumo_d
+    total_p = round(impl_p - silo_p + cos_p, 2)
+    total_d = round(impl_d - silo_d + cos_d, 2)
+    # 20/11/2026: sin redondear la venta antes de restar, para coincidir al centavo con Toda la campaña.
+    neta_p = round(venta_p + bonif_p - desc_p + seg_p, 2) + consumo_p
+    neta_d = round(venta_d + bonif_d - desc_d + seg_d, 2) + consumo_d
     mb_p, mb_d = round(neta_p - total_p, 2), round(neta_d - total_d, 2)
     rent_p = round(mb_p / total_p, 4) if total_p else 0.0
     rent_d = round(mb_d / total_d, 4) if total_d else 0.0
@@ -350,4 +351,56 @@ def formulario_resultados(id_cultivo: int, id_campania: int) -> dict:
         "recuperoSeguro": {"pesos": seg_p, "dolares": seg_d},
         "produccionNoComercializada": {"pesos": consumo_p, "dolares": consumo_d},
         "totalVentaNeta": {"pesos": neta_p, "dolares": neta_d},
+        **_bloque_no_liquidado(id_cultivo, id_campania, id_destino, cant_cosecha, cant_venta, mb_p, mb_d,
+                               consumo_p, consumo_d, total_p, total_d),
     }
+
+
+def liquidacion_terminada(id_cultivo: int, id_campania: int, id_destino: int | None = None) -> dict:
+    """20/11/2026 (Sergio): el grano que queda en silo es fusible para la hacienda; el sobrante se manda a liquidar.
+    Mientras no se termina de liquidar, lo cosechado y no liquidado es un ESTIMADO. Queda firme (= consumo de la
+    hacienda) cuando se marca la liquidación terminada o cuando ya hay cosecha del mismo destino en una campaña posterior."""
+    f = fetch_one("SELECT FechaLiquidacionTerminada AS f FROM dbo.ResultadoCultivo_Cierre WHERE IdCultivo = ? AND IdCampaña = ?",
+                  (id_cultivo, id_campania)) or {}
+    if f.get("f"):
+        return {"terminada": True, "fecha": _fecha(f["f"]), "motivo": "marcada"}
+    if id_destino is None:
+        id_destino, _ = _destino(id_cultivo)
+    posterior = fetch_one(
+        "SELECT TOP 1 1 AS x FROM dbo.[Datos Cosecha] DC JOIN dbo.Campañas C ON C.IdCampaña = DC.IdCampaña "
+        "WHERE DC.IdDestino = ? AND C.Campaña LIKE '[0-9]%' AND C.Campaña > (SELECT Campaña FROM dbo.Campañas WHERE IdCampaña = ?)", (id_destino, id_campania))
+    if posterior:
+        return {"terminada": True, "fecha": None, "motivo": "cosecha posterior"}
+    return {"terminada": False, "fecha": None, "motivo": None}
+
+
+def _bloque_no_liquidado(id_cultivo, id_campania, id_destino, cant_cosecha, cant_venta, mb_p, mb_d,
+                         no_liq_p, no_liq_d, total_p, total_d) -> dict:
+    """Margen económico (incluye lo no liquidado) y margen realizado (solo lo liquidado), lado a lado."""
+    estado = liquidacion_terminada(id_cultivo, id_campania, id_destino)
+    kg = max(cant_cosecha - cant_venta, 0.0)
+    real_p, real_d = round(mb_p - no_liq_p, 2), round(mb_d - no_liq_d, 2)
+    return {
+        "noLiquidado": {
+            "kg": round(kg), "pesos": no_liq_p, "dolares": no_liq_d,
+            "porcentaje": round(kg / cant_cosecha, 4) if cant_cosecha > 0 else 0.0,
+            # estimado: sigue en silo o en liquidación; consumoHacienda: firme, lo que nunca se liquidó lo comió la hacienda
+            "estado": ("consumoHacienda" if estado["terminada"] else "estimado") if kg > 0 else None,
+            "liquidacionTerminada": estado["terminada"], "fechaLiquidacionTerminada": estado["fecha"],
+            "motivoTerminada": estado["motivo"],
+        },
+        "margenRealizado": {"pesos": real_p, "dolares": real_d},
+        "rentabilidadRealizada": {"pesos": round(real_p / total_p, 4) if total_p else 0.0,
+                                  "dolares": round(real_d / total_d, 4) if total_d else 0.0},
+    }
+
+
+def marcar_liquidacion_terminada(id_cultivo: int, id_campania: int, terminada: bool) -> dict:
+    from src.db.connection import execute_write
+    valor = date.today() if terminada else None
+    n = execute_write("UPDATE dbo.ResultadoCultivo_Cierre SET FechaLiquidacionTerminada = ?, FechaModificacion = GETDATE() "
+                      "WHERE IdCultivo = ? AND IdCampaña = ?", (valor, id_cultivo, id_campania))
+    if n == 0:
+        execute_write("INSERT INTO dbo.ResultadoCultivo_Cierre (IdCultivo, IdCampaña, FechaLiquidacionTerminada, FechaAlta) "
+                      "VALUES (?, ?, ?, GETDATE())", (id_cultivo, id_campania, valor))
+    return liquidacion_terminada(id_cultivo, id_campania)

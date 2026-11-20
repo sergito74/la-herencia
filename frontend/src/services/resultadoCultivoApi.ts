@@ -3,7 +3,7 @@
  * son de solo lectura sobre `WC`, según FR-013 de esta spec.
  */
 
-import { API_BASE_URL, apiGet } from "@/services/apiClient";
+import { API_BASE_URL, apiGet, apiPost } from "@/services/apiClient";
 
 // ------------------------------------------------------------------ catálogo
 
@@ -36,6 +36,16 @@ export interface ResultadoCultivoResumen {
   rentabilidadDolares: number | null;
   supCosechaEstimada: boolean;
   advertenciaMargenNoRepresentativo: boolean;
+  /** 20/11/2026: cosechado y no liquidado (silo). margenBruto* es el realizado. */
+  noLiquidadoKg: number;
+  noLiquidadoPorcentaje: number;
+  noLiquidadoEstado: "estimado" | "consumoHacienda" | null;
+  noLiquidadoPesos: number;
+  noLiquidadoDolares: number;
+  margenEconomicoPesos: number;
+  margenEconomicoDolares: number;
+  rentabilidadEconomicaPesos: number | null;
+  rentabilidadEconomicaDolares: number | null;
 }
 
 export interface CostoSinClasificar {
@@ -67,6 +77,13 @@ export interface ResultadoCampania {
   margenBrutoDolares: number;
   rentabilidadPesos: number | null;
   rentabilidadDolares: number | null;
+  noLiquidadoPesos: number;
+  noLiquidadoDolares: number;
+  hayNoLiquidadoEstimado: boolean;
+  margenEconomicoPesos: number;
+  margenEconomicoDolares: number;
+  rentabilidadEconomicaPesos: number | null;
+  rentabilidadEconomicaDolares: number | null;
   cultivos: ResultadoCultivoResumen[];
   costoSinClasificar: CostoSinClasificar | null;
 }
@@ -97,6 +114,16 @@ export interface ResultadoCultivo {
   rentabilidadDolares: number | null;
   supCosechaEstimada: boolean;
   advertenciaMargenNoRepresentativo: boolean;
+  /** 20/11/2026: cosechado y no liquidado (silo). margenBruto* es el realizado. */
+  noLiquidadoKg: number;
+  noLiquidadoPorcentaje: number;
+  noLiquidadoEstado: "estimado" | "consumoHacienda" | null;
+  noLiquidadoPesos: number;
+  noLiquidadoDolares: number;
+  margenEconomicoPesos: number;
+  margenEconomicoDolares: number;
+  rentabilidadEconomicaPesos: number | null;
+  rentabilidadEconomicaDolares: number | null;
 }
 
 export const fetchResultadoCultivo = (idCampania: number, idCultivo: number) =>
@@ -154,7 +181,13 @@ export interface FormularioResultados {
   deducciones?: { detalle: string; pesos: number; dolares: number }[];
   gastos?: { concepto: string; pesos: number; dolares: number }[];
   totalDeducciones?: ParMonto; recuperoSeguro?: ParMonto; produccionNoComercializada?: ParMonto; totalVentaNeta?: ParMonto;
+  noLiquidado?: { kg: number; pesos: number; dolares: number; porcentaje: number; estado: "estimado" | "consumoHacienda" | null;
+    liquidacionTerminada: boolean; fechaLiquidacionTerminada: string | null; motivoTerminada: string | null };
+  margenRealizado?: ParMonto; rentabilidadRealizada?: ParMonto;
 }
+
+export const marcarLiquidacionTerminada = (idCultivo: number, idCampania: number, terminada: boolean) =>
+  apiPost<unknown>(`/api/resultado-cultivo/access/liquidacion-terminada?idCultivo=${idCultivo}&idCampania=${idCampania}&terminada=${terminada}`, {});
 
 export const fetchCampaniasDeCultivo = (idCultivo: number) =>
   apiGet<CampaniaItem[]>(`/api/resultado-cultivo/access/cultivo/${idCultivo}/campanias`);

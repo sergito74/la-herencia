@@ -1,10 +1,10 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { ErrorState, LoadingState } from "@/components/ui/States";
 import { formatCantidad, formatFecha, formatNumero } from "@/lib/format";
-import { fetchFormularioResultados, type ParMonto } from "@/services/resultadoCultivoApi";
+import { fetchFormularioResultados, marcarLiquidacionTerminada, type FormularioResultados as Datos, type ParMonto } from "@/services/resultadoCultivoApi";
 
 import { ar, celdaNum, Dato, TablaCostosDirectos, Titulo, us } from "./FormularioAccess";
 
@@ -30,6 +30,40 @@ function FilaMonto({ label, m, fuerte, signo = "" }: { label: string; m: ParMont
   );
 }
 
+/** 20/11/2026: el grano que queda en silo es fusible para la hacienda; el sobrante se liquida después.
+ * Mientras no se termina de liquidar, lo no liquidado es estimado; al terminar, queda como consumo de la hacienda. */
+function AvisoNoLiquidado({ d, idCultivo, idCampania }: { d: Datos; idCultivo: number; idCampania: number }) {
+  const qc = useQueryClient();
+  const m = useMutation({
+    mutationFn: (terminada: boolean) => marcarLiquidacionTerminada(idCultivo, idCampania, terminada),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["access-resultados"] }).then(() => qc.invalidateQueries({ queryKey: ["resultado-cultivo"] })),
+  });
+  const n = d.noLiquidado;
+  if (!n || !n.kg) return null;
+  const estimado = n.estado === "estimado";
+  return (
+    <div className={`flex flex-wrap items-center gap-x-4 gap-y-1 rounded-md border px-3 py-2 text-sm ${estimado ? "border-status-warning bg-status-warning/10" : "border-border bg-surface"}`}>
+      {estimado ? (
+        <span>
+          <strong>{kg(n.kg)} sin liquidar ({pct(n.porcentaje)} de lo cosechado)</strong>: en silo o en liquidación, valorizados a {us(d.precioNetoTn)}/tn
+          (estimado). El margen económico los incluye; el realizado, no. Al liquidarse se reemplazan por el precio real.
+        </span>
+      ) : (
+        <span>
+          <strong>Liquidación terminada{n.fechaLiquidacionTerminada ? ` el ${formatFecha(n.fechaLiquidacionTerminada)}` : ""}</strong>:
+          los {kg(n.kg)} que nunca se liquidaron quedan como consumo de la hacienda (costo de alimentación de ganadería).
+        </span>
+      )}
+      {(estimado || n.motivoTerminada === "marcada") && (
+        <button type="button" disabled={m.isPending} onClick={() => m.mutate(estimado)}
+          className="ml-auto rounded-md border border-border bg-surface px-2 py-1 text-xs font-medium hover:bg-surface-sunken disabled:opacity-50">
+          {estimado ? "Liquidación terminada (silo en cero)" : "Deshacer: todavía queda por liquidar"}
+        </button>
+      )}
+    </div>
+  );
+}
+
 /** Resultado de un cultivo con el diseño y los cálculos del formulario FrmResultados de Access. */
 export function FormularioResultados({ idCultivo, idCampania }: { idCultivo: number; idCampania: number }) {
   const { data: d, isLoading, isError, refetch } = useQuery({
@@ -49,6 +83,8 @@ export function FormularioResultados({ idCultivo, idCampania }: { idCultivo: num
         <Dato label="Ocupación lote (días)">{d.ocupacionDias ?? "Indefinido"}</Dato>
       </div>
 
+      <AvisoNoLiquidado d={d} idCultivo={idCultivo} idCampania={idCampania} />
+
       {/* Indicadores: superficies, cantidades, rindes, margen y rentabilidad (fila superior de Access). */}
       <div className="grid gap-3 lg:grid-cols-[1fr_1fr_1fr_1.1fr_1.1fr]">
         <Bloque className="px-3 py-2 text-sm">
@@ -61,7 +97,7 @@ export function FormularioResultados({ idCultivo, idCampania }: { idCultivo: num
         <Bloque className="px-3 py-2 text-sm">
           <Dato label="Cantidad cosechada">{kg(d.cantidadCosechada)}</Dato>
           <Dato label="Cantidad vendida">{kg(d.cantidadVendida)}</Dato>
-          <Dato label="Cantidad consumida">{kg(d.cantidadConsumida)}</Dato>
+          <Dato label={d.noLiquidado?.estado === "consumoHacienda" ? "Consumo hacienda" : d.noLiquidado?.estado === "estimado" ? "Sin liquidar (estimado)" : "Cantidad consumida"}>{kg(d.cantidadConsumida)}</Dato>
         </Bloque>
         <Bloque className="px-3 py-2 text-sm">
           <Dato label="Rinde">{kg(d.rinde)}/ha</Dato>
@@ -72,7 +108,8 @@ export function FormularioResultados({ idCultivo, idCampania }: { idCultivo: num
           <table className="w-full text-sm">
             <thead className="text-xs text-ink-secondary"><tr><th /><th className="px-2 py-1 text-right font-medium">AR$</th><th className="px-2 py-1 text-right font-medium">US$</th></tr></thead>
             <tbody>
-              <tr><td className="px-2 py-1 font-medium">Margen Bruto</td><td className={celdaNum}>{ar(d.margenBruto?.pesos)}</td><td className={celdaNum}>{us(d.margenBruto?.dolares)}</td></tr>
+              <tr><td className="px-2 py-1 font-medium" title="Incluye lo cosechado y no liquidado">Margen Bruto{d.noLiquidado?.kg ? " económico" : ""}</td><td className={celdaNum}>{ar(d.margenBruto?.pesos)}</td><td className={celdaNum}>{us(d.margenBruto?.dolares)}</td></tr>
+              {!!d.noLiquidado?.kg && <tr className="text-ink-secondary"><td className="px-2 py-1" title="Solo lo liquidado">Margen realizado</td><td className={celdaNum}>{ar(d.margenRealizado?.pesos)}</td><td className={celdaNum}>{us(d.margenRealizado?.dolares)}</td></tr>}
               <tr><td className="px-2 py-1 font-medium">MB / HA</td><td className={celdaNum}>{ar(d.margenBrutoHa?.pesos)}</td><td className={celdaNum}>{us(d.margenBrutoHa?.dolares)}</td></tr>
             </tbody>
           </table>
@@ -82,6 +119,7 @@ export function FormularioResultados({ idCultivo, idCampania }: { idCultivo: num
             <thead className="text-xs text-ink-secondary"><tr><th /><th className="px-2 py-1 text-right font-medium">AR$</th><th className="px-2 py-1 text-right font-medium">US$</th></tr></thead>
             <tbody>
               <tr><td className="px-2 py-1 font-medium">Rentabilidad</td><td className={celdaNum}>{pct(d.rentabilidad?.pesos)}</td><td className={celdaNum}>{pct(d.rentabilidad?.dolares)}</td></tr>
+              {!!d.noLiquidado?.kg && <tr className="text-ink-secondary"><td className="px-2 py-1" title="Solo lo liquidado">Rentab. realizada</td><td className={celdaNum}>{pct(d.rentabilidadRealizada?.pesos)}</td><td className={celdaNum}>{pct(d.rentabilidadRealizada?.dolares)}</td></tr>}
               <tr><td className="px-2 py-1 font-medium">Renta anual</td><td className={celdaNum}>{pct(d.rentaAnual?.pesos)}</td><td className={celdaNum}>{pct(d.rentaAnual?.dolares)}</td></tr>
             </tbody>
           </table>
@@ -123,7 +161,7 @@ export function FormularioResultados({ idCultivo, idCampania }: { idCultivo: num
               {!d.gastos?.length && <tr><td colSpan={3} className="py-0.5 pl-5 text-ink-muted">—</td></tr>}
               <FilaMonto label="Total Deducciones y gastos" m={d.totalDeducciones} signo="−" />
               <FilaMonto label="Recupero por seguro" m={d.recuperoSeguro} signo="+" />
-              <FilaMonto label="Producción No comercializada" m={d.produccionNoComercializada} signo="+" />
+              <FilaMonto label={d.noLiquidado?.estado === "consumoHacienda" ? "Consumo de la hacienda (sin liquidar)" : d.noLiquidado?.estado === "estimado" ? "Sin liquidar: silo / en liquidación (estimado)" : "Producción No comercializada"} m={d.produccionNoComercializada} signo="+" />
               <FilaMonto label="Total Venta Neta" m={d.totalVentaNeta} fuerte />
             </tbody>
           </table>

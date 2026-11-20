@@ -96,17 +96,33 @@ export function ConsolidadoCampaniaView({
             />
             <KpiCard label="Venta neta · pesos" value={formatMoneda(datos.ventaNetaPesos)} />
             <KpiCard label="Venta neta · dólares" value={formatMoneda(datos.ventaNetaDolares, "Dolares")} />
-            <KpiCard label="Margen bruto · pesos" value={formatMoneda(datos.margenBrutoPesos)} />
-            <KpiCard label="Margen bruto · dólares" value={formatMoneda(datos.margenBrutoDolares, "Dolares")} />
+            <KpiCard label="Margen bruto · pesos" value={formatMoneda(datos.margenEconomicoPesos)} />
+            <KpiCard label="Margen bruto · dólares" value={formatMoneda(datos.margenEconomicoDolares, "Dolares")} />
             <KpiCard
               label="Rentabilidad · pesos"
-              value={datos.rentabilidadPesos === null ? "—" : formatPorcentaje(datos.rentabilidadPesos)}
+              value={datos.rentabilidadEconomicaPesos === null ? "—" : formatPorcentaje(datos.rentabilidadEconomicaPesos)}
             />
             <KpiCard
               label="Rentabilidad · dólares"
-              value={datos.rentabilidadDolares === null ? "—" : formatPorcentaje(datos.rentabilidadDolares)}
+              value={datos.rentabilidadEconomicaDolares === null ? "—" : formatPorcentaje(datos.rentabilidadEconomicaDolares)}
             />
+            {(datos.noLiquidadoPesos !== 0 || datos.noLiquidadoDolares !== 0) && (
+              <>
+                <KpiCard label="Margen realizado (solo lo liquidado) · pesos" value={formatMoneda(datos.margenBrutoPesos)} />
+                <KpiCard label="Margen realizado (solo lo liquidado) · dólares" value={formatMoneda(datos.margenBrutoDolares, "Dolares")} />
+              </>
+            )}
           </div>
+
+          {(datos.noLiquidadoPesos !== 0 || datos.noLiquidadoDolares !== 0) && (
+            <p role="note" className="mt-4 rounded border border-border bg-surface-sunken p-3 text-sm">
+              El margen incluye {formatMoneda(datos.noLiquidadoDolares, "Dolares")} de grano cosechado y no liquidado
+              {datos.hayNoLiquidadoEstimado
+                ? " (en silo o en liquidación: estimado al precio neto obtenido; se reemplaza por el real al liquidarse)."
+                : " (consumo de la hacienda: lo que nunca se liquidó)."}
+              {" "}El margen realizado muestra solo lo liquidado.
+            </p>
+          )}
 
           <div className="mt-4 flex justify-end">
             <a className="rounded border border-border bg-surface px-3 py-2 text-sm font-medium text-finance hover:bg-surface-sunken" href={urlExportarCampania(datos.idCampania)}>
@@ -126,6 +142,7 @@ export function ConsolidadoCampaniaView({
                   <th className="px-3 py-2 text-right">Costo · us$</th>
                   <th className="px-3 py-2 text-right">Venta neta · $</th>
                   <th className="px-3 py-2 text-right">Venta neta · us$</th>
+                  <th className="px-3 py-2 text-right" title="Cosechado y no liquidado (silo / en liquidación / consumo hacienda)">Sin liquidar · us$</th>
                   <th className="px-3 py-2 text-right">Margen · $</th>
                   <th className="px-3 py-2 text-right">Margen · us$</th>
                   <th className="px-3 py-2 text-right">Rentab. · us$</th>
@@ -148,14 +165,35 @@ export function ConsolidadoCampaniaView({
                     <td className="px-3 py-2 text-right font-data">{formatMoneda(cultivo.costoTotalDolares, "Dolares")}</td>
                     <td className="px-3 py-2 text-right font-data">{formatMoneda(cultivo.ventaNetaPesos)}</td>
                     <td className="px-3 py-2 text-right font-data">{formatMoneda(cultivo.ventaNetaDolares, "Dolares")}</td>
-                    <td className="px-3 py-2 text-right font-data">{formatMoneda(cultivo.margenBrutoPesos)}</td>
-                    <td className="px-3 py-2 text-right font-data font-medium">{formatMoneda(cultivo.margenBrutoDolares, "Dolares")}</td>
-                    <td className="px-3 py-2 text-right font-data">{cultivo.rentabilidadDolares == null ? "—" : formatPorcentaje(cultivo.rentabilidadDolares)}</td>
+                    <td className="px-3 py-2 text-right font-data">{cultivo.noLiquidadoKg ? formatMoneda(cultivo.noLiquidadoDolares, "Dolares") : "—"}</td>
+                    <td className="px-3 py-2 text-right font-data">{formatMoneda(cultivo.margenEconomicoPesos)}</td>
+                    <td className="px-3 py-2 text-right font-data font-medium">
+                      {formatMoneda(cultivo.margenEconomicoDolares, "Dolares")}
+                      {!!cultivo.noLiquidadoKg && (
+                        <div className="text-xs font-normal text-ink-secondary" title="Solo lo liquidado">realizado {formatMoneda(cultivo.margenBrutoDolares, "Dolares")}</div>
+                      )}
+                    </td>
+                    <td className="px-3 py-2 text-right font-data">
+                      {cultivo.rentabilidadEconomicaDolares == null ? "—" : formatPorcentaje(cultivo.rentabilidadEconomicaDolares)}
+                      {!!cultivo.noLiquidadoKg && cultivo.rentabilidadDolares != null && (
+                        <div className="text-xs text-ink-secondary">realizado {formatPorcentaje(cultivo.rentabilidadDolares)}</div>
+                      )}
+                    </td>
                     <td className="px-3 py-2">
                       <div className="flex flex-wrap gap-1">
                         {cultivo.supCosechaEstimada && (
                           <span title="La superficie cosechada fue estimada automáticamente y necesita revisión.">
                             <StatusBadge label="Cosecha estimada" tone="warning" />
+                          </span>
+                        )}
+                        {cultivo.noLiquidadoEstado === "estimado" && (
+                          <span title={`${formatCantidad(cultivo.noLiquidadoKg)} kg cosechados sin liquidar (silo / en liquidación), valorizados al precio neto obtenido. Estimado hasta que se termine de liquidar.`}>
+                            <StatusBadge label={`Sin liquidar ${formatPorcentaje(cultivo.noLiquidadoPorcentaje)} · estimado`} tone="warning" />
+                          </span>
+                        )}
+                        {cultivo.noLiquidadoEstado === "consumoHacienda" && (
+                          <span title={`${formatCantidad(cultivo.noLiquidadoKg)} kg nunca liquidados: consumo de la hacienda.`}>
+                            <StatusBadge label="Consumo hacienda" tone="neutral" />
                           </span>
                         )}
                         {cultivo.advertenciaMargenNoRepresentativo && (
@@ -168,7 +206,7 @@ export function ConsolidadoCampaniaView({
                   </tr>
                 ))}
                 {cultivos.length === 0 && (
-                  <tr><td colSpan={10} className="px-3 py-6 text-center text-ink-secondary">No hay resultados para ese cultivo.</td></tr>
+                  <tr><td colSpan={11} className="px-3 py-6 text-center text-ink-secondary">No hay resultados para ese cultivo.</td></tr>
                 )}
               </tbody>
             </table>

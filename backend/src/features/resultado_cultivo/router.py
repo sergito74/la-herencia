@@ -1,5 +1,5 @@
-"""Endpoints de Resultado y Costos de Cultivo (012). Módulo 100% de solo
-lectura: ningún endpoint de este router escribe en `WC`."""
+"""Endpoints de Resultado y Costos de Cultivo (012). Solo lectura, salvo la marca de
+'liquidación terminada' (20/11/2026) en ResultadoCultivo_Cierre."""
 
 from __future__ import annotations
 
@@ -52,6 +52,12 @@ async def access_costos_detalle(idCultivo: int, idCampania: int, idRubro: int) -
 async def access_resultados(idCultivo: int, idCampania: int) -> dict:
     """Formulario FrmResultados de Access."""
     return await _ejecutar(formularios_access.formulario_resultados, idCultivo, idCampania)
+
+
+@router.post("/access/liquidacion-terminada")
+async def access_liquidacion_terminada(idCultivo: int, idCampania: int, terminada: bool = True) -> dict:
+    """Silo en cero: lo cosechado y nunca liquidado queda firme como consumo de la hacienda."""
+    return await _ejecutar(formularios_access.marcar_liquidacion_terminada, idCultivo, idCampania, terminada)
 
 
 @router.get("/campania/{id_campania}")

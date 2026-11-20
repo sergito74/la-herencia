@@ -128,6 +128,9 @@ def resultado_cultivo(id_cultivo: int, id_campania: int) -> dict:
     margen_dolares = round(venta["dolares"] - costo_dolares, 2)
     rentabilidad_pesos = round(margen_pesos / costo_pesos, 4) if costo_pesos else None
     rentabilidad_dolares = round(margen_dolares / costo_dolares, 4) if costo_dolares else None
+    nl = _no_liquidado(id_cultivo, id_campania)
+    econ_pesos = round(margen_pesos + nl["pesos"], 2)
+    econ_dolares = round(margen_dolares + nl["dolares"], 2)
 
     return {
         "idCultivo": id_cultivo,
@@ -155,7 +158,27 @@ def resultado_cultivo(id_cultivo: int, id_campania: int) -> dict:
         "costeoDolaresIncompleto": any(l["montoDolares"] is None for l in lineas_costo),
         "supCosechaEstimada": cosecha["estimada"],
         "advertenciaMargenNoRepresentativo": venta["pesos"] > 0 and costo_pesos < UMBRAL_ADVERTENCIA * venta["pesos"],
+        # 20/11/2026: lo cosechado y no liquidado (silo fusible de la hacienda). margenBruto* = realizado.
+        "noLiquidadoKg": nl["kg"], "noLiquidadoPorcentaje": nl["porcentaje"], "noLiquidadoEstado": nl["estado"],
+        "noLiquidadoPesos": nl["pesos"], "noLiquidadoDolares": nl["dolares"],
+        "margenEconomicoPesos": econ_pesos, "margenEconomicoDolares": econ_dolares,
+        "rentabilidadEconomicaPesos": round(econ_pesos / costo_pesos, 4) if costo_pesos else None,
+        "rentabilidadEconomicaDolares": round(econ_dolares / costo_dolares, 4) if costo_dolares else None,
     }
+
+
+def _no_liquidado(id_cultivo: int, id_campania: int) -> dict:
+    """Mismo cálculo que la vista Por cultivo (formularios_access), para que ambas pantallas den igual."""
+    from src.features.resultado_cultivo.formularios_access import formulario_resultados
+    vacio = {"kg": 0, "porcentaje": 0.0, "estado": None, "pesos": 0.0, "dolares": 0.0}
+    try:
+        f = formulario_resultados(id_cultivo, id_campania)
+    except ValueError:
+        return vacio
+    n = f.get("noLiquidado")
+    if not n or not n["kg"]:
+        return vacio
+    return {"kg": n["kg"], "porcentaje": n["porcentaje"], "estado": n["estado"], "pesos": n["pesos"], "dolares": n["dolares"]}
 
 
 def _cultivos_con_datos(id_campania: int) -> list[int]:
@@ -247,6 +270,9 @@ def resultado_campania(id_campania: int) -> dict:
     venta_dolares = round(sum(c["ventaNetaDolares"] for c in cultivos), 2)
     margen_pesos = round(venta_pesos - costo_pesos, 2)
     margen_dolares = round(venta_dolares - costo_dolares, 2)
+    nl_pesos = round(sum(c.get("noLiquidadoPesos", 0.0) for c in cultivos), 2)
+    nl_dolares = round(sum(c.get("noLiquidadoDolares", 0.0) for c in cultivos), 2)
+    econ_pesos, econ_dolares = round(margen_pesos + nl_pesos, 2), round(margen_dolares + nl_dolares, 2)
 
     return {
         "idCampania": id_campania,
@@ -268,6 +294,11 @@ def resultado_campania(id_campania: int) -> dict:
         "rentabilidadPesos": round(margen_pesos / costo_pesos, 4) if costo_pesos else None,
         "rentabilidadDolares": round(margen_dolares / costo_dolares, 4) if costo_dolares else None,
         "costeoDolaresIncompleto": any(c.get("costeoDolaresIncompleto", False) for c in cultivos),
+        "noLiquidadoPesos": nl_pesos, "noLiquidadoDolares": nl_dolares,
+        "hayNoLiquidadoEstimado": any(c.get("noLiquidadoEstado") == "estimado" for c in cultivos),
+        "margenEconomicoPesos": econ_pesos, "margenEconomicoDolares": econ_dolares,
+        "rentabilidadEconomicaPesos": round(econ_pesos / costo_pesos, 4) if costo_pesos else None,
+        "rentabilidadEconomicaDolares": round(econ_dolares / costo_dolares, 4) if costo_dolares else None,
         "cultivos": cultivos,
         "costoSinClasificar": sin_clasificar,
         "otrosIngresos": otros_ingresos(campania["nombre"]),

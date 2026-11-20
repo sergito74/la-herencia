@@ -76,10 +76,16 @@ export function ResultadoCultivoView({
         <KpiCard label="Costo/ha cosechada · dólares" value={datos.costoPorHectareaCosechadaDolares === null ? "—" : formatMoneda(datos.costoPorHectareaCosechadaDolares, "Dolares")} />
         <KpiCard label="Venta neta · pesos" value={formatMoneda(datos.ventaNetaPesos)} />
         <KpiCard label="Venta neta · dólares" value={formatMoneda(datos.ventaNetaDolares, "Dolares")} />
-        <KpiCard label="Margen bruto · pesos" value={formatMoneda(datos.margenBrutoPesos)} />
-        <KpiCard label="Margen bruto · dólares" value={formatMoneda(datos.margenBrutoDolares, "Dolares")} />
-        <KpiCard label="Rentabilidad · pesos" value={datos.rentabilidadPesos === null ? "—" : formatPorcentaje(datos.rentabilidadPesos)} />
-        <KpiCard label="Rentabilidad · dólares" value={datos.rentabilidadDolares === null ? "—" : formatPorcentaje(datos.rentabilidadDolares)} />
+        <KpiCard label="Margen bruto · pesos" value={formatMoneda(datos.margenEconomicoPesos)} />
+        <KpiCard label="Margen bruto · dólares" value={formatMoneda(datos.margenEconomicoDolares, "Dolares")} />
+        <KpiCard label="Rentabilidad · pesos" value={datos.rentabilidadEconomicaPesos === null ? "—" : formatPorcentaje(datos.rentabilidadEconomicaPesos)} />
+        <KpiCard label="Rentabilidad · dólares" value={datos.rentabilidadEconomicaDolares === null ? "—" : formatPorcentaje(datos.rentabilidadEconomicaDolares)} />
+        {!!datos.noLiquidadoKg && (
+          <>
+            <KpiCard label={datos.noLiquidadoEstado === "estimado" ? "Sin liquidar (estimado) · dólares" : "Consumo hacienda · dólares"} value={formatMoneda(datos.noLiquidadoDolares, "Dolares")} />
+            <KpiCard label="Margen realizado (solo lo liquidado) · dólares" value={formatMoneda(datos.margenBrutoDolares, "Dolares")} />
+          </>
+        )}
       </div>
 
       <div className="mt-8">
