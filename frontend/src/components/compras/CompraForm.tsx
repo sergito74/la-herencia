@@ -509,7 +509,7 @@ export function CompraForm({
 
       {/* Encabezado fijo en una sola fila densa (en pantallas anchas): labels chicos arriba, inputs bajos.
           En pantallas angostas se reparte en varias filas. */}
-      <div className="shrink-0 space-y-1">
+      <div className="relative z-30 shrink-0 space-y-1">
         <div className="grid grid-cols-[repeat(auto-fit,minmax(9rem,1fr))] items-end gap-x-2 gap-y-1 rounded-md border border-border bg-surface px-2 py-1.5 2xl:grid-cols-[minmax(14rem,2.2fr)_8.5rem_3.5rem_9.5rem_8.5rem_5.5rem_6rem_auto_minmax(10rem,1.6fr)]">
           <div className={`${labelCompacto} sm:col-span-2 2xl:col-span-1`}>
             <span>Proveedor</span>
