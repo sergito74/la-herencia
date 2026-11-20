@@ -20,3 +20,14 @@ def test_al_terminar_queda_como_consumo_de_la_hacienda(monkeypatch):
 def test_sin_sobrante_no_hay_estado(monkeypatch):
     monkeypatch.setattr(fa, "liquidacion_terminada", lambda *a: {"terminada": False, "fecha": None, "motivo": None})
     assert fa._bloque_no_liquidado(1, 24, 10, 1000, 1000, 1, 1, 0, 0, 1, 1)["noLiquidado"]["estado"] is None
+
+
+def test_precio_de_mercado_menos_gastos(monkeypatch):
+    from datetime import date
+    from src.features.resultado_cultivo import precio_mercado as pm
+    monkeypatch.setattr(pm, "pizarra", lambda prod, f: {"fecha": date(2026, 5, 15), "pesos": 249500.0})
+    monkeypatch.setattr(pm, "_bna_dia_habil_anterior", lambda f: 1382.0)
+    monkeypatch.setattr(pm, "porcentaje_gastos_comercializacion", lambda c: {"porcentaje": 0.1728, "base": "Maiz"})
+    p = pm.precio_neto_mercado("Maiz", date(2026, 5, 15))
+    assert p["netoPesosTn"] == round(249500 * 0.8272, 2) and p["netoDolaresTn"] == round(249500 / 1382 * 0.8272, 2)
+    assert pm.precio_neto_mercado("Avena", date(2026, 5, 15)) is None  # sin pizarra en Rosario: no se inventa precio

@@ -16,6 +16,12 @@ def main() -> None:
             raise RuntimeError("Solo WC")
         cur.execute("""IF COL_LENGTH('dbo.ResultadoCultivo_Cierre', 'FechaLiquidacionTerminada') IS NULL
             ALTER TABLE dbo.ResultadoCultivo_Cierre ADD FechaLiquidacionTerminada date NULL""")
+        # Pizarra Rosario (CAC/BCR) para valorizar grano sin ventas propias: mercado − gastos de comercialización.
+        cur.execute("""IF OBJECT_ID('dbo.PreciosPizarraRosario') IS NULL
+            CREATE TABLE dbo.PreciosPizarraRosario (
+                Producto int NOT NULL, Fecha date NOT NULL, PrecioPesosTn decimal(18, 2) NOT NULL,
+                FechaAlta datetime2 NOT NULL CONSTRAINT DF_PreciosPizarraRosario_Alta DEFAULT SYSDATETIME(),
+                CONSTRAINT PK_PreciosPizarraRosario PRIMARY KEY (Producto, Fecha))""")
         conn.commit()
         print("ok")
 

@@ -184,6 +184,8 @@ export interface FormularioResultados {
   noLiquidado?: { kg: number; pesos: number; dolares: number; porcentaje: number; estado: "estimado" | "consumoHacienda" | null;
     liquidacionTerminada: boolean; fechaLiquidacionTerminada: string | null; motivoTerminada: string | null };
   margenRealizado?: ParMonto; rentabilidadRealizada?: ParMonto;
+  valorizacionNoLiquidado?: { criterio: "ventasPropias" | "mercado" | "sinPrecio"; fechaPizarra?: string; pizarraPesosTn?: number;
+    pizarraDolaresTn?: number; tc?: number; gastosComercializacion?: number; gastosBase?: string } | null;
 }
 
 export const marcarLiquidacionTerminada = (idCultivo: number, idCampania: number, terminada: boolean) =>

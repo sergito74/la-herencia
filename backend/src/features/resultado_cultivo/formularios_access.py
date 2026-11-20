@@ -300,11 +300,20 @@ def formulario_resultados(id_cultivo: int, id_campania: int) -> dict:
     seg_p, seg_d = _f(s.get("SeguroPesos")), _f(s.get("SeguroDolares"))
 
     consumo_p = consumo_d = precio_tn = 0.0
+    mercado = None
     if cant_venta > 0:
         precio_tn = round((tot_vta_d - desc_d) / cant_venta * 1000, 2)
         if cant_cosecha - cant_venta > 0:
             consumo_d = round((cant_cosecha - cant_venta) / 1000 * precio_tn, 2)
             consumo_p = round(consumo_d * (tot_vta_p / tot_vta_d), 2) if tot_vta_d else 0.0
+    elif cant_cosecha > 0:
+        # 20/11/2026 (Sergio): sin ventas propias en la campaña, precio de mercado menos gastos de comercialización.
+        from src.features.resultado_cultivo.precio_mercado import precio_neto_mercado
+        mercado = precio_neto_mercado(cultivo, fecha_fin or date.today())
+        if mercado:
+            precio_tn = mercado["netoDolaresTn"]
+            consumo_d = round(cant_cosecha / 1000 * mercado["netoDolaresTn"], 2)
+            consumo_p = round(cant_cosecha / 1000 * mercado["netoPesosTn"], 2)
 
     silo_p = _por_ha(impl_p, base_ha) * sup_picado
     silo_d = _por_ha(impl_d, base_ha) * sup_picado
@@ -353,6 +362,10 @@ def formulario_resultados(id_cultivo: int, id_campania: int) -> dict:
         "totalVentaNeta": {"pesos": neta_p, "dolares": neta_d},
         **_bloque_no_liquidado(id_cultivo, id_campania, id_destino, cant_cosecha, cant_venta, mb_p, mb_d,
                                consumo_p, consumo_d, total_p, total_d),
+        # Criterio de valorización de lo no liquidado: ventas propias de la campaña o mercado (pizarra Rosario − gastos).
+        "valorizacionNoLiquidado": ({"criterio": "mercado", **mercado} if mercado
+                                    else {"criterio": "ventasPropias"} if cant_venta > 0
+                                    else {"criterio": "sinPrecio"} if cant_cosecha > 0 else None),
     }
 
 

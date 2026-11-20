@@ -41,17 +41,22 @@ function AvisoNoLiquidado({ d, idCultivo, idCampania }: { d: Datos; idCultivo: n
   const n = d.noLiquidado;
   if (!n || !n.kg) return null;
   const estimado = n.estado === "estimado";
+  const v = d.valorizacionNoLiquidado;
+  const precio = v?.criterio === "mercado"
+    ? `a precio de mercado: pizarra Rosario del ${formatFecha(v.fechaPizarra ?? null)} ${us(v.pizarraDolaresTn)}/tn (BNA ${formatNumero(v.tc ?? 0, { min: 2, max: 2 })}) menos ${pct(v.gastosComercializacion)} de gastos de comercialización (historia de ${v.gastosBase}) = ${us(d.precioNetoTn)}/tn`
+    : v?.criterio === "sinPrecio"
+      ? "sin precio: no hay ventas propias ni pizarra de Rosario para este grano"
+      : `al precio neto de las ventas propias de la campaña, ${us(d.precioNetoTn)}/tn`;
   return (
     <div className={`flex flex-wrap items-center gap-x-4 gap-y-1 rounded-md border px-3 py-2 text-sm ${estimado ? "border-status-warning bg-status-warning/10" : "border-border bg-surface"}`}>
       {estimado ? (
         <span>
-          <strong>{kg(n.kg)} sin liquidar ({pct(n.porcentaje)} de lo cosechado)</strong>: en silo o en liquidación, valorizados a {us(d.precioNetoTn)}/tn
-          (estimado). El margen económico los incluye; el realizado, no. Al liquidarse se reemplazan por el precio real.
+          <strong>{kg(n.kg)} sin liquidar ({pct(n.porcentaje)} de lo cosechado)</strong>: en silo o en liquidación, valorizados {precio} (estimado). El margen económico los incluye; el realizado, no. Al liquidarse se reemplazan por el precio real.
         </span>
       ) : (
         <span>
           <strong>Liquidación terminada{n.fechaLiquidacionTerminada ? ` el ${formatFecha(n.fechaLiquidacionTerminada)}` : ""}</strong>:
-          los {kg(n.kg)} que nunca se liquidaron quedan como consumo de la hacienda (costo de alimentación de ganadería).
+          los {kg(n.kg)} que nunca se liquidaron quedan como consumo de la hacienda (costo de alimentación de ganadería), valorizados {precio}.
         </span>
       )}
       {(estimado || n.motivoTerminada === "marcada") && (
