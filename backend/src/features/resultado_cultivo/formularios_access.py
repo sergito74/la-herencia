@@ -109,6 +109,11 @@ def superficie_sembrada_real(id_destino: int, id_campania: int) -> float | None:
                 sin_lote += ha
         if sin_lote:
             por_contratista[contratista] = max(por_contratista.get(contratista, 0.0), sin_lote)
+    if propia:
+        # 20/11/2026: cada siembra con maquinaria propia (2018-2021) tiene además la factura de Yanquelen S.A. por las
+        # mismas ha: es la misma siembra registrada dos veces. Se toma la mayor de las dos, no la suma.
+        facturado = sum(por_contratista.values()) + sum(v for k, v in por_lote.items() if k not in propia)
+        return round(max(sum(propia.values()), facturado), 1)
     return round(sum(por_contratista.values()) + sum(por_lote.values()), 1)
 
 
