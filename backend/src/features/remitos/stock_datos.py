@@ -143,6 +143,18 @@ def _unidad_factura_a_remito(vinculos, unidad_remito, cantidad_remito, costo, es
     if costo is None or not vinculos or cantidad_remito <= EPS or vinculada <= EPS:
         return costo, estado, vinculada
     fam_r = _familia_unidad(unidad_remito)
+    # 21/11/2026: con factor fijo entre unidades (toneladas → kg) se convierte vínculo por vínculo, aunque el renglón
+    # de factura esté repartido entre varios remitos (granel en camiones). Antes solo se convertía si cada renglón
+    # estaba vinculado entero, y la urea/MAP repartida salía a $ 80.000 por kg.
+    fijos = {("TON", "KG"): 1000.0}
+    factores = [1.0 if _familia_unidad(v.get("unidadCompra")) in (None, fam_r) else fijos.get((_familia_unidad(v.get("unidadCompra")), fam_r))
+                for v in vinculos]
+    if fam_r and any(f not in (None, 1.0) for f in factores) and all(f is not None for f in factores):
+        en_remito = sum(float(v["cantidadRemitida"] or 0) * f for v, f in zip(vinculos, factores))
+        if en_remito > EPS:
+            total = costo * vinculada
+            completo = abs(en_remito - cantidad_remito) <= 0.02 * cantidad_remito
+            return total / en_remito, "completo" if completo else "parcial", cantidad_remito if completo else en_remito
     if not all(_familia_unidad(v.get("unidadCompra")) != fam_r for v in vinculos):
         return costo, estado, vinculada
     if not all(abs(float(v["cantidadCompra"] or 0) - float(v["sumaRemitidaLineaCompra"] or 0)) <= 0.01 * max(float(v["cantidadCompra"] or 0), EPS)
