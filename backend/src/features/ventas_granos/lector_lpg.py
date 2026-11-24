@@ -32,8 +32,10 @@ TOLERANCIA = 0.05  # $: el neto del sistema contra el impreso
 # también soja de segunda, la venta queda marcada para revisar el grano.
 GRANO_ARCA = {"19": "Maiz", "23": "Soja primera", "2": "Trigo", "15": "Trigo", "1": "Trigo", "3": "Cebada",
               "6": "Sorgo", "26": "Sorgo", "13": "Girasol", "4": "Avena"}
-# El maíz diferido se consume con la hacienda (Sergio 24/11/2026): una LPG de maíz es maíz de primera, sin aviso.
-ALTERNATIVA = {"Soja primera": "Soja segunda"}
+# Variante del mismo grano (DestinoCompras de Datos Cosecha). El maíz diferido en general se consume con la hacienda
+# (Sergio 24/11/2026): la venta va a la variante que se cosechó en la campaña; si se cosecharon las dos, a la principal
+# con aviso para revisar.
+ALTERNATIVA = {"Maiz": "Maiz diferido", "Soja primera": "Soja segunda"}
 INVIERNO = {"Trigo", "Cebada", "Avena"}
 
 
@@ -157,14 +159,24 @@ def _id_grano(nombre: str) -> int | None:
     return int(f["i"]) if f else None
 
 
-def _grano_ambiguo(nombre: str, camp: str) -> bool:
-    """¿La campaña tuvo también el cultivo alternativo (maíz diferido / soja de segunda)?"""
+def _cosechado(destino: str, camp: str) -> float:
+    f = fetch_one(
+        "SELECT SUM(d.[Cantidad a Liquidar]) AS kg FROM dbo.[Datos Cosecha] d JOIN dbo.DestinoCompras dc ON dc.IdDestino = d.IdDestino "
+        "JOIN dbo.Campañas ca ON ca.IdCampaña = d.IdCampaña WHERE dc.Destino = ? AND ca.Campaña = ?", (destino, camp))
+    return float(f["kg"] or 0) if f else 0.0
+
+
+def grano_por_cosecha(nombre: str, camp: str) -> tuple[str, str | None]:
+    """(grano, aviso). Elige entre la variante principal y la alternativa según lo cosechado en la campaña."""
     alt = ALTERNATIVA.get(nombre)
     if not alt:
-        return False
-    return bool(fetch_one(
-        "SELECT TOP 1 1 AS x FROM dbo.Ordenes_Trabajo_Distrib d JOIN dbo.Cultivos cu ON cu.IdCultivo = d.IdCultivo "
-        "JOIN dbo.Campañas ca ON ca.IdCampaña = d.IdCampania WHERE cu.Cultivo = ? AND ca.Campaña = ?", (alt, camp)))
+        return nombre, None
+    kg_pri, kg_alt = _cosechado(nombre, camp), _cosechado(alt, camp)
+    if kg_alt and not kg_pri:
+        return alt, f"grano {alt}: es lo único cosechado en {camp}"
+    if kg_alt and kg_pri:
+        return nombre, f"en {camp} también se cosechó {alt} ({kg_alt:,.0f} kg): revisar el grano".replace(",", ".")
+    return nombre, None
 
 
 def _contacto_por_cuit(cuit: str | None) -> int | None:
@@ -203,16 +215,17 @@ def cargar_lpg(pdf: bytes, ruta: str, *, id_contacto: int | None = None, dolar_r
     if not id_contacto:
         return {**res, "motivo": f"El comprador (CUIT {d['cuitComprador']}) no está en Contactos: cargar a mano"}
     nombre = GRANO_ARCA.get(d["codigoGrano"]) or d["grano"].title()
+    camp = campania(nombre, d["fecha"], campania_informada)
+    nombre, aviso_grano = grano_por_cosecha(nombre, camp)
     id_grano = _id_grano(nombre)
     if not id_grano:
         return {**res, "motivo": f"Grano «{d['grano']}» sin equivalente en Ventas de granos: cargar a mano"}
     tc, nota_tc = tc_estimado(d["fecha"], dolar_rate)
-    camp = campania(nombre, d["fecha"], campania_informada)
     avisos = [nota_tc]
     if not campania_informada:
         avisos.append(f"campaña {camp} estimada por la fecha")
-    if _grano_ambiguo(nombre, camp):
-        avisos.append(f"revisar si es {nombre} o {ALTERNATIVA[nombre]}")
+    if aviso_grano:
+        avisos.append(aviso_grano)
     if d["retencionesAfip"]:
         avisos.append("la liquidación trae retenciones de ARCA: revisar IVA / Ganancias")
 
