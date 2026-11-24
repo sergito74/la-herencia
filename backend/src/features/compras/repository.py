@@ -885,6 +885,14 @@ def update_compra(id_compra: int, cabecera: dict, lineas: list[dict], vencimient
     lineas_con_defaults = resolver_defaults_lineas(lineas)
 
     statements = [
+        # 24/11/2026: los renglones se rehacen con números nuevos; sus imputaciones y su tamiz quedaban apuntando a
+        # renglones borrados y su costo seguía sumando (control «Imputación de un renglón que ya no existe»). Se dan de
+        # baja (quedan como historia) y tamizar_al_guardar imputa los renglones nuevos.
+        ("UPDATE p SET p.Estado = 'Reemplazada' FROM dbo.ImputacionPropuestas p JOIN dbo.Det_Compras d "
+         "ON d.IdDetalleCompra = p.IdDetalleCompra WHERE d.IdCompra = ? AND p.Origen <> 'Contratista' "
+         "AND p.Estado <> 'Reemplazada'", (id_compra,)),
+        ("UPDATE t SET t.Vigente = 0 FROM dbo.TamizRenglones t JOIN dbo.Det_Compras d "
+         "ON d.IdDetalleCompra = t.IdDetalleCompra WHERE d.IdCompra = ? AND t.Vigente = 1", (id_compra,)),
         ("DELETE FROM dbo.Det_Compras WHERE IdCompra = ?", (id_compra,)),
         ("DELETE FROM dbo.[Vencimiento Compras] WHERE IdCompra = ?", (id_compra,)),
         _cabecera_update_statement(id_compra, cabecera),

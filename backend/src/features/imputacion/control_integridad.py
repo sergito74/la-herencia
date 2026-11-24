@@ -124,8 +124,9 @@ def _control_dos_imputaciones() -> list[dict]:
 
 
 def _control_huerfanas() -> list[dict]:
+    # Solo las que todavía suman costo (las reemplazadas son historia).
     n = fetch_all("SELECT COUNT(DISTINCT p.IdDetalleCompra) AS n FROM dbo.ImputacionPropuestas p WHERE p.Origen <> 'Contratista' "
-                  "AND NOT EXISTS (SELECT 1 FROM dbo.Det_Compras d WHERE d.IdDetalleCompra = p.IdDetalleCompra)")[0]["n"]
+                  "AND p.Estado <> 'Reemplazada' AND NOT EXISTS (SELECT 1 FROM dbo.Det_Compras d WHERE d.IdDetalleCompra = p.IdDetalleCompra)")[0]["n"]
     if not n:
         return []
     return [{"tipo": "Imputación de un renglón que ya no existe", "idCompra": None, "documento": "",
