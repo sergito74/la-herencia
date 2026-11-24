@@ -10,7 +10,7 @@ granos (24/11/2026, pedido de Sergio: carga automática y lista para revisar).
     a la fecha de la liquidación (regla de Sergio 21/10/2026, verificada: 66 de 69 LPG de Cargill con TC en el portal;
     las 3 restantes son dólar soja 09/2022).
   · `aplicar_certificado(pdf, ruta)`: certificado de retención de IVA de una LPG («Nro de comprobante origen» = COE):
-    suma a [Retencion IVA] de esa venta y una fila en [Retenciones IVA Granos] (convención 036 de Cargill).
+    una fila en [Retenciones IVA Granos]; la venta queda igual a la LPG (retención aparte, Sergio 24/11/2026).
 """
 
 from __future__ import annotations
@@ -302,15 +302,15 @@ def _asociar(c: dict, ruta: str) -> dict:
     agente = _contacto_por_cuit(c["cuitAgente"]) or fetch_one(
         "SELECT IdConsignatario AS i FROM dbo.[Venta Granos] WHERE IdVenta = ?", (venta["idVenta"],))["i"]
     siguiente = fetch_one("SELECT ISNULL(MAX(IdRetencion), 0) + 1 AS n FROM dbo.[Retenciones IVA Granos]")["n"]
+    # 24/11/2026 (Sergio): la retención va APARTE de la venta, que queda igual a la LPG. El certificado entra a la cuenta
+    # del agente como «Retención IVA granos» y a la de AFIP como crédito (vw_CnsRetencionesIVAGranos).
     execute_write_transaction([
-        ("UPDATE dbo.[Venta Granos] SET [Retencion IVA] = ISNULL([Retencion IVA], 0) + ? WHERE IdVenta = ?",
-         (c["importe"], venta["idVenta"])),
         ("INSERT INTO dbo.[Retenciones IVA Granos] (IdRetencion, IdLiquidacion, [Nro Certificado], [Agente Retencion], "
          "[Importe Retenido], [Importe Devolucion], Imagen) VALUES (?, ?, ?, ?, ?, ?, ?)",
          (siguiente, venta["idVenta"], c["nro"], agente, c["importe"], c["importe"], ruta)),
     ])
     return {"estadoCarga": "cargado_auto", "idRegistro": venta["idVenta"],
-            "motivo": f"Retención de IVA sumada a la liquidación {c['coe']}"}
+            "motivo": f"Retención de IVA de la liquidación {c['coe']} registrada aparte (crédito con ARCA)"}
 
 
 def aplicar_certificados_guardados(coe: str) -> int:

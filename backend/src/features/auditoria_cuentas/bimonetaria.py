@@ -193,7 +193,8 @@ def _recorrer(filas: list[dict], compras: dict[int, dict], cotizacion: Cotizacio
         solo_usd = bool(f.get("SoloUSD"))
         en_dolares = solo_usd or bool(compra and compra.get("moneda") == DOLARES)
         entrega = (entregas or {}).get((f["Origen"], int(f["IdOrigen"])))
-        tc_venta = (tc_ventas or {}).get(int(f["IdOrigen"])) if f["Origen"] == "Venta Granos" else None
+        # La retención de IVA de una LPG (movimiento propio desde 24/11/2026) va al TC de su liquidación.
+        tc_venta = (tc_ventas or {}).get(int(f["IdOrigen"])) if f["Origen"] in ("Venta Granos", "Ret. IVA Granos") else None
         tc_dia = tc_pagos or tc_venta or cotizacion.dia_anterior(entrega or fecha)
         ajuste_pesos = bool(compra and compra.get("ajusta") and not en_dolares)
         fila = {"fecha": fecha, "documento": f["Documento"], "numeroDocumento": f["Nro Documento"], "origenTipo": f["Origen"],
