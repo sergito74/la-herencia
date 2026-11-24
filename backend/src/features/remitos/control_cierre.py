@@ -26,9 +26,12 @@ INICIO = date(2025, 5, 12)  # recuento de apertura de la imputación automática
 VENTANA_BAYA = 270  # días: Bayá factura al vencimiento de cada pedido
 _SEMILLA_PROPIA = "GIAMIGLI"  # proveedor Giamigli = semilla propia, sin factura
 _PRODUCTOS_SIN_FACTURA = {40958}  # Flumeyt: única entrada histórica sin factura (Sergio 21/11/2026), ya consumido
+_RENGLONES_SIN_FACTURA = {163}  # Tordon 24K 5 L Lartirigoyen 22/11/2019: quedó sin facturar (Sergio 24/11/2026)
 # (IdRemito, IdCompra) de otro proveedor verificados como correctos: Emerge 75 L comprado a Tierras de Henderson y
 # entregado con remito de Sunanco (Sergio 24/11/2026)
-_VINCULOS_ACEPTADOS = {(126, 2143513222)}
+# Sergio 24/11/2026: Syngenta (Dividend vía Sunanco, Power Plus vía Henderson), Betito 2019 = semilla propia valorizada
+# por la clasificación de Garnica (Heredia), LT725TRE facturado y anulado por NC con devolución en el mismo remito.
+_VINCULOS_ACEPTADOS = {(126, 2143513222), (121, 2143513221), (121, 2143513222), (82, 2143512373), (200, 2143517472)}
 
 
 def _norm(t) -> str:
@@ -41,7 +44,7 @@ def pendientes() -> dict:
     for f in fetch_all(
         """
         SELECT r.IdRemito id, r.Fecha f, r.NroRemito n, co.[Razon Social] prov, p.Producto prod, rd.Cantidad q, rd.[Unidad Medida] u,
-               rd.IdFormulado idp
+               rd.IdFormulado idp, rd.IdDetalleRemito d
         FROM dbo.Remitos_Detalles rd JOIN dbo.Remitos r ON r.IdRemito = rd.IdRemito
         LEFT JOIN dbo.Remitos_Extra x ON x.IdRemito = r.IdRemito
         LEFT JOIN dbo.Contactos co ON co.IdContacto = COALESCE(r.IdContacto, r.IdProveedor)
@@ -55,7 +58,7 @@ def pendientes() -> dict:
         """
     ):
         prov = _norm(f["prov"])
-        if _SEMILLA_PROPIA in prov or int(f["idp"] or 0) in _PRODUCTOS_SIN_FACTURA:
+        if _SEMILLA_PROPIA in prov or int(f["idp"] or 0) in _PRODUCTOS_SIN_FACTURA or f["d"] in _RENGLONES_SIN_FACTURA:
             continue
         if "BAYA CASAL" in prov and (hoy - f["f"].date()).days <= VENTANA_BAYA:
             continue
@@ -68,7 +71,7 @@ def pendientes() -> dict:
     excluidos = {int(x["d"]) for x in fetch_all(
         """SELECT rd.IdDetalleRemito d FROM dbo.Remitos_Detalles rd JOIN dbo.Remitos r ON r.IdRemito = rd.IdRemito
            LEFT JOIN dbo.Contactos co ON co.IdContacto = COALESCE(r.IdContacto, r.IdProveedor)
-           WHERE UPPER(co.[Razon Social]) LIKE ? OR rd.IdFormulado IN (40958)""", ("%" + _SEMILLA_PROPIA + "%",))}
+           WHERE UPPER(co.[Razon Social]) LIKE ? OR rd.IdFormulado IN (40958)""", ("%" + _SEMILLA_PROPIA + "%",))} | _RENGLONES_SIN_FACTURA
     sin_entrada, sin_costo = [], []
     for pid, s in stock.items():
         ordenes = defaultdict(float)

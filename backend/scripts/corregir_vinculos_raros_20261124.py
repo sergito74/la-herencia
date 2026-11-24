@@ -5,7 +5,7 @@
   · Baguette 2.920 kg (remito 125, Yanquelen 18/06/2021): se desvincula de la ND Nidera 0303-0015276 (es de otro remito).
   · LT725TRE +23 (remito 200, Bayá 08/09/2025): se desvincula de FC 0020-00451184 (anulada por NC 0020-00135455; neto 0).
 Una transacción, respaldo en backups/, saldos antes = después.
-Uso (desde backend/): python -m scripts.corregir_vinculos_raros_20261124 [--aplicar]
+Uso (desde backend/): python -m scripts.corregir_vinculos_raros_20261124 [--tanda2] [--aplicar]
 """
 
 from __future__ import annotations
@@ -21,17 +21,34 @@ from src.db.connection import execute_write_transaction, fetch_all  # noqa: E402
 from scripts.aplicar_vinculos_remitos import BACKUPS, saldos  # noqa: E402
 
 # IdDetalleRemito → [(IdDetalleCompra, cantidad en unidad de factura)]; reemplazan TODOS sus vínculos ([] = desvincular)
-NUEVOS: dict[int, list[tuple[int, float]]] = {
+TANDA_1 = {  # aplicada 24/11/2026 08:49
     217: [(2141371425, 5.0)],
     409: [(2141375730, 6.188), (2141375674, 15.0), (2141375731, 2.549), (2141375732, 9.263), (2141376935, 15.27),
           (2141376936, 2.73), (2141377061, 26.0), (2141377098, 2.147), (2141376001, 0.853)],
     271: [],
     482: [],
 }
+# Tanda 2 (Sergio 24/11/2026): renglón entero de la factura (cantidad = Det_Compras.Cantidad, None)
+TANDA_2 = {
+    117: [(-2093290024, None)],                     # Acetoclor 5 L ↔ Coop. Bolívar 0015-00062603 (0,5; corte inicial)
+    39: [(2141365942, None), (2141367321, None)],   # Action Alfa 10 L ↔ FEDEA 1003-00000395 Lambda Green 3+7 (refactura)
+    38: [(2141365941, None)],                       # Clearsol 6 ↔ FEDEA 1003-00000395 (la 332 la anuló la NC 296)
+    107: [(2141367888, None), (2141368555, None), (2141369814, None), (2141368760, None)],  # Metsulfurón ↔ Triticas 60% 1 kg
+    167: [(2141369680, None)],                      # Betito 370 kg 2019 ↔ Garnica 00003-00000041 clasificación 10 bolsas
+    271: [(2141374506, None)],                      # Baguette 2.920 kg ↔ Yanquelen 00002-00000023 Semillas Trigo 3.000 kg
+    251: [(2141372282, None), (2141372059, None)],  # Dividend 10 L ↔ Sunanco 0003-00000018
+    252: [(2141372063, None), (2141372346, None), (2141372347, None), (2141372348, None), (2141372349, None)],  # Power Plus 80 L ↔ Henderson 3911
+    273: "ROCIO",                                   # Rocío 51 L ↔ Henderson 00004-00003911, 29 renglones
+    482: [(2141381959, None)],                      # LT725TRE +23 ↔ Bayá 0020-00451184 (anulada por NC 0020-00135455; devolución −23)
+}
+NUEVOS = TANDA_2 if "--tanda2" in sys.argv else TANDA_1
 
 
 def main():
     aplicar = "--aplicar" in sys.argv
+    if NUEVOS.get(273) == "ROCIO":
+        NUEVOS[273] = [(f["i"], None) for f in fetch_all(
+            "SELECT IdDetalleCompra i FROM dbo.Det_Compras WHERE IdCompra = 2143513222 AND [Producto/Servicio] = 'Lts. Aceite Rocio'")]
     ids = list(NUEVOS)
     marcas = ",".join("?" * len(ids))
     antes = fetch_all(f"SELECT * FROM dbo.tblRemitoCompra WHERE IdDetalleRemito IN ({marcas})", ids)
@@ -44,8 +61,12 @@ def main():
     ocupados = fetch_all(f"SELECT IdDetalleCompra i, SUM(CantidadRemitida) v FROM dbo.tblRemitoCompra WHERE IdDetalleCompra IN ({','.join('?' * len(compras))}) AND IdDetalleRemito NOT IN ({marcas}) GROUP BY IdDetalleCompra", compras + ids)
     if ocupados:
         sys.exit(f"Renglones ya vinculados a otro remito: {ocupados}")
+    for r in NUEVOS:
+        NUEVOS[r] = [(i, round(float(det[i]["q"]), 6) if q is None else q) for i, q in NUEVOS[r]]
     for i, q in (x for v in NUEVOS.values() for x in v):
         assert abs(float(det[i]["q"]) - q) < 0.001, (i, det[i]["q"], q)
+    for r, items in NUEVOS.items():
+        print(f"  {r} {rem.get(r)}: {sum(q for _, q in items):g} en {len(items)} renglones")
 
     stmts = [(f"DELETE FROM dbo.tblRemitoCompra WHERE IdDetalleRemito IN ({marcas})", ids)]
     for r, items in NUEVOS.items():
