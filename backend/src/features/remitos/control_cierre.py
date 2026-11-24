@@ -28,7 +28,8 @@ _SEMILLA_PROPIA = "GIAMIGLI"  # proveedor Giamigli = semilla propia, sin factura
 _PRODUCTOS_SIN_FACTURA = {40958}  # Flumeyt: única entrada histórica sin factura (Sergio 21/11/2026), ya consumido
 # Sin facturar, ya consumidos (Sergio 24/11/2026): Tordon 24K 5 L Lartirigoyen 22/11/2019; Betito 300 kg Yanquelen
 # 30/11/2020 (Yanquelen mandó la semilla y no la facturó)
-_RENGLONES_SIN_FACTURA = {163, 239}
+# y Calén INTA 2.058 kg Yanquelen 24/05/2023 (desde San Emilio, nunca facturada)
+_RENGLONES_SIN_FACTURA = {163, 239, 371}
 # (IdRemito, IdCompra) de otro proveedor verificados como correctos: Emerge 75 L comprado a Tierras de Henderson y
 # entregado con remito de Sunanco (Sergio 24/11/2026)
 # Sergio 24/11/2026: Syngenta (Dividend vía Sunanco, Power Plus vía Henderson), Betito 2019 = semilla propia valorizada
