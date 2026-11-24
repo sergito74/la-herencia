@@ -267,7 +267,10 @@ def formulario_resultados(id_cultivo: int, id_campania: int) -> dict:
     cant_cosecha = _f(cos.get("c"))
     fecha_fin = _fecha(cos.get("f"))
     cant_venta = _f((fetch_one(
-        "SELECT SUM(VG.[Cantidad vendida]) AS c FROM dbo.Granos G JOIN dbo.[Venta Granos] VG ON G.IdGrano = VG.IdProducto "
+        # 24/11/2026: kilos FÍSICOS vendidos = cantidad entregada. Una liquidación final de precio (ej. FEDEA girasol
+        # 29/03/2017) repite la cantidad vendida para calcular la diferencia de precio, con entregada 0: sumar la vendida
+        # duplicaba los kilos y daba consumo negativo. El importe sigue saliendo de la vendida (vw_ResultadosCultivo_Ventas).
+        "SELECT SUM(VG.[Cantidad entregada]) AS c FROM dbo.Granos G JOIN dbo.[Venta Granos] VG ON G.IdGrano = VG.IdProducto "
         "WHERE G.Grano = ? AND VG.Campaña = ?", (cultivo, camp)) or {}).get("c"))
     v = fetch_one("SELECT * FROM dbo.vw_ResultadosCultivo_Ventas WHERE IdCultivo = ? AND Campaña = ?", (id_cultivo, camp)) or {}
     venta_p, venta_d = _f(v.get("VentaPesos")), _f(v.get("VentaDolares"))
