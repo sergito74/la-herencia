@@ -103,8 +103,23 @@ def _control_renglones() -> list[dict]:
     return [
         {"tipo": "El reparto no suma el importe del renglón", "idCompra": r["idCompra"], "documento": _doc(r),
          "detalle": f"{r['producto']}: el renglón vale $ {_ar(r['esperado'])} y lo imputado suma $ {_ar(r['imputado'])}"}
-        for r in renglones_que_no_cierran(renglones, fracciones, capas_factura.flete_por_renglon())
+        for r in renglones_que_no_cierran(_solo_parte_empresa(renglones), fracciones, capas_factura.flete_por_renglon())
     ]
+
+
+def _solo_parte_empresa(renglones: list[dict]) -> list[dict]:
+    """24/11/2026: en una compra con parte particular (Coto, auto de Sergio) se imputa solo la proporción de la empresa
+    (progresivo.factor_particular); compararla contra el renglón entero daba un falso «no suma». El renglón particular
+    en sí no se imputa y no se controla."""
+    from src.features.imputacion.progresivo import factor_particular
+
+    salida = []
+    for r in renglones:
+        f = factor_particular(r["id"])
+        if f is None:
+            continue
+        salida.append({**r, "importePesos": float(r["importePesos"] or 0) * f} if f < 1 else r)
+    return salida
 
 
 def _control_dos_imputaciones() -> list[dict]:
