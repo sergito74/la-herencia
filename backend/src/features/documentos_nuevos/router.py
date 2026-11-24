@@ -43,6 +43,9 @@ def _enlace(d: dict) -> str | None:
         return f"/finanzas/cuentas-corrientes?idContacto={d['idContacto']}"
     if d["modulo"] == "tesoreria":
         return "/finanzas/tesoreria"
+    if d["modulo"] == "granos" and d["tipo"] == "retencion":
+        # 24/11/2026: el certificado de IVA va aparte de la venta: se revisa en su solapa, no en la venta.
+        return "/finanzas/impuestos?tab=retenciones-iva-granos"
     if d["modulo"] == "granos" and d["idRegistro"]:
         return f"/ventas/granos/{d['idRegistro']}/editar"
     if d["modulo"] == "ventas" and d["idRegistro"]:
