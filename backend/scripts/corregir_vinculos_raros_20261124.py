@@ -41,7 +41,9 @@ TANDA_2 = {
     273: "ROCIO",                                   # Rocío 51 L ↔ Henderson 00004-00003911, 29 renglones
     482: [(2141381959, None)],                      # LT725TRE +23 ↔ Bayá 0020-00451184 (anulada por NC 0020-00135455; devolución −23)
 }
-NUEVOS = TANDA_2 if "--tanda2" in sys.argv else TANDA_1
+# Tanda 3: Avena Común 4.000 kg Lartirigoyen 28/03/2024 ↔ FC 0149-00012612 (la 12509 la anuló la NC 0149-00001971)
+TANDA_3 = {428: [(2141376163, None)]}
+NUEVOS = TANDA_3 if "--tanda3" in sys.argv else TANDA_2 if "--tanda2" in sys.argv else TANDA_1
 
 
 def main():
