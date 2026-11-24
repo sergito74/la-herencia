@@ -89,6 +89,8 @@ export const getResumenNuevos = () => apiGet<ResumenNuevos>(`${BASE}/resumen`);
 export const getNuevos = (modulo: ModuloAviso, limite = 50, desde = 0) =>
   apiGet<{ items: DocumentoNuevo[]; total: number }>(`${BASE}/`, { modulo, limite, desde });
 export const marcarNuevoRevisado = (id: number) => apiPost<{ ok: boolean }>(`${BASE}/${id}/revisado`, {});
+/** 24/11/2026: el comprobante ya estaba cargado y el sistema no lo encontró solo. */
+export const yaCargadoNuevo = (id: number) => apiPost<{ ok: boolean }>(`${BASE}/${id}/ya-cargado`, {});
 export const descartarNuevo = (id: number, motivo: string) =>
   apiPost<{ ok: boolean }>(`${BASE}/${id}/descartar`, { motivo });
 export const moverNuevo = (id: number, modulo: ModuloAviso) =>

@@ -9,7 +9,7 @@ import { useAuth } from "@/components/auth/AuthContext";
 import { formatFecha, formatMoneda } from "@/lib/format";
 import { urlDocumentoLocal } from "@/services/comprasApi";
 import {
-  ETIQUETA_MODULO, getNuevos, marcarNuevoRevisado, moverNuevo, type DocumentoNuevo, type ModuloAviso,
+  ETIQUETA_MODULO, getNuevos, marcarNuevoRevisado, moverNuevo, yaCargadoNuevo, type DocumentoNuevo, type ModuloAviso,
 } from "@/services/documentosNuevosApi";
 
 /** Dónde se carga a mano un documento de cada módulo. */
@@ -41,6 +41,7 @@ function Detalle({ d, admin }: { d: DocumentoNuevo; admin: boolean }) {
   const [destino, setDestino] = useState<ModuloAviso | "">("");
   const refrescar = () => qc.invalidateQueries({ queryKey: ["documentos-nuevos"] });
   const revisar = useMutation({ mutationFn: () => marcarNuevoRevisado(d.idDocumentoNuevo), onSuccess: refrescar });
+  const yaCargado = useMutation({ mutationFn: () => yaCargadoNuevo(d.idDocumentoNuevo), onSuccess: refrescar });
   const mover = useMutation({
     mutationFn: (m: ModuloAviso) => moverNuevo(d.idDocumentoNuevo, m),
     onSuccess: refrescar,
@@ -109,6 +110,12 @@ function Detalle({ d, admin }: { d: DocumentoNuevo; admin: boolean }) {
         {admin && d.estado === "para_cargar" && !d.idRegistro && carga && (
           <Link href={hrefCarga(carga.href, d)} className="text-finance hover:underline">{carga.texto}</Link>
         )}
+        {admin && d.estado === "para_cargar" && !d.idRegistro && (
+          <button type="button" disabled={yaCargado.isPending} onClick={() => yaCargado.mutate()}
+            title="Ya está cargado: el aviso sale de la lista" className="text-finance hover:underline disabled:opacity-40">
+            Ya está cargado
+          </button>
+        )}
         {admin && d.modulo === "sin_clasificar" && (
           <span className="flex items-center gap-1">
             <select value={destino} onChange={(e) => setDestino(e.target.value as ModuloAviso | "")}
@@ -129,8 +136,8 @@ function Detalle({ d, admin }: { d: DocumentoNuevo; admin: boolean }) {
           </button>
         )}
       </div>
-      {(revisar.isError || mover.isError) && (
-        <p className="text-sm text-status-danger">{(revisar.error ?? mover.error)?.message}</p>
+      {(revisar.isError || mover.isError || yaCargado.isError) && (
+        <p className="text-sm text-status-danger">{(revisar.error ?? mover.error ?? yaCargado.error)?.message}</p>
       )}
     </div>
   );

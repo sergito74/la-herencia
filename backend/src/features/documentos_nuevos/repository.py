@@ -72,7 +72,46 @@ def registrar_documento(d: dict) -> tuple[int, bool]:
     return id_, True
 
 
+def cerrar_ya_cargados() -> int:
+    """24/11/2026: un aviso «para cargar» cuya compra/venta ya se cargó a mano (antes o después del aviso) queda vinculado
+    a ese registro y sale de la lista sin intervención (antes seguía proponiendo cargarla). Busca por proveedor y número,
+    o por el mismo PDF. Se corre al listar y al contar los avisos."""
+    from src.features.boveda import repository as boveda
+
+    cerrados = 0
+    for d in fetch_all(
+            f"SELECT d.IdDocumentoNuevo AS id, d.Modulo AS m, d.IdContacto AS c, d.Numero AS n, d.Fecha AS f, d.Ruta AS r "
+            f"FROM dbo.DocumentosNuevos d WHERE {PENDIENTE} AND d.Estado = 'para_cargar' AND d.IdRegistro IS NULL "
+            "AND d.Modulo IN ('compras', 'granos', 'ventas', 'sin_clasificar')"):
+        try:
+            if d["m"] in ("compras", "sin_clasificar"):
+                reg = boveda.compra_existente(d["c"], d["n"], d["r"]) if (d["c"] and d["n"]) or d["r"] else None
+            elif d["m"] == "granos":
+                v = boveda.venta_granos_existente(d["n"])
+                reg = v["idVenta"] if v else None
+            else:
+                v = boveda.venta_hacienda_existente(d["n"], d["f"])
+                reg = v["idVenta"] if v else None
+        except Exception:
+            reg = None
+        if reg:
+            cerrados += execute_write(
+                "UPDATE dbo.DocumentosNuevos SET IdRegistro = ?, Estado = 'ya_estaba', Revisado = SYSDATETIME(), "
+                "RevisadoPor = 'sistema', Motivo = 'Ya estaba cargado (cerrado por el sistema)' "
+                "WHERE IdDocumentoNuevo = ? AND IdRegistro IS NULL", (reg, d["id"]))
+    return cerrados
+
+
+def ya_cargado(id_documento: int, usuario: str | None) -> int:
+    """El usuario indica que el comprobante ya está cargado (el sistema no lo encontró solo): sale de la lista."""
+    return execute_write(
+        "UPDATE d SET Revisado = SYSDATETIME(), RevisadoPor = ?, Estado = 'ya_estaba', "
+        "Motivo = 'Ya estaba cargado (indicado por el usuario)' FROM dbo.DocumentosNuevos d "
+        f"WHERE d.IdDocumentoNuevo = ? AND {PENDIENTE}", ((usuario or "")[:60] or None, id_documento))
+
+
 def resumen_pendientes() -> dict[str, int]:
+    _cerrar_seguro()
     filas = fetch_all(f"SELECT d.Modulo AS modulo, COUNT(*) AS n FROM dbo.DocumentosNuevos d WHERE {PENDIENTE} "
                       "GROUP BY d.Modulo")
     return {f["modulo"]: f["n"] for f in filas}
@@ -89,7 +128,16 @@ _FROM = ("FROM dbo.DocumentosNuevos d LEFT JOIN dbo.Portales p ON p.IdPortal = d
          "LEFT JOIN dbo.Contactos ct ON ct.IdContacto = d.IdContacto")
 
 
+def _cerrar_seguro() -> None:
+    try:
+        cerrar_ya_cargados()
+    except Exception:
+        import logging
+        logging.getLogger(__name__).exception("Documentos nuevos: no se pudieron cerrar los ya cargados")
+
+
 def listar_pendientes(modulo: str, limite: int = 50, desde: int = 0) -> tuple[list[dict], int]:
+    _cerrar_seguro()
     limite = min(limite, LIMITE_MAXIMO)
     total = fetch_one(f"SELECT COUNT(*) AS n FROM dbo.DocumentosNuevos d WHERE d.Modulo = ? AND {PENDIENTE}",
                       (modulo,))["n"]

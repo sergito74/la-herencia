@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import type { ReactNode } from "react";
 
@@ -13,6 +14,7 @@ export function ComprasConRevision({ listado }: { listado: ReactNode }) {
   if (params.get("nuevos") !== "1") return <>{listado}</>;
   return (
     <div className="space-y-6">
+      <Link href="/compras" className="text-sm text-finance hover:underline">← Ir al listado de compras</Link>
       <RevisionComprasEnFormulario />
       <NuevosParaRevisar modulo="sin_clasificar" />
     </div>

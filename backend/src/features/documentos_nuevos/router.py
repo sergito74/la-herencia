@@ -137,6 +137,14 @@ def marcar_revisado(id_documento: int, request: Request) -> dict:
     return {"ok": True}
 
 
+@router.post("/{id_documento}/ya-cargado", dependencies=[Depends(exigir_admin)])
+def ya_cargado(id_documento: int, request: Request) -> dict:
+    """24/11/2026: el comprobante ya está cargado (el sistema no lo encontró solo)."""
+    if not repository.ya_cargado(id_documento, usuario_actual(request)):
+        raise HTTPException(status_code=404, detail="El aviso no existe o ya no está pendiente")
+    return {"ok": True}
+
+
 @router.post("/{id_documento}/descartar", dependencies=[Depends(exigir_admin)])
 def descartar(id_documento: int, body: Descarte, request: Request) -> dict:
     if not repository.descartar(id_documento, body.motivo, usuario_actual(request)):

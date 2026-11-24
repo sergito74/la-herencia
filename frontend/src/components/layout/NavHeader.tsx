@@ -275,19 +275,21 @@ function NavDropdown({ item, active, peajes, nuevos, revisar = 0 }:
                   {leaf.grupo}
                 </p>
               )}
-              <Link
-                href={leaf.badge === "revisar" && revisar ? "/imputacion/documentos?revisar=1" : cantidad ? `${leaf.href}?nuevos=1` : leaf.href}
-                className={`block px-4 py-2 text-sm ${
-                  leafActive
-                    ? "font-medium text-finance"
-                    : "text-ink-secondary hover:bg-surface-sunken hover:text-ink-primary"
-                }`}
-              >
-                {leaf.label}
-                {leaf.badge === "peajes" && <Contador valor={peajes} />}
-                {leaf.badge === "revisar" && <Contador valor={revisar} titulo={TITULO_REVISAR} />}
-                <Contador azul titulo={TITULO_NUEVOS} valor={cantidad} />
-              </Link>
+              {/* 24/11/2026: el nombre lleva siempre a la pantalla del módulo (antes, con avisos pendientes, Compras
+                  abría la revisión y no se podía llegar al listado); el número azul lleva a los avisos para revisar. */}
+              <div className={`flex items-center px-4 py-2 text-sm ${
+                leafActive ? "font-medium text-finance" : "text-ink-secondary hover:bg-surface-sunken hover:text-ink-primary"}`}>
+                <Link href={leaf.badge === "revisar" && revisar ? "/imputacion/documentos?revisar=1" : leaf.href} className="flex-1">
+                  {leaf.label}
+                  {leaf.badge === "peajes" && <Contador valor={peajes} />}
+                  {leaf.badge === "revisar" && <Contador valor={revisar} titulo={TITULO_REVISAR} />}
+                </Link>
+                {cantidad > 0 && (
+                  <Link href={`${leaf.href}?nuevos=1`} title={TITULO_NUEVOS} aria-label={`${cantidad} documentos nuevos para revisar`}>
+                    <Contador azul titulo={TITULO_NUEVOS} valor={cantidad} />
+                  </Link>
+                )}
+              </div>
               </div>
             );
           })}

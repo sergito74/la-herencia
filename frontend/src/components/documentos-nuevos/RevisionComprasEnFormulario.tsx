@@ -9,7 +9,7 @@ import { compraDetalleAInput } from "@/components/compras/compraDetalleAInput";
 import { ErrorState, LoadingState } from "@/components/ui/States";
 import { formatFecha, formatMoneda } from "@/lib/format";
 import { fetchCompraDetalle, urlDocumentoLocal } from "@/services/comprasApi";
-import { descartarNuevo, ETIQUETA_MODULO, getNuevos, marcarNuevoRevisado, moverNuevo, type DocumentoNuevo, type ModuloAviso } from "@/services/documentosNuevosApi";
+import { descartarNuevo, yaCargadoNuevo, ETIQUETA_MODULO, getNuevos, marcarNuevoRevisado, moverNuevo, type DocumentoNuevo, type ModuloAviso } from "@/services/documentosNuevosApi";
 
 const TIPO_LEIDO: Record<string, "Factura" | "Nota de Crédito" | "Nota de Débito"> = {
   factura: "Factura", nota_credito: "Nota de Crédito", nota_debito: "Nota de Débito",
@@ -48,6 +48,7 @@ export function RevisionComprasEnFormulario() {
   const mover = useMutation({
     mutationFn: ({ id, modulo }: { id: number; modulo: ModuloAviso }) => moverNuevo(id, modulo), onSuccess: listo,
   });
+  const yaCargada = useMutation({ mutationFn: (id: number) => yaCargadoNuevo(id), onSuccess: listo });
   const items = q.data?.items ?? [];
   if (q.isError) return <p className="text-sm text-status-danger">No se pudieron leer las compras nuevas: {q.error.message}</p>;
   if (q.isLoading) return <LoadingState />;
@@ -97,6 +98,11 @@ export function RevisionComprasEnFormulario() {
                 <option key={m} value={m}>{ETIQUETA_MODULO[m]}</option>
               ))}
             </select>
+            <button type="button" disabled={yaCargada.isPending} onClick={() => yaCargada.mutate(d.idDocumentoNuevo)}
+              title="La compra ya está cargada: el aviso sale de la lista"
+              className="rounded-md border border-border px-3 py-1 text-xs disabled:opacity-40">
+              Ya está cargada
+            </button>
             <button type="button" disabled={descartar.isPending}
               onClick={() => {
                 const motivo = window.prompt("¿Por qué no es una compra? (ej.: es un resumen de cuenta)");
@@ -107,8 +113,8 @@ export function RevisionComprasEnFormulario() {
             </button>
           </span>
         )}
-        {(descartar.isError || mover.isError) && (
-          <span className="text-xs text-status-danger">{(descartar.error ?? mover.error)?.message}</span>
+        {(descartar.isError || mover.isError || yaCargada.isError) && (
+          <span className="text-xs text-status-danger">{(descartar.error ?? mover.error ?? yaCargada.error)?.message}</span>
         )}
       </div>
       {!d.contacto && (
