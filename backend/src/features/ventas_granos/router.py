@@ -7,10 +7,12 @@ from __future__ import annotations
 
 from datetime import date
 
-from fastapi import APIRouter, Header, HTTPException, Query
+from fastapi import APIRouter, Depends, Header, HTTPException, Query
+from pydantic import BaseModel
 from starlette.concurrency import run_in_threadpool
 
 from src.db.pagination import normalize_pagination
+from src.features.boveda.router import exigir_admin
 from src.features.ventas_granos import repository, repository_locks
 from src.features.ventas_granos.schemas import (
     FiltrosVentaGranosResponse,
@@ -129,6 +131,25 @@ def retenciones_iva() -> dict:
     from src.features.ventas_granos import retenciones_iva as r
 
     return r.listar()
+
+
+class CertificadoManual(BaseModel):
+    coe: str
+    certificado: str
+    importe: float
+    archivo: str | None = None
+    aDevolver: float | None = None
+
+
+@router.post("/retenciones-iva", status_code=201, dependencies=[Depends(exigir_admin)])
+def cargar_retencion_iva(body: CertificadoManual) -> dict:
+    """24/11/2026: alta a mano de un certificado de retención de IVA de granos que el lector no pudo leer."""
+    from src.features.ventas_granos import retenciones_iva as r
+
+    try:
+        return r.cargar_manual(body.coe, body.certificado, body.importe, body.archivo, body.aDevolver)
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=" ".join(e.args[0]) if e.args and isinstance(e.args[0], list) else str(e))
 
 
 @router.get("/{id_venta}", response_model=VentaGranosDetalleResponse)

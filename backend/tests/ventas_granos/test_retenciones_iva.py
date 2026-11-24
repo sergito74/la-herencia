@@ -23,3 +23,16 @@ def test_grupo_con_retencion_sin_certificado():
 
 def test_no_asocia_lejos():
     assert R._grupo([_c(1, 1000.0)], 50000.0, date(2025, 2, 1)) is None
+
+
+def test_alta_manual_valida(monkeypatch):
+    import pytest
+    from src.features.boveda import repository as boveda
+
+    monkeypatch.setattr(boveda, "venta_granos_existente", lambda coe: None)
+    with pytest.raises(ValueError):
+        R.cargar_manual("330100000000", "09601-2026-000001", 100.0)
+    with pytest.raises(ValueError):
+        R.cargar_manual("330100000000", "", 100.0)
+    with pytest.raises(ValueError):
+        R.cargar_manual("330100000000", "X", 0)

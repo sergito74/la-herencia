@@ -118,3 +118,32 @@ def listar(hoy: date | None = None) -> dict:
         "devuelto": total("devuelto"), "pendiente": total("pendiente"), "vencido": total("vencido"),
         "aplicado": total("aplicado"),
         "cantidadVencidos": sum(1 for i in items if i["estado"] == "vencido")}}
+
+
+def cargar_manual(coe: str, certificado: str, importe: float, archivo: str | None = None,
+                  a_devolver: float | None = None) -> dict:
+    """24/11/2026: alta a mano de un certificado que el lector no pudo leer. La liquidación se busca por COE; el agente es
+    el comprador de esa venta. Va aparte de la venta (no toca [Retencion IVA])."""
+    import re
+
+    from src.db.connection import execute_write, fetch_one
+    from src.features.boveda import repository as boveda
+
+    certificado = (certificado or "").strip()
+    if not certificado:
+        raise ValueError(["Indicá el número de certificado."])
+    if not importe or importe <= 0:
+        raise ValueError(["El importe retenido debe ser mayor a cero."])
+    venta = boveda.venta_granos_existente(re.sub(r"\D", "", coe or ""))
+    if not venta:
+        raise ValueError([f"No hay una venta de granos cargada con el COE {coe}."])
+    if fetch_one("SELECT 1 AS x FROM dbo.[Retenciones IVA Granos] WHERE [Nro Certificado] = ?", (certificado,)):
+        raise ValueError([f"El certificado {certificado} ya está cargado."])
+    agente = fetch_one("SELECT IdConsignatario AS i FROM dbo.[Venta Granos] WHERE IdVenta = ?", (venta["idVenta"],))["i"]
+    siguiente = fetch_one("SELECT ISNULL(MAX(IdRetencion), 0) + 1 AS n FROM dbo.[Retenciones IVA Granos]")["n"]
+    execute_write(
+        "INSERT INTO dbo.[Retenciones IVA Granos] (IdRetencion, IdLiquidacion, [Nro Certificado], [Agente Retencion], "
+        "[Importe Retenido], [Importe Devolucion], Imagen) VALUES (?, ?, ?, ?, ?, ?, ?)",
+        (siguiente, venta["idVenta"], certificado, agente, round(importe, 2),
+         round(importe if a_devolver is None else a_devolver, 2), (archivo or "").strip() or None))
+    return {"idRetencion": siguiente, "idVenta": venta["idVenta"]}

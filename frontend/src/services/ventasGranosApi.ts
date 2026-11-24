@@ -256,3 +256,8 @@ export interface RetencionesIVAGranosResponse {
 export function fetchRetencionesIVAGranos(): Promise<RetencionesIVAGranosResponse> {
   return apiGet<RetencionesIVAGranosResponse>("/api/ventas-granos/retenciones-iva");
 }
+
+
+export function cargarRetencionIVAGranos(body: { coe: string; certificado: string; importe: number; archivo?: string | null }) {
+  return apiPost<{ idRetencion: number; idVenta: number }>("/api/ventas-granos/retenciones-iva", body);
+}
