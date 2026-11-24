@@ -200,3 +200,20 @@ def test_contacto_por_remitente_del_mail():
     assert c.contacto_por_remitente("Agrovet", CONTACTOS) is None
     assert c.contacto_por_remitente("extranet@lartirigoyen.com", CONTACTOS) is None
     assert c.contacto_por_remitente("Giamigli de Bolivar", CONTACTOS) is None
+
+
+def test_acuse_de_presentacion_ddjj_no_es_comprobante():
+    texto = ("Presentación de DJ por Internet\nAcuse de recibo de DJ\nOrganismo Recaudador: ARCA\n931 v4700 - EMPLEADOR DJ\n"
+             "CUIT: 30-71211460-2\nPeríodo: 2026-10\nConserve este Acuse de Recibo como comprobante de presentación")
+    assert c.tipo_de(texto) is None
+
+
+def test_vep_sigue_siendo_boleta():
+    texto = "VOLANTE ELECTRÓNICO DE PAGO\nF931 Período 2026-10\nImporte a pagar $ 1.234,56\nVencimiento 10/11/2026"
+    assert c.tipo_de(texto) == "boleta"
+
+
+def test_recordatorio_no_valido_como_factura_no_es_comprobante():
+    texto = ("Recibo\nFecha límite de pago: 4 de noviembre de 2026\nTotal adeudado ARS 65.000,00\n"
+             "Documento no válido como Factura\nStarlink Argentina S.R.L.\nIdentificación fiscal: 30-71754087-1")
+    assert c.tipo_de(texto) is None

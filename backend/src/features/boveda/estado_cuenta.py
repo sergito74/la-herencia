@@ -61,7 +61,7 @@ def guardar(id_portal: int, id_corrida: int | None, id_contacto: int | None, est
     return id_foto
 
 
-_FACTURA = re.compile(r"^\s*(?:FT|FC|FA|FACTURA)", re.I)
+_FACTURA = re.compile(r"^\s*(?:FT|FC|FA|FACTURA)\b", re.I)
 _NUMERO = re.compile(r"(\d{4,5})\s*-\s*(\d{8,9})")
 
 

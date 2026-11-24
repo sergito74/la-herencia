@@ -105,6 +105,16 @@ def tipo_de(texto: str) -> str | None:
     # Cupón de pago (Sancor): aviso de vencimiento, no comprobante (046). Va antes que "otro" y que el receptor.
     if re.search(r"CUP[OÓ]N (DE PAGO|PARA EL)", t) and not re.search(CAE_RE, t):
         return None
+    # Acuse de presentación de una DDJJ (F931, IVA, Ganancias…): constancia de que se presentó, no deuda ni pago.
+    # La deuda llega en el VEP / boleta (24/11/2026).
+    if re.search(r"ACUSE DE RECIBO DE (LA )?D\.?D?\.?J\.?J?|PRESENTACI[OÓ]N DE (LA )?D\.?D?\.?J\.?J?\.? POR INTERNET", t) and \
+            not re.search(r"VOLANTE ELECTR[OÓ]NICO DE PAGO|\bVEP\b", t):
+        return None
+    # Aviso / recordatorio de pago que el propio emisor declara "no válido como factura" (Starlink): la factura con CAE
+    # llega aparte (24/11/2026).
+    if re.search(r"NO V[AÁ]LIDO COMO FACTURA", t) and not re.search(CAE_RE, t) and \
+            re.search(r"TOTAL ADEUDADO|FECHA L[IÍ]MITE DE PAGO|RECORDATORIO DE PAGO|AVISO DE (PAGO|VENCIMIENTO)", t):
+        return None
     # Expensas de consorcio (Arq. Safarian, unidades de Sergio en CABA): nada que ver con Giamigli, se ignoran sin
     # guardarse (Sergio, 03/11/2026).
     if re.search(r"\bEXPENSAS\b|\bCONSORCIO\b", t) and not re.search(CAE_RE, t):
@@ -327,7 +337,7 @@ def clasificar(texto: str, buscar_contacto=None) -> Clasificacion:
     emisores = [c for c in cuits(texto) if c not in (GIAMIGLI, SERGIO)]
     cuit = emisores[0] if emisores else None
     modulo = MODULO[tipo]
-    if tipo == "liquidacion" and re.search(r"LIQUIDACI[OÓ]N PRIMARIA DE GRANOS|LPG|GRANOS", texto.upper()):
+    if tipo == "liquidacion" and re.search(r"LIQUIDACI[OÓ]N PRIMARIA DE GRANOS|\bLPG\b|\bGRANOS\b", texto.upper()):
         modulo = "granos"  # 24/11/2026: liquidación de granos → Ventas de granos (no hacienda)
     c = Clasificacion(comprobante=True, tipo=tipo, modulo=modulo, cuit_emisor=cuit, fecha=fecha_de(texto),
                       numero=numero_de(texto), total=total_de(texto))
