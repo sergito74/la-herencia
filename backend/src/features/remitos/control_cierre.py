@@ -9,7 +9,8 @@ Las diferencias de recuento no se listan: se resuelven con la regla de recuentos
   · los remitos sin factura se buscan en TODA la historia. Bayá se lista solo si pasaron más de VENTANA_BAYA días
     (factura al vencimiento de cada pedido). Excepciones: semilla propia (Giamigli) y Flumeyt (sin factura, consumido);
   · renglones de factura vinculados por más de su cantidad (la misma mercadería costearía dos veces);
-  · vínculos a un documento que no corresponde: factura de otro proveedor, nota de débito/crédito o renglón NoImputa;
+  · vínculos a un documento que no corresponde: factura de otro proveedor, nota de débito/crédito, renglón NoImputa o
+    factura anulada por nota de crédito (24/11/2026);
   · consumos de órdenes que salieron sin costo (su remito de entrada no tiene factura).
 Solo lectura.
 """
@@ -152,4 +153,54 @@ def vinculos_que_no_corresponden() -> list[dict]:
         out.append({"idRemito": f["idr"], "remito": (f["nr"] or "").strip(), "fecha": f["fr"], "proveedor": f["provr"],
                     "producto": f["prod"], "idCompra": f["idc"], "documento": (f["nc"] or "").strip(), "tipo": f["tipo"],
                     "proveedorDocumento": f["provf"], "motivo": f["motivo"]})
-    return out
+    vistos = {(o["idRemito"], o["idCompra"]) for o in out}
+    for o in facturas_anuladas_por_nc():
+        if (o["idRemito"], o["idCompra"]) not in vistos and (o["idRemito"], o["idCompra"]) not in _VINCULOS_ACEPTADOS:
+            out.append(o)
+    return sorted(out, key=lambda o: str(o["fecha"]))
+
+
+def facturas_anuladas_por_nc() -> list[dict]:
+    """Remito vinculado a una factura cuyo renglón anuló una nota de crédito (24/11/2026, caso Avena Común Lartirigoyen
+    2024: la FC 12509 la anuló la NC 1971 y la reemplazó la FC 12612). Mismo proveedor y moneda, NC posterior, mismo
+    texto y cantidad, precio igual ±3%. Si hay más copias facturadas del renglón que NC que lo anulen (facturas
+    duplicadas de FEDEA), alguna sigue vigente y no se avisa."""
+    out = []
+    for f in fetch_all(
+        """
+        SELECT r.IdRemito idr, r.NroRemito nr, r.Fecha fr, cr.[Razon Social] provr, p.Producto prod,
+               c.IdDeuda idc, c.[Nro Documento] nc, cf.[Razon Social] provf,
+               (SELECT COUNT(DISTINCT c2.IdDeuda) FROM dbo.Det_Compras d2 JOIN dbo.Compras c2 ON c2.IdDeuda = d2.IdCompra
+                WHERE c2.IdContacto = c.IdContacto AND c2.[Tipo documento] = 'Factura' AND c2.Moneda = c.Moneda
+                  AND ABS(DATEDIFF(day, c2.Fecha, c.Fecha)) <= 120
+                  AND (d2.[Producto/Servicio] LIKE dc.[Producto/Servicio] + '%' OR dc.[Producto/Servicio] LIKE d2.[Producto/Servicio] + '%')
+                  AND ABS(d2.Cantidad - dc.Cantidad) < 0.001
+                  AND ABS(d2.[Precio Unitario] - dc.[Precio Unitario]) <= ABS(dc.[Precio Unitario]) * 0.03) nf,
+               (SELECT COUNT(DISTINCT n.IdDeuda) FROM dbo.Det_Compras dn JOIN dbo.Compras n ON n.IdDeuda = dn.IdCompra
+                WHERE n.IdContacto = c.IdContacto AND n.[Tipo documento] = 'Nota de Crédito' AND n.Moneda = c.Moneda
+                  AND n.Fecha >= c.Fecha
+                  AND (dn.[Producto/Servicio] LIKE dc.[Producto/Servicio] + '%' OR dc.[Producto/Servicio] LIKE dn.[Producto/Servicio] + '%')
+                  AND ABS(ABS(dn.Cantidad) - ABS(dc.Cantidad)) < 0.001
+                  AND ABS(ABS(dn.[Precio Unitario]) - ABS(dc.[Precio Unitario])) <= ABS(dc.[Precio Unitario]) * 0.03
+                  AND dn.Cantidad * dn.[Precio Unitario] < 0) nn
+        FROM dbo.tblRemitoCompra t
+        JOIN dbo.Remitos_Detalles rd ON rd.IdDetalleRemito = t.IdDetalleRemito
+        JOIN dbo.Remitos r ON r.IdRemito = rd.IdRemito
+        LEFT JOIN dbo.Remitos_Extra x ON x.IdRemito = r.IdRemito
+        JOIN dbo.Det_Compras dc ON dc.IdDetalleCompra = t.IdDetalleCompra
+        JOIN dbo.Compras c ON c.IdDeuda = dc.IdCompra AND c.[Tipo documento] = 'Factura'
+        LEFT JOIN dbo.Contactos cr ON cr.IdContacto = COALESCE(r.IdContacto, r.IdProveedor)
+        LEFT JOIN dbo.Contactos cf ON cf.IdContacto = c.IdContacto
+        LEFT JOIN dbo.vw_ProductosBase p ON p.IdProducto = rd.IdFormulado
+        WHERE ISNULL(x.Anulado, 0) = 0 AND t.CantidadRemitida > 0 AND ISNULL(dc.Cantidad, 0) > 0
+        """):
+        if f["nn"] and f["nn"] >= f["nf"]:
+            out.append({"idRemito": f["idr"], "remito": (f["nr"] or "").strip(), "fecha": f["fr"], "proveedor": f["provr"],
+                        "producto": f["prod"], "idCompra": f["idc"], "documento": (f["nc"] or "").strip(), "tipo": "Factura",
+                        "proveedorDocumento": f["provf"], "motivo": "factura anulada por nota de crédito"})
+    seen, unicos = set(), []
+    for o in out:
+        k = (o["idRemito"], o["idCompra"], o["producto"])
+        if k not in seen:
+            seen.add(k); unicos.append(o)
+    return unicos
