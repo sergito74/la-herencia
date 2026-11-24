@@ -31,6 +31,7 @@ from src.features.boveda.conectores import (
 )
 from src.features.descarga_peajes.portales import COMPRAS, carpeta_ejercicio
 from src.features.documentos_nuevos import avisos
+from src.features.ventas_granos import lector_lpg
 
 log = logging.getLogger(__name__)
 
@@ -165,11 +166,18 @@ def _verificar_autorizacion(id_portal: int) -> None:
 VENTAS = COMPRAS.parent / "Ventas"
 
 
+def _float(v) -> float | None:
+    try:
+        return float(v) if v not in (None, "") else None
+    except (TypeError, ValueError):
+        return None
+
+
 def _carpeta(tipo: str, fecha: date) -> Path:
     """Carpeta donde Sergio ya guarda cada clase de documento: liquidaciones de granos en Ventas del
     ejercicio, certificados de retención en Ventas/Retenciones del ejercicio, el resto en Compras."""
     ejercicio = carpeta_ejercicio(fecha).name
-    if tipo in ("liquidacion", "liquidacion_granos"):
+    if tipo == "liquidacion":
         return VENTAS / ejercicio
     if tipo == "certificado":
         return VENTAS / f"Retenciones {ejercicio}"
@@ -239,8 +247,18 @@ def _procesar(portal: dict, conector, cred: Credencial, id_corrida: int) -> dict
                 sha = hashlib.sha256(contenido).hexdigest()
                 fecha = doc.fecha or date.today()
                 carpeta = _carpeta(doc.tipo, fecha)
-                venta = (repository.venta_hacienda_existente(doc.numero, doc.fecha) if doc.tipo == "liquidacion"
-                         else repository.venta_granos_existente(doc.numero) if doc.tipo == "liquidacion_granos" else None)
+                # 24/11/2026: una LPG (liquidación primaria de granos) va a Ventas de granos con su lector; el resto
+                # de las liquidaciones (hacienda) sigue a Ventas de hacienda.
+                es_lpg = es_retencion_lpg = False
+                if doc.tipo in ("liquidacion", "certificado"):
+                    try:
+                        texto_pdf = lector_lpg._texto(contenido)
+                        es_lpg = doc.tipo == "liquidacion" and lector_lpg.es_lpg(texto_pdf)
+                        es_retencion_lpg = doc.tipo == "certificado" and lector_lpg.leer_certificado(texto_pdf) is not None
+                    except Exception:
+                        pass
+                venta = (repository.venta_granos_existente(doc.numero) if es_lpg
+                         else repository.venta_hacienda_existente(doc.numero, doc.fecha) if doc.tipo == "liquidacion" else None)
                 ruta_venta = venta["ruta"] if venta and venta["ruta"] and Path(venta["ruta"]).exists() else None
                 ruta_igual = (repository.existe_sha(sha) or _archivo_igual(carpeta, sha, indice)
                               or _archivo_de_compra(doc) or ruta_venta)
@@ -254,6 +272,14 @@ def _procesar(portal: dict, conector, cred: Credencial, id_corrida: int) -> dict
                 if venta:  # liquidación ya cargada a mano en Ventas: se vincula, sin aviso (043)
                     r = {"estadoCarga": "ya_cargado", "motivo": None, "idCompra": None, "idRegistro": venta["idVenta"],
                          "numeroDocumento": doc.numero, "totalImpreso": doc.total}
+                elif es_lpg:  # lector de LPG: carga automática y queda para revisar (24/11/2026)
+                    extra = getattr(doc, "extra", None) or {}
+                    r = lector_lpg.cargar_lpg(contenido, ruta, id_contacto=doc.id_contacto,
+                                              dolar_rate=_float(extra.get("dolarRate")), campania_informada=extra.get("cropSeason"))
+                    r["idCompra"] = None
+                elif es_retencion_lpg:  # certificado de retención de IVA de una LPG: se suma a su venta de granos
+                    r = lector_lpg.aplicar_certificado(contenido, ruta)
+                    r["idCompra"] = None
                 elif conector.codigo.startswith("sancor") and doc.tipo == "factura":
                     # Un PDF de Sancor puede traer una factura por póliza: se cargan todas (30/10/2026).
                     from src.features.documentos_nuevos.lectores import cargar_sancor
@@ -266,7 +292,8 @@ def _procesar(portal: dict, conector, cred: Credencial, id_corrida: int) -> dict
                     "sha256": sha, "idCorrida": id_corrida, **r,
                 }
                 id_doc = repository.insertar_documento(fila)
-                avisos.desde_portal(portal["idPortal"], id_doc, doc.tipo, fila)  # aviso en el módulo (043)
+                tipo_aviso = "liquidacion_granos" if es_lpg else ("retencion_granos" if es_retencion_lpg and r.get("idRegistro") else doc.tipo)
+                avisos.desde_portal(portal["idPortal"], id_doc, tipo_aviso, fila)  # aviso en el módulo (043)
                 res["nuevos"] += 1
                 if r["estadoCarga"] == "cargado_auto":
                     res["cargados"] += 1

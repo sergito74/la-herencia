@@ -25,6 +25,7 @@ DESTINO_PORTAL = {
     "nota_debito": ("nota_debito", "compras"), "liquidacion": ("liquidacion", "ventas"),
     # 24/11/2026: las liquidaciones de granos (Cargill) van a Ventas de granos, no a Ventas de hacienda.
     "liquidacion_granos": ("liquidacion", "granos"),
+    "retencion_granos": ("retencion", "granos"),  # certificado de IVA ya sumado a su venta de granos
     "certificado": ("retencion", "impuestos"),
 }
 

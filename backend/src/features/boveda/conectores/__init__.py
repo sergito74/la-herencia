@@ -54,6 +54,8 @@ class DocumentoPortal:
     id_contacto: int | None = None
     # Patrones LIKE de claves con que otro portal ofrece el mismo comprobante (ej. AUBASA en TelePASE).
     equivalentes: list[str] = field(default_factory=list)
+    # Datos crudos que el portal informa además del PDF (ej. Cargill: dolarRate, cropSeason de la liquidación).
+    extra: dict = field(default_factory=dict)
 
 
 @dataclass

@@ -60,6 +60,9 @@ function Detalle({ d, admin }: { d: DocumentoNuevo; admin: boolean }) {
         <span className="font-medium">{d.total == null ? "—" : formatMoneda(d.total, "Pesos")}</span>
       </div>
 
+      {d.estado === "cargado_solo" && d.motivo && (
+        <p className="rounded-sm bg-status-success-bg px-2 py-1 text-xs text-status-success">Cargado solo. Revisar: {d.motivo}</p>
+      )}
       {d.estado === "para_cargar" && (
         <p className="rounded-sm bg-status-warning-bg px-2 py-1 text-xs text-status-warning">
           Para cargar a mano{d.motivo ? `: ${d.motivo}` : ""}

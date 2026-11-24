@@ -97,7 +97,19 @@ def resolver(c: Clasificacion, texto: str, contenido: bytes, ruta: str) -> tuple
         if id_registro:
             estado, motivo = "ya_estaba", None
     r = None
-    if estado == "para_cargar" and c.tipo in ("resumen_banco", "resumen_tarjeta"):
+    if estado == "para_cargar" and c.tipo == "liquidacion" and c.modulo == "granos":
+        # 24/11/2026: LPG que llega por mail → mismo lector que la bóveda (carga automática, queda para revisar).
+        from src.features.ventas_granos import lector_lpg
+
+        r = lector_lpg.cargar_lpg(contenido, ruta, id_contacto=c.id_contacto)
+    elif estado == "para_cargar" and c.tipo == "retencion":
+        from src.features.ventas_granos import lector_lpg
+
+        if lector_lpg.leer_certificado(texto):
+            r = lector_lpg.aplicar_certificado(contenido, ruta)
+            if r.get("idRegistro"):
+                c.modulo = "granos"  # retención ya sumada a su venta de granos
+    elif estado == "para_cargar" and c.tipo in ("resumen_banco", "resumen_tarjeta"):
         r = lectores.cargar_resumen(texto, contenido, ruta)
         if r is None:
             motivo = "Importar el resumen desde Tesorería"
@@ -106,7 +118,7 @@ def resolver(c: Clasificacion, texto: str, contenido: bytes, ruta: str) -> tuple
     if r is not None:
         registro = r.get("idRegistro") or r.get("idCompra")
         if r["estadoCarga"] == "cargado_auto":
-            estado, motivo, id_registro = "cargado_solo", None, registro
+            estado, motivo, id_registro = "cargado_solo", r.get("motivo") if c.modulo == "granos" else None, registro
         elif r["estadoCarga"] == "ya_cargado":
             estado, motivo, id_registro = "ya_estaba", None, registro
         else:

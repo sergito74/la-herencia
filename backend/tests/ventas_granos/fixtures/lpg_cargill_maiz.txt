@@ -1,0 +1,70 @@
+21/11/2026, BOLIVAR
+LIQUIDACIÓN PRIMARIA DE GRANOS
+Tipo de operación: 1 - Compraventa de granos
+Actividad: EXPORTADOR
+C.O.E.: 330132967323
+COMPRADOR VENDEDOR
+Razón Social: CARGILL SOCIEDAD ANONIMA
+Razón Social: GIAMIGLI DE BOLIVAR S.A.
+COMERCIAL E INDUSTRIAL
+Domicilio: Sarmiento 437
+Domicilio: Della Paolera Carlos 261 Piso:12
+Localidad: BOLIVAR
+Localidad: CAPITAL FEDERAL
+C.U.I.T.: 30712114602
+C.U.I.T.: 30506792165
+I.V.A.: RI
+I.V.A.: RI
+Ingresos Brutos Nº 0
+Ingresos Brutos Nº 30712114602
+Actuó Corredor: No
+CONDICIONES DE LA OPERACIÓN Fecha: 19/11/2026
+Precio/TN Grado Grano Flete por TN Puerto
+$ 267476 G2 19 - MAIZ $ 65682.84 OTROS
+MERCADERIA ENTREGADA
+Nº de Comprobante Grado Factor Contenido Proteico Peso Kg Procedencia de la Mercaderia
+332023967042 G2 100 0 25704 Localidad: BOLIVAR-BUENOS AIRES
+OPERACIÓN
+Cantidad Precio/Kg Subtotal % Alícuota IVA Importe IVA Operación c/IVA
+25704 Kg $201.79 $5186891.38 10.5 $544623.59 $5731514.97
+DEDUCCIONES
+Concepto Detalle % Base Cálculo Alícuota Importe Iva Deducciones
+HONORARIOS
+Otras Deducciones $ 26,413.62 21% $ 5546,86 $ 31,960.48
+LABORATORIO
+Otras Deducciones PER IVA RG3337 GRAL $ 792.53 0% $ 0,00 $ 792.53
+RETENCIONES
+Concepto Detalle Cert. Ret. Imp. Cert. Ret.Fecha Cert. Ret. Base Cálculo Alícuota Retenciones
+I.V.A. I.V.A. 0 $ 0.00 $ 0.00 0% $ 0.00
+Impuesto a las IMPUESTO A LAS
+0 $ 0.00 $ 0.00 0% $ 0.00
+Ganancias GANANCIAS
+IMPORTES TOTALES DE LA LIQUIDACIÓN
+Total Operación: $ 5,731,514.97 Total Percepciones: $ 0.00
+Total Retenciones Afip: $ 0.00 Total Otras Retenciones:$ 0.00 Total Deducciones: $ 32,753.01
+Importe Neto a Pagar: $ 5,698,761.96 IVA RG 4310/2018: $ 544,623.59 Pago según condiciones: $ 5,154,138.37
+Datos Adicionales: Contrato:901572902. Precio: 279300$/TN Grado: 0 Factor: 0 Desc.Comercial: -11824$/TN Flete: -
+65682,835$/TN Px Neto: 201793,165$/TN. La merc. al momento de la instrumentacion del presente doc.
+se encontraba ubicada en la prov. de Buenos Aires
+Firma Comprador Firma Vendedor 1/2
+21/11/2026, BOLIVAR
+LIQUIDACIÓN PRIMARIA DE GRANOS
+Tipo de operación: 1 - Compraventa de granos
+Actividad: EXPORTADOR
+C.O.E.: 330132967323
+COMPRADOR VENDEDOR
+Razón Social: CARGILL SOCIEDAD ANONIMA
+Razón Social: GIAMIGLI DE BOLIVAR S.A.
+COMERCIAL E INDUSTRIAL
+Domicilio: Sarmiento 437
+Domicilio: Della Paolera Carlos 261 Piso:12
+Localidad: BOLIVAR
+Localidad: CAPITAL FEDERAL
+C.U.I.T.: 30712114602
+C.U.I.T.: 30506792165
+I.V.A.: RI
+I.V.A.: RI
+Ingresos Brutos Nº 0
+Ingresos Brutos Nº 30712114602
+Actuó Corredor: No
+Firma Comprador Firma Vendedor 2/2

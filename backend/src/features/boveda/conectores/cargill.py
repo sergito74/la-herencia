@@ -31,7 +31,7 @@ PARAMS = "source=JDEAR&role=DXP_GPS_Role_Client"
 CUSTOMER_ID = "35192801"
 ID_CONTACTO = 258
 
-TIPOS = {"RI": "factura", "RM": "nota_credito", "RT": "nota_debito", "L#": "liquidacion_granos", "H7": "liquidacion_granos", "$I": "certificado",
+TIPOS = {"RI": "factura", "RM": "nota_credito", "RT": "nota_debito", "L#": "liquidacion", "H7": "liquidacion", "$I": "certificado",
          "$B": "certificado"}
 
 
@@ -158,6 +158,7 @@ class ConectorCargill:
             numero=_numero_fiscal(x), total=_dec(x.get("amountLocalCurrency")), moneda=moneda,
             detalle=f"{(x.get('invoiceType') or '').strip().title()} {x.get('invoiceNumber') or ''}".strip(),
             id_contacto=ID_CONTACTO,
+            extra={k: x.get(k) for k in ("dolarRate", "exchangeRate", "cropSeason", "contract") if x.get(k) not in (None, "")},
         )
 
     def estado_cuenta(self, sesion: _Sesion) -> list[EstadoCuentaPortal]:
