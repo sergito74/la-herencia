@@ -123,6 +123,14 @@ async def crear_venta_granos(body: VentaGranosAltaRequest) -> VentaGranosDetalle
     return _to_detalle_response(id_venta, cabecera, totales, ajustes_out, deducciones_out, warnings)
 
 
+@router.get("/retenciones-iva")
+def retenciones_iva() -> dict:
+    """24/11/2026: certificados RETIVA de las ventas de granos y su devolución por ARCA (devuelto/pendiente/vencido)."""
+    from src.features.ventas_granos import retenciones_iva as r
+
+    return r.listar()
+
+
 @router.get("/{id_venta}", response_model=VentaGranosDetalleResponse)
 async def get_venta_granos_detalle(id_venta: int) -> VentaGranosDetalleResponse:
     cabecera = await run_in_threadpool(repository.get_venta_cabecera, id_venta)

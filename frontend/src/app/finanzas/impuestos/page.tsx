@@ -7,9 +7,10 @@ import { Suspense, useState } from "react";
 import { ImpuestosListado } from "@/components/impuestos/ImpuestosListado";
 import { RetencionesListado } from "@/components/impuestos/RetencionesListado";
 import { RetencionesVentaHaciendaListado } from "@/components/ventas-hacienda/RetencionesVentaHaciendaListado";
+import { RetencionesIVAGranosListado } from "@/components/ventas-granos/RetencionesIVAGranosListado";
 import { NuevosParaRevisar } from "@/components/documentos-nuevos/NuevosParaRevisar";
 
-const TABS = ["Impuestos", "Retenciones", "Retenciones Venta Hacienda"] as const;
+const TABS = ["Impuestos", "Retenciones", "Retenciones Venta Hacienda", "Retenciones IVA Granos"] as const;
 
 export default function ImpuestosPage() {
   const searchParams = useSearchParams();
@@ -17,6 +18,8 @@ export default function ImpuestosPage() {
   const [tab, setTab] = useState<(typeof TABS)[number]>(
     tabParam === "retenciones-venta-hacienda"
       ? "Retenciones Venta Hacienda"
+      : tabParam === "retenciones-iva-granos"
+        ? "Retenciones IVA Granos"
       : tabParam === "retenciones"
         ? "Retenciones"
         : "Impuestos"
@@ -50,6 +53,7 @@ export default function ImpuestosPage() {
       <div className="mt-3">
         {tab === "Impuestos" && <ImpuestosListado highlightKey={highlightKey} />}
         {tab === "Retenciones" && <RetencionesListado highlightKey={highlightKey} />}
+        {tab === "Retenciones IVA Granos" && <RetencionesIVAGranosListado />}
         {tab === "Retenciones Venta Hacienda" && (
           <RetencionesVentaHaciendaListado highlightKey={highlightKey} />
         )}

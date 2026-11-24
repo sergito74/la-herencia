@@ -229,3 +229,30 @@ export function liberarLockVentaGranos(
 ): Promise<void> {
   return apiDelete(`/api/ventas-granos/${idVenta}/lock`, { "X-Lock-Token": lockToken }, keepalive);
 }
+
+
+/** 24/11/2026: retenciones de IVA de granos (RETIVA/SISA) y su devolución por ARCA. */
+export interface RetencionIVAGranos {
+  idRetencion: number;
+  certificado: string;
+  importe: number;
+  idVenta: number;
+  fecha: string | null;
+  coe: string | null;
+  grano: string | null;
+  campania: string | null;
+  agente: string | null;
+  archivo: string | null;
+  estado: "devuelto" | "pendiente" | "vencido";
+  dias: number;
+  devolucion: { fecha: string; banco: string; importe: number; agrupa: number; exacto: boolean } | null;
+}
+
+export interface RetencionesIVAGranosResponse {
+  items: RetencionIVAGranos[];
+  resumen: { devuelto: number; pendiente: number; vencido: number; cantidadVencidos: number };
+}
+
+export function fetchRetencionesIVAGranos(): Promise<RetencionesIVAGranosResponse> {
+  return apiGet<RetencionesIVAGranosResponse>("/api/ventas-granos/retenciones-iva");
+}
