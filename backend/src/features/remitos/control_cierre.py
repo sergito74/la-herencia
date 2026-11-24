@@ -26,6 +26,9 @@ INICIO = date(2025, 5, 12)  # recuento de apertura de la imputación automática
 VENTANA_BAYA = 270  # días: Bayá factura al vencimiento de cada pedido
 _SEMILLA_PROPIA = "GIAMIGLI"  # proveedor Giamigli = semilla propia, sin factura
 _PRODUCTOS_SIN_FACTURA = {40958}  # Flumeyt: única entrada histórica sin factura (Sergio 21/11/2026), ya consumido
+# (IdRemito, IdCompra) de otro proveedor verificados como correctos: Emerge 75 L comprado a Tierras de Henderson y
+# entregado con remito de Sunanco (Sergio 24/11/2026)
+_VINCULOS_ACEPTADOS = {(126, 2143513222)}
 
 
 def _norm(t) -> str:
@@ -45,6 +48,9 @@ def pendientes() -> dict:
         LEFT JOIN dbo.vw_ProductosBase p ON p.IdProducto = rd.IdFormulado
         WHERE r.Fecha IS NOT NULL AND ISNULL(x.Anulado, 0) = 0 AND ISNULL(rd.Cantidad, 0) > 0
           AND NOT EXISTS (SELECT 1 FROM dbo.tblRemitoCompra t WHERE t.IdDetalleRemito = rd.IdDetalleRemito)
+          -- entrada devuelta en el mismo remito (renglón negativo del mismo producto): neto 0, no espera factura
+          AND (SELECT SUM(ISNULL(rd2.Cantidad, 0)) FROM dbo.Remitos_Detalles rd2
+               WHERE rd2.IdRemito = rd.IdRemito AND rd2.IdFormulado = rd.IdFormulado) > 0.000001
         ORDER BY r.Fecha, r.IdRemito
         """
     ):
@@ -135,6 +141,8 @@ def vinculos_que_no_corresponden() -> list[dict]:
                           AND tz.Destino = 'NoImputa'))
         ORDER BY r.Fecha
         """):
+        if (f["idr"], f["idc"]) in _VINCULOS_ACEPTADOS:
+            continue
         out.append({"idRemito": f["idr"], "remito": (f["nr"] or "").strip(), "fecha": f["fr"], "proveedor": f["provr"],
                     "producto": f["prod"], "idCompra": f["idc"], "documento": (f["nc"] or "").strip(), "tipo": f["tipo"],
                     "proveedorDocumento": f["provf"], "motivo": f["motivo"]})
