@@ -93,7 +93,7 @@ export function RevisionComprasEnFormulario() {
               onChange={(e) => e.target.value && mover.mutate({ id: d.idDocumentoNuevo, modulo: e.target.value as ModuloAviso })}
               className="rounded-md border border-border px-2 py-1 text-xs">
               <option value="">Es de otro módulo…</option>
-              {(["cuentas_corrientes", "pagos", "impuestos", "ventas", "tesoreria"] as ModuloAviso[]).map((m) => (
+              {(["cuentas_corrientes", "pagos", "impuestos", "ventas", "granos", "tesoreria"] as ModuloAviso[]).map((m) => (
                 <option key={m} value={m}>{ETIQUETA_MODULO[m]}</option>
               ))}
             </select>

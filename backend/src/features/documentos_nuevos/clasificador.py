@@ -326,7 +326,10 @@ def clasificar(texto: str, buscar_contacto=None) -> Clasificacion:
         return Clasificacion(comprobante=False)
     emisores = [c for c in cuits(texto) if c not in (GIAMIGLI, SERGIO)]
     cuit = emisores[0] if emisores else None
-    c = Clasificacion(comprobante=True, tipo=tipo, modulo=MODULO[tipo], cuit_emisor=cuit, fecha=fecha_de(texto),
+    modulo = MODULO[tipo]
+    if tipo == "liquidacion" and re.search(r"LIQUIDACI[OÓ]N PRIMARIA DE GRANOS|LPG|GRANOS", texto.upper()):
+        modulo = "granos"  # 24/11/2026: liquidación de granos → Ventas de granos (no hacienda)
+    c = Clasificacion(comprobante=True, tipo=tipo, modulo=modulo, cuit_emisor=cuit, fecha=fecha_de(texto),
                       numero=numero_de(texto), total=total_de(texto))
     if not c.numero and re.search(r"P[OÓ]LIZA", texto, re.I) and re.search(r"\bPREMIO\b", texto, re.I):
         c.numero = numero_poliza(texto)
@@ -399,7 +402,7 @@ def carpeta_y_nombre(c: Clasificacion, nombre_original: str) -> tuple[Path, str]
         return PAGOS / ejercicio, f"{fecha:%Y%m%d}_{contacto}_Recibo_{_seguro(c.numero or Path(nombre_original).stem)}.pdf"
     if c.modulo == "impuestos":
         return IMPUESTOS / ejercicio, f"{fecha:%Y%m%d}_{contacto}.pdf"
-    if c.modulo == "ventas":
+    if c.modulo in ("ventas", "granos"):
         return VENTAS / ejercicio, f"{fecha:%Y%m%d}_{contacto}.pdf"
     return COMPRAS / ejercicio, f"{fecha:%Y%m%d}_{contacto}.pdf"
 

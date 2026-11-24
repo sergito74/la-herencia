@@ -540,6 +540,26 @@ def _clave_numero(numero: str | None) -> tuple[int, int] | None:
     return (int(m.group(1)), int(m.group(2))) if m else None
 
 
+def venta_granos_existente(numero: str | None) -> dict | None:
+    """Liquidación de granos ya cargada en Ventas de granos (24/11/2026): mismo número de COE, solo dígitos
+    ("3301-32967323" = "330132967323"). Devuelve `{idVenta, ruta}` como venta_hacienda_existente."""
+    import re
+
+    digitos = re.sub(r"\D", "", numero or "")
+    if len(digitos) < 8:
+        return None
+    fila = fetch_one("SELECT TOP 1 IdVenta AS idVenta, [Documento Original] AS d FROM dbo.[Venta Granos] "
+                     "WHERE REPLACE(REPLACE([Nro Documento], '-', ''), ' ', '') = ? ORDER BY IdVenta", (digitos,))
+    if not fila:
+        return None
+    ruta = (fila["d"] or "").split("#")[0].strip('"') or None
+    if ruta and ruta.startswith(".."):  # "..\Ventas\..." heredado de Access: relativo a Dropbox/Giamigli de Bolivar SA
+        from pathlib import Path
+
+        ruta = str(Path.home() / "Dropbox" / "Giamigli de Bolivar SA" / re.sub(r"^(\.\.[\\/])+", "", ruta))
+    return {"idVenta": fila["idVenta"], "ruta": ruta}
+
+
 def venta_hacienda_existente(numero: str | None, fecha=None) -> dict | None:
     """Liquidación de hacienda ya cargada a mano en Ventas (043): mismo número de comprobante, normalizado a
     `PPPP-NNNNNNNN` ("11-82156" = "0011-00082156"). Devuelve `{idVenta, ruta}`."""

@@ -27,7 +27,7 @@ interface NavLeaf {
 }
 
 /** Clave del resumen de documentos nuevos; Compras suma lo "sin clasificar" (se revisa desde Compras). */
-type AvisoNuevos = "compras" | "ventas" | "tesoreria" | "cuentasCorrientes" | "impuestos" | "pagos";
+type AvisoNuevos = "compras" | "ventas" | "granos" | "tesoreria" | "cuentasCorrientes" | "impuestos" | "pagos";
 
 function cantidadNuevos(r: ResumenNuevos | undefined, aviso: AvisoNuevos | undefined): number {
   if (!r || !aviso) return 0;
@@ -110,7 +110,7 @@ const NAV_ITEMS: NavItem[] = [
     icon: ICONS.ventas,
     submenu: [
       { href: "/ventas/hacienda", label: "Hacienda", nuevos: "ventas" },
-      { href: "/ventas/granos", label: "Granos" },
+      { href: "/ventas/granos", label: "Granos", nuevos: "granos" },
       { href: "/ventas/pastaje", label: "Pastaje" },
     ],
   },

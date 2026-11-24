@@ -48,7 +48,8 @@ def test_san_justo_se_ignora():
 
 def test_modulos_por_tipo():
     assert c.clasificar("CERTIFICADO DE RETENCION Ganancias", None).modulo == "impuestos"
-    assert c.clasificar("LIQUIDACION PRIMARIA DE GRANOS N 3301", None).modulo == "ventas"
+    assert c.clasificar("LIQUIDACION PRIMARIA DE GRANOS N 3301", None).modulo == "granos"  # 24/11/2026
+    assert c.clasificar("LIQUIDACION DE HACIENDA N 0011-00082156", None).modulo == "ventas"
     assert c.clasificar("CONTRATO DE COMPRAVENTA de soja", None).modulo == "ventas"
     assert c.clasificar("RESUMEN DE CUENTA al 30/09/2026 Agrovet", None).modulo == "cuentas_corrientes"
 

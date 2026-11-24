@@ -169,7 +169,7 @@ def _carpeta(tipo: str, fecha: date) -> Path:
     """Carpeta donde Sergio ya guarda cada clase de documento: liquidaciones de granos en Ventas del
     ejercicio, certificados de retención en Ventas/Retenciones del ejercicio, el resto en Compras."""
     ejercicio = carpeta_ejercicio(fecha).name
-    if tipo == "liquidacion":
+    if tipo in ("liquidacion", "liquidacion_granos"):
         return VENTAS / ejercicio
     if tipo == "certificado":
         return VENTAS / f"Retenciones {ejercicio}"
@@ -239,7 +239,8 @@ def _procesar(portal: dict, conector, cred: Credencial, id_corrida: int) -> dict
                 sha = hashlib.sha256(contenido).hexdigest()
                 fecha = doc.fecha or date.today()
                 carpeta = _carpeta(doc.tipo, fecha)
-                venta = repository.venta_hacienda_existente(doc.numero, doc.fecha) if doc.tipo == "liquidacion" else None
+                venta = (repository.venta_hacienda_existente(doc.numero, doc.fecha) if doc.tipo == "liquidacion"
+                         else repository.venta_granos_existente(doc.numero) if doc.tipo == "liquidacion_granos" else None)
                 ruta_venta = venta["ruta"] if venta and venta["ruta"] and Path(venta["ruta"]).exists() else None
                 ruta_igual = (repository.existe_sha(sha) or _archivo_igual(carpeta, sha, indice)
                               or _archivo_de_compra(doc) or ruta_venta)

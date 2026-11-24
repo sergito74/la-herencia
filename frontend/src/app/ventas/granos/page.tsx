@@ -15,7 +15,7 @@ export default function VentasGranosPage() {
   return (
     <main className="mx-auto max-w-none px-6 py-3">
       <Suspense fallback={null}>
-        <NuevosParaRevisar modulo="ventas" />
+        <NuevosParaRevisar modulo="granos" />
       </Suspense>
       <PageHeader titulo="Ventas de granos">
         <SoloLectura>

@@ -7,13 +7,14 @@ import { apiGet, apiPost } from "@/services/apiClient";
 
 const BASE = "/api/documentos-nuevos";
 
-export type ModuloAviso = "compras" | "impuestos" | "ventas" | "tesoreria" | "cuentas_corrientes" | "sin_clasificar" | "pagos";
+export type ModuloAviso = "compras" | "impuestos" | "ventas" | "granos" | "tesoreria" | "cuentas_corrientes" | "sin_clasificar" | "pagos";
 
 export interface ResumenNuevos {
   pagos: number;
   compras: number;
   impuestos: number;
   ventas: number;
+  granos: number;
   tesoreria: number;
   cuentasCorrientes: number;
   sinClasificar: number;
@@ -77,7 +78,8 @@ export const ETIQUETA_MODULO: Record<ModuloAviso, string> = {
   pagos: "Pagos y recibos",
   compras: "Compras",
   impuestos: "Impuestos y retenciones",
-  ventas: "Ventas",
+  ventas: "Ventas de hacienda",
+  granos: "Ventas de granos",
   tesoreria: "Tesorería",
   cuentas_corrientes: "Cuentas corrientes",
   sin_clasificar: "Sin clasificar",

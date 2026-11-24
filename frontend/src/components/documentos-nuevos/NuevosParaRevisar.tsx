@@ -17,11 +17,12 @@ const CARGA_MANUAL: Partial<Record<ModuloAviso, { href: string; texto: string }>
   pagos: { href: "/finanzas/ordenes-pago", texto: "Vincular recibo" },
   compras: { href: "/compras/nueva", texto: "Cargar compra" },
   impuestos: { href: "/finanzas/impuestos/nueva", texto: "Cargar impuesto" },
-  ventas: { href: "/ventas/hacienda/nueva", texto: "Cargar venta" },
+  ventas: { href: "/ventas/hacienda/nueva", texto: "Cargar venta de hacienda" },
+  granos: { href: "/ventas/granos/nueva", texto: "Cargar venta de granos" },
   tesoreria: { href: "/finanzas/tesoreria", texto: "Ir a importar el resumen" },
 };
 
-const DESTINOS: ModuloAviso[] = ["compras", "impuestos", "ventas", "tesoreria", "cuentas_corrientes", "pagos"];
+const DESTINOS: ModuloAviso[] = ["compras", "impuestos", "ventas", "granos", "tesoreria", "cuentas_corrientes", "pagos"];
 
 function Detalle({ d, admin }: { d: DocumentoNuevo; admin: boolean }) {
   const qc = useQueryClient();

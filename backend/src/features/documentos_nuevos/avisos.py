@@ -23,6 +23,8 @@ DESTINO_PORTAL = {
     "recibo": ("recibo", "pagos"),
     "factura": ("factura", "compras"), "nota_credito": ("nota_credito", "compras"),
     "nota_debito": ("nota_debito", "compras"), "liquidacion": ("liquidacion", "ventas"),
+    # 24/11/2026: las liquidaciones de granos (Cargill) van a Ventas de granos, no a Ventas de hacienda.
+    "liquidacion_granos": ("liquidacion", "granos"),
     "certificado": ("retencion", "impuestos"),
 }
 

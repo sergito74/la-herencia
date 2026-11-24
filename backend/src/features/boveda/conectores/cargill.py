@@ -31,7 +31,7 @@ PARAMS = "source=JDEAR&role=DXP_GPS_Role_Client"
 CUSTOMER_ID = "35192801"
 ID_CONTACTO = 258
 
-TIPOS = {"RI": "factura", "RM": "nota_credito", "RT": "nota_debito", "L#": "liquidacion", "H7": "liquidacion", "$I": "certificado",
+TIPOS = {"RI": "factura", "RM": "nota_credito", "RT": "nota_debito", "L#": "liquidacion_granos", "H7": "liquidacion_granos", "$I": "certificado",
          "$B": "certificado"}
 
 
