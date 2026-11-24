@@ -451,7 +451,13 @@ export function VentaGranosForm({
           ).map(([key, label, value, setter]) => (
             <label key={key} className="flex flex-col gap-0.5 text-ink-secondary">
               {label}
-              <MoneyInput className={`${inputCompacto} w-24 text-right font-data`} value={value} moneda="Pesos" onChange={setter} />
+              {key === "alicuotaIVA" ? (
+                // 24/11/2026: es un porcentaje, no un importe (antes se veía «$ 10,50»).
+                <NumberInput className={`${inputCompacto} w-24 text-right font-data`} value={value} maxDecimales={2}
+                  onChange={(v) => setter(v ?? 0)} title="Alícuota de IVA en %" />
+              ) : (
+                <MoneyInput className={`${inputCompacto} w-24 text-right font-data`} value={value} moneda="Pesos" onChange={setter} />
+              )}
             </label>
           ))}
         </div>
