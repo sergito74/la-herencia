@@ -1,11 +1,12 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 
 import { ErrorState, LoadingState } from "@/components/ui/States";
 import { formatCantidad, formatFecha } from "@/lib/format";
-import { apiGet } from "@/services/apiClient";
+import { apiGet, apiPost } from "@/services/apiClient";
+import { SoloLectura } from "@/components/auth/SoloLectura";
 
 interface RemitoSinFactura {
   idRemito: number;
@@ -58,6 +59,77 @@ const fetchPendientes = () =>
   }>("/api/stock/pendientes-carga");
 
 /** 050: lo que falta cargar para que el costo de los insumos cierre. Solo acciones concretas, por documento. */
+interface Aceptado {
+  idAceptado: number;
+  tipo: "sin_factura" | "vinculo" | "sin_costo";
+  idRemito: number | null;
+  remito: string | null;
+  fecha: string | null;
+  proveedor: string | null;
+  documento: string | null;
+  producto: string | null;
+  motivo: string;
+  usuario: string | null;
+  aceptado: string;
+}
+
+type Marca = { tipo: Aceptado["tipo"]; idRemito?: number; idCompra?: number; idProducto?: number };
+
+/** 24/11/2026: excepción aprobada = marca en los datos (quién, cuándo, motivo), no una lista en el código. */
+function BotonAceptar({ marca }: { marca: Marca }) {
+  const qc = useQueryClient();
+  const m = useMutation({
+    mutationFn: (motivo: string) => apiPost("/api/stock/pendientes-carga/aceptar", { ...marca, motivo }),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["pendientes-carga"] }); qc.invalidateQueries({ queryKey: ["pendientes-aceptados"] }); },
+  });
+  return (
+    <SoloLectura>
+      <button type="button" disabled={m.isPending} className="text-xs text-ink-secondary underline disabled:opacity-40"
+        title="Queda registrado con tu usuario, la fecha y el motivo; se puede quitar después"
+        onClick={() => { const motivo = window.prompt("¿Por qué se acepta así? (queda registrado)"); if (motivo && motivo.trim().length >= 3) m.mutate(motivo.trim()); }}>
+        Revisado y aceptado
+      </button>
+      {m.isError && <span className="text-xs text-status-danger">{(m.error as Error).message}</span>}
+    </SoloLectura>
+  );
+}
+
+const TIPO_ACEPTADO: Record<Aceptado["tipo"], string> = {
+  sin_factura: "Remito sin factura", vinculo: "Vínculo a otro documento", sin_costo: "Consumo sin costo",
+};
+
+function Aceptados() {
+  const qc = useQueryClient();
+  const q = useQuery({ queryKey: ["pendientes-aceptados"], queryFn: () => apiGet<Aceptado[]>("/api/stock/pendientes-carga/aceptados") });
+  const quitar = useMutation({
+    mutationFn: (id: number) => apiPost(`/api/stock/pendientes-carga/aceptados/${id}/quitar`, {}),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["pendientes-carga"] }); qc.invalidateQueries({ queryKey: ["pendientes-aceptados"] }); },
+  });
+  const filas = q.data ?? [];
+  if (!filas.length) return null;
+  return (
+    <details className="rounded border bg-white text-sm">
+      <summary className="cursor-pointer p-3 font-medium">Revisados y aceptados ({filas.length})</summary>
+      <ul className="divide-y">
+        {filas.map((a) => (
+          <li key={a.idAceptado} className="flex flex-wrap items-center justify-between gap-2 p-3">
+            <span>
+              <strong>{TIPO_ACEPTADO[a.tipo]}</strong> · {a.producto ?? `${a.proveedor ?? ""} remito ${a.remito ?? ""}${a.fecha ? ` del ${formatFecha(a.fecha)}` : ""}`}
+              {a.documento ? ` → ${a.documento}` : ""} — {a.motivo}
+              <span className="text-xs text-ink-secondary"> ({a.usuario ?? "—"}, {formatFecha(a.aceptado)})</span>
+            </span>
+            <SoloLectura>
+              <button type="button" disabled={quitar.isPending} className="text-xs text-ink-secondary underline" onClick={() => quitar.mutate(a.idAceptado)}>
+                Quitar la marca
+              </button>
+            </SoloLectura>
+          </li>
+        ))}
+      </ul>
+    </details>
+  );
+}
+
 export function ControlCierre() {
   const { data, isLoading, isError, refetch } = useQuery({ queryKey: ["pendientes-carga"], queryFn: fetchPendientes, staleTime: 0 });
   if (isLoading) return <LoadingState />;
@@ -69,7 +141,12 @@ export function ControlCierre() {
   const ajenos = data?.vinculosQueNoCorresponden ?? [];
 
   if (!remitos.length && !usados.length && !sinCosto.length && !sobre.length && !ajenos.length) {
-    return <p className="rounded border bg-white p-4 text-sm">No hay nada pendiente de carga.</p>;
+    return (
+      <div className="space-y-3">
+        <p className="rounded border bg-white p-4 text-sm">No hay nada pendiente de carga.</p>
+        <Aceptados />
+      </div>
+    );
   }
   return (
     <div className="space-y-6">
@@ -83,9 +160,12 @@ export function ControlCierre() {
                 <span>
                   <strong>{r.proveedor}</strong> · remito {r.remito} del {formatFecha(r.fecha)} · {r.productos.join(", ")}
                 </span>
-                <Link className="text-finance underline" href={`/produccion/remitos/${r.idRemito}`}>
-                  Abrir el remito
-                </Link>
+                <span className="flex items-center gap-3">
+                  <BotonAceptar marca={{ tipo: "sin_factura", idRemito: r.idRemito }} />
+                  <Link className="text-finance underline" href={`/produccion/remitos/${r.idRemito}`}>
+                    Abrir el remito
+                  </Link>
+                </span>
               </li>
             ))}
           </ul>
@@ -124,9 +204,12 @@ export function ControlCierre() {
                 <span>
                   <strong>{v.proveedor}</strong> · remito {v.remito} del {formatFecha(v.fecha)} · {v.producto} → {v.documento} de {v.proveedorDocumento} ({v.motivo})
                 </span>
-                <Link className="text-finance underline" href={`/produccion/remitos/${v.idRemito}`}>
-                  Abrir el remito
-                </Link>
+                <span className="flex items-center gap-3">
+                  <BotonAceptar marca={{ tipo: "vinculo", idRemito: v.idRemito, idCompra: v.idCompra }} />
+                  <Link className="text-finance underline" href={`/produccion/remitos/${v.idRemito}`}>
+                    Abrir el remito
+                  </Link>
+                </span>
               </li>
             ))}
           </ul>
@@ -160,13 +243,15 @@ export function ControlCierre() {
           </p>
           <ul className="divide-y rounded border bg-white text-sm">
             {sinCosto.map((c) => (
-              <li key={c.idProducto} className="p-3">
-                <strong>{c.producto}</strong>: {formatCantidad(c.cantidad)} {c.unidad ?? ""} sin costo
+              <li key={c.idProducto} className="flex flex-wrap items-center justify-between gap-2 p-3">
+                <span><strong>{c.producto}</strong>: {formatCantidad(c.cantidad)} {c.unidad ?? ""} sin costo</span>
+                <BotonAceptar marca={{ tipo: "sin_costo", idProducto: c.idProducto }} />
               </li>
             ))}
           </ul>
         </section>
       )}
+      <Aceptados />
     </div>
   );
 }

@@ -5,9 +5,11 @@ from __future__ import annotations
 import json
 from datetime import date
 
-from fastapi import APIRouter, Form, HTTPException, Response, UploadFile
+from fastapi import APIRouter, Depends, Form, HTTPException, Request, Response, UploadFile
+from pydantic import BaseModel
 from starlette.concurrency import run_in_threadpool
 
+from src.features.boveda.router import exigir_admin, usuario_actual
 from src.features.remitos import catalogo, control_cierre, exportacion, recuento, stock_repo
 from src.features.remitos.repository import RequiereConfirmacion
 from src.features.remitos.router import _ejecutar
@@ -73,6 +75,34 @@ async def set_equivalencia(id_producto: int, body: EquivalenciaIn) -> None:
 async def pendientes_carga() -> dict:
     """050: remitos sin factura e insumos usados sin remito de entrada, para cargar lo que falta."""
     return await _ejecutar(control_cierre.pendientes)
+
+
+class Aceptacion(BaseModel):
+    tipo: str
+    motivo: str
+    idRemito: int | None = None
+    idDetalleRemito: int | None = None
+    idCompra: int | None = None
+    idProducto: int | None = None
+
+
+@router.get("/pendientes-carga/aceptados")
+async def aceptados() -> list[dict]:
+    """24/11/2026: marcas «revisado y aceptado» vigentes del control de remitos."""
+    return await run_in_threadpool(control_cierre.aceptados)
+
+
+@router.post("/pendientes-carga/aceptar", status_code=201, dependencies=[Depends(exigir_admin)])
+async def aceptar(body: Aceptacion, request: Request) -> dict:
+    id_ = await _ejecutar(control_cierre.aceptar, body.tipo, body.idRemito, body.motivo, usuario_actual(request),
+                          body.idDetalleRemito, body.idCompra, body.idProducto)
+    return {"idAceptado": id_}
+
+
+@router.post("/pendientes-carga/aceptados/{id_aceptado}/quitar", status_code=204, dependencies=[Depends(exigir_admin)])
+async def quitar_aceptado(id_aceptado: int) -> None:
+    if not await run_in_threadpool(control_cierre.quitar_aceptado, id_aceptado):
+        raise HTTPException(status_code=404, detail="La marca no existe o ya estaba quitada")
 
 
 @router.get("/existencias")

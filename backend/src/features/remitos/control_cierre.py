@@ -26,16 +26,66 @@ from src.features.remitos.stock_datos import calcular_stock
 INICIO = date(2025, 5, 12)  # recuento de apertura de la imputación automática
 VENTANA_BAYA = 270  # días: Bayá factura al vencimiento de cada pedido
 _SEMILLA_PROPIA = "GIAMIGLI"  # proveedor Giamigli = semilla propia, sin factura
-_PRODUCTOS_SIN_FACTURA = {40958}  # Flumeyt: única entrada histórica sin factura (Sergio 21/11/2026), ya consumido
-# Sin facturar, ya consumidos (Sergio 24/11/2026): Tordon 24K 5 L Lartirigoyen 22/11/2019; Betito 300 kg Yanquelen
-# 30/11/2020 (Yanquelen mandó la semilla y no la facturó)
-# y Calén INTA 2.058 kg Yanquelen 24/05/2023 (desde San Emilio, nunca facturada)
-_RENGLONES_SIN_FACTURA = {163, 239, 371}
-# (IdRemito, IdCompra) de otro proveedor verificados como correctos: Emerge 75 L comprado a Tierras de Henderson y
-# entregado con remito de Sunanco (Sergio 24/11/2026)
-# Sergio 24/11/2026: Syngenta (Dividend vía Sunanco, Power Plus vía Henderson), Betito 2019 = semilla propia valorizada
-# por la clasificación de Garnica (Heredia), LT725TRE facturado y anulado por NC con devolución en el mismo remito.
-_VINCULOS_ACEPTADOS = {(126, 2143513222), (121, 2143513221), (121, 2143513222), (82, 2143512373), (200, 2143517472)}
+# 24/11/2026 (Sergio): las excepciones aprobadas (remito sin factura aceptado, vínculo a otro proveedor aceptado) son
+# DATOS: marca «revisado y aceptado» en dbo.ControlRemitosAceptados (quién, cuándo, motivo), no listas en el código.
+
+
+def _aceptados_sin_factura() -> set[int]:
+    """Renglones de remito aceptados sin factura (la marca sin renglón acepta todo el remito)."""
+    return {int(f["d"]) for f in fetch_all(
+        "SELECT rd.IdDetalleRemito AS d FROM dbo.ControlRemitosAceptados a JOIN dbo.Remitos_Detalles rd "
+        "ON rd.IdRemito = a.IdRemito AND (a.IdDetalleRemito IS NULL OR a.IdDetalleRemito = rd.IdDetalleRemito) "
+        "WHERE a.Vigente = 1 AND a.Tipo = 'sin_factura'")}
+
+
+def _sin_costo_aceptados() -> set[int]:
+    return {int(f["p"]) for f in fetch_all(
+        "SELECT IdProducto AS p FROM dbo.ControlRemitosAceptados WHERE Vigente = 1 AND Tipo = 'sin_costo' AND IdProducto IS NOT NULL")}
+
+
+def _vinculos_aceptados() -> set[tuple[int, int]]:
+    return {(int(f["r"]), int(f["c"])) for f in fetch_all(
+        "SELECT IdRemito AS r, IdCompra AS c FROM dbo.ControlRemitosAceptados WHERE Vigente = 1 AND Tipo = 'vinculo' "
+        "AND IdCompra IS NOT NULL")}
+
+
+def aceptar(tipo: str, id_remito: int | None, motivo: str, usuario: str | None, id_detalle: int | None = None,
+            id_compra: int | None = None, id_producto: int | None = None) -> int:
+    from src.db.connection import execute_insert_returning_id
+
+    if tipo not in ("sin_factura", "vinculo", "sin_costo"):
+        raise ValueError(["Tipo de marca desconocido."])
+    if not (motivo or "").strip() or len(motivo.strip()) < 3:
+        raise ValueError(["Escribí por qué se acepta."])
+    if tipo == "vinculo" and not id_compra:
+        raise ValueError(["Falta la factura del vínculo."])
+    if tipo == "sin_costo" and not id_producto:
+        raise ValueError(["Falta el producto."])
+    if tipo != "sin_costo" and not id_remito:
+        raise ValueError(["Falta el remito."])
+    return execute_insert_returning_id(
+        "INSERT INTO dbo.ControlRemitosAceptados (Tipo, IdRemito, IdDetalleRemito, IdCompra, IdProducto, Motivo, Usuario) "
+        "OUTPUT INSERTED.IdAceptado VALUES (?, ?, ?, ?, ?, ?, ?)",
+        (tipo, id_remito, id_detalle, id_compra, id_producto, motivo.strip()[:300], (usuario or "")[:60] or None))
+
+
+def quitar_aceptado(id_aceptado: int) -> int:
+    from src.db.connection import execute_write
+
+    return execute_write("UPDATE dbo.ControlRemitosAceptados SET Vigente = 0 WHERE IdAceptado = ? AND Vigente = 1",
+                         (id_aceptado,))
+
+
+def aceptados() -> list[dict]:
+    return fetch_all(
+        """SELECT a.IdAceptado AS idAceptado, a.Tipo AS tipo, a.IdRemito AS idRemito, r.NroRemito AS remito, r.Fecha AS fecha,
+                  co.[Razon Social] AS proveedor, a.IdCompra AS idCompra, c.[Nro Documento] AS documento, a.Motivo AS motivo,
+                  a.Usuario AS usuario, a.Fecha AS aceptado, pr.Producto AS producto
+           FROM dbo.ControlRemitosAceptados a LEFT JOIN dbo.Remitos r ON r.IdRemito = a.IdRemito
+           LEFT JOIN dbo.vw_ProductosBase pr ON pr.IdProducto = a.IdProducto
+           LEFT JOIN dbo.Contactos co ON co.IdContacto = COALESCE(r.IdContacto, r.IdProveedor)
+           LEFT JOIN dbo.Compras c ON c.IdDeuda = a.IdCompra
+           WHERE a.Vigente = 1 ORDER BY a.Fecha DESC""")
 
 
 def _norm(t) -> str:
@@ -43,6 +93,8 @@ def _norm(t) -> str:
 
 
 def pendientes() -> dict:
+    sin_factura_ok = _aceptados_sin_factura()
+    sin_costo_ok = _sin_costo_aceptados()
     remitos: dict[int, dict] = {}
     hoy = date.today()
     for f in fetch_all(
@@ -62,7 +114,7 @@ def pendientes() -> dict:
         """
     ):
         prov = _norm(f["prov"])
-        if _SEMILLA_PROPIA in prov or int(f["idp"] or 0) in _PRODUCTOS_SIN_FACTURA or f["d"] in _RENGLONES_SIN_FACTURA:
+        if _SEMILLA_PROPIA in prov or f["d"] in sin_factura_ok:
             continue
         if "BAYA CASAL" in prov and (hoy - f["f"].date()).days <= VENTANA_BAYA:
             continue
@@ -75,7 +127,7 @@ def pendientes() -> dict:
     excluidos = {int(x["d"]) for x in fetch_all(
         """SELECT rd.IdDetalleRemito d FROM dbo.Remitos_Detalles rd JOIN dbo.Remitos r ON r.IdRemito = rd.IdRemito
            LEFT JOIN dbo.Contactos co ON co.IdContacto = COALESCE(r.IdContacto, r.IdProveedor)
-           WHERE UPPER(co.[Razon Social]) LIKE ? OR rd.IdFormulado IN (40958)""", ("%" + _SEMILLA_PROPIA + "%",))} | _RENGLONES_SIN_FACTURA
+           WHERE UPPER(co.[Razon Social]) LIKE ?""", ("%" + _SEMILLA_PROPIA + "%",))} | sin_factura_ok
     sin_entrada, sin_costo = [], []
     for pid, s in stock.items():
         ordenes = defaultdict(float)
@@ -91,7 +143,7 @@ def pendientes() -> dict:
                 capa = str(it.get("capa"))
                 if it.get("costo_unitario") is None and not (capa.startswith("R") and capa[1:].isdigit() and int(capa[1:]) in excluidos):
                     pend += float(it.get("cantidad") or 0)
-        if pend > 0.005 and pid not in _PRODUCTOS_SIN_FACTURA:
+        if pend > 0.005 and pid not in sin_costo_ok:
             sin_costo.append({"idProducto": pid, "producto": nombres.get(pid, f"Producto {pid}"), "unidad": s.get("unidadBase"),
                               "cantidad": round(pend, 3)})
         if ordenes:
@@ -124,6 +176,7 @@ def sobre_vinculadas() -> list[dict]:
 
 def vinculos_que_no_corresponden() -> list[dict]:
     """Remito vinculado a una factura de otro proveedor, a una nota de débito/crédito o a un renglón que no se imputa."""
+    vinculos_ok = _vinculos_aceptados()
     out = []
     for f in fetch_all(
         """
@@ -148,14 +201,14 @@ def vinculos_que_no_corresponden() -> list[dict]:
                           AND tz.Destino = 'NoImputa'))
         ORDER BY r.Fecha
         """):
-        if (f["idr"], f["idc"]) in _VINCULOS_ACEPTADOS:
+        if (f["idr"], f["idc"]) in vinculos_ok:
             continue
         out.append({"idRemito": f["idr"], "remito": (f["nr"] or "").strip(), "fecha": f["fr"], "proveedor": f["provr"],
                     "producto": f["prod"], "idCompra": f["idc"], "documento": (f["nc"] or "").strip(), "tipo": f["tipo"],
                     "proveedorDocumento": f["provf"], "motivo": f["motivo"]})
     vistos = {(o["idRemito"], o["idCompra"]) for o in out}
     for o in facturas_anuladas_por_nc():
-        if (o["idRemito"], o["idCompra"]) not in vistos and (o["idRemito"], o["idCompra"]) not in _VINCULOS_ACEPTADOS:
+        if (o["idRemito"], o["idCompra"]) not in vistos and (o["idRemito"], o["idCompra"]) not in vinculos_ok:
             out.append(o)
     return sorted(out, key=lambda o: str(o["fecha"]))
 
