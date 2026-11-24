@@ -28,11 +28,12 @@ GIAMIGLI = "30712114602"
 TIPO_DOC_LIQUIDACION = 6
 CONCEPTO_GASTOS, CONCEPTO_OTRAS = 1, 2
 TOLERANCIA = 0.05  # $: el neto del sistema contra el impreso
-# Código de grano ARCA → producto de Ventas de granos (Granos). Maíz y soja se toman como de primera: si la campaña tuvo
-# también maíz diferido / soja de segunda, la venta queda marcada para revisar el grano.
+# Código de grano ARCA → producto de Ventas de granos (Granos). La soja se toma como de primera: si la campaña tuvo
+# también soja de segunda, la venta queda marcada para revisar el grano.
 GRANO_ARCA = {"19": "Maiz", "23": "Soja primera", "2": "Trigo", "15": "Trigo", "1": "Trigo", "3": "Cebada",
               "6": "Sorgo", "26": "Sorgo", "13": "Girasol", "4": "Avena"}
-ALTERNATIVA = {"Maiz": "Maiz diferido", "Soja primera": "Soja segunda"}
+# El maíz diferido se consume con la hacienda (Sergio 24/11/2026): una LPG de maíz es maíz de primera, sin aviso.
+ALTERNATIVA = {"Soja primera": "Soja segunda"}
 INVIERNO = {"Trigo", "Cebada", "Avena"}
 
 
