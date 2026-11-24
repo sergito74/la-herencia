@@ -48,11 +48,14 @@ export function VentaGranosForm({
   idVenta,
   initial,
   consignatarioNombreInicial,
+  prefill,
 }: {
   mode: "alta" | "edicion";
   idVenta?: number;
   initial?: VentaGranosDetalle;
   consignatarioNombreInicial?: string | null;
+  /** Alta desde un aviso de Documentos nuevos (liquidación bajada del portal): arranca con el PDF y sus datos. */
+  prefill?: { idConsignatario?: number | null; consignatario?: string | null; fecha?: string; numeroDocumento?: string; documentoOriginal?: string };
 }) {
   const router = useRouter();
   const { showToast } = useToast();
@@ -63,16 +66,16 @@ export function VentaGranosForm({
     staleTime: Infinity,
   });
 
-  const [idConsignatario, setIdConsignatario] = useState<number | null>(initial?.idConsignatario ?? null);
+  const [idConsignatario, setIdConsignatario] = useState<number | null>(initial?.idConsignatario ?? prefill?.idConsignatario ?? null);
   const [consignatarioNombre, setConsignatarioNombre] = useState<string | null>(
-    consignatarioNombreInicial ?? initial?.consignatario ?? null
+    consignatarioNombreInicial ?? initial?.consignatario ?? prefill?.consignatario ?? null
   );
   const [idTipoDocumento, setIdTipoDocumento] = useState<string>(
     initial?.idTipoDocumento ? String(initial.idTipoDocumento) : ""
   );
   const [idProducto, setIdProducto] = useState<string>(initial?.idProducto ? String(initial.idProducto) : "");
-  const [numeroDocumento, setNumeroDocumento] = useState(initial?.numeroDocumento ?? "");
-  const [fecha, setFecha] = useState(initial?.fecha ?? "");
+  const [numeroDocumento, setNumeroDocumento] = useState(initial?.numeroDocumento ?? prefill?.numeroDocumento ?? "");
+  const [fecha, setFecha] = useState(initial?.fecha ?? prefill?.fecha ?? "");
   const [precioUnitario, setPrecioUnitario] = useState(initial?.precioUnitario ?? 0);
   const [tipoCambio, setTipoCambio] = useState<number | null>(initial?.tipoCambio ?? null);
   const [gradoOperacion, setGradoOperacion] = useState(initial?.gradoOperacion ?? "");
@@ -95,7 +98,7 @@ export function VentaGranosForm({
   const [honorariosCamara, setHonorariosCamara] = useState(initial?.honorariosCamara ?? 0);
   const [aCuentaCalidad, setACuentaCalidad] = useState(initial?.aCuentaCalidad ?? 0);
   const [iibb, setIibb] = useState(initial?.iibb ?? 0);
-  const [documentoOriginal, setDocumentoOriginal] = useState(initial?.documentoOriginal ?? "");
+  const [documentoOriginal, setDocumentoOriginal] = useState(initial?.documentoOriginal ?? prefill?.documentoOriginal ?? "");
 
   const [ajustes, setAjustes] = useState<AjusteInput[]>(
     initial?.ajustes.map((a) => ({

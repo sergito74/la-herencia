@@ -387,7 +387,24 @@ def create_venta(cabecera: dict, ajustes: list[dict], deducciones: list[dict]) -
         statements.append(_deduccion_insert_statement(deduccion))
 
     results = execute_write_transaction(statements)
+    vincular_aviso(results[0], cabecera.get("numeroDocumento"), cabecera.get("documentoOriginal"))
     return results[0]
+
+
+def vincular_aviso(id_venta: int, numero: str | None, documento_original: str | None) -> int:
+    """24/11/2026: la liquidación que avisó la bóveda (Documentos nuevos, módulo granos) queda atada a la venta recién
+    cargada: mismo número de COE (solo dígitos) o el mismo PDF. Nunca corta el alta."""
+    import re
+
+    digitos = re.sub(r"\D", "", numero or "")
+    ruta = (documento_original or "").split("#")[0].strip('"')
+    try:
+        return execute_write(
+            "UPDATE dbo.DocumentosNuevos SET IdRegistro = ? WHERE Modulo = 'granos' AND Estado = 'para_cargar' "
+            "AND IdRegistro IS NULL AND ((LEN(?) >= 8 AND REPLACE(REPLACE(Numero, '-', ''), ' ', '') = ?) "
+            "OR (? <> '' AND Ruta = ?))", (id_venta, digitos, digitos, ruta, ruta))
+    except Exception:
+        return 0
 
 
 def update_venta(id_venta: int, cabecera: dict, ajustes: list[dict], deducciones: list[dict]) -> None:

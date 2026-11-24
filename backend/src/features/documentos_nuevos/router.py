@@ -43,6 +43,10 @@ def _enlace(d: dict) -> str | None:
         return f"/finanzas/cuentas-corrientes?idContacto={d['idContacto']}"
     if d["modulo"] == "tesoreria":
         return "/finanzas/tesoreria"
+    if d["modulo"] == "granos" and d["idRegistro"]:
+        return f"/ventas/granos/{d['idRegistro']}/editar"
+    if d["modulo"] == "ventas" and d["idRegistro"]:
+        return f"/ventas/hacienda/{d['idRegistro']}/editar"
     return None
 
 

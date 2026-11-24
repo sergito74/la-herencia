@@ -22,6 +22,18 @@ const CARGA_MANUAL: Partial<Record<ModuloAviso, { href: string; texto: string }>
   tesoreria: { href: "/finanzas/tesoreria", texto: "Ir a importar el resumen" },
 };
 
+/** El formulario de carga arranca con el PDF y los datos del aviso (24/11/2026: antes abría vacío). */
+function hrefCarga(base: string, d: DocumentoNuevo): string {
+  const p = new URLSearchParams();
+  if (d.idContacto) p.set("idContacto", String(d.idContacto));
+  if (d.contacto) p.set("proveedor", d.contacto);
+  if (d.fecha) p.set("fecha", d.fecha.slice(0, 10));
+  if (d.numero) p.set("numeroDocumento", d.numero);
+  if (d.ruta) p.set("documentoOriginal", d.ruta);
+  const q = p.toString();
+  return q ? `${base}${base.includes("?") ? "&" : "?"}${q}` : base;
+}
+
 const DESTINOS: ModuloAviso[] = ["compras", "impuestos", "ventas", "granos", "tesoreria", "cuentas_corrientes", "pagos"];
 
 function Detalle({ d, admin }: { d: DocumentoNuevo; admin: boolean }) {
@@ -92,7 +104,7 @@ function Detalle({ d, admin }: { d: DocumentoNuevo; admin: boolean }) {
           </Link>
         )}
         {admin && d.estado === "para_cargar" && !d.idRegistro && carga && (
-          <Link href={carga.href} className="text-finance hover:underline">{carga.texto}</Link>
+          <Link href={hrefCarga(carga.href, d)} className="text-finance hover:underline">{carga.texto}</Link>
         )}
         {admin && d.modulo === "sin_clasificar" && (
           <span className="flex items-center gap-1">
