@@ -62,3 +62,32 @@ Ver la respuesta en el chat del 24/11/2026.
 6. Los verdeos se agotan dentro de la campaña. Las pasturas se amortizan en 4 años; falta verificarlo con el Estudio, porque la norma no fija la vida útil.
 7. El veterinario es Miguel Basterrechea (contacto 220), con facturas desde 2015 hasta hoy: IATF, tactos y ecografías, sangrados (brucelosis, paratuberculosis), revisión de toros, selección de vaquillonas de compra. Algunos honorarios se cobran en kg de carne.
 8. Los 70 animales en pastaje son vaquillonas de **Ganadera San Justo** (contrato 1, desde 25/09/2026). INMAG es solo el índice de precio. La sanidad la paga el dueño, ya lo dice la cláusula del contrato. Las compras de hacienda existen, pero son raras.
+
+## Historia ganadera encontrada (24/11/2026, solo lectura)
+**Carpeta Documents/La Herencia/Ganaderia** (unos 480 archivos):
+- **Historico Negocio Ganadero (ver 2).xlsx** (03/2024): la planilla de gestión de Sergio, en US$, por campaña 1/7–30/6 de 2015/16 a 2023/24 y por establecimiento (Bolívar / Tapalqué). Cubre:
+  - ventas por categoría, gastos de comercialización y flete;
+  - costos directos, de sanidad e inseminación y de alimentación (silo, avena, pastura, maíz, maíz diferido, sorgo);
+  - margen bruto y MB/ha (entre 205 y 265 ha ganaderas);
+  - capital de reproductores, carga animal, EV y EV/ha.
+  - Solapa Stock Hacienda: recuentos por categoría y fecha, 2 veces por año (marzo/abril y octubre/noviembre, coinciden con la vacunación), de 2016 a 10/2023, con precio por cabeza. Sirve de modelo directo del resultado ganadero.
+- **Actas de vacunación** 2012–2026 (PDF/JPEG, marzo/abril y octubre/noviembre): stock oficial por categoría en cada campaña, también para Tapalqué.
+- **Req Vacunas Oct 26.xlsx:** stock a 10/2026: Toros 8, Vacas 98, Novillo 1, Vaquillonas 2 dientes 30, Vaquillonas preñadas 20, Terneras 15 meses 48, "Terneras Miguel" 70, Terneros 59, Terneras 59. Tiene requerimiento de dosis contra stock y compra.
+- **Sanidad:**
+  - Plan Sanitario Valorizado 2026 (productos con precio US$, dosis por categoría, plan mensual y proyección del rodeo);
+  - Listado de vacunas usadas desde 09/2024 (serie, nro. SENASA, vencimiento);
+  - planillas de caravanas de sangrado 2024–2026 (CUIG CN443 / ZB775);
+  - listado de vacas positivas a paratuberculosis 2024;
+  - Presupuestación Sanidad 2025.
+- **Cría:** planillas de preñez, tactos, ecografías, IATF, toros por año, costo por kg destetado 2020, proyección de madres.
+- **Otros:** DTe y guías (compra de vaquillonas 2021, ventas 2023), boleto y permisos de marca, contratos de capitalización y pastaje, invernada/corral 2012–2015, Modelo_Rodeo_Escenarios 2025.
+
+**Mails (store La Herencia/Ganaderia, 1.187 mails de 2013 a 2021):**
+- Consignatarios: JyM de la Serna, Río Bermejo, H&L, Colombo, Elordi, Genta, Ferias del Centro, Brazzola, Castillo.
+- Proveedores veterinarios: Agrovet, Alivet, Aicor, Puli-Huen; laboratorios Bolívar y Arlas; FUNDEBO.
+- IATF (Las Lilas, Debernardi).
+- Asociación Angus (criador 19737).
+- SENASA: RENSPA 1088545, débito directo de DTe, inscripción como campo de origen en 2016.
+- Vanina Silva (gestora de guías y caja). Compra de 35 vacas a Yanquelen en 2018.
+- **Tapalqué / "San Pedro":** desde 11/2019 hubo un rodeo propio (~70 vacas) en pastaje en un campo de Tapalqué, con contrato con Duffau Arricau (facturas mensuales 2019–2020). Figura en la planilla hasta 10/2023.
+- 2016: análisis del negocio de vientres con garantía de preñez.
