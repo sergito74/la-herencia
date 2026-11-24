@@ -940,6 +940,11 @@ def delete_compra(id_compra: int) -> None:
     relacionados en cualquier dirección, y su propio lock de edición),
     todo o nada en una sola transacción contra `WC`."""
     statements = [
+        # 24/11/2026: sus imputaciones y su tamiz se dan de baja (quedan como historia); si no, su costo seguía sumando.
+        ("UPDATE p SET p.Estado = 'Reemplazada' FROM dbo.ImputacionPropuestas p JOIN dbo.Det_Compras d "
+         "ON d.IdDetalleCompra = p.IdDetalleCompra WHERE d.IdCompra = ? AND p.Estado <> 'Reemplazada'", (id_compra,)),
+        ("UPDATE t SET t.Vigente = 0 FROM dbo.TamizRenglones t JOIN dbo.Det_Compras d "
+         "ON d.IdDetalleCompra = t.IdDetalleCompra WHERE d.IdCompra = ? AND t.Vigente = 1", (id_compra,)),
         ("DELETE FROM dbo.Det_Compras WHERE IdCompra = ?", (id_compra,)),
         ("DELETE FROM dbo.[Vencimiento Compras] WHERE IdCompra = ?", (id_compra,)),
         (

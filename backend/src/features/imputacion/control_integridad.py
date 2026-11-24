@@ -124,6 +124,19 @@ def _control_dos_imputaciones() -> list[dict]:
 
 
 def _control_huerfanas() -> list[dict]:
+    # 24/11/2026 (Sergio: «que no deje pendientes imputaciones que no son reales»): una imputación de un renglón que ya no
+    # existe nunca es real; se da de baja sola (queda como historia, 'Reemplazada') y solo se avisa si no se pudo.
+    from src.db.connection import execute_write
+
+    try:
+        execute_write("UPDATE p SET p.Estado = 'Reemplazada' FROM dbo.ImputacionPropuestas p WHERE p.Origen <> 'Contratista' "
+                      "AND p.Estado <> 'Reemplazada' AND NOT EXISTS (SELECT 1 FROM dbo.Det_Compras d "
+                      "WHERE d.IdDetalleCompra = p.IdDetalleCompra)")
+        execute_write("UPDATE t SET t.Vigente = 0 FROM dbo.TamizRenglones t WHERE t.Vigente = 1 AND NOT EXISTS "
+                      "(SELECT 1 FROM dbo.Det_Compras d WHERE d.IdDetalleCompra = t.IdDetalleCompra)")
+    except Exception:
+        import logging
+        logging.getLogger(__name__).exception("Control de imputación: no se pudieron dar de baja las huérfanas")
     # Solo las que todavía suman costo (las reemplazadas son historia).
     n = fetch_all("SELECT COUNT(DISTINCT p.IdDetalleCompra) AS n FROM dbo.ImputacionPropuestas p WHERE p.Origen <> 'Contratista' "
                   "AND p.Estado <> 'Reemplazada' AND NOT EXISTS (SELECT 1 FROM dbo.Det_Compras d WHERE d.IdDetalleCompra = p.IdDetalleCompra)")[0]["n"]
