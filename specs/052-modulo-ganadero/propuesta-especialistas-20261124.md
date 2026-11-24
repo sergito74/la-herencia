@@ -91,3 +91,17 @@ Ver la respuesta en el chat del 24/11/2026.
 - Vanina Silva (gestora de guías y caja). Compra de 35 vacas a Yanquelen en 2018.
 - **Tapalqué / "San Pedro":** desde 11/2019 hubo un rodeo propio (~70 vacas) en pastaje en un campo de Tapalqué, con contrato con Duffau Arricau (facturas mensuales 2019–2020). Figura en la planilla hasta 10/2023.
 - 2016: análisis del negocio de vientres con garantía de preñez.
+
+**Mails 2020–2026 (bandeja de entrada):**
+- **Stock al cierre del ejercicio (31/03), que pide el Estudio Criado cada año:**
+  - 31/03/2021: La Herencia 369 + San Pedro 58 = 427 cabezas.
+  - 31/03/2023: 260 vacas, 57 vaquillonas 1-2, 69 terneras, 59 terneros, 8 toritos, 16 toros.
+- **Método de valuación de Sergio (mail del 10/08/2023):**
+  - vacas: kg × precio de Cañuelas (480 kg);
+  - vaquillonas: Cañuelas (330 kg);
+  - terneros y terneras: remates feria de Entre Surcos y Corrales por rango de peso;
+  - toritos: MEJ;
+  - toros usados: 500 kg de novillo de Cañuelas (un toro PC nuevo ≈ 1.000 kg de novillo).
+  - Es la regla a automatizar para el stock a valor de mercado.
+- **San Pedro / Tapalqué:** de ~2019 a 2024, un rodeo propio en pastaje (≈54 vacas y 4 toros) pagado a Juan J. Kahn (JKM) con un índice por cabeza; antes, Duffau Arricau. RENSPA de Tapalqué 01.111.0.00467/13, con stock 0 en 03/2025.
+- **Otros:** liquidaciones de venta de hacienda que se pasan al Estudio; caravanas de terneros con Agrovet (04/2026); sangrados, tactos y revisión de toros con Basterrechea.
