@@ -2,14 +2,14 @@
 
 import Link from "next/link";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useSearchParams } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { useState } from "react";
 
 import { useAuth } from "@/components/auth/AuthContext";
 import { formatFecha, formatMoneda } from "@/lib/format";
 import { urlDocumentoLocal } from "@/services/comprasApi";
 import {
-  ETIQUETA_MODULO, getNuevos, marcarNuevoRevisado, moverNuevo, yaCargadoNuevo, type DocumentoNuevo, type ModuloAviso,
+  ETIQUETA_MODULO, getNuevos, getResumenNuevos, type ResumenNuevos, marcarNuevoRevisado, moverNuevo, yaCargadoNuevo, type DocumentoNuevo, type ModuloAviso,
 } from "@/services/documentosNuevosApi";
 
 /** Dónde se carga a mano un documento de cada módulo. */
@@ -172,9 +172,29 @@ function Lista({ modulo, titulo }: { modulo: ModuloAviso; titulo: string }) {
 
 /** Vista "Nuevos para revisar" de un módulo (043, US1). Se muestra al entrar con `?nuevos=1` (desde el número
  * del menú): lo que el sistema incorporó solo, con el primero abierto. Compras usa `RevisionComprasEnFormulario`. */
+const CLAVE_RESUMEN: Record<ModuloAviso, keyof ResumenNuevos> = {
+  compras: "compras", impuestos: "impuestos", ventas: "ventas", granos: "granos", tesoreria: "tesoreria",
+  cuentas_corrientes: "cuentasCorrientes", sin_clasificar: "sinClasificar", pagos: "pagos",
+};
+
+/** 24/11/2026: franja visible en la pantalla del módulo cuando hay documentos nuevos sin revisar (antes solo se veían
+ * entrando por el número azul del menú y quedaban escondidos). */
+export function AvisoNuevosPendientes({ modulos }: { modulos: ModuloAviso[] }) {
+  const pathname = usePathname();
+  const q = useQuery({ queryKey: ["documentos-nuevos", "resumen"], queryFn: getResumenNuevos, staleTime: 60_000 });
+  const n = q.data ? modulos.reduce((s, m) => s + Number(q.data[CLAVE_RESUMEN[m]] ?? 0), 0) : 0;
+  if (!n) return null;
+  return (
+    <p className="mb-2 flex items-center gap-3 rounded-md border border-finance/40 bg-finance-light px-3 py-2 text-sm text-finance">
+      Hay {n} {n === 1 ? "documento nuevo" : "documentos nuevos"} para revisar.
+      <Link href={`${pathname}?nuevos=1`} className="font-medium underline">Revisar</Link>
+    </p>
+  );
+}
+
 export function NuevosParaRevisar({ modulo }: { modulo: ModuloAviso }) {
   const params = useSearchParams();
-  if (params.get("nuevos") !== "1") return null;
+  if (params.get("nuevos") !== "1") return <AvisoNuevosPendientes modulos={[modulo]} />;
 
   return (
     <section className="space-y-4 rounded-md border border-finance/40 bg-surface p-3">
