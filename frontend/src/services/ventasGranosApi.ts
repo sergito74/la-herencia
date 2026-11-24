@@ -243,14 +243,14 @@ export interface RetencionIVAGranos {
   campania: string | null;
   agente: string | null;
   archivo: string | null;
-  estado: "devuelto" | "pendiente" | "vencido";
+  estado: "devuelto" | "pendiente" | "vencido" | "aplicado";
   dias: number;
   devolucion: { fecha: string; banco: string; importe: number; agrupa: number; exacto: boolean } | null;
 }
 
 export interface RetencionesIVAGranosResponse {
   items: RetencionIVAGranos[];
-  resumen: { devuelto: number; pendiente: number; vencido: number; cantidadVencidos: number };
+  resumen: { devuelto: number; pendiente: number; vencido: number; aplicado: number; cantidadVencidos: number };
 }
 
 export function fetchRetencionesIVAGranos(): Promise<RetencionesIVAGranosResponse> {

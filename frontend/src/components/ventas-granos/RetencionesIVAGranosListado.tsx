@@ -14,6 +14,7 @@ const ESTADO: Record<RetencionIVAGranos["estado"], { texto: string; clase: strin
   devuelto: { texto: "Devuelto", clase: "bg-status-success-bg text-status-success" },
   pendiente: { texto: "Pendiente", clase: "bg-status-warning-bg text-status-warning" },
   vencido: { texto: "Vencido", clase: "bg-status-danger-bg text-status-danger" },
+  aplicado: { texto: "Sin devolución (crédito aplicado)", clase: "bg-status-neutral-bg text-ink-secondary" },
 };
 
 const COLUMNS: DataTableColumn<RetencionIVAGranos>[] = [
@@ -40,7 +41,7 @@ const COLUMNS: DataTableColumn<RetencionIVAGranos>[] = [
             {r.devolucion.agrupa > 1 && ` · junto con ${r.devolucion.agrupa - 1} más (${formatMoneda(r.devolucion.importe)})`}
             {!r.devolucion.exacto && " · con otras retenciones sin certificado"}
           </span>
-        ) : (
+        ) : r.estado === "aplicado" ? null : (
           <span className="text-xs text-ink-secondary">hace {r.dias} días</span>
         )}
       </span>
@@ -64,6 +65,7 @@ export function RetencionesIVAGranosListado() {
       <div className="flex flex-wrap items-center gap-4 text-sm">
         <span>Devuelto: <strong>{formatMoneda(data.resumen.devuelto)}</strong></span>
         <span>Pendiente: <strong>{formatMoneda(data.resumen.pendiente)}</strong></span>
+        {data.resumen.aplicado > 0 && <span>Aplicado a otros impuestos: <strong>{formatMoneda(data.resumen.aplicado)}</strong></span>}
         <span className={data.resumen.cantidadVencidos ? "text-status-danger" : ""}>
           Vencido (más de 90 días): <strong>{formatMoneda(data.resumen.vencido)}</strong>
           {data.resumen.cantidadVencidos > 0 && ` (${data.resumen.cantidadVencidos})`}

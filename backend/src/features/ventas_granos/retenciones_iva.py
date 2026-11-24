@@ -7,7 +7,8 @@ ARCA, que lo devuelve por transferencia («AFIP 5000 625») unos 90 días despu�
 exactamente su importe (los más viejos primero; cada certificado se usa una sola vez) y da el estado de cada uno:
   · devuelto (fecha y banco de la acreditación),
   · pendiente (dentro de los 90 días),
-  · vencido (más de 90 días sin acreditarse) → alarma.
+  · vencido (más de 90 días sin acreditarse) → alarma,
+  · aplicado (importe a devolver 0: el crédito se usó para otro impuesto, no se espera devolución).
 Solo lectura: se calcula cada vez, así una devolución nueva en el extracto cierra sola su certificado.
 """
 
@@ -81,7 +82,9 @@ def _grupo(pendientes: list[dict], importe: float, fecha: date) -> tuple[list[di
 def listar(hoy: date | None = None) -> dict:
     hoy = hoy or date.today()
     certs = _certificados()
-    pendientes = list(certs)
+    # Importe a devolver 0: ARCA no lo devuelve porque el crédito se aplicó a otro impuesto (ej. 09601-2022-064957, Sergio
+    # 24/11/2026). No espera devolución ni es alarma; en la cuenta de AFIP tampoco figura como crédito.
+    pendientes = [c for c in certs if round(c["aDevolver"], 2) > 0]
     devolucion: dict[int, dict] = {}
     for dv in _devoluciones():
         f = _d(dv["fecha"])
@@ -98,7 +101,8 @@ def listar(hoy: date | None = None) -> dict:
         f = _d(c["fecha"])
         dv = devolucion.get(c["id"])
         dias = (hoy - f).days if f else 0
-        estado = "devuelto" if dv else ("vencido" if dias > PLAZO_DIAS else "pendiente")
+        estado = ("devuelto" if dv else "aplicado" if round(c["aDevolver"], 2) <= 0
+                  else "vencido" if dias > PLAZO_DIAS else "pendiente")
         items.append({
             "idRetencion": c["id"], "certificado": c["certificado"], "importe": round(c["importe"], 2),
             "idVenta": c["idVenta"], "fecha": f, "coe": c["coe"], "grano": c["grano"], "campania": c["campania"],
@@ -112,4 +116,5 @@ def listar(hoy: date | None = None) -> dict:
 
     return {"items": items, "resumen": {
         "devuelto": total("devuelto"), "pendiente": total("pendiente"), "vencido": total("vencido"),
+        "aplicado": total("aplicado"),
         "cantidadVencidos": sum(1 for i in items if i["estado"] == "vencido")}}
