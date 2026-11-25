@@ -44,3 +44,9 @@
 - Resultado: 239 movimientos de venta; negativos restantes solo 01–04/2025 (Novillos −2, Vaquillonas −4). 26/10/2023 sigue = planilla.
 - Para Sergio: venta 0120-00012139 Monasterio Tattersal (29/12/2023) = 50 vacas preñadas de Tapalqué (guía TAPALQUE, RENSPA 01.111.0.00467/13) según el PDF, cargada con establecimiento La Herencia y como 50 vacas + 50 terneros/as a $350.000. Importes correctos; corregir campo y renglones no cambia saldos.
 - 25/11 (Sergio confirmó con el PDF): venta 0120-00012139 Monasterio Tattersal = 50 vacas preñadas a $700.000 (25 Rodriguez + 25 Reinaudo), La Herencia. Venía heredada de la base original como 25 vacas + 25 vacas conserva + 50 terneros/as a $350.000. Corregida en WC a 2 renglones; bruto $35.000.000 antes = después. Respaldo `WC_pre_ganaderia_052_20261125_170642.bak`.
+
+## 25/11/2026 — Auditoría de las 146 ventas de hacienda contra sus PDF
+- 101 PDF con texto (cruce automático renglón por renglón) + 45 escaneados (leídos uno por uno). Importe bruto: coincide en todos.
+- Regla de stock ajustada: un comprobante con importe negativo devuelve hacienda solo si anula una venta anterior del mismo consignatario por el mismo importe; si no, es diferencia de precio (ND Frigal 0001-00008954 por diferencia de precio, cargada como liquidación de 2 vacas).
+- Pares liquidación reemplazada + nota que la anula: todos cerrados (Gregec, Elordi, CUT WEST, J y M 2024, J y M 10/2025).
+- Errores de carga hallados (sin corregir, esperan a Sergio): ver mensaje del 25/11 (Frigal 0001-00008285 25 novillos cargados como 78; Las Heras 0001-00005418 23 terneros/as cargados como 28; J y M 0003-00006904 1 ternera de 170 kg cargada como 170 unidades; categorías: J y M 0003-00000196 vaquillona como ternera, Senosiain 0003-00000001 y Pavón Arriba 00003-00000012 vaca como vaca conserva, Rioplatense 00003-00000015 novillitos como novillos; NC bonificación J y M 0002-00000033 y Wallace 00004-00001355 cargadas con renglones de hacienda).

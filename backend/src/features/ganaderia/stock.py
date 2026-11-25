@@ -347,28 +347,43 @@ def categoria_de_tipo_hacienda() -> dict[int, int]:
 
 def movimientos_de_venta(id_venta: int, cat_de_tipo: dict | None = None) -> list[dict]:
     """Un movimiento Venta por renglón de hacienda (regla R4); los renglones en pesos no son hacienda.
-    Notas de crédito/débito: solo mueven stock los renglones que devuelven hacienda (cabezas negativas, p. ej. la NC
-    que anula una liquidación reemplazada); con cabezas positivas son un ajuste de precio de hacienda ya salida
-    (Sergio 25/11/2026: NC 00004-00001355 de los 2 toros de San Pedro liquidados con 000003-00024837)."""
+    El signo del renglón es el de su importe (cantidad × precio): el signo puede estar en cualquiera de los dos.
+    - Notas con importe positivo: bonificación o ajuste de precio, no mueven stock (NC Wallace 00004-00001355, NC J y M
+      0002-00000033 bonificación de comisión).
+    - Comprobante con importe total negativo: devuelve la hacienda solo si anula una venta anterior del mismo
+      consignatario por el mismo importe (NC Elordi 00002-00005483, ND J y M 0003-00016181 "por anulación" de
+      00003-00016178). Si no, es diferencia de precio (ND Frigal 0001-00008954, cargada como liquidación)."""
     from src.db.connection import fetch_all
     from src.features.ganaderia import categorias
 
     cat_de_tipo = cat_de_tipo if cat_de_tipo is not None else categoria_de_tipo_hacienda()
     filas = fetch_all(
         "SELECT d.IdDetalleVenta det, v.Fecha fecha, v.IdEstableciemiento est, v.[Nro documento] doc, d.IdTipoProducto tipo, "
-        "d.Cantidad cantidad, d.[Unidad de medida] unidad, d.[Peso Total] peso "
+        "d.Cantidad cantidad, d.[Unidad de medida] unidad, d.[Peso Total] peso, "
+        "CASE WHEN td.[Tipo Documento] LIKE 'Nota de%' THEN 1 ELSE 0 END nota, "
+        "ISNULL(d.Cantidad, 0) * (ISNULL(d.[Precio unitario (A)], 0) + ISNULL(d.[Precio unitario (B)], 0)) importe "
         "FROM dbo.[Det_Ventas Hacienda] d JOIN dbo.[Venta Hacienda] v ON v.IdVenta = d.IdVenta "
-        "JOIN dbo.[Tipo Documento] td ON td.IdTipoDocumento = v.IdTipoDocumento "
-        "WHERE d.IdVenta = ? AND (td.[Tipo Documento] NOT LIKE 'Nota de%' OR d.Cantidad < 0)", (id_venta,))
+        "JOIN dbo.[Tipo Documento] td ON td.IdTipoDocumento = v.IdTipoDocumento WHERE d.IdVenta = ?", (id_venta,))
     pesos = {r["i"]: float(r["p"] or 0) or None for r in fetch_all("SELECT IdCategoria i, PesoTipicoKg p FROM dbo.GanCategoria")}
+    total = sum(float(f["importe"] or 0) for f in filas)
+    anula = total < 0 and bool(fetch_all(
+        "SELECT TOP 1 1 x FROM dbo.[Venta Hacienda] o JOIN dbo.[Venta Hacienda] v ON v.IdVenta = ? "
+        "WHERE o.IdVenta <> v.IdVenta AND o.IdConsignatario = v.IdConsignatario AND o.Fecha <= v.Fecha "
+        "AND ABS((SELECT SUM(ISNULL(d.Cantidad,0) * (ISNULL(d.[Precio unitario (A)],0) + ISNULL(d.[Precio unitario (B)],0))) "
+        "         FROM dbo.[Det_Ventas Hacienda] d WHERE d.IdVenta = o.IdVenta) + ?) <= 1", (id_venta, total)))
     out = []
     for f in filas:
         cat = cat_de_tipo.get(f["tipo"])
         if not cat:
             continue
-        r = categorias.cabezas_y_kg(f["cantidad"], f["unidad"], f["peso"], pesos.get(cat))
+        imp = float(f["importe"] or 0)
+        if (f["nota"] and imp >= 0) or (total < 0 and not anula):
+            continue
+        r = categorias.cabezas_y_kg(abs(float(f["cantidad"] or 0)), f["unidad"], f["peso"], pesos.get(cat))
         if not r["esHacienda"] or not r["cabezas"]:
             continue
+        if float(f["importe"] or 0) < 0:
+            r["cabezas"], r["kg"] = -abs(r["cabezas"]), -abs(r["kg"] or 0)
         out.append({"fecha": _d(f["fecha"]), "tipo": "Venta", "categoria": cat, "cabezas": r["cabezas"],
                     "kg": r["kg"] or None, "kgEstimado": r["kgEstimado"], "establecimiento": f["est"] or 1,
                     "idVenta": id_venta, "idDetalleVenta": f["det"], "fuente": f"Venta {f['doc'] or id_venta}"[:120]})
