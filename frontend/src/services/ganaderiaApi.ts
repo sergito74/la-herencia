@@ -23,6 +23,7 @@ export interface IndicadoresPeriodo {
   kgVendidos: number;
   cabezasVendidas: number;
   kgProducidos: number | null;
+  kgHa?: number | null;
   costoPorKg: number | null;
   ev: number | null;
   evHa: number | null;

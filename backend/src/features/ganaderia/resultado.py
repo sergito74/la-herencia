@@ -14,7 +14,9 @@ from collections import defaultdict
 
 from src.db.connection import fetch_all
 from src.features.cotizaciones.dolar_gestion import FUENTE, tc_pesos_cache as tc_pesos
-from src.features.ganaderia import categorias, costos, periodos, superficie
+from datetime import timedelta
+
+from src.features.ganaderia import categorias, costos, periodos, superficie, valuacion
 
 GRUPOS = ("Ventas", "Comercializacion", "CompraHacienda", "Inventario", "Pastaje", "Directos", "Sanidad",
           "Alimentacion", "Estructura")
@@ -144,9 +146,48 @@ def periodo(anio: int, vista: str = "ejercicio", forrajes_cache: list | None = N
              {"fecha": None, "documento": "Remuneraciones", "contacto": f"{pp['pct']['e']}% del encargado",
               "importe": round(pp["estructura"][0], 2), "enlace": "/personal/remuneraciones"})
 
+    inv = None
+    if vista == "ejercicio":
+        ini = valuacion.valuacion(desde - timedelta(days=1), establecimiento, pct_gastos(anio - 1, establecimiento))
+        fin = valuacion.valuacion(hasta, establecimiento, pct_gastos(anio, establecimiento))
+        if ini and fin:
+            inv = {"inicio": ini, "cierre": fin}
+            for rubro, v, signo in (("Stock al cierre (estimado)", fin, 1), ("Stock al inicio (estimado)", ini, -1)):
+                fecha = v["fecha"]
+                for it in v["items"]:
+                    suma("Inventario", rubro, signo * it["valor"], signo * _usd(it["valor"], fecha),
+                         {"fecha": fecha, "documento": f"{it['cabezas']} {it['categoria']}",
+                          "contacto": f"{it['kgCabeza']:.0f} kg × ${it['precioKg']:,.2f}/kg (INMAG × {it['coeficiente']})"
+                                      + (f" · {it['regla']}" if it["regla"] else "")
+                                      + f" − {v['pctGastos'] * 100:.1f}% gastos de venta",
+                          "importe": round(signo * it["valor"], 2), "enlace": "/ganaderia/stock"})
     sup = superficie.superficie(anio, vista)
     return {"celdas": celdas, "kgVendidos": round(kg_vendidos, 1), "cabezasVendidas": cab_vendidas,
-            "haGanaderas": sup["haEfectivas"]}
+            "haGanaderas": sup["haEfectivas"], "inventario": inv}
+
+
+_pct_cache: dict = {}
+
+
+def pct_gastos(anio: int, establecimiento: int | None = None) -> float:
+    """% de gastos de venta del ejercicio = comercialización ÷ ventas brutas; sin ventas, el de todos los ejercicios."""
+    def calc(desde, hasta):
+        renglones, gastos = ventas(desde, hasta, establecimiento)
+        bruto = sum(_f(r["importeA"]) + _f(r["importeB"]) for r in renglones if r["esHacienda"]
+                    and not (r.get("tipoDoc") or "").startswith("Nota de"))
+        bruto += sum(_f(g["complemento"]) for g in gastos)
+        return (sum(_f(g["gastos"]) for g in gastos) / bruto) if bruto > 0 else None
+
+    clave = (anio, establecimiento)
+    if clave not in _pct_cache:
+        d, h = periodos.rango(anio, "ejercicio")
+        v = calc(d, h)
+        if v is None:
+            if ("total", establecimiento) not in _pct_cache:
+                _pct_cache[("total", establecimiento)] = calc("2011-01-01", "2100-01-01") or 0.0
+            v = _pct_cache[("total", establecimiento)]
+        _pct_cache[clave] = max(0.0, min(v, 0.5))
+    return _pct_cache[clave]
 
 
 def _det(f, importe, enlace=None) -> dict:
@@ -193,13 +234,24 @@ def resultado(desde: int, hasta: int, vista: str = "ejercicio", moneda: str = "U
             "costoDirectoHa": round(directos / ha, 2) if ha else None,
             "kgVendidos": datos[a]["kgVendidos"], "cabezasVendidas": datos[a]["cabezasVendidas"],
             "kgProducidos": None, "costoPorKg": None, "ev": None, "evHa": None, "sinInventario": True}
-        avisos.append({"periodo": et, "texto": "Sin stock de hacienda valuado: el resultado no incluye la variación de "
-                                               "inventario (margen de caja)."})
+        inv = datos[a]["inventario"]
+        if inv:
+            kgp = datos[a]["kgVendidos"] + inv["cierre"]["kg"] - inv["inicio"]["kg"]
+            ev = (inv["cierre"]["ev"] + inv["inicio"]["ev"]) / 2
+            indicadores[et].update({
+                "sinInventario": False, "kgProducidos": round(kgp, 0),
+                "costoPorKg": round(directos / kgp, 2) if kgp > 0 else None,
+                "kgHa": round(kgp / ha, 1) if ha and kgp else None,
+                "ev": round(ev, 1), "evHa": round(ev / ha, 2) if ha else None})
+        else:
+            avisos.append({"periodo": et, "texto": "Sin stock de hacienda valuado: el resultado no incluye la variación de "
+                                                   "inventario (margen de caja)."})
     return {"vista": vista, "moneda": moneda, "establecimiento": establecimiento,
             "nota": ("Las ventas y el pastaje son del campo elegido; los costos son de toda la ganadería (las compras no "
                      "distinguen campo).") if establecimiento else None, "conversion": FUENTE if moneda == "USD" else None,
             "periodos": [{"clave": periodos.etiqueta(a), "desde": str(periodos.rango(a, vista)[0]),
-                          "hasta": str(periodos.rango(a, vista)[1]), "sinInventario": True} for a in anios],
+                          "hasta": str(periodos.rango(a, vista)[1]),
+                          "sinInventario": not datos[a]["inventario"]} for a in anios],
             "grupos": [{"grupo": g, "titulo": TITULOS[g], "signo": _signo(g)} for g in GRUPOS],
             "filas": filas, "indicadores": indicadores, "avisos": avisos}
 

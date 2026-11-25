@@ -74,10 +74,12 @@ export default function ResultadoGanaderoPage() {
           <>
             {q.data.nota && <p className="mb-2 text-sm text-ink-secondary">{q.data.nota}</p>}
             <CuadroResultado datos={q.data} vista={vista} establecimiento={establecimiento} />
-            {q.data.avisos.length > 0 && (
+            {vista === "ejercicio" && (
               <p className="mt-2 text-xs text-ink-muted">
-                Todavía no hay stock de hacienda valuado: el ingreso neto no incluye la diferencia de inventario. Se completa
-                cuando se cargue el stock.
+                Diferencia de inventario estimada: stock propio al 31/03 (recuento más cercano) × kg × precio de mercado
+                (INMAG del día × coeficiente de la categoría según nuestras ventas; toro = 500 kg de novillo) menos el % de
+                gastos de venta del ejercicio. Abrí cada renglón para ver el cálculo por categoría.
+                {q.data.avisos.length > 0 && " Los ejercicios sin recuento cercano no tienen inventario."}
               </p>
             )}
           </>

@@ -95,3 +95,10 @@ def test_venta_de_subcategoria_sale_de_la_categoria_contada():
 def test_sin_recuento_no_hay_existencia():
     movs = [_mov(date(2015, 5, 1), "Venta", VACAS, 40)]
     assert stock.existencia([], movs, date(2015, 7, 1), [1])[1]["stock"] == {}
+
+
+def test_recuento_posterior_cercano_manda():
+    rec = [_rec(date(2025, 4, 5), [(VACAS, None, 100)]), _rec(date(2026, 4, 9), [(VACAS, None, 120)], i=2)]
+    movs = [_mov(date(2026, 4, 2), "Venta", VACAS, 3)]
+    st = stock.existencia(rec, movs, date(2026, 3, 31), [1])[1]["stock"]
+    assert st[(None, VACAS)] == 123  # 120 contadas + las 3 vendidas después del cierre

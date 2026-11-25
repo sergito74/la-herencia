@@ -79,7 +79,7 @@ export function CuadroResultado({ datos, vista, establecimiento }: {
                 {claves.map((k) => (
                   <td key={k} className="px-3 py-1.5 text-right">
                     {g.grupo === "Inventario" && datos.indicadores[k]?.sinInventario
-                      ? <span className="text-xs text-ink-muted">sin stock valuado</span>
+                      ? <span className="text-xs text-ink-muted">sin recuento</span>
                       : <Monto v={filas.length ? totalGrupo(g.grupo, k) : null} moneda={m} />}
                   </td>
                 ))}
@@ -117,6 +117,7 @@ export function CuadroResultado({ datos, vista, establecimiento }: {
             ["kgVendidos", "Kg vendidos", false],
             ["cabezasVendidas", "Cabezas vendidas", false],
             ["kgProducidos", "Kg producidos", false],
+            ["kgHa", "Kg producidos por ha", false],
             ["costoPorKg", "Costo directo por kg producido", true],
             ["evHa", "Carga (EV/ha)", false],
           ] as const).map(([clave, titulo, esMonto]) => (

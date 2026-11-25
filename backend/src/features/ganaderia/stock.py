@@ -9,7 +9,7 @@ Un recuento que no coincide con la existencia teórica deja la diferencia "sin e
 from __future__ import annotations
 
 from collections import defaultdict
-from datetime import date
+from datetime import date, timedelta
 
 ENTRADAS = ("Nacimiento", "Compra", "PastajeEntrada")
 SALIDAS = ("Venta", "Muerte", "Consumo", "PastajeSalida")
@@ -91,14 +91,43 @@ def origenes(cats: dict) -> dict:
             for i, c in cats.items()}
 
 
+HACIA_ATRAS_DIAS = 120
+
+
+def _siguiente(recuentos: list[dict], est: int, fecha: date) -> dict | None:
+    """Primer recuento del campo posterior a la fecha, si está dentro de HACIA_ATRAS_DIAS."""
+    cands = [r for r in recuentos if r["establecimiento"] == est
+             and fecha < _d(r["fecha"]) <= fecha + timedelta(days=HACIA_ATRAS_DIAS)]
+    return min(cands, key=lambda r: _d(r["fecha"])) if cands else None
+
+
+def _hacia_atras(rec: dict, movimientos: list[dict], est: int, fecha: date) -> dict:
+    """Existencia a la fecha desde un recuento posterior: el recuento deshaciendo los movimientos del medio."""
+    st: dict = defaultdict(int)
+    for d in rec["detalle"]:
+        st[(d.get("dueno"), d["categoria"])] += int(d["cabezas"])
+    for m in movimientos:
+        if fecha < _d(m["fecha"]) <= _d(rec["fecha"]):
+            for e, dueno, cat, delta in efectos(m):
+                if e == est:
+                    st[(dueno, cat)] -= delta
+    return st
+
+
 def existencia(recuentos: list[dict], movimientos: list[dict], fecha: date, establecimientos: list[int],
                origen: dict | None = None) -> dict:
-    """Función pura. recuentos: [{id, fecha, establecimiento, origen, detalle: [{categoria, dueno, cabezas}]}];
+    """Función pura. La base es el recuento más cercano: el anterior (sumando los movimientos posteriores) o, si está
+    más cerca y dentro de HACIA_ATRAS_DIAS, el siguiente (deshaciendo los movimientos del medio).
+    recuentos: [{id, fecha, establecimiento, origen, detalle: [{categoria, dueno, cabezas}]}];
     movimientos: [{fecha, tipo, categoria, categoriaDestino, cabezas, dueno, establecimiento, establecimientoDestino}]
     (sin anulados). Devuelve {est: {base, stock: {(dueño, cat): cabezas}, sinExplicar: {(dueño, cat): diferencia}}}."""
     out = {}
     for est in establecimientos:
         base, stock = _teorica(recuentos, movimientos, est, fecha, origen=origen)
+        sig = _siguiente(recuentos, est, fecha)
+        if sig and (not base or (_d(sig["fecha"]) - fecha).days < (fecha - _d(base["fecha"])).days):
+            out[est] = {"base": sig, "stock": dict(_hacia_atras(sig, movimientos, est, fecha)), "sinExplicar": {}}
+            continue
         sin = {}
         if base:
             prev, previo = _teorica(recuentos, movimientos, est, _d(base["fecha"]), antes_de_recuento=True, origen=origen)
