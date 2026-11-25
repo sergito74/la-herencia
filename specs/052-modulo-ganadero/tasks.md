@@ -92,19 +92,19 @@ Etiquetas de historia:
 ## Phase 4: User Story 2. Stock de hacienda (P1)
 **Objetivo:** existencia por categoría, dueño y campo, armada por eventos (FR-006/007/009).
 **Prueba independiente:** quickstart §5 y §6.
-- [ ] T028 [US2] `backend/src/features/ganaderia/stock.py`: existencia a una fecha = último recuento ≤ fecha ± movimientos posteriores no anulados, por establecimiento y dueño. La diferencia entre recuentos va como "sin explicar". El 409 si un movimiento dejaría la existencia negativa sin `confirmar`; el 422 si un AjusteRecuento no trae motivo.
-- [ ] T029 [US2] Endpoints `GET /stock`, `GET` y `POST /movimientos`, `POST /movimientos/{id}/anular`, `GET` y `POST /recuentos` en `router.py`.
-- [ ] T030 [US2] Hook en `backend/src/features/ventas_hacienda/repository.py`: el alta, la edición y la baja de una venta crean, actualizan o anulan un movimiento "Venta" por renglón (regla R4, uno por `IdDetalleVenta`).
-- [ ] T031 [P] [US2] Prueba `test_stock.py`: recuento + venta + nacimiento, existencia negativa (409), ajuste sin motivo (422), terceros separados de la propia, y venta editada que actualiza su movimiento sin duplicarlo.
-- [ ] T032 [US2] Script `backend/scripts/ganaderia_stock_historico_20261125.py` (simula / `--aplicar` con respaldo). Importa:
+- [x] T028 [US2] `backend/src/features/ganaderia/stock.py`: existencia a una fecha = último recuento ≤ fecha ± movimientos posteriores no anulados, por establecimiento y dueño. La diferencia entre recuentos va como "sin explicar". El 409 si un movimiento dejaría la existencia negativa sin `confirmar`; el 422 si un AjusteRecuento no trae motivo.
+- [x] T029 [US2] Endpoints `GET /stock`, `GET` y `POST /movimientos`, `POST /movimientos/{id}/anular`, `GET` y `POST /recuentos` en `router.py`.
+- [x] T030 [US2] Hook en `backend/src/features/ventas_hacienda/repository.py`: el alta, la edición y la baja de una venta crean, actualizan o anulan un movimiento "Venta" por renglón (regla R4, uno por `IdDetalleVenta`).
+- [x] T031 [P] [US2] Prueba `test_stock.py`: recuento + venta + nacimiento, existencia negativa (409), ajuste sin motivo (422), terceros separados de la propia, y venta editada que actualiza su movimiento sin duplicarlo.
+- [x] T032 [US2] Script `backend/scripts/ganaderia_stock_historico_20261125.py` (simula / `--aplicar` con respaldo). Importa:
   - la solapa "Stock Hacienda" de la planilla, 23 recuentos con origen Planilla;
   - los stocks al 31/03 de 2021 y 2023 de los mails al Estudio, con origen Cierre;
   - la planilla Req Vacunas Oct 26, con origen Acta, y las 70 "Terneras Miguel" como terceros de San Justo (contacto 5671);
   - los movimientos de Venta de todas las ventas históricas.
 
   Lista los alias sin resolver antes de aplicar. Abre los Excel en solo lectura.
-- [ ] T033 [US2] Ejecutar T032 `--aplicar` después de revisar la simulación. Verificar quickstart §5 (26/10/2023 = 248 vacas, 20 toros, 7 toritos, 133 terneros, 96 terneras) y registrar el resultado en `registro-aplicacion.md`.
-- [ ] T034 [US2] Pantalla `frontend/src/app/ganaderia/stock/page.tsx` con:
+- [x] T033 [US2] Ejecutar T032 `--aplicar` después de revisar la simulación. Verificar quickstart §5 (26/10/2023 = 248 vacas, 20 toros, 7 toritos, 133 terneros, 96 terneras) y registrar el resultado en `registro-aplicacion.md`.
+- [x] T034 [US2] Pantalla `frontend/src/app/ganaderia/stock/page.tsx` con:
   - la existencia a una fecha (categoría × cabezas, kg, dueño Propia/De terceros con su nombre, campo);
   - los movimientos en `DataTable`;
   - "Registrar movimiento" en `SideDrawer`;

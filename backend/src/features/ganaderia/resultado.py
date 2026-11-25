@@ -146,7 +146,7 @@ def _det(f, importe, enlace=None) -> dict:
     fecha = f.get("fecha")
     return {"fecha": str(fecha)[:10] if fecha else None, "documento": f.get("documento"), "contacto": f.get("contacto"),
             "importe": round(_f(importe), 2),
-            "enlace": enlace or (f"/ventas/hacienda/{f['idVenta']}" if f.get("idVenta") else None)}
+            "enlace": enlace or (f"/ventas/hacienda/{f['idVenta']}/editar" if f.get("idVenta") else None)}
 
 
 def _signo(grupo: str) -> int:

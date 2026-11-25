@@ -11,11 +11,24 @@ que escriben exclusivamente contra `WC` vía `execute_write_transaction`
 
 from __future__ import annotations
 
+import logging
 from datetime import date
 
 from src.db.connection import execute_write, execute_write_transaction, fetch_all, fetch_one
 from src.db.pagination import offset_for
 from src.db.params import as_sql_datetime
+
+_log = logging.getLogger(__name__)
+
+
+def _sincronizar_stock(id_venta: int) -> None:
+    """052 T030: cada renglón de hacienda de la venta es un movimiento Venta del stock (se rehace en alta/edición/baja)."""
+    try:
+        from src.features.ganaderia.stock import sincronizar_venta
+
+        sincronizar_venta(id_venta)
+    except Exception:  # el stock no debe impedir guardar la venta; el control de Stock lo detecta
+        _log.exception("No se pudo actualizar el stock de hacienda de la venta %s", id_venta)
 
 
 def search_ventas_hacienda(
@@ -456,6 +469,7 @@ def create_venta(cabecera: dict, lineas: list[dict], vencimientos: list[dict]) -
         statements.append(_vencimiento_insert_statement(vencimiento))
 
     results = execute_write_transaction(statements)
+    _sincronizar_stock(results[0])
     return results[0]
 
 
@@ -501,6 +515,7 @@ def update_venta(id_venta: int, cabecera: dict, lineas: list[dict], vencimientos
         )
 
     execute_write_transaction(statements)
+    _sincronizar_stock(id_venta)
 
 
 def delete_venta(id_venta: int) -> None:
@@ -518,6 +533,7 @@ def delete_venta(id_venta: int) -> None:
         ("DELETE FROM dbo.[Venta Hacienda] WHERE IdVenta = ?", (id_venta,)),
     ]
     execute_write_transaction(statements)
+    _sincronizar_stock(id_venta)
 
 
 def get_vencimientos_venta(id_venta: int) -> list[dict]:

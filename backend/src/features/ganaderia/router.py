@@ -4,11 +4,12 @@ from __future__ import annotations
 
 from datetime import date
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from pydantic import BaseModel
 from starlette.concurrency import run_in_threadpool
 
-from src.features.boveda.router import exigir_admin
-from src.features.ganaderia import costos, periodos, resultado, superficie
+from src.features.boveda.router import exigir_admin, usuario_actual
+from src.features.ganaderia import costos, periodos, resultado, stock, superficie
 
 router = APIRouter(prefix="/api/ganaderia", tags=["ganaderia"])
 
@@ -60,3 +61,108 @@ async def recalcular() -> dict:
     """Vacía el cálculo guardado de forrajes (cuando se cargaron órdenes o compras de cultivos ganaderos)."""
     costos.invalidar()
     return {"ok": True}
+
+
+# ---------------------------------------------------------------- stock (US2)
+
+def _dueno(v: str) -> str:
+    if v not in ("propia", "terceros", "todos"):
+        raise HTTPException(status_code=422, detail="Dueño inválido")
+    return v
+
+
+@router.get("/stock")
+async def get_stock(fecha: date | None = None, establecimiento: int | None = None, dueno: str = "todos") -> dict:
+    return await run_in_threadpool(stock.stock, fecha or date.today(), establecimiento, _dueno(dueno))
+
+
+@router.get("/movimientos")
+async def get_movimientos(desde: date | None = None, hasta: date | None = None, tipo: str | None = None,
+                          categoria: int | None = None, establecimiento: int | None = None) -> dict:
+    return {"items": await run_in_threadpool(stock.movimientos, desde, hasta, tipo, categoria, establecimiento)}
+
+
+@router.get("/categorias")
+async def get_categorias() -> dict:
+    from src.db.connection import fetch_all
+
+    return {"items": await run_in_threadpool(fetch_all, "SELECT IdCategoria id, Nombre nombre FROM dbo.GanCategoria "
+                                             "WHERE Activo = 1 ORDER BY Orden")}
+
+
+class MovimientoIn(BaseModel):
+    fecha: date
+    tipo: str
+    categoria: int
+    categoriaDestino: int | None = None
+    cabezas: int
+    kg: float | None = None
+    dueno: int | None = None
+    establecimiento: int
+    establecimientoDestino: int | None = None
+    causa: str | None = None
+    motivo: str | None = None
+    confirmar: bool = False
+
+
+@router.post("/movimientos", status_code=201, dependencies=[Depends(exigir_admin)])
+async def post_movimiento(body: MovimientoIn, request: Request) -> dict:
+    d = body.model_dump()
+    try:
+        i = await run_in_threadpool(stock.registrar_movimiento, d, usuario_actual(request), body.confirmar)
+    except stock.MotivoFaltante as exc:
+        raise HTTPException(status_code=422, detail="El ajuste de recuento necesita un motivo") from exc
+    except stock.StockNegativo as exc:
+        raise HTTPException(status_code=409, detail={"mensaje": "La existencia quedaría negativa", "faltantes": exc.faltantes}) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    return {"id": i}
+
+
+class AnularIn(BaseModel):
+    motivo: str
+
+
+@router.post("/movimientos/{id_movimiento}/anular", dependencies=[Depends(exigir_admin)])
+async def anular(id_movimiento: int, body: AnularIn) -> dict:
+    try:
+        await run_in_threadpool(stock.anular_movimiento, id_movimiento, body.motivo)
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except stock.MotivoFaltante as exc:
+        raise HTTPException(status_code=422, detail="Indicá el motivo") from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    return {"ok": True}
+
+
+@router.get("/recuentos")
+async def get_recuentos() -> dict:
+    return {"items": await run_in_threadpool(stock.recuentos)}
+
+
+class RecuentoDetalleIn(BaseModel):
+    categoria: int
+    dueno: int | None = None
+    cabezas: int
+    kgPromedio: float | None = None
+
+
+class RecuentoIn(BaseModel):
+    fecha: date
+    establecimiento: int
+    origen: str = "Recuento"
+    observaciones: str | None = None
+    detalle: list[RecuentoDetalleIn]
+
+
+@router.post("/recuentos", status_code=201, dependencies=[Depends(exigir_admin)])
+async def post_recuento(body: RecuentoIn, request: Request) -> dict:
+    if body.origen not in ("Recuento", "Acta", "Cierre", "Planilla"):
+        raise HTTPException(status_code=422, detail="Origen inválido")
+    try:
+        return await run_in_threadpool(stock.registrar_recuento, body.model_dump(), usuario_actual(request))
+    except stock.MotivoFaltante as exc:
+        raise HTTPException(status_code=422, detail="El recuento no coincide con la existencia: indicá el motivo") from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc

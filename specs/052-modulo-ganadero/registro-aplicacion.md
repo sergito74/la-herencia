@@ -20,3 +20,12 @@
 
 - **Pruebas:** `tests/ganaderia` (8) y `test_resultado_cultivo_resultado.py` (10, ajustado + caso nuevo) pasan. Frontend `tsc` sin errores.
 - **Pendiente T013:** `vw_Gan_Costos` (costos de compras imputados a Ganadería). Pasa al inicio de US1.
+
+## 25/11/2026 — T032/T033 stock histórico de hacienda
+- Respaldo verificado: `WC_pre_ganaderia_052_20261125_152248.bak` (dos intentos previos fallaron antes de escribir: fecha sin convertir para el driver; no quedó nada aplicado).
+- DDL: `GanMovimiento.IdVenta` (int NULL, índice filtrado). Alias nuevo "Vaquillonas 2do servicio" → Vaquillonas 2 dientes.
+- 24 recuentos: 23 de la solapa "Stock Hacienda" (origen Planilla, 2016-03-15 a 2023-10-26, La Herencia y San Pedro) y el de "Req Vacunas Oct 26" (origen Acta, 15/10/2026, 393 cabezas; 70 Terneras Miguel de Ganadera San Justo como terceros).
+- 245 movimientos Venta, uno por renglón de hacienda de las 146 ventas (los renglones en pesos o sin tipo no son hacienda).
+- Quickstart §5: 26/10/2023 La Herencia = 248 vacas, 20 toros, 7 toritos, 133 terneros, 96 terneras ✔; 15/10/2026 terceros = 70 vaquillonas de San Justo ✔. §6: venta 0003-00010318 = 2 vacas, 880 kg ✔.
+- Los stocks al 31/03 de los mails al Estudio no se importaron como base (2021 solo trae totales y 2023 suma los dos campos); 31/03/2023 en el sistema: 263 vacas (Estudio 260), 13+3 = 18 toros (Estudio 16).
+- Quedan en negativo, a la vista: San Pedro "Vacas conserva" −4 (la venta las clasifica como conserva y el recuento como vacas) y San Pedro Toros −2 hoy (ventas posteriores al último recuento de 10/2023; falta el recuento de cierre del campo, 2025).
