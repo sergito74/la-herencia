@@ -28,6 +28,8 @@ def test_resultado_campania_es_la_suma_de_sus_cultivos(monkeypatch):
     monkeypatch.setattr(resultado, "resultado_cultivo", lambda idc, idcamp: cultivos[0] if idc == 1 else cultivos[1])
     sin_clasificar = {"montoPesos": 999.0, "montoDolares": 99.0, "motivo": "Sin clasificar"}
     monkeypatch.setattr(resultado, "costo_sin_clasificar", lambda idcamp: sin_clasificar)
+    monkeypatch.setattr(resultado, "cultivos_ganaderos", lambda: set())
+    monkeypatch.setattr(resultado, "otros_ingresos", lambda camp: [])
 
     r = resultado.resultado_campania(32)
     assert r["costoTotalPesos"] == sum(c["costoTotalPesos"] for c in cultivos)
@@ -36,6 +38,21 @@ def test_resultado_campania_es_la_suma_de_sus_cultivos(monkeypatch):
     assert "rinde" not in r
     assert r["costoSinClasificar"] == sin_clasificar
     assert r["costoTotalDolares"] == sum(c["costoTotalDolares"] for c in cultivos)
+
+
+def test_cultivo_ganadero_no_suma_en_agricultura(monkeypatch):
+    """052 FR-004: el cultivo ganadero sale del total agrícola y pasa a Ganadería."""
+    cultivos = [_stub_cultivo(1, 32), _stub_cultivo(2, 32, costoTotalPesos=200.0, ventaNetaPesos=0.0)]
+    monkeypatch.setattr(resultado, "fetch_one", lambda sql, params: {"nombre": "2026/2027"})
+    monkeypatch.setattr(resultado, "_cultivos_con_datos", lambda idcamp: [1, 2])
+    monkeypatch.setattr(resultado, "resultado_cultivo", lambda idc, idcamp: cultivos[0] if idc == 1 else cultivos[1])
+    monkeypatch.setattr(resultado, "costo_sin_clasificar", lambda idcamp: None)
+    monkeypatch.setattr(resultado, "cultivos_ganaderos", lambda: {2})
+    monkeypatch.setattr(resultado, "otros_ingresos", lambda camp: [])
+    r = resultado.resultado_campania(32)
+    assert r["costoTotalPesos"] == cultivos[0]["costoTotalPesos"]
+    assert r["pasaAGanaderia"]["pesos"] == 200.0
+    assert [c["idCultivo"] for c in r["cultivos"]] == [1]
 
 
 def test_resultado_campania_inexistente_falla(monkeypatch):

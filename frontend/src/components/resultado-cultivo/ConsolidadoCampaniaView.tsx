@@ -48,6 +48,25 @@ export function ConsolidadoCampaniaView({
           </ul>
         </div>
       )}
+          {datos.pasaAGanaderia && datos.pasaAGanaderia.items.length > 0 && (
+            <div className="mt-4 rounded border border-border bg-surface p-4">
+              <h3 className="font-medium">Costos que pasan a Ganadería</h3>
+              <p className="mt-1 text-sm text-ink-secondary">
+                Sorgo, maíz diferido, avena, pastura y el maíz picado para silo son forraje de la hacienda: no suman en el resultado agrícola.
+              </p>
+              <ul className="mt-2 space-y-1 text-sm">
+                {datos.pasaAGanaderia.items.map((i) => (
+                  <li key={`${i.cultivo}-${i.concepto}`} className="flex justify-between gap-4">
+                    <span>{i.cultivo} · {i.concepto}</span>
+                    <span className="font-data">{formatMoneda(i.pesos)} · {formatMoneda(i.dolares, "Dolares")}</span>
+                  </li>
+                ))}
+              </ul>
+              <p className="mt-2 font-data">
+                Total: {formatMoneda(datos.pasaAGanaderia.pesos)} · {formatMoneda(datos.pasaAGanaderia.dolares, "Dolares")}
+              </p>
+            </div>
+          )}
           {datos.costoSinClasificar && (
             <div className="mt-4 rounded border border-border bg-surface p-4">
               <h3 className="font-medium">Costos sin clasificar</h3>

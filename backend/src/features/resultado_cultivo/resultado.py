@@ -282,7 +282,12 @@ def resultado_campania(id_campania: int) -> dict:
     if campania is None:
         raise ValueError([f"La campaña {id_campania} no existe."])
 
-    cultivos = [resultado_cultivo(idc, id_campania) for idc in _cultivos_con_datos(id_campania)]
+    # 052 FR-004 (Sergio 25/11/2026): Sorgo, Maíz diferido, Avena y Pastura son ganaderos; su costo y el del maíz
+    # picado para silo pasan a Ganadería y no suman en el resultado agrícola.
+    ganaderos = cultivos_ganaderos()
+    todos = [resultado_cultivo(idc, id_campania) for idc in _cultivos_con_datos(id_campania)]
+    cultivos = [c for c in todos if c["idCultivo"] not in ganaderos]
+    pasa = pasa_a_ganaderia([c for c in todos if c["idCultivo"] in ganaderos], cultivos)
     sin_clasificar = costo_sin_clasificar(id_campania)
 
     sup_total = round(sum(c["superficieSembrada"] for c in cultivos), 2)
@@ -327,7 +332,28 @@ def resultado_campania(id_campania: int) -> dict:
         "cultivos": cultivos,
         "costoSinClasificar": sin_clasificar,
         "otrosIngresos": otros_ingresos(campania["nombre"]),
+        "pasaAGanaderia": pasa,
     }
+
+
+def cultivos_ganaderos() -> set[int]:
+    """052: cultivos cuyo costo va a Ganadería (Map_CultivoResultado.EsGanaderia)."""
+    try:
+        return {f["c"] for f in fetch_all("SELECT IdCultivo AS c FROM dbo.Map_CultivoResultado WHERE EsGanaderia = 1")}
+    except Exception:  # columna todavía no creada
+        return set()
+
+
+def pasa_a_ganaderia(ganaderos: list[dict], agricolas: list[dict]) -> dict:
+    """Costo que sale del resultado agrícola hacia Ganadería: cultivos ganaderos enteros + silo picado de los agrícolas.
+    Invariante (SC-005): costo agrícola anterior = costo agrícola actual + este total."""
+    items = [{"cultivo": c["cultivo"], "concepto": "Cultivo ganadero", "pesos": c["costoTotalPesos"],
+              "dolares": c["costoTotalDolares"]} for c in ganaderos]
+    items += [{"cultivo": c["cultivo"], "concepto": "Picado para silo", "pesos": c.get("costoSiloGanaderiaPesos") or 0.0,
+               "dolares": c.get("costoSiloGanaderiaDolares") or 0.0}
+              for c in agricolas + ganaderos if (c.get("costoSiloGanaderiaPesos") or c.get("costoSiloGanaderiaDolares"))]
+    return {"items": items, "pesos": round(sum(_f(i["pesos"]) for i in items), 2),
+            "dolares": round(sum(_f(i["dolares"]) for i in items), 2)}
 
 
 def otros_ingresos(campania: str) -> list[dict]:

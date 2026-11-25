@@ -86,6 +86,11 @@ export interface ResultadoCampania {
   rentabilidadEconomicaDolares: number | null;
   cultivos: ResultadoCultivoResumen[];
   costoSinClasificar: CostoSinClasificar | null;
+  pasaAGanaderia?: {
+    items: { cultivo: string; concepto: string; pesos: number; dolares: number }[];
+    pesos: number;
+    dolares: number;
+  };
 }
 
 export const fetchResultadoCampania = (idCampania: number) => apiGet<ResultadoCampania>(`/api/resultado-cultivo/campania/${idCampania}`);

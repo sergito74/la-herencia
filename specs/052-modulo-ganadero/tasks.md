@@ -31,28 +31,28 @@ Etiquetas de historia:
 - [x] T008 [USD] Verificación antes y después en el Resultado de cultivos, campañas 2023/24 a 2025/26: listar en `auditoria-dolar-20261125.md` las diferencias en US$ por cultivo que deje la unificación. Si hay diferencias, mostrárselas a Sergio antes de hacer commit.
 
 ## Phase 2b: Foundational. Esquema y forrajes
-- [ ] T009 Crear el script `backend/scripts/ganaderia_tablas_20261125.py` (simula, y con `--aplicar` hace respaldo y DDL). Debe crear:
+- [x] T009 Crear el script `backend/scripts/ganaderia_tablas_20261125.py` (simula, y con `--aplicar` hace respaldo y DDL). Debe crear:
   - las tablas `GanCategoria`, `GanCategoriaAlias`, `GanMovimiento`, `GanRecuento`, `GanRecuentoDetalle`, `GanRubroMapa`, `GanForrajeRegla`, `GanCalendarioCultivo`, `GanSuperficieAjuste`, `GanReserva`, `GanReservaConsumo`, `GanReparto` y `GanControlAceptado`, según [data-model.md](data-model.md);
   - en `GanMovimiento.Tipo`, el CHECK con "Nacimiento, Compra, Venta, Muerte, Consumo, CambioCategoria, PastajeEntrada, PastajeSalida, Traslado, AjusteRecuento";
   - `GanMovimiento.IdDetalleVenta` UNIQUE cuando no es NULL;
   - en `GanRecuento.Origen`, el CHECK con "Recuento, Acta, Cierre, Planilla";
   - en `GanForrajeRegla.Tratamiento`, el CHECK con "Consumo, Amortiza".
-- [ ] T010 En el mismo script, agregar `Map_CultivoResultado.EsGanaderia bit NOT NULL DEFAULT 0` y ponerlo en 1 para Sorgo, Maíz diferido, Avena, Pastura, Rye grass y Verdeos. Cargar los datos iniciales:
+- [x] T010 En el mismo script, agregar `Map_CultivoResultado.EsGanaderia bit NOT NULL DEFAULT 0` y ponerlo en 1 para Sorgo, Maíz diferido, Avena, Pastura, Rye grass y Verdeos. Cargar los datos iniciales:
   - `GanCategoria` con los coeficientes EV de data-model;
   - los alias de la planilla y de las actas, incluida "Terneras Miguel";
   - `GanForrajeRegla`, con el desfase campaña → ejercicio: Avena del año N → ejercicio abr-N/mar-N+1; Maíz diferido N-1/N → abr-N/mar-N+1; Pastura Amortiza 4;
   - `GanCalendarioCultivo` (R3);
   - `GanReparto`, Personal permanente 70/20/10;
   - `GanRubroMapa` con los rubros de la planilla, con administración, honorarios y movilidad como Estructura.
-- [ ] T011 Excluir los cultivos con `EsGanaderia=1` en `backend/src/features/resultado_cultivo/resultado.py` (`_cultivos_con_datos`, alrededor de la línea 207) y en la constante VERDEOS de `formularios_access.py`. El silo deja de restarse "al vacío": `_costo_silo` sigue calculando, y su importe se expone para Ganadería.
-- [ ] T012 [P] Prueba `backend/tests/ganaderia/test_forrajes_traspaso.py` (SC-005): en un escenario simulado, el costo agrícola antes menos el costo agrícola después es igual al costo forrajero más el silo en Ganadería, al centavo.
+- [x] T011 Excluir los cultivos con `EsGanaderia=1` en `backend/src/features/resultado_cultivo/resultado.py` (`_cultivos_con_datos`, alrededor de la línea 207) y en la constante VERDEOS de `formularios_access.py`. El silo deja de restarse "al vacío": `_costo_silo` sigue calculando, y su importe se expone para Ganadería.
+- [x] T012 [P] Prueba `backend/tests/ganaderia/test_forrajes_traspaso.py` (SC-005): en un escenario simulado, el costo agrícola antes menos el costo agrícola después es igual al costo forrajero más el silo en Ganadería, al centavo.
 - [ ] T013 Crear la vista `vw_Gan_Costos` en el script T009. Fuentes:
   - las fracciones `VIGENTE_050` de ganadería o de cultivo `EsGanaderia`;
   - el tamiz con destino Ganadería;
   - el centro 2 fuera del alcance de 050.
 
   Netas de IVA y de `factor_particular`, con US$ calculado con `dolar_gestion`. Se agrega el personal permanente por `GanReparto`.
-- [ ] T014 Ejecutar T009–T013 con `--aplicar` después del respaldo, y registrar el respaldo y los conteos en `specs/052-modulo-ganadero/registro-aplicacion.md`.
+- [x] T014 Ejecutar T009–T013 con `--aplicar` después del respaldo, y registrar el respaldo y los conteos en `specs/052-modulo-ganadero/registro-aplicacion.md`.
 
 ## Phase 3: User Story 1. Resultado ganadero por ejercicio (P1) 🎯 MVP
 **Objetivo:** el cuadro con la estructura de la planilla y el estándar del sector (FR-002/003/004/005/012/013/020/021/022).
