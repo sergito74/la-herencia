@@ -36,9 +36,10 @@ def ventas(desde, hasta, establecimiento: int | None = None) -> list[dict]:
                t.[Tipo de Hacienda] AS categoria, g.PesoTipicoKg AS pesoTipico, d.Cantidad AS cantidad,
                d.[Unidad de medida] AS unidad, d.[Peso Total] AS pesoTotal,
                ISNULL(d.Cantidad,0) * ISNULL(d.[Precio unitario (A)],0) AS importeA,
-               ISNULL(d.Cantidad,0) * ISNULL(d.[Precio unitario (B)],0) AS importeB
+               ISNULL(d.Cantidad,0) * ISNULL(d.[Precio unitario (B)],0) AS importeB, td.[Tipo Documento] AS tipoDoc
         FROM dbo.[Det_Ventas Hacienda] d
         JOIN dbo.[Venta Hacienda] v ON v.IdVenta = d.IdVenta
+        LEFT JOIN dbo.[Tipo Documento] td ON td.IdTipoDocumento = v.IdTipoDocumento
         LEFT JOIN dbo.[Tipo Hacienda] t ON t.IdTipoHacienda = d.IdTipoProducto
         LEFT JOIN (SELECT IdTipoHacienda, MIN(PesoTipicoKg) PesoTipicoKg FROM dbo.GanCategoria GROUP BY IdTipoHacienda) g
                ON g.IdTipoHacienda = d.IdTipoProducto
@@ -102,6 +103,12 @@ def periodo(anio: int, vista: str = "ejercicio", forrajes_cache: list | None = N
     renglones, gastos = ventas(desde, hasta, establecimiento)
     kg_vendidos, cab_vendidas = 0.0, 0
     for r in renglones:
+        if (r.get("tipoDoc") or "").startswith("Nota de Cr") and _f(r["importeA"]) > 0:
+            # NC del consignatario a favor nuestro sin devolver hacienda = bonificación de gastos (Sergio 25/11/2026:
+            # J y M 0002-00000033 bonificación de comisión, Wallace 00004-00001355): menor gasto de comercialización.
+            suma("Comercializacion", "Bonificaciones del consignatario", -_f(r["importeA"]),
+                 -_usd(r["importeA"], r["fecha"]), _det(r, -_f(r["importeA"])))
+            continue
         if not r["esHacienda"]:  # renglón en pesos: ajuste de la liquidación, suma a la venta como en la planilla
             suma("Ventas", "Ajustes de liquidación", r["importeA"], _usd(r["importeA"], r["fecha"]), _det(r, r["importeA"]))
             continue
