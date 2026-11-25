@@ -79,3 +79,19 @@ def test_venta_no_se_carga_a_mano():
     with pytest.raises(ValueError):
         stock.registrar_movimiento({"tipo": "Venta", "cabezas": 2, "categoria": VACAS, "fecha": date.today(),
                                     "establecimiento": 1}, None)
+
+
+ORIGEN = {12: [11], 8: [4, 2], 4: [2]}  # vacas preñadas ← vacas; novillos ← novillitos ← terneros
+
+
+def test_venta_de_subcategoria_sale_de_la_categoria_contada():
+    rec = [_rec(date(2026, 4, 1), [(VACAS, None, 100), (TERNEROS, None, 50)])]
+    movs = [_mov(date(2026, 5, 1), "Venta", 12, 40), _mov(date(2026, 6, 1), "Venta", 8, 30)]
+    st = stock.existencia(rec, movs, date(2026, 7, 1), [1], ORIGEN)[1]["stock"]
+    assert st[(None, VACAS)] == 60 and st[(None, TERNEROS)] == 20
+    assert st.get((None, 12), 0) == 0 and st.get((None, 8), 0) == 0
+
+
+def test_sin_recuento_no_hay_existencia():
+    movs = [_mov(date(2015, 5, 1), "Venta", VACAS, 40)]
+    assert stock.existencia([], movs, date(2015, 7, 1), [1])[1]["stock"] == {}

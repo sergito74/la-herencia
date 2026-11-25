@@ -49,34 +49,62 @@ def _base(recuentos: list[dict], est: int, fecha: date, antes_de: bool = False) 
     return max(cands, key=lambda r: (_d(r["fecha"]), r.get("id") or 0)) if cands else None
 
 
-def _teorica(recuentos, movimientos, est: int, fecha: date, antes_de_recuento: bool = False):
-    """(base, {(dueño, cat): cabezas}) del campo a la fecha. antes_de_recuento: ignora un recuento de ese mismo día."""
+def _teorica(recuentos, movimientos, est: int, fecha: date, antes_de_recuento: bool = False, origen: dict | None = None):
+    """(base, {(dueño, cat): cabezas}) del campo a la fecha. Sin recuento previo no hay existencia conocida.
+    antes_de_recuento: ignora un recuento de ese mismo día.
+    origen: {cat: [categorías de las que evoluciona, la más cercana primero]}. Si una salida supera la existencia de su
+    categoría, el faltante sale de esas categorías (el recuento agrupa: 'vacas' incluye preñadas; la venta de novillos
+    sale de los novillitos o terneros contados). Es el cambio de categoría que el recuento no registró."""
     base = _base(recuentos, est, fecha, antes_de_recuento)
     stock: dict = defaultdict(int)
-    if base:
-        for d in base["detalle"]:
-            stock[(d.get("dueno"), d["categoria"])] += int(d["cabezas"])
-    desde = _d(base["fecha"]) if base else None
-    for m in movimientos:
+    if not base:
+        return None, stock
+    for d in base["detalle"]:
+        stock[(d.get("dueno"), d["categoria"])] += int(d["cabezas"])
+    desde = _d(base["fecha"])
+    for m in sorted(movimientos, key=lambda m: _d(m["fecha"])):
         f = _d(m["fecha"])
-        if f > fecha or (desde is not None and f <= desde):
+        if f > fecha or f <= desde:
             continue
         for e, dueno, cat, delta in efectos(m):
-            if e == est:
-                stock[(dueno, cat)] += delta
+            if e != est:
+                continue
+            if delta < 0 and origen:
+                falta = -delta - max(stock.get((dueno, cat), 0), 0)
+                for o in origen.get(cat, []):
+                    if falta <= 0:
+                        break
+                    tomar = min(falta, max(stock.get((dueno, o), 0), 0))
+                    if tomar:
+                        stock[(dueno, o)] -= tomar
+                        delta += tomar
+                        falta -= tomar
+            stock[(dueno, cat)] += delta
     return base, stock
 
 
-def existencia(recuentos: list[dict], movimientos: list[dict], fecha: date, establecimientos: list[int]) -> dict:
+def origenes(cats: dict) -> dict:
+    """{cat: categorías del mismo sexo y orden menor, la más cercana primero} desde GanCategoria."""
+    return {i: [o for o, _ in sorted(((j, c2) for j, c2 in cats.items()
+                                      if c2["sexo"] == c["sexo"] and c2["orden"] < c["orden"]),
+                                     key=lambda x: -x[1]["orden"])]
+            for i, c in cats.items()}
+
+
+def existencia(recuentos: list[dict], movimientos: list[dict], fecha: date, establecimientos: list[int],
+               origen: dict | None = None) -> dict:
     """Función pura. recuentos: [{id, fecha, establecimiento, origen, detalle: [{categoria, dueno, cabezas}]}];
     movimientos: [{fecha, tipo, categoria, categoriaDestino, cabezas, dueno, establecimiento, establecimientoDestino}]
     (sin anulados). Devuelve {est: {base, stock: {(dueño, cat): cabezas}, sinExplicar: {(dueño, cat): diferencia}}}."""
     out = {}
     for est in establecimientos:
-        base, stock = _teorica(recuentos, movimientos, est, fecha)
+        base, stock = _teorica(recuentos, movimientos, est, fecha, origen=origen)
         sin = {}
         if base:
-            _, previo = _teorica(recuentos, movimientos, est, _d(base["fecha"]), antes_de_recuento=True)
+            prev, previo = _teorica(recuentos, movimientos, est, _d(base["fecha"]), antes_de_recuento=True, origen=origen)
+            if not prev:
+                out[est] = {"base": base, "stock": dict(stock), "sinExplicar": {}}
+                continue
             contado = defaultdict(int)
             for d in base["detalle"]:
                 contado[(d.get("dueno"), d["categoria"])] += int(d["cabezas"])
@@ -88,7 +116,7 @@ def existencia(recuentos: list[dict], movimientos: list[dict], fecha: date, esta
     return out
 
 
-def faltantes(recuentos, movimientos, nuevo: dict) -> list[dict]:
+def faltantes(recuentos, movimientos, nuevo: dict, origen: dict | None = None) -> list[dict]:
     """Claves que quedarían negativas en la fecha del movimiento nuevo o en cualquier fecha posterior conocida."""
     todos = movimientos + [nuevo]
     fechas = {_d(nuevo["fecha"])} | {_d(m["fecha"]) for m in movimientos if _d(m["fecha"]) > _d(nuevo["fecha"])}
@@ -97,7 +125,7 @@ def faltantes(recuentos, movimientos, nuevo: dict) -> list[dict]:
         if delta >= 0:
             continue
         for f in sorted(fechas):
-            _, st = _teorica(recuentos, todos, e, f)
+            _, st = _teorica(recuentos, todos, e, f, origen=origen)
             if st.get((dueno, cat), 0) < 0:
                 malos.append({"establecimiento": e, "dueno": dueno, "categoria": cat, "fecha": f.isoformat(),
                               "existencia": st[(dueno, cat)]})
@@ -138,7 +166,7 @@ def _movimientos_db(incluir_anulados: bool = False) -> list[dict]:
 def _catalogos():
     from src.db.connection import fetch_all
 
-    cats = {r["id"]: r for r in fetch_all("SELECT IdCategoria id, Nombre nombre, PesoTipicoKg peso, CoefEV ev, Orden orden "
+    cats = {r["id"]: r for r in fetch_all("SELECT IdCategoria id, Nombre nombre, PesoTipicoKg peso, CoefEV ev, Orden orden, Sexo sexo "
                                           "FROM dbo.GanCategoria")}
     ests = {r["Id"]: r["Establecimiento"] for r in fetch_all("SELECT Id, Establecimiento FROM dbo.Establecimientos")}
     return cats, ests
@@ -163,7 +191,7 @@ def stock(fecha: date, establecimiento: int | None = None, dueno: str = "todos")
     cats, ests = _catalogos()
     ids = [establecimiento] if establecimiento else sorted(ests)
     rec = _recuentos_db()
-    ex = existencia(rec, _movimientos_db(), fecha, ids)
+    ex = existencia(rec, _movimientos_db(), fecha, ids, origenes(cats))
     kg_base = {}
     for e in ids:
         b = ex[e]["base"]
@@ -230,7 +258,7 @@ def registrar_movimiento(d: dict, usuario: str | None, confirmar: bool = False) 
     if d["tipo"] == "Traslado" and not d.get("establecimientoDestino"):
         raise ValueError("Indicá el campo de destino")
     if not confirmar:
-        malos = faltantes(_recuentos_db(), _movimientos_db(), d)
+        malos = faltantes(_recuentos_db(), _movimientos_db(), d, origenes(_catalogos()[0]))
         if malos:
             raise StockNegativo(malos)
     return execute_insert_returning_id(
@@ -276,7 +304,7 @@ def registrar_recuento(d: dict, usuario: str | None) -> dict:
 
     fecha = d["fecha"] if isinstance(d["fecha"], date) else date.fromisoformat(str(d["fecha"]))
     est = int(d["establecimiento"])
-    base, teo = _teorica(_recuentos_db(), _movimientos_db(), est, fecha)
+    base, teo = _teorica(_recuentos_db(), _movimientos_db(), est, fecha, origen=origenes(_catalogos()[0]))
     contado = defaultdict(int)
     for x in d["detalle"]:
         if int(x["cabezas"]) < 0:
@@ -319,8 +347,9 @@ def categoria_de_tipo_hacienda() -> dict[int, int]:
 
 def movimientos_de_venta(id_venta: int, cat_de_tipo: dict | None = None) -> list[dict]:
     """Un movimiento Venta por renglón de hacienda (regla R4); los renglones en pesos no son hacienda.
-    Las notas de crédito y débito ajustan el precio de una liquidación anterior: no sacan hacienda (Sergio 25/11/2026,
-    NC 00004-00001355 de los 2 toros de San Pedro ya salidos con la liquidación 000003-00024837)."""
+    Notas de crédito/débito: solo mueven stock los renglones que devuelven hacienda (cabezas negativas, p. ej. la NC
+    que anula una liquidación reemplazada); con cabezas positivas son un ajuste de precio de hacienda ya salida
+    (Sergio 25/11/2026: NC 00004-00001355 de los 2 toros de San Pedro liquidados con 000003-00024837)."""
     from src.db.connection import fetch_all
     from src.features.ganaderia import categorias
 
@@ -330,7 +359,7 @@ def movimientos_de_venta(id_venta: int, cat_de_tipo: dict | None = None) -> list
         "d.Cantidad cantidad, d.[Unidad de medida] unidad, d.[Peso Total] peso "
         "FROM dbo.[Det_Ventas Hacienda] d JOIN dbo.[Venta Hacienda] v ON v.IdVenta = d.IdVenta "
         "JOIN dbo.[Tipo Documento] td ON td.IdTipoDocumento = v.IdTipoDocumento "
-        "WHERE d.IdVenta = ? AND td.[Tipo Documento] NOT LIKE 'Nota de%'", (id_venta,))
+        "WHERE d.IdVenta = ? AND (td.[Tipo Documento] NOT LIKE 'Nota de%' OR d.Cantidad < 0)", (id_venta,))
     pesos = {r["i"]: float(r["p"] or 0) or None for r in fetch_all("SELECT IdCategoria i, PesoTipicoKg p FROM dbo.GanCategoria")}
     out = []
     for f in filas:

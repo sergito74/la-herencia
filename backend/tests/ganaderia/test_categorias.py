@@ -26,3 +26,8 @@ def test_pesos_no_es_hacienda():
 def test_correccion_negativa_conserva_signo():
     r = cabezas_y_kg(-8788, "Kilos", -52, 200)
     assert (r["cabezas"], r["kg"]) == (-52, -8788)
+
+
+def test_unidades_cargadas_al_reves():
+    r = cabezas_y_kg(170, "Unidades", 1, 190)
+    assert r["cabezas"] == 1 and r["kg"] == 170 and not r["kgEstimado"]

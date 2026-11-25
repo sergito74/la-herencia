@@ -37,6 +37,11 @@ def cabezas_y_kg(cantidad, unidad: str | None, peso_total, peso_tipico: float | 
             cabezas = int(round(abs(kg) / peso_tipico)) * signo if peso_tipico else 0
             estimadas = True
         return {"cabezas": cabezas, "kg": kg, "kgEstimado": False, "cabezasEstimadas": estimadas, "esHacienda": True}
+    if peso and abs(peso) < abs(cant) and 40 <= abs(cant) / abs(peso) <= 1200:
+        # Cargado al revés (Cantidad = kg, Peso Total = cabezas): kg por cabeza verosímil (PDF 0003-00006904: 1 ternera
+        # de 170 kg cargada "Unidades 170 / Peso 1").
+        return {"cabezas": int(round(abs(peso))) * signo, "kg": cant, "kgEstimado": False, "cabezasEstimadas": False,
+                "esHacienda": True}
     cabezas = int(round(cant))
     if peso and abs(peso) > abs(cant):
         return {"cabezas": cabezas, "kg": abs(peso) * signo, "kgEstimado": False, "cabezasEstimadas": False,

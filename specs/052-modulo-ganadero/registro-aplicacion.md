@@ -31,3 +31,15 @@
 - Quedan en negativo, a la vista: San Pedro "Vacas conserva" −4 (la venta las clasifica como conserva y el recuento como vacas) y San Pedro Toros −2 hoy (ventas posteriores al último recuento de 10/2023; falta el recuento de cierre del campo, 2025).
 - 25/11 (Sergio): las ventas de "Vacas conserva" descuentan de Vacas (alias Vacas conserva → Vacas; 20 ventas resincronizadas). San Pedro cerrado en cero el 10/07/2025 con la venta de los últimos 2 toros (00004-00001355): recuento 25, origen Cierre. Hoy no queda ningún negativo.
 - 25/11 (Sergio): los 2 toros de la NC Wallace 00004-00001355 (10/07/2025) son los mismos que salieron con el último DTe a la feria (liquidación 000003-00024837, 11/06/2024). Regla general: las notas de crédito y débito no mueven stock (10 movimientos de 9 notas eliminados). Cierre de San Pedro movido al 11/06/2024: existencia 0 y diferencia sin explicar 0.
+
+## 25/11/2026 — Actas de vacunación 2024–2026 (La Herencia)
+- Respaldo verificado: `WC_pre_ganaderia_052_20261125_164612.bak`.
+- Recuentos origen Acta (Toros/toritos juntos → Toros): 05/04/2024 FUNDEBO 00086593 = 380 (182 vacas, 24 toros, 94 terneros, 80 terneras); 22/04/2025 00090515 = 240 (113, 11, 54, 62); 03/12/2025 00092257 = 265 (menores 149 + observación "aparte 107 vacas y 9 toros"; terneros/terneras con corrección a mano 48/46, se tomó lo escrito 49/50); 09/04/2026 00094112 = 259 (103, 7, 49, 50, 50 vaquillonas).
+- No cargada: 13/11/2024 00088584 (solo menores: 2 toritos, 55 terneros, 60 terneras, 48 novillitos; sin vacas ni toros).
+- Reglas generales nuevas:
+  - Notas de crédito/débito: solo mueven stock los renglones con cabezas negativas (NC que anula una liquidación reemplazada: Elordi 00002-00005483, CUT WEST 00002-00000003, J y M 0003-00013212). Con cabezas positivas son ajuste de precio (Wallace 00004-00001355).
+  - Una salida mayor que la existencia de su categoría toma el faltante de la categoría más cercana del mismo sexo y menor orden (vacas preñadas ← vacas; novillos ← novillitos ← terneros): es el cambio de categoría que el recuento no registró.
+  - Antes del primer recuento del campo no hay existencia (antes daba negativos desde 2011).
+  - Renglón "Unidades" con Peso Total < Cantidad y kg/cabeza verosímil (40–1200) = cargado al revés (PDF 0003-00006904: 1 ternera de 170 kg cargada como 170 unidades).
+- Resultado: 239 movimientos de venta; negativos restantes solo 01–04/2025 (Novillos −2, Vaquillonas −4). 26/10/2023 sigue = planilla.
+- Para Sergio: venta 0120-00012139 Monasterio Tattersal (29/12/2023) = 50 vacas preñadas de Tapalqué (guía TAPALQUE, RENSPA 01.111.0.00467/13) según el PDF, cargada con establecimiento La Herencia y como 50 vacas + 50 terneros/as a $350.000. Importes correctos; corregir campo y renglones no cambia saldos.
