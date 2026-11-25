@@ -14,9 +14,9 @@ Etiquetas de historia:
 - **[USD]** dólar único (FR-016), que es transversal y va primero
 
 ## Phase 1: Setup
-- [ ] T001 Crear el paquete `backend/src/features/ganaderia/__init__.py` y registrar el router `/api/ganaderia` en `backend/src/main.py`, siguiendo el patrón de `resultado_cultivo`.
+- [x] T001 Crear el paquete `backend/src/features/ganaderia/__init__.py` y registrar el router `/api/ganaderia` en `backend/src/main.py`, siguiendo el patrón de `resultado_cultivo`.
 - [ ] T002 [P] Crear la carpeta `backend/tests/ganaderia/` con un `conftest.py` de datos simulados, igual al de `backend/tests/documentos_nuevos/conftest.py`.
-- [ ] T003 [P] Crear las rutas vacías `frontend/src/app/ganaderia/{resultado,stock,controles,configuracion}/page.tsx` y el menú "Ganadería" de primer nivel en `frontend/src/components/layout/NavHeader.tsx`, con enlaces a `/ventas/hacienda`, `/ventas/pastaje` y al flujo de caja filtrado. Las pantallas sin implementar muestran "Próximamente".
+- [x] T003 [P] Crear las rutas vacías `frontend/src/app/ganaderia/{resultado,stock,controles,configuracion}/page.tsx` y el menú "Ganadería" de primer nivel en `frontend/src/components/layout/NavHeader.tsx`, con enlaces a `/ventas/hacienda`, `/ventas/pastaje` y al flujo de caja filtrado. Las pantallas sin implementar muestran "Próximamente".
 
 ## Phase 2: Foundational. Dólar único (FR-016), va primero
 - [x] T004 [USD] Auditar todos los lugares que pasan a US$: buscar `Comp_Divisa`, `TC_CompDivisa`, `Prom_billete`, `Vend_Divisa`, `[Tipo de Cambio]` y `vw_CnsComprasDolarBNA` en `backend/src` y en las vistas SQL de WC. Clasificar cada uno en costo/resultado (se unifica), cuenta corriente (TC del comprobante, se deja) o proyección del flujo (vendedor, se deja y se documenta). Guardar el resultado en `specs/052-modulo-ganadero/auditoria-dolar-20261125.md`.
@@ -46,7 +46,7 @@ Etiquetas de historia:
   - `GanRubroMapa` con los rubros de la planilla, con administración, honorarios y movilidad como Estructura.
 - [x] T011 Excluir los cultivos con `EsGanaderia=1` en `backend/src/features/resultado_cultivo/resultado.py` (`_cultivos_con_datos`, alrededor de la línea 207) y en la constante VERDEOS de `formularios_access.py`. El silo deja de restarse "al vacío": `_costo_silo` sigue calculando, y su importe se expone para Ganadería.
 - [x] T012 [P] Prueba `backend/tests/ganaderia/test_forrajes_traspaso.py` (SC-005): en un escenario simulado, el costo agrícola antes menos el costo agrícola después es igual al costo forrajero más el silo en Ganadería, al centavo.
-- [ ] T013 Crear la vista `vw_Gan_Costos` en el script T009. Fuentes:
+- [x] T013 Crear la vista `vw_Gan_Costos` en el script T009. Fuentes:
   - las fracciones `VIGENTE_050` de ganadería o de cultivo `EsGanaderia`;
   - el tamiz con destino Ganadería;
   - el centro 2 fuera del alcance de 050.
@@ -57,29 +57,29 @@ Etiquetas de historia:
 ## Phase 3: User Story 1. Resultado ganadero por ejercicio (P1) 🎯 MVP
 **Objetivo:** el cuadro con la estructura de la planilla y el estándar del sector (FR-002/003/004/005/012/013/020/021/022).
 **Prueba independiente:** quickstart §3 (2018/19 y 2022/23 contra la planilla, en pesos y con la diferencia de TC aparte) y §4 (ha efectivas 26/27).
-- [ ] T015 [US1] `backend/src/features/ganaderia/superficie.py`: ha efectivas por lote y mes.
+- [x] T015 [US1] `backend/src/features/ganaderia/superficie.py`: ha efectivas por lote y mes.
   - Fuentes: `PlanAgricola` y las órdenes; siembra y cosecha reales (`Datos Cosecha`), o el calendario si faltan.
   - Pastura viva hasta su baja; rastrojo = ganadero sin costo; lote picado = ganadero desde el picado.
   - Ajuste por `GanSuperficieAjuste`.
-- [ ] T016 [P] [US1] Prueba `test_superficie.py`: lote de soja 1.ª (nov–abr fuera), pastura con baja anticipada y lote sin plan (12 meses).
-- [ ] T017 [US1] `backend/src/features/ganaderia/categorias.py`: regla R4 de unidad de medida → cabezas y kg, con `KgEstimado`, y pares de anulación/refactura neteados.
-- [ ] T018 [P] [US1] Prueba `test_categorias.py`: Kilos (0003-00010318 → 2 cabezas y 880 kg), Unidades, Pesos (sin hacienda) y el par 00002-00005483/5484.
+- [x] T016 [P] [US1] Prueba `test_superficie.py`: lote de soja 1.ª (nov–abr fuera), pastura con baja anticipada y lote sin plan (12 meses).
+- [x] T017 [US1] `backend/src/features/ganaderia/categorias.py`: regla R4 de unidad de medida → cabezas y kg, con `KgEstimado`, y pares de anulación/refactura neteados.
+- [x] T018 [P] [US1] Prueba `test_categorias.py`: Kilos (0003-00010318 → 2 cabezas y 880 kg), Unidades, Pesos (sin hacienda) y el par 00002-00005483/5484.
 - [ ] T019 [US1] `backend/src/features/ganaderia/forrajes.py`:
   - costo forrajero por ejercicio de consumo con el desfase de `GanForrajeRegla`;
   - amortización de la pastura desde el primer pastoreo, por lote, en 4 años, con baja anticipada si aparece un cultivo agrícola;
   - cosecha de un cultivo ganadero: el costo sigue en Ganadería; según el destino en `Datos Cosecha`, el destino propio pasa a reserva o forraje, y la venta es ingreso de Ganadería;
   - reservas (`GanReserva`), cuyo consumo pasa a costo promedio y cuyo saldo al 31/03 es inventario.
 - [ ] T020 [P] [US1] Prueba `test_forrajes.py`: avena de marzo en el ejercicio siguiente, pastura rota en el año 2, sorgo cosechado para silo (sigue en Ganadería) y avena cosechada y vendida como semilla (ingreso ganadero), silo con consumo parcial (el saldo queda como inventario) y silo sin consumo (queda en stock y genera aviso).
-- [ ] T021 [US1] `backend/src/features/ganaderia/resultado.py`: el cuadro por ejercicio (abr–mar) y por campaña (jul–jun, "margen de caja, sin variación de inventario"). Contenido:
+- [x] T021 [US1] `backend/src/features/ganaderia/resultado.py`: el cuadro por ejercicio (abr–mar) y por campaña (jul–jun, "margen de caja, sin variación de inventario"). Contenido:
   - ventas por categoría A/B/total, comercialización y pastaje (`PastajeLiquidaciones`);
   - directos por `GanRubroMapa` y alimentación (forrajes + silo + reservas consumidas);
   - **ingreso neto** con diferencia de inventario estimada: cabezas del stock × `PesoTipicoKg` × precio de cierre cargado a mano (por ahora "estimada");
   - margen bruto, estructura sin repartir y resultado operativo consolidado;
   - indicadores: kg producidos (vendidos + consumo + final − inicial − comprados; sin terceros), costo directo por kg y por ha, ha efectivas, MB/ha, EV y EV/ha (con terceros);
   - columna "como planilla" para SC-001.
-- [ ] T022 [US1] `GET /api/ganaderia/resultado`, `/resultado/detalle` y `/superficie` en `backend/src/features/ganaderia/router.py`, con `schemas.py`, según [contracts/api-ganaderia.md](contracts/api-ganaderia.md).
+- [x] T022 [US1] `GET /api/ganaderia/resultado`, `/resultado/detalle` y `/superficie` en `backend/src/features/ganaderia/router.py`, con `schemas.py`, según [contracts/api-ganaderia.md](contracts/api-ganaderia.md).
 - [ ] T023 [P] [US1] Prueba de contrato `test_api_resultado.py`: forma de la respuesta, `null` cuando no hay dato, período sin stock con su aviso.
-- [ ] T024 [US1] Pantalla `frontend/src/app/ganaderia/resultado/page.tsx` y `frontend/src/components/ganaderia/CuadroResultado.tsx`:
+- [x] T024 [US1] Pantalla `frontend/src/app/ganaderia/resultado/page.tsx` y `frontend/src/components/ganaderia/CuadroResultado.tsx`:
   - fila 1 con PageHeader y Segmentos; fila 2 con ejercicio/campaña, $/us$, rango y campo;
   - rubros plegables × períodos, con primera columna y encabezado fijos y `CeldaNumerica`;
   - "—" cuando no hay dato;

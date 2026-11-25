@@ -97,6 +97,26 @@ def _precalentar_saldos() -> None:
 
 
 @app.on_event("startup")
+def _precalentar_ganaderia() -> None:
+    """052: el costo de los forrajes por campaña es lento; se deja calculado al arrancar para que el resultado ganadero abra rápido."""
+    import os
+    import threading
+
+    if os.environ.get("LA_HERENCIA_SIN_PLANIFICADOR") == "1":
+        return
+
+    def precalentar() -> None:
+        try:
+            from src.features.ganaderia import costos
+
+            costos.precalentar()
+        except Exception:
+            pass
+
+    threading.Thread(target=precalentar, daemon=True, name="precalentar-ganaderia").start()
+
+
+@app.on_event("startup")
 def _arrancar_planificador_boveda() -> None:
     """Corridas programadas de la bóveda de portales (042): solo mientras la aplicación está abierta."""
     import os
@@ -274,4 +294,6 @@ async def health() -> dict:
     return {"status": "ok"}
 
 from src.features.ordenes_pago.router import router as ordenes_pago_router
+from src.features.ganaderia.router import router as ganaderia_router  # noqa: E402
 app.include_router(ordenes_pago_router)
+app.include_router(ganaderia_router)

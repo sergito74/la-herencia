@@ -336,6 +336,17 @@ def resultado_campania(id_campania: int) -> dict:
     }
 
 
+def costo_cultivo_para_ganaderia(id_cultivo: int, id_campania: int) -> dict:
+    """052: solo el costo (el mismo que calcula resultado_cultivo) y el silo picado, sin ventas ni no liquidado."""
+    cultivo = fetch_one("SELECT Cultivo AS nombre FROM dbo.Cultivos WHERE IdCultivo = ?", (id_cultivo,))
+    lineas = detalle_costos(id_cultivo, id_campania)
+    silo = _costo_silo(id_cultivo, id_campania)
+    return {"idCultivo": id_cultivo, "cultivo": cultivo["nombre"] if cultivo else str(id_cultivo),
+            "costoTotalPesos": round(sum(_f(l["montoPesos"]) for l in lineas) - silo["pesos"], 2),
+            "costoTotalDolares": round(sum(_f(l["montoDolares"]) for l in lineas) - silo["dolares"], 2),
+            "costoSiloGanaderiaPesos": silo["pesos"], "costoSiloGanaderiaDolares": silo["dolares"]}
+
+
 def cultivos_ganaderos() -> set[int]:
     """052: cultivos cuyo costo va a Ganadería (Map_CultivoResultado.EsGanaderia)."""
     try:

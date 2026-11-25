@@ -55,3 +55,23 @@ def usd(importe_pesos: float | None, fecha, moneda: str | None = None, tc_compro
         return round(importe_pesos / tc_comprobante, 2) if tc_comprobante else None
     tc = tc_pesos_fn(fecha)
     return round(importe_pesos / tc, 2) if tc else None
+
+
+_SERIE: dict = {"cargada": 0.0, "fechas": [], "valores": []}
+
+
+def tc_pesos_cache(fecha) -> float | None:
+    """Igual que `tc_pesos` pero con la serie en memoria (10 minutos): para cálculos con miles de renglones."""
+    import bisect
+    import time
+
+    from src.db.connection import fetch_all
+
+    if fecha is None:
+        return None
+    if time.time() - _SERIE["cargada"] > 600:
+        filas = fetch_all("SELECT CONVERT(date, Fecha) AS f, Comp_Divisa AS c FROM dbo.[Dolar BNA] "
+                          "WHERE Comp_Divisa > 0 ORDER BY Fecha")
+        _SERIE.update(cargada=time.time(), fechas=[str(r["f"])[:10] for r in filas], valores=[float(r["c"]) for r in filas])
+    i = bisect.bisect_left(_SERIE["fechas"], str(fecha)[:10]) - 1  # estrictamente anterior
+    return _SERIE["valores"][i] if i >= 0 else None

@@ -259,9 +259,13 @@ def aplicar(cur) -> None:
     for idc, desde, hasta in CALENDARIO:
         cur.execute("IF NOT EXISTS (SELECT 1 FROM dbo.GanCalendarioCultivo WHERE IdCultivo = ?) INSERT INTO "
                     "dbo.GanCalendarioCultivo (IdCultivo, MesDesde, MesHasta) VALUES (?, ?, ?)", (idc, idc, desde, hasta))
+    if cur.execute("SELECT COL_LENGTH('dbo.GanReparto', 'IdContacto')").fetchone()[0] is None:
+        cur.execute("ALTER TABLE dbo.GanReparto ADD IdContacto int NULL")
     cur.execute("IF NOT EXISTS (SELECT 1 FROM dbo.GanReparto WHERE Concepto = 'Personal permanente' AND Ejercicio IS NULL) "
                 "INSERT INTO dbo.GanReparto (Concepto, Ejercicio, PctGanaderia, PctEstructura, PctAgricultura) "
                 "VALUES ('Personal permanente', NULL, 70, 20, 10)")
+    # Sergio 25/11/2026: el encargado del campo (único permanente del campo) es Marcelo Sierra, contacto 374.
+    cur.execute("UPDATE dbo.GanReparto SET IdContacto = 374 WHERE Concepto = 'Personal permanente' AND IdContacto IS NULL")
     for planilla, grupo, orden, rubro in RUBROS:
         cur.execute("IF NOT EXISTS (SELECT 1 FROM dbo.GanRubroMapa WHERE RubroPlanilla = ?) INSERT INTO dbo.GanRubroMapa "
                     "(RubroPlanilla, Grupo, Orden, IdRubro) SELECT ?, ?, ?, IdRubro FROM dbo.Rubros WHERE Rubro = ?",
