@@ -161,9 +161,40 @@ def periodo(anio: int, vista: str = "ejercicio", forrajes_cache: list | None = N
                                       + (f" · {it['regla']}" if it["regla"] else "")
                                       + f" − {v['pctGastos'] * 100:.1f}% gastos de venta",
                           "importe": round(signo * it["valor"], 2), "enlace": "/ganaderia/stock"})
+    kg_traslados = 0.0
+    if establecimiento:
+        # Traslados entre campos propios: para el campo elegido, la hacienda que sale cuenta como producción
+        # (venta interna) y la que entra como compra interna, valuadas igual que el inventario.
+        for t in _traslados(desde, hasta, establecimiento):
+            v = valuacion.valuacion_movimiento(t, pct_gastos(anio))  # mismo valor en origen y destino
+            if not v:
+                continue
+            kg_traslados += t["signo"] * v["kg"]
+            grupo, rubro = ("Ventas", "Traslados a otro campo propio") if t["signo"] > 0 else \
+                ("CompraHacienda", "Traslados desde otro campo propio")
+            suma(grupo, rubro, v["valor"], _usd(v["valor"], t["fecha"]),
+                 {"fecha": str(t["fecha"])[:10], "documento": f"{t['cabezas']} {v['categoria']}",
+                  "contacto": f"{v['kgCabeza']:.0f} kg × ${v['precioKg']:,.2f}/kg (INMAG × {v['coeficiente']})",
+                  "importe": round(v["valor"], 2), "enlace": "/ganaderia/stock"})
     sup = superficie.superficie(anio, vista)
     return {"celdas": celdas, "kgVendidos": round(kg_vendidos, 1), "cabezasVendidas": cab_vendidas,
-            "haGanaderas": sup["haEfectivas"], "inventario": inv}
+            "kgTraslados": round(kg_traslados, 1), "haGanaderas": sup["haEfectivas"], "inventario": inv}
+
+
+def _traslados(desde, hasta, establecimiento: int) -> list[dict]:
+    """Traslados de hacienda propia vigentes del período que salen de (signo 1) o entran a (signo −1) el campo."""
+    from src.features.ganaderia import stock
+
+    out = []
+    for m in stock._movimientos_db():
+        f = str(m["fecha"])[:10]
+        if m["tipo"] != "Traslado" or m.get("dueno") is not None or not (str(desde) <= f <= str(hasta)):
+            continue
+        if m["establecimiento"] == establecimiento:
+            out.append({**m, "signo": 1})
+        elif m.get("establecimientoDestino") == establecimiento:
+            out.append({**m, "signo": -1})
+    return out
 
 
 _pct_cache: dict = {}
@@ -236,7 +267,7 @@ def resultado(desde: int, hasta: int, vista: str = "ejercicio", moneda: str = "U
             "kgProducidos": None, "costoPorKg": None, "ev": None, "evHa": None, "sinInventario": True}
         inv = datos[a]["inventario"]
         if inv:
-            kgp = datos[a]["kgVendidos"] + inv["cierre"]["kg"] - inv["inicio"]["kg"]
+            kgp = datos[a]["kgVendidos"] + datos[a]["kgTraslados"] + inv["cierre"]["kg"] - inv["inicio"]["kg"]
             ev = (inv["cierre"]["ev"] + inv["inicio"]["ev"]) / 2
             indicadores[et].update({
                 "sinInventario": False, "kgProducidos": round(kgp, 0),

@@ -109,6 +109,20 @@ def valuar(filas_stock: list[dict], indice: float, coef: dict, regla: dict, pct_
     return {"valor": round(total, 2), "kg": round(kg_tot, 1), "ev": round(ev_tot, 1), "items": items}
 
 
+def valuacion_movimiento(m: dict, pct_gastos: float) -> dict | None:
+    """Valúa las cabezas de un movimiento (traslado) igual que el inventario: kg de categoría × INMAG × coeficiente."""
+    from src.features.ganaderia import stock
+
+    i = inmag(m["fecha"])
+    c = stock._catalogos()[0].get(m["categoria"])
+    if not i or not c:
+        return None
+    kg = float(m["kg"]) if m.get("kg") else int(m["cabezas"]) * float(c["peso"] or 0)
+    fila = {"idCategoria": m["categoria"], "categoria": c["nombre"], "cabezas": int(m["cabezas"]), "kg": kg}
+    r = valuar([fila], i, coeficientes(), reglas(), pct_gastos)
+    return {**r["items"][0], "kg": r["kg"]} if r["items"] else None
+
+
 def valuacion(fecha: date, establecimiento: int | None, pct_gastos: float) -> dict | None:
     """None si no hay recuento base a esa fecha (stock desconocido)."""
     from src.features.ganaderia import stock
