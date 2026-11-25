@@ -76,6 +76,18 @@ Las tablas nuevas llevan el prefijo `Gan` (verificado que no choca con tablas aj
 ## GanSuperficieAjuste [E1]
 `IdLote`, `Ejercicio`, `MesesGanaderos` override con `Motivo`. Es la excepción documentada; no se usa como regla.
 
+## GanReserva / GanReservaConsumo [E1] (FR-021)
+- **GanReserva:**
+  - IdReserva, Tipo (Silo, Rollo), Fecha confección, IdLote, IdCultivo, IdCampania;
+  - Kg, CostoPesos, CostoUSD, Fuente (`_costo_silo`), Observaciones.
+- **GanReservaConsumo:** IdConsumo, IdReserva, Fecha, Kg, Motivo, Usuario, Anulado.
+- **Reglas:**
+  - costo del consumo = Kg × (Costo / Kg de la reserva);
+  - saldo = Kg − Σ consumos (no puede quedar negativo).
+
+## GanReparto [E1] (FR-022)
+IdReparto, Concepto ("Personal permanente"), Ejercicio NULL (vigente), PctGanaderia 70, PctEstructura 20, PctAgricultura 10.
+
 ## GanControlAceptado [E1]
 La misma forma que `ControlRemitosAceptados`: Tipo, Clave (texto estable del caso), Motivo, Usuario, Fecha, Vigente.
 

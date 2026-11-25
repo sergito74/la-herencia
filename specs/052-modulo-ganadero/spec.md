@@ -301,12 +301,18 @@ Desde las planillas de tacto, preñez y destete: % preñez, % destete, kg destet
     - empieza a amortizar en el primer pastoreo (mientras se implanta es sementera en proceso);
     - vida útil por lote, 4 años por defecto;
     - **baja anticipada:** si aparece un cultivo agrícola en el lote dentro de la vida útil, la cuota pendiente se carga en ese ejercicio como "baja de pastura", y el lote deja de contar como pastura en las ha efectivas.
-  - **Doble propósito:** si el verdeo o el trigo tiene cosecha en Datos Cosecha, el costo queda en Agricultura y Ganadería solo suma los meses de pastoreo en las ha efectivas. Se avisa en controles.
+  - **Doble propósito:** no es habitual (Sergio: un sorgo hace muchos años y una avena para semilla). Si el verdeo, el sorgo o el trigo tiene cosecha en Datos Cosecha, el costo queda en Agricultura y Ganadería solo suma los meses de pastoreo en las ha efectivas. Se avisa en controles.
   - **Rastrojos:** costo 0; solo cuentan los meses (FR-013).
 - **FR-005 (corregida):** el forraje, silo o grano propio consumido va **a costo de producción**, sin margen en el centro que lo produce (se elimina la "etapa posterior a mercado"). El grano seco que se podía vender muestra al costado, solo como información, el "MB a precio de mercado", sin asiento.
 - **FR-008 (agregado):** el resultado por tenencia se calcula **en US$** (stock inicial kg × Δ precio US$/kg), para no confundir devaluación con tenencia. El informe para el Estudio va en pesos.
-- **FR-021: Reservas y sementeras al cierre** (contable, RT 22/RT 17): silo y rollos no consumidos, y verdeos en pie al 31/03, son inventario a costo, no costo del ejercicio. **Etapa 1:** alcanza con el desfase de FR-004 si se confirma que se consumen dentro de los 12 meses. **Después:** inventario de reservas en kg o t MS valuado a costo.
-- **FR-022: Personal permanente:** el sueldo y las cargas del personal del campo (Sierra) se asignan a directo ganadero, directo agrícola o estructura con un % configurable. Irma no es personal del campo.
+- **FR-021: Reservas forrajeras como inventario, en la etapa 1** (Sergio, 25/11/2026: "el silo puede guardarse más de un año").
+  - **Confección:** cada confección de silo (o rollo) crea una **reserva** con kg (o t), fecha, lote y costo. El costo es el de `_costo_silo`: implantación/ha × ha picadas + confección.
+  - **Consumo:** se registra por fecha y kg (carga simple, con el panel lateral). Su costo pasa al ejercicio del consumo, a costo promedio de la reserva.
+  - **Saldo al 31/03:** es inventario a costo; no es costo del ejercicio.
+  - **Si no hay consumo registrado:** no se inventa un consumo. La reserva queda en stock y el control "reserva sin consumo registrado" avisa.
+  - **Maíz diferido:** se consume en general en el período siguiente; se maneja con el desfase de FR-004, no como reserva.
+  - **Verdeos en pie al 31/03:** sementera en proceso a costo. Se resuelve con el desfase de FR-004.
+- **FR-022: Personal permanente:** el sueldo y las cargas del encargado del campo (Sierra, único permanente del campo) se reparten **70% Ganadería (directo), 20% Estructura, 10% Agricultura** (Sergio, 25/11/2026). El % es configurable por ejercicio. Irma no es personal del campo.
 - **FR-023: Conciliación resultado ↔ flujo (etapa 2):** resultado + partidas sin caja (variación de stock, amortización, forraje propio) ± Δ de créditos y deudas = flujo neto ganadero.
 - **Después (fuera de la etapa 1):**
   - amortización de toros y mejoras ganaderas;
