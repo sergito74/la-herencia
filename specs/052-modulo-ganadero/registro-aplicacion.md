@@ -29,3 +29,4 @@
 - Quickstart §5: 26/10/2023 La Herencia = 248 vacas, 20 toros, 7 toritos, 133 terneros, 96 terneras ✔; 15/10/2026 terceros = 70 vaquillonas de San Justo ✔. §6: venta 0003-00010318 = 2 vacas, 880 kg ✔.
 - Los stocks al 31/03 de los mails al Estudio no se importaron como base (2021 solo trae totales y 2023 suma los dos campos); 31/03/2023 en el sistema: 263 vacas (Estudio 260), 13+3 = 18 toros (Estudio 16).
 - Quedan en negativo, a la vista: San Pedro "Vacas conserva" −4 (la venta las clasifica como conserva y el recuento como vacas) y San Pedro Toros −2 hoy (ventas posteriores al último recuento de 10/2023; falta el recuento de cierre del campo, 2025).
+- 25/11 (Sergio): las ventas de "Vacas conserva" descuentan de Vacas (alias Vacas conserva → Vacas; 20 ventas resincronizadas). San Pedro cerrado en cero el 10/07/2025 con la venta de los últimos 2 toros (00004-00001355): recuento 25, origen Cierre. Hoy no queda ningún negativo.
