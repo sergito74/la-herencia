@@ -318,7 +318,9 @@ def categoria_de_tipo_hacienda() -> dict[int, int]:
 
 
 def movimientos_de_venta(id_venta: int, cat_de_tipo: dict | None = None) -> list[dict]:
-    """Un movimiento Venta por renglón de hacienda (regla R4); los renglones en pesos no son hacienda."""
+    """Un movimiento Venta por renglón de hacienda (regla R4); los renglones en pesos no son hacienda.
+    Las notas de crédito y débito ajustan el precio de una liquidación anterior: no sacan hacienda (Sergio 25/11/2026,
+    NC 00004-00001355 de los 2 toros de San Pedro ya salidos con la liquidación 000003-00024837)."""
     from src.db.connection import fetch_all
     from src.features.ganaderia import categorias
 
@@ -327,7 +329,8 @@ def movimientos_de_venta(id_venta: int, cat_de_tipo: dict | None = None) -> list
         "SELECT d.IdDetalleVenta det, v.Fecha fecha, v.IdEstableciemiento est, v.[Nro documento] doc, d.IdTipoProducto tipo, "
         "d.Cantidad cantidad, d.[Unidad de medida] unidad, d.[Peso Total] peso "
         "FROM dbo.[Det_Ventas Hacienda] d JOIN dbo.[Venta Hacienda] v ON v.IdVenta = d.IdVenta "
-        "WHERE d.IdVenta = ?", (id_venta,))
+        "JOIN dbo.[Tipo Documento] td ON td.IdTipoDocumento = v.IdTipoDocumento "
+        "WHERE d.IdVenta = ? AND td.[Tipo Documento] NOT LIKE 'Nota de%'", (id_venta,))
     pesos = {r["i"]: float(r["p"] or 0) or None for r in fetch_all("SELECT IdCategoria i, PesoTipicoKg p FROM dbo.GanCategoria")}
     out = []
     for f in filas:
