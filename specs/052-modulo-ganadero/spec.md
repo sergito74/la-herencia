@@ -2,7 +2,7 @@
 
 **Feature Branch**: `052-modulo-ganadero` (se trabaja en main; push autorizado)
 **Created**: 2026-11-25
-**Status**: Draft revisado por los agentes especialistas (25/11/2026); faltan las preguntas abiertas
+**Status**: Lista para plan (25/11/2026)
 **Input**: Sergio (24/11/2026): "armar el módulo ganadero que nos permita gerenciar y controlar la parte ganadera del negocio … acoplarlo a lo que ya está armado". Antecedentes: [propuesta-especialistas-20261124.md](propuesta-especialistas-20261124.md), con la propuesta de los agentes 05/06/07, las respuestas de Sergio y la historia encontrada en carpetas y mails.
 
 ## Clarifications
@@ -190,14 +190,19 @@ Desde las planillas de tacto, preñez y destete: % preñez, % destete, kg destet
 - **FR-005:** Grano o silo propio consumido por la hacienda (los kg con destino Silo de Datos Cosecha):
   - **Etapa 1:** se valúa a costo de producción. Lo que se descuenta del cultivo entra igual a Ganadería.
   - **Etapa posterior:** transferencia interna a precio de mercado, con eliminación en el consolidado.
-  - La planilla valúa el maíz grano a precio (t × US$/t): lo decide Sergio.
+  - **Decidido por Sergio (25/11/2026): a costo de producción**, porque ese forraje no se puede comercializar fácilmente. La transferencia a precio de mercado queda descartada para el forraje.
 - **FR-012:** Indicadores:
   - **Kg producidos** = vendidos + stock final − stock inicial − comprados.
   - **EV:** promedio de los recuentos del ejercicio × coeficiente, como la planilla. Coeficientes iniciales: vaca 1; toro 1,3; torito, novillo y novillito 0,7; ternero/a 0,6; vaquillona 0,8.
   - **EV/ha, MB/ha y rentabilidad:** la rentabilidad es MB / capital en reproductores.
   - **% preñez y destete:** cuando haya datos de servicio.
   - **Por establecimiento:** La Herencia y San Pedro (Tapalqué) por separado.
-- **FR-013:** **Ha ganaderas** = Σ superficie de los lotes con cultivo forrajero en la campaña, contando cada lote una sola vez, más un parámetro "ha ganaderas sin orden" por ejercicio (campo natural y bajos). La planilla usa "415 − ha agrícolas", escrito a mano.
+- **FR-013:** **Ha ganaderas efectivas**, con el método de Sergio (Superficie Campo.xlsx, solapas "Sup Ganadera 2011/2012"): cada lote del campo cuenta por los **meses del ejercicio en que está en uso ganadero**, sobre 12. Σ superficie × meses ganaderos / 12. Respuesta de Sergio del 25/11/2026: los lotes ganaderos están en el plano y en el plan.
+  - **Fuentes:** el **Plan agrícola del sistema** (`PlanAgricola`: lote, cultivo y campaña, que ya incluye Avena, Pastura, Maíz diferido y Sorgo) y las órdenes de trabajo.
+  - **Lote con cultivo agrícola:** queda fuera desde la siembra hasta la cosecha (fechas de la orden de siembra y de Datos Cosecha; si faltan, el calendario típico del cultivo, configurable). El resto del año (rastrojo) es ganadero.
+  - **Lote con forraje, pastura perenne (vida de 4 años desde la implantación), campo natural o bajo sin plan:** ganadero los 12 meses.
+  - **Superficie:** la de `Lotes`, que coincide con el plano.
+  - Así se reemplaza el "415 − agrícolas" que la planilla histórica cargaba a mano.
 - **FR-016:** **Conversión para comparar con la planilla:** pesos ÷ `[Dolar BNA].Prom_billete` del día del comprobante (verificado con 10 casos). No usar `vw_CnsComprasDolarBNA`, que divide por comprador divisa. La regla de cuentas (US$ al TC del comprobante) no cambia.
 
 **Stock y valuación**
@@ -216,7 +221,7 @@ Desde las planillas de tacto, preñez y destete: % preñez, % destete, kg destet
   Las fechas de recuento no son fechas de cierre: el stock a cada corte se calcula con los movimientos, y si faltan movimientos queda "estimado".
 - **FR-008:** **Valuación al cierre = valor neto de realización** (RT 22 / NUA): kg × precio de la fuente − % de gastos de venta.
   - **Fuentes de precio:** Cañuelas por kg para vacas, vaquillonas y toritos; remates feria ESyC para terneros; toro usado = 500 kg de novillo.
-  - **% de gastos de venta:** configurable, propuesto a partir de las ventas reales del ejercicio.
+  - **% de gastos de venta:** **se calcula de las ventas reales del ejercicio** (Sergio, 25/11/2026). Son comisión, garantía, gastos administrativos, derecho de piso, visaciones, sellos, SENASA y flete sobre el importe bruto, por categoría si hay datos y, si no, total.
   - **Apertura de la diferencia de inventario:** resultado **por producción** (kg producidos × precio de cierre) y **por tenencia** (cambio de precio sobre el stock inicial).
   - **Confirmación:** Sergio confirma la valuación y queda bloqueada. Si cambian las cabezas, se avisa para reconfirmar.
   - **Moneda:** se guarda en pesos al 31/03; en US$, al BNA del 31/03.
@@ -246,7 +251,7 @@ Desde las planillas de tacto, preñez y destete: % preñez, % destete, kg destet
   - **Ventas:**
     - sin cabezas o sin kg;
     - kg por cabeza fuera de rango;
-    - renglones idénticos en un mismo documento;
+    - renglones idénticos en un mismo documento, solo como **aviso a verificar con el PDF de la liquidación** (fuente de verdad). Ej. 0003-00010318: son 2 vacas distintas de 440 kg, no hay duplicado;
     - negativos sin su documento par.
   - **Consignatario:** saldo distinto de 0 a 30 días de la venta; venta sin cobro; Complemento sin cobro en caja.
   - **Stock:**
@@ -269,7 +274,7 @@ Desde las planillas de tacto, preñez y destete: % preñez, % destete, kg destet
     - suma de los centros = total de compras;
     - centro y destino contradictorios;
     - compra de Ganadería sin imputar.
-  - **Seguros:** pólizas ganaderas por vencer; stock valuado mayor que la suma asegurada; flete de hacienda sin seguro de transporte.
+  - **Seguros:** fuera del MVP (Sergio no contrata seguros ganaderos, 25/11/2026).
 
 **Finanzas**
 - **FR-014:** El flujo de fondos ganadero es una vista filtrada del flujo de caja. Se agrega el filtro de centro de costos a `/por-rubro` y a la exportación. Los cobros salen de los vencimientos y del cobro real, no de la fecha de la factura. Hay que declararle al usuario que el reparto de pagos por centro es aproximado, porque se hace por proximidad de facturas.
@@ -292,7 +297,7 @@ Desde las planillas de tacto, preñez y destete: % preñez, % destete, kg destet
 - **SC-001a:** Ventas, sanidad e inseminación, gastos generales y comercialización de 2016/17 a 2023/24 (vista julio–junio, US$ con Prom_billete) reproducen la planilla al dólar. El forense verificó 2018/19 y 2022/23.
   - Las diferencias de 2022/23 (productos veterinarios, aranceles, flete, pastaje) se listan con su comprobante.
 - **SC-001b:** Los forrajes se concilian contra las solapas "Cultivos y forrajes" y "Amort Pasturas", que son valores cargados a mano. Las diferencias quedan en una lista, sin ajustar nada.
-  - En la solapa principal las filas Avena, Pastura, Maíz y Maíz silo tienen el nombre corrido: hay que confirmarlo con Sergio antes de comparar.
+  - En la solapa principal las filas Avena, Pastura, Maíz y Maíz silo parecen tener el nombre corrido (detectado por el forense). **Se resuelve sin preguntar** (Sergio, 25/11/2026): se compara por valor contra las solapas fuente ("Cultivos y forrajes", "Amort Pasturas"), no por el rótulo de la fila.
 - **SC-002:** Sergio deja de mantener a mano la planilla de resultado y la de requerimiento de vacunas.
 - **SC-003:** La existencia teórica de 10/2026 coincide con la planilla de vacunas 10/2026, o la diferencia se explica por categoría.
 - **SC-004:** El stock valuado al 31/03 para el Estudio sale del sistema, con fuente de precios y solo lo contable.
@@ -301,13 +306,13 @@ Desde las planillas de tacto, preñez y destete: % preñez, % destete, kg destet
 - **SC-007:** El pastaje facturado es igual al calculado, al centavo, en cada período.
 - **SC-008:** La suma de los centros de costos es igual al total de compras del ejercicio.
 
-## Preguntas abiertas para Sergio (25/11/2026)
-1. ¿Las 415 ha base de la planilla (ha ganaderas = 415 − ha agrícolas) siguen valiendo? ¿Qué superficie ganadera sin orden (campo natural, bajos) hay?
-2. El grano o silo propio consumido, ¿se valúa a costo (FR-005, etapa 1) o a precio, como hacía la planilla?
-3. ¿Qué % de gastos de venta se descuenta en la valuación? ¿Se toma de las ventas reales del ejercicio?
-4. En la solapa principal de la planilla, ¿las filas Avena, Pastura, Maíz y Maíz silo tienen el nombre corrido? (los números de cada fila son de la fila siguiente)
-5. Seguros: ¿se evalúa contratar RC del establecimiento (cubre la hacienda en pastaje) y mortandad o abigeato para el rodeo propio?
-6. Renglón duplicado: la venta 0003-00010318 tiene dos renglones idénticos (440 kg a $220). ¿Es correcto? Se verifica con la liquidación antes de tocarla.
+## Respuestas de Sergio a las preguntas abiertas (25/11/2026)
+1. Ha ganaderas → salen del plano y del plan (ver FR-013).
+2. Grano o silo propio consumido → a costo de producción (FR-005).
+3. % de gastos de venta → se calcula de las ventas reales del ejercicio (FR-008).
+4. Filas con nombre corrido → se resuelve comparando por valor (SC-001b).
+5. Seguros ganaderos (RC, mortandad, abigeato) → **no**. FR-019 queda solo como registro, si algún día hay una póliza; los controles de seguros salen del MVP.
+6. Venta 0003-00010318 → verificada con el PDF de la liquidación (Dropbox/Ventas/04 2022 - 03 2023/20220909_JYMDeLaSerna 002.pdf): 2 vacas de 440 kg a $220, remate 491, Frigolar, faena. Es correcta, no se toca. RENSPA La Herencia 01.013.0.00531/01.
 
 ## Assumptions
 - Las 70 "terneras Miguel" son la hacienda de San Justo (respuesta de Sergio del 25/11/2026). No se baja información de San Justo; solo se usa el contrato de pastaje ya cargado.
