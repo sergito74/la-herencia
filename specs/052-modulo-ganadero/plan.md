@@ -16,7 +16,14 @@ Módulo de gestión ganadera con menú propio. La **etapa 1** (esta entrega de t
    - existencia por categoría, dueño y campo.
 3. **Controles base** con marca "revisado y aceptado": ventas, consignatario, stock, imputación y pastaje.
 
-Quedan para la **etapa 2**: la valuación al cierre (NRV, producción/tenencia) y sanidad (plan, aplicaciones con baja de stock, trabajos veterinarios, observados). Los indicadores de cría van a la **etapa 3**.
+**Agregados a la etapa 1** por la revisión de método (FR-020/012/004/005/022):
+- ingreso neto con valuación simple estimada;
+- estructura separada debajo del MB;
+- kg producidos y costo por kg;
+- desfase de forrajes, baja de pastura, doble propósito;
+- personal permanente asignado por %.
+
+Quedan para la **etapa 2**: la valuación confirmada al cierre (NRV, producción/tenencia en US$) y sanidad (plan, aplicaciones con baja de stock, trabajos veterinarios, observados). Los indicadores de cría van a la **etapa 3**.
 
 ## Technical Context
 **Language/Version**: Python 3.13 (FastAPI), TypeScript (Next.js App Router)

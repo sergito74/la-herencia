@@ -2,7 +2,7 @@
 
 **Feature Branch**: `052-modulo-ganadero` (se trabaja en main; push autorizado)
 **Created**: 2026-11-25
-**Status**: Lista para plan (25/11/2026)
+**Status**: Lista para plan; método de costos revisado por 04/05/07/10 (25/11/2026)
 **Input**: Sergio (24/11/2026): "armar el módulo ganadero que nos permita gerenciar y controlar la parte ganadera del negocio … acoplarlo a lo que ya está armado". Antecedentes: [propuesta-especialistas-20261124.md](propuesta-especialistas-20261124.md), con la propuesta de los agentes 05/06/07, las respuestas de Sergio y la historia encontrada en carpetas y mails.
 
 ## Clarifications
@@ -285,6 +285,35 @@ Desde las planillas de tacto, preñez y destete: % preñez, % destete, kg destet
     - centro y destino contradictorios;
     - compra de Ganadería sin imputar.
   - **Seguros:** fuera del MVP (Sergio no contrata seguros ganaderos, 25/11/2026).
+
+**Revisión de método de costos (25/11/2026: administrador agropecuario 04, agrónomo 05, financiero 07, contable 10)**
+- **FR-020: Estructura del resultado** (estándar CREA/INTA/Márgenes Agropecuarios):
+  - **Ingreso neto** = ventas netas de comercialización − compras de hacienda ± diferencia de inventario. Se muestra en la **etapa 1**, con una valuación simple a mercado (cabezas × kg típico × precio de cierre), rotulada "estimada" hasta que Sergio la confirme en la etapa 2.
+  - **Margen bruto** = ingreso neto + pastaje − costos directos (sanidad, inseminación, alimentación y forrajes, personal atribuible).
+  - **Estructura (administración, honorarios, movilidad, impuestos, mantenimiento de mejoras):** **va debajo, sin repartir**. La etapa 1 la muestra total junto con el resultado operativo consolidado; el reparto por ha efectivas o por % del MB queda para después. En la planilla estos rubros estaban dentro de los directos: el mapa de rubros los reclasifica, y una columna "como planilla" mantiene la comparación de SC-001.
+  - **Margen de caja:** en la vista por campaña (sin inventario) el margen se llama "margen de caja", no margen bruto.
+- **FR-012 (corregida):**
+  - **Kg producidos** = vendidos + consumo propio + stock final − stock inicial − comprados ± traspasos. Las muertes no suman.
+  - **Costo directo por kg producido y por ha.** Los kg y EV de la hacienda de terceros (pastaje) **no entran** en los kg producidos propios; sí en la carga EV/ha. Los coeficientes EV son simplificados por categoría y van rotulados así.
+- **FR-004 (agregados):**
+  - **Período de consumo:** cada cultivo forrajero tiene un desfase campaña → ejercicio de consumo, en `GanForrajeRegla`. Ej.: Avena 2026 → ejercicio abr-26/mar-27; Maíz diferido 2025/26 → abr-26/mar-27.
+  - **Pastura:**
+    - empieza a amortizar en el primer pastoreo (mientras se implanta es sementera en proceso);
+    - vida útil por lote, 4 años por defecto;
+    - **baja anticipada:** si aparece un cultivo agrícola en el lote dentro de la vida útil, la cuota pendiente se carga en ese ejercicio como "baja de pastura", y el lote deja de contar como pastura en las ha efectivas.
+  - **Doble propósito:** si el verdeo o el trigo tiene cosecha en Datos Cosecha, el costo queda en Agricultura y Ganadería solo suma los meses de pastoreo en las ha efectivas. Se avisa en controles.
+  - **Rastrojos:** costo 0; solo cuentan los meses (FR-013).
+- **FR-005 (corregida):** el forraje, silo o grano propio consumido va **a costo de producción**, sin margen en el centro que lo produce (se elimina la "etapa posterior a mercado"). El grano seco que se podía vender muestra al costado, solo como información, el "MB a precio de mercado", sin asiento.
+- **FR-008 (agregado):** el resultado por tenencia se calcula **en US$** (stock inicial kg × Δ precio US$/kg), para no confundir devaluación con tenencia. El informe para el Estudio va en pesos.
+- **FR-021: Reservas y sementeras al cierre** (contable, RT 22/RT 17): silo y rollos no consumidos, y verdeos en pie al 31/03, son inventario a costo, no costo del ejercicio. **Etapa 1:** alcanza con el desfase de FR-004 si se confirma que se consumen dentro de los 12 meses. **Después:** inventario de reservas en kg o t MS valuado a costo.
+- **FR-022: Personal permanente:** el sueldo y las cargas del personal del campo (Sierra) se asignan a directo ganadero, directo agrícola o estructura con un % configurable. Irma no es personal del campo.
+- **FR-023: Conciliación resultado ↔ flujo (etapa 2):** resultado + partidas sin caja (variación de stock, amortización, forraje propio) ± Δ de créditos y deudas = flujo neto ganadero.
+- **Después (fuera de la etapa 1):**
+  - amortización de toros y mejoras ganaderas;
+  - interés al capital hacienda y renta de la tierra (parámetros), para llegar al **resultado económico**;
+  - rentabilidad = resultado operativo / activo total;
+  - apertura por actividad (cría / recría / invernada) con transferencia del ternero a mercado, solo para la hacienda;
+  - EV por peso.
 
 **Finanzas**
 - **FR-014:** El flujo de fondos ganadero es una vista filtrada del flujo de caja. Se agrega el filtro de centro de costos a `/por-rubro` y a la exportación. Los cobros salen de los vencimientos y del cobro real, no de la fecha de la factura. Hay que declararle al usuario que el reparto de pagos por centro es aproximado, porque se hace por proximidad de facturas.
