@@ -301,7 +301,12 @@ Desde las planillas de tacto, preñez y destete: % preñez, % destete, kg destet
     - empieza a amortizar en el primer pastoreo (mientras se implanta es sementera en proceso);
     - vida útil por lote, 4 años por defecto;
     - **baja anticipada:** si aparece un cultivo agrícola en el lote dentro de la vida útil, la cuota pendiente se carga en ese ejercicio como "baja de pastura", y el lote deja de contar como pastura en las ha efectivas.
-  - **Doble propósito:** no es habitual (Sergio: un sorgo hace muchos años y una avena para semilla). Si el verdeo, el sorgo o el trigo tiene cosecha en Datos Cosecha, el costo queda en Agricultura y Ganadería solo suma los meses de pastoreo en las ha efectivas. Se avisa en controles.
+  - **Cosecha de un cultivo ganadero** (Sergio, 25/11/2026: "puede haberse cosechado para destinarlo a forraje de la hacienda"):
+    - **Costo:** sorgo, maíz diferido, avena y pastura **siempre son ganaderos**, aunque tengan cosecha. Su costo queda entero en Ganadería.
+    - **Cosecha:** se mira su destino (`Datos Cosecha.IdDestino`).
+    - **Destino propio** (silo, consumo de la hacienda, semilla para resiembra ganadera): entra como reserva o forraje, sin ingreso.
+    - **Si se vende** (liquidación de granos o semilla vendida): esa venta es un **ingreso de Ganadería** ("venta de forraje o grano"). No pasa el cultivo a Agricultura.
+    - **Sin aviso de "doble propósito":** el único control es "cosecha de un cultivo ganadero sin destino registrado".
   - **Rastrojos:** costo 0; solo cuentan los meses (FR-013).
 - **FR-005 (corregida):** el forraje, silo o grano propio consumido va **a costo de producción**, sin margen en el centro que lo produce (se elimina la "etapa posterior a mercado"). El grano seco que se podía vender muestra al costado, solo como información, el "MB a precio de mercado", sin asiento.
 - **FR-008 (agregado):** el resultado por tenencia se calcula **en US$** (stock inicial kg × Δ precio US$/kg), para no confundir devaluación con tenencia. El informe para el Estudio va en pesos.

@@ -67,9 +67,9 @@ Etiquetas de historia:
 - [ ] T019 [US1] `backend/src/features/ganaderia/forrajes.py`:
   - costo forrajero por ejercicio de consumo con el desfase de `GanForrajeRegla`;
   - amortización de la pastura desde el primer pastoreo, por lote, en 4 años, con baja anticipada si aparece un cultivo agrícola;
-  - doble propósito: si el cultivo tiene cosecha, queda en Agricultura y genera un aviso;
+  - cosecha de un cultivo ganadero: el costo sigue en Ganadería; según el destino en `Datos Cosecha`, el destino propio pasa a reserva o forraje, y la venta es ingreso de Ganadería;
   - reservas (`GanReserva`), cuyo consumo pasa a costo promedio y cuyo saldo al 31/03 es inventario.
-- [ ] T020 [P] [US1] Prueba `test_forrajes.py`: avena de marzo en el ejercicio siguiente, pastura rota en el año 2, silo con consumo parcial (el saldo queda como inventario) y silo sin consumo (queda en stock y genera aviso).
+- [ ] T020 [P] [US1] Prueba `test_forrajes.py`: avena de marzo en el ejercicio siguiente, pastura rota en el año 2, sorgo cosechado para silo (sigue en Ganadería) y avena cosechada y vendida como semilla (ingreso ganadero), silo con consumo parcial (el saldo queda como inventario) y silo sin consumo (queda en stock y genera aviso).
 - [ ] T021 [US1] `backend/src/features/ganaderia/resultado.py`: el cuadro por ejercicio (abr–mar) y por campaña (jul–jun, "margen de caja, sin variación de inventario"). Contenido:
   - ventas por categoría A/B/total, comercialización y pastaje (`PastajeLiquidaciones`);
   - directos por `GanRubroMapa` y alimentación (forrajes + silo + reservas consumidas);
@@ -133,7 +133,7 @@ Etiquetas de historia:
     - compra de Ganadería sin imputar.
   - **Forrajes:**
     - reserva sin consumo registrado;
-    - doble propósito;
+    - cosecha de un cultivo ganadero sin destino registrado;
     - pastura sin primer pastoreo.
 
   Las aceptaciones se guardan en `GanControlAceptado`.
