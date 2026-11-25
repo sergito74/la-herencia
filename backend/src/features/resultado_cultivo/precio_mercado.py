@@ -64,8 +64,9 @@ def pizarra(producto: int, fecha: date) -> dict | None:
 
 
 def _bna_dia_habil_anterior(fecha: date) -> float | None:
-    f = fetch_one("SELECT TOP 1 Comp_Divisa AS tc FROM dbo.[Dolar BNA] WHERE Fecha < ? AND Comp_Divisa > 0 ORDER BY Fecha DESC", (fecha,))
-    return _f(f["tc"]) if f else None
+    from src.features.cotizaciones.dolar_gestion import tc_pesos  # 052 FR-016: dólar de gestión único
+
+    return tc_pesos(fecha)
 
 
 def porcentaje_gastos_comercializacion(cultivo: str) -> dict:

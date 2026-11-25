@@ -19,16 +19,16 @@ Etiquetas de historia:
 - [ ] T003 [P] Crear las rutas vacías `frontend/src/app/ganaderia/{resultado,stock,controles,configuracion}/page.tsx` y el menú "Ganadería" de primer nivel en `frontend/src/components/layout/NavHeader.tsx`, con enlaces a `/ventas/hacienda`, `/ventas/pastaje` y al flujo de caja filtrado. Las pantallas sin implementar muestran "Próximamente".
 
 ## Phase 2: Foundational. Dólar único (FR-016), va primero
-- [ ] T004 [USD] Auditar todos los lugares que pasan a US$: buscar `Comp_Divisa`, `TC_CompDivisa`, `Prom_billete`, `Vend_Divisa`, `[Tipo de Cambio]` y `vw_CnsComprasDolarBNA` en `backend/src` y en las vistas SQL de WC. Clasificar cada uno en costo/resultado (se unifica), cuenta corriente (TC del comprobante, se deja) o proyección del flujo (vendedor, se deja y se documenta). Guardar el resultado en `specs/052-modulo-ganadero/auditoria-dolar-20261125.md`.
-- [ ] T005 [USD] Crear `backend/src/features/cotizaciones/dolar_gestion.py` con la regla única y un fragmento SQL reutilizable:
+- [x] T004 [USD] Auditar todos los lugares que pasan a US$: buscar `Comp_Divisa`, `TC_CompDivisa`, `Prom_billete`, `Vend_Divisa`, `[Tipo de Cambio]` y `vw_CnsComprasDolarBNA` en `backend/src` y en las vistas SQL de WC. Clasificar cada uno en costo/resultado (se unifica), cuenta corriente (TC del comprobante, se deja) o proyección del flujo (vendedor, se deja y se documenta). Guardar el resultado en `specs/052-modulo-ganadero/auditoria-dolar-20261125.md`.
+- [x] T005 [USD] Crear `backend/src/features/cotizaciones/dolar_gestion.py` con la regla única y un fragmento SQL reutilizable:
   - comprobante en US$ → su `[Tipo de Cambio]`;
   - comprobante en pesos → `[Dolar BNA].Comp_Divisa` de la fecha (último ≤ fecha);
   - "Ajusta TC" → 0.
 
   Exponer `usd(importe_pesos, fecha, moneda, tc, ajusta)` y `SQL_USD`.
-- [ ] T006 [USD] Reemplazar `_USD_SQL` en `backend/src/features/resultado_cultivo/costos.py` y las fórmulas equivalentes que la auditoría T004 haya marcado como "costo/resultado" por `dolar_gestion`, sin cambiar el resultado de los casos que ya usan esta regla.
-- [ ] T007 [P] [USD] Prueba `backend/tests/ganaderia/test_dolar_gestion.py`: comprobante en US$, en pesos con fecha sin cotización (toma la anterior), y "Ajusta TC" = 0.
-- [ ] T008 [USD] Verificación antes y después en el Resultado de cultivos, campañas 2023/24 a 2025/26: listar en `auditoria-dolar-20261125.md` las diferencias en US$ por cultivo que deje la unificación. Si hay diferencias, mostrárselas a Sergio antes de hacer commit.
+- [x] T006 [USD] Reemplazar `_USD_SQL` en `backend/src/features/resultado_cultivo/costos.py` y las fórmulas equivalentes que la auditoría T004 haya marcado como "costo/resultado" por `dolar_gestion`, sin cambiar el resultado de los casos que ya usan esta regla.
+- [x] T007 [P] [USD] Prueba `backend/tests/ganaderia/test_dolar_gestion.py`: comprobante en US$, en pesos con fecha sin cotización (toma la anterior), y "Ajusta TC" = 0.
+- [x] T008 [USD] Verificación antes y después en el Resultado de cultivos, campañas 2023/24 a 2025/26: listar en `auditoria-dolar-20261125.md` las diferencias en US$ por cultivo que deje la unificación. Si hay diferencias, mostrárselas a Sergio antes de hacer commit.
 
 ## Phase 2b: Foundational. Esquema y forrajes
 - [ ] T009 Crear el script `backend/scripts/ganaderia_tablas_20261125.py` (simula, y con `--aplicar` hace respaldo y DDL). Debe crear:

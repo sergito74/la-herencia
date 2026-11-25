@@ -6,6 +6,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 
+from src.features.cotizaciones.dolar_gestion import sql_tc_pesos
 from src.db.connection import fetch_all, fetch_one
 from src.features.imputacion import tamiz_repository
 from src.features.remitos import capas_factura
@@ -61,8 +62,9 @@ def _divisor_usd_capas() -> dict[str, float]:
 
 
 def _bna(fecha) -> float | None:
-    f = fetch_one("SELECT TOP 1 Comp_Divisa AS tc FROM dbo.[Dolar BNA] WHERE Fecha <= ? ORDER BY Fecha DESC", (fecha,))
-    return float(f["tc"]) if f and f["tc"] else None
+    from src.features.cotizaciones.dolar_gestion import tc_pesos  # 052 FR-016: dólar de gestión único
+
+    return tc_pesos(fecha)
 
 # 050 (17/11/2026, revisión de especialistas): una sola imputación vigente por renglón, la del origen que corresponde
 # a su clasificación (Insumo ↔ Va a stock; Directo ↔ a cultivo, ganadería o gasto general). Desempate determinista.
@@ -338,9 +340,9 @@ def gastos_caja(id_cultivo: int, id_campania: int) -> list[dict]:
         return []
     return fetch_all(
         "SELECT g.Concepto concepto,r.Rubro rubro,r.IdRubro idRubro,d.ImportePesos montoPesos,"
-        # 17/11/2026: gasto de caja en pesos se dolariza al BNA comprador divisa del día (regla de la casa)
+        # 052 FR-016: gasto de caja en pesos al dólar de gestión único (BNA comprador divisa, día hábil anterior)
         "CASE WHEN g.ImporteUSD IS NOT NULL THEN g.ImporteUSD*d.ImportePesos/NULLIF(g.ImportePesos,0) "
-        "ELSE d.ImportePesos/NULLIF((SELECT TOP 1 b.Comp_Divisa FROM dbo.[Dolar BNA] b WHERE b.Fecha<=CAST(op.Fecha AS date) ORDER BY b.Fecha DESC),0) END montoDolares,"
+        f"ELSE d.ImportePesos/NULLIF({sql_tc_pesos('op.Fecha')},0) END montoDolares,"
         "'GastoCaja' origen,g.IdGasto idGasto,d.IdReparto idReparto,g.IdOperacion idOperacion,"
         "NULL idCompra,NULL idDetalleCompra,NULL idOrdenTrabajo "
         "FROM dbo.GastoCajaEfectivo g JOIN dbo.RepartosGastoCaja d ON d.IdGasto=g.IdGasto "
