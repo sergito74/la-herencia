@@ -44,11 +44,19 @@ Decisiones verificadas contra el código y la base WC por los agentes del 25/11/
   Si falta uno de los dos datos, se usa el peso típico de la categoría, con la marca `KgEstimado`. Los pares de anulación y refactura (negativo con su documento par) se netean.
 - **Verificado:** PDF de la liquidación 0003-00010318 (2 vacas de 440 kg, una por renglón).
 
-## R5. Conversión a US$ (FR-016)
-- **Decision:**
-  - Vista "campaña jul–jun", para comparar con la planilla: pesos ÷ `[Dolar BNA].Prom_billete` del día del comprobante (el forense lo verificó en 10 casos).
-  - Vista "ejercicio": US$ al TC del comprobante, que es la regla general.
-  - No se usa `vw_CnsComprasDolarBNA`, porque divide por el comprador divisa.
+## R5. Conversión a US$ (FR-016): un solo dólar para todos los centros
+- **Decision:** una sola regla para Agricultura, Ganadería y Administración. Es la que ya usa `resultado_cultivo/costos.py` (`_USD_SQL`):
+  - US$ → su TC;
+  - pesos → `[Dolar BNA].Comp_Divisa` (BNA comprador divisa) de la fecha;
+  - "Ajusta TC" → 0.
+
+  Se centraliza en `src/features/cotizaciones/dolar_gestion.py`: una función SQL/Python que usan resultado_cultivo, ganaderia y cualquier tablero, en lugar de repetir la fórmula. Las ventas de granos ya usan BNA comprador divisa (día hábil anterior para la LPG sin TC), así que quedan alineadas.
+- **Rationale:** Sergio (25/11/2026) pidió unificar para que todos los centros queden alineados.
+- **Alternativas:** el Prom_billete de la planilla histórica (descartado: desalinea con Agricultura; la diferencia se muestra como TC en SC-001); vw_CnsComprasDolarBNA (se revisa que use la misma regla, y si no, se alinea o se deja de usar).
+- **Auditoría previa:** hay que listar todos los lugares que dolarizan (`grep` de Comp_Divisa / TC_CompDivisa / Prom_billete / Vend_Divisa / [Tipo de Cambio]) y clasificarlos así:
+  - **costo o resultado:** se unifican;
+  - **cuenta corriente o deuda en US$:** se mantiene la regla del TC del comprobante, que es la misma;
+  - **flujo de caja proyectado:** usa vendedor divisa para proyectar y se deja así, documentado.
 
 ## R6. Ejercicio abril–marzo vs campañas
 - **Decision:** las fracciones se asignan al ejercicio por la fecha de consumo de la orden; si no hay, por la fecha de la factura. La vista por campaña va rotulada "sin variación de inventario".

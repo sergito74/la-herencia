@@ -5,6 +5,7 @@
 
 ## Summary
 Módulo de gestión ganadera con menú propio. La **etapa 1** (esta entrega de tareas) tiene tres partes:
+0. **Dólar de gestión unificado** (FR-016): una función común que usan todos los centros de costos, y la auditoría de los lugares que hoy dolarizan con otra regla.
 1. **Resultado ganadero por ejercicio**, igual a la planilla histórica de Sergio:
    - ventas (A/B), comercialización, costos imputados (fuente 050 por fracción) y forrajes a costo de producción;
    - ha ganaderas efectivas por meses, MB/ha y EV/ha;

@@ -183,7 +183,11 @@ Desde las planillas de tacto, preñez y destete: % preñez, % destete, kg destet
   - **La compra de hacienda no es costo:** entra al stock y se resta en los kg producidos.
   - Los rubros de la planilla se mapean a rubro, destino o cultivo de compra con una tabla de configuración.
 - **FR-004:** **Hoy el Resultado de cultivos SÍ suma los forrajes** como costo agrícola (verificado: 2023/24 maíz diferido US$ 9.221 y sorgo US$ 12.391). Con este módulo:
-  - Avena, pastura, maíz diferido, sorgo, rye grass y verdeos **dejan de figurar** en el Resultado de cultivos y pasan a Ganadería. Se marcan en `Map_CultivoResultado` con una columna nueva.
+  - **Cultivos ganaderos** (Sergio, 25/11/2026): **Sorgo, Maíz diferido, Avena y Pastura**, más Rye grass y Verdeos. **Dejan de figurar** en el Resultado de cultivos y pasan a Ganadería.
+  - **Maíz picado para silo:** las ha de maíz que se pican como forraje (Datos Cosecha, superficie ensilada) son ganaderas.
+    - **Cálculo:** es el que ya existe (`resultado_cultivo/resultado.py` `_costo_silo`, Sergio 20/11/2026): implantación por ha × ha picadas + confección de silo. Hoy ese monto se resta del maíz.
+    - **Destino:** pasa a sumarse en Ganadería → Alimentación, rubro "Maíz silo", por el mismo importe. El resto del maíz sigue siendo agrícola.
+    - **Lote:** el lote picado cuenta como ganadero en las ha efectivas desde el picado. Se marcan en `Map_CultivoResultado` con una columna nueva.
   - **Prueba obligatoria:** el costo agrícola baja exactamente lo que sube el ganadero.
   - Los verdeos, el maíz diferido y el sorgo van al ejercicio de consumo.
   - La implantación de pastura se amortiza en 4 años (parámetro), por lote, como en la solapa "Amort Pasturas" de la planilla. Es un rubro propio.
@@ -203,7 +207,13 @@ Desde las planillas de tacto, preñez y destete: % preñez, % destete, kg destet
   - **Lote con forraje, pastura perenne (vida de 4 años desde la implantación), campo natural o bajo sin plan:** ganadero los 12 meses.
   - **Superficie:** la de `Lotes`, que coincide con el plano.
   - Así se reemplaza el "415 − agrícolas" que la planilla histórica cargaba a mano.
-- **FR-016:** **Conversión para comparar con la planilla:** pesos ÷ `[Dolar BNA].Prom_billete` del día del comprobante (verificado con 10 casos). No usar `vw_CnsComprasDolarBNA`, que divide por comprador divisa. La regla de cuentas (US$ al TC del comprobante) no cambia.
+- **FR-016:** **Un solo dólar para todos los centros de costos** (Sergio, 25/11/2026: "unificar el valor del dólar para dolarizar homogéneamente todos los costos").
+  - **Regla, la que ya usa el Resultado de cultivos** (`resultado_cultivo/costos.py`, `_USD_SQL`):
+    - comprobante en US$ → su propio TC;
+    - comprobante en pesos → BNA comprador divisa (`[Dolar BNA].Comp_Divisa`) de la fecha del comprobante;
+    - comprobante con "Ajusta TC" → 0 US$, porque es ajuste de cambio.
+  - **Alcance:** la misma regla vale para Agricultura, Ganadería y Administración, y para ventas, consumos y transferencias internas. Se centraliza en una función o vista común del backend que usan todos los módulos de resultado; no se copia la fórmula en cada uno.
+  - **Planilla histórica:** usaba el dólar billete promedio del día. La comparación SC-001 se hace con la regla unificada, y la diferencia por TC se muestra aparte, sin cambiar la regla para que coincida.
 
 **Stock y valuación**
 - **FR-006:** Existencia por eventos, en cabezas y kg (con marca "kg estimado"), por **categoría, dueño (Propia / De terceros con su nombre) y campo**.
@@ -294,7 +304,7 @@ Desde las planillas de tacto, preñez y destete: % preñez, % destete, kg destet
 - Backend en `backend/src/features/ganaderia/`. El movimiento de venta se crea desde `ventas_hacienda/repository.py`.
 
 ## Success Criteria *(mandatory)*
-- **SC-001a:** Ventas, sanidad e inseminación, gastos generales y comercialización de 2016/17 a 2023/24 (vista julio–junio, US$ con Prom_billete) reproducen la planilla al dólar. El forense verificó 2018/19 y 2022/23.
+- **SC-001a:** Ventas, sanidad e inseminación, gastos generales y comercialización de 2016/17 a 2023/24 (vista julio–junio) reproducen la planilla en pesos, y en US$ salvo la diferencia de TC, que se muestra aparte (la planilla usaba dólar billete y el sistema usa la regla unificada de FR-016). El forense verificó 2018/19 y 2022/23.
   - Las diferencias de 2022/23 (productos veterinarios, aranceles, flete, pastaje) se listan con su comprobante.
 - **SC-001b:** Los forrajes se concilian contra las solapas "Cultivos y forrajes" y "Amort Pasturas", que son valores cargados a mano. Las diferencias quedan en una lista, sin ajustar nada.
   - En la solapa principal las filas Avena, Pastura, Maíz y Maíz silo parecen tener el nombre corrido (detectado por el forense). **Se resuelve sin preguntar** (Sergio, 25/11/2026): se compara por valor contra las solapas fuente ("Cultivos y forrajes", "Amort Pasturas"), no por el rótulo de la fila.
