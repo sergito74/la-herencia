@@ -27,7 +27,7 @@ def _f(v) -> float:
     return float(v) if v is not None else 0.0
 
 
-def ventas(desde, hasta) -> list[dict]:
+def ventas(desde, hasta, establecimiento: int | None = None) -> list[dict]:
     """Renglones de venta (A y B por renglón) y gastos de comercialización por liquidación, en pesos y US$."""
     filas = fetch_all(
         """
@@ -43,8 +43,8 @@ def ventas(desde, hasta) -> list[dict]:
         LEFT JOIN (SELECT IdTipoHacienda, MIN(PesoTipicoKg) PesoTipicoKg FROM dbo.GanCategoria GROUP BY IdTipoHacienda) g
                ON g.IdTipoHacienda = d.IdTipoProducto
         LEFT JOIN dbo.Contactos k ON k.IdContacto = v.IdConsignatario
-        WHERE v.Fecha >= ? AND v.Fecha < DATEADD(day, 1, ?)
-        """, (desde, hasta))
+        WHERE v.Fecha >= ? AND v.Fecha < DATEADD(day, 1, ?) AND (? IS NULL OR v.IdEstableciemiento = ?)
+        """, (desde, hasta, establecimiento, establecimiento))
     cab = fetch_all(
         """
         SELECT v.IdVenta AS idVenta, v.Fecha AS fecha, v.[Nro documento] AS documento, k.[Razon Social] AS contacto,
@@ -52,8 +52,8 @@ def ventas(desde, hasta) -> list[dict]:
                ISNULL(v.[Gs Vs No Gravados],0) + ISNULL(v.[Gastos Varios],0) AS varios, ISNULL(v.[Ley de Sellos],0) AS sellos,
                ISNULL(v.Flete,0) AS flete, ISNULL(v.[Ingresos Brutos],0) AS iibb, ISNULL(v.Complemento,0) AS complemento
         FROM dbo.[Venta Hacienda] v LEFT JOIN dbo.Contactos k ON k.IdContacto = v.IdConsignatario
-        WHERE v.Fecha >= ? AND v.Fecha < DATEADD(day, 1, ?)
-        """, (desde, hasta))
+        WHERE v.Fecha >= ? AND v.Fecha < DATEADD(day, 1, ?) AND (? IS NULL OR v.IdEstableciemiento = ?)
+        """, (desde, hasta, establecimiento, establecimiento))
     bruto = defaultdict(float)
     for f in filas:
         bruto[f["idVenta"]] += _f(f["importeA"]) + _f(f["importeB"])
@@ -71,13 +71,14 @@ def _usd(pesos, fecha) -> float:
     return _f(pesos) / tc if tc else 0.0
 
 
-def _pastaje(desde, hasta) -> list[dict]:
+def _pastaje(desde, hasta, establecimiento: int | None = None) -> list[dict]:
     return fetch_all(
         "SELECT p.Fecha AS fecha, p.Numero AS documento, k.[Razon Social] AS contacto, "
         "CASE WHEN p.Tipo = 'nota_credito' THEN -p.Neto ELSE p.Neto END AS pesos "
         "FROM dbo.PastajeComprobantes p LEFT JOIN dbo.ContratosPastaje cp ON cp.IdContratoPastaje = p.IdContratoPastaje "
         "LEFT JOIN dbo.Contactos k ON k.IdContacto = cp.IdContactoCliente "
-        "WHERE p.Estado = 'vigente' AND p.Fecha >= ? AND p.Fecha < DATEADD(day, 1, ?)", (desde, hasta))
+        "WHERE p.Estado = 'vigente' AND p.Fecha >= ? AND p.Fecha < DATEADD(day, 1, ?) "
+        "AND (? IS NULL OR p.IdEstablecimiento = ?)", (desde, hasta, establecimiento, establecimiento))
 
 
 def _mapa_rubros() -> dict[int, dict]:
@@ -86,7 +87,8 @@ def _mapa_rubros() -> dict[int, dict]:
         "WHERE IdRubro IS NOT NULL")}
 
 
-def periodo(anio: int, vista: str = "ejercicio", forrajes_cache: list | None = None) -> dict:
+def periodo(anio: int, vista: str = "ejercicio", forrajes_cache: list | None = None,
+            establecimiento: int | None = None) -> dict:
     """Celdas {(grupo, rubro): {pesos, usd, detalle: [...]}} e indicadores de un período."""
     desde, hasta = periodos.rango(anio, vista)
     celdas: dict = defaultdict(lambda: {"pesos": 0.0, "usd": 0.0, "detalle": []})
@@ -97,7 +99,7 @@ def periodo(anio: int, vista: str = "ejercicio", forrajes_cache: list | None = N
         c["usd"] += _f(usd)
         c["detalle"].append(det)
 
-    renglones, gastos = ventas(desde, hasta)
+    renglones, gastos = ventas(desde, hasta, establecimiento)
     kg_vendidos, cab_vendidas = 0.0, 0
     for r in renglones:
         if not r["esHacienda"]:  # renglón en pesos: ajuste de la liquidación, suma a la venta como en la planilla
@@ -114,7 +116,7 @@ def periodo(anio: int, vista: str = "ejercicio", forrajes_cache: list | None = N
             suma("Ventas", "Complemento (B)", g["complemento"], _usd(g["complemento"], g["fecha"]), _det(g, g["complemento"]))
         if _f(g["gastos"]):
             suma("Comercializacion", "Gastos de la liquidación", g["gastos"], _usd(g["gastos"], g["fecha"]), _det(g, g["gastos"]))
-    for p in _pastaje(desde, hasta):
+    for p in _pastaje(desde, hasta, establecimiento):
         suma("Pastaje", "Pastaje cobrado (neto)", p["pesos"], _usd(p["pesos"], p["fecha"]), _det(p, p["pesos"]))
 
     mapa = _mapa_rubros()
@@ -151,10 +153,11 @@ def _signo(grupo: str) -> int:
     return 1 if grupo in ("Ventas", "Pastaje", "Inventario") else -1
 
 
-def resultado(desde: int, hasta: int, vista: str = "ejercicio", moneda: str = "USD") -> dict:
+def resultado(desde: int, hasta: int, vista: str = "ejercicio", moneda: str = "USD",
+              establecimiento: int | None = None) -> dict:
     anios = list(range(desde, hasta + 1))
     fcache = costos.forrajes(desde, hasta, vista)
-    datos = {a: periodo(a, vista, fcache) for a in anios}
+    datos = {a: periodo(a, vista, fcache, establecimiento) for a in anios}
     k = "usd" if moneda == "USD" else "pesos"
     filas, vistos = [], set()
     for grupo in GRUPOS:
@@ -185,13 +188,15 @@ def resultado(desde: int, hasta: int, vista: str = "ejercicio", moneda: str = "U
             "kgProducidos": None, "costoPorKg": None, "ev": None, "evHa": None, "sinInventario": True}
         avisos.append({"periodo": et, "texto": "Sin stock de hacienda valuado: el resultado no incluye la variación de "
                                                "inventario (margen de caja)."})
-    return {"vista": vista, "moneda": moneda, "conversion": FUENTE if moneda == "USD" else None,
+    return {"vista": vista, "moneda": moneda, "establecimiento": establecimiento,
+            "nota": ("Las ventas y el pastaje son del campo elegido; los costos son de toda la ganadería (las compras no "
+                     "distinguen campo).") if establecimiento else None, "conversion": FUENTE if moneda == "USD" else None,
             "periodos": [{"clave": periodos.etiqueta(a), "desde": str(periodos.rango(a, vista)[0]),
                           "hasta": str(periodos.rango(a, vista)[1]), "sinInventario": True} for a in anios],
             "grupos": [{"grupo": g, "titulo": TITULOS[g], "signo": _signo(g)} for g in GRUPOS],
             "filas": filas, "indicadores": indicadores, "avisos": avisos}
 
 
-def detalle(grupo: str, rubro: str, anio: int, vista: str = "ejercicio") -> list[dict]:
-    d = periodo(anio, vista)
+def detalle(grupo: str, rubro: str, anio: int, vista: str = "ejercicio", establecimiento: int | None = None) -> list[dict]:
+    d = periodo(anio, vista, None, establecimiento)
     return d["celdas"].get((grupo, rubro), {"detalle": []})["detalle"]

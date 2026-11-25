@@ -23,3 +23,12 @@
 | **Ha ganaderas** | 223,9 | 504,7 | 214,8 | 499,3 | **error del sistema:** la tabla Lotes mezcla lotes viejos y sus subdivisiones (suma 630 ha; el loteo vigente del plan 26/27 suma 402,1 ha), y antes de 2021/22 no hay Plan agrícola cargado. Se pregunta a Sergio |
 
 **Rubros nuevos que la planilla no tenía:** personal permanente (70/20/10), mantenimiento de instalaciones y compra de hacienda (va aparte del costo).
+
+
+## Correcciones de la segunda pasada (25/11/2026)
+- **Ha ganaderas** (decisión de Sergio):
+  - total del campo = loteo vigente del plan 26/27, 402,1 ha (`GanSuperficieCampo`);
+  - antes de 2021/22: las ha de su planilla (2015/16 343,4 · 16/17 264,8 · 17/18 264,3 · 18/19 223,9 · 19/20 205,3 · 20/21 229,3);
+  - desde 2021/22: total − lotes agrícolas por meses (método "Sup Ganadera 2011"). Resultado: 2021/22 ≈ 268 · 2022/23 ≈ 271 · 2023/24 ≈ 269 · 2024/25 ≈ 316–325 · 2025/26 ≈ 264–268 · 2026/27 ≈ 295.
+  - La planilla daba ≈ 207–215 porque descontaba los lotes agrícolas el año entero, sin contar el rastrojo.
+- **Filtro por campo:** La Herencia o San Pedro, para ventas y pastaje (los costos no distinguen campo). Ventas 2022/23 solo La Herencia: US$ 92.837 contra 91.191 de la planilla (diferencia de TC).

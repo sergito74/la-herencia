@@ -30,7 +30,7 @@ def _vista(v: str) -> str:
 
 @router.get("/resultado")
 async def get_resultado(vista: str = "ejercicio", moneda: str = "USD", desde: str | None = None,
-                        hasta: str | None = None) -> dict:
+                        hasta: str | None = None, establecimiento: int | None = None) -> dict:
     vista = _vista(vista)
     actual = periodos.anio_inicio(date.today(), vista)
     a1 = _anio(hasta, actual)
@@ -39,12 +39,14 @@ async def get_resultado(vista: str = "ejercicio", moneda: str = "USD", desde: st
         raise HTTPException(status_code=422, detail="Rango de períodos inválido (máximo 16)")
     if moneda not in ("USD", "ARS"):
         raise HTTPException(status_code=422, detail="Moneda inválida")
-    return await run_in_threadpool(resultado.resultado, a0, a1, vista, moneda)
+    return await run_in_threadpool(resultado.resultado, a0, a1, vista, moneda, establecimiento)
 
 
 @router.get("/resultado/detalle")
-async def get_detalle(grupo: str, rubro: str, periodo: str, vista: str = "ejercicio") -> dict:
-    return {"items": await run_in_threadpool(resultado.detalle, grupo, rubro, _anio(periodo, 0), _vista(vista))}
+async def get_detalle(grupo: str, rubro: str, periodo: str, vista: str = "ejercicio",
+                      establecimiento: int | None = None) -> dict:
+    return {"items": await run_in_threadpool(resultado.detalle, grupo, rubro, _anio(periodo, 0), _vista(vista),
+                                             establecimiento)}
 
 
 @router.get("/superficie")

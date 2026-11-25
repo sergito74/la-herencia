@@ -118,6 +118,12 @@ TABLAS = {
         PctGanaderia decimal(5,2) NOT NULL, PctEstructura decimal(5,2) NOT NULL, PctAgricultura decimal(5,2) NOT NULL,
         CONSTRAINT CK_GanReparto_Suma CHECK (PctGanaderia + PctEstructura + PctAgricultura = 100),
         CONSTRAINT UQ_GanReparto UNIQUE (Concepto, Ejercicio))""",
+    "GanSuperficieCampo": """CREATE TABLE dbo.GanSuperficieCampo (
+        IdSuperficie int IDENTITY(1,1) NOT NULL CONSTRAINT PK_GanSuperficieCampo PRIMARY KEY,
+        AnioDesde int NOT NULL, AnioHasta int NULL,
+        TotalHa decimal(8,2) NULL, HaGanaderasFijas decimal(8,2) NULL,
+        Fuente nvarchar(200) NOT NULL,
+        CONSTRAINT CK_GanSuperficieCampo CHECK (TotalHa IS NOT NULL OR HaGanaderasFijas IS NOT NULL))""",
     "GanControlAceptado": """CREATE TABLE dbo.GanControlAceptado (
         IdAceptado int IDENTITY(1,1) NOT NULL CONSTRAINT PK_GanControlAceptado PRIMARY KEY,
         Tipo nvarchar(40) NOT NULL, Clave nvarchar(200) NOT NULL, Motivo nvarchar(300) NOT NULL,
@@ -266,6 +272,14 @@ def aplicar(cur) -> None:
                 "VALUES ('Personal permanente', NULL, 70, 20, 10)")
     # Sergio 25/11/2026: el encargado del campo (único permanente del campo) es Marcelo Sierra, contacto 374.
     cur.execute("UPDATE dbo.GanReparto SET IdContacto = 374 WHERE Concepto = 'Personal permanente' AND IdContacto IS NULL")
+    # Sergio 25/11/2026: total del campo = loteo vigente del plan 26/27 (402,1 ha); antes de 2021/22 (sin Plan agrícola
+    # cargado y con lotes arrendados a terceros) las ha ganaderas son las de su planilla histórica.
+    if not cur.execute("SELECT 1 FROM dbo.GanSuperficieCampo").fetchone():
+        cur.execute("INSERT INTO dbo.GanSuperficieCampo (AnioDesde, AnioHasta, TotalHa, Fuente) VALUES "
+                    "(2021, NULL, 402.1, 'Loteo vigente del plan agrícola 26/27')")
+        for anio, ha in ((2015, 343.4), (2016, 264.8), (2017, 264.3), (2018, 223.9), (2019, 205.3), (2020, 229.3)):
+            cur.execute("INSERT INTO dbo.GanSuperficieCampo (AnioDesde, AnioHasta, HaGanaderasFijas, Fuente) VALUES "
+                        "(?, ?, ?, 'Planilla Historico Negocio Ganadero (Bolívar)')", (anio, anio, ha))
     for planilla, grupo, orden, rubro in RUBROS:
         cur.execute("IF NOT EXISTS (SELECT 1 FROM dbo.GanRubroMapa WHERE RubroPlanilla = ?) INSERT INTO dbo.GanRubroMapa "
                     "(RubroPlanilla, Grupo, Orden, IdRubro) SELECT ?, ?, ?, IdRubro FROM dbo.Rubros WHERE Rubro = ?",

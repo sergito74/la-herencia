@@ -29,34 +29,49 @@ def meses_ganaderos(meses_periodo: list[tuple[int, int]], ventanas_agricolas: li
     return sum(1 for m in meses_periodo if m not in ocupados)
 
 
-def calcular(lotes: list[dict], plan: list[dict], calendario: dict[int, tuple[int, int]], ajustes: dict,
-             anio: int, vista: str = "ejercicio") -> list[dict]:
-    """Función pura. lotes: [{idLote, lote, superficie}]; plan: [{idLote, idCultivo, anioCampania, agricola}];
-    calendario: {idCultivo: (mesDesde, mesHasta)}; ajustes: {(idLote, etiqueta): (meses, motivo)}."""
+def calcular(total_ha: float | None, ha_fijas: float | None, lotes: list[dict], plan: list[dict],
+             calendario: dict[int, tuple[int, int]], ajustes: dict, anio: int, vista: str = "ejercicio") -> dict:
+    """Función pura (Sergio 25/11/2026).
+    - Período con ha fijas (antes de 2021/22: las de su planilla histórica) → esas.
+    - Si no: ha efectivas = total del campo (loteo vigente) − Σ superficie de cada lote con cultivo agrícola × meses
+      ocupados / 12. Cada lote cuenta una vez por mes aunque tenga dos cultivos (trigo y soja 2.ª).
+    lotes: [{idLote, lote, superficie}]; plan: [{idLote, idCultivo, anioCampania, agricola}];
+    calendario: {idCultivo: (mesDesde, mesHasta)}; ajustes: {(idLote, etiqueta): (meses ganaderos, motivo)}."""
     mp = periodos.meses(anio, vista)
     clave = periodos.etiqueta(anio)
-    out = []
-    for lote in lotes:
-        aj = ajustes.get((lote["idLote"], clave))
+    if ha_fijas is not None:
+        return {"haEfectivas": round(float(ha_fijas), 2), "totalHa": None, "origen": "planilla", "lotesAgricolas": []}
+    detalle, descuento = [], 0.0
+    sup = {l["idLote"]: (l["lote"], float(l["superficie"] or 0)) for l in lotes}
+    for id_lote, (nombre, ha) in sup.items():
+        aj = ajustes.get((id_lote, clave))
+        vents = [ventana(p["anioCampania"], *calendario[p["idCultivo"]]) for p in plan
+                 if p["idLote"] == id_lote and p["agricola"] and p["idCultivo"] in calendario and p["anioCampania"] is not None]
         if aj:
-            meses, origen, motivo = float(aj[0]), "ajuste", aj[1]
+            ocupados = 12 - float(aj[0])
+        elif vents:
+            ocupados = 12 - meses_ganaderos(mp, vents)
         else:
-            vents = [ventana(p["anioCampania"], *calendario[p["idCultivo"]]) for p in plan
-                     if p["idLote"] == lote["idLote"] and p["agricola"] and p["idCultivo"] in calendario
-                     and p["anioCampania"] is not None]
-            meses, motivo = float(meses_ganaderos(mp, vents)), None
-            origen = "plan" if vents else "ganadero todo el año"
-        sup = float(lote["superficie"] or 0)
-        out.append({"idLote": lote["idLote"], "lote": lote["lote"], "superficie": round(sup, 2), "mesesGanaderos": meses,
-                    "haEfectivas": round(sup * meses / 12, 2), "origen": origen, "motivo": motivo})
-    return out
+            continue
+        if ocupados <= 0:
+            continue
+        descuento += ha * ocupados / 12
+        detalle.append({"idLote": id_lote, "lote": nombre, "superficie": round(ha, 2), "mesesAgricolas": ocupados,
+                        "haDescontadas": round(ha * ocupados / 12, 2), "origen": "ajuste" if aj else "plan",
+                        "motivo": aj[1] if aj else None})
+    total = float(total_ha or 0)
+    return {"haEfectivas": round(max(total - descuento, 0.0), 2) if total_ha else None, "totalHa": total_ha,
+            "origen": "plan", "lotesAgricolas": sorted(detalle, key=lambda d: d["lote"])}
 
 
 def superficie(anio: int, vista: str = "ejercicio") -> dict:
     from src.db.connection import fetch_all
 
+    base = fetch_all("SELECT TOP 1 TotalHa t, HaGanaderasFijas f, Fuente fu FROM dbo.GanSuperficieCampo "
+                     "WHERE AnioDesde <= ? AND (AnioHasta IS NULL OR AnioHasta >= ?) ORDER BY AnioDesde DESC", (anio, anio))
+    b = base[0] if base else {"t": None, "f": None, "fu": None}
     lotes = fetch_all("SELECT IdLote AS idLote, [Numero Lote] AS lote, Superficie AS superficie FROM dbo.Lotes "
-                      "WHERE [Numero Lote] <> 'PRUE' ORDER BY [Numero Lote]")
+                      "WHERE [Numero Lote] <> 'PRUE'")
     plan = fetch_all(
         "SELECT p.IdLote AS idLote, p.IdCultivo AS idCultivo, ca.Campaña AS campania, "
         "CASE WHEN ISNULL(m.EsGanaderia, 0) = 0 AND p.IdCultivo <> 10 THEN 1 ELSE 0 END AS agricola "
@@ -68,8 +83,5 @@ def superficie(anio: int, vista: str = "ejercicio") -> dict:
         "SELECT IdCultivo c, MesDesde d, MesHasta h FROM dbo.GanCalendarioCultivo")}
     ajustes = {(r["l"], r["e"]): (r["m"], r["mo"]) for r in fetch_all(
         "SELECT IdLote l, Ejercicio e, MesesGanaderos m, Motivo mo FROM dbo.GanSuperficieAjuste")}
-    filas = calcular(lotes, plan, calendario, ajustes, anio, vista)
-    return {"periodo": periodos.etiqueta(anio), "lotes": filas,
-            "haEfectivas": round(sum(f["haEfectivas"] for f in filas), 2),
-            "superficieTotal": round(sum(f["superficie"] for f in filas), 2),
-            "sinPlan": not any(p["anioCampania"] in (anio - 1, anio, anio + 1) for p in plan)}
+    r = calcular(b["t"], b["f"], lotes, plan, calendario, ajustes, anio, vista)
+    return {"periodo": periodos.etiqueta(anio), "fuente": b["fu"], **r}

@@ -38,6 +38,7 @@ export interface ResultadoGanadero {
   filas: FilaResultado[];
   indicadores: Record<string, IndicadoresPeriodo>;
   avisos: { periodo: string; texto: string }[];
+  nota?: string | null;
 }
 
 export interface DetalleItem {
@@ -48,12 +49,12 @@ export interface DetalleItem {
   enlace: string | null;
 }
 
-export const fetchResultadoGanadero = (vista: VistaGanaderia, moneda: MonedaGanaderia, desde: string, hasta: string) =>
-  apiGet<ResultadoGanadero>(`/api/ganaderia/resultado?vista=${vista}&moneda=${moneda}&desde=${desde}&hasta=${hasta}`);
+export const fetchResultadoGanadero = (vista: VistaGanaderia, moneda: MonedaGanaderia, desde: string, hasta: string,
+  establecimiento?: number) =>
+  apiGet<ResultadoGanadero>("/api/ganaderia/resultado", { vista, moneda, desde, hasta, establecimiento });
 
-export const fetchDetalleGanadero = (grupo: string, rubro: string, periodo: string, vista: VistaGanaderia) =>
-  apiGet<{ items: DetalleItem[] }>(
-    `/api/ganaderia/resultado/detalle?grupo=${encodeURIComponent(grupo)}&rubro=${encodeURIComponent(rubro)}&periodo=${encodeURIComponent(periodo)}&vista=${vista}`,
-  );
+export const fetchDetalleGanadero = (grupo: string, rubro: string, periodo: string, vista: VistaGanaderia,
+  establecimiento?: number) =>
+  apiGet<{ items: DetalleItem[] }>("/api/ganaderia/resultado/detalle", { grupo, rubro, periodo, vista, establecimiento });
 
 export const recalcularResultadoGanadero = () => apiPost<{ ok: boolean }>("/api/ganaderia/resultado/recalcular", {});

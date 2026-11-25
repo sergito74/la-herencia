@@ -32,7 +32,9 @@ const TOTALES: { clave: keyof ResultadoGanadero["indicadores"][string]; titulo: 
 ];
 
 /** 052 US1: cuadro de resultado ganadero (rubros × períodos), con detalle por celda hasta el comprobante. */
-export function CuadroResultado({ datos, vista }: { datos: ResultadoGanadero; vista: VistaGanaderia }) {
+export function CuadroResultado({ datos, vista, establecimiento }: {
+  datos: ResultadoGanadero; vista: VistaGanaderia; establecimiento?: number;
+}) {
   const [abiertos, setAbiertos] = useState<Record<string, boolean>>({});
   const [celda, setCelda] = useState<{ grupo: string; rubro: string; periodo: string } | null>(null);
   const claves = datos.periodos.map((p) => p.clave);
@@ -133,17 +135,18 @@ export function CuadroResultado({ datos, vista }: { datos: ResultadoGanadero; vi
           ))}
         </tbody>
       </table>
-      {celda && <DetalleCelda celda={celda} vista={vista} moneda={m} onClose={() => setCelda(null)} />}
+      {celda && <DetalleCelda celda={celda} vista={vista} moneda={m} establecimiento={establecimiento} onClose={() => setCelda(null)} />}
     </div>
   );
 }
 
-function DetalleCelda({ celda, vista, moneda, onClose }: {
-  celda: { grupo: string; rubro: string; periodo: string }; vista: VistaGanaderia; moneda: MonedaGanaderia; onClose: () => void;
+function DetalleCelda({ celda, vista, moneda, establecimiento, onClose }: {
+  celda: { grupo: string; rubro: string; periodo: string }; vista: VistaGanaderia; moneda: MonedaGanaderia;
+  establecimiento?: number; onClose: () => void;
 }) {
   const q = useQuery({
-    queryKey: ["ganaderia", "detalle", celda, vista],
-    queryFn: () => fetchDetalleGanadero(celda.grupo, celda.rubro, celda.periodo, vista),
+    queryKey: ["ganaderia", "detalle", celda, vista, establecimiento],
+    queryFn: () => fetchDetalleGanadero(celda.grupo, celda.rubro, celda.periodo, vista, establecimiento),
   });
   return (
     <SideDrawer open onClose={onClose} title={celda.rubro} subtitulo={`${celda.periodo} · importes en pesos`} maxWidthClass="max-w-2xl">

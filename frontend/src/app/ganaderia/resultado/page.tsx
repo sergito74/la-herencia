@@ -27,12 +27,14 @@ export default function ResultadoGanaderoPage() {
   const [vista, setVista] = useState<VistaGanaderia>("ejercicio");
   const [moneda, setMoneda] = useState<MonedaGanaderia>("USD");
   const [cantidad, setCantidad] = useState<"5" | "10">("5");
+  const [campo, setCampo] = useState<"todos" | "1" | "2">("todos");
+  const establecimiento = campo === "todos" ? undefined : Number(campo);
   const hasta = anioActual(vista);
   const desde = hasta - Number(cantidad) + 1;
   const qc = useQueryClient();
   const q = useQuery({
-    queryKey: ["ganaderia", "resultado", vista, moneda, desde, hasta],
-    queryFn: () => fetchResultadoGanadero(vista, moneda, etiqueta(desde), etiqueta(hasta)),
+    queryKey: ["ganaderia", "resultado", vista, moneda, desde, hasta, campo],
+    queryFn: () => fetchResultadoGanadero(vista, moneda, etiqueta(desde), etiqueta(hasta), establecimiento),
     staleTime: 5 * 60_000,
   });
   const recalcular = useMutation({
@@ -56,6 +58,8 @@ export default function ResultadoGanaderoPage() {
           opciones={[{ id: "USD", label: "us$" }, { id: "ARS", label: "$" }]} />
         <Segmentos size="sm" etiqueta="Cantidad de períodos" valor={cantidad} onChange={setCantidad}
           opciones={[{ id: "5", label: "Últimos 5" }, { id: "10", label: "Últimos 10" }]} />
+        <Segmentos size="sm" etiqueta="Campo" valor={campo} onChange={setCampo}
+          opciones={[{ id: "todos", label: "Todos los campos" }, { id: "1", label: "La Herencia" }, { id: "2", label: "San Pedro" }]} />
         {q.data?.conversion && <span className="text-xs text-ink-muted">Dólar: {q.data.conversion}</span>}
       </div>
       {vista === "campania" && (
@@ -68,7 +72,8 @@ export default function ResultadoGanaderoPage() {
         : !q.data || !q.data.filas.length ? <EmptyState message="No hay ventas ni costos ganaderos en estos períodos." />
         : (
           <>
-            <CuadroResultado datos={q.data} vista={vista} />
+            {q.data.nota && <p className="mb-2 text-sm text-ink-secondary">{q.data.nota}</p>}
+            <CuadroResultado datos={q.data} vista={vista} establecimiento={establecimiento} />
             {q.data.avisos.length > 0 && (
               <p className="mt-2 text-xs text-ink-muted">
                 Todavía no hay stock de hacienda valuado: el ingreso neto no incluye la diferencia de inventario. Se completa
