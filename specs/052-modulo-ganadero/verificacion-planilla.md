@@ -78,19 +78,23 @@ Alimentación comprada (feed lot, alimento general) coincide; solo hay $ 1 de re
      - SENASA: la planilla dice 18450835-4 y el sistema 42569097, por $ 1.885 el 07/05/2020.
    - **1 no está cargado en el sistema:** Municipalidad de Bolívar 3616 del 29/06/2020, $ 2.689. Hay que buscar el comprobante. Puede ser una tasa que se cargó junto con la del 08/05/2020 (esa difiere en −$ 203).
 
-3. **16 tienen el mismo número pero distinto importe.** El sistema da más en casi todos.
-   - **Liquidaciones de J y M de la Serna (comercialización):** 3-25 +$ 230, 3-1762 +$ 791, 3-3456 +$ 602 y 3-5302 +$ 834. El sistema toma todos los gastos de la liquidación y la planilla tomaba solo una parte.
-   - **Inseminación, Cabaña Las Lilas:** 19-3915 +$ 4.519 y 19-5299 +$ 11.957.
-   - **Productos veterinarios, Agrovet:**
-     - 3-23292 +$ 556, 3-28368 +$ 1.952 y 3-43890 +$ 15.059.
-     - Esta última es la diferencia de productos veterinarios de 2022/23 que había marcado el forense.
-   - **Administración:**
-     - Vanina Silva: +$ 295 y +$ 6.720.
-     - Compra genérica "XXXXXXXXX" del 06/04/2017: +$ 1.500.
-   - **Asoc. Cooperadora Laboratorio 2-2932:** +$ 270. El sistema tiene el doble que la planilla.
-   - **Redondeos de $ 1:** EDP Agro y Agrovet 3-33372. El signo se lee en el Excel.
+3. **16 tenían el mismo número y distinto importe.** Revisados el 26/11 contra PDF, pagos y la base original:
+   - **6 eran errores del sistema y están corregidos en el cálculo:**
+     - **J y M de la Serna (4 liquidaciones):** el sistema cobraba la comisión del 3 % sobre el precio A + B. La liquidación 0003-00005302 (PDF) cobra $ 3.052,50, el 3 % del bruto A de $ 101.750, y sus gastos suman $ 8.290,64, igual que la planilla. La comisión pasa a calcularse sobre el bruto A.
+     - **Cabaña Las Lilas 19-3915 y 19-5299:** el renglón "Descuento" sumaba como costo, porque se tomaba el valor absoluto. En una factura, un renglón negativo ahora resta (el valor absoluto queda solo para las notas de crédito). En Ganadería esto afecta 6 descuentos.
+   - **5 están bien en el sistema y la planilla perdía renglones idénticos:**
+     - Agrovet 3-23292, 3-28368 y 3-43890: el PDF tiene el renglón dos veces y su total coincide con el sistema.
+     - XXXXXXXXX del 04/11/2016 (personal eventual, yerra): los $ 3.000 de los dos renglones se pagaron en efectivo ese día.
+     - Cooperadora Laboratorio 2-2932: no hay PDF de 2016. Es el mismo patrón y la misma carga en la base original.
+   - **2 son diferencias de centavos que quedaron de la conciliación:** EDP Agro (−$ 1,40) y Agrovet 3-33372 (+$ 1,30). Manda el sistema.
+   - **3 eran agrupaciones de comprobantes sin número** (Vanina Silva, Municipalidad, XXXXXXXXX). Separados por fecha y proveedor, son facturas cargadas después de la planilla.
 
-   Todo esto se ve renglón por renglón en el Excel. Para decir cuál de los dos tiene razón hay que mirar cada PDF, y eso no está hecho.
+   **Cómo quedaron las diferencias del cruce:**
+   - **Comercialización:** 0 en 2016/17 a 2018/19. Desde 2019/20 queda solo lo cargado después (guías de SENASA, tasas municipales, fletes).
+   - **Sanidad:** quedan los renglones repetidos que la planilla no tenía y las cargas posteriores (FUNDEBO 2023, Agrovet 15/03/2024).
+   - **Guía de SENASA de $ 203 del 10/02/2020:** la planilla la tiene sin número. Es la 41793786 del sistema, de la misma fecha y el mismo importe.
+
+**Sin respaldo:** Municipalidad de Bolívar 3616 del 29/06/2020, $ 2.689,20. No aparece en el sistema, ni en la carpeta de Compras, ni en los mails de junio a agosto de 2020. Sin comprobante no se carga.
 
 ## SC-001b: forrajes (US$), por valor contra las solapas fuente
 
@@ -125,7 +129,5 @@ La comparación se hace por valor y no por el nombre de la fila (decisión de Se
 
 Por SC-001b no se ajusta nada: las diferencias quedan en la lista.
 
-## Qué queda para Sergio
-1. Municipalidad de Bolívar 3616 (29/06/2020, $ 2.689), que no está cargada: buscar el comprobante.
-2. Los 16 importes distintos: confirmar con los PDF de cuáles es el bueno. Los de mayor monto son Agrovet 3-43890 (+$ 15.059) y Cabaña Las Lilas 19-5299 (+$ 11.957).
-3. El "Maiz" de la solapa "Cultivos y forrajes": qué representaba.
+## Pendiente
+- El "Maiz" de la solapa "Cultivos y forrajes" (2017/18, 2019/20, 2022/23) no tiene equivalente en el sistema.

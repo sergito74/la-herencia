@@ -24,7 +24,11 @@ _IMPORTE = """(CASE WHEN ISNULL(d.[Ajuste financiero],0)=1 AND c.[Tipo documento
                     THEN ISNULL(d.Cantidad,0)*ISNULL(d.[Precio Unitario],0)
                WHEN ISNULL(d.[Ajuste financiero],0)=1 AND c.[Tipo documento] COLLATE Latin1_General_CI_AI='Nota de Credito'
                     THEN -(ISNULL(d.Cantidad,0)*ISNULL(d.[Precio Unitario],0))
-               ELSE ABS(ISNULL(d.Cantidad,0)*ISNULL(d.[Precio Unitario],0)) END
+               WHEN c.[Tipo documento] COLLATE Latin1_General_CI_AI='Nota de Credito'
+                    THEN ABS(ISNULL(d.Cantidad,0)*ISNULL(d.[Precio Unitario],0))
+               -- 26/11/2026: en una factura el renglón negativo es un descuento y resta (Cabaña Las Lilas
+               -- 0019-00003915: el descuento de $ 2.259,50 sumaba como costo con ABS).
+               ELSE ISNULL(d.Cantidad,0)*ISNULL(d.[Precio Unitario],0) END
               * CASE WHEN c.[Tipo documento] COLLATE Latin1_General_CI_AI='Nota de Credito' THEN -1 ELSE 1 END)"""
 _PESOS = f"({_IMPORTE} * CASE WHEN c.Moneda='Dolares' THEN ISNULL(c.[Tipo de Cambio],0) ELSE 1 END)"
 _USD = (f"CASE WHEN c.Moneda='Dolares' THEN {_IMPORTE} WHEN ISNULL(c.[Ajusta Tipo Cambio],0)=1 THEN 0 "

@@ -59,7 +59,9 @@ def ventas(desde, hasta, establecimiento: int | None = None) -> list[dict]:
         """, (desde, hasta, establecimiento, establecimiento))
     bruto = defaultdict(float)
     for f in filas:
-        bruto[f["idVenta"]] += _f(f["importeA"]) + _f(f["importeB"])
+        # 26/11/2026: la comisión se calcula sobre el bruto A de la liquidación (J y M 0003-00005302: 3 % de
+        # $ 101.750 = $ 3.052,50); el precio B no pasa por la liquidación.
+        bruto[f["idVenta"]] += _f(f["importeA"])
         f.update(categorias.cabezas_y_kg(f["cantidad"], f["unidad"], f["pesoTotal"], _f(f["pesoTipico"]) or None))
     gastos = []
     for c in cab:

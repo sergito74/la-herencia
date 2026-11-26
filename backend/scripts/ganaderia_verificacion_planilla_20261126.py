@@ -52,10 +52,12 @@ def _n(t) -> str:
     return re.sub(r"\s+", " ", t)
 
 
-def _doc(t) -> str:
-    """'0001-00000457' / '00001 - 457' → '1-457'."""
+def _doc(t, fecha=None, contacto=None) -> str:
+    """'0001-00000457' / '00001 - 457' → '1-457'. Sin número: fecha + primera palabra del proveedor."""
     partes = [p.lstrip("0") or "0" for p in re.findall(r"\d+", str(t or ""))]
-    return "-".join(partes[-2:]) if partes else ""
+    if partes:
+        return "-".join(partes[-2:])
+    return f"s/n {str(fecha)[:10]} {(_n(contacto).split() or [''])[0]}"
 
 
 def _anio(f) -> int:
@@ -85,7 +87,7 @@ def planilla():
     for r in wb["Compras"].iter_rows(min_row=2, values_only=True):
         if not r[0] or _n(r[9]) != "ganaderia" or _n(r[10]) not in BLOQUE:
             continue
-        k = (_anio(r[0]), BLOQUE[_n(r[10])], _doc(r[3]))
+        k = (_anio(r[0]), BLOQUE[_n(r[10])], _doc(r[3], r[0], r[1]))
         cmp_[k][0] += float(r[13] or 0)
         cmp_[k][1] += float(r[14] or 0)
         cmp_[k][2] = (r[0], r[1], _n(r[10]))
@@ -191,7 +193,7 @@ def main() -> None:
             tot[(a, b)]["sp"] += sum(float(it.get("importe") or 0) for it in items)
             tot[(a, b)]["su"] += c["usd"] if len(items) == len(c["detalle"]) else float("nan")
             for it in items:
-                k = (a, b, _doc(it.get("documento")))
+                k = (a, b, _doc(it.get("documento"), it.get("fecha"), it.get("contacto")))
                 sis_doc[k] += float(it.get("importe") or 0)
                 rubros_sis[k].add(r)
                 if k not in info:
