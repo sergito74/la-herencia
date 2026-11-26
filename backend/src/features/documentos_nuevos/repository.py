@@ -15,6 +15,13 @@ from src.db.connection import execute_insert_returning_id, execute_write, fetch_
 LIMITE_MAXIMO = 100
 MODULOS = ("compras", "impuestos", "ventas", "granos", "tesoreria", "cuentas_corrientes", "sin_clasificar", "pagos")
 PENDIENTE = "d.Estado IN ('cargado_solo', 'para_cargar') AND d.Revisado IS NULL"
+# 052 T041: vista "ganaderia" (no es un módulo donde se guarde el aviso): liquidaciones de hacienda y compras de
+# proveedores ganaderos (veterinario, laboratorio, vacunas...) = la mitad o más de sus renglones desde 2020 con centro
+# de costos Ganadería. Regla por datos, sin lista de proveedores.
+GANADERIA = ("(d.Modulo = 'ventas' OR (d.Modulo = 'compras' AND d.IdContacto IN ("
+             "SELECT gc.IdContacto FROM dbo.Det_Compras gd JOIN dbo.Compras gc ON gc.IdDeuda = gd.IdCompra "
+             "WHERE gc.Fecha >= '2020-01-01' GROUP BY gc.IdContacto "
+             "HAVING 2 * SUM(CASE WHEN gd.IdCentroCostos = 2 THEN 1 ELSE 0 END) >= COUNT(*))))")
 
 
 # --- Documentos nuevos -------------------------------------------------------
@@ -114,7 +121,9 @@ def resumen_pendientes() -> dict[str, int]:
     _cerrar_seguro()
     filas = fetch_all(f"SELECT d.Modulo AS modulo, COUNT(*) AS n FROM dbo.DocumentosNuevos d WHERE {PENDIENTE} "
                       "GROUP BY d.Modulo")
-    return {f["modulo"]: f["n"] for f in filas}
+    out = {f["modulo"]: f["n"] for f in filas}
+    out["ganaderia"] = fetch_one(f"SELECT COUNT(*) AS n FROM dbo.DocumentosNuevos d WHERE {GANADERIA} AND {PENDIENTE}")["n"]
+    return out
 
 
 _COLS = (
@@ -139,12 +148,12 @@ def _cerrar_seguro() -> None:
 def listar_pendientes(modulo: str, limite: int = 50, desde: int = 0) -> tuple[list[dict], int]:
     _cerrar_seguro()
     limite = min(limite, LIMITE_MAXIMO)
-    total = fetch_one(f"SELECT COUNT(*) AS n FROM dbo.DocumentosNuevos d WHERE d.Modulo = ? AND {PENDIENTE}",
-                      (modulo,))["n"]
+    cond, par = (GANADERIA, ()) if modulo == "ganaderia" else ("d.Modulo = ?", (modulo,))
+    total = fetch_one(f"SELECT COUNT(*) AS n FROM dbo.DocumentosNuevos d WHERE {cond} AND {PENDIENTE}", par)["n"]
     filas = fetch_all(
-        f"SELECT {_COLS} {_FROM} WHERE d.Modulo = ? AND {PENDIENTE} "
+        f"SELECT {_COLS} {_FROM} WHERE {cond} AND {PENDIENTE} "
         "ORDER BY d.IdDocumentoNuevo OFFSET ? ROWS FETCH NEXT ? ROWS ONLY",
-        (modulo, desde, limite),
+        (*par, desde, limite),
     )
     return filas, total
 

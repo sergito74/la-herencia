@@ -23,15 +23,16 @@ _FONDO_SIN_APLICAR = PatternFill("solid", fgColor="FBEEDC")
 _NEGRITA = Font(bold=True)
 
 
-def flujo_por_rubro_xlsx(desde: date, hasta: date, granularidad: str, moneda: str) -> bytes:
-    d = repository.flujo_por_rubro(desde, hasta, granularidad, moneda)
+def flujo_por_rubro_xlsx(desde: date, hasta: date, granularidad: str, moneda: str, centro_costo: str | None = None) -> bytes:
+    d = repository.flujo_por_rubro(desde, hasta, granularidad, moneda, centro_costo)
     periodos = d["periodos"]
     fmt = _FORMATO[moneda]
 
     wb = Workbook()
     ws = wb.active
     ws.title = "Flujo por rubro"
-    ws.append([f"Flujo de caja por rubro — {desde:%d/%m/%Y} a {hasta:%d/%m/%Y} — {granularidad} — {moneda}"])
+    ws.append([f"Flujo de caja por rubro — {desde:%d/%m/%Y} a {hasta:%d/%m/%Y} — {granularidad} — {moneda}"
+               + (f" — {centro_costo} (reparto aproximado)" if centro_costo else "")])
     ws.append([f"Generado {datetime.now():%d/%m/%Y %H:%M}"])
     ws.append([])
     ws.append(["", *periodos, "Total"])

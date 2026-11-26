@@ -18,7 +18,8 @@ class Resumen(BaseModel):
     tesoreria: int = 0
     cuentasCorrientes: int = 0
     sinClasificar: int = 0
-    total: int = 0
+    total: int
+    ganaderia: int = 0
 
 
 class Renglon(BaseModel):

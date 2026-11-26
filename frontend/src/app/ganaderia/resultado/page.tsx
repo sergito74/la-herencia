@@ -1,8 +1,9 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { Suspense, useState } from "react";
 
+import { NuevosParaRevisar } from "@/components/documentos-nuevos/NuevosParaRevisar";
 import { CuadroResultado } from "@/components/ganaderia/CuadroResultado";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Segmentos } from "@/components/ui/Segmentos";
@@ -51,6 +52,7 @@ export default function ResultadoGanaderoPage() {
           {recalcular.isPending ? "Recalculando…" : "Recalcular"}
         </button>
       </PageHeader>
+      <Suspense><NuevosParaRevisar modulo="ganaderia" /></Suspense>
       <div className="mb-3 flex flex-wrap items-center gap-3">
         <Segmentos size="sm" etiqueta="Período" valor={vista} onChange={setVista}
           opciones={[{ id: "ejercicio", label: "Ejercicio (abr–mar)" }, { id: "campania", label: "Campaña (jul–jun)" }]} />

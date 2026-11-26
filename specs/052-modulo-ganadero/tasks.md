@@ -143,9 +143,9 @@ Etiquetas de historia:
 - [x] T039 [US5] Pantalla `frontend/src/app/ganaderia/controles/page.tsx`: grupos con contador, "Correr controles ahora", hora del último control y lista de aceptados con "Quitar la marca".
 
 ## Phase 6: Polish
-- [ ] T040 [P] `GET /api/flujo-caja/por-rubro` con `centroCosto` opcional en `backend/src/features/flujo_caja/router.py` y en la exportación, y el enlace desde el menú Ganadería. Rotular "reparto aproximado".
-- [ ] T041 [P] `NuevosParaRevisar` con un módulo "ganaderia" en Resultado, más el aviso de documentos nuevos del veterinario.
-- [ ] T042 Correr `pytest backend/tests/ganaderia backend/tests/resultado_cultivo` y `npm run build` en `frontend/`, recorrer quickstart §1–§8, reiniciar con el launcher y actualizar `tasks.md` y la memoria.
+- [x] T040 [P] `GET /api/flujo-caja/por-rubro` con `centroCosto` opcional en `backend/src/features/flujo_caja/router.py` y en la exportación, y el enlace desde el menú Ganadería. Rotular "reparto aproximado". Hecho 26/11/2026: `centroCosto` en por-rubro y exportación; ingresos por rubro de venta (hacienda/pastaje → Ganadería); sin saldos de cuentas; menú Ganadería → "Flujo de caja (reparto aproximado)".
+- [x] T041 [P] `NuevosParaRevisar` con un módulo "ganaderia" en Resultado, más el aviso de documentos nuevos del veterinario. Hecho 26/11/2026: vista "ganaderia" de documentos nuevos (liquidaciones + proveedores con ≥ 50 % de renglones en Ganadería desde 2020, incluye al veterinario); aviso en Resultado ganadero.
+- [x] T042 Correr `pytest backend/tests/ganaderia backend/tests/resultado_cultivo` y `npm run build` en `frontend/`, recorrer quickstart §1–§8, reiniciar con el launcher y actualizar `tasks.md` y la memoria. Hecho 26/11/2026: 1.656 tests pasan; build OK; quickstart §1–§7 verificado por datos (§1: 4 cultivos forrajeros en el mapa, no 6; §3 difiere solo por TC; §8 sin recorrido logueado); sistema reiniciado.
 
 ## Fases posteriores (sin detallar)
 - **Etapa 2:**

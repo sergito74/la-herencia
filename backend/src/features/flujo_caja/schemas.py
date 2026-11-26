@@ -132,6 +132,7 @@ class FlujoCajaPorRubroResponse(BaseModel):
     saldosSinTipoCambio: list[str]
     traspasosSinContraparte: list[TraspasoSinContraparte]
     ultimaFechaCotizacion: date | None = None
+    centroCosto: str | None = None
 
 
 class DocumentoAplicado(BaseModel):

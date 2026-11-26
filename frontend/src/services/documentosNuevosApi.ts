@@ -7,7 +7,7 @@ import { apiGet, apiPost } from "@/services/apiClient";
 
 const BASE = "/api/documentos-nuevos";
 
-export type ModuloAviso = "compras" | "impuestos" | "ventas" | "granos" | "tesoreria" | "cuentas_corrientes" | "sin_clasificar" | "pagos";
+export type ModuloAviso = "compras" | "impuestos" | "ventas" | "granos" | "tesoreria" | "cuentas_corrientes" | "sin_clasificar" | "pagos" | "ganaderia";
 
 export interface ResumenNuevos {
   pagos: number;
@@ -19,6 +19,7 @@ export interface ResumenNuevos {
   cuentasCorrientes: number;
   sinClasificar: number;
   total: number;
+  ganaderia?: number;
 }
 
 export interface RenglonNuevo {
@@ -83,6 +84,7 @@ export const ETIQUETA_MODULO: Record<ModuloAviso, string> = {
   tesoreria: "Tesorería",
   cuentas_corrientes: "Cuentas corrientes",
   sin_clasificar: "Sin clasificar",
+  ganaderia: "Ganadería (veterinario, sanidad, liquidaciones)",
 };
 
 export const getResumenNuevos = () => apiGet<ResumenNuevos>(`${BASE}/resumen`);

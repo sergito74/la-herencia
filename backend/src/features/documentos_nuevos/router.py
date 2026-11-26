@@ -88,6 +88,7 @@ def resumen() -> dict:
              "tesoreria": n.get("tesoreria", 0), "cuentasCorrientes": n.get("cuentas_corrientes", 0),
              "sinClasificar": n.get("sin_clasificar", 0)}
     datos["total"] = sum(datos.values())
+    datos["ganaderia"] = n.get("ganaderia", 0)  # vista que se superpone con compras y ventas: no suma al total
     return datos
 
 
@@ -126,7 +127,7 @@ def ejecutar_rutina(alcance: str = "todo") -> dict:
 
 @router.get("/", response_model=Lista)
 def listar(modulo: str = Query(...), limite: int = Query(50, ge=1, le=100), desde: int = Query(0, ge=0)) -> dict:
-    if modulo not in repository.MODULOS:
+    if modulo not in repository.MODULOS and modulo != "ganaderia":
         raise HTTPException(status_code=400, detail="Módulo inválido")
     filas, total = repository.listar_pendientes(modulo, limite, desde)
     renglones = repository.renglones_compras([d["idRegistro"] for d in filas if d["modulo"] == "compras" and d["idRegistro"]])

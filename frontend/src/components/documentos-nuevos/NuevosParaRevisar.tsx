@@ -174,7 +174,7 @@ function Lista({ modulo, titulo }: { modulo: ModuloAviso; titulo: string }) {
  * del menú): lo que el sistema incorporó solo, con el primero abierto. Compras usa `RevisionComprasEnFormulario`. */
 const CLAVE_RESUMEN: Record<ModuloAviso, keyof ResumenNuevos> = {
   compras: "compras", impuestos: "impuestos", ventas: "ventas", granos: "granos", tesoreria: "tesoreria",
-  cuentas_corrientes: "cuentasCorrientes", sin_clasificar: "sinClasificar", pagos: "pagos",
+  cuentas_corrientes: "cuentasCorrientes", sin_clasificar: "sinClasificar", pagos: "pagos", ganaderia: "ganaderia",
 };
 
 /** 24/11/2026: franja visible en la pantalla del módulo cuando hay documentos nuevos sin revisar (antes solo se veían

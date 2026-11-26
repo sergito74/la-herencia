@@ -841,10 +841,40 @@ def saldos_finales(saldos_iniciales: dict[str, float], partes: list[dict], granu
     return resultado
 
 
-def flujo_por_rubro(desde: date, hasta: date, granularidad: str, moneda: str) -> dict:
-    """Cálculo completo de la pantalla (030), recalculado siempre (FR-009)."""
+def centro_de_ingreso(rubro: str | None, tipos_hacienda: set[str]) -> str | None:
+    """052 T040: los ingresos no traen centro de costos; se asignan por rubro (venta de una categoría de hacienda o
+    pastaje → Ganadería; otra venta o seguro agrícola → Agricultura). Es un reparto aproximado."""
+    r = (rubro or "").strip().lower()
+    if "pastaje" in r or (r.startswith("venta ") and r[6:].strip() in tipos_hacienda):
+        return "Ganaderia"
+    if r.startswith("venta ") or r == "seguros agricolas":
+        return "Agricultura"
+    return None
+
+
+def filtrar_centro(partes: list[dict], centro: str, tipos_hacienda: set[str]) -> list[dict]:
+    """Función pura: egresos del centro + ingresos asignados al centro; sin movimientos internos."""
+    c = centro.strip().lower()
+    out = []
+    for p in partes:
+        if p["seccion"] == "egresos" and (p.get("centroCosto") or "").strip().lower() == c:
+            out.append(p)
+        elif p["seccion"] == "ingresos" and (centro_de_ingreso(p.get("rubro"), tipos_hacienda) or "").lower() == c:
+            out.append(p)
+    return out
+
+
+def _tipos_hacienda() -> set[str]:
+    return {str(r["t"]).strip().lower() for r in fetch_all("SELECT [Tipo de Hacienda] t FROM dbo.[Tipo Hacienda]")}
+
+
+def flujo_por_rubro(desde: date, hasta: date, granularidad: str, moneda: str, centro_costo: str | None = None) -> dict:
+    """Cálculo completo de la pantalla (030), recalculado siempre (FR-009). Con `centro_costo` (052 T040) queda solo lo
+    de ese centro, sin saldos de cuentas (un centro no tiene saldo bancario propio): reparto aproximado."""
     movimientos = get_movimientos_normalizados(desde, hasta)
     partes = partes_de_movimientos(movimientos)
+    if centro_costo:
+        partes = filtrar_centro(partes, centro_costo, _tipos_hacienda())
     periodos = periodos_del_rango(desde, hasta, granularidad)
     serie = None
     if moneda == "USD":
@@ -875,9 +905,13 @@ def flujo_por_rubro(desde: date, hasta: date, granularidad: str, moneda: str) ->
     final_cuenta = {c: {per: convertir(v, fin_por[per], per) for per, v in serie_c.items()} for c, serie_c in finales.items()}
     final_total = {per: (round(convertir(sum(finales[c][per] for c in finales), fin_por[per], per), 2) if convertir(sum(finales[c][per] for c in finales), fin_por[per], per) is not None else None) for per in periodos}
 
+    if centro_costo:
+        cuentas_ini, total_ini, final_cuenta = [], None, {}
+        final_total = {per: None for per in periodos}
     return {
         "moneda": moneda,
         **agregado,
+        "centroCosto": centro_costo,
         "saldoInicial": {"cuentas": cuentas_ini, "total": total_ini},
         "saldoFinalPorPeriodo": final_total,
         "saldoFinalPorCuenta": final_cuenta,

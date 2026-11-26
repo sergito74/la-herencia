@@ -46,7 +46,7 @@ function rangoPorDefecto(): { desde: string; hasta: string } {
 type Celda = { periodo: string; seccion: SeccionRubro; rubro: string; centroCosto?: string | null };
 
 /** Flujo de caja real por rubro (030): formato de la hoja "Cash Flow 1" de Sergio. */
-export function FlujoCajaRubro() {
+export function FlujoCajaRubro({ centroCosto }: { centroCosto?: string } = {}) {
   const def = rangoPorDefecto();
   const [desde, setDesde] = useState(def.desde);
   const [hasta, setHasta] = useState(def.hasta);
@@ -56,7 +56,7 @@ export function FlujoCajaRubro() {
   const [celda, setCelda] = useState<Celda | null>(null);
   const [aplicando, setAplicando] = useState<{ origenMovimiento: string; idMovimientoOrigen: number } | null>(null);
 
-  const params = { fechaDesde: aplicado.desde, fechaHasta: aplicado.hasta, granularidad, moneda };
+  const params = { fechaDesde: aplicado.desde, fechaHasta: aplicado.hasta, granularidad, moneda, ...(centroCosto ? { centroCosto } : {}) };
   const q = useQuery({ queryKey: ["flujo-por-rubro", params], queryFn: () => fetchPorRubro(params) });
   const detalle = useQuery({
     queryKey: ["flujo-por-rubro-detalle", params, celda],
@@ -115,6 +115,13 @@ export function FlujoCajaRubro() {
         </a>
       </div>
 
+      {centroCosto && (
+        <p className="rounded-md border border-status-warning/40 bg-status-warning/10 px-3 py-2 text-sm">
+          Solo {centroCosto === "Ganaderia" ? "Ganadería" : centroCosto}: egresos de ese centro de costos e ingresos por
+          rubro de venta. <strong>Reparto aproximado</strong>: los pagos se reparten por lo aplicado a cada documento y
+          los ingresos se asignan por el rubro; sin saldos de cuentas.
+        </p>
+      )}
       {q.isLoading && <LoadingState rows={8} />}
       {q.isError && <ErrorState message="No se pudo calcular el flujo de caja por rubro." onRetry={() => q.refetch()} />}
       {q.data && (
@@ -357,8 +364,8 @@ function TablaRubros({
           </tr>
         </thead>
         <tbody>
-          {titulo("Saldo inicial")}
-          {data.saldoInicial.cuentas.map((c) => (
+          {!data.centroCosto && titulo("Saldo inicial")}
+          {!data.centroCosto && data.saldoInicial.cuentas.map((c) => (
             <tr key={c.cuenta} className="border-t border-border">
               <td className={primera} title={c.aclaracion ?? undefined}>
                 {c.cuenta}
@@ -368,11 +375,13 @@ function TablaRubros({
               <td colSpan={per.length} />
             </tr>
           ))}
-          <tr className="border-t border-border font-semibold">
-            <td className={primera}>Total saldo inicial</td>
-            <td className={td}>{num(data.saldoInicial.total)}</td>
-            <td colSpan={per.length} />
-          </tr>
+          {!data.centroCosto && (
+            <tr className="border-t border-border font-semibold">
+              <td className={primera}>Total saldo inicial</td>
+              <td className={td}>{num(data.saldoInicial.total)}</td>
+              <td colSpan={per.length} />
+            </tr>
+          )}
 
           {titulo("Ingresos")}
           <IngresosConSecciones
@@ -396,12 +405,16 @@ function TablaRubros({
 
           {filaTotal("Neto operativo", data.netoOperativoPorPeriodo, sumar(data.netoOperativoPorPeriodo), "font-semibold bg-surface-sunken")}
 
-          {titulo("Movimientos entre cuentas propias")}
-          {data.internos.rubros.map((f) => filaRubro(f, "internos"))}
+          {!data.centroCosto && (
+            <>
+              {titulo("Movimientos entre cuentas propias")}
+              {data.internos.rubros.map((f) => filaRubro(f, "internos"))}
 
-          {titulo("Saldo final")}
-          {Object.entries(data.saldoFinalPorCuenta).map(([cuenta, valores]) => filaTotal(cuenta, valores, undefined, ""))}
-          {filaTotal("Total saldo final", data.saldoFinalPorPeriodo)}
+              {titulo("Saldo final")}
+              {Object.entries(data.saldoFinalPorCuenta).map(([cuenta, valores]) => filaTotal(cuenta, valores, undefined, ""))}
+              {filaTotal("Total saldo final", data.saldoFinalPorPeriodo)}
+            </>
+          )}
         </tbody>
       </table>
     </div>

@@ -98,6 +98,7 @@ export interface GrupoCentroCosto {
 export interface FlujoPorRubro {
   moneda: MonedaRubro;
   periodos: string[];
+  centroCosto?: string | null;
   saldoInicial: { cuentas: { cuenta: string; importe: number | null; aclaracion?: string | null }[]; total: number | null };
   ingresos: { rubros: FilaRubro[]; totalPorPeriodo: Record<string, number> };
   egresos: { centrosCosto: GrupoCentroCosto[]; totalPorPeriodo: Record<string, number> };
@@ -142,10 +143,12 @@ export interface ParamsPorRubro {
   fechaHasta: string;
   granularidad: GranularidadRubro;
   moneda: MonedaRubro;
+  centroCosto?: string | null;
 }
 
 export function fetchPorRubro(p: ParamsPorRubro): Promise<FlujoPorRubro> {
-  return apiGet<FlujoPorRubro>("/api/flujo-caja/por-rubro", { ...p });
+  const { centroCosto, ...resto } = p;
+  return apiGet<FlujoPorRubro>("/api/flujo-caja/por-rubro", { ...resto, ...(centroCosto ? { centroCosto } : {}) });
 }
 
 export function fetchDetalleRubro(
@@ -157,6 +160,6 @@ export function fetchDetalleRubro(
 
 export function urlExportarPorRubro(p: ParamsPorRubro): string {
   const url = new URL("/api/flujo-caja/por-rubro/exportar", API_BASE_URL);
-  Object.entries(p).forEach(([k, v]) => url.searchParams.set(k, v));
+  Object.entries(p).forEach(([k, v]) => { if (v) url.searchParams.set(k, v); });
   return url.toString();
 }

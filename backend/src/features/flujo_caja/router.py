@@ -90,13 +90,14 @@ async def por_rubro(
     fechaHasta: date | None = Query(default=None),
     granularidad: str = Query(default="mensual", pattern=_GRANULARIDAD_RUBRO),
     moneda: str = Query(default="ARS", pattern="^(ARS|USD)$"),
+    centroCosto: str | None = Query(default=None),
 ) -> FlujoCajaPorRubroResponse:
     """Flujo de caja real por rubro (030): movimientos bancarios reales
     repartidos por lo aplicado a cada documento, internos en sección propia,
     saldos por cuenta, en ARS o USD por cotización del día. Se recalcula
     siempre, sin cachear (pedido explícito de Sergio)."""
     desde, hasta = _rango(fechaDesde, fechaHasta)
-    resultado = await run_in_threadpool(repository.flujo_por_rubro, desde, hasta, granularidad, moneda)
+    resultado = await run_in_threadpool(repository.flujo_por_rubro, desde, hasta, granularidad, moneda, centroCosto)
     resultado.pop("_partes")
     return FlujoCajaPorRubroResponse(**resultado)
 
@@ -128,10 +129,11 @@ async def por_rubro_exportar(
     fechaHasta: date | None = Query(default=None),
     granularidad: str = Query(default="mensual", pattern=_GRANULARIDAD_RUBRO),
     moneda: str = Query(default="ARS", pattern="^(ARS|USD)$"),
+    centroCosto: str | None = Query(default=None),
 ) -> Response:
     from src.features.flujo_caja import exportacion
 
     desde, hasta = _rango(fechaDesde, fechaHasta)
-    contenido = await run_in_threadpool(exportacion.flujo_por_rubro_xlsx, desde, hasta, granularidad, moneda)
+    contenido = await run_in_threadpool(exportacion.flujo_por_rubro_xlsx, desde, hasta, granularidad, moneda, centroCosto)
     nombre = f"flujo-caja-por-rubro-{desde.isoformat()}-{hasta.isoformat()}-{moneda}.xlsx"
     return Response(content=contenido, media_type=_XLSX, headers={"Content-Disposition": f'attachment; filename="{nombre}"'})
