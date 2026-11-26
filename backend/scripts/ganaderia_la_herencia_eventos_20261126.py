@@ -61,11 +61,14 @@ def main():
     rec = recuentos()
     for (fa, A), (fb, B) in zip(rec, rec[1:]):
         st = defaultdict(int, {c: n for c, n in A.items()})
+        primera_venta = {}
         for m in movs:
             f = date.fromisoformat(str(m["f"])[:10])
             if fa < f <= fb:
                 c = PADRE.get(m["c"], m["c"])
                 entra = m["t"] == "Compra" or (m["t"] == "Traslado" and m["e"] != LH)
+                if not entra:
+                    primera_venta[c] = min(primera_venta.get(c, f), f)
                 st[c] += m["n"] if entra else -m["n"]
                 for o in {8: (4, 2), 4: (2,), 9: (2,)}.get(c, ()):
                     if st[c] < 0 and st[o] > 0:
@@ -76,12 +79,18 @@ def main():
             n = min(max(st[o], 0), max(B.get(d, 0) - st[d], 0))
             if n:
                 st[o] -= n; st[d] += n
-                mov(dia, "CambioCategoria", o, n, f"Cambio de categoría {nota} (regla por actas)", destino=d)
+                # el pase ocurre antes de la primera venta de la categoría nueva (novedad SENASA 10/10/2025)
+                cuando = min(dia, primera_venta.get(d, dia) - timedelta(days=1))
+                mov(max(cuando, fa + timedelta(days=1)), "CambioCategoria", o, n,
+                    f"Cambio de categoría {nota} (regla por actas)", destino=d)
         fn = date(fb.year, 8, 1) if fb.month >= 9 else fb - timedelta(days=45)
         for c in (1, 2):
             if B.get(c, 0) > st[c]:
                 mov(fn, "Nacimiento", c, B[c] - st[c], f"Nacimientos {nota}; fecha estimada")
                 st[c] = B[c]
+    # 5 toros vendidos con liquidación del 22/11/2017 contados en el acta del 25/11/2017 (DTe de salida 15/12/2017)
+    mov(date(2018, 4, 1), "AjusteRecuento", 14, -5, "5 toros vendidos (liquidaciones del 22/11/2017) contados en el acta "
+        "del 25/11/2017: salieron con DTe del 15/12/2017, posterior al acta (Sergio 26/11/2026).")
     # lo que no cierra, recuento por recuento, con el motor real
     for fb, _ in rec[1:]:
         dif = {d["categoria"]: d["diferencia"] for d in stock.stock(fb + timedelta(days=1), LH, "propia")["sinExplicar"]}
