@@ -160,6 +160,7 @@ const NAV_ITEMS: NavItem[] = [
       { href: "/ganaderia/resultado", label: "Resultado ganadero", grupo: "Gestión" },
       { href: "/ganaderia/stock", label: "Stock de hacienda" },
       { href: "/ganaderia/controles", label: "Controles" },
+      { href: "/ganaderia/configuracion", label: "Configuración" },
       { href: "/ventas/hacienda", label: "Ventas de hacienda", grupo: "Relacionado" },
       { href: "/ventas/pastaje", label: "Pastaje" },
       { href: "/finanzas/flujo-caja-rubro", label: "Flujo de caja por rubro" },

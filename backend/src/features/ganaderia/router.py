@@ -9,7 +9,7 @@ from pydantic import BaseModel
 from starlette.concurrency import run_in_threadpool
 
 from src.features.boveda.router import exigir_admin, usuario_actual
-from src.features.ganaderia import controles, costos, periodos, reservas, resultado, stock, superficie
+from src.features.ganaderia import configuracion, controles, costos, periodos, reservas, resultado, stock, superficie
 
 router = APIRouter(prefix="/api/ganaderia", tags=["ganaderia"])
 
@@ -222,4 +222,43 @@ async def aceptar_control(body: AceptarControlIn, request: Request) -> dict:
 @router.post("/controles/aceptados/{id_aceptado}/quitar", dependencies=[Depends(exigir_admin)])
 async def quitar_aceptado(id_aceptado: int) -> dict:
     await run_in_threadpool(controles.quitar, id_aceptado)
+    return {"ok": True}
+
+
+@router.get("/configuracion")
+async def get_configuracion() -> dict:
+    return {"secciones": configuracion.todas()}
+
+
+def _seccion(nombre: str) -> str:
+    if nombre not in configuracion.SECCIONES:
+        raise HTTPException(status_code=404, detail="Sección inexistente")
+    return nombre
+
+
+@router.get("/configuracion/{seccion}")
+async def get_configuracion_seccion(seccion: str) -> dict:
+    return await run_in_threadpool(configuracion.seccion, _seccion(seccion))
+
+
+class ConfiguracionIn(BaseModel):
+    id: int | None = None
+    valores: dict
+
+
+@router.put("/configuracion/{seccion}", dependencies=[Depends(exigir_admin)])
+async def put_configuracion(seccion: str, body: ConfiguracionIn, request: Request) -> dict:
+    try:
+        await run_in_threadpool(configuracion.guardar, _seccion(seccion), body.id, body.valores, usuario_actual(request))
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    return {"ok": True}
+
+
+@router.delete("/configuracion/{seccion}/{id_fila}", dependencies=[Depends(exigir_admin)])
+async def delete_configuracion(seccion: str, id_fila: int) -> dict:
+    try:
+        await run_in_threadpool(configuracion.borrar, _seccion(seccion), id_fila)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
     return {"ok": True}
