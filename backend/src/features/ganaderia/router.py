@@ -9,7 +9,7 @@ from pydantic import BaseModel
 from starlette.concurrency import run_in_threadpool
 
 from src.features.boveda.router import exigir_admin, usuario_actual
-from src.features.ganaderia import costos, periodos, reservas, resultado, stock, superficie
+from src.features.ganaderia import controles, costos, periodos, reservas, resultado, stock, superficie
 
 router = APIRouter(prefix="/api/ganaderia", tags=["ganaderia"])
 
@@ -110,6 +110,7 @@ async def post_movimiento(body: MovimientoIn, request: Request) -> dict:
     d = body.model_dump()
     try:
         i = await run_in_threadpool(stock.registrar_movimiento, d, usuario_actual(request), body.confirmar)
+        controles.invalidar()
     except stock.MotivoFaltante as exc:
         raise HTTPException(status_code=422, detail="El ajuste de recuento necesita un motivo") from exc
     except stock.StockNegativo as exc:
@@ -127,6 +128,7 @@ class AnularIn(BaseModel):
 async def anular(id_movimiento: int, body: AnularIn) -> dict:
     try:
         await run_in_threadpool(stock.anular_movimiento, id_movimiento, body.motivo)
+        controles.invalidar()
     except LookupError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except stock.MotivoFaltante as exc:
@@ -161,7 +163,9 @@ async def post_recuento(body: RecuentoIn, request: Request) -> dict:
     if body.origen not in ("Recuento", "Acta", "Cierre", "Planilla"):
         raise HTTPException(status_code=422, detail="Origen inválido")
     try:
-        return await run_in_threadpool(stock.registrar_recuento, body.model_dump(), usuario_actual(request))
+        r = await run_in_threadpool(stock.registrar_recuento, body.model_dump(), usuario_actual(request))
+        controles.invalidar()
+        return r
     except stock.MotivoFaltante as exc:
         raise HTTPException(status_code=422, detail="El recuento no coincide con la existencia: indicá el motivo") from exc
     except ValueError as exc:
@@ -184,6 +188,38 @@ async def post_consumo_reserva(id_reserva: int, body: ConsumoReservaIn, request:
     try:
         await run_in_threadpool(reservas.registrar_consumo, id_reserva, body.fecha, body.porcentaje, body.motivo,
                                 usuario_actual(request))
+        controles.invalidar()
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
+    return {"ok": True}
+
+
+@router.get("/controles")
+async def get_controles() -> dict:
+    return await run_in_threadpool(controles.resultado)
+
+
+@router.post("/controles/correr")
+async def correr_controles() -> dict:
+    return await run_in_threadpool(controles.correr)
+
+
+class AceptarControlIn(BaseModel):
+    tipo: str
+    clave: str
+    motivo: str
+
+
+@router.post("/controles/aceptar", dependencies=[Depends(exigir_admin)])
+async def aceptar_control(body: AceptarControlIn, request: Request) -> dict:
+    try:
+        await run_in_threadpool(controles.aceptar, body.tipo, body.clave, body.motivo, usuario_actual(request))
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    return {"ok": True}
+
+
+@router.post("/controles/aceptados/{id_aceptado}/quitar", dependencies=[Depends(exigir_admin)])
+async def quitar_aceptado(id_aceptado: int) -> dict:
+    await run_in_threadpool(controles.quitar, id_aceptado)
     return {"ok": True}

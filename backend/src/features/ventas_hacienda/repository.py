@@ -27,6 +27,9 @@ def _sincronizar_stock(id_venta: int) -> None:
         from src.features.ganaderia.stock import sincronizar_venta
 
         sincronizar_venta(id_venta)
+        from src.features.ganaderia import controles
+
+        controles.invalidar()  # los controles ganaderos se recalculan con la venta guardada
     except Exception:  # el stock no debe impedir guardar la venta; el control de Stock lo detecta
         _log.exception("No se pudo actualizar el stock de hacienda de la venta %s", id_venta)
 

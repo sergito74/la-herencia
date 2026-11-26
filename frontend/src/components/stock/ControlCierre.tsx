@@ -3,6 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 
+import { MarcaRevisado } from "@/components/ui/MarcaRevisado";
 import { ErrorState, LoadingState } from "@/components/ui/States";
 import { formatCantidad, formatFecha } from "@/lib/format";
 import { apiGet, apiPost } from "@/services/apiClient";
@@ -78,19 +79,12 @@ type Marca = { tipo: Aceptado["tipo"]; idRemito?: number; idCompra?: number; idP
 /** 24/11/2026: excepción aprobada = marca en los datos (quién, cuándo, motivo), no una lista en el código. */
 function BotonAceptar({ marca }: { marca: Marca }) {
   const qc = useQueryClient();
-  const m = useMutation({
-    mutationFn: (motivo: string) => apiPost("/api/stock/pendientes-carga/aceptar", { ...marca, motivo }),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["pendientes-carga"] }); qc.invalidateQueries({ queryKey: ["pendientes-aceptados"] }); },
-  });
   return (
-    <SoloLectura>
-      <button type="button" disabled={m.isPending} className="text-xs text-ink-secondary underline disabled:opacity-40"
-        title="Queda registrado con tu usuario, la fecha y el motivo; se puede quitar después"
-        onClick={() => { const motivo = window.prompt("¿Por qué se acepta así? (queda registrado)"); if (motivo && motivo.trim().length >= 3) m.mutate(motivo.trim()); }}>
-        Revisado y aceptado
-      </button>
-      {m.isError && <span className="text-xs text-status-danger">{(m.error as Error).message}</span>}
-    </SoloLectura>
+    <MarcaRevisado onAceptar={async (motivo) => {
+      await apiPost("/api/stock/pendientes-carga/aceptar", { ...marca, motivo });
+      qc.invalidateQueries({ queryKey: ["pendientes-carga"] });
+      qc.invalidateQueries({ queryKey: ["pendientes-aceptados"] });
+    }} />
   );
 }
 

@@ -112,8 +112,8 @@ Etiquetas de historia:
 
 ## Phase 5: User Story 5. Controles base (P2, entra en la etapa 1)
 **Objetivo:** FR-011 en los grupos Ventas, Consignatarios, Stock, Pastaje, Imputación y Forrajes.
-- [ ] T035 Extraer `frontend/src/components/ui/MarcaRevisado.tsx` de `components/stock/ControlCierre.tsx`, con `SideDrawer` y motivo (sin `window.prompt`), y que ControlCierre lo use.
-- [ ] T036 [US5] `backend/src/features/ganaderia/controles.py`, con estos controles:
+- [x] T035 Extraer `frontend/src/components/ui/MarcaRevisado.tsx` de `components/stock/ControlCierre.tsx`, con `SideDrawer` y motivo (sin `window.prompt`), y que ControlCierre lo use.
+- [x] T036 [US5] `backend/src/features/ganaderia/controles.py`, con estos controles:
   - **Ventas:**
     - venta sin cabezas o sin kg;
     - kg por cabeza fuera de rango;
@@ -137,9 +137,10 @@ Etiquetas de historia:
     - pastura sin primer pastoreo.
 
   Las aceptaciones se guardan en `GanControlAceptado`.
-- [ ] T037 [US5] Endpoints `GET /controles`, `POST /controles/correr`, `POST /controles/aceptar` y `POST /controles/aceptados/{id}/quitar`. Corrida automática al guardar ventas, movimientos y reservas, y corrida diaria en la rutina existente.
-- [ ] T038 [P] [US5] Prueba `test_controles.py`: cada control con un caso positivo y uno negativo, y que la aceptación oculte el caso.
-- [ ] T039 [US5] Pantalla `frontend/src/app/ganaderia/controles/page.tsx`: grupos con contador, "Correr controles ahora", hora del último control y lista de aceptados con "Quitar la marca".
+  Hecho 26/11/2026. Sin dato en el sistema (no implementados): cosecha de cultivo ganadero sin destino y pastura sin primer pastoreo. "Complemento sin cobro" va dentro del saldo del consignatario. "Compra de Ganadería sin imputar" desde 01/04/2025. Corrida: al abrir la pantalla si pasaron 6 h, al guardar ventas/movimientos/recuentos/consumos de reservas, o con el botón.
+- [x] T037 [US5] Endpoints `GET /controles`, `POST /controles/correr`, `POST /controles/aceptar` y `POST /controles/aceptados/{id}/quitar`. Corrida automática al guardar ventas, movimientos y reservas, y corrida diaria en la rutina existente.
+- [x] T038 [P] [US5] Prueba `test_controles.py`: cada control con un caso positivo y uno negativo, y que la aceptación oculte el caso.
+- [x] T039 [US5] Pantalla `frontend/src/app/ganaderia/controles/page.tsx`: grupos con contador, "Correr controles ahora", hora del último control y lista de aceptados con "Quitar la marca".
 
 ## Phase 6: Polish
 - [ ] T040 [P] `GET /api/flujo-caja/por-rubro` con `centroCosto` opcional en `backend/src/features/flujo_caja/router.py` y en la exportación, y el enlace desde el menú Ganadería. Rotular "reparto aproximado".
