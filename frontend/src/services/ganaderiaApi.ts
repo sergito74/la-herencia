@@ -137,3 +137,16 @@ export const registrarRecuento = (r: {
   detalle: { categoria: number; dueno?: number | null; cabezas: number }[];
 }) => apiPost<{ id: number; diferencias: { categoria: string; dueno: number | null; diferencia: number }[] }>(
   "/api/ganaderia/recuentos", r);
+
+export interface ReservaForrajera {
+  id: number; tipo: string; campania: string; fecha: string; fuente: string; observaciones: string | null;
+  costoPesos: number; costoDolares: number; pctConsumido: number; estado: string;
+  saldoPesos: number; saldoDolares: number;
+  consumos: { id: number; fecha: string; pct: number; motivo: string | null }[];
+}
+
+export const fetchReservas = (fecha: string) =>
+  apiGet<{ fecha: string; items: ReservaForrajera[]; saldoPesos: number; saldoDolares: number }>("/api/ganaderia/reservas?fecha=" + fecha);
+
+export const registrarConsumoReserva = (id: number, c: { fecha: string; porcentaje: number; motivo?: string }) =>
+  apiPost<{ ok: boolean }>("/api/ganaderia/reservas/" + id + "/consumos", c);

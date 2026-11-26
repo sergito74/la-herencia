@@ -9,7 +9,7 @@ from pydantic import BaseModel
 from starlette.concurrency import run_in_threadpool
 
 from src.features.boveda.router import exigir_admin, usuario_actual
-from src.features.ganaderia import costos, periodos, resultado, stock, superficie
+from src.features.ganaderia import costos, periodos, reservas, resultado, stock, superficie
 
 router = APIRouter(prefix="/api/ganaderia", tags=["ganaderia"])
 
@@ -166,3 +166,24 @@ async def post_recuento(body: RecuentoIn, request: Request) -> dict:
         raise HTTPException(status_code=422, detail="El recuento no coincide con la existencia: indicá el motivo") from exc
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+
+@router.get("/reservas")
+async def get_reservas(fecha: date | None = None) -> dict:
+    return await run_in_threadpool(reservas.reservas, fecha)
+
+
+class ConsumoReservaIn(BaseModel):
+    fecha: date
+    porcentaje: float
+    motivo: str | None = None
+
+
+@router.post("/reservas/{id_reserva}/consumos", status_code=201, dependencies=[Depends(exigir_admin)])
+async def post_consumo_reserva(id_reserva: int, body: ConsumoReservaIn, request: Request) -> dict:
+    try:
+        await run_in_threadpool(reservas.registrar_consumo, id_reserva, body.fecha, body.porcentaje, body.motivo,
+                                usuario_actual(request))
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    return {"ok": True}

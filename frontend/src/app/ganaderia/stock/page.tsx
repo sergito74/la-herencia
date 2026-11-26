@@ -11,17 +11,20 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { Segmentos } from "@/components/ui/Segmentos";
 import { SideDrawer } from "@/components/ui/SideDrawer";
 import { EmptyState, ErrorState, LoadingState } from "@/components/ui/States";
-import { formatFecha, formatNumero } from "@/lib/format";
+import { formatFecha, formatMoneda, formatNumero } from "@/lib/format";
 import { ApiError } from "@/services/apiClient";
 import {
   anularMovimiento,
   fetchCategoriasHacienda,
   fetchMovimientos,
+  fetchReservas,
+  registrarConsumoReserva,
   fetchStock,
   registrarMovimiento,
   type DuenoFiltro,
   type MovimientoHacienda,
   type MovimientoNuevo,
+  type ReservaForrajera,
 } from "@/services/ganaderiaApi";
 
 const hoyIso = () => new Date().toISOString().slice(0, 10);
@@ -135,6 +138,8 @@ export default function StockHaciendaPage() {
             )}
           </section>
         )}
+
+      <ReservasForrajeras fecha={fecha} />
 
       <h2 className="mb-2 text-base font-semibold">Movimientos</h2>
       {qm.isLoading ? <LoadingState rows={6} /> : (
@@ -252,6 +257,101 @@ function NuevoMovimiento({ onClose }: { onClose: () => void }) {
             className="rounded-md bg-finance px-3 py-1.5 text-white disabled:opacity-50">{guardar.isPending ? "Guardando…" : "Guardar"}</button>
         )}
       </div>
+    </SideDrawer>
+  );
+}
+
+/** 052 T026: silos de maíz picado como reserva; el consumo se registra (no hay regla fija). */
+function ReservasForrajeras({ fecha }: { fecha: string }) {
+  const q = useQuery({ queryKey: ["ganaderia", "reservas", fecha], queryFn: () => fetchReservas(fecha) });
+  const [consumo, setConsumo] = useState<ReservaForrajera | null>(null);
+  if (q.isLoading) return <LoadingState rows={3} />;
+  if (q.isError) return <ErrorState message="No se pudieron leer las reservas." onRetry={() => q.refetch()} />;
+  const items = q.data?.items ?? [];
+  return (
+    <section className="mb-5">
+      <h2 className="mb-1 text-base font-semibold">Reservas forrajeras</h2>
+      <p className="mb-2 text-sm text-ink-secondary">
+        Silo de maíz picado: el costo sale del Resultado por cultivo y pasa al resultado ganadero cuando se consume; lo no
+        consumido queda en existencia a su costo. Los silos sin consumo registrado se estiman consumidos en el ejercicio
+        siguiente al de confección.
+      </p>
+      {!items.length ? <EmptyState message="No hay reservas a esa fecha." /> : (
+        <div className="overflow-auto rounded-md border border-border bg-surface">
+          <table className="min-w-full text-sm">
+            <thead><tr className="border-b border-border text-left text-ink-secondary">
+              <th className="px-3 py-2 font-medium">Reserva</th><th className="px-3 py-2 font-medium">Confección</th>
+              <th className="px-3 py-2 font-medium">Origen</th><th className="px-3 py-2 text-right font-medium">Costo</th>
+              <th className="px-3 py-2 text-right font-medium">Consumido</th><th className="px-3 py-2 font-medium">Consumo</th>
+              <th className="px-3 py-2 text-right font-medium">En existencia</th><th />
+            </tr></thead>
+            <tbody>
+              {items.map((r) => (
+                <tr key={r.id} className="border-b border-border/60">
+                  <td className="px-3 py-1">Silo maíz {r.campania}</td>
+                  <td className="px-3 py-1 font-data">{formatFecha(r.fecha)}</td>
+                  <td className="px-3 py-1">{r.fuente}{r.observaciones ? ` · ${r.observaciones}` : ""}</td>
+                  <td className="px-3 py-1 text-right font-data">{formatMoneda(r.costoPesos)}</td>
+                  <td className="px-3 py-1 text-right font-data">{formatNumero(r.pctConsumido, { max: 1 })} %</td>
+                  <td className={`px-3 py-1 ${r.estado === "Registrado" ? "" : "text-ink-muted"}`}>
+                    {r.consumos.length
+                      ? r.consumos.map((c) => `${formatFecha(c.fecha)}: ${formatNumero(c.pct, { max: 1 })} %`).join(" · ")
+                      : r.estado}
+                  </td>
+                  <td className="px-3 py-1 text-right font-data">{formatMoneda(r.saldoPesos)}</td>
+                  <td className="px-3 py-1 text-right">
+                    {r.pctConsumido < 100 && (
+                      <SoloLectura>
+                        <button type="button" onClick={() => setConsumo(r)} className="text-finance hover:underline">
+                          Registrar consumo
+                        </button>
+                      </SoloLectura>
+                    )}
+                  </td>
+                </tr>
+              ))}
+              <tr className="bg-surface-sunken font-semibold">
+                <td className="px-3 py-1.5" colSpan={6}>Total en existencia</td>
+                <td className="px-3 py-1.5 text-right font-data">{formatMoneda(q.data?.saldoPesos ?? 0)}</td><td />
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      )}
+      {consumo && <ConsumoReserva reserva={consumo} onClose={() => setConsumo(null)} />}
+    </section>
+  );
+}
+
+function ConsumoReserva({ reserva, onClose }: { reserva: ReservaForrajera; onClose: () => void }) {
+  const qc = useQueryClient();
+  const [fecha, setFecha] = useState(hoyIso());
+  const [pct, setPct] = useState<number | null>(null);
+  const [motivo, setMotivo] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const m = useMutation({
+    mutationFn: () => registrarConsumoReserva(reserva.id, { fecha, porcentaje: pct ?? 0, motivo }),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["ganaderia"] }); onClose(); },
+    onError: (e) => setError(e instanceof ApiError ? e.message : "No se pudo registrar."),
+  });
+  const resto = 100 - reserva.pctConsumido;
+  return (
+    <SideDrawer open onClose={onClose} title={`Consumo de silo maíz ${reserva.campania}`}>
+      <p className="mb-3 text-sm text-ink-secondary">
+        Queda {formatNumero(resto, { max: 1 })} % sin consumir. Indicá qué parte se dio y cuándo.
+      </p>
+      <label className="mb-2 block text-sm">Fecha
+        <input type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} className={inputCls} />
+      </label>
+      <label className="mb-2 block text-sm">Porcentaje del silo consumido
+        <NumberInput value={pct} onChange={setPct} className={inputCls} />
+      </label>
+      <label className="mb-2 block text-sm">Observaciones
+        <textarea value={motivo} onChange={(e) => setMotivo(e.target.value)} rows={2} className={inputCls} />
+      </label>
+      {error && <p className="mb-2 text-sm text-status-danger">{error}</p>}
+      <button type="button" disabled={!pct || pct <= 0 || pct > resto || m.isPending} onClick={() => m.mutate()}
+        className="rounded-md bg-finance px-3 py-1.5 text-sm text-white disabled:opacity-50">Registrar</button>
     </SideDrawer>
   );
 }

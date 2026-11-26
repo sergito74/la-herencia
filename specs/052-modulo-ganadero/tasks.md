@@ -86,7 +86,7 @@ Etiquetas de historia:
   - clic en una celda → `SideDrawer` con comprobantes y enlaces (patrón de `DetalleCostosPanel.tsx`);
   - exportar a Excel.
 - [ ] T025 [US1] Pantalla `frontend/src/app/ganaderia/configuracion/page.tsx`: categorías (EV, peso típico), mapa de rubros, reglas de forraje, calendario, reparto de personal, ajustes de superficie y precio de cierre estimado. Todo por nombre, sin ids.
-- [ ] T026 [US1] Carga de reservas: `POST /api/ganaderia/reservas` y `/reservas/{id}/consumos`, más un bloque "Reservas forrajeras" en la pantalla de Stock. La confección se precarga desde `_costo_silo` del maíz picado.
+- [x] T026 [US1] Carga de reservas: `POST /api/ganaderia/reservas` y `/reservas/{id}/consumos`, más un bloque "Reservas forrajeras" en la pantalla de Stock. La confección se precarga desde `_costo_silo` del maíz picado. Hecho 26/11/2026: silos de maíz desde las facturas de confección; consumo registrado en % por fecha (Sergio: sin regla fija); sin registro = estimado al ejercicio siguiente, rotulado; último silo 20 % al 26/11/2026.
 - [ ] T027 [US1] Verificación SC-001a contra la planilla (2018/19 y 2022/23) y SC-001b (forrajes por valor contra las solapas fuente). Guardar el informe en `specs/052-modulo-ganadero/verificacion-planilla.md`, con cada diferencia y su comprobante.
 
 ## Phase 4: User Story 2. Stock de hacienda (P1)

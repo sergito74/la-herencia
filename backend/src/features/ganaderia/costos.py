@@ -17,7 +17,7 @@ from datetime import date
 
 from src.db.connection import fetch_all
 from src.features.cotizaciones.dolar_gestion import sql_tc_pesos, tc_pesos_cache as tc_pesos
-from src.features.ganaderia import periodos
+from src.features.ganaderia import periodos, reservas
 
 # Importe con signo del renglón (mismo criterio que vw_ResultadosCultivo_CostosBase: NC resta; ND financiera con su signo).
 _IMPORTE = """(CASE WHEN ISNULL(d.[Ajuste financiero],0)=1 AND c.[Tipo documento] COLLATE Latin1_General_CI_AI='Nota de Debito'
@@ -102,6 +102,7 @@ def forrajes(anio_desde: int, anio_hasta: int, vista: str = "ejercicio") -> list
     reglas = {r["c"]: r for r in fetch_all("SELECT IdCultivo c, Tratamiento t, Anios a, DesfaseEjercicios s FROM dbo.GanForrajeRegla")}
     ganaderos = cultivos_ganaderos()
     con_silo = ganaderos | {1}  # el maíz agrícola puede tener ha picadas para silo
+    registro = reservas._registro()
     out = []
     for camp in _campanias():
         a0 = periodos.anio_campania_agricola(camp["nombre"])
@@ -112,10 +113,10 @@ def forrajes(anio_desde: int, anio_hasta: int, vista: str = "ejercicio") -> list
                 continue
             r = _resultado_cultivo_cache(idc, camp["id"], resultado_cultivo)
             silo_p, silo_u = _f(r.get("costoSiloGanaderiaPesos")), _f(r.get("costoSiloGanaderiaDolares"))
-            if silo_p or silo_u:  # maíz picado: reserva; sin reserva cargada va entero al período de confección
-                out.append({"periodo": a0 + (1 if vista == "ejercicio" else 0), "rubro": "Maíz silo",
-                            "cultivo": r["cultivo"], "campania": camp["nombre"], "pesos": silo_p, "usd": silo_u,
-                            "detalle": "Picado para silo"})
+            if silo_p or silo_u:  # maíz picado = reserva: al período en que se consume (reservas.py)
+                res, cons = reservas.registro_de(idc, camp["id"], registro)
+                for i in reservas.imputar(silo_p, silo_u, a0, cons, (res or {}).get("kg"), vista):
+                    out.append({**i, "rubro": "Maíz silo", "cultivo": r["cultivo"], "campania": camp["nombre"]})
             if idc not in ganaderos:
                 continue
             regla = reglas.get(idc, {"t": "Consumo", "a": 1, "s": 0})
