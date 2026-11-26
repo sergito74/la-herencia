@@ -7,7 +7,7 @@ names come from data-model.md, confirmed against INFORMATION_SCHEMA on
 
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, datetime, timedelta
 from typing import NamedTuple
 
 from src.db.connection import fetch_all, fetch_one
@@ -219,6 +219,11 @@ def _filtro_busqueda(config: MedioConfig, q: str | None) -> tuple[list[str], lis
     return ([f"({' OR '.join(conds)})"] if conds else []), params
 
 
+def _fin_exclusivo(fecha_hasta: date) -> datetime:
+    """TEC-001: límite superior exclusivo = medianoche del día siguiente, para incluir todo el último día."""
+    return datetime(fecha_hasta.year, fecha_hasta.month, fecha_hasta.day) + timedelta(days=1)
+
+
 def get_movimientos(
     medio: str,
     fecha_desde: date | None,
@@ -234,8 +239,8 @@ def get_movimientos(
         where_clauses.append(f"{config.date_column} >= ?")
         params.append(as_sql_datetime(fecha_desde))
     if fecha_hasta:
-        where_clauses.append(f"{config.date_column} <= ?")
-        params.append(as_sql_datetime(fecha_hasta))
+        where_clauses.append(f"{config.date_column} < ?")
+        params.append(_fin_exclusivo(fecha_hasta))
     where_sql = f"WHERE {' AND '.join(where_clauses)}" if where_clauses else ""
 
     join_sql = config.extra_join or ""
@@ -314,8 +319,8 @@ def ids_pendientes(medio: str, fecha_desde: date | None, fecha_hasta: date | Non
         cond.append(f"m.{info.fecha_col} >= ?")
         params.append(as_sql_datetime(fecha_desde))
     if fecha_hasta:
-        cond.append(f"m.{info.fecha_col} <= ?")
-        params.append(as_sql_datetime(fecha_hasta))
+        cond.append(f"m.{info.fecha_col} < ?")
+        params.append(_fin_exclusivo(fecha_hasta))
     if q:  # misma búsqueda que el listado, sobre la tabla del medio
         config = MEDIOS_CONFIG[medio]
         bq, bp = _filtro_busqueda(config, q)

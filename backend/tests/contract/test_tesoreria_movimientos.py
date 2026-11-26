@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 import httpx
+import pyodbc
 import pytest
 
-from src.features.tesoreria import repository
+from src.features.tesoreria import estado_resolucion, repository
 from src.main import app
 
 FIXTURE_BNA = [
@@ -34,8 +35,34 @@ FIXTURE_GALICIA = [
 
 
 @pytest.fixture
-def client():
+def intentos_sql(monkeypatch):
+    """TEC-002: bloquea pyodbc.connect y cuenta los intentos; ninguna prueba debe tocar SQL."""
+    intentos: list[tuple] = []
+
+    def _bloqueado(*a, **k):
+        intentos.append(a)
+        raise RuntimeError("conexión SQL bloqueada en pruebas")
+
+    monkeypatch.setattr(pyodbc, "connect", _bloqueado)
+    return intentos
+
+
+@pytest.fixture
+def client(intentos_sql):
     return httpx.ASGITransport(app=app)
+
+
+@pytest.fixture
+def estados(monkeypatch):
+    """Estado de conciliación simulado y controlado por la prueba."""
+    llamadas: list[tuple[str, int]] = []
+
+    def _estado(medio, id_movimiento):
+        llamadas.append((medio, id_movimiento))
+        return "conciliado"
+
+    monkeypatch.setattr(estado_resolucion, "esta_resuelto", _estado)
+    return llamadas
 
 
 @pytest.fixture
@@ -49,7 +76,7 @@ async def _get(transport, url):
 
 
 @pytest.mark.anyio
-async def test_list_movimientos_bna(client, monkeypatch):
+async def test_list_movimientos_bna(client, estados, intentos_sql, monkeypatch):
     monkeypatch.setattr(
         repository, "get_movimientos", lambda *a, **k: (FIXTURE_BNA, 1)
     )
@@ -59,10 +86,13 @@ async def test_list_movimientos_bna(client, monkeypatch):
     body = response.json()
     assert body["total"] == 1
     assert body["items"][0]["concepto"] == "Transferencia"
+    assert body["items"][0]["estadoConciliacion"] == "conciliado"
+    assert estados == [("bna", 555)]
+    assert intentos_sql == []
 
 
 @pytest.mark.anyio
-async def test_list_movimientos_galicia_has_saldo_field(client, monkeypatch):
+async def test_list_movimientos_galicia_has_saldo_field(client, estados, intentos_sql, monkeypatch):
     monkeypatch.setattr(
         repository, "get_movimientos", lambda *a, **k: (FIXTURE_GALICIA, 1)
     )
@@ -72,6 +102,9 @@ async def test_list_movimientos_galicia_has_saldo_field(client, monkeypatch):
     body = response.json()
     # Saldo is Galicia-specific, not forced onto BNA's shape (FR-002).
     assert body["items"][0]["saldo"] == 774943.40
+    assert body["items"][0]["estadoConciliacion"] == "conciliado"
+    assert estados == [("galicia", 900)]
+    assert intentos_sql == []
 
 
 @pytest.mark.anyio
