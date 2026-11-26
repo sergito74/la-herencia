@@ -130,3 +130,30 @@ async def test_list_movimientos_rejects_write_methods(client):
         for method in ("post", "put", "delete", "patch"):
             resp = await ac.request(method, "/api/tesoreria/bna/movimientos")
             assert resp.status_code in (404, 405)
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize("extra", ["", "&estado=pendientes"])
+async def test_fecha_hasta_maxima_sin_limite_superior(client, estados, intentos_sql, monkeypatch, extra):
+    """TEC-003: fechaHasta=9999-12-31 se procesa como «sin límite superior», en ambos recorridos."""
+    consultas: list[tuple[str, tuple]] = []
+
+    def fake_one(sql, params):
+        consultas.append((sql, params))
+        return {"total": 1}
+
+    def fake_all(sql, params):
+        consultas.append((sql, params))
+        return [{"id": 555}] if "AS id FROM" in sql else FIXTURE_BNA
+
+    monkeypatch.setattr(repository, "fetch_one", fake_one)
+    monkeypatch.setattr(repository, "fetch_all", fake_all)
+    if extra:  # «Solo pendientes» conserva solo lo que sigue sin conciliar
+        monkeypatch.setattr(estado_resolucion, "esta_resuelto", lambda m, i: estados.append((m, i)) or "sin_conciliar")
+
+    response = await _get(client, f"/api/tesoreria/bna/movimientos?fechaDesde=2026-08-05&fechaHasta=9999-12-31{extra}")
+
+    assert response.status_code == 200, response.text
+    assert response.json()["total"] == 1
+    assert consultas and all("FechaHora <" not in sql for sql, _ in consultas)
+    assert intentos_sql == []

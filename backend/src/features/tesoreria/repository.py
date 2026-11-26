@@ -238,7 +238,7 @@ def get_movimientos(
     if fecha_desde:
         where_clauses.append(f"{config.date_column} >= ?")
         params.append(as_sql_datetime(fecha_desde))
-    if fecha_hasta:
+    if fecha_hasta and fecha_hasta < date.max:  # TEC-003: 9999-12-31 = sin límite superior
         where_clauses.append(f"{config.date_column} < ?")
         params.append(_fin_exclusivo(fecha_hasta))
     where_sql = f"WHERE {' AND '.join(where_clauses)}" if where_clauses else ""
@@ -318,7 +318,7 @@ def ids_pendientes(medio: str, fecha_desde: date | None, fecha_hasta: date | Non
     if fecha_desde:
         cond.append(f"m.{info.fecha_col} >= ?")
         params.append(as_sql_datetime(fecha_desde))
-    if fecha_hasta:
+    if fecha_hasta and fecha_hasta < date.max:  # TEC-003: 9999-12-31 = sin límite superior
         cond.append(f"m.{info.fecha_col} < ?")
         params.append(_fin_exclusivo(fecha_hasta))
     if q:  # misma búsqueda que el listado, sobre la tabla del medio
