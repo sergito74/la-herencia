@@ -74,6 +74,23 @@ def _usd(pesos, fecha) -> float:
     return _f(pesos) / tc if tc else 0.0
 
 
+# Reparto de costos por campo (Sergio 26/11/2026): todo es de La Herencia (también las compras de hacienda), salvo
+# el pastaje pagado (la hacienda en un campo ajeno) y los renglones que nombran al otro campo o a su localidad.
+CAMPO_PRINCIPAL = 1
+CAMPO_PASTAJE_PAGADO = 2
+PALABRAS_CAMPO = {2: ("san pedro", "tapalqu")}
+
+
+def campo_de_costo(f: dict, rubro: str) -> int:
+    texto = f"{f.get('item') or ''} {f.get('rubro') or ''}".lower()
+    for campo, palabras in PALABRAS_CAMPO.items():
+        if any(p in texto for p in palabras):
+            return campo
+    if "pastaje (pagado)" in (rubro or "").lower():
+        return CAMPO_PASTAJE_PAGADO
+    return CAMPO_PRINCIPAL
+
+
 def _pastaje(desde, hasta, establecimiento: int | None = None) -> list[dict]:
     return fetch_all(
         "SELECT p.Fecha AS fecha, p.Numero AS documento, k.[Razon Social] AS contacto, "
@@ -131,14 +148,17 @@ def periodo(anio: int, vista: str = "ejercicio", forrajes_cache: list | None = N
     mapa = _mapa_rubros()
     for (grupo, rubro), filas in costos.agrupar_por_rubro(costos.compras(desde, hasta), mapa).items():
         for f in filas:
+            if establecimiento and campo_de_costo(f, rubro) != establecimiento:
+                continue
             suma(grupo, rubro, f["pesos"], f["usd"], _det(f, f["pesos"], enlace=f"/compras/{f['idCompra']}/editar"))
-    for fo in (forrajes_cache if forrajes_cache is not None else costos.forrajes(anio, anio, vista)):
+    propio = not establecimiento or establecimiento == CAMPO_PRINCIPAL
+    for fo in ([] if not propio else forrajes_cache if forrajes_cache is not None else costos.forrajes(anio, anio, vista)):
         if fo["periodo"] == anio:
             suma("Alimentacion", fo["rubro"], fo["pesos"], fo["usd"],
                  {"fecha": None, "documento": f"{fo['cultivo']} {fo['campania']}", "contacto": fo["detalle"],
                   "importe": round(fo["pesos"], 2), "enlace": "/produccion/resultado-cultivo"})
     pp = costos.personal_permanente(desde, hasta)
-    if pp["pct"]:
+    if pp["pct"] and propio:
         suma("Directos", "Personal permanente", pp["ganaderia"][0], pp["ganaderia"][1],
              {"fecha": None, "documento": "Remuneraciones", "contacto": f"{pp['pct']['g']}% del encargado",
               "importe": round(pp["ganaderia"][0], 2), "enlace": "/personal/remuneraciones"})
@@ -278,8 +298,9 @@ def resultado(desde: int, hasta: int, vista: str = "ejercicio", moneda: str = "U
             avisos.append({"periodo": et, "texto": "Sin stock de hacienda valuado: el resultado no incluye la variación de "
                                                    "inventario (margen de caja)."})
     return {"vista": vista, "moneda": moneda, "establecimiento": establecimiento,
-            "nota": ("Las ventas y el pastaje son del campo elegido; los costos son de toda la ganadería (las compras no "
-                     "distinguen campo).") if establecimiento else None, "conversion": FUENTE if moneda == "USD" else None,
+            "nota": ("Costos por campo: todo es de La Herencia (también las compras de hacienda, el personal y los "
+                     "forrajes), salvo el pastaje pagado y los gastos que nombran a San Pedro o Tapalqué. Los traslados "
+                     "entre campos se valúan como el inventario.") if establecimiento else None, "conversion": FUENTE if moneda == "USD" else None,
             "periodos": [{"clave": periodos.etiqueta(a), "desde": str(periodos.rango(a, vista)[0]),
                           "hasta": str(periodos.rango(a, vista)[1]),
                           "sinInventario": not datos[a]["inventario"]} for a in anios],
